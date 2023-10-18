@@ -7,20 +7,26 @@ DESCRIPTION = "SHAPley Interaction Quantification (SHAP-IQ) for Explainable AI"
 LONG_DESCRIPTION_CONTENT_TYPE = "text/markdown"
 URL = "https://github.com/mmschlk/shapiq"
 EMAIL = "maximilian.muschalik@ifi.lmu.de"
-AUTHOR = "Fabian Fumagalli and Maximilian Muschalik"
-REQUIRES_PYTHON = ">=3.8.0"
+AUTHOR = "Maximilian Muschalik Fabian Fumagalli"
+REQUIRES_PYTHON = ">=3.9.0"
 
-wrkdir = os.path.abspath(os.path.dirname(__file__))
+work_directory = os.path.abspath(os.path.dirname(__file__))
 version: dict = {}
-with open(os.path.join(wrkdir, NAME, "__version__.py")) as f:
+with open(os.path.join(work_directory, NAME, "__version__.py")) as f:
     exec(f.read(), version)
 
-with io.open(os.path.join(wrkdir, "README.md"), encoding="utf-8") as f:
+with io.open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
     long_description = "\n" + f.read()
 
 base_packages = [
     "shap",
     "numpy"
+]
+
+plotting_packages = [
+    "matplotlib",
+    "colour",
+    "networkx"
 ]
 
 doc_packages = [
@@ -48,9 +54,9 @@ setuptools.setup(
         "Source": "https://github.com/mmschlk/shapiq"
     },
     packages=setuptools.find_packages(exclude=('tests', 'examples', 'docs')),
-    install_requires=base_packages,
+    install_requires=base_packages + plotting_packages,
     extras_require={
-        "docs": base_packages + doc_packages,
+        "docs": base_packages + plotting_packages + doc_packages,
     },
     include_package_data=True,
     license="MIT",
@@ -62,7 +68,6 @@ setuptools.setup(
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11"
