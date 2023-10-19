@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from PIL import Image
 
 from ..utils import powerset
-from .config import RED, BLUE, NEUTRAL
+from ._config import RED, BLUE, NEUTRAL
 
 
 __all__ = [
@@ -190,7 +190,9 @@ def network_plot(
     # arrange the nodes in a circle
     pos = nx.circular_layout(graph)
     nx.draw_networkx_edges(graph, pos, width=edge_widths, edge_color=edge_colors, alpha=edge_alphas)
-    nx.draw_networkx_nodes(graph, pos, node_color=node_colors, node_size=node_sizes, linewidths=node_line_widths, edgecolors=node_edge_colors)
+    nx.draw_networkx_nodes(
+        graph, pos, node_color=node_colors, node_size=node_sizes, linewidths=node_line_widths,
+        edgecolors=node_edge_colors)
 
     # add the labels or image patches to the nodes
     for node, (x, y) in pos.items():
