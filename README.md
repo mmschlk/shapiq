@@ -38,16 +38,21 @@ pip install shapiq
 
 One handy way of visualizing interaction scores (up to order 2) are network plots.
 You can see an example of such a plot below.
-The nodes represent attribution scores and the edges represent the interactions.
+The nodes represent **attribution** scores and the edges represent the **interactions**.
+The strength and size of the nodes and edges are proportional to the absolute value of the
+attribution scores and interaction scores, respectively.
 
 ```python
 from shapiq.plot import network_plot
 
 network_plot(
-    first_order_values=n_sii_first_order,
-    second_order_values=n_sii_second_order
+    first_order_values=n_sii_first_order,  # first order n-SII values
+    second_order_values=n_sii_second_order # second order n-SII values
 )
 ```
+
+The pseudo-code above can produce the following plot (here also an image is added):
+
 <p align="center">
   <img width="400px" src="docs/source/_static/network_example.png" alt="network_plot_example">
 </p>
