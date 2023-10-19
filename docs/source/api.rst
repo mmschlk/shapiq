@@ -6,6 +6,7 @@ This page contains the API reference for public objects and functions in ``shapi
 
 .. autosummary::
     :toctree: api/
+    :caption: Development
     :recursive:
 
     shapiq.plot

@@ -61,12 +61,12 @@ intersphinx_mapping = {
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 html_theme = 'furo'
 html_static_path = ["_static"]
-#html_favicon = '_static/ixai_favicon.ico'  # TODO add favicon
+html_favicon = '_static/shapiq.ico'
 pygments_dark_style = "monokai"
 html_theme_options = {
     "sidebar_hide_name": True,
-    #"light_logo": "ixai_logo.svg",  # TODO add logo
-    #"dark_logo": "ixai_logo_dark_theme.svg",  # TODO add logo
+    "light_logo": "logo_shapiq_light.svg",
+    "dark_logo": "logo_shapiq_dark.svg",
 }
 
 html_sidebars = {

@@ -4,15 +4,22 @@
    contain the root `toctree` directive.
 
 Welcome to shapiq's documentation!
-================================
+==================================
 
 .. note::
-   The first formal version *(0.1.3)* of ``shapiq`` is still an alpha release.
+   The first formal version |version| of ``shapiq`` is still an alpha release.
 
 Contents
 ========
+
 .. toctree::
    :maxdepth: 2
+   :caption: Usage
 
    installation
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Development
+
    api
