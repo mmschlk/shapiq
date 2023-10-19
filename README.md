@@ -29,7 +29,7 @@
 **shapiq** is intended to work with **Python 3.9 and above**. Installation can be done via `pip`:
 
 ```sh
-pip install ixai
+pip install shapiq
 ```
 
 # Quickstart
