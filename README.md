@@ -1,5 +1,5 @@
 <p align="center">
-  <img height="250px" src="docs/source/_static/logo_shapiq_light_2.svg" alt="shapiq_logo">
+  <img height="250px" src="docs/source/_static/logo_shapiq_light.svg" alt="shapiq_logo">
 </p>
 
 <p align="center">
