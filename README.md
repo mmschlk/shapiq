@@ -34,6 +34,19 @@ pip install shapiq
 
 # Quickstart
 
+# Visualize interactions
+
+```python
+from shapiq.plot import network_plot
+
+network_plot(
+    first_order_values=n_sii_first_order,
+    second_order_values=n_sii_second_order
+)
+```
+<p align="center">
+  <img width="400px" src="docs/source/_static/network_example.png" alt="network_plot_example">
+</p>
 
 ## 📖 Documentation
 The documentation for ``shapiq`` can be found [here](https://shapiq.readthedocs.io/en/latest/).
