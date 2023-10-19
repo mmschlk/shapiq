@@ -31,6 +31,9 @@ plotting_packages = [
 
 doc_packages = [
     "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx_rtd_theme",
+    "sphinx_toolbox",
     #"myst_nb",
     "nbsphinx",  # for rendering jupyter notebooks
     "pandoc",  # for rendering jupyter notebooks
