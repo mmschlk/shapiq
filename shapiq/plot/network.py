@@ -13,11 +13,12 @@ from .config import RED, BLUE, NEUTRAL
 
 
 __all__ = [
-    "draw_interaction_network",
+    "network_plot",
 ]
 
 
 def _get_color(value: float) -> str:
+    """Returns blue color for negative values and red color for positive values."""
     if value >= 0:
         return RED.hex
     return BLUE.hex
@@ -113,37 +114,42 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
     axis.add_artist(legend2)
 
 
-def draw_interaction_network(
+def network_plot(
         first_order_values: np.ndarray[float],
         second_order_values: np.ndarray[float],
         *,
         feature_names: Optional[list[Any]] = None,
         feature_image_patches: Optional[dict[int, Image.Image]] = None,
-        feature_image_patches_size: Union[float, dict[int, float]] = 0.2,
+        feature_image_patches_size: Optional[Union[float, dict[int, float]]] = 0.2,
         center_image: Optional[Image.Image] = None,
-        center_image_size: float = 0.6,
+        center_image_size: Optional[float] = 0.6,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Draws the interaction network.
 
     An interaction network is a graph where the nodes represent the features and the edges represent
     the interactions. The edge width is proportional to the interaction value. The color of the edge
     is red if the interaction value is positive and blue if the interaction value is negative. The
-    interaction values should be derived from the n-Shapley interaction index (n-SII).
+    interaction values should be derived from the n-Shapley interaction index (n-SII). Below is an
+    example of an interaction network with an image in the center.
+
+    .. image:: /_static/network_example.png
+        :width: 400
+        :align: center
 
     Args:
         first_order_values: The first order n-SII values of shape (n_features,).
         second_order_values: The second order n-SII values of shape (n_features, n_features). The
             diagonal values are ignored. Only the upper triangular values are used.
-        feature_names (list, optional): The feature names used for plotting. If no feature names are
-            provided, the feature indices are used instead. Defaults to None.
-        feature_image_patches (dict[int, Image], optional): A dictionary containing the image
-            patches to be displayed instead of the feature labels in the network. The keys are the
-            feature indices and the values are the feature images. Defaults to None.
-        feature_image_patches_size (float or dict[int, float], optional): The size of the feature
-            image patches. Defaults to 0.2.
-        center_image (Image, optional): The image to be displayed in the center of the network.
-            Defaults to None.
-        center_image_size (float, optional): The size of the center image. Defaults to 0.6.
+        feature_names: The feature names used for plotting. If no feature names are provided, the
+            feature indices are used instead. Defaults to None.
+        feature_image_patches: A dictionary containing the image patches to be displayed instead of
+            the feature labels in the network. The keys are the feature indices and the values are
+            the feature images. Defaults to None.
+        feature_image_patches_size: The size of the feature image patches. If a dictionary is
+            provided, the keys are the feature indices and the values are the feature image patch.
+            Defaults to 0.2.
+        center_image: The image to be displayed in the center of the network. Defaults to None.
+        center_image_size: The size of the center image. Defaults to 0.6.
 
     Returns:
         The figure and the axis containing the plot.

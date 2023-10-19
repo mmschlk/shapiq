@@ -4,3 +4,9 @@ from colour import Color
 RED = Color("#ff0d57")
 BLUE = Color("#1e88e5")
 NEUTRAL = Color("#ffffff")
+
+__all__ = [
+    "RED",
+    "BLUE",
+    "NEUTRAL",
+]
