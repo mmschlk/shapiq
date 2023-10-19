@@ -25,16 +25,18 @@
 # SHAPIQ: SHAPley Interaction Quantification
 > One interaction may speak more than a thousand main effects.
 
-# 🛠 Install
+# 🛠️ Install
 **shapiq** is intended to work with **Python 3.9 and above**. Installation can be done via `pip`:
 
 ```sh
 pip install shapiq
 ```
 
-# Quickstart
+# ⭐ Quickstart
 
-# Visualize interactions
+## 📈 Compute n-SII values
+
+## 📊 Visualize your Interactions
 
 One handy way of visualizing interaction scores (up to order 2) are network plots.
 You can see an example of such a plot below.
