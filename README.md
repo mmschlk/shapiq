@@ -36,6 +36,10 @@ pip install shapiq
 
 # Visualize interactions
 
+One handy way of visualizing interaction scores (up to order 2) are network plots.
+You can see an example of such a plot below.
+The nodes represent attribution scores and the edges represent the interactions.
+
 ```python
 from shapiq.plot import network_plot
 
