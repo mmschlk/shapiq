@@ -23,7 +23,7 @@
 
 
 # SHAPIQ: SHAPley Interaction Quantification
-> One interaction may speak more than a thousand main effects.
+> An interaction may speak more than a thousand main effects.
 
 # 🛠️ Install
 **shapiq** is intended to work with **Python 3.9 and above**. Installation can be done via `pip`:

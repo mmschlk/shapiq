@@ -9,6 +9,8 @@ This page contains the API reference for public objects and functions in ``shapi
     :caption: Development
     :recursive:
 
+    shapiq.explainer
+    shapiq.approximator
     shapiq.plot
     shapiq.utils
 
