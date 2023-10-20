@@ -20,7 +20,8 @@ with io.open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
 
 base_packages = [
     "shap",
-    "numpy"
+    "numpy",
+    "scipy"
 ]
 
 plotting_packages = [
