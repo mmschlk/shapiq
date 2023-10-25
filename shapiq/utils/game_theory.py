@@ -13,7 +13,7 @@ def powerset(
         iterable: Iterable[Any],
         min_size: Optional[int] = 0,
         max_size: Optional[int] = None
-) -> Iterable[tuple[Any, ...]]:
+) -> Iterable[tuple]:
     """Return a powerset of an iterable as tuples with optional size limits.
 
     Args:
