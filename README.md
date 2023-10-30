@@ -22,7 +22,7 @@
 </p>
 
 
-# SHAPIQ: SHAPley Interaction Quantification
+# SHAP-IQ: SHAP Interaction Quantification
 > An interaction may speak more than a thousand main effects.
 
 # 🛠️ Install
