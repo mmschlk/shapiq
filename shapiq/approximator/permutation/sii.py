@@ -19,8 +19,6 @@ class PermutationSamplingSII(PermutationSampling):
         max_order: The interaction order of the approximation.
         top_order: Whether to approximate only the top order interactions (`True`) or all orders up
             to the specified order (`False`).
-        optimize_budget: Whether to optimize (`True`) the budget by reusing the game evaluations
-                in the permutation chain or not (`False`). Defaults to `True`.
         random_state: The random state to use for the permutation sampling. Defaults to `None`.
     """
 
@@ -29,11 +27,9 @@ class PermutationSamplingSII(PermutationSampling):
             n: int,
             max_order: int,
             top_order: bool,
-            optimize_budget: bool = True,
             random_state: Optional[int] = None
     ) -> None:
         super().__init__(n, max_order, 'SII', top_order, random_state)
-        self._optimize_budget: bool = optimize_budget
         self._iteration_cost: int = self._compute_iteration_cost()
 
     def _compute_iteration_cost(self) -> int:
@@ -46,13 +42,12 @@ class PermutationSamplingSII(PermutationSampling):
         iteration_cost: int = 0
         for s in self._order_iterator:
             iteration_cost += (self.n - s + 1) * 2 ** s
-        # TODO add more efficient implementation with self._optimize_budget
         return iteration_cost
 
     def approximate(
             self,
             budget: int,
-            game: Callable[[Union[set, tuple]], float],
+            game: Callable[[np.ndarray], np.ndarray],
             batch_size: Optional[int] = None,
     ) -> InteractionValues:
         """Approximates the interaction values.
@@ -63,70 +58,62 @@ class PermutationSamplingSII(PermutationSampling):
             batch_size: The size of the batch. If None, the batch size is set to 1.
 
         Returns:
-            InteractionValues: The interaction values.
+            InteractionValues: The estimated interaction values.
         """
-        self._rng = np.random.default_rng(seed=self._random_state)
 
         batch_size = 1 if batch_size is None else batch_size
 
         result = self._init_result()
         counts = self._init_result(dtype=int)
-        #seen_in_iteration = self._init_result(dtype=bool)  # helper to count subsets per permutation
-        value_empty = game(set())
-        value_full = game(self.N)
 
-        n_iterations = budget // (self._iteration_cost * batch_size)
+        # compute the number of iterations and size of the last batch (can be smaller than original)
+        n_iterations, last_batch_size = self._get_n_iterations(
+            budget, batch_size, self._iteration_cost)
 
         # main permutation sampling loop
-        for iteration in range(n_iterations):
-            # TODO batch_size can be smaller in the last iteration
-            # create permutations: a 2d matrix of shape (batch_size, n) where each row is a
+        for iteration in range(1, n_iterations + 1):
+
+            batch_size = batch_size if iteration != n_iterations else last_batch_size
+
+            # create the permutations: a 2d matrix of shape (batch_size, n) where each row is a
             # permutation of the players
             permutations = np.tile(np.arange(self.n), (batch_size, 1))
             self._rng.permuted(permutations, axis=1, out=permutations)
+            n_permutations = permutations.shape[0]
+            n_subsets = n_permutations * self._iteration_cost
 
-            # get game values for all subsets of the permutations
-            game_value_storage = self._get_game_values_storage(batch_size)
-            for order in self._order_iterator:
-                game_value_storage[order][:, 0] = value_empty
-                game_value_storage[order][:, -1] = value_full
-                for k in range(self.n - order + 1):
-                    coalitions = permutations[:, :k + order]
-                    coalitions_values = game(coalitions)  # TODO make game functions accept arrays
-                    game_value_storage[order][:, k] = coalitions_values
+            # get all subsets to evaluate per iteration
+            subsets = np.zeros(shape=(n_subsets, self.n), dtype=bool)
+            subset_index = 0
+            for permutation_id in range(n_permutations):
+                for order in self._order_iterator:
+                    for k in range(self.n - order + 1):
+                        subset = permutations[permutation_id, k:k + order]
+                        previous_subset = permutations[permutation_id, :k]
+                        for subset_ in powerset(subset, min_size=0):
+                            subset_eval = np.concatenate((previous_subset, subset_)).astype(int)
+                            subsets[subset_index, subset_eval] = True
+                            subset_index += 1
 
-            # compute interaction scores and update result
-            for order in self._order_iterator:
-                for k in range(self.n - order + 1):
-                    coalitions = permutations[:, :k + order]
-                    game_values = game_value_storage[order][:, k]
-                    for coalition, game_value in zip(coalitions, game_values):
-                        seen_in_iteration = self._get_empty_array(n=self.n, order=order, dtype=bool)
-                        coalition = tuple(sorted(coalition))
-                        for coalition_parts in powerset(coalition, min_size=1, max_size=order):
-                            update = game_value * (-1) ** (order - len(coalition_parts))
-                            result[order][coalition_parts] += update
-                            seen_in_iteration[coalition_parts] = True
-                        counts[order] += seen_in_iteration
+            # evaluate all subsets on the game
+            game_values: np.ndarray[float] = game(subsets)
+
+            # update the interaction scores by iterating over the permutations again
+            subset_index = 0
+            for permutation_id in range(n_permutations):
+                for order in self._order_iterator:
+                    for k in range(self.n - order + 1):
+                        subset = permutations[permutation_id, k:k + order]
+                        counts[order][tuple(subset)] += 1
+                        # update the discrete derivative given the subset
+                        for subset_ in powerset(subset, min_size=0):
+                            game_value = game_values[subset_index]
+                            update = game_value * (-1) ** (order - len(subset_))
+                            result[order][tuple(subset)] += update
+                            subset_index += 1
 
         # compute mean of interactions
         for s in self._order_iterator:
             result[s] = np.divide(result[s], counts[s], out=result[s], where=counts[s] != 0)
 
         return self._finalize_result(result)
-
-
-if __name__ == "__main__":
-    from games.dummy import DummyGame
-
-    n_run = 7
-
-    game_run = DummyGame(n_run, (1, 2))
-
-    approximator = PermutationSamplingSII(n_run, 2, False)
-
-    result_run: InteractionValues = approximator.approximate(10000, game_run, batch_size=100)
-
-    # pretty print result
-    for coalition_run in powerset(set(range(n_run)), max_size=2, min_size=1):
-        print(coalition_run, round(result_run.values[len(coalition_run)][tuple(sorted(coalition_run))], 3))

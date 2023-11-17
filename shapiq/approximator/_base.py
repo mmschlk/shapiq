@@ -52,6 +52,7 @@ class Approximator(ABC):
             and 'FSI'.
         top_order: If True, the approximation is performed only for the top order interactions. If
             False, the approximation is performed for all orders up to the specified order.
+        random_state: The random state to use for the approximation. Defaults to None.
 
     Attributes:
         n: The number of players.
@@ -85,7 +86,7 @@ class Approximator(ABC):
         self.top_order: bool = top_order
         self.min_order: int = self.max_order if self.top_order else 1
         self._random_state: Optional[int] = random_state
-        self._rng: Optional[np.random.Generator] = None
+        self._rng: Optional[np.random.Generator] = np.random.default_rng(seed=self._random_state)
 
     @abstractmethod
     def approximate(

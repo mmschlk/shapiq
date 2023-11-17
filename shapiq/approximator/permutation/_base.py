@@ -56,18 +56,23 @@ class PermutationSampling(Approximator):
         """Approximates the interaction values."""
         raise NotImplementedError
 
-    def _get_game_values_storage(self, batch_size: int) -> dict[int, np.ndarray]:
-        """Returns a dictionary of arrays to store the game values.
-
-        The array for each order has shape (batch_size, n - order + 2). The first column is for the
-        empty set, the last column is for the full set, and the remaining columns are for the
-        subsets of the specified order.
+    @staticmethod
+    def _get_n_iterations(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
+        """Computes the number of iterations and the size of the last batch given the batch size and
+        the budget.
 
         Args:
-            batch_size: The batch size.
+            budget: The budget for the approximation.
+            batch_size: The size of the batch.
+            iteration_cost: The cost of a single iteration.
 
         Returns:
-            dict: The dictionary of arrays.
+            int, int: The number of iterations and the size of the last batch.
         """
-        return {order: np.zeros((batch_size, self.n - order + 2), dtype=float)
-                for order in self._order_iterator}
+        n_iterations = budget // (iteration_cost * batch_size)
+        last_batch_size = batch_size
+        remaining_budget = budget - n_iterations * iteration_cost * batch_size
+        if remaining_budget > 0 and remaining_budget // iteration_cost > 0:
+            last_batch_size = remaining_budget // iteration_cost
+            n_iterations += 1
+        return n_iterations, last_batch_size
