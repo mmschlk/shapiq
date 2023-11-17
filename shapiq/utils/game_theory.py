@@ -1,7 +1,7 @@
 """This module contains utility functions for dealing with sets, coalitions and game theory."""
 
 from itertools import chain, combinations
-from typing import Iterable, Any, Optional, Union, Callable, TypeVar, Tuple
+from typing import Iterable, Any, Optional
 
 
 __all__ = [
@@ -13,7 +13,7 @@ def powerset(
         iterable: Iterable[Any],
         min_size: Optional[int] = 0,
         max_size: Optional[int] = None
-) -> Iterable[tuple[Any, ...]]:
+) -> Iterable[tuple]:
     """Return a powerset of an iterable as tuples with optional size limits.
 
     Args:
