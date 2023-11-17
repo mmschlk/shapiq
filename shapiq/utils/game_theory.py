@@ -1,7 +1,7 @@
 """This module contains utility functions for dealing with sets, coalitions and game theory."""
 
 from itertools import chain, combinations
-from typing import Iterable, Any, Optional, Union, Callable, TypeVar, Tuple
+from typing import Iterable, Any, Optional
 
 
 __all__ = [
