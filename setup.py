@@ -43,6 +43,10 @@ doc_packages = [
     "myst-parser"  # parse md and rst files
 ]
 
+dev_packages = [
+    "pytest"
+]
+
 setuptools.setup(
     name=NAME,
     version=version["__version__"],
@@ -61,6 +65,7 @@ setuptools.setup(
     install_requires=base_packages + plotting_packages,
     extras_require={
         "docs": base_packages + plotting_packages + doc_packages,
+        "dev": base_packages + plotting_packages + doc_packages + dev_packages
     },
     include_package_data=True,
     license="MIT",
