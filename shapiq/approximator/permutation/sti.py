@@ -57,6 +57,7 @@ class PermutationSamplingSTI(PermutationSampling):
             budget: int,
             game: Callable[[Union[set, tuple]], float]
     ) -> InteractionValues:
+        raise NotImplementedError
         result = self._init_result()
         counts = self._init_result(dtype=int)
         value_empty = game(set())
