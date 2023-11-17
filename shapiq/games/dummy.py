@@ -1,3 +1,6 @@
+"""This module contains the DummyGame class. The DummyGame class is mainly used for testing
+purposes. It returns the size of the coalition divided by the number of players plus an additional
+interaction term."""
 from typing import Union
 
 import numpy as np
@@ -6,7 +9,7 @@ import numpy as np
 class DummyGame:
 
     """Dummy game for testing purposes. When called, it returns the size of the coalition divided by
-    the number of players.
+    the number of players plus an additional interaction term.
 
     Args:
         n: The number of players.
@@ -17,40 +20,37 @@ class DummyGame:
         n: The number of players.
         N: The set of players (starting from 0 to n - 1).
         interaction: The interaction of the game as a tuple of player indices.
+        access_counter: The number of times the game has been called.
     """
 
     def __init__(self, n: int, interaction: Union[set, tuple] = ()):
         self.n = n
         self.N = set(range(self.n))
         self.interaction: tuple = tuple(sorted(interaction))
+        self.access_counter = 0
 
     def __call__(
             self,
-            coalition: Union[set, tuple, np.ndarray, list[set], list[tuple]]
-    ) -> Union[float, np.ndarray[float]]:
+            coalition: np.ndarray
+    ) -> np.ndarray[float]:
         """Returns the size of the coalition divided by the number of players plus the interaction
-        term."""
+        term.
 
-        def _worth(coal):
-            worth = len(coal) / self.n
-            if set(self.interaction).issubset(set(coal)):
-                worth += 1
-            return worth
+        Args:
+            coalition: The coalition as a binary vector of shape (n,) or (batch_size, n).
 
-        singular_value = True if isinstance(coalition, (set, tuple)) else False
-        # check if coalition is an array
-        if isinstance(coalition, np.ndarray):
-            # if it is an array the array has the player indices as entries this needs to be converted to a list of sorted tuples for example: [[0,1],[3,2]] -> [(0, 1), (2, 3)]
-            coalition = [tuple(sorted(coal)) for coal in coalition]
-        if singular_value:
-            coalition = tuple(sorted(coalition))
-            return _worth(coalition)
-        else:
-            values = []
-            for coal in coalition:
-                coal = tuple(sorted(coal))
-                values.append(_worth(coal))
-        return np.asarray(values)
+        Returns:
+            The worth of the coalition.
+        """
+        if coalition.ndim == 1:
+            coalition = coalition.reshape((1, self.n))
+        worth = np.sum(coalition, axis=1) / self.n
+        if len(self.interaction) > 0:
+            interaction = coalition[:, self.interaction]
+            worth += np.prod(interaction, axis=1)
+        # update access counter given rows in coalition
+        self.access_counter += coalition.shape[0]
+        return worth
 
     def __repr__(self):
         return f"DummyGame(n={self.n}, interaction={self.interaction})"
