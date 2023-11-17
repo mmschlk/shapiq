@@ -25,6 +25,10 @@
 # SHAP-IQ: SHAP Interaction Quantification
 > An interaction may speak more than a thousand main effects.
 
+SHAP Interaction Quantification (short SHAP-IQ) is an **xai framework** extending on the well-known `shap` explanations by introducing interactions to the equation.
+Shapley interactions extend on indivdual Shapley values by quantifying the **synergy** effect between machine learning entities such as features, data points, or weak learners in ensemble models.
+Synergies between these entities (also called players in game theory jargon) allows for a more intricate evaluation of your **black-box** models!
+
 # 🛠️ Install
 **shapiq** is intended to work with **Python 3.9 and above**. Installation can be done via `pip`:
 
