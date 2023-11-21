@@ -44,6 +44,7 @@ def test_pairing(order, n, expected):
 )
 def test_split_subsets_budget(budget, order, n, q, expected):
     """Tests the split_subsets_budget function."""
-    q_arr = np.asarray(q, dtype=float)
-    out = split_subsets_budget(order, n, budget, q_arr)
-    assert out == expected
+    sampling_weights = np.asarray(q, dtype=float)
+    assert split_subsets_budget(order, n, budget, sampling_weights) == expected
+    assert (split_subsets_budget(order=order, n=n, budget=budget, sampling_weights=sampling_weights)
+            == expected)
