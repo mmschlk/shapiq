@@ -75,7 +75,9 @@ def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], Option
     return paired_subsets, unpaired_subset
 
 
-def split_subsets_budget(order: int, n: int, budget: int, q: np.ndarray) -> tuple[list, list, int]:
+def split_subsets_budget(
+    order: int, n: int, budget: int, q: np.ndarray[float]
+) -> tuple[list, list, int]:
     """Determines which subset sizes can be computed explicitly and which sizes need to be sampled.
 
     Given a computational budget, determines the complete subsets that can be computed explicitly
