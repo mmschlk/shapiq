@@ -12,7 +12,7 @@ AVAILABLE_INDICES = {"SII", "nSII", "STI", "FSI"}
 
 @dataclass
 class InteractionValues:
-    """ This class contains the interaction values as estimated by an approximator.
+    """This class contains the interaction values as estimated by an approximator.
 
     Attributes:
         values: The interaction values of the model. Mapping from order to the interaction values.
@@ -20,6 +20,7 @@ class InteractionValues:
             'FSI'.
         order: The order of the approximation.
     """
+
     values: dict[int, np.ndarray]
     index: str
     order: int
@@ -36,6 +37,78 @@ class InteractionValues:
                 f"Order {self.order} is not valid. "
                 f"Order should be a positive integer equal to the maximum key of the values."
             )
+
+    def __repr__(self) -> str:
+        """Returns the representation of the InteractionValues object."""
+        representation = f"InteractionValues(\n"
+        representation += f"    index={self.index}, order={self.order}, values=" + "{"
+        for order, values in self.values.items():
+            representation += "\n"
+            representation += f"        {order}: "
+            string_values: str = str(np.round(values, 4))
+            representation += string_values.replace("\n", "\n" + " " * 11)
+        representation += "})"
+        return representation
+
+    def __str__(self) -> str:
+        """Returns the string representation of the InteractionValues object."""
+        return self.__repr__()
+
+    def __getitem__(self, item: int) -> np.ndarray:
+        """Returns the interaction values for the given order.
+
+        Args:
+            item: The order of the interaction values.
+
+        Returns:
+            The interaction values.
+        """
+        return self.values[item]
+
+    def __eq__(self, other: object) -> bool:
+        """Checks if two InteractionValues objects are equal.
+
+        Args:
+            other: The other InteractionValues object.
+
+        Returns:
+            True if the two objects are equal, False otherwise.
+        """
+        if not isinstance(other, InteractionValues):
+            raise NotImplementedError("Cannot compare InteractionValues with other types.")
+        if self.index != other.index or self.order != other.order:
+            return False
+        for order, values in self.values.items():
+            if not np.allclose(values, other.values[order]):
+                return False
+        return True
+
+    def __ne__(self, other: object) -> bool:
+        """Checks if two InteractionValues objects are not equal.
+
+        Args:
+            other: The other InteractionValues object.
+
+        Returns:
+            True if the two objects are not equal, False otherwise.
+        """
+        return not self.__eq__(other)
+
+    def __hash__(self) -> int:
+        """Returns the hash of the InteractionValues object."""
+        return hash((self.index, self.order, tuple(self.values.values())))
+
+    def __copy__(self) -> "InteractionValues":
+        """Returns a copy of the InteractionValues object."""
+        return InteractionValues(
+            values=copy.deepcopy(self.values), index=self.index, order=self.order
+        )
+
+    def __deepcopy__(self, memo) -> "InteractionValues":
+        """Returns a deep copy of the InteractionValues object."""
+        return InteractionValues(
+            values=copy.deepcopy(self.values), index=self.index, order=self.order
+        )
 
 
 class Approximator(ABC):
@@ -66,19 +139,18 @@ class Approximator(ABC):
     """
 
     def __init__(
-            self,
-            n: int,
-            max_order: int,
-            index: str,
-            top_order: bool,
-            random_state: Optional[int] = None
+        self,
+        n: int,
+        max_order: int,
+        index: str,
+        top_order: bool,
+        random_state: Optional[int] = None,
     ) -> None:
         """Initializes the approximator."""
         self.index: str = index
         if self.index not in AVAILABLE_INDICES:
             raise ValueError(
-                f"Index {self.index} is not valid. "
-                f"Available indices are {AVAILABLE_INDICES}."
+                f"Index {self.index} is not valid. " f"Available indices are {AVAILABLE_INDICES}."
             )
         self.n: int = n
         self.N: set = set(range(self.n))
@@ -90,10 +162,7 @@ class Approximator(ABC):
 
     @abstractmethod
     def approximate(
-            self,
-            budget: int,
-            game: Callable[[Union[set, tuple]], float],
-            *args, **kwargs
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
     ) -> InteractionValues:
         """Approximates the interaction values. Abstract method that needs to be implemented for
         each approximator.
@@ -108,7 +177,7 @@ class Approximator(ABC):
         Raises:
             NotImplementedError: If the method is not implemented.
         """
-        raise NotImplementedError
+        raise NotImplementedError("The approximate method needs to be implemented.")
 
     def _init_result(self, dtype=float) -> dict[int, np.ndarray]:
         """Initializes the result dictionary mapping from order to the interaction values.
@@ -120,8 +189,7 @@ class Approximator(ABC):
         Returns:
             The result dictionary.
         """
-        result = {s: self._get_empty_array(self.n, s, dtype=dtype)
-                  for s in self._order_iterator}
+        result = {s: self._get_empty_array(self.n, s, dtype=dtype) for s in self._order_iterator}
         return result
 
     @staticmethod
@@ -136,7 +204,7 @@ class Approximator(ABC):
         Returns:
             The empty array.
         """
-        return np.zeros(n ** order, dtype=dtype).reshape((n,) * order)
+        return np.zeros(n**order, dtype=dtype).reshape((n,) * order)
 
     @property
     def _order_iterator(self) -> range:
@@ -160,8 +228,7 @@ class Approximator(ABC):
 
     @staticmethod
     def _smooth_with_epsilon(
-            interaction_results: Union[dict, np.ndarray],
-            eps=0.00001
+        interaction_results: Union[dict, np.ndarray], eps=0.00001
     ) -> Union[dict, np.ndarray]:
         """Smooth the interaction results with a small epsilon to avoid numerical issues.
 
@@ -180,3 +247,75 @@ class Approximator(ABC):
             interaction_values[np.abs(interaction_values) < eps] = 0
             interactions[interaction_order] = interaction_values
         return copy.deepcopy(interactions)
+
+    def __repr__(self) -> str:
+        """Returns the representation of the Approximator object."""
+        return (
+            f"{self.__class__.__name__}("
+            f"    n={self.n},\n"
+            f"    max_order={self.max_order},\n"
+            f"    index={self.index},\n"
+            f"    top_order={self.top_order},\n"
+            f"    random_state={self._random_state}\n"
+            f")"
+        )
+
+    def __str__(self) -> str:
+        """Returns the string representation of the Approximator object."""
+        return self.__repr__()
+
+    def __eq__(self, other: object) -> bool:
+        """Checks if two Approximator objects are equal.
+
+        Args:
+            other: The other Approximator object.
+
+        Returns:
+            True if the two objects are equal, False otherwise.
+        """
+        if not isinstance(other, Approximator):
+            raise NotImplementedError("Cannot compare Approximator with other types.")
+        if (
+            self.n != other.n
+            or self.max_order != other.max_order
+            or self.index != other.index
+            or self.top_order != other.top_order
+            or self._random_state != other._random_state
+        ):
+            return False
+        return True
+
+    def __ne__(self, other: object) -> bool:
+        """Checks if two Approximator objects are not equal.
+
+        Args:
+            other: The other Approximator object.
+
+        Returns:
+            True if the two objects are not equal, False otherwise.
+        """
+        return not self.__eq__(other)
+
+    def __hash__(self) -> int:
+        """Returns the hash of the Approximator object."""
+        return hash((self.n, self.max_order, self.index, self.top_order, self._random_state))
+
+    def __copy__(self) -> "Approximator":
+        """Returns a copy of the Approximator object."""
+        return self.__class__(
+            n=self.n,
+            max_order=self.max_order,
+            index=self.index,
+            top_order=self.top_order,
+            random_state=self._random_state,
+        )
+
+    def __deepcopy__(self, memo) -> "Approximator":
+        """Returns a deep copy of the Approximator object."""
+        return self.__class__(
+            n=self.n,
+            max_order=self.max_order,
+            index=self.index,
+            top_order=self.top_order,
+            random_state=self._random_state,
+        )
