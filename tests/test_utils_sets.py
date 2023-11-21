@@ -46,5 +46,7 @@ def test_split_subsets_budget(budget, order, n, q, expected):
     """Tests the split_subsets_budget function."""
     sampling_weights = np.asarray(q, dtype=float)
     assert split_subsets_budget(order, n, budget, sampling_weights) == expected
-    assert (split_subsets_budget(order=order, n=n, budget=budget, sampling_weights=sampling_weights)
-            == expected)
+    assert (
+        split_subsets_budget(order=order, n=n, budget=budget, sampling_weights=sampling_weights)
+        == expected
+    )
