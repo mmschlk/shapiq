@@ -44,7 +44,10 @@ doc_packages = [
 ]
 
 dev_packages = [
+    "build",
+    "black",
     "pytest"
+
 ]
 
 setuptools.setup(

@@ -75,7 +75,9 @@ def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], Option
     return paired_subsets, unpaired_subset
 
 
-def split_subsets_budget(order: int, n: int, budget: int, q: np.ndarray) -> tuple[list, list, int]:
+def split_subsets_budget(
+    order: int, n: int, budget: int, sampling_weights: np.ndarray[float]
+) -> tuple[list, list, int]:
     """Determines which subset sizes can be computed explicitly and which sizes need to be sampled.
 
     Given a computational budget, determines the complete subsets that can be computed explicitly
@@ -85,20 +87,20 @@ def split_subsets_budget(order: int, n: int, budget: int, q: np.ndarray) -> tupl
         order: interaction order.
         n: number of players.
         budget: total allowed budget for the computation.
-        q: weight vector of the sampling distribution in shape (n + 1,). The first and last element
+        sampling_weights: weight vector of the sampling distribution in shape (n + 1,). The first and last element
             constituting the empty and full subsets are not used.
 
     Returns:
         complete subsets, incomplete subsets, remaining budget
 
     Examples:
-        >>> split_subsets_budget(order=1, n=6, budget=100, q=np.ones(shape=(6,)))
+        >>> split_subsets_budget(order=1, n=6, budget=100, sampling_weights=np.ones(shape=(6,)))
         ([1, 5, 2, 4, 3], [], 38)
 
-        >>> split_subsets_budget(order=1, n=6, budget=60, q=np.ones(shape=(6,)))
+        >>> split_subsets_budget(order=1, n=6, budget=60, sampling_weights=np.ones(shape=(6,)))
         ([1, 5, 2, 4], [3], 18)
 
-        >>> split_subsets_budget(order=1, n=6, budget=100, q=np.zeros(shape=(6,)))
+        >>> split_subsets_budget(order=1, n=6, budget=100, sampling_weights=np.zeros(shape=(6,)))
         ([], [1, 2, 3, 4, 5], 100)
     """
     # determine paired and unpaired subsets
@@ -107,7 +109,7 @@ def split_subsets_budget(order: int, n: int, budget: int, q: np.ndarray) -> tupl
     incomplete_subsets = list(range(order, n - order + 1))
 
     # turn weight vector into probability vector
-    weight_vector = copy.copy(q)
+    weight_vector = copy.copy(sampling_weights)
     weight_vector[0], weight_vector[-1] = 0, 0  # zero out the empty and full subsets
     sum_weight_vector = np.sum(weight_vector)
     weight_vector = np.divide(

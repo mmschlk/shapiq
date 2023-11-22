@@ -1,5 +1,5 @@
 """This module contains the base permutation sampling algorithms to estimate SII/nSII and STI."""
-from typing import Optional, Callable, Union
+from typing import Optional, Callable
 
 import numpy as np
 
@@ -30,16 +30,15 @@ class PermutationSampling(Approximator):
             the specified order.
         min_order (int): The minimum order of the approximation. If top_order is True, min_order is
             equal to order. Otherwise, min_order is equal to 1.
-
     """
 
     def __init__(
-            self,
-            n: int,
-            max_order: int,
-            index: str,
-            top_order: bool,
-            random_state: Optional[int] = None
+        self,
+        n: int,
+        max_order: int,
+        index: str,
+        top_order: bool,
+        random_state: Optional[int] = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_PERMUTATION:
             raise ValueError(
@@ -47,32 +46,15 @@ class PermutationSampling(Approximator):
                 f"Available indices are {AVAILABLE_INDICES_PERMUTATION}."
             )
         super().__init__(n, max_order, index, top_order, random_state)
+        self._iteration_cost: int = -1
 
     def approximate(
-            self,
-            budget: int,
-            game: Callable[[Union[set, tuple]], float]
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray]
     ) -> InteractionValues:
         """Approximates the interaction values."""
         raise NotImplementedError
 
-    @staticmethod
-    def _get_n_iterations(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
-        """Computes the number of iterations and the size of the last batch given the batch size and
-        the budget.
-
-        Args:
-            budget: The budget for the approximation.
-            batch_size: The size of the batch.
-            iteration_cost: The cost of a single iteration.
-
-        Returns:
-            int, int: The number of iterations and the size of the last batch.
-        """
-        n_iterations = budget // (iteration_cost * batch_size)
-        last_batch_size = batch_size
-        remaining_budget = budget - n_iterations * iteration_cost * batch_size
-        if remaining_budget > 0 and remaining_budget // iteration_cost > 0:
-            last_batch_size = remaining_budget // iteration_cost
-            n_iterations += 1
-        return n_iterations, last_batch_size
+    @property
+    def iteration_cost(self) -> int:
+        """The cost of a single iteration of the permutation sampling mechanism."""
+        return self._iteration_cost
