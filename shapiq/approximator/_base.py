@@ -1,11 +1,12 @@
 """This module contains the base approximator classes for the shapiq package."""
 import copy
+import itertools
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, Union, Optional
 
 import numpy as np
-
+from scipy.special import binom
 
 AVAILABLE_INDICES = {"SII", "nSII", "STI", "FSI"}
 
@@ -19,11 +20,15 @@ class InteractionValues:
         index: The interaction index estimated. Available indices are 'SII', 'nSII', 'STI', and
             'FSI'.
         order: The order of the approximation.
+        estimated: Whether the interaction values are estimated or not. Defaults to True.
+        estimation_budget: The budget used for the estimation. Defaults to None.
     """
 
     values: dict[int, np.ndarray]
     index: str
     order: int
+    estimated: bool = True
+    estimation_budget: Optional[int] = None
 
     def __post_init__(self) -> None:
         """Checks if the index is valid."""
@@ -41,13 +46,21 @@ class InteractionValues:
     def __repr__(self) -> str:
         """Returns the representation of the InteractionValues object."""
         representation = f"InteractionValues(\n"
-        representation += f"    index={self.index}, order={self.order}, values=" + "{"
+        representation += (
+            f"    index={self.index}, order={self.order}, estimated={self.estimated}"
+            f", estimation_budget={self.estimation_budget},\n"
+        ) + "    values={"
         for order, values in self.values.items():
             representation += "\n"
             representation += f"        {order}: "
             string_values: str = str(np.round(values, 4))
             representation += string_values.replace("\n", "\n" + " " * 11)
-        representation += "})"
+        representation += "\n    }"
+        # if self.approximator:
+        #    representation += ",\n"
+        #    string_approximator = str(self.approximator).replace("\n", "\n" + " " * 4)
+        #    representation += f"    approximator={string_approximator}"
+        representation += "\n)"
         return representation
 
     def __str__(self) -> str:
@@ -101,13 +114,21 @@ class InteractionValues:
     def __copy__(self) -> "InteractionValues":
         """Returns a copy of the InteractionValues object."""
         return InteractionValues(
-            values=copy.deepcopy(self.values), index=self.index, order=self.order
+            values=copy.deepcopy(self.values),
+            index=self.index,
+            order=self.order,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
         )
 
     def __deepcopy__(self, memo) -> "InteractionValues":
         """Returns a deep copy of the InteractionValues object."""
         return InteractionValues(
-            values=copy.deepcopy(self.values), index=self.index, order=self.order
+            values=copy.deepcopy(self.values),
+            index=self.index,
+            order=self.order,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
         )
 
 
@@ -130,6 +151,7 @@ class Approximator(ABC):
     Attributes:
         n: The number of players.
         N: The set of players (starting from 0 to n - 1).
+        N_arr: The array of players (starting from 0 to n).
         max_order: The interaction order of the approximation.
         index: The interaction index to be estimated.
         top_order: If True, the approximation is performed only for the top order interactions. If
@@ -154,6 +176,7 @@ class Approximator(ABC):
             )
         self.n: int = n
         self.N: set = set(range(self.n))
+        self.N_arr: np.ndarray[int] = np.arange(self.n + 1)
         self.max_order: int = max_order
         self.top_order: bool = top_order
         self.min_order: int = self.max_order if self.top_order else 1
@@ -215,16 +238,26 @@ class Approximator(ABC):
         """
         return range(self.min_order, self.max_order + 1)
 
-    def _finalize_result(self, result) -> InteractionValues:
+    def _finalize_result(
+        self, result, estimated: bool = True, budget: Optional[int] = None
+    ) -> InteractionValues:
         """Finalizes the result dictionary.
 
         Args:
             result: The result dictionary.
+            estimated: Whether the interaction values are estimated or not. Defaults to True.
+            budget: The budget used for the estimation. Defaults to None.
 
         Returns:
             The interaction values.
         """
-        return InteractionValues(result, self.index, self.max_order)
+        return InteractionValues(
+            values=result,
+            index=self.index,
+            order=self.max_order,
+            estimated=estimated,
+            estimation_budget=budget,
+        )
 
     @staticmethod
     def _smooth_with_epsilon(
@@ -248,10 +281,51 @@ class Approximator(ABC):
             interactions[interaction_order] = interaction_values
         return copy.deepcopy(interactions)
 
+    @staticmethod
+    def _get_n_iterations(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
+        """Computes the number of iterations and the size of the last batch given the batch size and
+        the budget.
+
+        Args:
+            budget: The budget for the approximation.
+            batch_size: The size of the batch.
+            iteration_cost: The cost of a single iteration.
+
+        Returns:
+            int, int: The number of iterations and the size of the last batch.
+        """
+        n_iterations = budget // (iteration_cost * batch_size)
+        last_batch_size = batch_size
+        remaining_budget = budget - n_iterations * iteration_cost * batch_size
+        if remaining_budget > 0 and remaining_budget // iteration_cost > 0:
+            last_batch_size = remaining_budget // iteration_cost
+            n_iterations += 1
+        return n_iterations, last_batch_size
+
+    @staticmethod
+    def _get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
+        """Enumerates all subsets of the given sizes and returns a one-hot matrix.
+
+        Args:
+            n: number of players.
+            subset_sizes: list of subset sizes.
+
+        Returns:
+            one-hot matrix of all subsets of certain sizes.
+        """
+        total_subsets = int(sum(binom(n, size) for size in subset_sizes))
+        subset_matrix = np.zeros(shape=(total_subsets, n), dtype=bool)
+        subset_index = 0
+        for subset_size in subset_sizes:
+            for subset in itertools.combinations(range(n), subset_size):
+                subset_matrix[subset_index, subset] = True
+                subset_index += 1
+        return subset_matrix
+
     def __repr__(self) -> str:
         """Returns the representation of the Approximator object."""
         return (
-            f"{self.__class__.__name__}("
+            f"{self.__class__.__name__}(\n"
             f"    n={self.n},\n"
             f"    max_order={self.max_order},\n"
             f"    index={self.index},\n"

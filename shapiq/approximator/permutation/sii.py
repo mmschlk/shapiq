@@ -1,7 +1,4 @@
-"""This module implements the Permutation Sampling approximator for the SII (and nSII) index.
-
-# TODO add docstring
-"""
+"""This module implements the Permutation Sampling approximator for the SII (and nSII) index."""
 from typing import Optional, Callable
 
 import numpy as np
@@ -87,6 +84,7 @@ class PermutationSamplingSII(PermutationSampling):
         """
 
         batch_size = 1 if batch_size is None else batch_size
+        used_budget = 0
 
         result = self._init_result()
         counts = self._init_result(dtype=int)
@@ -137,8 +135,10 @@ class PermutationSamplingSII(PermutationSampling):
                             result[order][tuple(subset)] += update
                             subset_index += 1
 
+            used_budget += self._iteration_cost * batch_size
+
         # compute mean of interactions
         for s in self._order_iterator:
             result[s] = np.divide(result[s], counts[s], out=result[s], where=counts[s] != 0)
 
-        return self._finalize_result(result)
+        return self._finalize_result(result, budget=used_budget)

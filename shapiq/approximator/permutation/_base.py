@@ -1,5 +1,5 @@
 """This module contains the base permutation sampling algorithms to estimate SII/nSII and STI."""
-from typing import Optional, Callable, Union
+from typing import Optional, Callable
 
 import numpy as np
 
@@ -53,27 +53,6 @@ class PermutationSampling(Approximator):
     ) -> InteractionValues:
         """Approximates the interaction values."""
         raise NotImplementedError
-
-    @staticmethod
-    def _get_n_iterations(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
-        """Computes the number of iterations and the size of the last batch given the batch size and
-        the budget.
-
-        Args:
-            budget: The budget for the approximation.
-            batch_size: The size of the batch.
-            iteration_cost: The cost of a single iteration.
-
-        Returns:
-            int, int: The number of iterations and the size of the last batch.
-        """
-        n_iterations = budget // (iteration_cost * batch_size)
-        last_batch_size = batch_size
-        remaining_budget = budget - n_iterations * iteration_cost * batch_size
-        if remaining_budget > 0 and remaining_budget // iteration_cost > 0:
-            last_batch_size = remaining_budget // iteration_cost
-            n_iterations += 1
-        return n_iterations, last_batch_size
 
     @property
     def iteration_cost(self) -> int:
