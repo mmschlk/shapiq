@@ -36,9 +36,9 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
         >>> from approximator import ShapIQ
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = ShapIQ(n=5, max_order=2, index="SII")
-        >>> approximator.approximate(budget=200, game=game)
+        >>> approximator.approximate(budget=50, game=game)
         InteractionValues(
-            index=SII, order=2, estimated=True, estimation_budget=200,
+            index=SII, order=2, estimated=False, estimation_budget=32,
             values={
                 1: [0.2 0.7 0.7 0.2 0.2]
                 2: [[ 0.  0.  0.  0.  0.]
@@ -250,4 +250,4 @@ if __name__ == "__main__":
 
     game = DummyGame(n=5, interaction=(1, 2))
     approximator = ShapIQ(n=5, max_order=2, index="SII")
-    print(approximator.approximate(budget=29, game=game))
+    print(approximator.approximate(budget=50, game=game))
