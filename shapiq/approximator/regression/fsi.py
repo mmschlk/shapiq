@@ -5,11 +5,11 @@ from typing import Optional, Callable
 import numpy as np
 from scipy.special import binom
 
-from approximator._base import Approximator, ShapleyWeightsMixin, InteractionValues
+from approximator._base import Approximator, ShapleySamplingMixin, InteractionValues
 from utils import split_subsets_budget, powerset
 
 
-class RegressionFSI(Approximator, ShapleyWeightsMixin):
+class RegressionFSI(Approximator, ShapleySamplingMixin):
     """Estimates the FSI values using the weighted least square approach.
 
     Args:
@@ -53,7 +53,7 @@ class RegressionFSI(Approximator, ShapleyWeightsMixin):
     ) -> None:
         # init approximator and shapley weights mixin
         super().__init__(n, max_order, index="FSI", top_order=False, random_state=random_state)
-        ShapleyWeightsMixin.__init__(self)
+        ShapleySamplingMixin.__init__(self)
 
     def approximate(
         self,
@@ -155,60 +155,6 @@ class RegressionFSI(Approximator, ShapleyWeightsMixin):
             used_budget += batch_size
 
         return self._finalize_fsi_result(fsi_values, budget=used_budget)
-
-    def _sample_subsets(
-        self,
-        budget: int,
-        sampling_weights: np.ndarray[float],
-        replacement: bool = False,
-        pairing: bool = True,
-    ) -> np.ndarray[bool]:
-        """Samples subsets with the given budget.
-
-        Args:
-            budget: budget for the sampling.
-            sampling_weights: weights for sampling subsets of certain sizes and indexed by the size.
-                The shape is expected to be (n + 1,). A size that is not to be sampled has weight 0.
-            pairing: whether to use pairing (`True`) sampling or not (`False`). Defaults to `False`.
-
-        Returns:
-            sampled subsets.
-        """
-        # sanitize input parameters
-        sampling_weights = copy.copy(sampling_weights)
-        sampling_weights /= np.sum(sampling_weights)
-
-        # adjust budget for paired sampling
-        if pairing:
-            budget = budget - budget % 2  # must be even for pairing
-            budget = int(budget / 2)
-
-        # create storage array for given budget
-        subset_matrix = np.zeros(shape=(budget, self.n), dtype=bool)
-
-        # sample subsets
-        sampled_sizes = self._rng.choice(self.N_arr, size=budget, p=sampling_weights).astype(int)
-        if replacement:  # sample subsets with replacement
-            permutations = np.tile(np.arange(self.n), (budget, 1))
-            self._rng.permuted(permutations, axis=1, out=permutations)
-            for i, subset_size in enumerate(sampled_sizes):
-                subset = permutations[i, :subset_size]
-                subset_matrix[i, subset] = True
-        else:  # sample subsets without replacement
-            sampled_subsets, n_sampled = set(), 0  # init sampling variables
-            while n_sampled < budget:
-                subset_size = sampled_sizes[n_sampled]
-                subset = tuple(sorted(self._rng.choice(np.arange(0, self.n), size=subset_size)))
-                sampled_subsets.add(subset)
-                if len(sampled_subsets) != n_sampled:  # subset was not already sampled
-                    subset_matrix[n_sampled, subset] = True
-                    n_sampled += 1  # continue sampling
-
-        if pairing:
-            subset_matrix = np.repeat(subset_matrix, repeats=2, axis=0)  # extend the subset matrix
-            subset_matrix[1::2] = np.logical_not(subset_matrix[1::2])  # flip sign of paired subsets
-
-        return subset_matrix
 
     def _get_fsi_subset_representation(
         self, all_subsets: np.ndarray[bool]
