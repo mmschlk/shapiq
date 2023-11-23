@@ -54,12 +54,11 @@ class InteractionValues:
             representation += "\n"
             representation += f"        {order}: "
             string_values: str = str(np.round(values, 4))
+            string_values = string_values.replace("-0. ", " 0. ")
+            string_values = string_values.replace("-0.]", " 0.]")
+            string_values = string_values.replace("[-0. ", "[ 0. ")
             representation += string_values.replace("\n", "\n" + " " * 11)
         representation += "\n    }"
-        # if self.approximator:
-        #    representation += ",\n"
-        #    string_approximator = str(self.approximator).replace("\n", "\n" + " " * 4)
-        #    representation += f"    approximator={string_approximator}"
         representation += "\n)"
         return representation
 
