@@ -157,8 +157,12 @@ class Approximator(ABC):
             False, the approximation is performed for all orders up to the specified order.
         min_order: The minimum order of the approximation. If top_order is True, min_order is equal
             to max_order. Otherwise, min_order is equal to 1.
+
+    Properties:
+        iteration_cost: The cost of a single iteration of the approximation.
     """
 
+    @abstractmethod
     def __init__(
         self,
         n: int,
@@ -181,6 +185,7 @@ class Approximator(ABC):
         self.min_order: int = self.max_order if self.top_order else 1
         self._random_state: Optional[int] = random_state
         self._rng: Optional[np.random.Generator] = np.random.default_rng(seed=self._random_state)
+        self._iteration_cost: Optional[int] = None
 
     @abstractmethod
     def approximate(
@@ -200,6 +205,20 @@ class Approximator(ABC):
             NotImplementedError: If the method is not implemented.
         """
         raise NotImplementedError("The approximate method needs to be implemented.")
+
+    @property
+    def iteration_cost(self) -> int:
+        """Returns the cost of a single iteration of the approximation.
+
+        Returns:
+            The cost of a single iteration.
+        """
+        if self._iteration_cost is None:
+            if hasattr(self, "_compute_iteration_cost"):
+                self._iteration_cost = self._compute_iteration_cost()
+            else:
+                return 1
+        return self._iteration_cost
 
     def _init_result(self, dtype=float) -> dict[int, np.ndarray]:
         """Initializes the result dictionary mapping from order to the interaction values.
@@ -392,3 +411,57 @@ class Approximator(ABC):
             top_order=self.top_order,
             random_state=self._random_state,
         )
+
+
+class ShapleyWeightsMixin(ABC):
+    """Mixin class for the computation of Shapley weights.
+
+    Provides the common functionality for regression-based approximators like
+    :class:`~shapiq.approximators.RegressionFSI`. The class offers computation of Shapley weights
+    and the corresponding sampling weights for the KernelSHAP-like estimation approaches. The mixin
+    assumes that the subclasses have a parameter `n` that defines the number of players.
+    """
+
+    def __init__(self) -> None:
+        """Initializes the regression mixin."""
+        self._big_M = float(1_000_000)
+        self.n: int
+
+    def _init_ksh_sampling_weights(self) -> np.ndarray[float]:
+        """Initializes the weights for sampling subsets.
+
+        The sampling weights are of size n + 1 and indexed by the size of the subset. The edges
+        (the first, empty coalition, and the last element, full coalition) are set to 0.
+
+        Returns:
+            The weights for sampling subsets of size s in shape (n + 1,).
+        """
+        weight_vector = np.zeros(shape=self.n - 1, dtype=float)
+        for subset_size in range(1, self.n):
+            weight_vector[subset_size - 1] = (self.n - 1) / (subset_size * (self.n - subset_size))
+        sampling_weight = (np.asarray([0] + [*weight_vector] + [0])) / sum(weight_vector)
+        return sampling_weight
+
+    def _get_ksh_subset_weights(self, subsets: np.ndarray[bool]) -> np.ndarray[float]:
+        """Computes the KernelSHAP regression weights for the given subsets.
+
+        The weights for the subsets of size s are set to ksh_weights[s] / binom(n, s). The weights
+        for the empty and full sets are set to a big number.
+
+        Args:
+            subsets: one-hot matrix of subsets for which to compute the weights in shape
+                (n_subsets, n).
+
+        Returns:
+            The KernelSHAP regression weights in shape (n_subsets,).
+        """
+        # set the weights for each subset to ksh_weights[|S|] / binom(n, |S|)
+        ksh_weights = self._init_ksh_sampling_weights()  # indexed by subset size
+        subset_sizes = np.sum(subsets, axis=1)
+        weights = ksh_weights[subset_sizes]  # set the weights for each subset size
+        weights /= binom(self.n, subset_sizes)  # divide by the number of subsets of the same size
+
+        # set the weights for the empty and full sets to big M
+        weights[np.logical_not(subsets).all(axis=1)] = self._big_M
+        weights[subsets.all(axis=1)] = self._big_M
+        return weights

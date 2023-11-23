@@ -1,17 +1,15 @@
 """This module contains the regression algorithms to estimate FSI scores."""
 import copy
-import itertools
 from typing import Optional, Callable
 
 import numpy as np
 from scipy.special import binom
 
-from approximator._base import InteractionValues
-from approximator.regression import Regression
+from approximator._base import Approximator, ShapleyWeightsMixin, InteractionValues
 from utils import split_subsets_budget, powerset
 
 
-class RegressionFSI(Regression):
+class RegressionFSI(Approximator, ShapleyWeightsMixin):
     """Estimates the FSI values using the weighted least square approach.
 
     Args:
@@ -24,6 +22,9 @@ class RegressionFSI(Regression):
         N: The set of players (starting from 0 to n - 1).
         max_order: The interaction order of the approximation.
         min_order: The minimum order of the approximation. For FSI, min_order is equal to 1.
+
+    Properties:
+        iteration_cost: The cost of a single iteration of the regression FSI.
 
     Example:
         >>> from games import DummyGame
@@ -50,7 +51,9 @@ class RegressionFSI(Regression):
         max_order: int,
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(n, max_order=max_order, index="FSI", random_state=random_state)
+        # init approximator and shapley weights mixin
+        super().__init__(n, max_order, index="FSI", top_order=False, random_state=random_state)
+        ShapleyWeightsMixin.__init__(self)
 
     def approximate(
         self,
@@ -248,3 +251,9 @@ class RegressionFSI(Regression):
             result[len(interaction)][interaction] = fsi_values[fsi_index]
             fsi_index += 1
         return self._finalize_result(result, budget=budget)
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()
