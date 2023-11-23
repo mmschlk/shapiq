@@ -1,4 +1,4 @@
-"""This module contains the base regression algorithms to estimate FSI scores."""
+"""This module contains the regression algorithms to estimate FSI scores."""
 import copy
 import itertools
 from typing import Optional, Callable
@@ -7,8 +7,8 @@ import numpy as np
 from scipy.special import binom
 
 from approximator._base import InteractionValues
+from approximator.regression import Regression
 from utils import split_subsets_budget, powerset
-from ._base import Regression
 
 
 class RegressionFSI(Regression):
@@ -28,19 +28,20 @@ class RegressionFSI(Regression):
     Example:
         >>> from games import DummyGame
         >>> from approximator import RegressionFSI
-        >>> game = DummyGame(n=7, interaction=(0, 1))
-        >>> approximator = RegressionFSI(n=7, max_order=2)
+        >>> game = DummyGame(n=5, interaction=(1, 2))
+        >>> approximator = RegressionFSI(n=5, max_order=2)
         >>> approximator.approximate(budget=100, game=game)
         InteractionValues(
-                index=FSI, order=2, values={
-            1: [0.1429 0.1429 0.1429 0.1429 0.1429 0.1429 0.1429]
-            2: [[ 0.  0.  0.  0.  0.  0.  0.]
-                [ 0.  0.  1. -0. -0.  0.  0.]
-                [ 0.  1.  0.  0.  0.  0. -0.]
-                [ 0. -0.  0.  0.  0. -0.  0.]
-                [ 0. -0.  0.  0.  0. -0. -0.]
-                [ 0.  0.  0. -0. -0.  0. -0.]
-                [ 0.  0. -0.  0. -0. -0.  0.]]})
+            index=FSI, order=2, estimated=True, estimation_budget=102,
+            values={
+                1: [0.2 0.2 0.2 0.2 0.2]
+                2: [[ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  1.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]]
+            }
+        )
     """
 
     def __init__(
@@ -62,10 +63,11 @@ class RegressionFSI(Regression):
         """Approximates the interaction values.
 
         Args:
-            budget: The budget of the approximation.
+            budget: The budget of the approximation (how many times the game is queried). The game
+                is always queried for the empty and full set (`budget += 2`).
             game: The game to be approximated.
             batch_size: The batch size for the approximation. Defaults to `None`. If `None` the
-                batch size is set to the budget.
+                batch size is set to the approximation budget.
             replacement: Whether to sample subsets with replacement (`True`) or without replacement
                 (`False`). Defaults to `False`.
             pairing: Whether to use the pairing sampling strategy or not. If paired sampling
@@ -74,6 +76,9 @@ class RegressionFSI(Regression):
 
         Returns:
             The interaction values.
+
+        Raises:
+            np.linalg.LinAlgError: If the regression fails.
         """
         # validate input parameters
         batch_size = budget + 2 if batch_size is None else batch_size
@@ -141,6 +146,7 @@ class RegressionFSI(Regression):
             W = np.sqrt(np.diag(W))
             Aw = np.dot(W, A)
             Bw = np.dot(W, B)
+
             fsi_values = np.linalg.lstsq(Aw, Bw, rcond=None)[0]  # \phi_i
 
             used_budget += batch_size
@@ -239,7 +245,6 @@ class RegressionFSI(Regression):
         result = self._init_result()
         fsi_index = 0
         for interaction in powerset(self.N, min_size=1, max_size=self.max_order):
-            for interaction_ordering in itertools.permutations(interaction):  # all permutations
-                result[len(interaction)][interaction_ordering] = fsi_values[fsi_index]
+            result[len(interaction)][interaction] = fsi_values[fsi_index]
             fsi_index += 1
         return self._finalize_result(result, budget=budget)
