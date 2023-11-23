@@ -5,12 +5,11 @@ import warnings
 import numpy as np
 from scipy.special import binom
 
-from approximator._base import InteractionValues
-from approximator.permutation import PermutationSampling
+from approximator._base import Approximator, InteractionValues
 from utils import powerset
 
 
-class PermutationSamplingSTI(PermutationSampling):
+class PermutationSamplingSTI(Approximator):
     """Permutation Sampling approximator for the Shapley Taylor Index (STI).
 
     Args:
@@ -22,6 +21,8 @@ class PermutationSamplingSTI(PermutationSampling):
         n: The number of players.
         max_order: The interaction order of the approximation.
         min_order: The minimum order to approximate.
+
+    Properties:
         iteration_cost: The cost of a single iteration of the permutation sampling.
 
     Example:

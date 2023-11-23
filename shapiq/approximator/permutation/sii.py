@@ -3,12 +3,11 @@ from typing import Optional, Callable
 
 import numpy as np
 
-from approximator._base import InteractionValues
-from approximator.permutation import PermutationSampling
+from approximator._base import Approximator, InteractionValues
 from utils import powerset
 
 
-class PermutationSamplingSII(PermutationSampling):
+class PermutationSamplingSII(Approximator):
     """Permutation Sampling approximator for the SII (and nSII) index.
 
     Args:
@@ -24,6 +23,8 @@ class PermutationSamplingSII(PermutationSampling):
         top_order: Whether to approximate only the top order interactions (`True`) or all orders up
             to the specified order (`False`).
         min_order: The minimum order to approximate.
+
+    Properties:
         iteration_cost: The cost of a single iteration of the permutation sampling.
 
     Example:
