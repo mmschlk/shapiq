@@ -34,7 +34,7 @@ class PermutationSamplingSII(Approximator):
         >>> approximator = PermutationSamplingSII(n=5, max_order=2)
         >>> approximator.approximate(budget=1_000, game=game)
         InteractionValues(
-            index=FSI, order=2, estimated=True, estimation_budget=988,
+            index=SII, order=2, estimated=True, estimation_budget=988,
             values={
                 1: [0.2 0.7 0.7 0.2 0.2]
                 2: [[ 0.  0.  0.  0.  0.]
@@ -92,7 +92,7 @@ class PermutationSamplingSII(Approximator):
         counts = self._init_result(dtype=int)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
-        n_iterations, last_batch_size = self._get_n_iterations(
+        n_iterations, last_batch_size = self._calc_iteration_count(
             budget, batch_size, self._iteration_cost
         )
 
@@ -144,3 +144,9 @@ class PermutationSamplingSII(Approximator):
             result[s] = np.divide(result[s], counts[s], out=result[s], where=counts[s] != 0)
 
         return self._finalize_result(result, budget=used_budget)
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()

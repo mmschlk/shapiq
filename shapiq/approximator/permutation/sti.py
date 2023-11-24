@@ -32,7 +32,7 @@ class PermutationSamplingSTI(Approximator):
         >>> approximator = PermutationSamplingSTI(n=5, max_order=2)
         >>> approximator.approximate(budget=200, game=game)
         InteractionValues(
-            index=FSI, order=2, estimated=True, estimation_budget=165,
+            index=STI, order=2, estimated=True, estimation_budget=165,
             values={
                 1: [0.2 0.2 0.2 0.2 0.2]
                 2: [[ 0.  0.  0.  0.  0.]
@@ -83,7 +83,7 @@ class PermutationSamplingSTI(Approximator):
             return self._finalize_result(result, budget=used_budget)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
-        n_iterations, last_batch_size = self._get_n_iterations(
+        n_iterations, last_batch_size = self._calc_iteration_count(
             budget, batch_size, self._iteration_cost
         )
 
@@ -186,3 +186,9 @@ class PermutationSamplingSTI(Approximator):
                 update = (-1) ** (subset_size - subset_part_size) * game_value
                 result[subset_size][subset] += update
         return result
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()
