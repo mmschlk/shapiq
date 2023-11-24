@@ -1,12 +1,11 @@
 """This module contains the regression algorithms to estimate FSI scores."""
-import copy
 from typing import Optional, Callable
 
 import numpy as np
 from scipy.special import binom
 
 from approximator._base import Approximator, ShapleySamplingMixin, InteractionValues
-from utils import split_subsets_budget, powerset
+from utils import powerset
 
 
 class RegressionFSI(Approximator, ShapleySamplingMixin):
@@ -33,7 +32,7 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         >>> approximator = RegressionFSI(n=5, max_order=2)
         >>> approximator.approximate(budget=100, game=game)
         InteractionValues(
-            index=FSI, order=2, estimated=True, estimation_budget=102,
+            index=FSI, order=2, estimated=False, estimation_budget=32,
             values={
                 1: [0.2 0.2 0.2 0.2 0.2]
                 2: [[ 0.  0.  0.  0.  0.]
@@ -51,9 +50,10 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         max_order: int,
         random_state: Optional[int] = None,
     ) -> None:
-        # init approximator and shapley weights mixin
-        super().__init__(n, max_order, index="FSI", top_order=False, random_state=random_state)
-        ShapleySamplingMixin.__init__(self)
+        super().__init__(
+            n, max_order=max_order, index="FSI", top_order=False, random_state=random_state
+        )
+        self._iteration_cost: int = 1
 
     def approximate(
         self,
@@ -86,44 +86,17 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         # validate input parameters
         batch_size = budget + 2 if batch_size is None else batch_size
         used_budget = 0
-        n_iterations, last_batch_size = self._get_n_iterations(
-            budget + 2, batch_size, iteration_cost=1
-        )
 
-        # create storage array for given budget
-        all_subsets: np.ndarray[bool] = np.zeros(shape=(budget, self.n), dtype=bool)
-
-        # split the subset sizes into explicit and sampling parts
-        sampling_weights: np.ndarray[float] = self._init_ksh_sampling_weights()
-        explicit_sizes, sampling_sizes, remaining_budget = split_subsets_budget(
-            order=1, n=self.n, budget=budget, sampling_weights=sampling_weights
-        )
-
-        # enumerate all explicit subsets
-        explicit_subsets: np.ndarray[bool] = self._get_explicit_subsets(self.n, explicit_sizes)
-        all_subsets[: len(explicit_subsets)] = explicit_subsets
-        # zero out the sampling weights for the explicit sizes
-        sampling_weights[explicit_sizes] = 0.0
-
-        # sample the remaining subsets with the remaining budget
-        if len(sampling_sizes) > 0 and remaining_budget > 0:
-            sampling_subsets: np.ndarray[bool] = self._sample_subsets(
-                budget=remaining_budget,
-                sampling_weights=sampling_weights,
-                replacement=replacement,
-                pairing=pairing,
-            )
-            all_subsets[len(explicit_subsets) :] = sampling_subsets
-
-        # add empty and full set to all_subsets in the beginning
-        all_subsets = np.concatenate(
-            (
-                np.zeros(shape=(1, self.n), dtype=bool),  # empty set
-                np.ones(shape=(1, self.n), dtype=bool),  # full set
-                all_subsets,  # explicit and sampled subsets
-            )
+        # generate the dataset containing explicit and sampled subsets
+        all_subsets, estimation_flag, n_explicit_subsets = self._generate_shapley_dataset(
+            budget, pairing, replacement
         )
         n_subsets = all_subsets.shape[0]
+
+        # calculate the number of iterations and the last batch size
+        n_iterations, last_batch_size = self._calc_iteration_count(
+            n_subsets, batch_size, iteration_cost=self._iteration_cost
+        )
 
         # get the fsi representation of the subsets
         regression_subsets, num_players = self._get_fsi_subset_representation(all_subsets)  # S, m
@@ -154,7 +127,7 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
 
             used_budget += batch_size
 
-        return self._finalize_fsi_result(fsi_values, budget=used_budget)
+        return self._finalize_result(fsi_values, budget=used_budget, estimated=estimation_flag)
 
     def _get_fsi_subset_representation(
         self, all_subsets: np.ndarray[bool]
@@ -178,25 +151,6 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         ):
             regression_subsets[:, interaction_index] = all_subsets[:, interaction].all(axis=1)
         return regression_subsets, num_players
-
-    def _finalize_fsi_result(
-        self, fsi_values: np.ndarray[float], budget: Optional[int] = None
-    ) -> InteractionValues:
-        """Transforms the FSI values into the output interaction values.
-
-        Args:
-            fsi_values: FSI values in shape (num_players,).
-            budget: The budget of the approximation. Defaults to `None`.
-
-        Returns:
-            InteractionValues: The estimated interaction values.
-        """
-        result = self._init_result()
-        fsi_index = 0
-        for interaction in powerset(self.N, min_size=1, max_size=self.max_order):
-            result[len(interaction)][interaction] = fsi_values[fsi_index]
-            fsi_index += 1
-        return self._finalize_result(result, budget=budget)
 
 
 if __name__ == "__main__":

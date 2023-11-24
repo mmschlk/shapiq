@@ -4,7 +4,7 @@ from typing import Optional, Callable
 import numpy as np
 
 from approximator._base import Approximator, ShapleySamplingMixin, InteractionValues
-from utils import powerset, split_subsets_budget
+from utils import powerset
 
 AVAILABLE_INDICES_SHAPIQ = {"SII, STI, FSI, nSII"}
 
@@ -61,7 +61,6 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
         super().__init__(
             n, max_order=max_order, index=index, top_order=top_order, random_state=random_state
         )
-        ShapleySamplingMixin.__init__(self)
         self._iteration_cost: int = 1
         self._weights = self._init_discrete_derivative_weights()
 
@@ -91,55 +90,15 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
         # validate input parameters
         batch_size = budget + 2 if batch_size is None else batch_size
         used_budget = 0
-        estimation_flag = True
 
-        # create storage array for given budget
-        all_subsets: np.ndarray[bool] = np.zeros(shape=(budget, self.n), dtype=bool)
-
-        # split the subset sizes into explicit and sampling parts
-        sampling_weights: np.ndarray[float] = self._init_ksh_sampling_weights()
-        explicit_sizes, sampling_sizes, remaining_budget = split_subsets_budget(
-            order=1, n=self.n, budget=budget, sampling_weights=sampling_weights
-        )
-
-        # enumerate all explicit subsets
-        explicit_subsets: np.ndarray[bool] = self._get_explicit_subsets(self.n, explicit_sizes)
-        n_explicit_subsets = explicit_subsets.shape[0]
-        all_subsets[:n_explicit_subsets] = explicit_subsets
-        sampling_weights[explicit_sizes] = 0.0  # zero out sampling weights for explicit sizes
-
-        # sample the remaining subsets with the remaining budget
-        if len(sampling_sizes) > 0:
-            if remaining_budget > 0:
-                sampling_subsets: np.ndarray[bool] = self._sample_subsets(
-                    budget=remaining_budget,
-                    sampling_weights=sampling_weights,
-                    replacement=replacement,
-                    pairing=pairing,
-                )
-                all_subsets[len(explicit_subsets) :] = sampling_subsets
-                # TODO there is an error with broadcasting here
-                # "ValueError: could not broadcast input array from shape (18,5) into shape (19,5)"
-                # from games import DummyGame
-                # game = DummyGame(n=5, interaction=(1, 2))
-                # approximator = ShapIQ(n=5, max_order=2, index="SII")
-                # approximator.approximate(budget=29, game=game)
-        else:
-            estimation_flag = False  # no sampling needed computation is exact
-            all_subsets = all_subsets[:n_explicit_subsets]  # remove unnecessary rows
-
-        # add empty and full set to all_subsets in the beginning
-        all_subsets = np.concatenate(
-            (
-                np.zeros(shape=(1, self.n), dtype=bool),  # empty set
-                np.ones(shape=(1, self.n), dtype=bool),  # full set
-                all_subsets,  # explicit and sampled subsets
-            )
+        # generate the dataset containing explicit and sampled subsets
+        all_subsets, estimation_flag, n_explicit_subsets = self._generate_shapley_dataset(
+            budget, pairing, replacement
         )
         n_subsets = all_subsets.shape[0]
-        n_explicit_subsets += 2  # add empty and full set
 
-        n_iterations, last_batch_size = self._get_n_iterations(
+        # calculate the number of iterations and the last batch size
+        n_iterations, last_batch_size = self._calc_iteration_count(
             n_subsets, batch_size, iteration_cost=self._iteration_cost
         )
 
@@ -189,6 +148,68 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
 
         return self._finalize_result(result, budget=used_budget, estimated=estimation_flag)
 
+    def _sii_weight_kernel(self, subset_size: int, interaction_size: int) -> float:
+        """Returns the SII discrete derivative weight given the subset size and interaction size.
+
+        TODO add formula and reference to paper.
+
+        Args:
+            subset_size: The size of the subset.
+            interaction_size: The size of the interaction.
+
+        Returns:
+            float: The weight for the interaction type.
+        """
+        t, s = subset_size, interaction_size
+        return math.factorial(self.n - t - s) * math.factorial(t) / math.factorial(self.n - s + 1)
+
+    def _sti_weight_kernel(self, subset_size: int, interaction_size: int) -> float:
+        """Returns the STI discrete derivative weight given the subset size and interaction size.
+
+        TODO add formula and reference to paper.
+
+        Args:
+            subset_size: The size of the subset.
+            interaction_size: The size of the interaction.
+
+        Returns:
+            float: The weight for the interaction type.
+        """
+        t, s = subset_size, interaction_size
+        if s == self.max_order:
+            return (
+                self.max_order
+                * math.factorial(self.n - t - 1)
+                * math.factorial(t)
+                / math.factorial(self.n)
+            )
+        else:
+            return 1.0 * (t == 0)
+
+    def _fsi_weight_kernel(self, subset_size: int, interaction_size: int) -> float:
+        """Returns the FSI discrete derivative weight given the subset size and interaction size.
+
+        TODO add formula and reference to paper.
+
+        Args:
+            subset_size: The size of the subset.
+            interaction_size: The size of the interaction.
+
+        Returns:
+            float: The weight for the interaction type.
+        """
+        t, s = subset_size, interaction_size
+        if s == self.max_order:
+            return (
+                math.factorial(2 * s - 1)
+                / math.factorial(s - 1) ** 2
+                * math.factorial(self.n - t - 1)
+                * math.factorial(t + s - 1)
+                / math.factorial(self.n + s - 1)
+            )
+        else:
+            raise ValueError("Lower order interactions are not supported.")
+
     def _weight_kernel(self, subset_size: int, interaction_size: int) -> float:
         """Returns the weight for each interaction type for a subset of size t and interaction of
         size s.
@@ -200,32 +221,14 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
         Returns:
             float: The weight for the interaction type.
         """
-        t, s = subset_size, interaction_size
         if self.index == "SII" or self.index == "nSII":
-            return (
-                math.factorial(self.n - t - s) * math.factorial(t) / math.factorial(self.n - s + 1)
-            )
-        if self.index == "STI":
-            if s == self.max_order:
-                return (
-                    self.max_order
-                    * math.factorial(self.n - t - 1)
-                    * math.factorial(t)
-                    / math.factorial(self.n)
-                )
-            else:
-                return 1.0 * (t == 0)
-        if self.index == "FSI":
-            if s == self.max_order:
-                return (
-                    math.factorial(2 * s - 1)
-                    / math.factorial(s - 1) ** 2
-                    * math.factorial(self.n - t - 1)
-                    * math.factorial(t + s - 1)
-                    / math.factorial(self.n + s - 1)
-                )
-            else:
-                raise ValueError("Lower order interactions are not supported.")
+            return self._sii_weight_kernel(subset_size, interaction_size)
+        elif self.index == "STI":
+            return self._sti_weight_kernel(subset_size, interaction_size)
+        elif self.index == "FSI":
+            return self._fsi_weight_kernel(subset_size, interaction_size)
+        else:
+            raise ValueError(f"Unknown index {self.index}.")
 
     def _init_discrete_derivative_weights(self) -> dict[int, np.ndarray[float]]:
         """Initializes the discrete derivative weights which are specific to each interaction index.
@@ -246,8 +249,6 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
 
 
 if __name__ == "__main__":
-    from games import DummyGame
+    import doctest
 
-    game = DummyGame(n=5, interaction=(1, 2))
-    approximator = ShapIQ(n=5, max_order=2, index="SII")
-    print(approximator.approximate(budget=50, game=game))
+    doctest.testmod()
