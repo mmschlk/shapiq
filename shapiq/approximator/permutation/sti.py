@@ -1,59 +1,52 @@
-from typing import Callable
+"""This module contains the permutation sampling algorithms to estimate STI scores."""
+from typing import Callable, Optional
 import warnings
 
 import numpy as np
 from scipy.special import binom
 
-from approximator._base import InteractionValues
-from approximator.permutation import PermutationSampling
+from approximator._base import Approximator, InteractionValues
 from utils import powerset
 
 
-class PermutationSamplingSTI(PermutationSampling):
-    def __init__(self, n: int, max_order: int, top_order: bool):
-        super().__init__(n, max_order, "STI", top_order)
+class PermutationSamplingSTI(Approximator):
+    """Permutation Sampling approximator for the Shapley Taylor Index (STI).
+
+    Args:
+        n: The number of players.
+        max_order: The interaction order of the approximation.
+        random_state: The random state to use for the permutation sampling. Defaults to `None`.
+
+    Attributes:
+        n: The number of players.
+        max_order: The interaction order of the approximation.
+        min_order: The minimum order to approximate.
+
+    Properties:
+        iteration_cost: The cost of a single iteration of the permutation sampling.
+
+    Example:
+        >>> from games import DummyGame
+        >>> from approximator import PermutationSamplingSTI
+        >>> game = DummyGame(n=5, interaction=(1, 2))
+        >>> approximator = PermutationSamplingSTI(n=5, max_order=2)
+        >>> approximator.approximate(budget=200, game=game)
+        InteractionValues(
+            index=STI, order=2, estimated=True, estimation_budget=165,
+            values={
+                1: [0.2 0.2 0.2 0.2 0.2]
+                2: [[ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  1.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]]
+            }
+        )
+    """
+
+    def __init__(self, n: int, max_order: int, random_state: Optional[int] = None) -> None:
+        super().__init__(n, max_order, index="STI", top_order=False, random_state=random_state)
         self._iteration_cost: int = self._compute_iteration_cost()
-
-    def _compute_iteration_cost(self) -> int:
-        """Computes the cost of performing a single iteration of the permutation sampling given
-        the order, the number of players, and the STI index.
-
-        Returns:
-            int: The cost of a single iteration.
-        """
-        iteration_cost = int(binom(self.n, self.max_order) * 2**self.max_order)
-        return iteration_cost
-
-    def _compute_lower_order_sti(
-        self, game: Callable[[np.ndarray], np.ndarray], result: dict[int, np.ndarray]
-    ) -> dict[int, np.ndarray]:
-        """Computes all lower order interactions for the STI index up to order max_order - 1.
-
-        Args:
-            game: The game function as a callable that takes a set of players and returns the value.
-            result: The result dictionary.
-
-        Returns:
-            The result dictionary.
-        """
-        # get all game values on the whole powerset of players up to order max_order - 1
-        lower_order_sizes = list(range(0, self.max_order))
-        subsets: np.ndarray[bool] = self._get_explicit_subsets(self.n, lower_order_sizes)
-        game_values = game(subsets)
-        game_values_lookup = {
-            tuple(np.where(subsets[index])[0]): float(game_values[index])
-            for index in range(subsets.shape[0])
-        }
-
-        # compute the discrete derivatives of all subsets
-        for subset in powerset(self.N, min_size=1, max_size=self.max_order - 1):  # S
-            subset_size = len(subset)  # |S|
-            for subset_part in powerset(subset):  # L
-                subset_part_size = len(subset_part)  # |L|
-                game_value = game_values_lookup[subset_part]  # \nu(L)
-                update = (-1) ** (subset_size - subset_part_size) * game_value
-                result[subset_size][subset] += update
-        return result
 
     def approximate(
         self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: int = 1
@@ -90,7 +83,7 @@ class PermutationSamplingSTI(PermutationSampling):
             return self._finalize_result(result, budget=used_budget)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
-        n_iterations, last_batch_size = self._get_n_iterations(
+        n_iterations, last_batch_size = self._calc_iteration_count(
             budget, batch_size, self._iteration_cost
         )
 
@@ -152,3 +145,50 @@ class PermutationSamplingSTI(PermutationSampling):
             result[s] = np.divide(result[s], counts[s], out=result[s], where=counts[s] != 0)
 
         return self._finalize_result(result, budget=used_budget)
+
+    def _compute_iteration_cost(self) -> int:
+        """Computes the cost of performing a single iteration of the permutation sampling given
+        the order, the number of players, and the STI index.
+
+        Returns:
+            int: The cost of a single iteration.
+        """
+        iteration_cost = int(binom(self.n, self.max_order) * 2**self.max_order)
+        return iteration_cost
+
+    def _compute_lower_order_sti(
+        self, game: Callable[[np.ndarray], np.ndarray], result: dict[int, np.ndarray]
+    ) -> dict[int, np.ndarray]:
+        """Computes all lower order interactions for the STI index up to order max_order - 1.
+
+        Args:
+            game: The game function as a callable that takes a set of players and returns the value.
+            result: The result dictionary.
+
+        Returns:
+            The result dictionary.
+        """
+        # get all game values on the whole powerset of players up to order max_order - 1
+        lower_order_sizes = list(range(0, self.max_order))
+        subsets: np.ndarray[bool] = self._get_explicit_subsets(self.n, lower_order_sizes)
+        game_values = game(subsets)
+        game_values_lookup = {
+            tuple(np.where(subsets[index])[0]): float(game_values[index])
+            for index in range(subsets.shape[0])
+        }
+
+        # compute the discrete derivatives of all subsets
+        for subset in powerset(self.N, min_size=1, max_size=self.max_order - 1):  # S
+            subset_size = len(subset)  # |S|
+            for subset_part in powerset(subset):  # L
+                subset_part_size = len(subset_part)  # |L|
+                game_value = game_values_lookup[subset_part]  # \nu(L)
+                update = (-1) ** (subset_size - subset_part_size) * game_value
+                result[subset_size][subset] += update
+        return result
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()

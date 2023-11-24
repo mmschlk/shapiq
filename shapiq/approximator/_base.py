@@ -3,10 +3,12 @@ import copy
 import itertools
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Union, Optional
+from typing import Callable, Optional
 
 import numpy as np
 from scipy.special import binom
+
+from utils import powerset, split_subsets_budget
 
 AVAILABLE_INDICES = {"SII", "nSII", "STI", "FSI"}
 
@@ -54,12 +56,11 @@ class InteractionValues:
             representation += "\n"
             representation += f"        {order}: "
             string_values: str = str(np.round(values, 4))
+            string_values = string_values.replace("-0. ", " 0. ")
+            string_values = string_values.replace("-0.]", " 0.]")
+            string_values = string_values.replace("[-0. ", "[ 0. ")
             representation += string_values.replace("\n", "\n" + " " * 11)
         representation += "\n    }"
-        # if self.approximator:
-        #    representation += ",\n"
-        #    string_approximator = str(self.approximator).replace("\n", "\n" + " " * 4)
-        #    representation += f"    approximator={string_approximator}"
         representation += "\n)"
         return representation
 
@@ -158,8 +159,12 @@ class Approximator(ABC):
             False, the approximation is performed for all orders up to the specified order.
         min_order: The minimum order of the approximation. If top_order is True, min_order is equal
             to max_order. Otherwise, min_order is equal to 1.
+
+    Properties:
+        iteration_cost: The cost of a single iteration of the approximation.
     """
 
+    @abstractmethod
     def __init__(
         self,
         n: int,
@@ -182,6 +187,7 @@ class Approximator(ABC):
         self.min_order: int = self.max_order if self.top_order else 1
         self._random_state: Optional[int] = random_state
         self._rng: Optional[np.random.Generator] = np.random.default_rng(seed=self._random_state)
+        self._iteration_cost: Optional[int] = None
 
     @abstractmethod
     def approximate(
@@ -201,6 +207,20 @@ class Approximator(ABC):
             NotImplementedError: If the method is not implemented.
         """
         raise NotImplementedError("The approximate method needs to be implemented.")
+
+    @property
+    def iteration_cost(self) -> int:
+        """Returns the cost of a single iteration of the approximation.
+
+        Returns:
+            The cost of a single iteration.
+        """
+        if self._iteration_cost is None:
+            if hasattr(self, "_compute_iteration_cost"):
+                self._iteration_cost = self._compute_iteration_cost()
+            else:
+                return 1
+        return self._iteration_cost
 
     def _init_result(self, dtype=float) -> dict[int, np.ndarray]:
         """Initializes the result dictionary mapping from order to the interaction values.
@@ -251,6 +271,15 @@ class Approximator(ABC):
         Returns:
             The interaction values.
         """
+        # transform FSI representation into the interaction values
+        if self.index == "FSI":
+            result_fsi = self._init_result()
+            fsi_index = 0
+            for interaction in powerset(self.N, min_size=1, max_size=self.max_order):
+                result_fsi[len(interaction)][interaction] = result[fsi_index]
+                fsi_index += 1
+            result = result_fsi
+        # create InteractionValues object
         return InteractionValues(
             values=result,
             index=self.index,
@@ -261,28 +290,24 @@ class Approximator(ABC):
 
     @staticmethod
     def _smooth_with_epsilon(
-        interaction_results: Union[dict, np.ndarray], eps=0.00001
-    ) -> Union[dict, np.ndarray]:
+        interaction_values: InteractionValues, eps: float = 0.00001
+    ) -> InteractionValues:
         """Smooth the interaction results with a small epsilon to avoid numerical issues.
 
         Args:
-            interaction_results: Interaction results.
+            interaction_values: Interaction results.
             eps: Small epsilon. Defaults to 0.00001.
 
         Returns:
-            Union[dict, np.ndarray]: Smoothed interaction results.
+            The smoothed interaction results.
         """
-        if not isinstance(interaction_results, dict):
-            interaction_results[np.abs(interaction_results) < eps] = 0
-            return copy.deepcopy(interaction_results)
-        interactions = {}
-        for interaction_order, interaction_values in interaction_results.items():
-            interaction_values[np.abs(interaction_values) < eps] = 0
-            interactions[interaction_order] = interaction_values
-        return copy.deepcopy(interactions)
+        result = copy.deepcopy(interaction_values)
+        for order, values in result.values.items():
+            values[np.abs(values) < eps] = 0
+        return result
 
     @staticmethod
-    def _get_n_iterations(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
+    def _calc_iteration_count(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
         """Computes the number of iterations and the size of the last batch given the batch size and
         the budget.
 
@@ -339,14 +364,7 @@ class Approximator(ABC):
         return self.__repr__()
 
     def __eq__(self, other: object) -> bool:
-        """Checks if two Approximator objects are equal.
-
-        Args:
-            other: The other Approximator object.
-
-        Returns:
-            True if the two objects are equal, False otherwise.
-        """
+        """Checks if two Approximator objects are equal."""
         if not isinstance(other, Approximator):
             raise NotImplementedError("Cannot compare Approximator with other types.")
         if (
@@ -360,14 +378,7 @@ class Approximator(ABC):
         return True
 
     def __ne__(self, other: object) -> bool:
-        """Checks if two Approximator objects are not equal.
-
-        Args:
-            other: The other Approximator object.
-
-        Returns:
-            True if the two objects are not equal, False otherwise.
-        """
+        """Checks if two Approximator objects are not equal."""
         return not self.__eq__(other)
 
     def __hash__(self) -> int:
@@ -393,3 +404,167 @@ class Approximator(ABC):
             top_order=self.top_order,
             random_state=self._random_state,
         )
+
+
+class ShapleySamplingMixin:
+    """Mixin class for the computation of Shapley weights.
+
+    Provides the common functionality for regression-based approximators like
+    :class:`~shapiq.approximators.RegressionFSI`. The class offers computation of Shapley weights
+    and the corresponding sampling weights for the KernelSHAP-like estimation approaches.
+    """
+
+    def _init_ksh_sampling_weights(self) -> np.ndarray[float]:
+        """Initializes the weights for sampling subsets.
+
+        The sampling weights are of size n + 1 and indexed by the size of the subset. The edges
+        (the first, empty coalition, and the last element, full coalition) are set to 0.
+
+        Returns:
+            The weights for sampling subsets of size s in shape (n + 1,).
+        """
+        weight_vector = np.zeros(shape=self.n - 1, dtype=float)
+        for subset_size in range(1, self.n):
+            weight_vector[subset_size - 1] = (self.n - 1) / (subset_size * (self.n - subset_size))
+        sampling_weight = (np.asarray([0] + [*weight_vector] + [0])) / sum(weight_vector)
+        return sampling_weight
+
+    def _get_ksh_subset_weights(self, subsets: np.ndarray[bool]) -> np.ndarray[float]:
+        """Computes the KernelSHAP regression weights for the given subsets.
+
+        The weights for the subsets of size s are set to ksh_weights[s] / binom(n, s). The weights
+        for the empty and full sets are set to a big number.
+
+        Args:
+            subsets: one-hot matrix of subsets for which to compute the weights in shape
+                (n_subsets, n).
+
+        Returns:
+            The KernelSHAP regression weights in shape (n_subsets,).
+        """
+        # set the weights for each subset to ksh_weights[|S|] / binom(n, |S|)
+        ksh_weights = self._init_ksh_sampling_weights()  # indexed by subset size
+        subset_sizes = np.sum(subsets, axis=1)
+        weights = ksh_weights[subset_sizes]  # set the weights for each subset size
+        weights /= binom(self.n, subset_sizes)  # divide by the number of subsets of the same size
+
+        # set the weights for the empty and full sets to big M
+        weights[np.logical_not(subsets).all(axis=1)] = float(1_000_000)
+        weights[subsets.all(axis=1)] = float(1_000_000)
+        return weights
+
+    def _sample_subsets(
+        self,
+        budget: int,
+        sampling_weights: np.ndarray[float],
+        replacement: bool = False,
+        pairing: bool = True,
+    ) -> np.ndarray[bool]:
+        """Samples subsets with the given budget.
+
+        Args:
+            budget: budget for the sampling.
+            sampling_weights: weights for sampling subsets of certain sizes and indexed by the size.
+                The shape is expected to be (n + 1,). A size that is not to be sampled has weight 0.
+            pairing: whether to use pairing (`True`) sampling or not (`False`). Defaults to `False`.
+
+        Returns:
+            sampled subsets.
+        """
+        # sanitize input parameters
+        sampling_weights = copy.copy(sampling_weights)
+        sampling_weights /= np.sum(sampling_weights)
+
+        # adjust budget for paired sampling
+        if pairing:
+            budget = budget - budget % 2  # must be even for pairing
+            budget = int(budget / 2)
+
+        # create storage array for given budget
+        subset_matrix = np.zeros(shape=(budget, self.n), dtype=bool)
+
+        # sample subsets
+        sampled_sizes = self._rng.choice(self.N_arr, size=budget, p=sampling_weights).astype(int)
+        if replacement:  # sample subsets with replacement
+            permutations = np.tile(np.arange(self.n), (budget, 1))
+            self._rng.permuted(permutations, axis=1, out=permutations)
+            for i, subset_size in enumerate(sampled_sizes):
+                subset = permutations[i, :subset_size]
+                subset_matrix[i, subset] = True
+        else:  # sample subsets without replacement
+            sampled_subsets, n_sampled = set(), 0  # init sampling variables
+            while n_sampled < budget:
+                subset_size = sampled_sizes[n_sampled]
+                subset = tuple(sorted(self._rng.choice(np.arange(0, self.n), size=subset_size)))
+                sampled_subsets.add(subset)
+                if len(sampled_subsets) != n_sampled:  # subset was not already sampled
+                    subset_matrix[n_sampled, subset] = True
+                    n_sampled += 1  # continue sampling
+
+        if pairing:
+            subset_matrix = np.repeat(subset_matrix, repeats=2, axis=0)  # extend the subset matrix
+            subset_matrix[1::2] = np.logical_not(subset_matrix[1::2])  # flip sign of paired subsets
+
+        return subset_matrix
+
+    def _generate_shapley_dataset(
+        self, budget: int, pairing: bool = True, replacement: bool = False
+    ) -> tuple[np.ndarray[bool], bool, int]:
+        """Generates the two-part dataset containing explicit and sampled subsets.
+
+        The first part of the dataset contains all explicit subsets. The second half contains the
+        sampled subsets. The parts can be determined by the `n_explicit_subsets` parameter.
+
+        Args:
+            budget: The budget for the approximation (i.e., the number of allowed game evaluations).
+            pairing: Whether to use pairwise sampling (`True`) or not (`False`). Defaults to `True`.
+                Paired sampling can increase the approximation quality.
+            replacement: Whether to sample with replacement (`True`) or without replacement
+                (`False`). Defaults to `False`.
+
+        Returns:
+            - The dataset containing explicit and sampled subsets. The dataset is a 2D array of
+                shape (n_subsets, n_players) where each row is a subset.
+            - A flag indicating whether the approximation is estimated (`True`) or exact (`False`).
+            - The number of explicit subsets.
+        """
+        estimation_flag = True
+        # create storage array for given budget
+        all_subsets: np.ndarray[bool] = np.zeros(shape=(budget, self.n), dtype=bool)
+        n_subsets = 0
+        # split the subset sizes into explicit and sampling parts
+        sampling_weights: np.ndarray[float] = self._init_ksh_sampling_weights()
+        explicit_sizes, sampling_sizes, remaining_budget = split_subsets_budget(
+            order=1, n=self.n, budget=budget, sampling_weights=sampling_weights
+        )
+        # enumerate all explicit subsets
+        explicit_subsets: np.ndarray[bool] = self._get_explicit_subsets(self.n, explicit_sizes)
+        n_explicit_subsets = explicit_subsets.shape[0]
+        all_subsets[:n_explicit_subsets] = explicit_subsets
+        n_subsets += n_explicit_subsets
+        sampling_weights[explicit_sizes] = 0.0  # zero out sampling weights for explicit sizes
+        # sample the remaining subsets with the remaining budget
+        if len(sampling_sizes) > 0:
+            if remaining_budget > 0:
+                sampling_subsets: np.ndarray[bool] = self._sample_subsets(
+                    budget=remaining_budget,
+                    sampling_weights=sampling_weights,
+                    replacement=replacement,
+                    pairing=pairing,
+                )
+                n_subsets += sampling_subsets.shape[0]
+                all_subsets[n_explicit_subsets:n_subsets] = sampling_subsets
+                all_subsets = all_subsets[:n_subsets]  # remove unnecessary rows
+        else:
+            estimation_flag = False  # no sampling needed computation is exact
+            all_subsets = all_subsets[:n_explicit_subsets]  # remove unnecessary rows
+        # add empty and full set to all_subsets in the beginning
+        all_subsets = np.concatenate(
+            (
+                np.zeros(shape=(1, self.n), dtype=bool),  # empty set
+                np.ones(shape=(1, self.n), dtype=bool),  # full set
+                all_subsets,  # explicit and sampled subsets
+            )
+        )
+        n_explicit_subsets += 2  # add empty and full set
+        return all_subsets, estimation_flag, n_explicit_subsets

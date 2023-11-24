@@ -3,12 +3,11 @@ from typing import Optional, Callable
 
 import numpy as np
 
-from approximator._base import InteractionValues
-from approximator.permutation import PermutationSampling
+from approximator._base import Approximator, InteractionValues
 from utils import powerset
 
 
-class PermutationSamplingSII(PermutationSampling):
+class PermutationSamplingSII(Approximator):
     """Permutation Sampling approximator for the SII (and nSII) index.
 
     Args:
@@ -24,31 +23,34 @@ class PermutationSamplingSII(PermutationSampling):
         top_order: Whether to approximate only the top order interactions (`True`) or all orders up
             to the specified order (`False`).
         min_order: The minimum order to approximate.
+
+    Properties:
         iteration_cost: The cost of a single iteration of the permutation sampling.
 
     Example:
         >>> from games import DummyGame
         >>> from approximator import PermutationSamplingSII
-        >>> game = DummyGame(n=7, interaction=(0, 1))
-        >>> approximator = PermutationSamplingSII(n=7, max_order=2, top_order=False)
-        >>> approximator.approximate(budget=1000, game=game)
+        >>> game = DummyGame(n=5, interaction=(1, 2))
+        >>> approximator = PermutationSamplingSII(n=5, max_order=2)
+        >>> approximator.approximate(budget=1_000, game=game)
         InteractionValues(
-            index=SII, order=2, values={
-                1: [0.1429 0.6429 0.6429 0.1429 0.1429 0.1429 0.1429]
-                2: [[ 0.  0.  0.  0.  0.  0.  0.]
-                    [ 0.  0.  1.  0.  0.  0.  0.]
-                    [ 0.  1.  0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0. -0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.  0.  0.]]})
+            index=SII, order=2, estimated=True, estimation_budget=988,
+            values={
+                1: [0.2 0.7 0.7 0.2 0.2]
+                2: [[ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  1.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]]
+            }
+        )
     """
 
     def __init__(
         self,
         n: int,
         max_order: int,
-        top_order: bool,
+        top_order: bool = False,
         random_state: Optional[int] = None,
     ) -> None:
         super().__init__(n, max_order, "SII", top_order, random_state)
@@ -90,7 +92,7 @@ class PermutationSamplingSII(PermutationSampling):
         counts = self._init_result(dtype=int)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
-        n_iterations, last_batch_size = self._get_n_iterations(
+        n_iterations, last_batch_size = self._calc_iteration_count(
             budget, batch_size, self._iteration_cost
         )
 
@@ -127,12 +129,12 @@ class PermutationSamplingSII(PermutationSampling):
                 for order in self._order_iterator:
                     for k in range(self.n - order + 1):
                         subset = permutations[permutation_id, k : k + order]
-                        counts[order][tuple(subset)] += 1
+                        counts[order][tuple(sorted(subset))] += 1
                         # update the discrete derivative given the subset
                         for subset_ in powerset(subset, min_size=0):
                             game_value = game_values[subset_index]
                             update = game_value * (-1) ** (order - len(subset_))
-                            result[order][tuple(subset)] += update
+                            result[order][tuple(sorted(subset))] += update
                             subset_index += 1
 
             used_budget += self._iteration_cost * batch_size
@@ -142,3 +144,9 @@ class PermutationSamplingSII(PermutationSampling):
             result[s] = np.divide(result[s], counts[s], out=result[s], where=counts[s] != 0)
 
         return self._finalize_result(result, budget=used_budget)
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()

@@ -1,17 +1,14 @@
-"""This module contains the base regression algorithms to estimate FSI scores."""
-import copy
-import itertools
+"""This module contains the regression algorithms to estimate FSI scores."""
 from typing import Optional, Callable
 
 import numpy as np
 from scipy.special import binom
 
-from approximator._base import InteractionValues
-from utils import split_subsets_budget, powerset
-from ._base import Regression
+from approximator._base import Approximator, ShapleySamplingMixin, InteractionValues
+from utils import powerset
 
 
-class RegressionFSI(Regression):
+class RegressionFSI(Approximator, ShapleySamplingMixin):
     """Estimates the FSI values using the weighted least square approach.
 
     Args:
@@ -25,22 +22,26 @@ class RegressionFSI(Regression):
         max_order: The interaction order of the approximation.
         min_order: The minimum order of the approximation. For FSI, min_order is equal to 1.
 
+    Properties:
+        iteration_cost: The cost of a single iteration of the regression FSI.
+
     Example:
         >>> from games import DummyGame
         >>> from approximator import RegressionFSI
-        >>> game = DummyGame(n=7, interaction=(0, 1))
-        >>> approximator = RegressionFSI(n=7, max_order=2)
+        >>> game = DummyGame(n=5, interaction=(1, 2))
+        >>> approximator = RegressionFSI(n=5, max_order=2)
         >>> approximator.approximate(budget=100, game=game)
         InteractionValues(
-                index=FSI, order=2, values={
-            1: [0.1429 0.1429 0.1429 0.1429 0.1429 0.1429 0.1429]
-            2: [[ 0.  0.  0.  0.  0.  0.  0.]
-                [ 0.  0.  1. -0. -0.  0.  0.]
-                [ 0.  1.  0.  0.  0.  0. -0.]
-                [ 0. -0.  0.  0.  0. -0.  0.]
-                [ 0. -0.  0.  0.  0. -0. -0.]
-                [ 0.  0.  0. -0. -0.  0. -0.]
-                [ 0.  0. -0.  0. -0. -0.  0.]]})
+            index=FSI, order=2, estimated=False, estimation_budget=32,
+            values={
+                1: [0.2 0.2 0.2 0.2 0.2]
+                2: [[ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  1.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]
+                    [ 0.  0.  0.  0.  0.]]
+            }
+        )
     """
 
     def __init__(
@@ -49,7 +50,10 @@ class RegressionFSI(Regression):
         max_order: int,
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(n, max_order=max_order, index="FSI", random_state=random_state)
+        super().__init__(
+            n, max_order=max_order, index="FSI", top_order=False, random_state=random_state
+        )
+        self._iteration_cost: int = 1
 
     def approximate(
         self,
@@ -62,10 +66,11 @@ class RegressionFSI(Regression):
         """Approximates the interaction values.
 
         Args:
-            budget: The budget of the approximation.
+            budget: The budget of the approximation (how many times the game is queried). The game
+                is always queried for the empty and full set (`budget += 2`).
             game: The game to be approximated.
             batch_size: The batch size for the approximation. Defaults to `None`. If `None` the
-                batch size is set to the budget.
+                batch size is set to the approximation budget.
             replacement: Whether to sample subsets with replacement (`True`) or without replacement
                 (`False`). Defaults to `False`.
             pairing: Whether to use the pairing sampling strategy or not. If paired sampling
@@ -74,48 +79,24 @@ class RegressionFSI(Regression):
 
         Returns:
             The interaction values.
+
+        Raises:
+            np.linalg.LinAlgError: If the regression fails.
         """
         # validate input parameters
         batch_size = budget + 2 if batch_size is None else batch_size
         used_budget = 0
-        n_iterations, last_batch_size = self._get_n_iterations(
-            budget + 2, batch_size, iteration_cost=1
-        )
 
-        # create storage array for given budget
-        all_subsets: np.ndarray[bool] = np.zeros(shape=(budget, self.n), dtype=bool)
-
-        # split the subset sizes into explicit and sampling parts
-        sampling_weights: np.ndarray[float] = self._init_ksh_sampling_weights()
-        explicit_sizes, sampling_sizes, remaining_budget = split_subsets_budget(
-            order=1, n=self.n, budget=budget, sampling_weights=sampling_weights
-        )
-
-        # enumerate all explicit subsets
-        explicit_subsets: np.ndarray[bool] = self._get_explicit_subsets(self.n, explicit_sizes)
-        all_subsets[: len(explicit_subsets)] = explicit_subsets
-        # zero out the sampling weights for the explicit sizes
-        sampling_weights[explicit_sizes] = 0.0
-
-        # sample the remaining subsets with the remaining budget
-        if len(sampling_sizes) > 0 and remaining_budget > 0:
-            sampling_subsets: np.ndarray[bool] = self._sample_subsets(
-                budget=remaining_budget,
-                sampling_weights=sampling_weights,
-                replacement=replacement,
-                pairing=pairing,
-            )
-            all_subsets[len(explicit_subsets) :] = sampling_subsets
-
-        # add empty and full set to all_subsets in the beginning
-        all_subsets = np.concatenate(
-            (
-                np.zeros(shape=(1, self.n), dtype=bool),  # empty set
-                np.ones(shape=(1, self.n), dtype=bool),  # full set
-                all_subsets,  # explicit and sampled subsets
-            )
+        # generate the dataset containing explicit and sampled subsets
+        all_subsets, estimation_flag, n_explicit_subsets = self._generate_shapley_dataset(
+            budget, pairing, replacement
         )
         n_subsets = all_subsets.shape[0]
+
+        # calculate the number of iterations and the last batch size
+        n_iterations, last_batch_size = self._calc_iteration_count(
+            n_subsets, batch_size, iteration_cost=self._iteration_cost
+        )
 
         # get the fsi representation of the subsets
         regression_subsets, num_players = self._get_fsi_subset_representation(all_subsets)  # S, m
@@ -141,65 +122,12 @@ class RegressionFSI(Regression):
             W = np.sqrt(np.diag(W))
             Aw = np.dot(W, A)
             Bw = np.dot(W, B)
+
             fsi_values = np.linalg.lstsq(Aw, Bw, rcond=None)[0]  # \phi_i
 
             used_budget += batch_size
 
-        return self._finalize_fsi_result(fsi_values, budget=used_budget)
-
-    def _sample_subsets(
-        self,
-        budget: int,
-        sampling_weights: np.ndarray[float],
-        replacement: bool = False,
-        pairing: bool = True,
-    ) -> np.ndarray[bool]:
-        """Samples subsets with the given budget.
-
-        Args:
-            budget: budget for the sampling.
-            sampling_weights: weights for sampling subsets of certain sizes and indexed by the size.
-                The shape is expected to be (n + 1,). A size that is not to be sampled has weight 0.
-            pairing: whether to use pairing (`True`) sampling or not (`False`). Defaults to `False`.
-
-        Returns:
-            sampled subsets.
-        """
-        # sanitize input parameters
-        sampling_weights = copy.copy(sampling_weights)
-        sampling_weights /= np.sum(sampling_weights)
-
-        # adjust budget for paired sampling
-        if pairing:
-            budget = budget - budget % 2  # must be even for pairing
-            budget = int(budget / 2)
-
-        # create storage array for given budget
-        subset_matrix = np.zeros(shape=(budget, self.n), dtype=bool)
-
-        # sample subsets
-        sampled_sizes = self._rng.choice(self.N_arr, size=budget, p=sampling_weights).astype(int)
-        if replacement:  # sample subsets with replacement
-            permutations = np.tile(np.arange(self.n), (budget, 1))
-            self._rng.permuted(permutations, axis=1, out=permutations)
-            for i, subset_size in enumerate(sampled_sizes):
-                subset = permutations[i, :subset_size]
-                subset_matrix[i, subset] = True
-        else:  # sample subsets without replacement
-            sampled_subsets, n_sampled = set(), 0  # init sampling variables
-            while n_sampled < budget:
-                subset_size = sampled_sizes[n_sampled]
-                subset = tuple(sorted(self._rng.choice(np.arange(0, self.n), size=subset_size)))
-                sampled_subsets.add(subset)
-                if len(sampled_subsets) != n_sampled:  # subset was not already sampled
-                    subset_matrix[n_sampled, subset] = True
-                    n_sampled += 1  # continue sampling
-
-        if pairing:
-            subset_matrix = np.repeat(subset_matrix, repeats=2, axis=0)  # extend the subset matrix
-            subset_matrix[1::2] = np.logical_not(subset_matrix[1::2])  # flip sign of paired subsets
-
-        return subset_matrix
+        return self._finalize_result(fsi_values, budget=used_budget, estimated=estimation_flag)
 
     def _get_fsi_subset_representation(
         self, all_subsets: np.ndarray[bool]
@@ -224,22 +152,8 @@ class RegressionFSI(Regression):
             regression_subsets[:, interaction_index] = all_subsets[:, interaction].all(axis=1)
         return regression_subsets, num_players
 
-    def _finalize_fsi_result(
-        self, fsi_values: np.ndarray[float], budget: Optional[int] = None
-    ) -> InteractionValues:
-        """Transforms the FSI values into the output interaction values.
 
-        Args:
-            fsi_values: FSI values in shape (num_players,).
-            budget: The budget of the approximation. Defaults to `None`.
+if __name__ == "__main__":
+    import doctest
 
-        Returns:
-            InteractionValues: The estimated interaction values.
-        """
-        result = self._init_result()
-        fsi_index = 0
-        for interaction in powerset(self.N, min_size=1, max_size=self.max_order):
-            for interaction_ordering in itertools.permutations(interaction):  # all permutations
-                result[len(interaction)][interaction_ordering] = fsi_values[fsi_index]
-            fsi_index += 1
-        return self._finalize_result(result, budget=budget)
+    doctest.testmod()
