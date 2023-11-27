@@ -271,14 +271,6 @@ class Approximator(ABC):
         Returns:
             The interaction values.
         """
-        # transform FSI representation into the interaction values
-        if self.index == "FSI":
-            result_fsi = self._init_result()
-            fsi_index = 0
-            for interaction in powerset(self.N, min_size=1, max_size=self.max_order):
-                result_fsi[len(interaction)][interaction] = result[fsi_index]
-                fsi_index += 1
-            result = result_fsi
         # create InteractionValues object
         return InteractionValues(
             values=result,

@@ -112,7 +112,7 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
             batch_index = (iteration - 1) * batch_size
 
             # query the game for the batch of subsets
-            batch_subsets = all_subsets[0 : batch_index + batch_size]
+            batch_subsets = all_subsets[batch_index : batch_index + batch_size]
             game_values[batch_index : batch_index + batch_size] = game(batch_subsets)
 
             # compute the FSI values up to now
@@ -126,6 +126,8 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
             fsi_values = np.linalg.lstsq(Aw, Bw, rcond=None)[0]  # \phi_i
 
             used_budget += batch_size
+
+        fsi_values = self._transform_representation(fsi_values)
 
         return self._finalize_result(fsi_values, budget=used_budget, estimated=estimation_flag)
 
@@ -151,6 +153,22 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         ):
             regression_subsets[:, interaction_index] = all_subsets[:, interaction].all(axis=1)
         return regression_subsets, num_players
+
+    def _transform_representation(self, result: np.ndarray[float]) -> dict[int, np.ndarray[float]]:
+        """Transforms the FSI representation into the interaction values representation.
+
+        Args:
+            result: The FSI representation of the interaction values.
+
+        Returns:
+            The interaction values.
+        """
+        result_fsi = self._init_result()
+        fsi_index = 0
+        for interaction in powerset(self.N, min_size=self.min_order, max_size=self.max_order):
+            result_fsi[len(interaction)][interaction] = result[fsi_index]
+            fsi_index += 1
+        return result_fsi
 
 
 if __name__ == "__main__":
