@@ -46,8 +46,6 @@ class InteractionValues:
                 f"Index {self.index} is not valid. "
                 f"Available indices are 'SII', 'nSII', 'STI', and 'FSI'."
             )
-        if self.n_players is None:
-            raise ValueError("n_players must be specified.")
         if self.interaction_lookup is None:
             self.interaction_lookup = {
                 interaction: i
