@@ -1,6 +1,5 @@
 """This module contains the base approximator classes for the shapiq package."""
 import copy
-import itertools
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -18,17 +17,25 @@ class InteractionValues:
     """This class contains the interaction values as estimated by an approximator.
 
     Attributes:
-        values: The interaction values of the model. Mapping from order to the interaction values.
+        values: The interaction values of the model in vectorized form.
         index: The interaction index estimated. Available indices are 'SII', 'nSII', 'STI', and
             'FSI'.
-        order: The order of the approximation.
-        estimated: Whether the interaction values are estimated or not. Defaults to True.
-        estimation_budget: The budget used for the estimation. Defaults to None.
+        max_order: The order of the approximation.
+        min_order: The minimum order of the approximation.
+        n_players: The number of players.
+        interaction_lookup: A dictionary that maps interactions to their index in the values
+            vector. If `interaction_lookup` is not provided, it is computed from the `n_players`,
+            `min_order`, and `max_order` parameters. Defaults to `None`.
+        estimated: Whether the interaction values are estimated or not. Defaults to `True`.
+        estimation_budget: The budget used for the estimation. Defaults to `None`.
     """
 
-    values: dict[int, np.ndarray]
+    values: np.ndarray[float]
     index: str
-    order: int
+    max_order: int
+    min_order: int
+    n_players: int
+    interaction_lookup: dict[tuple[int], int] = None
     estimated: bool = True
     estimation_budget: Optional[int] = None
 
@@ -39,45 +46,48 @@ class InteractionValues:
                 f"Index {self.index} is not valid. "
                 f"Available indices are 'SII', 'nSII', 'STI', and 'FSI'."
             )
-        if self.order < 1 or self.order != max(self.values.keys()):
-            raise ValueError(
-                f"Order {self.order} is not valid. "
-                f"Order should be a positive integer equal to the maximum key of the values."
-            )
+        if self.n_players is None:
+            raise ValueError("n_players must be specified.")
+        if self.interaction_lookup is None:
+            self.interaction_lookup = {
+                interaction: i
+                for i, interaction in enumerate(
+                    powerset(
+                        range(self.n_players), min_size=self.min_order, max_size=self.max_order
+                    )
+                )
+            }
 
     def __repr__(self) -> str:
         """Returns the representation of the InteractionValues object."""
         representation = f"InteractionValues(\n"
         representation += (
-            f"    index={self.index}, order={self.order}, estimated={self.estimated}"
-            f", estimation_budget={self.estimation_budget},\n"
-        ) + "    values={"
-        for order, values in self.values.items():
-            representation += "\n"
-            representation += f"        {order}: "
-            string_values: str = str(np.round(values, 4))
-            string_values = string_values.replace("-0. ", " 0. ")
-            string_values = string_values.replace("-0.]", " 0.]")
-            string_values = string_values.replace("[-0. ", "[ 0. ")
-            representation += string_values.replace("\n", "\n" + " " * 11)
-        representation += "\n    }"
-        representation += "\n)"
+            f"    index={self.index}, max_order={self.max_order}, min_order={self.min_order}"
+            f", estimated={self.estimated}, estimation_budget={self.estimation_budget},\n"
+        ) + "    values={\n"
+        for interaction in powerset(set(range(self.n_players)), min_size=1, max_size=2):
+            representation += f"        {interaction}: "
+            interaction_value = str(round(self[interaction], 4))
+            interaction_value = interaction_value.replace("-0.0", "0.0").replace("0.0", "0")
+            representation += f"{interaction_value},\n"
+        representation = representation[:-2]  # remove last "," and add closing bracket
+        representation += "\n    }\n)"
         return representation
 
     def __str__(self) -> str:
         """Returns the string representation of the InteractionValues object."""
         return self.__repr__()
 
-    def __getitem__(self, item: int) -> np.ndarray:
-        """Returns the interaction values for the given order.
+    def __getitem__(self, item: tuple[int, ...]) -> float:
+        """Returns the score for the given interaction.
 
         Args:
-            item: The order of the interaction values.
+            item: The interaction for which to return the score.
 
         Returns:
-            The interaction values.
+            The interaction value.
         """
-        return self.values[item]
+        return float(self.values[self.interaction_lookup[item]])
 
     def __eq__(self, other: object) -> bool:
         """Checks if two InteractionValues objects are equal.
@@ -89,12 +99,15 @@ class InteractionValues:
             True if the two objects are equal, False otherwise.
         """
         if not isinstance(other, InteractionValues):
-            raise NotImplementedError("Cannot compare InteractionValues with other types.")
-        if self.index != other.index or self.order != other.order:
+            raise TypeError("Cannot compare InteractionValues with other types.")
+        if (
+            self.index != other.index
+            or self.max_order != other.max_order
+            or self.n_players != other.n_players
+        ):
             return False
-        for order, values in self.values.items():
-            if not np.allclose(values, other.values[order]):
-                return False
+        if not np.allclose(self.values, other.values):
+            return False
         return True
 
     def __ne__(self, other: object) -> bool:
@@ -110,16 +123,19 @@ class InteractionValues:
 
     def __hash__(self) -> int:
         """Returns the hash of the InteractionValues object."""
-        return hash((self.index, self.order, tuple(self.values.values())))
+        return hash((self.index, self.max_order, tuple(self.values.flatten())))
 
     def __copy__(self) -> "InteractionValues":
         """Returns a copy of the InteractionValues object."""
         return InteractionValues(
             values=copy.deepcopy(self.values),
             index=self.index,
-            order=self.order,
+            max_order=self.max_order,
             estimated=self.estimated,
             estimation_budget=self.estimation_budget,
+            n_players=self.n_players,
+            interaction_lookup=copy.deepcopy(self.interaction_lookup),
+            min_order=self.min_order,
         )
 
     def __deepcopy__(self, memo) -> "InteractionValues":
@@ -127,9 +143,12 @@ class InteractionValues:
         return InteractionValues(
             values=copy.deepcopy(self.values),
             index=self.index,
-            order=self.order,
+            max_order=self.max_order,
             estimated=self.estimated,
             estimation_budget=self.estimation_budget,
+            n_players=self.n_players,
+            interaction_lookup=copy.deepcopy(self.interaction_lookup),
+            min_order=self.min_order,
         )
 
 
@@ -182,9 +201,16 @@ class Approximator(ABC):
         self.n: int = n
         self.N: set = set(range(self.n))
         self.N_arr: np.ndarray[int] = np.arange(self.n + 1)
-        self.max_order: int = max_order
         self.top_order: bool = top_order
+        self.max_order: int = max_order
         self.min_order: int = self.max_order if self.top_order else 1
+        self.iteration_cost: Optional[int] = None
+        self._interaction_lookup: dict[tuple[int], int] = {
+            interaction: i
+            for i, interaction in enumerate(
+                powerset(self.N, min_size=self.min_order, max_size=self.max_order)
+            )
+        }
         self._random_state: Optional[int] = random_state
         self._rng: Optional[np.random.Generator] = np.random.default_rng(seed=self._random_state)
         self._iteration_cost: Optional[int] = None
@@ -222,32 +248,18 @@ class Approximator(ABC):
                 return 1
         return self._iteration_cost
 
-    def _init_result(self, dtype=float) -> dict[int, np.ndarray]:
-        """Initializes the result dictionary mapping from order to the interaction values.
-        For order 1 the interaction values are of shape (n,) for order 2 of shape (n, n) and so on.
+    def _init_result(self, dtype=float) -> np.ndarray:
+        """Initializes the result array. The result array is a 1D array of size n_interactions as
+        determined by the interaction_lookup dictionary.
 
         Args:
-            dtype: The data type of the result dictionary values. Defaults to float.
+            dtype: The data type of the result array. Defaults to float.
 
         Returns:
-            The result dictionary.
+            The result array.
         """
-        result = {s: self._get_empty_array(self.n, s, dtype=dtype) for s in self._order_iterator}
+        result = np.zeros(len(self._interaction_lookup), dtype=dtype)
         return result
-
-    @staticmethod
-    def _get_empty_array(n: int, order: int, dtype=float) -> np.ndarray:
-        """Returns an empty array of the appropriate shape for the given order.
-
-        Args:
-            n: The number of players.
-            order: The order of the array.
-            dtype: The data type of the array. Defaults to float.
-
-        Returns:
-            The empty array.
-        """
-        return np.zeros(n**order, dtype=dtype).reshape((n,) * order)
 
     @property
     def _order_iterator(self) -> range:
@@ -274,29 +286,14 @@ class Approximator(ABC):
         # create InteractionValues object
         return InteractionValues(
             values=result,
-            index=self.index,
-            order=self.max_order,
             estimated=estimated,
             estimation_budget=budget,
+            index=self.index,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            interaction_lookup=self._interaction_lookup,
         )
-
-    @staticmethod
-    def _smooth_with_epsilon(
-        interaction_values: InteractionValues, eps: float = 0.00001
-    ) -> InteractionValues:
-        """Smooth the interaction results with a small epsilon to avoid numerical issues.
-
-        Args:
-            interaction_values: Interaction results.
-            eps: Small epsilon. Defaults to 0.00001.
-
-        Returns:
-            The smoothed interaction results.
-        """
-        result = copy.deepcopy(interaction_values)
-        for order, values in result.values.items():
-            values[np.abs(values) < eps] = 0
-        return result
 
     @staticmethod
     def _calc_iteration_count(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:

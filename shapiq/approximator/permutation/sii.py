@@ -36,12 +36,21 @@ class PermutationSamplingSII(Approximator):
         InteractionValues(
             index=SII, order=2, estimated=True, estimation_budget=988,
             values={
-                1: [0.2 0.7 0.7 0.2 0.2]
-                2: [[ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  1.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]]
+                (0,): 0.2,
+                (1,): 0.7,
+                (2,): 0.7,
+                (3,): 0.2,
+                (4,): 0.2,
+                (0, 1): 0,
+                (0, 2): 0,
+                (0, 3): 0,
+                (0, 4): 0,
+                (1, 2): 1.0,
+                (1, 3): 0,
+                (1, 4): 0,
+                (2, 3): 0,
+                (2, 4): 0,
+                (3, 4): 0
             }
         )
     """
@@ -88,8 +97,8 @@ class PermutationSamplingSII(Approximator):
         batch_size = 1 if batch_size is None else batch_size
         used_budget = 0
 
-        result = self._init_result()
-        counts = self._init_result(dtype=int)
+        result: np.ndarray[float] = self._init_result()
+        counts: np.ndarray[int] = self._init_result(dtype=int)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
@@ -128,22 +137,23 @@ class PermutationSamplingSII(Approximator):
             for permutation_id in range(n_permutations):
                 for order in self._order_iterator:
                     for k in range(self.n - order + 1):
-                        subset = permutations[permutation_id, k : k + order]
-                        counts[order][tuple(sorted(subset))] += 1
+                        interaction = permutations[permutation_id, k : k + order]
+                        interaction = tuple(sorted(interaction))
+                        interaction_index = self._interaction_lookup[interaction]
+                        counts[interaction_index] += 1
                         # update the discrete derivative given the subset
-                        for subset_ in powerset(subset, min_size=0):
+                        for subset_ in powerset(interaction, min_size=0):
                             game_value = game_values[subset_index]
                             update = game_value * (-1) ** (order - len(subset_))
-                            result[order][tuple(sorted(subset))] += update
+                            result[interaction_index] += update
                             subset_index += 1
 
             used_budget += self._iteration_cost * batch_size
 
         # compute mean of interactions
-        for s in self._order_iterator:
-            result[s] = np.divide(result[s], counts[s], out=result[s], where=counts[s] != 0)
+        result = np.divide(result, counts, out=result, where=counts != 0)
 
-        return self._finalize_result(result, budget=used_budget)
+        return self._finalize_result(result, budget=used_budget, estimated=True)
 
 
 if __name__ == "__main__":

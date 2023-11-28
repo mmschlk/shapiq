@@ -34,12 +34,21 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         InteractionValues(
             index=FSI, order=2, estimated=False, estimation_budget=32,
             values={
-                1: [0.2 0.2 0.2 0.2 0.2]
-                2: [[ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  1.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]]
+                (0,): 0.2,
+                (1,): 0.2,
+                (2,): 0.2,
+                (3,): 0.2,
+                (4,): 0.2,
+                (0, 1): 0,
+                (0, 2): 0,
+                (0, 3): 0,
+                (0, 4): 0,
+                (1, 2): 1.0,
+                (1, 3): 0,
+                (1, 4): 0,
+                (2, 3): 0,
+                (2, 4): 0,
+                (3, 4): 0
             }
         )
     """
@@ -127,8 +136,6 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
 
             used_budget += batch_size
 
-        fsi_values = self._transform_representation(fsi_values)
-
         return self._finalize_result(fsi_values, budget=used_budget, estimated=estimation_flag)
 
     def _get_fsi_subset_representation(
@@ -153,22 +160,6 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         ):
             regression_subsets[:, interaction_index] = all_subsets[:, interaction].all(axis=1)
         return regression_subsets, num_players
-
-    def _transform_representation(self, result: np.ndarray[float]) -> dict[int, np.ndarray[float]]:
-        """Transforms the FSI representation into the interaction values representation.
-
-        Args:
-            result: The FSI representation of the interaction values.
-
-        Returns:
-            The interaction values.
-        """
-        result_fsi = self._init_result()
-        fsi_index = 0
-        for interaction in powerset(self.N, min_size=self.min_order, max_size=self.max_order):
-            result_fsi[len(interaction)][interaction] = result[fsi_index]
-            fsi_index += 1
-        return result_fsi
 
 
 if __name__ == "__main__":

@@ -40,12 +40,21 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
         InteractionValues(
             index=SII, order=2, estimated=False, estimation_budget=32,
             values={
-                1: [0.2 0.7 0.7 0.2 0.2]
-                2: [[ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  1.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]]
+                (0,): 0.2,
+                (1,): 0.7,
+                (2,): 0.7,
+                (3,): 0.2,
+                (4,): 0.2,
+                (0, 1): 0,
+                (0, 2): 0,
+                (0, 3): 0,
+                (0, 4): 0,
+                (1, 2): 1.0,
+                (1, 3): 0,
+                (1, 4): 0,
+                (2, 3): 0,
+                (2, 4): 0,
+                (3, 4): 0
             }
         )
     """
@@ -61,7 +70,7 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
         super().__init__(
             n, max_order=max_order, index=index, top_order=top_order, random_state=random_state
         )
-        self._iteration_cost: int = 1
+        self.iteration_cost: int = 1
         self._weights = self._init_discrete_derivative_weights()
 
     def approximate(
@@ -99,19 +108,19 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
 
         # calculate the number of iterations and the last batch size
         n_iterations, last_batch_size = self._calc_iteration_count(
-            n_subsets, batch_size, iteration_cost=self._iteration_cost
+            n_subsets, batch_size, iteration_cost=self.iteration_cost
         )
 
         # main computation loop
-        result_explicit = self._init_result()
-        result_sampled = self._init_result()
-        counts = self._init_result(dtype=int)
+        result_explicit: np.ndarray[float] = self._init_result()
+        result_sampled: np.ndarray[float] = self._init_result()
+        counts: np.ndarray[int] = self._init_result(dtype=int)
         n_evaluated = 0
         for iteration in range(1, n_iterations + 1):
+            # get the batch of subsets and game evals
             batch_size = batch_size if iteration != n_iterations else last_batch_size
             batch_index = batch_size * (iteration - 1)
             batch_subsets = all_subsets[batch_index : batch_index + batch_size]
-
             game_values = game(batch_subsets)
 
             # update the interaction scores by iterating over the subsets in the batch
@@ -127,24 +136,17 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
                     update = (
                         game_eval * self._weights[interaction_size][subset_size, intersection_size]
                     )
+                    interaction_index = self._interaction_lookup[interaction]
                     if subset_is_explicit:
-                        result_explicit[interaction_size][interaction] += update
+                        result_explicit[interaction_index] += update
                     else:
-                        result_sampled[interaction_size][interaction] += update
-                        counts[interaction_size][interaction] += 1
-
+                        result_sampled[interaction_index] += update
+                        counts[interaction_index] += 1
             used_budget += batch_size
 
         # combine explicit and sampled parts
-        result = {}
-        for order in self._order_iterator:
-            result_sampled[order] = np.divide(
-                result_sampled[order],
-                counts[order],
-                out=result_sampled[order],
-                where=counts[order] != 0,
-            )
-            result[order] = result_explicit[order] + result_sampled[order]
+        result_sampled = np.divide(result_sampled, counts, out=result_sampled, where=counts != 0)
+        result = result_explicit + result_sampled
 
         return self._finalize_result(result, budget=used_budget, estimated=estimation_flag)
 
