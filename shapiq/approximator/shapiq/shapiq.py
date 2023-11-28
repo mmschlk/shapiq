@@ -27,8 +27,6 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
         top_order: Whether to approximate only the top order interactions (`True`) or all orders up
             to the specified order (`False`).
         min_order: The minimum order to approximate.
-
-    Properties:
         iteration_cost: The cost of a single iteration of the permutation sampling.
 
     Example:
@@ -240,11 +238,11 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
         """
         # init data structure
         weights = {}
-        for order in range(self.min_order, self.max_order + 1):
+        for order in self._order_iterator:
             weights[order] = np.zeros((self.n + 1, order + 1))
         # fill with values specific to each index
         for t in range(0, self.n + 1):
-            for order in range(self.min_order, self.max_order + 1):
+            for order in self._order_iterator:
                 for k in range(max(0, order + t - self.n), min(order, t) + 1):
                     weights[order][t, k] = (-1) ** (order - k) * self._weight_kernel(t - k, order)
         return weights

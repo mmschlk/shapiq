@@ -23,8 +23,6 @@ class PermutationSamplingSII(Approximator):
         top_order: Whether to approximate only the top order interactions (`True`) or all orders up
             to the specified order (`False`).
         min_order: The minimum order to approximate.
-
-    Properties:
         iteration_cost: The cost of a single iteration of the permutation sampling.
 
     Example:
@@ -63,7 +61,7 @@ class PermutationSamplingSII(Approximator):
         random_state: Optional[int] = None,
     ) -> None:
         super().__init__(n, max_order, "SII", top_order, random_state)
-        self._iteration_cost: int = self._compute_iteration_cost()
+        self.iteration_cost: int = self._compute_iteration_cost()
 
     def _compute_iteration_cost(self) -> int:
         """Computes the cost of performing a single iteration of the permutation sampling given
@@ -102,7 +100,7 @@ class PermutationSamplingSII(Approximator):
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget, batch_size, self._iteration_cost
+            budget, batch_size, self.iteration_cost
         )
 
         # main permutation sampling loop
@@ -114,7 +112,7 @@ class PermutationSamplingSII(Approximator):
             permutations = np.tile(np.arange(self.n), (batch_size, 1))
             self._rng.permuted(permutations, axis=1, out=permutations)
             n_permutations = permutations.shape[0]
-            n_subsets = n_permutations * self._iteration_cost
+            n_subsets = n_permutations * self.iteration_cost
 
             # get all subsets to evaluate per iteration
             subsets = np.zeros(shape=(n_subsets, self.n), dtype=bool)
@@ -148,7 +146,7 @@ class PermutationSamplingSII(Approximator):
                             result[interaction_index] += update
                             subset_index += 1
 
-            used_budget += self._iteration_cost * batch_size
+            used_budget += self.iteration_cost * batch_size
 
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)

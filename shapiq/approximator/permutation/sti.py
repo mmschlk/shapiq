@@ -21,8 +21,6 @@ class PermutationSamplingSTI(Approximator):
         n: The number of players.
         max_order: The interaction order of the approximation.
         min_order: The minimum order to approximate.
-
-    Properties:
         iteration_cost: The cost of a single iteration of the permutation sampling.
 
     Example:
@@ -55,7 +53,7 @@ class PermutationSamplingSTI(Approximator):
 
     def __init__(self, n: int, max_order: int, random_state: Optional[int] = None) -> None:
         super().__init__(n, max_order, index="STI", top_order=False, random_state=random_state)
-        self._iteration_cost: int = self._compute_iteration_cost()
+        self.iteration_cost: int = self._compute_iteration_cost()
 
     def approximate(
         self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: int = 1
@@ -100,7 +98,7 @@ class PermutationSamplingSTI(Approximator):
         if n_iterations == 0:
             warnings.warn(
                 message=f"The budget {budget} is too small to perform a single iteration, which "
-                f"requires {self._iteration_cost + lower_order_cost} evaluations. Consider "
+                f"requires {self.iteration_cost + lower_order_cost} evaluations. Consider "
                 f"increasing the budget.",
                 category=UserWarning,
             )
@@ -115,7 +113,7 @@ class PermutationSamplingSTI(Approximator):
             permutations = np.tile(np.arange(self.n), (batch_size, 1))
             self._rng.permuted(permutations, axis=1, out=permutations)
             n_permutations = permutations.shape[0]
-            n_subsets = n_permutations * self._iteration_cost
+            n_subsets = n_permutations * self.iteration_cost
 
             # get all subsets to evaluate per iteration
             subsets = np.zeros(shape=(n_subsets, self.n), dtype=bool)
@@ -148,7 +146,7 @@ class PermutationSamplingSTI(Approximator):
                         result[interaction_index] += update
                         subset_index += 1
 
-            used_budget += self._iteration_cost * batch_size
+            used_budget += self.iteration_cost * batch_size
 
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)

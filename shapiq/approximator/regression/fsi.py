@@ -21,8 +21,6 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         N: The set of players (starting from 0 to n - 1).
         max_order: The interaction order of the approximation.
         min_order: The minimum order of the approximation. For FSI, min_order is equal to 1.
-
-    Properties:
         iteration_cost: The cost of a single iteration of the regression FSI.
 
     Example:
@@ -62,7 +60,7 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         super().__init__(
             n, max_order=max_order, index="FSI", top_order=False, random_state=random_state
         )
-        self._iteration_cost: int = 1
+        self.iteration_cost: int = 1
 
     def approximate(
         self,
@@ -104,7 +102,7 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
 
         # calculate the number of iterations and the last batch size
         n_iterations, last_batch_size = self._calc_iteration_count(
-            n_subsets, batch_size, iteration_cost=self._iteration_cost
+            n_subsets, batch_size, iteration_cost=self.iteration_cost
         )
 
         # get the fsi representation of the subsets

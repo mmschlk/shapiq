@@ -178,9 +178,8 @@ class Approximator(ABC):
             False, the approximation is performed for all orders up to the specified order.
         min_order: The minimum order of the approximation. If top_order is True, min_order is equal
             to max_order. Otherwise, min_order is equal to 1.
+        iteration_cost: The cost of a single iteration of the approximator.
 
-    Properties:
-        iteration_cost: The cost of a single iteration of the approximation.
     """
 
     @abstractmethod
@@ -213,7 +212,6 @@ class Approximator(ABC):
         }
         self._random_state: Optional[int] = random_state
         self._rng: Optional[np.random.Generator] = np.random.default_rng(seed=self._random_state)
-        self._iteration_cost: Optional[int] = None
 
     @abstractmethod
     def approximate(
@@ -233,20 +231,6 @@ class Approximator(ABC):
             NotImplementedError: If the method is not implemented.
         """
         raise NotImplementedError("The approximate method needs to be implemented.")
-
-    @property
-    def iteration_cost(self) -> int:
-        """Returns the cost of a single iteration of the approximation.
-
-        Returns:
-            The cost of a single iteration.
-        """
-        if self._iteration_cost is None:
-            if hasattr(self, "_compute_iteration_cost"):
-                self._iteration_cost = self._compute_iteration_cost()
-            else:
-                return 1
-        return self._iteration_cost
 
     def _init_result(self, dtype=float) -> np.ndarray:
         """Initializes the result array. The result array is a 1D array of size n_interactions as
