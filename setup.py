@@ -18,36 +18,27 @@ with open(os.path.join(work_directory, NAME, "__version__.py")) as f:
 with io.open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
     long_description = "\n" + f.read()
 
-base_packages = [
-    "shap",
-    "numpy",
-    "scipy"
-]
+base_packages = ["shap", "numpy", "scipy"]
 
-plotting_packages = [
-    "matplotlib",
-    "colour",
-    "networkx"
-]
+plotting_packages = ["matplotlib", "colour", "networkx"]
 
 doc_packages = [
     "sphinx",
     "sphinx-autodoc-typehints",
     "sphinx_rtd_theme",
     "sphinx_toolbox",
-    #"myst_nb",
+    # "myst_nb",
     "nbsphinx",  # for rendering jupyter notebooks
     "pandoc",  # for rendering jupyter notebooks
     "furo",  # theme of the docs
     "sphinx-copybutton",  # easier copy-pasting of code snippets from docs
-    "myst-parser"  # parse md and rst files
+    "myst-parser",  # parse md and rst files
 ]
 
 dev_packages = [
     "build",
     "black",
-    "pytest"
-
+    "pytest" "coverage",
 ]
 
 setuptools.setup(
@@ -62,13 +53,13 @@ setuptools.setup(
     url=URL,
     project_urls={
         "Tracker": "https://github.com/mmschlk/shapiq/issues?q=is%3Aissue+label%3Abug",
-        "Source": "https://github.com/mmschlk/shapiq"
+        "Source": "https://github.com/mmschlk/shapiq",
     },
-    packages=setuptools.find_packages(exclude=('tests', 'examples', 'docs')),
+    packages=setuptools.find_packages(exclude=("tests", "examples", "docs")),
     install_requires=base_packages + plotting_packages,
     extras_require={
         "docs": base_packages + plotting_packages + doc_packages,
-        "dev": base_packages + plotting_packages + doc_packages + dev_packages
+        "dev": base_packages + plotting_packages + doc_packages + dev_packages,
     },
     include_package_data=True,
     license="MIT",
@@ -82,8 +73,8 @@ setuptools.setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11"
+        "Programming Language :: Python :: 3.11",
     ],
     keywords=["python", "machine learning", "shap", "xai", "interaction"],
-    zip_safe=True
+    zip_safe=True,
 )
