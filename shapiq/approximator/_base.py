@@ -7,7 +7,7 @@ from typing import Callable, Optional
 import numpy as np
 from scipy.special import binom
 
-from utils import powerset, split_subsets_budget
+from utils import powerset, split_subsets_budget, get_explicit_subsets
 
 AVAILABLE_INDICES = {"SII", "nSII", "STI", "FSI"}
 
@@ -491,7 +491,7 @@ class ShapleySamplingMixin:
             order=1, n=self.n, budget=budget, sampling_weights=sampling_weights
         )
         # enumerate all explicit subsets
-        explicit_subsets: np.ndarray[bool] = self._get_explicit_subsets(self.n, explicit_sizes)
+        explicit_subsets: np.ndarray[bool] = get_explicit_subsets(self.n, explicit_sizes)
         n_explicit_subsets = explicit_subsets.shape[0]
         all_subsets[:n_explicit_subsets] = explicit_subsets
         n_subsets += n_explicit_subsets
