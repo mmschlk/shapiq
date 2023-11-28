@@ -6,7 +6,7 @@ import numpy as np
 from scipy.special import binom
 
 from approximator._base import Approximator, InteractionValues
-from utils import powerset
+from utils import powerset, get_explicit_subsets
 
 
 class PermutationSamplingSTI(Approximator):
@@ -179,7 +179,7 @@ class PermutationSamplingSTI(Approximator):
         """
         # get all game values on the whole powerset of players up to order max_order - 1
         lower_order_sizes = list(range(0, self.max_order))
-        subsets: np.ndarray[bool] = self._get_explicit_subsets(self.n, lower_order_sizes)
+        subsets: np.ndarray[bool] = get_explicit_subsets(self.n, lower_order_sizes)
         game_values = game(subsets)
         game_values_lookup = {
             tuple(np.where(subsets[index])[0]): float(game_values[index])

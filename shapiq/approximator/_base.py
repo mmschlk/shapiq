@@ -316,26 +316,6 @@ class Approximator(ABC):
             n_iterations += 1
         return n_iterations, last_batch_size
 
-    @staticmethod
-    def _get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
-        """Enumerates all subsets of the given sizes and returns a one-hot matrix.
-
-        Args:
-            n: number of players.
-            subset_sizes: list of subset sizes.
-
-        Returns:
-            one-hot matrix of all subsets of certain sizes.
-        """
-        total_subsets = int(sum(binom(n, size) for size in subset_sizes))
-        subset_matrix = np.zeros(shape=(total_subsets, n), dtype=bool)
-        subset_index = 0
-        for subset_size in subset_sizes:
-            for subset in itertools.combinations(range(n), subset_size):
-                subset_matrix[subset_index, subset] = True
-                subset_index += 1
-        return subset_matrix
-
     def __repr__(self) -> str:
         """Returns the representation of the Approximator object."""
         return (

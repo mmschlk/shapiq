@@ -11,6 +11,7 @@ __all__ = [
     "powerset",
     "pair_subset_sizes",
     "split_subsets_budget",
+    "get_explicit_subsets",
 ]
 
 
@@ -141,3 +142,42 @@ def split_subsets_budget(
             incomplete_subsets.remove(unpaired_subset)
             budget -= subset_budget
     return complete_subsets, incomplete_subsets, budget
+
+
+def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
+    """Enumerates all subsets of the given sizes and returns a one-hot matrix.
+
+    Args:
+        n: number of players.
+        subset_sizes: list of subset sizes.
+
+    Returns:
+        one-hot matrix of all subsets of certain sizes.
+
+    Examples:
+        >>> get_explicit_subsets(n=4, subset_sizes=[1, 2]).astype(int)
+        array([[1, 0, 0, 0],
+               [0, 1, 0, 0],
+               [0, 0, 1, 0],
+               [0, 0, 0, 1],
+               [1, 1, 0, 0],
+               [1, 0, 1, 0],
+               [1, 0, 0, 1],
+               [0, 1, 1, 0],
+               [0, 1, 0, 1],
+               [0, 0, 1, 1]])
+    """
+    total_subsets = int(sum(binom(n, size) for size in subset_sizes))
+    subset_matrix = np.zeros(shape=(total_subsets, n), dtype=bool)
+    subset_index = 0
+    for subset_size in subset_sizes:
+        for subset in combinations(range(n), subset_size):
+            subset_matrix[subset_index, subset] = True
+            subset_index += 1
+    return subset_matrix
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()
