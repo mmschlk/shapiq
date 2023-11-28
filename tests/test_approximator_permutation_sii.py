@@ -58,3 +58,8 @@ def test_approximate(n, max_order, top_order, budget, batch_size):
 
     # for order 2 the interaction between player 1 and 2 is the most important
     assert sii_estimates[(1, 2)] == pytest.approx(1.0, 0.2)
+
+    # check efficiency
+    if not top_order:
+        efficiency = np.sum(sii_estimates.values[:n])
+        assert efficiency == pytest.approx(2.0, 0.01)
