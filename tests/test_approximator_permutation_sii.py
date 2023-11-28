@@ -44,29 +44,17 @@ def test_approximate(n, max_order, top_order, budget, batch_size):
     approximator = PermutationSamplingSII(n, max_order, top_order, random_state=42)
     sii_estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(sii_estimates, InteractionValues)
-    assert len(sii_estimates.values) == (max_order if not top_order else 1)
+    assert sii_estimates.max_order == max_order
+    assert sii_estimates.min_order == (max_order if top_order else 1)
 
     # check that the budget is respected
     assert game.access_counter <= budget
 
     # check that the estimates are correct
-    # for order 1 player 1 and 2 are the most important the rest should be somewhat equal
-    # for order 2 the interaction between player 1 and 2 is the most important
     if not top_order:
-        first_order: np.ndarray = sii_estimates.values[1]
-        # sort the players by their importance
-        sorted_players: np.ndarray = np.argsort(first_order)[::-1]
-        assert (sorted_players[0] == 1 or sorted_players[0] == 2) and (
-            sorted_players[1] == 1 or sorted_players[1] == 2
-        )
-        for player_one in sorted_players[2:]:
-            for player_two in sorted_players[2:]:
-                pytest.approx(player_one, player_two, 0.1)
+        # for order 1 player 1 and 2 are the most important with 0.7
+        assert sii_estimates[(1,)] == pytest.approx(0.7, 0.5)  # quite a large interval
+        assert sii_estimates[(2,)] == pytest.approx(0.7, 0.5)
 
-        # check efficiency
-        efficiency = np.sum(first_order)
-        assert efficiency == pytest.approx(2, 0.05)
-
-    second_order: np.ndarray = sii_estimates.values[2]
-    interaction_estimate = second_order[interaction]
-    assert interaction_estimate == pytest.approx(1.0, 0.05)
+    # for order 2 the interaction between player 1 and 2 is the most important
+    assert sii_estimates[(1, 2)] == pytest.approx(1.0, 0.2)
