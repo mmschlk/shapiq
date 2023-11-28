@@ -65,7 +65,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
 
     # check equality
     interaction_values_copy = copy(interaction_values)
-    interaction_values_deepcopy = copy(interaction_values)
+    interaction_values_deepcopy = deepcopy(interaction_values)
     assert interaction_values == interaction_values_copy
     assert interaction_values == interaction_values_deepcopy
     assert interaction_values != interaction_values_2
