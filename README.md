@@ -3,18 +3,26 @@
 </p>
 
 <p align="center">
+  <!-- Tests -->
+  <a href="https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml">
+    <img src="https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml/badge.svg" alt="unit-tests">
+  </a>
+  
   <!-- Read the Docs -->
   <a href='https://shapiq.readthedocs.io/en/latest/?badge=latest'>
       <img src='https://readthedocs.org/projects/shapiq/badge/?version=latest' alt='Documentation Status' />
   </a>
+  
   <!-- PyPI Version -->
   <a href="https://pypi.org/project/shapiq">
     <img src="https://img.shields.io/pypi/v/shapiq.svg?color=blue" alt="PyPi">
   </a>
+  
   <!-- PyPI status -->
   <a href="https://pypi.org/project/shapiq">
     <img src="https://img.shields.io/pypi/status/shapiq.svg?color=blue" alt="PyPi_status
   </a>
+      
   <!-- License -->
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-brightgreen.svg" alt="mit_license">
