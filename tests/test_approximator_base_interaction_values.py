@@ -84,3 +84,4 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values[(0,)] == interaction_values.values[0]
     assert interaction_values[(1,)] == interaction_values.values[1]
     assert interaction_values[(0, 1)] == interaction_values.values[n]  # first 2nd order is at n
+    assert interaction_values[(1, 0)] == interaction_values.values[n]  # order does not matter

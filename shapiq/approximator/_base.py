@@ -85,6 +85,7 @@ class InteractionValues:
         Returns:
             The interaction value.
         """
+        item = tuple(sorted(item))
         return float(self.values[self.interaction_lookup[item]])
 
     def __eq__(self, other: object) -> bool:
