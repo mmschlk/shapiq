@@ -23,6 +23,11 @@
     <img src="https://img.shields.io/pypi/status/shapiq.svg?color=blue" alt="PyPi_status
   </a>
       
+  <!-- PePy -->
+  <a href="https://pepy.tech/project/shapiq">
+    <img src="https://static.pepy.tech/badge/shapiq?style=flat-square" alt="pepy">
+  </a>
+      
   <!-- License -->
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-brightgreen.svg" alt="mit_license">
