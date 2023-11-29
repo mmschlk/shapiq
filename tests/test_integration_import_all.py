@@ -6,12 +6,12 @@ import pkgutil
 import sys
 import pytest
 
-import approximator
-import explainer
-import games
 import shapiq
-import utils
-import plot
+import approximator as approximator
+import explainer as explainer
+import games as games
+import utils as utils
+import plot as plot
 
 
 @pytest.mark.parametrize(
@@ -62,3 +62,5 @@ def test_approximator_imports():
     )
 
     from shapiq import ShapIQ, PermutationSamplingSII, PermutationSamplingSTI, RegressionFSI
+
+    assert True

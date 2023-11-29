@@ -1,0 +1,3 @@
+[run]
+source = shapiq
+omit = *tests* *venv*

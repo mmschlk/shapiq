@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from utils.sets import powerset, pair_subset_sizes, split_subsets_budget, get_explicit_subsets
+from utils import powerset, pair_subset_sizes, split_subsets_budget, get_explicit_subsets
 
 
 @pytest.mark.parametrize(
