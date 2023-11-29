@@ -6,7 +6,7 @@ import numpy as np
 from scipy.special import binom
 
 from approximator._base import Approximator, InteractionValues
-from utils import powerset
+from utils import powerset, get_explicit_subsets
 
 
 class PermutationSamplingSTI(Approximator):
@@ -21,8 +21,6 @@ class PermutationSamplingSTI(Approximator):
         n: The number of players.
         max_order: The interaction order of the approximation.
         min_order: The minimum order to approximate.
-
-    Properties:
         iteration_cost: The cost of a single iteration of the permutation sampling.
 
     Example:
@@ -34,19 +32,28 @@ class PermutationSamplingSTI(Approximator):
         InteractionValues(
             index=STI, order=2, estimated=True, estimation_budget=165,
             values={
-                1: [0.2 0.2 0.2 0.2 0.2]
-                2: [[ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  1.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]]
+                (0,): 0.2,
+                (1,): 0.2,
+                (2,): 0.2,
+                (3,): 0.2,
+                (4,): 0.2,
+                (0, 1): 0,
+                (0, 2): 0,
+                (0, 3): 0,
+                (0, 4): 0,
+                (1, 2): 1.0,
+                (1, 3): 0,
+                (1, 4): 0,
+                (2, 3): 0,
+                (2, 4): 0,
+                (3, 4): 0
             }
         )
     """
 
     def __init__(self, n: int, max_order: int, random_state: Optional[int] = None) -> None:
         super().__init__(n, max_order, index="STI", top_order=False, random_state=random_state)
-        self._iteration_cost: int = self._compute_iteration_cost()
+        self.iteration_cost: int = self._compute_iteration_cost()
 
     def approximate(
         self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: int = 1
@@ -64,8 +71,8 @@ class PermutationSamplingSTI(Approximator):
         batch_size = 1 if batch_size is None else batch_size
         used_budget = 0
 
-        result = self._init_result()
-        counts = self._init_result(dtype=int)
+        result: np.ndarray[float] = self._init_result()
+        counts: np.ndarray[int] = self._init_result(dtype=int)
 
         # compute all lower order interactions if budget allows it
         lower_order_cost = sum(int(binom(self.n, s)) for s in range(self.min_order, self.max_order))
@@ -80,22 +87,22 @@ class PermutationSamplingSTI(Approximator):
                 f"increasing the budget.",
                 category=UserWarning,
             )
-            return self._finalize_result(result, budget=used_budget)
+            return self._finalize_result(result, budget=used_budget, estimated=True)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget, batch_size, self._iteration_cost
+            budget, batch_size, self.iteration_cost
         )
 
         # warn the user if the budget is too small
         if n_iterations == 0:
             warnings.warn(
                 message=f"The budget {budget} is too small to perform a single iteration, which "
-                f"requires {self._iteration_cost + lower_order_cost} evaluations. Consider "
+                f"requires {self.iteration_cost + lower_order_cost} evaluations. Consider "
                 f"increasing the budget.",
                 category=UserWarning,
             )
-            return self._finalize_result(result, budget=used_budget)
+            return self._finalize_result(result, budget=used_budget, estimated=True)
 
         # main permutation sampling loop
         for iteration in range(1, n_iterations + 1):
@@ -106,7 +113,7 @@ class PermutationSamplingSTI(Approximator):
             permutations = np.tile(np.arange(self.n), (batch_size, 1))
             self._rng.permuted(permutations, axis=1, out=permutations)
             n_permutations = permutations.shape[0]
-            n_subsets = n_permutations * self._iteration_cost
+            n_subsets = n_permutations * self.iteration_cost
 
             # get all subsets to evaluate per iteration
             subsets = np.zeros(shape=(n_subsets, self.n), dtype=bool)
@@ -131,20 +138,20 @@ class PermutationSamplingSTI(Approximator):
             subset_index = 0
             for permutation_id in range(n_permutations):
                 for interaction in powerset(self.N, self.max_order, self.max_order):
-                    counts[self.max_order][interaction] += 1
+                    interaction_index = self._interaction_lookup[interaction]
+                    counts[interaction_index] += 1
                     for L in powerset(interaction):
                         game_value = game_values[subset_index]
                         update = game_value * (-1) ** (self.max_order - len(L))
-                        result[self.max_order][interaction] += update
+                        result[interaction_index] += update
                         subset_index += 1
 
-            used_budget += self._iteration_cost * batch_size
+            used_budget += self.iteration_cost * batch_size
 
         # compute mean of interactions
-        for s in self._order_iterator:
-            result[s] = np.divide(result[s], counts[s], out=result[s], where=counts[s] != 0)
+        result = np.divide(result, counts, out=result, where=counts != 0)
 
-        return self._finalize_result(result, budget=used_budget)
+        return self._finalize_result(result, budget=used_budget, estimated=True)
 
     def _compute_iteration_cost(self) -> int:
         """Computes the cost of performing a single iteration of the permutation sampling given
@@ -157,26 +164,25 @@ class PermutationSamplingSTI(Approximator):
         return iteration_cost
 
     def _compute_lower_order_sti(
-        self, game: Callable[[np.ndarray], np.ndarray], result: dict[int, np.ndarray]
-    ) -> dict[int, np.ndarray]:
+        self, game: Callable[[np.ndarray], np.ndarray], result: np.ndarray[float]
+    ) -> np.ndarray[float]:
         """Computes all lower order interactions for the STI index up to order max_order - 1.
 
         Args:
             game: The game function as a callable that takes a set of players and returns the value.
-            result: The result dictionary.
+            result: The result array.
 
         Returns:
-            The result dictionary.
+            The result array.
         """
         # get all game values on the whole powerset of players up to order max_order - 1
         lower_order_sizes = list(range(0, self.max_order))
-        subsets: np.ndarray[bool] = self._get_explicit_subsets(self.n, lower_order_sizes)
+        subsets: np.ndarray[bool] = get_explicit_subsets(self.n, lower_order_sizes)
         game_values = game(subsets)
         game_values_lookup = {
             tuple(np.where(subsets[index])[0]): float(game_values[index])
             for index in range(subsets.shape[0])
         }
-
         # compute the discrete derivatives of all subsets
         for subset in powerset(self.N, min_size=1, max_size=self.max_order - 1):  # S
             subset_size = len(subset)  # |S|
@@ -184,7 +190,8 @@ class PermutationSamplingSTI(Approximator):
                 subset_part_size = len(subset_part)  # |L|
                 game_value = game_values_lookup[subset_part]  # \nu(L)
                 update = (-1) ** (subset_size - subset_part_size) * game_value
-                result[subset_size][subset] += update
+                interaction_index = self._interaction_lookup[subset]
+                result[interaction_index] += update
         return result
 
 

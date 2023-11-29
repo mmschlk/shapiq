@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from utils.sets import powerset, pair_subset_sizes, split_subsets_budget
+from utils.sets import powerset, pair_subset_sizes, split_subsets_budget, get_explicit_subsets
 
 
 @pytest.mark.parametrize(
@@ -50,3 +50,26 @@ def test_split_subsets_budget(budget, order, n, q, expected):
         split_subsets_budget(order=order, n=n, budget=budget, sampling_weights=sampling_weights)
         == expected
     )
+
+
+@pytest.mark.parametrize(
+    "n, subset_sizes, expected",
+    [
+        (3, [1, 2], [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2)]),
+        (3, [1, 2, 3], [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)]),
+    ],
+)
+def test_get_explicit_subsets(n, subset_sizes, expected):
+    """Tests the get_explicit_subsets function."""
+
+    def check_correctness(subsets, expected):
+        assert len(subsets) == len(expected)
+        expected_array = np.zeros((len(expected), n), dtype=bool)
+        for i, subset in enumerate(expected):
+            expected_array[i, subset] = True
+        assert np.all(subsets == expected_array)
+
+    explicit_subsets = get_explicit_subsets(n, subset_sizes)  # without parameter names
+    check_correctness(explicit_subsets, expected)
+    explicit_subsets = get_explicit_subsets(n=n, subset_sizes=subset_sizes)  # with parameter names
+    check_correctness(explicit_subsets, expected)

@@ -21,8 +21,6 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         N: The set of players (starting from 0 to n - 1).
         max_order: The interaction order of the approximation.
         min_order: The minimum order of the approximation. For FSI, min_order is equal to 1.
-
-    Properties:
         iteration_cost: The cost of a single iteration of the regression FSI.
 
     Example:
@@ -34,12 +32,21 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         InteractionValues(
             index=FSI, order=2, estimated=False, estimation_budget=32,
             values={
-                1: [0.2 0.2 0.2 0.2 0.2]
-                2: [[ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  1.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]
-                    [ 0.  0.  0.  0.  0.]]
+                (0,): 0.2,
+                (1,): 0.2,
+                (2,): 0.2,
+                (3,): 0.2,
+                (4,): 0.2,
+                (0, 1): 0,
+                (0, 2): 0,
+                (0, 3): 0,
+                (0, 4): 0,
+                (1, 2): 1.0,
+                (1, 3): 0,
+                (1, 4): 0,
+                (2, 3): 0,
+                (2, 4): 0,
+                (3, 4): 0
             }
         )
     """
@@ -53,7 +60,7 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         super().__init__(
             n, max_order=max_order, index="FSI", top_order=False, random_state=random_state
         )
-        self._iteration_cost: int = 1
+        self.iteration_cost: int = 1
 
     def approximate(
         self,
@@ -95,7 +102,7 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
 
         # calculate the number of iterations and the last batch size
         n_iterations, last_batch_size = self._calc_iteration_count(
-            n_subsets, batch_size, iteration_cost=self._iteration_cost
+            n_subsets, batch_size, iteration_cost=self.iteration_cost
         )
 
         # get the fsi representation of the subsets
@@ -112,7 +119,7 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
             batch_index = (iteration - 1) * batch_size
 
             # query the game for the batch of subsets
-            batch_subsets = all_subsets[0 : batch_index + batch_size]
+            batch_subsets = all_subsets[batch_index : batch_index + batch_size]
             game_values[batch_index : batch_index + batch_size] = game(batch_subsets)
 
             # compute the FSI values up to now
