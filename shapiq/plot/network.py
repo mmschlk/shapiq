@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from PIL import Image
 
-from ..utils import powerset
+from utils import powerset
 from ._config import RED, BLUE, NEUTRAL
 
 
@@ -31,11 +31,11 @@ def _min_max_normalization(value: float, min_value: float, max_value: float) -> 
 
 
 def _add_weight_to_edges_in_graph(
-        graph: nx.Graph,
-        first_order_values: np.ndarray,
-        second_order_values: np.ndarray,
-        n_features: int,
-        feature_names: list[str]
+    graph: nx.Graph,
+    first_order_values: np.ndarray,
+    second_order_values: np.ndarray,
+    n_features: int,
+    feature_names: list[str],
 ) -> None:
     """Adds the weights to the edges in the graph."""
 
@@ -51,11 +51,11 @@ def _add_weight_to_edges_in_graph(
         weight: float = first_order_values[node]
         size = abs(weight) / all_range
         color = _get_color(weight)
-        graph.nodes[node]['node_color'] = color
-        graph.nodes[node]['node_size'] = size * 250
-        graph.nodes[node]['label'] = feature_names[node]
-        graph.nodes[node]['linewidths'] = 1
-        graph.nodes[node]['edgecolors'] = color
+        graph.nodes[node]["node_color"] = color
+        graph.nodes[node]["node_size"] = size * 250
+        graph.nodes[node]["label"] = feature_names[node]
+        graph.nodes[node]["linewidths"] = 1
+        graph.nodes[node]["edgecolors"] = color
 
     for edge in powerset(range(n_features), min_size=2, max_size=2):
         weight: float = second_order_values[edge]
@@ -63,14 +63,14 @@ def _add_weight_to_edges_in_graph(
         # scale weight between min and max edge value
         size = abs(weight) / all_range
         graph_edge = graph.get_edge_data(*edge)
-        graph_edge['width'] = size * (size_scaler + 1)
-        graph_edge['color'] = color
+        graph_edge["width"] = size * (size_scaler + 1)
+        graph_edge["color"] = color
 
 
 def _add_legend_to_axis(axis: plt.Axes) -> None:
     """Adds a legend for order 1 (nodes) and order 2 (edges) interactions to the axis."""
-    sizes = [1., 0.2, 0.2, 1]
-    labels = ['high pos.', 'low pos.', 'low neg.', 'high neg.']
+    sizes = [1.0, 0.2, 0.2, 1]
+    labels = ["high pos.", "low pos.", "low neg.", "high neg."]
     alphas_line = [0.5, 0.2, 0.2, 0.5]
 
     # order 1 (circles)
@@ -81,14 +81,24 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
             color = RED.hex
         else:
             color = BLUE.hex
-        circle = axis.plot([], [], c=color, marker='o', markersize=size * 8, linestyle='None')
+        circle = axis.plot([], [], c=color, marker="o", markersize=size * 8, linestyle="None")
         plot_circles.append(circle[0])
 
     legend1 = plt.legend(
-        plot_circles, labels,
-        frameon=True, framealpha=0.5, facecolor='white', title=r"$\bf{Order\ 1}$",
-        fontsize=7, labelspacing=0.5, handletextpad=0.5, borderpad=0.5, handlelength=1.5,
-        bbox_to_anchor=(1.12, 1.1), title_fontsize=7, loc='upper right'
+        plot_circles,
+        labels,
+        frameon=True,
+        framealpha=0.5,
+        facecolor="white",
+        title=r"$\bf{Order\ 1}$",
+        fontsize=7,
+        labelspacing=0.5,
+        handletextpad=0.5,
+        borderpad=0.5,
+        handlelength=1.5,
+        bbox_to_anchor=(1.12, 1.1),
+        title_fontsize=7,
+        loc="upper right",
     )
 
     # order 2 (lines)
@@ -104,10 +114,20 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
         plot_lines.append(line[0])
 
     legend2 = plt.legend(
-        plot_lines, labels,
-        frameon=True, framealpha=0.5, facecolor='white', title=r"$\bf{Order\ 2}$",
-        fontsize=7, labelspacing=0.5, handletextpad=0.5, borderpad=0.5, handlelength=1.5,
-        bbox_to_anchor=(1.12, 0.92), title_fontsize=7, loc='upper right'
+        plot_lines,
+        labels,
+        frameon=True,
+        framealpha=0.5,
+        facecolor="white",
+        title=r"$\bf{Order\ 2}$",
+        fontsize=7,
+        labelspacing=0.5,
+        handletextpad=0.5,
+        borderpad=0.5,
+        handlelength=1.5,
+        bbox_to_anchor=(1.12, 0.92),
+        title_fontsize=7,
+        loc="upper right",
     )
 
     axis.add_artist(legend1)
@@ -115,14 +135,14 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
 
 
 def network_plot(
-        first_order_values: np.ndarray[float],
-        second_order_values: np.ndarray[float],
-        *,
-        feature_names: Optional[list[Any]] = None,
-        feature_image_patches: Optional[dict[int, Image.Image]] = None,
-        feature_image_patches_size: Optional[Union[float, dict[int, float]]] = 0.2,
-        center_image: Optional[Image.Image] = None,
-        center_image_size: Optional[float] = 0.6,
+    first_order_values: np.ndarray[float],
+    second_order_values: np.ndarray[float],
+    *,
+    feature_names: Optional[list[Any]] = None,
+    feature_image_patches: Optional[dict[int, Image.Image]] = None,
+    feature_image_patches_size: Optional[Union[float, dict[int, float]]] = 0.2,
+    center_image: Optional[Image.Image] = None,
+    center_image_size: Optional[float] = 0.6,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Draws the interaction network.
 
@@ -171,17 +191,17 @@ def network_plot(
         first_order_values=first_order_values,
         second_order_values=second_order_values,
         n_features=n_features,
-        feature_names=feature_names
+        feature_names=feature_names,
     )
 
     # get node and edge attributes
-    node_colors = nx.get_node_attributes(graph, 'node_color').values()
-    node_sizes = list(nx.get_node_attributes(graph, 'node_size').values())
-    node_labels = nx.get_node_attributes(graph, 'label')
-    node_line_widths = list(nx.get_node_attributes(graph, 'linewidths').values())
-    node_edge_colors = list(nx.get_node_attributes(graph, 'edgecolors').values())
-    edge_colors = nx.get_edge_attributes(graph, 'color').values()
-    edge_widths = list(nx.get_edge_attributes(graph, 'width').values())
+    node_colors = nx.get_node_attributes(graph, "node_color").values()
+    node_sizes = list(nx.get_node_attributes(graph, "node_size").values())
+    node_labels = nx.get_node_attributes(graph, "label")
+    node_line_widths = list(nx.get_node_attributes(graph, "linewidths").values())
+    node_edge_colors = list(nx.get_node_attributes(graph, "edgecolors").values())
+    edge_colors = nx.get_edge_attributes(graph, "color").values()
+    edge_widths = list(nx.get_edge_attributes(graph, "width").values())
 
     # turn edge widths into a list of alpha hues floats from 0.25 to 0.9 depending on the max value
     max_width = max(edge_widths)
@@ -191,12 +211,17 @@ def network_plot(
     pos = nx.circular_layout(graph)
     nx.draw_networkx_edges(graph, pos, width=edge_widths, edge_color=edge_colors, alpha=edge_alphas)
     nx.draw_networkx_nodes(
-        graph, pos, node_color=node_colors, node_size=node_sizes, linewidths=node_line_widths,
-        edgecolors=node_edge_colors)
+        graph,
+        pos,
+        node_color=node_colors,
+        node_size=node_sizes,
+        linewidths=node_line_widths,
+        edgecolors=node_edge_colors,
+    )
 
     # add the labels or image patches to the nodes
     for node, (x, y) in pos.items():
-        size = graph.nodes[node]['linewidths']
+        size = graph.nodes[node]["linewidths"]
         label = node_labels[node]
         radius = 1.15 + size / 300
         theta = np.arctan2(x, y)
@@ -209,7 +234,7 @@ def network_plot(
         y = radius * np.sin(theta)
 
         if feature_image_patches is None:
-            axis.text(x, y, label, horizontalalignment='center', verticalalignment='center')
+            axis.text(x, y, label, horizontalalignment="center", verticalalignment="center")
         else:  # draw the image instead of the text
             image = feature_image_patches[node]
             patch_size = feature_image_patches_size
@@ -229,10 +254,7 @@ def network_plot(
 
 
 def _add_center_image(
-        axis: plt.Axes,
-        center_image: Image.Image,
-        center_image_size: float,
-        n_features: int
+    axis: plt.Axes, center_image: Image.Image, center_image_size: float, n_features: int
 ):
     """Adds the center image to the axis."""
     # plot the center image
