@@ -21,10 +21,4 @@ repos:
         name: ruff
         language: python
         types: [python]
-        entry: ruff  --fix
-
-      - id: mypy
-        name: mypy
-        language: python
-        types: [python]
-        entry: mypy --implicit-optional
+        entry: ruff

@@ -1,9 +1,9 @@
 """This module contains the shapiq estimator."""
 import math
-from typing import Optional, Callable
-import numpy as np
+from typing import Callable, Optional
 
-from approximator._base import Approximator, ShapleySamplingMixin, InteractionValues
+import numpy as np
+from approximator._base import Approximator, InteractionValues, ShapleySamplingMixin
 from utils import powerset
 
 AVAILABLE_INDICES_SHAPIQ = {"SII, STI, FSI, nSII"}

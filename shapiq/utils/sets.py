@@ -1,11 +1,11 @@
 """This module contains utility functions for dealing with sets, coalitions and game theory."""
 import copy
+from collections.abc import Iterable
 from itertools import chain, combinations
-from typing import Iterable, Any, Optional
+from typing import Any, Optional
 
 import numpy as np
 from scipy.special import binom
-
 
 __all__ = [
     "powerset",

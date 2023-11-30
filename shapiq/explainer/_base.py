@@ -1,7 +1,7 @@
 """This module contains the base explainer classes for the shapiq package."""
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any
-import warnings
 
 
 class Explainer(ABC):

@@ -1,10 +1,9 @@
 """This module contains the regression algorithms to estimate FSI scores."""
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import numpy as np
+from approximator._base import Approximator, InteractionValues, ShapleySamplingMixin
 from scipy.special import binom
-
-from approximator._base import Approximator, ShapleySamplingMixin, InteractionValues
 from utils import powerset
 
 

@@ -2,7 +2,6 @@
 
 import numpy as np
 
-
 __all__ = [
     "get_parent_array",
     "get_conditional_sample_weights",
@@ -10,8 +9,7 @@ __all__ = [
 
 
 def get_parent_array(
-        children_left: np.ndarray[int],
-        children_right: np.ndarray[int]
+    children_left: np.ndarray[int], children_right: np.ndarray[int]
 ) -> np.ndarray[int]:
     """Combines the left and right children of a tree to a parent array. The parent of the root
     node is -1.
@@ -31,8 +29,8 @@ def get_parent_array(
 
 
 def get_conditional_sample_weights(
-        sample_count: np.ndarray[int],
-        parent_array: np.ndarray[int],
+    sample_count: np.ndarray[int],
+    parent_array: np.ndarray[int],
 ) -> np.ndarray[float]:
     """Get the conditional sample weights for a tree at each decision node.
 

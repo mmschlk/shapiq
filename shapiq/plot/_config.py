@@ -13,7 +13,6 @@ __all__ = [
 
 
 if __name__ == "__main__":
-
     red = [round(c * 255, 0) for c in RED.rgb]
     blue = [round(c * 255, 0) for c in BLUE.rgb]
     neutral = [round(c * 255, 0) for c in NEUTRAL.rgb]

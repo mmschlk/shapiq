@@ -6,8 +6,7 @@ from typing import Callable, Optional
 
 import numpy as np
 from scipy.special import binom
-
-from utils import powerset, split_subsets_budget, get_explicit_subsets
+from utils import get_explicit_subsets, powerset, split_subsets_budget
 
 AVAILABLE_INDICES = {"SII", "nSII", "STI", "FSI"}
 
@@ -58,7 +57,7 @@ class InteractionValues:
 
     def __repr__(self) -> str:
         """Returns the representation of the InteractionValues object."""
-        representation = f"InteractionValues(\n"
+        representation = "InteractionValues(\n"
         representation += (
             f"    index={self.index}, max_order={self.max_order}, min_order={self.min_order}"
             f", estimated={self.estimated}, estimation_budget={self.estimation_budget},\n"

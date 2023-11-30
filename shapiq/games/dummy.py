@@ -29,10 +29,7 @@ class DummyGame:
         self.interaction: tuple = tuple(sorted(interaction))
         self.access_counter = 0
 
-    def __call__(
-            self,
-            coalition: np.ndarray
-    ) -> np.ndarray[float]:
+    def __call__(self, coalition: np.ndarray) -> np.ndarray[float]:
         """Returns the size of the coalition divided by the number of players plus the interaction
         term.
 
@@ -74,9 +71,9 @@ class DummyGame:
         return DummyGame(n=self.n, interaction=self.interaction)
 
     def __getstate__(self):
-        return {'n': self.n, 'interaction': self.interaction}
+        return {"n": self.n, "interaction": self.interaction}
 
     def __setstate__(self, state):
-        self.n = state['n']
-        self.interaction = state['interaction']
+        self.n = state["n"]
+        self.interaction = state["interaction"]
         self.N = set(range(self.n))

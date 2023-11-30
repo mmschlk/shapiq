@@ -1,8 +1,7 @@
 """This module implements the Permutation Sampling approximator for the SII (and nSII) index."""
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import numpy as np
-
 from approximator._base import Approximator, InteractionValues
 from utils import powerset
 

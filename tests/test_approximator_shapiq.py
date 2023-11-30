@@ -1,7 +1,6 @@
 """This test module contains all tests regarding the shapiq approximator."""
 import numpy as np
 import pytest
-
 from approximator._base import InteractionValues
 from approximator.shapiq import ShapIQ
 from games import DummyGame

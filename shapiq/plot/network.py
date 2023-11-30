@@ -7,10 +7,9 @@ import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 from PIL import Image
-
 from utils import powerset
-from ._config import RED, BLUE, NEUTRAL
 
+from ._config import BLUE, RED
 
 __all__ = [
     "network_plot",

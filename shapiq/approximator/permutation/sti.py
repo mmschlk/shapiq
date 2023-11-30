@@ -1,12 +1,11 @@
 """This module contains the permutation sampling algorithms to estimate STI scores."""
-from typing import Callable, Optional
 import warnings
+from typing import Callable, Optional
 
 import numpy as np
-from scipy.special import binom
-
 from approximator._base import Approximator, InteractionValues
-from utils import powerset, get_explicit_subsets
+from scipy.special import binom
+from utils import get_explicit_subsets, powerset
 
 
 class PermutationSamplingSTI(Approximator):

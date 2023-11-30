@@ -14,16 +14,3 @@ select = ["E", "F", "I", "UP"]  # https://beta.ruff.rs/docs/rules/
 line-length = 100
 target-version = 'py39'
 ignore = ["E501"]
-
-[tool.mypy]
-files = "shapiq"
-
-[[tool.mypy.overrides]]
-module = [
-    "shapiq.*",
-    "numpy.*",
-    "sklearn.*",
-    "pytest.*",
-    "scipy.*",
-]
-ignore_missing_imports = true
