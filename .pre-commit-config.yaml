@@ -21,4 +21,4 @@ repos:
         name: ruff
         language: python
         types: [python]
-        entry: ruff
+        entry: ruff --fix

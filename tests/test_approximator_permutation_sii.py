@@ -10,24 +10,30 @@ from games import DummyGame
 
 
 @pytest.mark.parametrize(
-    "n, max_order, top_order, expected",
+    "n, max_order, top_order, index, expected",
     [
-        (3, 1, True, 6),
-        (3, 1, False, 6),
-        (3, 2, True, 8),
-        (3, 2, False, 14),
-        (10, 3, False, 120),
+        (3, 1, True, "SII", 6),
+        (3, 1, False, "SII", 6),
+        (3, 2, True, "SII", 8),
+        (3, 2, False, "SII", 14),
+        (10, 3, False, "SII", 120),
+        (10, 3, False, "nSII", 120),
+        (10, 3, False, "something", 120),  # expected to fail with ValueError
     ],
 )
-def test_initialization(n, max_order, top_order, expected):
+def test_initialization(n, max_order, top_order, index, expected):
     """Tests the initialization of the PermutationSamplingSII approximator."""
-    approximator = PermutationSamplingSII(n, max_order, top_order)
+    if index == "something":
+        with pytest.raises(ValueError):
+            _ = PermutationSamplingSII(n, max_order, index, top_order)
+        return
+    approximator = PermutationSamplingSII(n, max_order, index, top_order)
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order == top_order
     assert approximator.min_order == (max_order if top_order else 1)
     assert approximator.iteration_cost == expected
-    assert approximator.index == "SII"
+    assert approximator.index == index
 
     approximator_copy = copy(approximator)
     approximator_deepcopy = deepcopy(approximator)
@@ -55,7 +61,7 @@ def test_approximate(n, max_order, top_order, budget, batch_size):
     """Tests the approximation of the PermutationSamplingSII approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = PermutationSamplingSII(n, max_order, top_order, random_state=42)
+    approximator = PermutationSamplingSII(n, max_order, "SII", top_order, random_state=42)
     sii_estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(sii_estimates, InteractionValues)
     assert sii_estimates.max_order == max_order
