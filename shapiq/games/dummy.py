@@ -54,26 +54,3 @@ class DummyGame:
 
     def __str__(self):
         return f"DummyGame(n={self.n}, interaction={self.interaction})"
-
-    def __eq__(self, other):
-        return self.n == other.n and self.interaction == other.interaction
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __hash__(self):
-        return hash((self.n, self.interaction))
-
-    def __copy__(self):
-        return DummyGame(n=self.n, interaction=self.interaction)
-
-    def __deepcopy__(self, memo):
-        return DummyGame(n=self.n, interaction=self.interaction)
-
-    def __getstate__(self):
-        return {"n": self.n, "interaction": self.interaction}
-
-    def __setstate__(self, state):
-        self.n = state["n"]
-        self.interaction = state["interaction"]
-        self.N = set(range(self.n))

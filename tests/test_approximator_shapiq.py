@@ -1,4 +1,6 @@
 """This test module contains all tests regarding the shapiq approximator."""
+from copy import copy, deepcopy
+
 import numpy as np
 import pytest
 from approximator._base import InteractionValues
@@ -31,6 +33,20 @@ def test_initialization(n, max_order, index, top_order):
     assert approximator.min_order == (max_order if top_order else 1)
     assert approximator.iteration_cost == 1
     assert approximator.index == index
+
+    approximator_copy = copy(approximator)
+    approximator_deepcopy = deepcopy(approximator)
+    approximator_deepcopy.index = "something"
+    assert approximator_copy == approximator  # check that the copy is equal
+    assert approximator_deepcopy != approximator  # check that the deepcopy is not equal
+    approximator_string = str(approximator)
+    assert repr(approximator) == approximator_string
+    assert hash(approximator) == hash(approximator_copy)
+    assert hash(approximator) != hash(approximator_deepcopy)
+    with pytest.raises(ValueError):
+        _ = approximator == 1
+    with pytest.raises(ValueError):
+        approximator_deepcopy._weight_kernel(3, 2)
 
 
 @pytest.mark.parametrize("n, max_order, budget, batch_size", [(7, 2, 100, None), (7, 2, 100, 10)])

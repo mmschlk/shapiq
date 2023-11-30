@@ -192,9 +192,3 @@ class PermutationSamplingSTI(Approximator):
                 interaction_index = self._interaction_lookup[subset]
                 result[interaction_index] += update
         return result
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

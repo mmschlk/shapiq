@@ -49,6 +49,9 @@ def test_dummy_game(n, interaction, expected):
         x_input[list(coalition)] = True
         assert game(x_input)[0] == expected[coalition]
 
+    string_game = str(game)
+    assert repr(game) == string_game
+
 
 def test_dummy_game_access_counts():
     """Test how often the game was called."""

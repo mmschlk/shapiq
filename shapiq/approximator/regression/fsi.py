@@ -157,9 +157,3 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         ):
             regression_subsets[:, interaction_index] = all_subsets[:, interaction].all(axis=1)
         return regression_subsets, num_players
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

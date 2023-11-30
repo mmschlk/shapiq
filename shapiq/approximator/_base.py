@@ -317,7 +317,7 @@ class Approximator(ABC):
     def __eq__(self, other: object) -> bool:
         """Checks if two Approximator objects are equal."""
         if not isinstance(other, Approximator):
-            raise NotImplementedError("Cannot compare Approximator with other types.")
+            raise ValueError("Cannot compare Approximator with other types.")
         if (
             self.n != other.n
             or self.max_order != other.max_order
@@ -335,26 +335,6 @@ class Approximator(ABC):
     def __hash__(self) -> int:
         """Returns the hash of the Approximator object."""
         return hash((self.n, self.max_order, self.index, self.top_order, self._random_state))
-
-    def __copy__(self) -> "Approximator":
-        """Returns a copy of the Approximator object."""
-        return self.__class__(
-            n=self.n,
-            max_order=self.max_order,
-            index=self.index,
-            top_order=self.top_order,
-            random_state=self._random_state,
-        )
-
-    def __deepcopy__(self, memo) -> "Approximator":
-        """Returns a deep copy of the Approximator object."""
-        return self.__class__(
-            n=self.n,
-            max_order=self.max_order,
-            index=self.index,
-            top_order=self.top_order,
-            random_state=self._random_state,
-        )
 
 
 class ShapleySamplingMixin:

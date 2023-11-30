@@ -246,9 +246,3 @@ class ShapIQ(Approximator, ShapleySamplingMixin):
                 for k in range(max(0, order + t - self.n), min(order, t) + 1):
                     weights[order][t, k] = (-1) ** (order - k) * self._weight_kernel(t - k, order)
         return weights
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

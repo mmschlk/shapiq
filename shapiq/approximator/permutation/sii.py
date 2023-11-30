@@ -151,9 +151,3 @@ class PermutationSamplingSII(Approximator):
         result = np.divide(result, counts, out=result, where=counts != 0)
 
         return self._finalize_result(result, budget=used_budget, estimated=True)
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

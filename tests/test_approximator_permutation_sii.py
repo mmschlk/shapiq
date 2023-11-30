@@ -1,4 +1,6 @@
 """This test module contains all tests regarding the SII permutation sampling approximator."""
+from copy import copy, deepcopy
+
 import numpy as np
 import pytest
 
@@ -26,6 +28,18 @@ def test_initialization(n, max_order, top_order, expected):
     assert approximator.min_order == (max_order if top_order else 1)
     assert approximator.iteration_cost == expected
     assert approximator.index == "SII"
+
+    approximator_copy = copy(approximator)
+    approximator_deepcopy = deepcopy(approximator)
+    approximator_deepcopy.index = "something"
+    assert approximator_copy == approximator  # check that the copy is equal
+    assert approximator_deepcopy != approximator  # check that the deepcopy is not equal
+    approximator_string = str(approximator)
+    assert repr(approximator) == approximator_string
+    assert hash(approximator) == hash(approximator_copy)
+    assert hash(approximator) != hash(approximator_deepcopy)
+    with pytest.raises(ValueError):
+        _ = approximator == 1
 
 
 @pytest.mark.parametrize(
