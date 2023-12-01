@@ -69,7 +69,8 @@ def test_approximate_fsi(n, max_order, budget, batch_size):
 
 
 @pytest.mark.parametrize(
-    "n, max_order, top_order, budget, batch_size", [(7, 2, False, 100, None), (7, 2, True, 100, 10)]
+    "n, max_order, top_order, budget, batch_size",
+    [(7, 2, False, 100, None), (7, 2, True, 100, 10), (7, 2, False, 300, None)],
 )
 def test_approximate_sii(n, max_order, top_order, budget, batch_size):
     """Tests the approximation of the ShapIQ SII approximation."""
@@ -88,9 +89,13 @@ def test_approximate_sii(n, max_order, top_order, budget, batch_size):
     assert estimates[interaction] == pytest.approx(1.0, 0.4)
 
     if not top_order:
-        # for order 1 (min_order) the interaction between player 1 and 2 is the most important (0.7)
-        assert estimates[(1,)] == pytest.approx(0.7, 0.4)
-        assert estimates[(2,)] == pytest.approx(0.7, 0.4)
+        # for order 1 (min_order) the interaction between  1 and 2 is the most important (0.6429)
+        if budget <= 2**n:
+            assert estimates[(1,)] == pytest.approx(0.6429, 0.4)
+            assert estimates[(2,)] == pytest.approx(0.6429, 0.4)
+        else:
+            assert estimates[(1,)] == pytest.approx(0.6429, 0.0001)
+            assert estimates[(2,)] == pytest.approx(0.6429, 0.0001)
 
         # check efficiency
         assert np.sum(estimates.values[:n]) == pytest.approx(2.0, 0.4)
