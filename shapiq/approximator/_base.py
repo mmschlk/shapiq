@@ -206,7 +206,7 @@ class Approximator(ABC):
         self.top_order: bool = top_order
         self.max_order: int = max_order
         self.min_order: int = self.max_order if self.top_order else 1
-        self.iteration_cost: Optional[int] = None
+        self.iteration_cost: int = 1  # default value, can be overwritten by subclasses
         self._interaction_lookup = _generate_interaction_lookup(
             self.n, self.min_order, self.max_order
         )
