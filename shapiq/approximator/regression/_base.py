@@ -1,13 +1,16 @@
-"""This module contains the regression algorithms to estimate FSI scores."""
+"""This module contains the regression algorithms to estimate FSI and SII scores."""
 from typing import Callable, Optional
 
 import numpy as np
 from approximator._base import Approximator, InteractionValues, ShapleySamplingMixin
-from scipy.special import binom
-from utils import powerset
+from scipy.special import binom, bernoulli
+
+from utils import powerset, get_explicit_subsets
+
+AVAILABLE_INDICES_REGRESSION = ["FSI", "SII"]
 
 
-class RegressionFSI(Approximator, ShapleySamplingMixin):
+class Regression(Approximator, ShapleySamplingMixin):
     """Estimates the FSI values using the weighted least square approach.
 
     Args:
@@ -24,9 +27,9 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
 
     Example:
         >>> from games import DummyGame
-        >>> from approximator import RegressionFSI
+        >>> from approximator import Regression
         >>> game = DummyGame(n=5, interaction=(1, 2))
-        >>> approximator = RegressionFSI(n=5, max_order=2)
+        >>> approximator = Regression(n=5, max_order=2)
         >>> approximator.approximate(budget=100, game=game)
         InteractionValues(
             index=FSI, order=2, estimated=False, estimation_budget=32,
@@ -54,12 +57,19 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         self,
         n: int,
         max_order: int,
+        index: str = "FSI",
         random_state: Optional[int] = None,
     ) -> None:
+        if index not in AVAILABLE_INDICES_REGRESSION:
+            raise ValueError(
+                f"Index {index} not available for regression. Choose from "
+                f"{AVAILABLE_INDICES_REGRESSION}."
+            )
         super().__init__(
-            n, max_order=max_order, index="FSI", top_order=False, random_state=random_state
+            n, max_order=max_order, index=index, top_order=False, random_state=random_state
         )
         self.iteration_cost: int = 1
+        self._bernoulli_numbers = bernoulli(self.n)  # used for SII
 
     def approximate(
         self,
@@ -105,12 +115,17 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         )
 
         # get the fsi representation of the subsets
-        regression_subsets, num_players = self._get_fsi_subset_representation(all_subsets)  # S, m
         regression_weights = self._get_ksh_subset_weights(all_subsets)  # W(|S|)
+
+        # if SII is used regression_subsets needs to be changed
+        if self.index == "SII":
+            regression_subsets, num_players = self._get_sii_subset_representation(all_subsets)  # A
+        else:
+            regression_subsets, num_players = self._get_fsi_subset_representation(all_subsets)  # A
 
         # initialize the regression variables
         game_values: np.ndarray[float] = np.zeros(shape=(n_subsets,), dtype=float)  # \nu(S)
-        fsi_values: np.ndarray[float] = np.zeros(shape=(num_players,), dtype=float)
+        result: np.ndarray[float] = np.zeros(shape=(num_players,), dtype=float)
 
         # main regression loop computing the FSI values
         for iteration in range(1, n_iterations + 1):
@@ -129,11 +144,11 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
             Aw = np.dot(W, A)
             Bw = np.dot(W, B)
 
-            fsi_values = np.linalg.lstsq(Aw, Bw, rcond=None)[0]  # \phi_i
+            result = np.linalg.lstsq(Aw, Bw, rcond=None)[0]  # \phi_i
 
             used_budget += batch_size
 
-        return self._finalize_result(fsi_values, budget=used_budget, estimated=estimation_flag)
+        return self._finalize_result(result, budget=used_budget, estimated=estimation_flag)
 
     def _get_fsi_subset_representation(
         self, all_subsets: np.ndarray[bool]
@@ -147,7 +162,8 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
             all_subsets: subset matrix in shape (n_subsets, n).
 
         Returns:
-            FSI representation of the subset matrix in shape (n_subsets, num_players).
+            FSI representation of the subset matrix in shape (n_subsets, num_players) and the number
+            of players.
         """
         n_subsets = all_subsets.shape[0]
         num_players = sum(int(binom(self.n, order)) for order in range(1, self.max_order + 1))
@@ -157,3 +173,62 @@ class RegressionFSI(Approximator, ShapleySamplingMixin):
         ):
             regression_subsets[:, interaction_index] = all_subsets[:, interaction].all(axis=1)
         return regression_subsets, num_players
+
+    def _get_sii_subset_representation(
+        self, all_subsets: np.ndarray[bool]
+    ) -> tuple[np.ndarray[bool], int]:
+        """Transforms a subset matrix into the SII representation.
+
+        The SII representation is a matrix of shape (n_subsets, num_players) where each interaction
+        up to the maximum order is an individual player.
+
+        Args:
+            all_subsets: subset matrix in shape (n_subsets, n).
+
+        Returns:
+            SII representation of the subset matrix in shape (n_subsets, num_players) and the number
+            of players.
+        """
+        n_subsets = all_subsets.shape[0]
+        num_players = sum(int(binom(self.n, order)) for order in range(1, self.max_order + 1))
+        regression_subsets = np.zeros(shape=(n_subsets, num_players), dtype=float)
+        for interaction_index, interaction in enumerate(
+            powerset(self.N, min_size=1, max_size=self.max_order)
+        ):
+            intersection_size = np.sum(all_subsets[:, interaction], axis=1)
+            r_prime = np.full(shape=(n_subsets,), fill_value=len(interaction))
+            weights = self._get_bernoulli_weights(intersection_size, r_prime)
+            regression_subsets[:, interaction_index] = weights
+        return regression_subsets, num_players
+
+    def _get_bernoulli_weight(self, intersection_size: int, r_prime: int) -> float:
+        """Calculates the Bernoulli weights for the SII.
+
+        Args:
+            intersection_size: The orders of the interactions.
+            r_prime: The orders of the interactions.
+
+        Returns:
+            The Bernoulli weights.
+        """
+        weight = 0
+        for l in range(1, intersection_size + 1):
+            weight += binom(intersection_size, l) * self._bernoulli_numbers[r_prime - l]
+        return weight
+
+    def _get_bernoulli_weights(
+        self, intersection_size: np.ndarray[int], r_prime: np.ndarray[int]
+    ) -> np.ndarray[float]:
+        """Calculates the Bernoulli weights for the SII.
+
+        Args:
+            intersection_size: The orders of the interactions.
+            r_prime: The orders of the interactions.
+
+        Returns:
+            The Bernoulli weights.
+        """
+        weights = np.zeros(shape=(intersection_size.shape[0],), dtype=float)
+        for index, (intersection_size_i, r_prime_i) in enumerate(zip(intersection_size, r_prime)):
+            weights[index] = self._get_bernoulli_weight(intersection_size_i, r_prime_i)
+        return weights

@@ -1,5 +1,5 @@
 """This module contains the regression-based approximators to estimate Shapley interaction values.
 """
-from .fsi import RegressionFSI
+from ._base import Regression
 
-__all__ = ["RegressionFSI"]
+__all__ = ["Regression"]
