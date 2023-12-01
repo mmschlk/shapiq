@@ -4,7 +4,13 @@ the well established Shapley value and its generalization to interaction.
 from __version__ import __version__
 
 # approximator classes
-from .approximator import PermutationSamplingSII, PermutationSamplingSTI, RegressionFSI, ShapIQ
+from .approximator import (
+    PermutationSamplingSII,
+    PermutationSamplingSTI,
+    RegressionSII,
+    RegressionFSI,
+    ShapIQ,
+)
 
 # explainer classes
 from .explainer import Explainer
@@ -31,6 +37,7 @@ __all__ = [
     "ShapIQ",
     "PermutationSamplingSII",
     "PermutationSamplingSTI",
+    "RegressionSII",
     "RegressionFSI",
     # explainers
     "Explainer",

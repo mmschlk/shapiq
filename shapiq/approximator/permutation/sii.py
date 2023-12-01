@@ -2,11 +2,11 @@
 from typing import Callable, Optional
 
 import numpy as np
-from approximator._base import Approximator, InteractionValues
+from approximator._base import Approximator, InteractionValues, NShapleyMixin
 from utils import powerset
 
 
-class PermutationSamplingSII(Approximator):
+class PermutationSamplingSII(Approximator, NShapleyMixin):
     """Permutation Sampling approximator for the SII (and nSII) index.
 
     Args:
@@ -56,10 +56,13 @@ class PermutationSamplingSII(Approximator):
         self,
         n: int,
         max_order: int,
+        index: str = "SII",
         top_order: bool = False,
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(n, max_order, "SII", top_order, random_state)
+        if index not in ["SII", "nSII"]:
+            raise ValueError(f"Invalid index {index}. Must be either 'SII' or 'nSII'.")
+        super().__init__(n, max_order, index, top_order, random_state)
         self.iteration_cost: int = self._compute_iteration_cost()
 
     def _compute_iteration_cost(self) -> int:
@@ -149,5 +152,8 @@ class PermutationSamplingSII(Approximator):
 
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
+
+        if self.index == "nSII":
+            result: np.ndarray[float] = self.transforms_sii_to_nsii(result)
 
         return self._finalize_result(result, budget=used_budget, estimated=True)
