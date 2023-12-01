@@ -11,7 +11,7 @@ AVAILABLE_INDICES_REGRESSION = ["FSI", "SII"]
 
 
 class Regression(Approximator, ShapleySamplingMixin):
-    """Estimates the FSI values using the weighted least square approach.
+    """Estimates the InteractionScores values using the weighted least square approach.
 
     Args:
         n: The number of players.
@@ -27,9 +27,9 @@ class Regression(Approximator, ShapleySamplingMixin):
 
     Example:
         >>> from games import DummyGame
-        >>> from approximator import Regression
+        >>> from approximator import RegressionSII
         >>> game = DummyGame(n=5, interaction=(1, 2))
-        >>> approximator = Regression(n=5, max_order=2)
+        >>> approximator = RegressionSII(n=5, max_order=2)
         >>> approximator.approximate(budget=100, game=game)
         InteractionValues(
             index=FSI, order=2, estimated=False, estimation_budget=32,

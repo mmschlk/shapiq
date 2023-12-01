@@ -5,7 +5,8 @@ import numpy as np
 import pytest
 
 from approximator._base import InteractionValues
-from approximator.regression import Regression
+from approximator.regression._base import Regression
+from approximator.regression import RegressionSII
 from games import DummyGame
 
 
@@ -22,7 +23,7 @@ from games import DummyGame
 )
 def test_initialization(n, max_order):
     """Tests the initialization of the Regression approximator for SII."""
-    approximator = Regression(n, max_order, index="SII")
+    approximator = RegressionSII(n, max_order)
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order is False
@@ -52,7 +53,7 @@ def test_approximate(n, max_order, budget, batch_size):
     """Tests the approximation of the Regression approximator for SII."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = Regression(n, max_order, index="SII", random_state=42)
+    approximator = RegressionSII(n, max_order, random_state=42)
     sii_estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(sii_estimates, InteractionValues)
     assert sii_estimates.max_order == max_order
@@ -61,4 +62,18 @@ def test_approximate(n, max_order, budget, batch_size):
     # check that the budget is respected
     assert game.access_counter <= budget + 2
 
-    # TODO check that the estimates are correct
+    # check that the estimates are correct
+    # for order 1 player 1 and 2 are the most important with 0.6429
+    assert sii_estimates[(1,)] == pytest.approx(0.6429, 0.4)  # quite a large interval
+    assert sii_estimates[(2,)] == pytest.approx(0.6429, 0.4)
+
+    # for order 2 the interaction between player 1 and 2 is the most important
+    assert sii_estimates[(1, 2)] == pytest.approx(1.0, 0.2)
+
+    # check efficiency
+    efficiency = np.sum(sii_estimates.values[:n])
+    assert efficiency == pytest.approx(2.0, 0.01)
+
+    # try covert to nSII
+    nsii_estimates = approximator.transforms_sii_to_nsii(sii_estimates)
+    assert nsii_estimates.index == "nSII"

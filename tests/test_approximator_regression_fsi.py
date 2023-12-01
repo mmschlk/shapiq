@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from approximator._base import InteractionValues
-from approximator.regression import Regression
+from approximator.regression import RegressionFSI
 from games import DummyGame
 
 
@@ -22,7 +22,7 @@ from games import DummyGame
 )
 def test_initialization(n, max_order):
     """Tests the initialization of the RegressionFSI approximator."""
-    approximator = Regression(n, max_order, index="FSI")
+    approximator = RegressionFSI(n, max_order)
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order is False
@@ -41,8 +41,6 @@ def test_initialization(n, max_order):
     assert hash(approximator) != hash(approximator_deepcopy)
     with pytest.raises(ValueError):
         _ = approximator == 1
-    with pytest.raises(ValueError):
-        _ = Regression(n, max_order, index="something")
 
 
 @pytest.mark.parametrize(
@@ -52,7 +50,7 @@ def test_approximate(n, max_order, budget, batch_size):
     """Tests the approximation of the RegressionFSI approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = Regression(n, max_order, index="FSI", random_state=42)
+    approximator = RegressionFSI(n, max_order, random_state=42)
     fsi_estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(fsi_estimates, InteractionValues)
     assert fsi_estimates.max_order == max_order
