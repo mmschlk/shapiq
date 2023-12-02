@@ -83,3 +83,23 @@ The pseudo-code above can produce the following plot (here also an image is adde
 
 ## 📖 Documentation
 The documentation for ``shapiq`` can be found [here](https://shapiq.readthedocs.io/en/latest/).
+
+## 💬 Citation
+
+If you **ejnoy** `shapiq` consider starring ⭐ the repository. If you **really enjoy** the package or it has been useful to you, and you would like to cite it in a scientific publication, please refer to the [paper](https://openreview.net/forum?id=IEMLNF4gK4) accepted at NeurIPS'23:
+
+```bibtex
+@article{shapiq,
+  author       = {Fabian Fumagalli and
+                  Maximilian Muschalik and
+                  Patrick Kolpaczki and
+                  Eyke H{\"{u}}llermeier and
+                  Barbara Hammer},
+  title        = {{SHAP-IQ:} Unified Approximation of any-order Shapley Interactions},
+  journal      = {CoRR},
+  volume       = {abs/2303.01179},
+  year         = {2023},
+  doi          = {10.48550/ARXIV.2303.01179},
+  eprinttype    = {arXiv}
+}
+```
