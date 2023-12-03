@@ -7,7 +7,7 @@ from scipy.special import binom, bernoulli
 
 from utils import powerset, get_explicit_subsets
 
-AVAILABLE_INDICES_REGRESSION = ["FSI", "SII"]
+AVAILABLE_INDICES_REGRESSION = ["FSI", "SII", "SV"]
 
 
 class Regression(Approximator, ShapleySamplingMixin):
@@ -120,7 +120,7 @@ class Regression(Approximator, ShapleySamplingMixin):
         # if SII is used regression_subsets needs to be changed
         if self.index == "SII":
             regression_subsets, num_players = self._get_sii_subset_representation(all_subsets)  # A
-        else:
+        else:  # FSI or SV
             regression_subsets, num_players = self._get_fsi_subset_representation(all_subsets)  # A
 
         # initialize the regression variables
