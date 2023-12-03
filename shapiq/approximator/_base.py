@@ -8,7 +8,7 @@ import numpy as np
 from scipy.special import binom, bernoulli
 from utils import get_explicit_subsets, powerset, split_subsets_budget
 
-AVAILABLE_INDICES = {"SII", "nSII", "STI", "FSI"}
+AVAILABLE_INDICES = {"SII", "nSII", "STI", "FSI", "SV"}
 
 
 __all__ = [
@@ -50,10 +50,9 @@ class InteractionValues:
 
     def __post_init__(self) -> None:
         """Checks if the index is valid."""
-        if self.index not in ["SII", "nSII", "STI", "FSI"]:
+        if self.index not in AVAILABLE_INDICES:
             raise ValueError(
-                f"Index {self.index} is not valid. "
-                f"Available indices are 'SII', 'nSII', 'STI', and 'FSI'."
+                f"Index {self.index} is not valid. " f"Available indices are {AVAILABLE_INDICES}."
             )
         if self.interaction_lookup is None:
             self.interaction_lookup = _generate_interaction_lookup(
