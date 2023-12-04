@@ -66,7 +66,9 @@ class InteractionValues:
             f"    index={self.index}, max_order={self.max_order}, min_order={self.min_order}"
             f", estimated={self.estimated}, estimation_budget={self.estimation_budget},\n"
         ) + "    values={\n"
-        for interaction in powerset(set(range(self.n_players)), min_size=1, max_size=2):
+        for interaction in powerset(
+            set(range(self.n_players)), min_size=1, max_size=self.max_order
+        ):
             representation += f"        {interaction}: "
             interaction_value = str(round(self[interaction], 4))
             interaction_value = interaction_value.replace("-0.0", "0.0").replace("0.0", "0")

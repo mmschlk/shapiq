@@ -42,6 +42,27 @@ def test_initialization(n):
 
 @pytest.mark.parametrize("n, budget, batch_size", [(7, 380, 100), (7, 380, None), (7, 100, None)])
 def test_approximate(n, budget, batch_size):
-    """Tests the approximation of the RegressionFSI approximator."""
+    """Tests the approximation of the KernelSHAP approximator."""
 
-    # TODO Change this to KernelSHAP
+    interaction = (1, 2)
+    game = DummyGame(n, interaction)
+
+    approximator = KernelSHAP(n)
+    sv_estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    assert isinstance(sv_estimates, InteractionValues)
+    assert sv_estimates.max_order == 1
+    assert sv_estimates.min_order == 1
+    assert sv_estimates.index == "SV"
+
+    # check that the budget is respected
+    assert game.access_counter <= budget + 2
+
+    # check that the values are in the correct range
+    # check that the estimates are correct
+    # for order 1 player 1 and 2 are the most important with 0.6429
+    assert sv_estimates[(1,)] == pytest.approx(0.6429, 0.1)
+    assert sv_estimates[(2,)] == pytest.approx(0.6429, 0.1)
+
+    # check efficiency
+    efficiency = np.sum(sv_estimates.values)
+    assert efficiency == pytest.approx(2.0, 0.1)
