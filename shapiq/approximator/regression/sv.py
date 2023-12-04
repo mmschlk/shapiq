@@ -4,7 +4,6 @@
 from typing import Optional
 
 from ._base import Regression
-from .._base import NShapleyMixin
 
 
 class KernelSHAP(Regression):
