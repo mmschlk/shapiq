@@ -38,7 +38,7 @@ class MarginalImputer(Imputer):
         model: Callable[[np.ndarray], np.ndarray],
         background_data: np.ndarray,
         x_explain: Optional[np.ndarray] = None,
-        sample_replacements: bool = True,  # TODO: change to False
+        sample_replacements: bool = False,
         sample_size: int = 5,
         categorical_features: list[int] = None,
         random_state: Optional[int] = None,
