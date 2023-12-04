@@ -1,7 +1,8 @@
 """This module contains the explainer for the shapiq package."""
 
-from ._base import Explainer
+
+from .interaction import InteractionExplainer
 
 __all__ = [
-    "Explainer",
+    "InteractionExplainer",
 ]
