@@ -6,7 +6,7 @@ from .._base import NShapleyMixin
 
 
 class RegressionFSI(Regression, NShapleyMixin):
-    """Estimates the FSI values using the weighted least square approach.
+    """Estimates the FSI values [1] using the weighted least square approach.
 
     Args:
         n: The number of players.
@@ -19,6 +19,11 @@ class RegressionFSI(Regression, NShapleyMixin):
         max_order: The interaction order of the approximation.
         min_order: The minimum order of the approximation. For FSI, min_order is equal to 1.
         iteration_cost: The cost of a single iteration of the regression FSI.
+
+    References:
+        [1]:  Tsai, C.-P., Yeh, C.-K., & Ravikumar, P. (2023). Faith-Shap: The Faithful Shapley
+            Interaction Index. J. Mach. Learn. Res., 24, 94:1-94:42. Retrieved from
+            http://jmlr.org/papers/v24/22-0202.html
 
     Example:
         >>> from games import DummyGame
