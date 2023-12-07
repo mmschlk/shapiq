@@ -1,12 +1,13 @@
+"""This module contains the KernelSHAP regression approximator for estimating the SV."""
+
 """Regression with Faithful Shapley Interaction (FSI) index approximation."""
 from typing import Optional
 
 from ._base import Regression
-from .._base import NShapleyMixin
 
 
-class RegressionFSI(Regression, NShapleyMixin):
-    """Estimates the FSI values [1] using the weighted least square approach.
+class KernelSHAP(Regression):
+    """Estimates the FSI values using the weighted least square approach.
 
     Args:
         n: The number of players.
@@ -20,38 +21,23 @@ class RegressionFSI(Regression, NShapleyMixin):
         min_order: The minimum order of the approximation. For FSI, min_order is equal to 1.
         iteration_cost: The cost of a single iteration of the regression FSI.
 
-    References:
-        [1]:  Tsai, C.-P., Yeh, C.-K., & Ravikumar, P. (2023). Faith-Shap: The Faithful Shapley
-            Interaction Index. J. Mach. Learn. Res., 24, 94:1-94:42. Retrieved from
-            http://jmlr.org/papers/v24/22-0202.html
-
     Example:
         >>> from games import DummyGame
-        >>> from approximator import RegressionFSI
+        >>> from approximator import KernelSHAP
         >>> game = DummyGame(n=5, interaction=(1, 2))
-        >>> approximator = RegressionFSI(n=5, max_order=2)
+        >>> approximator = KernelSHAP(n=5)
         >>> approximator.approximate(budget=100, game=game)
         InteractionValues(
-            index=FSI, order=2, estimated=False, estimation_budget=32,
+            index=SV, order=1, estimated=False, estimation_budget=32,
             values={
                 (0,): 0.2,
                 (1,): 0.7,
                 (2,): 0.7,
                 (3,): 0.2,
                 (4,): 0.2,
-                (0, 1): 0,
-                (0, 2): 0,
-                (0, 3): 0,
-                (0, 4): 0,
-                (1, 2): 1.0,
-                (1, 3): 0,
-                (1, 4): 0,
-                (2, 3): 0,
-                (2, 4): 0,
-                (3, 4): 0
             }
         )
     """
 
-    def __init__(self, n: int, max_order: int, random_state: Optional[int] = None):
-        super().__init__(n, max_order, index="FSI", random_state=random_state)
+    def __init__(self, n: int, random_state: Optional[int] = None):
+        super().__init__(n, max_order=1, index="SV", random_state=random_state)

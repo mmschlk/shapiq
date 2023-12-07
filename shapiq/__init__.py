@@ -13,7 +13,7 @@ from .approximator import (
 )
 
 # explainer classes
-from .explainer import Explainer
+from .explainer import InteractionExplainer
 
 # game classes
 from .games import DummyGame
@@ -40,7 +40,7 @@ __all__ = [
     "RegressionSII",
     "RegressionFSI",
     # explainers
-    "Explainer",
+    "InteractionExplainer",
     # games
     "DummyGame",
     # plots

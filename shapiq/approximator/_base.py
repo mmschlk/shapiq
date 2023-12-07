@@ -8,7 +8,7 @@ import numpy as np
 from scipy.special import binom, bernoulli
 from utils import get_explicit_subsets, powerset, split_subsets_budget
 
-AVAILABLE_INDICES = {"SII", "nSII", "STI", "FSI"}
+AVAILABLE_INDICES = {"SII", "nSII", "STI", "FSI", "SV"}
 
 
 __all__ = [
@@ -50,10 +50,9 @@ class InteractionValues:
 
     def __post_init__(self) -> None:
         """Checks if the index is valid."""
-        if self.index not in ["SII", "nSII", "STI", "FSI"]:
+        if self.index not in AVAILABLE_INDICES:
             raise ValueError(
-                f"Index {self.index} is not valid. "
-                f"Available indices are 'SII', 'nSII', 'STI', and 'FSI'."
+                f"Index {self.index} is not valid. " f"Available indices are {AVAILABLE_INDICES}."
             )
         if self.interaction_lookup is None:
             self.interaction_lookup = _generate_interaction_lookup(
@@ -67,10 +66,13 @@ class InteractionValues:
             f"    index={self.index}, max_order={self.max_order}, min_order={self.min_order}"
             f", estimated={self.estimated}, estimation_budget={self.estimation_budget},\n"
         ) + "    values={\n"
-        for interaction in powerset(set(range(self.n_players)), min_size=1, max_size=2):
+        for interaction in powerset(
+            set(range(self.n_players)), min_size=1, max_size=self.max_order
+        ):
             representation += f"        {interaction}: "
             interaction_value = str(round(self[interaction], 4))
-            interaction_value = interaction_value.replace("-0.0", "0.0").replace("0.0", "0")
+            interaction_value = interaction_value.replace("-0.0", "0.0").replace(" 0.0", " 0")
+            interaction_value = interaction_value.replace("0.0 ", "0 ")
             representation += f"{interaction_value},\n"
         representation = representation[:-2]  # remove last "," and add closing bracket
         representation += "\n    }\n)"
