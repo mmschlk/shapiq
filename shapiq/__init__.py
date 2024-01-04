@@ -30,6 +30,8 @@ from .utils import (  # sets.py  # tree.py
     split_subsets_budget,
 )
 
+from .datasets import load_bike
+
 __all__ = [
     # version
     "__version__",
@@ -51,4 +53,6 @@ __all__ = [
     "split_subsets_budget",
     "get_conditional_sample_weights",
     "get_parent_array",
+    # datasets
+    "load_bike",
 ]
