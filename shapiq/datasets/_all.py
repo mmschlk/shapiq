@@ -1,3 +1,4 @@
+"""This module contains functions to load datasets."""
 import os
 import pandas as pd
 
@@ -32,7 +33,3 @@ def load_bike() -> pd.DataFrame:
     data.columns = list(map(str.title, data.columns))
 
     return data
-
-
-if __name__ == "__main__":
-    print(load_bike())

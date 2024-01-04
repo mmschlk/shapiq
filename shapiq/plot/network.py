@@ -131,9 +131,9 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
 
 def network_plot(
     *,
-    interaction_values: InteractionValues,
     first_order_values: np.ndarray[float],
     second_order_values: np.ndarray[float],
+    interaction_values: InteractionValues = None,
     feature_names: Optional[list[Any]] = None,
     feature_image_patches: Optional[dict[int, Image.Image]] = None,
     feature_image_patches_size: Optional[Union[float, dict[int, float]]] = 0.2,
