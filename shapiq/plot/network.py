@@ -7,6 +7,8 @@ import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 from PIL import Image
+
+from approximator._base import InteractionValues
 from utils import powerset
 
 from ._config import BLUE, RED
@@ -21,12 +23,6 @@ def _get_color(value: float) -> str:
     if value >= 0:
         return RED.hex
     return BLUE.hex
-
-
-def _min_max_normalization(value: float, min_value: float, max_value: float) -> float:
-    """Normalizes the value between min and max"""
-    size = (value - min_value) / (max_value - min_value)
-    return size
 
 
 def _add_weight_to_edges_in_graph(
@@ -57,7 +53,7 @@ def _add_weight_to_edges_in_graph(
         graph.nodes[node]["edgecolors"] = color
 
     for edge in powerset(range(n_features), min_size=2, max_size=2):
-        weight: float = second_order_values[edge]
+        weight: float = float(second_order_values[edge])
         color = _get_color(weight)
         # scale weight between min and max edge value
         size = abs(weight) / all_range
@@ -134,9 +130,10 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
 
 
 def network_plot(
+    *,
+    interaction_values: InteractionValues,
     first_order_values: np.ndarray[float],
     second_order_values: np.ndarray[float],
-    *,
     feature_names: Optional[list[Any]] = None,
     feature_image_patches: Optional[dict[int, Image.Image]] = None,
     feature_image_patches_size: Optional[Union[float, dict[int, float]]] = 0.2,
@@ -156,6 +153,7 @@ def network_plot(
         :align: center
 
     Args:
+        interaction_values: The interaction values as an interaction object.
         first_order_values: The first order n-SII values of shape (n_features,).
         second_order_values: The second order n-SII values of shape (n_features, n_features). The
             diagonal values are ignored. Only the upper triangular values are used.

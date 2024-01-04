@@ -4,3 +4,4 @@ matplotlib
 colour
 networkx
 scikit-learn
+pandas

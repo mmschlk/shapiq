@@ -18,7 +18,7 @@ with open(os.path.join(work_directory, NAME, "__version__.py")) as f:
 with io.open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
     long_description = "\n" + f.read()
 
-base_packages = ["numpy", "scipy"]
+base_packages = ["numpy", "scipy", "pandas"]
 
 plotting_packages = ["matplotlib", "colour", "networkx"]
 

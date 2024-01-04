@@ -2,7 +2,6 @@
 
 
 from .interaction import InteractionExplainer
+from .tree import TreeExplainer
 
-__all__ = [
-    "InteractionExplainer",
-]
+__all__ = ["InteractionExplainer", "TreeExplainer"]
