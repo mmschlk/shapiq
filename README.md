@@ -57,7 +57,7 @@ pip install shapiq
 # ⭐ Quickstart
 You can use `shapiq` in different ways. If you have a trained model you can rely on the `shapiq.explainer` classes.
 If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` modules.
-You can also plot and visualize your interaction scores with `shapiq.plot`
+You can also plot and visualize your interaction scores with `shapiq.plot`.
 
 ## 📈 Compute n-SII values
 
