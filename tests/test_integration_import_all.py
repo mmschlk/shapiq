@@ -12,6 +12,7 @@ import explainer as explainer
 import games as games
 import utils as utils
 import plot as plot
+import datasets as datasets
 
 
 @pytest.mark.parametrize(
@@ -23,6 +24,7 @@ import plot as plot
         games,
         utils,
         plot,
+        datasets,
     ],
 )
 def test_import_package(package):
@@ -39,6 +41,7 @@ def test_import_package(package):
         games,
         utils,
         plot,
+        datasets,
     ],
 )
 def test_import_submodules(package):

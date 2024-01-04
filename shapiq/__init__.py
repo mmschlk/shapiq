@@ -28,6 +28,7 @@ from .utils import (  # sets.py  # tree.py
     get_parent_array,
     powerset,
     split_subsets_budget,
+    safe_isinstance,
 )
 
 from .datasets import load_bike
@@ -53,6 +54,7 @@ __all__ = [
     "split_subsets_budget",
     "get_conditional_sample_weights",
     "get_parent_array",
+    "safe_isinstance",
     # datasets
     "load_bike",
 ]
