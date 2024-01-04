@@ -175,9 +175,3 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
             subset_matrix[subset_index, subset] = True
             subset_index += 1
     return subset_matrix
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

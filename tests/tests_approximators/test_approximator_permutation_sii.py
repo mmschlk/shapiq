@@ -72,9 +72,9 @@ def test_approximate(n, max_order, top_order, budget, batch_size):
 
     # check that the estimates are correct
     if not top_order:
-        # for order 1 player 1 and 2 are the most important with 0.7
-        assert sii_estimates[(1,)] == pytest.approx(0.7, 0.5)  # quite a large interval
-        assert sii_estimates[(2,)] == pytest.approx(0.7, 0.5)
+        # for order 1 player 1 and 2 are the most important with 0.6429
+        assert sii_estimates[(1,)] == pytest.approx(0.6429, 0.4)  # quite a large interval
+        assert sii_estimates[(2,)] == pytest.approx(0.6429, 0.4)
 
     # for order 2 the interaction between player 1 and 2 is the most important
     assert sii_estimates[(1, 2)] == pytest.approx(1.0, 0.2)

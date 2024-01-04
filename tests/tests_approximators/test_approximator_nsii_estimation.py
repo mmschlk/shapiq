@@ -2,8 +2,13 @@
 import numpy as np
 import pytest
 
-from approximator import convert_nsii_into_one_dimension, transforms_sii_to_nsii
-from shapiq import DummyGame, PermutationSamplingSII, ShapIQ
+from approximator import (
+    convert_nsii_into_one_dimension,
+    transforms_sii_to_nsii,
+    PermutationSamplingSII,
+    ShapIQ,
+)
+from games import DummyGame
 
 
 @pytest.mark.parametrize(
