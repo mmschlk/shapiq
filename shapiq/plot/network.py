@@ -32,7 +32,18 @@ def _add_weight_to_edges_in_graph(
     n_features: int,
     feature_names: list[str],
 ) -> None:
-    """Adds the weights to the edges in the graph."""
+    """Adds the weights to the edges in the graph.
+
+    Args:
+        graph (nx.Graph): The graph to add the weights to.
+        first_order_values (np.ndarray): The first order n-SII values.
+        second_order_values (np.ndarray): The second order n-SII values.
+        n_features (int): The number of features.
+        feature_names (list[str]): The names of the features.
+
+    Returns:
+        None
+    """
 
     # get min and max value for n_shapley_values
     min_node_value, max_node_value = np.min(first_order_values), np.max(first_order_values)
@@ -63,7 +74,14 @@ def _add_weight_to_edges_in_graph(
 
 
 def _add_legend_to_axis(axis: plt.Axes) -> None:
-    """Adds a legend for order 1 (nodes) and order 2 (edges) interactions to the axis."""
+    """Adds a legend for order 1 (nodes) and order 2 (edges) interactions to the axis.
+
+    Args:
+        axis (plt.Axes): The axis to add the legend to.
+
+    Returns:
+        None
+    """
     sizes = [1.0, 0.2, 0.2, 1]
     labels = ["high pos.", "low pos.", "low neg.", "high neg."]
     alphas_line = [0.5, 0.2, 0.2, 0.5]
@@ -131,9 +149,9 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
 
 def network_plot(
     *,
-    first_order_values: np.ndarray[float],
-    second_order_values: np.ndarray[float],
-    interaction_values: InteractionValues = None,
+    first_order_values: Optional[np.ndarray[float]] = None,
+    second_order_values: Optional[np.ndarray[float]] = None,
+    interaction_values: Optional[InteractionValues] = None,
     feature_names: Optional[list[Any]] = None,
     feature_image_patches: Optional[dict[int, Image.Image]] = None,
     feature_image_patches_size: Optional[Union[float, dict[int, float]]] = 0.2,
