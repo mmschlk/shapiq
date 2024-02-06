@@ -19,7 +19,7 @@ from .explainer import InteractionExplainer
 from .games import DummyGame
 
 # plotting functions
-from .plot import network_plot
+from .plot import network_plot, stacked_bar_plot
 
 # public utils functions
 from .utils import (  # sets.py  # tree.py
@@ -48,6 +48,7 @@ __all__ = [
     "DummyGame",
     # plots
     "network_plot",
+    "stacked_bar_plot",
     # public utils
     "powerset",
     "get_explicit_subsets",
