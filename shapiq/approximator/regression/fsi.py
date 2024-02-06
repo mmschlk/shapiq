@@ -2,10 +2,10 @@
 from typing import Optional
 
 from ._base import Regression
-from .._base import NShapleyMixin
+from ..k_sii import KShapleyMixin
 
 
-class RegressionFSI(Regression, NShapleyMixin):
+class RegressionFSI(Regression, KShapleyMixin):
     """Estimates the FSI values [1] using the weighted least square approach.
 
     Args:

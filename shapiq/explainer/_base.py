@@ -4,7 +4,7 @@ from typing import Callable
 
 import numpy as np
 
-from approximator._base import InteractionValues
+from approximator._interaction_values import InteractionValues
 from explainer.imputer.marginal_imputer import MarginalImputer
 
 

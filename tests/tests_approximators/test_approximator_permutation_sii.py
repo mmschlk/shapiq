@@ -4,7 +4,7 @@ from copy import copy, deepcopy
 import numpy as np
 import pytest
 
-from approximator._base import InteractionValues
+from approximator._interaction_values import InteractionValues
 from approximator.permutation import PermutationSamplingSII
 from games import DummyGame
 
@@ -17,7 +17,7 @@ from games import DummyGame
         (3, 2, True, "SII", 8),
         (3, 2, False, "SII", 14),
         (10, 3, False, "SII", 120),
-        (10, 3, False, "nSII", 120),
+        (10, 3, False, "k-SII", 120),
         (10, 3, False, "something", 120),  # expected to fail with ValueError
     ],
 )

@@ -62,9 +62,9 @@ You can use `shapiq` in different ways. If you have a trained model you can rely
 If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` modules.
 You can also plot and visualize your interaction scores with `shapiq.plot`.
 
-## 📈 Compute n-SII values
+## 📈 Compute k-SII values
 
-Explain your models with Shapley interaction values like the n-SII values:
+Explain your models with Shapley interaction values like the k-SII values:
 
 ```python
 # train a model
@@ -72,19 +72,19 @@ from sklearn.ensemble import RandomForestRegressor
 model = RandomForestRegressor(n_estimators=50, random_state=42)
 model.fit(x_train, y_train)
 
-# explain with nSII interaction scores
+# explain with k-SII interaction scores
 from shapiq import InteractionExplainer
 explainer = InteractionExplainer(
     model=model.predict,
     background_data=x_train,
-    index="nSII",
+    index="k-SII",
     max_order=2
 )
 interaction_values = explainer.explain(x_explain, budget=2000)
 print(interaction_values)
 
 >>> InteractionValues(
->>>    index=nSII, max_order=2, min_order=1, estimated=True, estimation_budget=2000,
+>>>    index=k-SII, max_order=2, min_order=1, estimated=True, estimation_budget=2000,
 >>>    values={
 >>>        (0,): -91.0403,  # main effect for feature 0
 >>>        (1,): 4.1264,    # main effect for feature 1
@@ -110,8 +110,8 @@ attribution scores and interaction scores, respectively.
 from shapiq.plot import network_plot
 
 network_plot(
-    first_order_values=n_sii_first_order,  # first order n-SII values
-    second_order_values=n_sii_second_order # second order n-SII values
+    first_order_values=k_sii_first_order,  # first order k-SII values
+    second_order_values=k_sii_second_order # second order k-SII values
 )
 ```
 

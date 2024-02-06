@@ -3,7 +3,7 @@ from copy import copy, deepcopy
 
 import numpy as np
 import pytest
-from approximator._base import InteractionValues
+from approximator._interaction_values import InteractionValues
 from approximator.shapiq import ShapIQ
 from games import DummyGame
 

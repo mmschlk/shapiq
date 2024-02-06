@@ -4,7 +4,8 @@ from typing import Callable, Union, Optional
 
 import numpy as np
 
-from approximator._base import InteractionValues, Approximator
+from approximator._base import Approximator
+from approximator._interaction_values import InteractionValues
 from ._base import Explainer
 from approximator import (
     RegressionSII,
@@ -19,13 +20,13 @@ __all__ = ["InteractionExplainer"]
 
 
 APPROXIMATOR_CONFIGURATIONS = {
-    "Regression": {"SII": RegressionSII, "FSI": RegressionFSI, "nSII": RegressionSII},
+    "Regression": {"SII": RegressionSII, "FSI": RegressionFSI, "k-SII": RegressionSII},
     "Permutation": {
         "SII": PermutationSamplingSII,
         "STI": PermutationSamplingSTI,
-        "nSII": PermutationSamplingSII,
+        "kSII": PermutationSamplingSII,
     },
-    "ShapIQ": {"SII": ShapIQ, "STI": ShapIQ, "FSI": ShapIQ, "nSII": ShapIQ},
+    "ShapIQ": {"SII": ShapIQ, "STI": ShapIQ, "FSI": ShapIQ, "k-SII": ShapIQ},
 }
 
 AVAILABLE_INDICES = {
@@ -49,8 +50,8 @@ class InteractionExplainer(Explainer):
             automatically choose the approximator based on the number of features and the number of
             samples in the background data.
         index: The Shapley interaction index to use. Must be one of `"SII"` (Shapley Interaction Index),
-        `"nSII"` (n-Shapley Interaction Index), `"STI"` (Shapley-Taylor Interaction Index), or
-        `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"nSII"`.
+        `"kSII"` (n-Shapley Interaction Index), `"STI"` (Shapley-Taylor Interaction Index), or
+        `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"kSII"`.
     """
 
     def __init__(
@@ -58,7 +59,7 @@ class InteractionExplainer(Explainer):
         model: Callable[[np.ndarray], np.ndarray],
         background_data: np.ndarray,
         approximator: Union[str, Approximator] = "auto",
-        index: str = "nSII",
+        index: str = "k-SII",
         max_order: int = 2,
         random_state: Optional[int] = None,
     ) -> None:

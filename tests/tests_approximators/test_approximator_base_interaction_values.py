@@ -4,7 +4,7 @@ from copy import copy, deepcopy
 import numpy as np
 import pytest
 
-from approximator._base import InteractionValues
+from approximator._interaction_values import InteractionValues
 from utils import powerset
 
 
@@ -14,7 +14,7 @@ from utils import powerset
         ("SII", 5, 1, 2, 100, True),
         ("STI", 5, 1, 2, 100, True),
         ("FSI", 5, 1, 2, 100, True),
-        ("nSII", 5, 1, 2, 100, True),
+        ("k-SII", 5, 1, 2, 100, True),
         ("SII", 5, 1, 2, 100, False),
         ("something", 5, 1, 2, 100, False),  # expected to fail with ValueError
     ],

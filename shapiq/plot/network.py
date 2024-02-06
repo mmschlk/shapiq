@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from PIL import Image
 
-from approximator._base import InteractionValues
+from approximator._interaction_values import InteractionValues
 from utils import powerset
 
 from ._config import BLUE, RED, NEUTRAL, LINES

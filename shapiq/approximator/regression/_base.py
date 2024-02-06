@@ -2,7 +2,9 @@
 from typing import Callable, Optional
 
 import numpy as np
-from approximator._base import Approximator, InteractionValues, ShapleySamplingMixin
+from approximator._base import Approximator
+from approximator.sampling import ShapleySamplingMixin
+from approximator._interaction_values import InteractionValues
 from scipy.special import binom, bernoulli
 
 from utils import powerset, get_explicit_subsets

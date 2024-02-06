@@ -3,13 +3,16 @@ import math
 from typing import Callable, Optional
 
 import numpy as np
-from approximator._base import Approximator, InteractionValues, ShapleySamplingMixin, NShapleyMixin
+from approximator._base import Approximator
+from approximator.sampling import ShapleySamplingMixin
+from approximator.k_sii import KShapleyMixin
+from approximator._interaction_values import InteractionValues
 from utils import powerset
 
-AVAILABLE_INDICES_SHAPIQ = {"SII, STI, FSI, nSII"}
+AVAILABLE_INDICES_SHAPIQ = {"SII", "STI", "FSI", "k-SII"}
 
 
-class ShapIQ(Approximator, ShapleySamplingMixin, NShapleyMixin):
+class ShapIQ(Approximator, ShapleySamplingMixin, KShapleyMixin):
     """The ShapIQ estimator.
 
     Args:
@@ -146,8 +149,8 @@ class ShapIQ(Approximator, ShapleySamplingMixin, NShapleyMixin):
         result_sampled = np.divide(result_sampled, counts, out=result_sampled, where=counts != 0)
         result = result_explicit + result_sampled
 
-        if self.index == "nSII":
-            result: np.ndarray[float] = self.transforms_sii_to_nsii(result)
+        if self.index == "k-SII":
+            result: np.ndarray[float] = self.transforms_sii_to_ksii(result)
 
         return self._finalize_result(result, budget=used_budget, estimated=estimation_flag)
 
@@ -224,7 +227,7 @@ class ShapIQ(Approximator, ShapleySamplingMixin, NShapleyMixin):
         Returns:
             float: The weight for the interaction type.
         """
-        if self.index == "SII" or self.index == "nSII":  # in both cases return SII kernel
+        if self.index == "SII" or self.index == "k-SII":  # in both cases return SII kernel
             return self._sii_weight_kernel(subset_size, interaction_size)
         elif self.index == "STI":
             return self._sti_weight_kernel(subset_size, interaction_size)

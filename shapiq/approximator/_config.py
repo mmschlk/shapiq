@@ -1,0 +1,1 @@
+AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "SV"}
