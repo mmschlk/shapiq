@@ -50,8 +50,8 @@ class InteractionExplainer(Explainer):
             automatically choose the approximator based on the number of features and the number of
             samples in the background data.
         index: The Shapley interaction index to use. Must be one of `"SII"` (Shapley Interaction Index),
-        `"kSII"` (n-Shapley Interaction Index), `"STI"` (Shapley-Taylor Interaction Index), or
-        `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"kSII"`.
+        `"k-SII"` (k-Shapley Interaction Index), `"STI"` (Shapley-Taylor Interaction Index), or
+        `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
     """
 
     def __init__(

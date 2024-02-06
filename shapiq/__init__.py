@@ -23,9 +23,7 @@ from .plot import network_plot, stacked_bar_plot
 
 # public utils functions
 from .utils import (  # sets.py  # tree.py
-    get_conditional_sample_weights,
     get_explicit_subsets,
-    get_parent_array,
     powerset,
     split_subsets_budget,
     safe_isinstance,
@@ -53,8 +51,6 @@ __all__ = [
     "powerset",
     "get_explicit_subsets",
     "split_subsets_budget",
-    "get_conditional_sample_weights",
-    "get_parent_array",
     "safe_isinstance",
     # datasets
     "load_bike",
