@@ -1,4 +1,4 @@
-"""This integration test module contains all tests regarding the importability of the package.
+"""This integration test module contains all tests regarding the import-ability of the package.
 (I.e. it checks whether all modules can be imported without errors.)"""
 
 import importlib
@@ -7,12 +7,12 @@ import sys
 import pytest
 
 import shapiq
-import approximator as approximator
-import explainer as explainer
-import games as games
-import utils as utils
-import plot as plot
-import datasets as datasets
+from shapiq import approximator
+from shapiq import explainer
+from shapiq import games
+from shapiq import utils
+from shapiq import plot
+from shapiq import datasets
 
 
 @pytest.mark.parametrize(
