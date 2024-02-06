@@ -5,12 +5,14 @@ __all__ = [
     "RED",
     "BLUE",
     "NEUTRAL",
+    "LINES",
     "COLORS_N_SII",
 ]
 
 RED = Color("#ff0d57")
 BLUE = Color("#1e88e5")
 NEUTRAL = Color("#ffffff")
+LINES = Color("#cccccc")
 
 COLORS_N_SII = [
     "#D81B60",
