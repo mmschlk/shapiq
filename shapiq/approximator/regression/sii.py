@@ -2,10 +2,10 @@
 from typing import Optional
 
 from ._base import Regression
-from .._base import NShapleyMixin
+from ..k_sii import KShapleyMixin
 
 
-class RegressionSII(Regression, NShapleyMixin):
+class RegressionSII(Regression, KShapleyMixin):
     """Estimates the SII values using the weighted least square approach.
 
     Args:

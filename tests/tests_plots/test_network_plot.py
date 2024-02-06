@@ -6,7 +6,7 @@ from PIL import Image
 from scipy.special import binom
 
 from shapiq.plot import network_plot
-from shapiq.approximator._base import InteractionValues
+from approximator._interaction_values import InteractionValues
 
 
 def test_network_plot():
@@ -37,7 +37,7 @@ def test_network_plot():
     n_values = n_players + int(binom(n_players, 2))
     iv = InteractionValues(
         values=np.random.rand(n_values),
-        index="nSII",
+        index="k-SII",
         n_players=n_players,
         min_order=1,
         max_order=2,

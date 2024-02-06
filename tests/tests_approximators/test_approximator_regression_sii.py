@@ -4,7 +4,7 @@ from copy import deepcopy, copy
 import numpy as np
 import pytest
 
-from approximator._base import InteractionValues
+from approximator._interaction_values import InteractionValues
 from approximator.regression._base import Regression
 from approximator.regression import RegressionSII
 from games import DummyGame
@@ -75,5 +75,5 @@ def test_approximate(n, max_order, budget, batch_size):
     assert efficiency == pytest.approx(2.0, 0.01)
 
     # try covert to nSII
-    nsii_estimates = approximator.transforms_sii_to_nsii(sii_estimates)
-    assert nsii_estimates.index == "nSII"
+    nsii_estimates = approximator.transforms_sii_to_ksii(sii_estimates)
+    assert nsii_estimates.index == "k-SII"

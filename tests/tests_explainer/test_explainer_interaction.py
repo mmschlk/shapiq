@@ -35,7 +35,7 @@ def background_data():
     return X
 
 
-INDICES = ["SII", "nSII", "STI", "FSI"]
+INDICES = ["SII", "k-SII", "STI", "FSI"]
 MAX_ORDERS = [2, 3]
 
 
@@ -70,8 +70,8 @@ def test_auto_params(dt_model, background_data):
         model=model_function,
         background_data=background_data,
     )
-    assert explainer.index == "nSII"
-    assert explainer.approximator.index == "nSII"
+    assert explainer.index == "k-SII"
+    assert explainer.approximator.index == "k-SII"
     assert explainer._max_order == 2
     assert explainer._random_state is None
     assert explainer.approximator.__class__.__name__ == "ShapIQ"

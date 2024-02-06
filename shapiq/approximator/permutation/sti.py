@@ -3,7 +3,8 @@ import warnings
 from typing import Callable, Optional
 
 import numpy as np
-from approximator._base import Approximator, InteractionValues
+from approximator._base import Approximator
+from approximator._interaction_values import InteractionValues
 from scipy.special import binom
 from utils import get_explicit_subsets, powerset
 
