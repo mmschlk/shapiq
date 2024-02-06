@@ -43,20 +43,60 @@
 # SHAP-IQ: SHAP Interaction Quantification
 > An interaction may speak more than a thousand main effects.
 
-SHAP Interaction Quantification (short SHAP-IQ) is an **XAI framework** extending on the well-known `shap` explanations by introducing interactions to the equation.
+| :exclamation:  Note: This application is still in alpha and still under active development. :exclamation:|
+|-----------------------------------------|
+
+SHAP Interaction Quantification (short SHAP-IQ) is an **XAI framework** extending on the well-known [`shap`](https://github.com/shap/shap) explanations by introducing interactions to the equation.
 Shapley interactions extend on indivdual Shapley values by quantifying the **synergy** effect between machine learning entities such as features, data points, or weak learners in ensemble models.
 Synergies between these entities (also called players in game theory jargon) allows for a more intricate evaluation of your **black-box** models!
 
 # 🛠️ Install
-**shapiq** is intended to work with **Python 3.9 and above**. Installation can be done via `pip`:
+`shapiq` is intended to work with **Python 3.9 and above**. Installation can be done via `pip`:
 
 ```sh
 pip install shapiq
 ```
 
 # ⭐ Quickstart
+You can use `shapiq` in different ways. If you have a trained model you can rely on the `shapiq.explainer` classes.
+If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` modules.
+You can also plot and visualize your interaction scores with `shapiq.plot`.
 
 ## 📈 Compute n-SII values
+
+Explain your models with Shapley interaction values like the n-SII values:
+
+```python
+# train a model
+from sklearn.ensemble import RandomForestRegressor
+model = RandomForestRegressor(n_estimators=50, random_state=42)
+model.fit(x_train, y_train)
+
+# explain with nSII interaction scores
+from shapiq import InteractionExplainer
+explainer = InteractionExplainer(
+    model=model.predict,
+    background_data=x_train,
+    index="nSII",
+    max_order=2
+)
+interaction_values = explainer.explain(x_explain, budget=2000)
+print(interaction_values)
+
+>>> InteractionValues(
+>>>    index=nSII, max_order=2, min_order=1, estimated=True, estimation_budget=2000,
+>>>    values={
+>>>        (0,): -91.0403,  # main effect for feature 0
+>>>        (1,): 4.1264,    # main effect for feature 1
+>>>        (2,): -0.4724,   # main effect for feature 2
+>>>        ...
+>>>        (0, 1): -0.8073, # 2-way interaction for feature 0 and 1
+>>>        (0, 2): 2.469,   # 2-way interaction for feature 0 and 2
+>>>        ...
+>>>        (10, 11): 0.4057 # 2-way interaction for feature 10 and 11
+>>>    }
+>>> )
+```
 
 ## 📊 Visualize your Interactions
 
