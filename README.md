@@ -37,6 +37,11 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-brightgreen.svg" alt="mit_license">
   </a>
+
+  <!-- Codestyle -->
+  <a href="https://github.com/psf/black">
+    <img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="black_codestyle">
+  </a>
 </p>
 
 
