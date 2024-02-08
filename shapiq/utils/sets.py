@@ -12,6 +12,7 @@ __all__ = [
     "pair_subset_sizes",
     "split_subsets_budget",
     "get_explicit_subsets",
+    "generate_interaction_lookup",
 ]
 
 
@@ -175,3 +176,29 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
             subset_matrix[subset_index, subset] = True
             subset_index += 1
     return subset_matrix
+
+
+def generate_interaction_lookup(n: int, min_order: int, max_order: int) -> dict[tuple[int], int]:
+    """Generates a lookup dictionary for interactions.
+
+    Args:
+        n: The number of players.
+        min_order: The minimum order of the approximation.
+        max_order: The maximum order of the approximation.
+
+    Returns:
+        A dictionary that maps interactions to their index in the values vector.
+
+    Example:
+        >>> generate_interaction_lookup(3, 1, 3)
+        {(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5, (0, 1, 2): 6}
+        >>> generate_interaction_lookup(3, 2, 2)
+        {(0, 1): 0, (0, 2): 1, (1, 2): 2}
+    """
+    interaction_lookup = {
+        interaction: i
+        for i, interaction in enumerate(
+            powerset(set(range(n)), min_size=min_order, max_size=max_order)
+        )
+    }
+    return interaction_lookup

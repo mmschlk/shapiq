@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 
-from approximator._utils import _generate_interaction_lookup
+from utils.sets import generate_interaction_lookup
 from approximator._config import AVAILABLE_INDICES
 from shapiq.utils import powerset
 
@@ -43,7 +43,7 @@ class InteractionValues:
                 f"Index {self.index} is not valid. " f"Available indices are {AVAILABLE_INDICES}."
             )
         if self.interaction_lookup is None:
-            self.interaction_lookup = _generate_interaction_lookup(
+            self.interaction_lookup = generate_interaction_lookup(
                 self.n_players, self.min_order, self.max_order
             )
 

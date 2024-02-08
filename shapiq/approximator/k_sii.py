@@ -5,7 +5,7 @@ import numpy as np
 from scipy.special import bernoulli
 
 from approximator._base import Approximator
-from approximator._utils import _generate_interaction_lookup
+from utils.sets import generate_interaction_lookup
 
 from approximator._interaction_values import InteractionValues
 from shapiq.utils import powerset
@@ -86,7 +86,7 @@ def transforms_sii_to_ksii(
         )
     elif n is not None and max_order is not None:
         if interaction_lookup is None:
-            interaction_lookup = _generate_interaction_lookup(n, 1, max_order)
+            interaction_lookup = generate_interaction_lookup(n, 1, max_order)
         return _calculate_ksii_from_sii(sii_values, n, max_order, interaction_lookup)
     else:
         raise ValueError(

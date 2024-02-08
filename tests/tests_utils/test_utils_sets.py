@@ -2,7 +2,13 @@
 import numpy as np
 import pytest
 
-from utils import powerset, pair_subset_sizes, split_subsets_budget, get_explicit_subsets
+from utils import (
+    powerset,
+    pair_subset_sizes,
+    split_subsets_budget,
+    get_explicit_subsets,
+    generate_interaction_lookup,
+)
 
 
 @pytest.mark.parametrize(
@@ -73,3 +79,18 @@ def test_get_explicit_subsets(n, subset_sizes, expected):
     check_correctness(explicit_subsets, expected)
     explicit_subsets = get_explicit_subsets(n=n, subset_sizes=subset_sizes)  # with parameter names
     check_correctness(explicit_subsets, expected)
+
+
+@pytest.mark.parametrize(
+    "n, min_order, max_order, expected",
+    [
+        (3, 1, 1, {(0,): 0, (1,): 1, (2,): 2}),
+        (3, 2, 2, {(0, 1): 0, (0, 2): 1, (1, 2): 2}),
+        (3, 3, 3, {(0, 1, 2): 0}),
+        (3, 1, 2, {(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5}),
+        (3, 1, 3, {(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5, (0, 1, 2): 6}),
+    ],
+)
+def test_generate_interaction_lookup(n, min_order, max_order, expected):
+    """Tests the generate_interaction_lookup function."""
+    assert generate_interaction_lookup(n, min_order, max_order) == expected
