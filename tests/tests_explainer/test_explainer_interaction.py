@@ -7,7 +7,7 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.datasets import make_regression
 
-from shapiq.explainer import InteractionExplainer
+from shapiq.explainer import TabularExplainer
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ MAX_ORDERS = [2, 3]
 def test_init_params(dt_model, background_data, index, max_order):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
-    explainer = InteractionExplainer(
+    explainer = TabularExplainer(
         model=model_function,
         background_data=background_data,
         random_state=42,
@@ -53,47 +53,47 @@ def test_init_params(dt_model, background_data, index, max_order):
         approximator="auto",
     )
     assert explainer.index == index
-    assert explainer.approximator.index == index
+    assert explainer._approximator.index == index
     assert explainer._max_order == max_order
     assert explainer._random_state == 42
     # test defaults
     if index == "FSI":
-        assert explainer.approximator.__class__.__name__ == "RegressionFSI"
+        assert explainer._approximator.__class__.__name__ == "RegressionFSI"
     else:
-        assert explainer.approximator.__class__.__name__ == "ShapIQ"
+        assert explainer._approximator.__class__.__name__ == "ShapIQ"
 
 
 def test_auto_params(dt_model, background_data):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
-    explainer = InteractionExplainer(
+    explainer = TabularExplainer(
         model=model_function,
         background_data=background_data,
     )
     assert explainer.index == "k-SII"
-    assert explainer.approximator.index == "k-SII"
+    assert explainer._approximator.index == "k-SII"
     assert explainer._max_order == 2
     assert explainer._random_state is None
-    assert explainer.approximator.__class__.__name__ == "ShapIQ"
+    assert explainer._approximator.__class__.__name__ == "ShapIQ"
 
 
 def test_init_params_error(dt_model, background_data):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
     with pytest.raises(ValueError):
-        InteractionExplainer(
+        TabularExplainer(
             model=model_function,
             background_data=background_data,
             index="invalid",
         )
     with pytest.raises(ValueError):
-        InteractionExplainer(
+        TabularExplainer(
             model=model_function,
             background_data=background_data,
             max_order=0,
         )
     with pytest.raises(ValueError):
-        InteractionExplainer(
+        TabularExplainer(
             model=model_function,
             background_data=background_data,
             approximator="invalid",
@@ -109,7 +109,7 @@ BUDGETS = [2**5, 2**8]
 def test_explain(dt_model, background_data, index, budget, max_order):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
-    explainer = InteractionExplainer(
+    explainer = TabularExplainer(
         model=model_function,
         background_data=background_data,
         random_state=42,
