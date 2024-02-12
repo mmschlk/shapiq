@@ -1,13 +1,12 @@
 """This module provides the functionality to transform SII values into k-SII values."""
-from typing import Union, Optional
+from typing import Optional, Union
 
 import numpy as np
+from approximator._base import Approximator
+from approximator._interaction_values import InteractionValues
+from approximator._utils import _generate_interaction_lookup
 from scipy.special import bernoulli
 
-from approximator._base import Approximator
-from approximator._utils import _generate_interaction_lookup
-
-from approximator._interaction_values import InteractionValues
 from shapiq.utils import powerset
 
 
