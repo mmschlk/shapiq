@@ -5,3 +5,4 @@ colour
 networkx
 scikit-learn
 pandas
+ruff
