@@ -1,5 +1,6 @@
 """This module contains the interaction explainer for the shapiq package. This is the main interface
 for users of the shapiq package."""
+
 from typing import Callable, Optional, Union
 
 import numpy as np

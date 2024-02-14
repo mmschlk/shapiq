@@ -1,13 +1,13 @@
 """This module contains the DummyGame class. The DummyGame class is mainly used for testing
 purposes. It returns the size of the coalition divided by the number of players plus an additional
 interaction term."""
+
 from typing import Union
 
 import numpy as np
 
 
 class DummyGame:
-
     """Dummy game for testing purposes. When called, it returns the size of the coalition divided by
     the number of players plus an additional interaction term.
 

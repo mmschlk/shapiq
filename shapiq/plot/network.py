@@ -1,4 +1,5 @@
 """This module contains the network plots for the shapiq package."""
+
 import copy
 import math
 from typing import Any, Optional, Union

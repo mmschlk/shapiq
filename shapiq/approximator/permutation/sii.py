@@ -1,4 +1,5 @@
 """This module implements the Permutation Sampling approximator for the SII (and k-SII) index."""
+
 from typing import Callable, Optional
 
 import numpy as np

@@ -1,4 +1,5 @@
 """This module contains the permutation sampling algorithms to estimate STI scores."""
+
 import warnings
 from typing import Callable, Optional
 

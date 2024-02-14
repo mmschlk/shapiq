@@ -1,4 +1,5 @@
 """Regression with Shapley interaction index (SII) approximation."""
+
 from typing import Optional
 
 from ..k_sii import KShapleyMixin

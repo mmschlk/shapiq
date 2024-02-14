@@ -1,4 +1,5 @@
 """This module contains utility functions for dealing with sets, coalitions and game theory."""
+
 import copy
 from collections.abc import Iterable
 from itertools import chain, combinations

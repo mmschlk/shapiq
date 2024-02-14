@@ -1,4 +1,5 @@
 """This module contains the shapiq estimator."""
+
 import math
 from typing import Callable, Optional
 

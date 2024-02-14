@@ -1,4 +1,5 @@
 """This module contains the base approximator classes for the shapiq package."""
+
 from abc import ABC, abstractmethod
 from typing import Callable, Optional
 

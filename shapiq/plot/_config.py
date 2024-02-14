@@ -1,4 +1,5 @@
 """This module contains the configuration for the shapiq visualizations."""
+
 from colour import Color
 
 __all__ = [

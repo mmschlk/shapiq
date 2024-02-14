@@ -1,4 +1,5 @@
 """This module contains the regression algorithms to estimate FSI and SII scores."""
+
 from typing import Callable, Optional
 
 import numpy as np
