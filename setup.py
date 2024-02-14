@@ -40,6 +40,7 @@ dev_packages = [
     "black",
     "pytest",
     "coverage",
+    "scikit-learn",
 ]
 
 setuptools.setup(
