@@ -1,6 +1,5 @@
-"""This module contains the KernelSHAP regression approximator for estimating the SV."""
-
-"""Regression with Faithful Shapley Interaction (FSI) index approximation."""
+"""This module contains the KernelSHAP regression approximator for estimating the SV.
+Regression with Faithful Shapley Interaction (FSI) index approximation."""
 from typing import Optional
 
 from ._base import Regression

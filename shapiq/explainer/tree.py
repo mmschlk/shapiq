@@ -1,10 +1,8 @@
 """This module contains the TreeSHAP-IQ explainer for computing exact any order Shapley interactions
 for trees and tree ensembles."""
 import numpy as np
-
 from approximator._interaction_values import InteractionValues
 from explainer._base import Explainer
-
 
 __all__ = ["TreeExplainer"]
 

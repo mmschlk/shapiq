@@ -3,10 +3,10 @@ from abc import ABC
 from typing import Union
 
 import numpy as np
+from approximator._base import Approximator
 from scipy.special import binom
 
-from approximator._base import Approximator
-from shapiq.utils import split_subsets_budget, get_explicit_subsets
+from shapiq.utils import get_explicit_subsets, split_subsets_budget
 
 
 class ShapleySamplingMixin(ABC):

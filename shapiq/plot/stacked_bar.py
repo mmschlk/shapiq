@@ -2,7 +2,7 @@
 __all__ = ["stacked_bar_plot"]
 
 from copy import deepcopy
-from typing import Union, Optional
+from typing import Optional, Union
 
 import numpy as np
 from matplotlib import pyplot as plt

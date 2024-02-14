@@ -3,11 +3,10 @@ from typing import Callable, Optional
 
 import numpy as np
 from approximator._base import Approximator
-from approximator.sampling import ShapleySamplingMixin
 from approximator._interaction_values import InteractionValues
-from scipy.special import binom, bernoulli
-
-from utils import powerset, get_explicit_subsets
+from approximator.sampling import ShapleySamplingMixin
+from scipy.special import bernoulli, binom
+from utils import powerset
 
 AVAILABLE_INDICES_REGRESSION = ["FSI", "SII", "SV"]
 
@@ -214,8 +213,8 @@ class Regression(Approximator, ShapleySamplingMixin):
             The Bernoulli weights.
         """
         weight = 0
-        for l in range(1, intersection_size + 1):
-            weight += binom(intersection_size, l) * self._bernoulli_numbers[r_prime - l]
+        for size in range(1, intersection_size + 1):
+            weight += binom(intersection_size, size) * self._bernoulli_numbers[r_prime - size]
         return weight
 
     def _get_bernoulli_weights(
