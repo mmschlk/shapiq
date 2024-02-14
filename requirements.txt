@@ -6,3 +6,4 @@ networkx
 scikit-learn
 pandas
 ruff
+black
