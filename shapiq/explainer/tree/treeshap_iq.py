@@ -1,16 +1,15 @@
 """This module contains the tree explainer implementation."""
 import copy
-from typing import Any, Union
 import warnings
+from math import factorial
+from typing import Any, Union
 
 import numpy as np
-from scipy.special import binom
-
 from approximator._interaction_values import InteractionValues
 from explainer._base import Explainer
-
 from explainer.tree._validate import _validate_model
-from explainer.tree.conversion import TreeModel, EdgeTree, create_edge_tree
+from explainer.tree.conversion import EdgeTree, TreeModel, create_edge_tree
+from scipy.special import binom
 from utils.sets import generate_interaction_lookup, powerset
 
 
@@ -41,6 +40,7 @@ class TreeExplainer(Explainer):
         # TODO init Explainer object
 
         # set parameters
+        self._root_node_id = 0
         self.verbose = verbose
         self._max_order: int = max_order
         self._interaction_type: str = interaction_type
@@ -49,7 +49,7 @@ class TreeExplainer(Explainer):
         validated_model = _validate_model(model)  # the parsed and validated model
         # TODO: add support for other sample weights
         self._tree: TreeModel = copy.deepcopy(validated_model)
-        self._n_nodes: int = len(self._tree.children_left)
+        self._n_nodes: int = self._tree.n_nodes
         self._n_features: int = n_features if n_features is not None else self._tree.n_features
 
         # precompute interaction lookup tables
@@ -76,14 +76,284 @@ class TreeExplainer(Explainer):
             np.sum(self._edge_tree.empty_predictions[self._tree.leaf_mask])
         )
 
-        # TODO: add the interaction value storages
+        # stores the interaction scores up to a given order
+        self.subset_ancestors_store: dict = {}
+        self.D_store: dict = {}
+        self.D_powers_store: dict = {}
+        self.Ns_id_store: dict = {}
+        self.Ns_store: dict = {}
+        self.n_interpolation_size = self._n_features
+        if self._interaction_type in ("SII", "k-SII"):  # SP is of order at most d_max
+            self.n_interpolation_size = min(self._edge_tree.max_depth, self._n_features)
+        self._init_summary_polynomials()
+
+        # stores the nodes that are active in the tree for a given instance (new for each instance)
+        self._activations: np.ndarray[bool] = np.zeros(self._n_nodes, dtype=bool)
 
         # print tree information
         if self.verbose:
             self._print_tree_info()
 
     def explain(self, x_explain: np.ndarray) -> InteractionValues:
-        pass
+        """Computes the Shapley Interaction values for a given instance x and interaction order.
+            This function is the main explanation function of this class.
+
+        Args:
+            x_explain (np.ndarray): Instance to be explained.
+
+        Returns:
+            InteractionValues: The computed Shapley Interaction values.
+        """
+
+        shapley_interaction_values = None  # TODO change
+
+        # compute the Shapley Interaction values
+        interactions = {}
+        for order in range(1, self._max_order + 1):
+            self.shapley_interactions = np.zeros(int(binom(self._n_features, order)), dtype=float)
+            self._prepare_variables_for_order(interaction_order=order)
+            self._compute_shapley_interaction_values(x_explain, order=order, node_id=0)
+            interactions[order] = self.shapley_interactions.copy()
+
+        return shapley_interaction_values
+
+    def _compute_shapley_interaction_values(
+        self,
+        x_explain: np.ndarray,
+        order: int = 1,
+        node_id: int = 0,
+        *,
+        summary_poly_down: np.ndarray[float] = None,
+        summary_poly_up: np.ndarray[float] = None,
+        interaction_poly_down: np.ndarray[float] = None,
+        quotient_poly_down: np.ndarray[float] = None,
+        depth: int = 0,
+    ):
+        # reset activations for new calculations
+        if node_id == 0:
+            self._activations.fill(False)
+
+        # get polynomials if None
+        polynomials = self._get_polynomials(
+            order=order,
+            summary_poly_down=summary_poly_down,
+            summary_poly_up=summary_poly_up,
+            interaction_poly_down=interaction_poly_down,
+            quotient_poly_down=quotient_poly_down,
+        )
+        summary_poly_down, summary_poly_up, interaction_poly_down, quotient_poly_down = polynomials
+
+        # get related nodes (surrounding) nodes
+        left_child = int(self._tree.children_left[node_id])
+        right_child = int(self._tree.children_right[node_id])
+        parent_id = int(self._edge_tree.parents[node_id])
+        ancestor_id = int(self._edge_tree.ancestors[node_id])
+
+        # get feature information
+        feature_id = int(self._tree.features[parent_id])
+        feature_threshold = self._tree.thresholds[node_id]
+        child_edge_feature = self._tree.features[node_id]
+
+        # get height of related nodes
+        current_height = int(self._edge_tree.edge_heights[node_id])
+        left_height = int(self._edge_tree.edge_heights[left_child])
+        right_height = int(self._edge_tree.edge_heights[right_child])
+
+        # get path information
+        is_leaf = bool(self._tree.leaf_mask[node_id])
+        has_ancestor = bool(self._edge_tree.has_ancestors[node_id])
+        activations = self._activations
+
+        # if feature_id > -1:
+        interaction_sets = self.subset_updates_pos[feature_id]
+
+        # if node is not a leaf -> set activations for children nodes accordingly
+        if not is_leaf:
+            if x_explain[child_edge_feature] <= feature_threshold:
+                activations[left_child], activations[right_child] = True, False
+            else:
+                activations[left_child], activations[right_child] = False, True
+
+        # if node is not the root node -> calculate the summary polynomials
+        if node_id != self._root_node_id:
+            # set activations of current node in relation to the ancestor (for setting p_e to zero)
+            if has_ancestor:
+                activations[node_id] &= activations[ancestor_id]
+            # if node is active get the correct p_e value
+            p_e_current = self._edge_tree.p_e_values[node_id] if activations[node_id] else 0.0
+            # update summary polynomial
+            summary_poly_down[depth] = summary_poly_down[depth - 1] * (self.D + p_e_current)
+            # update quotient polynomials
+            quotient_poly_down[depth, :] = quotient_poly_down[depth - 1, :].copy()
+            quotient_poly_down[depth, interaction_sets] = quotient_poly_down[
+                depth, interaction_sets
+            ] * (self.D + p_e_current)
+            # update interaction polynomial
+            interaction_poly_down[depth, :] = interaction_poly_down[depth - 1, :].copy()
+            interaction_poly_down[depth, interaction_sets] = interaction_poly_down[
+                depth, interaction_sets
+            ] * (-self.D + p_e_current)
+            # remove previous polynomial factor if node has ancestors
+            p_e_ancestor = 1.0
+            if has_ancestor:
+                p_e_ancestor = 0.0
+                if activations[ancestor_id]:
+                    p_e_ancestor = self._edge_tree.p_e_values[ancestor_id]
+                summary_poly_down[depth] = summary_poly_down[depth] / (self.D + p_e_ancestor)
+                quotient_poly_down[depth, interaction_sets] = quotient_poly_down[
+                    depth, interaction_sets
+                ] / (self.D + p_e_ancestor)
+                interaction_poly_down[depth, interaction_sets] = interaction_poly_down[
+                    depth, interaction_sets
+                ] / (-self.D + p_e_ancestor)
+
+        # if node is leaf -> add the empty prediction to the summary polynomial and store it
+        if is_leaf:  # recursion base case
+            summary_poly_up[depth] = (
+                summary_poly_up[depth] * self._edge_tree.empty_predictions[node_id]
+            )
+        else:  # not a leaf -> continue recursion
+            # left child
+            self._compute_shapley_interaction_values(
+                x_explain,
+                order=order,
+                node_id=left_child,
+                summary_poly_down=summary_poly_down,
+                summary_poly_up=summary_poly_up,
+                interaction_poly_down=interaction_poly_down,
+                quotient_poly_down=quotient_poly_down,
+                depth=depth + 1,
+            )
+            summary_poly_up[depth] = (
+                summary_poly_up[depth + 1] * self.D_powers[current_height - left_height]
+            )
+            # right child
+            self._compute_shapley_interaction_values(
+                x_explain,
+                order=order,
+                node_id=right_child,
+                summary_poly_down=summary_poly_down,
+                summary_poly_up=summary_poly_up,
+                interaction_poly_down=interaction_poly_down,
+                quotient_poly_down=quotient_poly_down,
+                depth=depth + 1,
+            )
+            summary_poly_up[depth] += (
+                summary_poly_up[depth + 1] * self.D_powers[current_height - right_height]
+            )
+
+        # if node is not the root node -> calculate the Shapley Interaction values for the node
+        if node_id is not self._root_node_id:
+            interactions_seen = interaction_sets[
+                self.interaction_height[node_id][interaction_sets] == order
+            ]
+            if len(interactions_seen) > 0:
+                self.shapley_interactions[interactions_seen] += np.dot(
+                    interaction_poly_down[depth, interactions_seen],
+                    self.Ns_id[self.n_interpolation_size, : self.n_interpolation_size],
+                ) * self._psi(
+                    summary_poly_up[depth, :],
+                    self.D_powers[self._n_features - current_height],
+                    quotient_poly_down[depth, interactions_seen],
+                    self.Ns,
+                    self._n_features - order,
+                )
+            # if node has ancestors -> adjust the Shapley Interaction values for the node
+            ancestor_node_id = self.subset_ancestors[node_id][interaction_sets]  # inter. ancestors
+            if np.mean(ancestor_node_id) > -1:  # if there exist ancestors # TODO why mean?
+                ancestor_node_id_exists = ancestor_node_id > -1
+                interactions_with_ancestor = interaction_sets[ancestor_node_id_exists]
+                cond_interaction_seen = (
+                    self.interaction_height[parent_id][interactions_with_ancestor] == order
+                )
+                interactions_with_ancestor_to_update = interactions_with_ancestor[
+                    cond_interaction_seen
+                ]
+                if len(interactions_with_ancestor_to_update) > 0:
+                    update = np.dot(
+                        interaction_poly_down[depth - 1, interactions_with_ancestor_to_update],
+                        self.Ns_id[self.n_interpolation_size, : self.n_interpolation_size],
+                    )
+                    update *= self._psi(
+                        summary_poly_up[depth],
+                        self.D_powers[self._n_features - current_height],
+                        quotient_poly_down[depth - 1, interactions_with_ancestor_to_update],
+                        self.Ns,
+                        self._n_features - order,
+                    )
+                    self.shapley_interactions[interactions_with_ancestor_to_update] -= update
+
+    @staticmethod
+    def _psi(E, D_power, quotient_poly, Ns, degree):
+        # TODO: add docstring
+        d = degree + 1
+        n = Ns[d, :d]
+        return ((E * D_power / quotient_poly)[:, :d]).dot(n) / d
+
+    def _init_summary_polynomials(self):
+        """Initializes summary polynomial variables. This function is called once during the
+        initialization of the explainer."""
+        for order in range(1, self._max_order + 1):
+            subset_ancestors: dict[int, np.ndarray] = self._precalculate_interaction_ancestors(
+                interaction_order=order, n_features=self._n_features
+            )
+            self.subset_ancestors_store[order] = subset_ancestors
+            self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
+            self.D_powers_store[order] = self._cache(self.D_store[order])
+            if self._interaction_type in ("SII", "k-SII"):
+                self.Ns_store[order] = self._get_N(self.D_store[order])
+            else:
+                self.Ns_store[order] = self._get_N_cii(self.D_store[order], order)
+            self.Ns_id_store[order] = self._get_N_id(self.D_store[order])
+
+    def _get_polynomials(
+        self,
+        order: int,
+        summary_poly_down: np.ndarray[float] = None,
+        summary_poly_up: np.ndarray[float] = None,
+        interaction_poly_down: np.ndarray[float] = None,
+        quotient_poly_down: np.ndarray[float] = None,
+    ):
+        if summary_poly_down is None:
+            summary_poly_down = np.zeros((self._edge_tree.max_depth + 1, self.n_interpolation_size))
+            summary_poly_down[0, :] = 1
+        if summary_poly_up is None:
+            summary_poly_up = np.zeros((self._edge_tree.max_depth + 1, self.n_interpolation_size))
+        if interaction_poly_down is None:
+            interaction_poly_down = np.zeros(
+                (
+                    self._edge_tree.max_depth + 1,
+                    int(binom(self._n_features, order)),
+                    self.n_interpolation_size,
+                )
+            )
+            interaction_poly_down[0, :] = 1
+        if quotient_poly_down is None:
+            quotient_poly_down = np.zeros(
+                (
+                    self._edge_tree.max_depth + 1,
+                    int(binom(self._n_features, order)),
+                    self.n_interpolation_size,
+                )
+            )
+            quotient_poly_down[0, :] = 1
+        return summary_poly_down, summary_poly_up, interaction_poly_down, quotient_poly_down
+
+    def _prepare_variables_for_order(self, interaction_order: int):
+        """Retrieves the precomputed variables for a given interaction order. This function is
+            called before the recursive explanation function is called.
+
+        Args:
+            interaction_order (int): The interaction order for which the storage variables should be
+                loaded.
+        """
+        self.subset_updates_pos = self._interaction_update_positions[interaction_order]
+        self.subset_ancestors = self.subset_ancestors_store[interaction_order]
+        self.D = self.D_store[interaction_order]
+        self.D_powers = self.D_powers_store[interaction_order]
+        self.interaction_height = self._edge_tree.interaction_height_store[interaction_order]
+        self.Ns_id = self.Ns_id_store[interaction_order]
+        self.Ns = self.Ns_store[interaction_order]
 
     def _init_interaction_lookup_tables(self):
         """Initializes the lookup tables for the interaction subsets."""
@@ -183,6 +453,103 @@ class TreeExplainer(Explainer):
             interaction_update_positions[i] = positions
             interaction_updates[i] = subsets
         return interaction_updates, interaction_update_positions
+
+    def _precalculate_interaction_ancestors(self, interaction_order, n_features):
+        """Calculates the position of the ancestors of the interactions for the tree for a given
+        order of interactions."""
+
+        # stores position of interactions
+        counter_interaction = 0
+        subset_ancestors: dict[int, np.ndarray[int]] = {}
+
+        for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
+            subset_ancestors[node_id] = np.full(
+                int(binom(n_features, interaction_order)), -1, dtype=int
+            )
+        for S in powerset(range(n_features), interaction_order, interaction_order):
+            # self.shapley_interactions_lookup[S] = counter_interaction
+            for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
+                subset_ancestor = -1
+                for i in S:
+                    subset_ancestor = max(
+                        subset_ancestor, self._edge_tree.ancestor_nodes[node_id][i]
+                    )
+                subset_ancestors[node_id][counter_interaction] = subset_ancestor
+            counter_interaction += 1
+        return subset_ancestors
+
+    def _get_N(self, interpolated_poly: np.ndarray[float]) -> np.ndarray[float]:
+        # TODO: test/validate docstring
+        """
+        Computes the N matrix for the Shapley interaction values.
+
+        Args:
+            interpolated_poly: The interpolated polynomial. (D in old implementation)
+
+        Returns:
+            The N matrix.
+        """
+        depth = interpolated_poly.shape[0]
+        Ns = np.zeros((depth + 1, depth))
+        for i in range(1, depth + 1):
+            Ns[i, :i] = np.linalg.inv(np.vander(interpolated_poly[:i]).T).dot(
+                1.0 / self._get_norm_weight(i - 1)
+            )
+        return Ns
+
+    def _get_N_cii(self, D, order):
+        depth = D.shape[0]
+        Ns = np.zeros((depth + 1, depth))
+        for i in range(1, depth + 1):
+            Ns[i, :i] = np.linalg.inv(np.vander(D[:i]).T).dot(
+                i * np.array([self._get_subset_weight(j, order) for j in range(i)])
+            )
+        return Ns
+
+    def _get_subset_weight(self, t, order):
+        # TODO: add docstring
+        if self._interaction_type in ("SII", "k-SII"):
+            return 1 / ((self._n_features - order + 1) * binom(self._n_features - order, t))
+        elif self._interaction_type == "STI":
+            return self._max_order / (self._n_features * binom(self._n_features - 1, t))
+        elif self._interaction_type == "FSI":
+            return (
+                factorial(2 * self._max_order - 1)
+                / factorial(self._max_order - 1) ** 2
+                * factorial(self._max_order + t - 1)
+                * factorial(self._n_features - t - 1)
+                / factorial(self._n_features + self._max_order - 1)
+            )
+        elif self._interaction_type == "BZF":
+            return 1 / (2 ** (self._n_features - order))
+        else:
+            raise ValueError("Interaction type not supported")
+
+    @staticmethod
+    def _get_N_id(D):
+        # TODO: add docstring and rename variables
+        depth = D.shape[0]
+        Ns_id = np.zeros((depth + 1, depth))
+        for i in range(1, depth + 1):
+            Ns_id[i, :i] = np.linalg.inv(np.vander(D[:i]).T).dot(np.ones(i))  # TODO remove ()
+        return Ns_id
+
+    @staticmethod
+    def _get_norm_weight(M):
+        # TODO: add docstring and rename variables
+        return np.array([binom(M, i) for i in range(M + 1)])
+
+    @staticmethod
+    def _cache(interpolated_poly: np.ndarray[float]) -> np.ndarray[float]:
+        """Caches the powers of the interpolated polynomial.
+
+        Args:
+            interpolated_poly: The interpolated polynomial. (D in old implementation)
+
+        Returns:
+            The cached powers of the interpolated polynomial.
+        """
+        return np.vander(interpolated_poly + 1).T[::-1]
 
     def _print_tree_info(self) -> None:
         """Prints information about the tree to be explained."""

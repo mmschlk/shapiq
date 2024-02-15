@@ -1,9 +1,8 @@
 """This module contains the base class for tree model conversion."""
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
-
 from explainer.tree.utils import compute_empty_prediction
 
 
@@ -39,6 +38,8 @@ class TreeModel:
     leaf_mask: Optional[np.ndarray[bool]] = None
     n_features: Optional[int] = None
     root_node_id: Optional[int] = None
+    n_nodes: Optional[int] = None
+    nodes: Optional[np.ndarray[int]] = None
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -63,6 +64,12 @@ class TreeModel:
         # setup root node id
         if self.root_node_id is None:
             self.root_node_id = 0
+        # setup number of nodes
+        if self.n_nodes is None:
+            self.n_nodes = len(self.children_left)
+        # setup nodes
+        if self.nodes is None:
+            self.nodes = np.arange(self.n_nodes)
 
 
 @dataclass
