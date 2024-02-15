@@ -1,8 +1,9 @@
 """This module contains functions to plot the n_sii stacked bar charts."""
+
 __all__ = ["stacked_bar_plot"]
 
 from copy import deepcopy
-from typing import Union, Optional
+from typing import Optional, Union
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -124,9 +125,11 @@ def stacked_bar_plot(
 
     # set title and labels if not provided
 
-    axis.set_title(
-        f"n-SII values up to order ${n_sii_max_order}$"
-    ) if title is None else axis.set_title(title)
+    (
+        axis.set_title(f"n-SII values up to order ${n_sii_max_order}$")
+        if title is None
+        else axis.set_title(title)
+    )
 
     axis.set_xlabel("features") if xlabel is None else axis.set_xlabel(xlabel)
     axis.set_ylabel("n-SII values") if ylabel is None else axis.set_ylabel(ylabel)

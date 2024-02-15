@@ -1,4 +1,5 @@
 """This test module contains all tests regarding the shapiq approximator."""
+
 from copy import copy, deepcopy
 
 import numpy as np

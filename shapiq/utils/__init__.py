@@ -1,13 +1,13 @@
 """This module contains utility functions for the shapiq package."""
 
+from .modules import safe_isinstance
 from .sets import (
+    generate_interaction_lookup,
     get_explicit_subsets,
     pair_subset_sizes,
     powerset,
     split_subsets_budget,
-    generate_interaction_lookup,
 )
-from .modules import safe_isinstance
 
 __all__ = [
     # sets

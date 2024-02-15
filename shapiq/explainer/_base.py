@@ -1,9 +1,8 @@
 """This module contains the base explainer classes for the shapiq package."""
+
 from abc import ABC, abstractmethod
 
-
 import numpy as np
-
 from approximator._interaction_values import InteractionValues
 
 

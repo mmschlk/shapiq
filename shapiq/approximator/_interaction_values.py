@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
-
-from utils.sets import generate_interaction_lookup
 from approximator._config import AVAILABLE_INDICES
+from utils.sets import generate_interaction_lookup
+
 from shapiq.utils import powerset
 
 

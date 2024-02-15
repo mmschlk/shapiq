@@ -1,12 +1,13 @@
 """This module contains the shapiq estimator."""
+
 import math
 from typing import Callable, Optional
 
 import numpy as np
 from approximator._base import Approximator
-from approximator.sampling import ShapleySamplingMixin
-from approximator.k_sii import KShapleyMixin
 from approximator._interaction_values import InteractionValues
+from approximator.k_sii import KShapleyMixin
+from approximator.sampling import ShapleySamplingMixin
 from utils import powerset
 
 AVAILABLE_INDICES_SHAPIQ = {"SII", "STI", "FSI", "k-SII"}

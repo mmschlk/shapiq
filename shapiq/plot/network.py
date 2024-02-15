@@ -1,17 +1,17 @@
 """This module contains the network plots for the shapiq package."""
+
 import copy
 import math
 from typing import Any, Optional, Union
 
 import networkx as nx
 import numpy as np
+from approximator._interaction_values import InteractionValues
 from matplotlib import pyplot as plt
 from PIL import Image
-
-from approximator._interaction_values import InteractionValues
 from utils import powerset
 
-from ._config import BLUE, RED, NEUTRAL, LINES
+from ._config import BLUE, LINES, NEUTRAL, RED
 
 __all__ = [
     "network_plot",

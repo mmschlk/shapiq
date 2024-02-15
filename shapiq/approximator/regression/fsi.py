@@ -1,8 +1,9 @@
 """Regression with Faithful Shapley Interaction (FSI) index approximation."""
+
 from typing import Optional
 
-from ._base import Regression
 from ..k_sii import KShapleyMixin
+from ._base import Regression
 
 
 class RegressionFSI(Regression, KShapleyMixin):

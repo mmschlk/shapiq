@@ -1,7 +1,8 @@
 """This module contains functions to load datasets."""
-import os
-import pandas as pd
 
+import os
+
+import pandas as pd
 
 GITHUB_DATA_URL = "https://github.com/mmschlk/shapiq/raw/main/data/"
 

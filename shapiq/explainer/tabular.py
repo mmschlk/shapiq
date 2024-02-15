@@ -1,21 +1,21 @@
 """This module contains the interaction explainer for the shapiq package. This is the main interface
 for users of the shapiq package."""
-from typing import Callable, Union, Optional
+
+from typing import Callable, Optional, Union
 
 import numpy as np
-
-from .imputer import MarginalImputer
-from ._base import Explainer
-from approximator._base import Approximator
-from approximator._interaction_values import InteractionValues
 from approximator import (
-    RegressionSII,
-    RegressionFSI,
     PermutationSamplingSII,
     PermutationSamplingSTI,
+    RegressionFSI,
+    RegressionSII,
     ShapIQ,
 )
+from approximator._base import Approximator
+from approximator._interaction_values import InteractionValues
 
+from ._base import Explainer
+from .imputer import MarginalImputer
 
 __all__ = ["TabularExplainer"]
 

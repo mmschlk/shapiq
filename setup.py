@@ -18,7 +18,7 @@ with open(os.path.join(work_directory, NAME, "__version__.py")) as f:
 with io.open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
     long_description = "\n" + f.read()
 
-base_packages = ["numpy", "scipy", "pandas"]
+base_packages = ["numpy", "scipy", "pandas", "tqdm"]
 
 plotting_packages = ["matplotlib", "colour", "networkx"]
 
@@ -40,6 +40,7 @@ dev_packages = [
     "black",
     "pytest",
     "coverage",
+    "scikit-learn",
 ]
 
 setuptools.setup(
@@ -76,6 +77,15 @@ setuptools.setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
-    keywords=["python", "machine learning", "shap", "xai", "interaction"],
+    keywords=[
+        "python",
+        "machine learning",
+        "shap",
+        "xai",
+        "interaction",
+        "shapley interactions",
+        "shapley values",
+        "feature interaction",
+    ],
     zip_safe=True,
 )

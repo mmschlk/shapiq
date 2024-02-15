@@ -1,4 +1,5 @@
 """Base class for imputers."""
+
 from abc import abstractmethod
 from typing import Callable, Optional
 
