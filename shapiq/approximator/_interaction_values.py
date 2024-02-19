@@ -59,8 +59,6 @@ class InteractionValues:
         ):
             representation += f"        {interaction}: "
             interaction_value = str(round(self[interaction], 4))
-            interaction_value = interaction_value.replace("-0.0", "0.0").replace(" 0.0", " 0")
-            interaction_value = interaction_value.replace("0.0 ", "0 ")
             representation += f"{interaction_value},\n"
         representation = representation[:-2]  # remove last "," and add closing bracket
         representation += "\n    }\n)"

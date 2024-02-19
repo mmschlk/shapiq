@@ -1,9 +1,8 @@
 """This module contains conversion functions for the tree explainer implementation."""
-from typing import Any, Optional, Callable
+from typing import Any, Optional
 
-import numpy as np
+from explainer.tree.conversion import TreeModel, convert_sklearn_tree
 
-from explainer.tree.conversion import convert_sklearn_tree, TreeModel
 from shapiq.utils import safe_isinstance
 
 SUPPORTED_MODELS = {
@@ -25,6 +24,8 @@ def _validate_model(
     Returns:
         The validated model and the model function.
     """
+    if isinstance(model, TreeModel):
+        return model
     if safe_isinstance(model, "sklearn.tree.DecisionTreeRegressor") or safe_isinstance(
         model, "sklearn.tree.DecisionTreeClassifier"
     ):

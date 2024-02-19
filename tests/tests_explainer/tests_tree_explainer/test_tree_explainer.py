@@ -3,15 +3,26 @@ import pytest
 from sklearn.datasets import make_regression
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.explainer import TreeExplainer
+from shapiq.explainer import TreeSHAPIQ
 
 
-def test_init(dt_clf_model):
+def test_init(dt_clf_model, background_clf_data):
     """Test the initialization of the TreeExplainer class."""
-    explainer = TreeExplainer(
+    explainer = TreeSHAPIQ(
         model=dt_clf_model,
-        max_order=2,
+        max_order=1,
+        interaction_type="SII",
+    )
+    x_explain = background_clf_data[0]
+    explanation = explainer.explain(x_explain)
+    print(explanation)
+
+    explainer = TreeSHAPIQ(
+        model=dt_clf_model,
+        max_order=1,
         interaction_type="k-SII",
     )
-    # TODO add more tests
+    x_explain = background_clf_data[0]
+    explanation = explainer.explain(x_explain)
+    print(explanation)
     assert True

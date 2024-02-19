@@ -23,6 +23,12 @@ def get_conditional_sample_weights(
 
     Returns:
         The conditional sample weights of the nodes.
+
+    Examples:
+        >>> parent_array = np.asarray([-1, 0, 1, 1, 0, 4, 4])  # binary tree with depth 2
+        >>> sample_count = np.asarray([100, 70, 50, 20, 30, 15, 15])
+        >>> get_conditional_sample_weights(sample_count, parent_array)
+        >>> [1., 0.7, 0.71428571, 0.28571429, 0.3, 0.5, 0.5]
     """
     conditional_sample_weights = np.zeros_like(sample_count, dtype=float)
     conditional_sample_weights[0] = 1

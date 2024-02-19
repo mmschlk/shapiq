@@ -2,9 +2,8 @@
 The edge representation is used by the TreeSHAP-IQ algorithm to compute the interaction values of a
 tree-based model."""
 import numpy as np
-from scipy.special import binom
-
 from explainer.tree.conversion.base import EdgeTree
+from scipy.special import binom
 
 
 def create_edge_tree(
