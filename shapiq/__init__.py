@@ -15,10 +15,11 @@ from .approximator import (
 from .datasets import load_bike
 
 # explainer classes
-from .explainer import TabularExplainer
+from .explainer import TabularExplainer, TreeExplainer
 
 # game classes
 from .games import DummyGame
+from .interaction_values import InteractionValues
 
 # plotting functions
 from .plot import network_plot, stacked_bar_plot
@@ -34,6 +35,8 @@ from .utils import (  # sets.py  # tree.py
 __all__ = [
     # version
     "__version__",
+    # base
+    "InteractionValues",
     # approximators
     "ShapIQ",
     "PermutationSamplingSII",
@@ -42,6 +45,7 @@ __all__ = [
     "RegressionFSI",
     # explainers
     "TabularExplainer",
+    "TreeExplainer",
     # games
     "DummyGame",
     # plots

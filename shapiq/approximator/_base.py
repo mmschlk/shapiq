@@ -4,9 +4,11 @@ from abc import ABC, abstractmethod
 from typing import Callable, Optional
 
 import numpy as np
-from approximator._config import AVAILABLE_INDICES
-from approximator._interaction_values import InteractionValues
-from utils.sets import generate_interaction_lookup
+from interaction_values import InteractionValues
+
+from shapiq.utils.sets import generate_interaction_lookup
+
+from ._config import AVAILABLE_INDICES
 
 __all__ = [
     "Approximator",

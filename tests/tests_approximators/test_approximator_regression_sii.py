@@ -4,7 +4,7 @@ from copy import deepcopy, copy
 import numpy as np
 import pytest
 
-from approximator._interaction_values import InteractionValues
+from interaction_values import InteractionValues
 from approximator.regression._base import Regression
 from approximator.regression import RegressionSII
 from games import DummyGame

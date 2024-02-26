@@ -3,12 +3,12 @@ implementation."""
 import pytest
 
 from shapiq import safe_isinstance
-from shapiq.explainer.tree._validate import _validate_model
+from shapiq.explainer.tree.validation import _validate_model
 
 
 def test_validate_model(dt_clf_model, dt_reg_model):
     """Test the validation of the model."""
-    class_path_str = ["explainer.tree.conversion.base.TreeModel"]
+    class_path_str = ["explainer.tree.base.TreeModel"]
     # sklearn dt models are supported
     tree_model = _validate_model(dt_clf_model)
     assert safe_isinstance(tree_model, class_path_str)

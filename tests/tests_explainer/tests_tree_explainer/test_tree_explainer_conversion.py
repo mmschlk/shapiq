@@ -1,10 +1,11 @@
 """This test module collects all tests for the conversions of the supported tree models for the
 TreeExplainer class."""
-import copy
 
 import numpy as np
 
-from shapiq.explainer.tree.conversion import TreeModel, convert_sklearn_tree
+from shapiq import safe_isinstance
+from shapiq.explainer.tree.base import TreeModel
+from explainer.tree.conversion.sklearn import convert_sklearn_tree
 
 
 def test_tree_model_init():
@@ -39,21 +40,22 @@ def test_tree_model_init():
 def test_sklean_conversion(dt_reg_model, dt_clf_model):
     """Test the conversion of a scikit-learn decision tree model."""
     # test regression model
+    class_path_str = ["explainer.tree.base.TreeModel"]
     tree_model = convert_sklearn_tree(dt_reg_model)
-    assert isinstance(tree_model, TreeModel)
+    assert safe_isinstance(tree_model, class_path_str)
     assert tree_model.empty_prediction is not None
 
     # test scaling
     tree_model = convert_sklearn_tree(dt_reg_model, scaling=0.5)
-    assert isinstance(tree_model, TreeModel)
+    assert safe_isinstance(tree_model, class_path_str)
     assert tree_model.empty_prediction is not None
 
     # test classification model with class label
     tree_model = convert_sklearn_tree(dt_clf_model, class_label=0)
-    assert isinstance(tree_model, TreeModel)
+    assert safe_isinstance(tree_model, class_path_str)
     assert tree_model.empty_prediction is not None
 
     # test classification model without class label
     tree_model = convert_sklearn_tree(dt_clf_model)
-    assert isinstance(tree_model, TreeModel)
+    assert safe_isinstance(tree_model, class_path_str)
     assert tree_model.empty_prediction is not None

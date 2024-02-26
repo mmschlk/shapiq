@@ -6,7 +6,7 @@ from PIL import Image
 from scipy.special import binom
 
 from shapiq.plot import network_plot
-from approximator._interaction_values import InteractionValues
+from interaction_values import InteractionValues
 
 
 def test_network_plot():

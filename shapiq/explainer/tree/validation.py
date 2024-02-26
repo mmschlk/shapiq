@@ -1,9 +1,10 @@
 """This module contains conversion functions for the tree explainer implementation."""
 from typing import Any, Optional
 
-from explainer.tree.conversion import TreeModel, convert_sklearn_tree
-
 from shapiq.utils import safe_isinstance
+
+from .base import TreeModel
+from .conversion.sklearn import convert_sklearn_tree
 
 SUPPORTED_MODELS = {
     "sklearn.tree.DecisionTreeRegressor",

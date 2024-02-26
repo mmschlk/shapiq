@@ -3,7 +3,7 @@
 import copy
 from collections.abc import Iterable
 from itertools import chain, combinations
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import numpy as np
 from scipy.special import binom
@@ -39,8 +39,11 @@ def powerset(
 
         >>> list(powerset([1, 2, 3], max_size=2))
         [(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3)]
+
+        >>> list(powerset(["A", "B", "C"], min_size=1, max_size=2))
+        [('A',), ('B',), ('C',), ('A', 'B'), ('A', 'C'), ('B', 'C')]
     """
-    s = list(iterable)
+    s = sorted(list(iterable))
     max_size = len(s) if max_size is None else min(max_size, len(s))
     return chain.from_iterable(combinations(s, r) for r in range(max(min_size, 0), max_size + 1))
 
@@ -179,11 +182,13 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
     return subset_matrix
 
 
-def generate_interaction_lookup(n: int, min_order: int, max_order: int) -> dict[tuple[int], int]:
+def generate_interaction_lookup(
+    players: Union[Iterable[Any], int], min_order: Optional[int], max_order: Optional[int]
+) -> dict[tuple[Any], int]:
     """Generates a lookup dictionary for interactions.
 
     Args:
-        n: The number of players.
+        players: A unique set of players or an Integer denoting the number of players.
         min_order: The minimum order of the approximation.
         max_order: The maximum order of the approximation.
 
@@ -195,11 +200,15 @@ def generate_interaction_lookup(n: int, min_order: int, max_order: int) -> dict[
         {(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5, (0, 1, 2): 6}
         >>> generate_interaction_lookup(3, 2, 2)
         {(0, 1): 0, (0, 2): 1, (1, 2): 2}
+        >>> generate_interaction_lookup(["A", "B", "C"], 1, 2)
+        {('A',): 0, ('B',): 1, ('C',): 2, ('A', 'B'): 3, ('A', 'C'): 4, ('B', 'C'): 5}
     """
+    if isinstance(players, int):
+        players = set(range(players))
+    else:
+        players = set(sorted(players))
     interaction_lookup = {
         interaction: i
-        for i, interaction in enumerate(
-            powerset(set(range(n)), min_size=min_order, max_size=max_order)
-        )
+        for i, interaction in enumerate(powerset(players, min_size=min_order, max_size=max_order))
     }
     return interaction_lookup

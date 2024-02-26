@@ -4,15 +4,15 @@ from typing import Union
 
 import numpy as np
 import scipy
+from explainer.tree.base import TreeModel
 from packaging import version
-from shap.utils import safe_isinstance
+
+from shapiq.utils import safe_isinstance
 
 try:
     from xgboost.sklearn import XGBClassifier, XGBRegressor
 except ImportError:
     pass
-
-from explainer.tree.conversion import TreeModel
 
 
 def convert_xgboost_trees(

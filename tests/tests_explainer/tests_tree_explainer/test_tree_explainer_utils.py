@@ -1,7 +1,10 @@
 """This test module collects all tests for the utility functions of the tree explainer."""
 import numpy as np
 
-from shapiq.explainer.tree.utils import compute_empty_prediction, get_conditional_sample_weights
+from shapiq.explainer.tree.utils import (
+    compute_empty_prediction,
+    get_conditional_sample_weights,
+)
 
 
 def test_compute_empty_prediction():

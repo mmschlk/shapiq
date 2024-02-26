@@ -2,6 +2,6 @@
 
 
 from .tabular import TabularExplainer
-from .tree import TreeSHAPIQ
+from .tree import TreeExplainer
 
-__all__ = ["TabularExplainer", "TreeSHAPIQ"]
+__all__ = ["TabularExplainer", "TreeExplainer"]

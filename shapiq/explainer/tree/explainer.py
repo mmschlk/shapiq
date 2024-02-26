@@ -4,11 +4,11 @@ import copy
 from typing import Any, Union
 
 import numpy as np
-from approximator._interaction_values import InteractionValues
-from explainer.treeshap_iq._validate import _validate_model
-from treeshap_iq import TreeModel, TreeSHAPIQ
+from explainer._base import Explainer
+from interaction_values import InteractionValues
 
-from shapiq.explainer._base import Explainer
+from .treeshapiq import TreeModel, TreeSHAPIQ
+from .validation import _validate_model
 
 
 class TreeExplainer(Explainer):

@@ -4,15 +4,15 @@
 from typing import Optional, Union
 
 import numpy as np
-from shap.utils import safe_isinstance
+from explainer.tree.base import TreeModel
+
+from shapiq.utils import safe_isinstance
 
 try:
     from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
     from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 except ImportError:
     pass
-
-from .base import TreeModel
 
 
 def convert_sklearn_forest(
@@ -47,7 +47,7 @@ def convert_sklearn_tree(
     tree_model: Union["DecisionTreeRegressor", "DecisionTreeClassifier"],
     class_label: int = 0,
     scaling: float = 1.0,
-    output_type: Optional[str] = None,
+    output_type: str = "raw",
 ) -> TreeModel:
     """Convert a scikit-learn decision tree to the format used by shapiq.
 
@@ -71,7 +71,7 @@ def convert_sklearn_tree(
         else:
             tree_values = tree_values / np.sum(tree_values, axis=1, keepdims=True)
             tree_values = tree_values[:, class_label]
-    if output_type is not None or output_type != "raw":
+    if output_type != "raw":
         # TODO: Add support for logits output type
         raise NotImplementedError("Only raw output types are currently supported.")
     tree_values = tree_values.flatten()

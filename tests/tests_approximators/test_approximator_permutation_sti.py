@@ -4,7 +4,7 @@ from copy import copy, deepcopy
 import numpy as np
 import pytest
 
-from approximator._interaction_values import InteractionValues
+from interaction_values import InteractionValues
 from approximator.permutation import PermutationSamplingSTI
 from games import DummyGame
 

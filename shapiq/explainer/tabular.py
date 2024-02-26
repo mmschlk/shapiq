@@ -12,7 +12,7 @@ from approximator import (
     ShapIQ,
 )
 from approximator._base import Approximator
-from approximator._interaction_values import InteractionValues
+from interaction_values import InteractionValues
 
 from ._base import Explainer
 from .imputer import MarginalImputer

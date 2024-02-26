@@ -1,9 +1,10 @@
 """This module contains the base class for tree model conversion."""
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
-from explainer.tree.utils import compute_empty_prediction
+
+from .utils import compute_empty_prediction
 
 
 @dataclass
@@ -36,15 +37,19 @@ class TreeModel:
     node_sample_weight: np.ndarray[float]
     empty_prediction: Optional[float] = None
     leaf_mask: Optional[np.ndarray[bool]] = None
-    n_features: Optional[int] = None
+    n_features_in_tree: Optional[int] = None
+    max_feature_id: Optional[int] = None
+    feature_ids: Optional[set] = None
     root_node_id: Optional[int] = None
     n_nodes: Optional[int] = None
     nodes: Optional[np.ndarray[int]] = None
+    feature_mapping_old_new: Optional[dict] = None
+    feature_mapping_new_old: Optional[dict] = None
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> Any:
         return getattr(self, item)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # setup leaf mask
         if self.leaf_mask is None:
             self.leaf_mask = np.asarray(self.children_left == -1)
@@ -57,10 +62,17 @@ class TreeModel:
             self.empty_prediction = compute_empty_prediction(
                 self.values[self.leaf_mask], self.node_sample_weight[self.leaf_mask]
             )
+        unique_features = set(np.unique(self.features))
+        unique_features.discard(-2)  # remove leaf node "features"
         # setup number of features
-        # TODO: only features present in the tree should be counted (requires a mask/lookup table). this is a temporary solution
-        if self.n_features is None:
-            self.n_features = int(np.max(self.features)) + 1
+        if self.n_features_in_tree is None:
+            self.n_features_in_tree = int(len(unique_features))
+        # setup max feature id
+        if self.max_feature_id is None:
+            self.max_feature_id = max(unique_features)
+        # setup feature names
+        if self.feature_ids is None:
+            self.feature_ids = unique_features
         # setup root node id
         if self.root_node_id is None:
             self.root_node_id = 0
@@ -70,6 +82,28 @@ class TreeModel:
         # setup nodes
         if self.nodes is None:
             self.nodes = np.arange(self.n_nodes)
+        # setup original feature mapping
+        if self.feature_mapping_old_new is None:
+            self.feature_mapping_old_new = {i: i for i in unique_features}
+        # setup new feature mapping
+        if self.feature_mapping_new_old is None:
+            self.feature_mapping_new_old = {i: i for i in unique_features}
+
+    def reduce_feature_complexity(self) -> None:
+        if self.n_features_in_tree < self.max_feature_id:
+            new_feature_ids = set(range(self.n_features_in_tree))
+            mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}
+            mapping_new_old = {new_id: old_id for new_id, old_id in enumerate(self.feature_ids)}
+            new_features = np.zeros_like(self.features)
+            for i, old_feature in enumerate(self.features):
+                new_value = -2 if old_feature == -2 else mapping_old_new[old_feature]
+                new_features[i] = new_value
+            self.features = new_features
+            self.feature_ids = new_feature_ids
+            self.feature_mapping_old_new = mapping_old_new
+            self.feature_mapping_new_old = mapping_new_old
+            self.n_features_in_tree = len(new_feature_ids)
+            self.max_feature_id = self.n_features_in_tree - 1
 
 
 @dataclass
@@ -93,10 +127,10 @@ class EdgeTree:
     interaction_height_store: dict[int, np.ndarray[int]]
     has_ancestors: Optional[np.ndarray[bool]] = None
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> Any:
         return getattr(self, item)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # setup has ancestors
         if self.has_ancestors is None:
             self.has_ancestors = self.ancestors > -1

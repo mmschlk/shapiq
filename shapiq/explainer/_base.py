@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-from approximator._interaction_values import InteractionValues
+from interaction_values import InteractionValues
 
 
 class Explainer(ABC):
