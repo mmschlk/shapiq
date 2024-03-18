@@ -15,19 +15,18 @@ from .approximator import (
 from .datasets import load_bike
 
 # explainer classes
-from .explainer import InteractionExplainer
+from .explainer import TabularExplainer, TreeExplainer
 
 # game classes
 from .games import DummyGame
+from .interaction_values import InteractionValues
 
 # plotting functions
 from .plot import network_plot, stacked_bar_plot
 
 # public utils functions
 from .utils import (  # sets.py  # tree.py
-    get_conditional_sample_weights,
     get_explicit_subsets,
-    get_parent_array,
     powerset,
     safe_isinstance,
     split_subsets_budget,
@@ -36,6 +35,8 @@ from .utils import (  # sets.py  # tree.py
 __all__ = [
     # version
     "__version__",
+    # base
+    "InteractionValues",
     # approximators
     "ShapIQ",
     "PermutationSamplingSII",
@@ -43,7 +44,8 @@ __all__ = [
     "RegressionSII",
     "RegressionFSI",
     # explainers
-    "InteractionExplainer",
+    "TabularExplainer",
+    "TreeExplainer",
     # games
     "DummyGame",
     # plots
@@ -53,8 +55,6 @@ __all__ = [
     "powerset",
     "get_explicit_subsets",
     "split_subsets_budget",
-    "get_conditional_sample_weights",
-    "get_parent_array",
     "safe_isinstance",
     # datasets
     "load_bike",

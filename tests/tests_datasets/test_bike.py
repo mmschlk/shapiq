@@ -1,7 +1,4 @@
 """This test module contains the tests for the bike dataset."""
-
-import pytest
-
 from shapiq import load_bike
 
 

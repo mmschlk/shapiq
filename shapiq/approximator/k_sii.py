@@ -3,12 +3,11 @@
 from typing import Optional, Union
 
 import numpy as np
-from approximator._base import Approximator
-from approximator._interaction_values import InteractionValues
-from approximator._utils import _generate_interaction_lookup
+from interaction_values import InteractionValues
 from scipy.special import bernoulli
 
-from shapiq.utils import powerset
+from shapiq.approximator._base import Approximator
+from shapiq.utils import generate_interaction_lookup, powerset
 
 
 class KShapleyMixin:
@@ -86,7 +85,7 @@ def transforms_sii_to_ksii(
         )
     elif n is not None and max_order is not None:
         if interaction_lookup is None:
-            interaction_lookup = _generate_interaction_lookup(n, 1, max_order)
+            interaction_lookup = generate_interaction_lookup(n, 1, max_order)
         return _calculate_ksii_from_sii(sii_values, n, max_order, interaction_lookup)
     else:
         raise ValueError(
@@ -120,9 +119,12 @@ def _calculate_ksii_from_sii(
     nsii_values = np.zeros_like(sii_values)
     # all subsets S with 1 <= |S| <= max_order
     for subset in powerset(set(range(n)), min_size=1, max_size=max_order):
-        interaction_index = interaction_lookup[subset]
         interaction_size = len(subset)
-        ksii_value = sii_values[interaction_index]
+        try:
+            interaction_index = interaction_lookup[subset]
+            ksii_value = sii_values[interaction_index]
+        except KeyError:
+            continue  # a zero value is not scaled # TODO: verify this
         # go over all subsets T of length |S| + 1, ..., n that contain S
         for T in powerset(set(range(n)), min_size=interaction_size + 1, max_size=max_order):
             if set(subset).issubset(T):

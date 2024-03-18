@@ -2,30 +2,7 @@
 
 import numpy as np
 
-__all__ = [
-    "get_parent_array",
-    "get_conditional_sample_weights",
-]
-
-
-def get_parent_array(
-    children_left: np.ndarray[int], children_right: np.ndarray[int]
-) -> np.ndarray[int]:
-    """Combines the left and right children of a tree to a parent array. The parent of the root
-    node is -1.
-
-    Args:
-        children_left: The left children of each node in a tree. Leaf nodes are -1.
-        children_right: The right children of each node in a tree. Leaf nodes are -1.
-
-    Returns:
-        The parent array of the tree. The parent of the root node is -1.
-    """
-    parent_array = np.full_like(children_left, -1)
-    non_leaf_indices = np.logical_or(children_left != -1, children_right != -1)
-    parent_array[children_left[non_leaf_indices]] = np.where(non_leaf_indices)[0]
-    parent_array[children_right[non_leaf_indices]] = np.where(non_leaf_indices)[0]
-    return parent_array
+__all__ = ["get_conditional_sample_weights", "compute_empty_prediction"]
 
 
 def get_conditional_sample_weights(
@@ -46,9 +23,32 @@ def get_conditional_sample_weights(
 
     Returns:
         The conditional sample weights of the nodes.
+
+    Examples:
+        >>> parent_array = np.asarray([-1, 0, 1, 1, 0, 4, 4])  # binary tree with depth 2
+        >>> sample_count = np.asarray([100, 70, 50, 20, 30, 15, 15])
+        >>> get_conditional_sample_weights(sample_count, parent_array)
+        >>> [1., 0.7, 0.71428571, 0.28571429, 0.3, 0.5, 0.5]
     """
     conditional_sample_weights = np.zeros_like(sample_count, dtype=float)
     conditional_sample_weights[0] = 1
     parent_sample_count = sample_count[parent_array[1:]]
     conditional_sample_weights[1:] = sample_count[1:] / parent_sample_count
     return conditional_sample_weights
+
+
+def compute_empty_prediction(
+    leaf_values: np.ndarray[float], leaf_sample_weights: np.ndarray[float]
+) -> float:
+    """Compute the empty prediction of a tree model.
+
+    The empty prediction is the weighted average of the leaf node values.
+
+    Args:
+        leaf_values: The values of the leaf nodes in the tree.
+        leaf_sample_weights: The sample weights of the leaf nodes in the tree.
+
+    Returns:
+        The empty prediction of the tree model.
+    """
+    return np.sum(leaf_values * leaf_sample_weights) / np.sum(leaf_sample_weights)

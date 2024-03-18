@@ -6,7 +6,7 @@ from typing import Any, Optional, Union
 
 import networkx as nx
 import numpy as np
-from approximator._interaction_values import InteractionValues
+from interaction_values import InteractionValues
 from matplotlib import pyplot as plt
 from PIL import Image
 from utils import powerset

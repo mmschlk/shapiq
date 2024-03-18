@@ -1,30 +1,18 @@
 """This module contains the base explainer classes for the shapiq package."""
 
 from abc import ABC, abstractmethod
-from typing import Callable
 
 import numpy as np
-from approximator._interaction_values import InteractionValues
-from explainer.imputer.marginal_imputer import MarginalImputer
+from interaction_values import InteractionValues
 
 
 class Explainer(ABC):
-    """The base class for all explainers in the shapiq package.
-
-    Args:
-        model: The model to explain as a callable function expecting a data points as input and
-            returning the model's predictions.
-        background_data: The background data to use for the explainer.
-    """
+    """The base class for all explainers in the shapiq package. All explainers should inherit from
+    this class."""
 
     @abstractmethod
-    def __init__(
-        self, model: Callable[[np.ndarray], np.ndarray], background_data: np.ndarray
-    ) -> None:
-        self._model = model
-        self._background_data = background_data
-        self._n_features = self._background_data.shape[1]
-        self._imputer = MarginalImputer(self._model, self._background_data)
+    def __init__(self) -> None:
+        pass
 
     @abstractmethod
     def explain(self, x_explain: np.ndarray) -> InteractionValues:

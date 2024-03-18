@@ -1,8 +1,13 @@
 """This module contains utility functions for the shapiq package."""
 
 from .modules import safe_isinstance
-from .sets import get_explicit_subsets, pair_subset_sizes, powerset, split_subsets_budget
-from .tree import get_conditional_sample_weights, get_parent_array
+from .sets import (
+    generate_interaction_lookup,
+    get_explicit_subsets,
+    pair_subset_sizes,
+    powerset,
+    split_subsets_budget,
+)
 
 __all__ = [
     # sets
@@ -10,9 +15,7 @@ __all__ = [
     "pair_subset_sizes",
     "split_subsets_budget",
     "get_explicit_subsets",
-    # tree
-    "get_parent_array",
-    "get_conditional_sample_weights",
+    "generate_interaction_lookup",
     # modules
     "safe_isinstance",
 ]

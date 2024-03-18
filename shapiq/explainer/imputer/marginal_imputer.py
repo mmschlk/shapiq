@@ -95,16 +95,19 @@ class MarginalImputer(Imputer):
         if self._sample_replacements:
             self.replacement_data = x_background
         else:
-            self.replacement_data = np.zeros((1, self._n_features))
+            self.replacement_data = np.zeros((1, self._n_features), dtype=object)
             for feature in range(self._n_features):
                 feature_column = x_background[:, feature]
                 if feature in self._cat_features:
-                    summarized_feature = np.median(feature_column)
+                    # get mode for categorical features
+                    counts = np.unique(feature_column, return_counts=True)
+                    summarized_feature = counts[0][np.argmax(counts[1])]
                 else:
                     try:  # try to use mean for numerical features
                         summarized_feature = np.mean(feature_column)
-                    except TypeError:  # fallback to median for string features
-                        summarized_feature = np.median(feature_column)
+                    except TypeError:  # fallback to mode for string features
+                        counts = np.unique(feature_column, return_counts=True)
+                        summarized_feature = counts[0][np.argmax(counts[1])]
                 self.replacement_data[:, feature] = summarized_feature
         return self
 
@@ -132,7 +135,7 @@ class MarginalImputer(Imputer):
                 n_features).
         """
         n_subsets = subsets.shape[0]
-        replacement_data = np.zeros((self._sample_size, n_subsets, self._n_features))
+        replacement_data = np.zeros((self._sample_size, n_subsets, self._n_features), dtype=object)
         for feature in range(self._n_features):
             sampled_feature_values = self._rng.choice(
                 self.replacement_data[:, feature], size=(self._sample_size, n_subsets), replace=True
@@ -152,8 +155,5 @@ class MarginalImputer(Imputer):
             empty_prediction = float(np.mean(empty_predictions))
             return empty_prediction
         empty_prediction = self._model(self.replacement_data)
-        try:  # reshape to scalar if the model is weird
-            empty_prediction = float(empty_prediction)
-        except TypeError:
-            empty_prediction = float(empty_prediction[0])
+        empty_prediction = float(empty_prediction)
         return empty_prediction

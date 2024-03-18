@@ -12,11 +12,12 @@ from approximator import (
     ShapIQ,
 )
 from approximator._base import Approximator
-from approximator._interaction_values import InteractionValues
+from interaction_values import InteractionValues
 
 from ._base import Explainer
+from .imputer import MarginalImputer
 
-__all__ = ["InteractionExplainer"]
+__all__ = ["TabularExplainer"]
 
 
 APPROXIMATOR_CONFIGURATIONS = {
@@ -29,17 +30,13 @@ APPROXIMATOR_CONFIGURATIONS = {
     "ShapIQ": {"SII": ShapIQ, "STI": ShapIQ, "FSI": ShapIQ, "k-SII": ShapIQ},
 }
 
-AVAILABLE_INDICES = {
-    index
-    for approximator_dict in APPROXIMATOR_CONFIGURATIONS.values()
-    for index in approximator_dict.keys()
-}
+AVAILABLE_INDICES = {"SII", "k-SII", "STI", "FSI"}
 
 
-class InteractionExplainer(Explainer):
-    """The interaction explainer as the main interface for the shapiq package.
+class TabularExplainer(Explainer):
+    """The tabular explainer as the main interface for the shapiq package.
 
-    The interaction explainer is the main interface for the shapiq package. It can be used to
+    The `TabularExplainer` is the main interface for the shapiq package. It can be used to
     explain the predictions of a model by estimating the Shapley interaction values.
 
     Args:
@@ -50,8 +47,12 @@ class InteractionExplainer(Explainer):
             automatically choose the approximator based on the number of features and the number of
             samples in the background data.
         index: The Shapley interaction index to use. Must be one of `"SII"` (Shapley Interaction Index),
-        `"kSII"` (n-Shapley Interaction Index), `"STI"` (Shapley-Taylor Interaction Index), or
-        `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"kSII"`.
+        `"k-SII"` (k-Shapley Interaction Index), `"STI"` (Shapley-Taylor Interaction Index), or
+        `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
+
+    Attributes:
+        index: The Shapley interaction index to use.
+        background_data: The background data to use for the explainer.
     """
 
     def __init__(
@@ -63,7 +64,11 @@ class InteractionExplainer(Explainer):
         max_order: int = 2,
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(model, background_data)
+        super().__init__()
+        self._n_features: int = background_data.shape[1]
+        self._model_function: Callable[[np.ndarray], np.ndarray] = model
+        self.background_data = background_data
+        self._imputer = MarginalImputer(self._model_function, self.background_data)
         if index not in AVAILABLE_INDICES:
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
         self.index = index
@@ -73,7 +78,7 @@ class InteractionExplainer(Explainer):
         self._max_order: int = max_order
         self._random_state = random_state
         self._rng = np.random.default_rng(self._random_state)
-        self.approximator = self._init_approximator(approximator, index, max_order)
+        self._approximator = self._init_approximator(approximator, index, max_order)
 
     def explain(self, x_explain: np.ndarray, budget: Optional[int] = None) -> InteractionValues:
         """Explains the model's predictions.
@@ -91,7 +96,7 @@ class InteractionExplainer(Explainer):
         imputer = self._imputer.fit(x_explain)
 
         # explain
-        interaction_values = self.approximator.approximate(budget=budget, game=imputer)
+        interaction_values = self._approximator.approximate(budget=budget, game=imputer)
 
         return interaction_values
 
@@ -117,12 +122,12 @@ class InteractionExplainer(Explainer):
                 )
         # assume that the approximator is a string
         try:
-            approximator_class = APPROXIMATOR_CONFIGURATIONS[approximator][index]
+            approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
         except KeyError:
             raise ValueError(
                 f"Invalid approximator `{approximator}` or index `{index}`. "
                 f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}."
             )
         # initialize the approximator class with params
-        init_approximator = approximator_class.__init__(n=self._n_features, max_order=max_order)
+        init_approximator = approximator(n=self._n_features, max_order=max_order)
         return init_approximator
