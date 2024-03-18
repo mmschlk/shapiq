@@ -17,7 +17,6 @@ class TreeExplainer(Explainer):
         model: Union[dict, TreeModel, Any],
         max_order: int = 2,
         min_order: int = 1,
-        verbose: bool = False,
     ) -> None:
         # validate and parse model
         validated_model = _validate_model(model)  # the parsed and validated model
@@ -37,9 +36,15 @@ class TreeExplainer(Explainer):
         ]
 
     def explain(self, x_explain: np.ndarray) -> InteractionValues:
+        # run treeshapiq for all trees
         interaction_values: list[InteractionValues] = []
         for explainer in self._treeshapiq_explainers:
-            interaction_values.append(explainer.explain(x_explain))
-        if self._n_trees > 1:
-            raise NotImplementedError("Currently only a single tree is usable.")
-        return interaction_values[0]
+            tree_explanation = explainer.explain(x_explain)
+            interaction_values.append(tree_explanation)
+
+        # combine the explanations for all trees
+        final_explanation = interaction_values[0]
+        if len(interaction_values) > 1:
+            for i in range(1, len(interaction_values)):
+                final_explanation += interaction_values[i]
+        return final_explanation

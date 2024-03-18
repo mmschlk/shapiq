@@ -90,6 +90,25 @@ class TreeModel:
             self.feature_mapping_new_old = {i: i for i in unique_features}
 
     def reduce_feature_complexity(self) -> None:
+        """Reduces the feature complexity of the tree model.
+
+        The method reduces the feature complexity of the tree model by removing unused features and
+        reindexing the feature indices of the decision nodes in the tree. The method modifies the
+        tree model in place. To see the original feature mappings, use the `feature_mapping_old_new`
+        and `feature_mapping_new_old` attributes.
+
+        For example, consider a tree model with the following feature indices:
+
+            [0, 1, 8]
+
+        The method will remove the unused feature indices and reindex the feature indices of the
+        decision nodes in the tree to the following:
+
+            [0, 1, 2]
+
+        Feature '8' is 'renamed' to '2' such that in the internal representation a one-hot vector
+        (and matrices) of length 3 suffices to represent the feature indices.
+        """
         if self.n_features_in_tree < self.max_feature_id:
             new_feature_ids = set(range(self.n_features_in_tree))
             mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}

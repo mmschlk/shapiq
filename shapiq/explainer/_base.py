@@ -7,15 +7,12 @@ from interaction_values import InteractionValues
 
 
 class Explainer(ABC):
-    """The base class for all explainers in the shapiq package.
-
-    Args:
-        n_features: The number of features in the model.
-    """
+    """The base class for all explainers in the shapiq package. All explainers should inherit from
+    this class."""
 
     @abstractmethod
-    def __init__(self, n_features: int) -> None:
-        self._n_features: int = n_features
+    def __init__(self) -> None:
+        pass
 
     @abstractmethod
     def explain(self, x_explain: np.ndarray) -> InteractionValues:

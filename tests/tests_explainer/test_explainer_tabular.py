@@ -8,6 +8,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.datasets import make_regression
 
 from shapiq.explainer import TabularExplainer
+from shapiq.approximator import RegressionFSI
 
 
 @pytest.fixture
@@ -92,15 +93,37 @@ def test_init_params_error(dt_model, background_data):
             background_data=background_data,
             max_order=0,
         )
+
+
+def test_init_params_approx(dt_model, background_data):
+    """Test the initialization of the interaction explainer."""
+    model_function = dt_model.predict
     with pytest.raises(ValueError):
         TabularExplainer(
             model=model_function,
             background_data=background_data,
             approximator="invalid",
         )
+    explainer = TabularExplainer(
+        approximator="Regression",
+        index="FSI",
+        model=model_function,
+        background_data=background_data,
+    )
+    assert explainer._approximator.__class__.__name__ == "RegressionFSI"
+
+    # init explainer with manual approximator
+    approximator = RegressionFSI(n=9, max_order=2)
+    explainer = TabularExplainer(
+        model=model_function,
+        background_data=background_data,
+        approximator=approximator,
+    )
+    assert explainer._approximator.__class__.__name__ == "RegressionFSI"
+    assert explainer._approximator == approximator
 
 
-BUDGETS = [2**5, 2**8]
+BUDGETS = [2**5, 2**8, None]
 
 
 @pytest.mark.parametrize("budget", BUDGETS)
@@ -121,4 +144,6 @@ def test_explain(dt_model, background_data, index, budget, max_order):
     interaction_values = explainer.explain(x_explain, budget=budget)
     assert interaction_values.index == index
     assert interaction_values.max_order == max_order
+    if budget is None:
+        budget = 100_000_000_000
     assert interaction_values.estimation_budget <= budget + 2

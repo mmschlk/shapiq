@@ -30,11 +30,7 @@ APPROXIMATOR_CONFIGURATIONS = {
     "ShapIQ": {"SII": ShapIQ, "STI": ShapIQ, "FSI": ShapIQ, "k-SII": ShapIQ},
 }
 
-AVAILABLE_INDICES = {
-    index
-    for approximator_dict in APPROXIMATOR_CONFIGURATIONS.values()
-    for index in approximator_dict.keys()
-}
+AVAILABLE_INDICES = {"SII", "k-SII", "STI", "FSI"}
 
 
 class TabularExplainer(Explainer):
@@ -55,7 +51,6 @@ class TabularExplainer(Explainer):
         `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
 
     Attributes:
-        n_features: The number of features in the model.
         index: The Shapley interaction index to use.
         background_data: The background data to use for the explainer.
     """
@@ -69,7 +64,8 @@ class TabularExplainer(Explainer):
         max_order: int = 2,
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(n_features=background_data.shape[1])
+        super().__init__()
+        self._n_features: int = background_data.shape[1]
         self._model_function: Callable[[np.ndarray], np.ndarray] = model
         self.background_data = background_data
         self._imputer = MarginalImputer(self._model_function, self.background_data)
@@ -126,12 +122,12 @@ class TabularExplainer(Explainer):
                 )
         # assume that the approximator is a string
         try:
-            approximator_class = APPROXIMATOR_CONFIGURATIONS[approximator][index]
+            approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
         except KeyError:
             raise ValueError(
                 f"Invalid approximator `{approximator}` or index `{index}`. "
                 f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}."
             )
         # initialize the approximator class with params
-        init_approximator = approximator_class.__init__(n=self._n_features, max_order=max_order)
+        init_approximator = approximator(n=self._n_features, max_order=max_order)
         return init_approximator

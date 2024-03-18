@@ -149,7 +149,7 @@ class TreeSHAPIQ:
         interaction_poly_down: np.ndarray[float] = None,
         quotient_poly_down: np.ndarray[float] = None,
         depth: int = 0,
-    ):
+    ) -> None:
         # reset activations for new calculations
         if node_id == 0:
             self._activations.fill(False)
@@ -396,7 +396,7 @@ class TreeSHAPIQ:
         self.Ns_id = self.Ns_id_store[interaction_order]
         self.Ns = self.Ns_store[interaction_order]
 
-    def _init_interaction_lookup_tables(self):
+    def _init_interaction_lookup_tables(self) -> None:
         """Initializes the lookup tables for the interaction subsets."""
         for order in range(1, self._max_order + 1):
             order_interactions_lookup = generate_interaction_lookup(
@@ -453,7 +453,9 @@ class TreeSHAPIQ:
 
         return interaction_updates, interaction_update_positions
 
-    def _precalculate_interaction_ancestors(self, interaction_order, n_features):
+    def _precalculate_interaction_ancestors(
+        self, interaction_order, n_features
+    ) -> dict[int, np.ndarray]:
         """Calculates the position of the ancestors of the interactions for the tree for a given
         order of interactions."""
 
@@ -496,22 +498,18 @@ class TreeSHAPIQ:
             )
         return Ns
 
-    def _get_N_cii(self, interpolated_poly, order):
+    def _get_N_cii(self, interpolated_poly, order) -> np.ndarray[float]:
         depth = interpolated_poly.shape[0]
         Ns = np.zeros((depth + 1, depth))
         for i in range(1, depth + 1):
             Ns[i, :i] = np.linalg.inv(np.vander(interpolated_poly[:i]).T).dot(
-                i * np.array([self._get_subset_weight(j, order) for j in range(i)])
+                i * np.array([self._get_subset_weight_cii(j, order) for j in range(i)])
             )
         return Ns
 
-    def _get_subset_weight(self, t, order):
+    def _get_subset_weight_cii(self, t, order) -> float:
         # TODO: add docstring
-        if self._interaction_type in ("SII", "k-SII"):
-            return 1 / (
-                (self._n_features_in_tree - order + 1) * binom(self._n_features_in_tree - order, t)
-            )
-        elif self._interaction_type == "STI":
+        if self._interaction_type == "STI":
             return self._max_order / (
                 self._n_features_in_tree * binom(self._n_features_in_tree - 1, t)
             )
@@ -529,7 +527,7 @@ class TreeSHAPIQ:
             raise ValueError("Interaction type not supported")
 
     @staticmethod
-    def _get_N_id(D):
+    def _get_N_id(D) -> np.ndarray[float]:
         # TODO: add docstring and rename variables
         depth = D.shape[0]
         Ns_id = np.zeros((depth + 1, depth))
@@ -538,7 +536,7 @@ class TreeSHAPIQ:
         return Ns_id
 
     @staticmethod
-    def _get_norm_weight(M):
+    def _get_norm_weight(M) -> np.ndarray[float]:
         # TODO: add docstring and rename variables
         return np.array([binom(M, i) for i in range(M + 1)])
 
