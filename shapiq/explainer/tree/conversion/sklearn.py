@@ -1,24 +1,19 @@
 """This module contains functions for converting scikit-learn decision trees to the format used by
  shapiq."""
 
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 from explainer.tree.base import TreeModel
 
 from shapiq.utils import safe_isinstance
-
-try:
-    from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-    from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-except ImportError:
-    pass
+from shapiq.utils.types import Model
 
 
 def convert_sklearn_forest(
-    tree_model: Union["RandomForestRegressor", "RandomForestClassifier"],
-    class_label: int = 0,
-    output_type: Optional[str] = None,
+    tree_model: Model,
+    class_label: Optional[int] = None,
+    output_type: str = "raw",
 ) -> list[TreeModel]:
     """Transforms a scikit-learn random forest to the format used by shapiq.
 
@@ -33,8 +28,6 @@ def convert_sklearn_forest(
         The converted random forest model.
     """
     scaling = 1.0 / len(tree_model.estimators_)
-    if not safe_isinstance(tree_model, "sklearn.ensemble.RandomForestClassifier"):
-        output_type = None
     return [
         convert_sklearn_tree(
             tree, scaling=scaling, class_label=class_label, output_type=output_type
@@ -44,8 +37,8 @@ def convert_sklearn_forest(
 
 
 def convert_sklearn_tree(
-    tree_model: Union["DecisionTreeRegressor", "DecisionTreeClassifier"],
-    class_label: int = 0,
+    tree_model: Model,
+    class_label: Optional[int] = None,
     scaling: float = 1.0,
     output_type: str = "raw",
 ) -> TreeModel:
@@ -63,14 +56,16 @@ def convert_sklearn_tree(
         The converted decision tree model.
     """
     tree_values = tree_model.tree_.value.copy() * scaling
+    # set class label if not given and model is a classifier
+    if safe_isinstance(tree_model, "sklearn.tree.DecisionTreeClassifier") and class_label is None:
+        class_label = 1
+
     if class_label is not None:
         # turn node values into probabilities
         if len(tree_values.shape) == 3:
-            tree_values = tree_values / np.sum(tree_values, axis=2, keepdims=True)
-            tree_values = tree_values[:, 0, class_label]
-        else:
-            tree_values = tree_values / np.sum(tree_values, axis=1, keepdims=True)
-            tree_values = tree_values[:, class_label]
+            tree_values = tree_values[:, 0, :]
+        tree_values = tree_values / np.sum(tree_values, axis=1, keepdims=True)
+        tree_values = tree_values[:, class_label]
     if output_type != "raw":
         # TODO: Add support for logits output type
         raise NotImplementedError("Only raw output types are currently supported.")

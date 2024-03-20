@@ -1,6 +1,6 @@
 """This module contains utility functions for the shapiq package."""
 
-from .modules import safe_isinstance
+from .modules import safe_isinstance, try_import
 from .sets import (
     generate_interaction_lookup,
     get_explicit_subsets,
@@ -18,4 +18,5 @@ __all__ = [
     "generate_interaction_lookup",
     # modules
     "safe_isinstance",
+    "try_import",
 ]
