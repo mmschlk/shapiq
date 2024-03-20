@@ -8,11 +8,6 @@
     <img src="https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml/badge.svg" alt="unit-tests">
   </a>
 
-  <!-- Coverage Test -->
-  <a href='https://coveralls.io/github/mmschlk/shapiq?branch=main'>
-    <img src='https://coveralls.io/repos/github/mmschlk/shapiq/badge.svg?branch=main' alt='Coverage Status' />
-  </a>
-
   <!-- Read the Docs -->
   <a href='https://shapiq.readthedocs.io/en/latest/?badge=latest'>
       <img src='https://readthedocs.org/projects/shapiq/badge/?version=latest' alt='Documentation Status' />
