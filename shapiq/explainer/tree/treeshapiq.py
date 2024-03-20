@@ -1,6 +1,7 @@
 """This module contains the tree explainer implementation."""
 import copy
 from math import factorial
+from typing import Any, Optional, Union
 
 import numpy as np
 from approximator import transforms_sii_to_ksii
@@ -30,7 +31,7 @@ class TreeSHAPIQ:
 
     def __init__(
         self,
-        model: TreeModel,
+        model: Union[dict, TreeModel, Any],
         max_order: int = 2,
         min_order: int = 1,
         interaction_type: str = "k-SII",
@@ -507,13 +508,13 @@ class TreeSHAPIQ:
             )
         return Ns
 
-    def _get_subset_weight_cii(self, t, order) -> float:
+    def _get_subset_weight_cii(self, t, order) -> Optional[float]:
         # TODO: add docstring
         if self._interaction_type == "STI":
             return self._max_order / (
                 self._n_features_in_tree * binom(self._n_features_in_tree - 1, t)
             )
-        elif self._interaction_type == "FSI":
+        if self._interaction_type == "FSI":
             return (
                 factorial(2 * self._max_order - 1)
                 / factorial(self._max_order - 1) ** 2
@@ -521,10 +522,8 @@ class TreeSHAPIQ:
                 * factorial(self._n_features_in_tree - t - 1)
                 / factorial(self._n_features_in_tree + self._max_order - 1)
             )
-        elif self._interaction_type == "BZF":
+        if self._interaction_type == "BZF":
             return 1 / (2 ** (self._n_features_in_tree - order))
-        else:
-            raise ValueError("Interaction type not supported")
 
     @staticmethod
     def _get_N_id(D) -> np.ndarray[float]:

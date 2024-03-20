@@ -109,7 +109,7 @@ class TreeModel:
         Feature '8' is 'renamed' to '2' such that in the internal representation a one-hot vector
         (and matrices) of length 3 suffices to represent the feature indices.
         """
-        if self.n_features_in_tree < self.max_feature_id:
+        if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
             mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}
             mapping_new_old = {new_id: old_id for new_id, old_id in enumerate(self.feature_ids)}
