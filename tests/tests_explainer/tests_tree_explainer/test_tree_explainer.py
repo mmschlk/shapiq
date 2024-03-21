@@ -2,6 +2,7 @@
 import numpy as np
 import pytest
 
+from explainer.tree import TreeModel
 from shapiq.explainer.tree import TreeExplainer
 
 
@@ -20,7 +21,7 @@ def test_decision_tree_classifier(dt_clf_model, background_clf_data):
     assert True
 
     # check with invalid output type
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValueError):
         _ = TreeExplainer(
             model=dt_clf_model, max_order=2, min_order=1, output_type="invalid_output_type"
         )
@@ -54,3 +55,39 @@ def test_random_forrest_classification(rf_clf_model, background_clf_data):
     explanation = explainer.explain(x_explain)
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
+
+
+def test_against_shap_implementation():
+    """Test the tree explainer against the shap implementation's tree explainer results."""
+    # manual values for a tree to test against the shap implementation
+    children_left = np.asarray([1, 2, 3, -1, -1, -1, 7, -1, -1])
+    children_right = np.asarray([6, 5, 4, -1, -1, -1, 8, -1, -1])
+    features = np.asarray([0, 1, 0, -2, -2, -2, 2, -2, -2])
+    thresholds = np.asarray([0, 0, -0.5, -2, -2, -2, 0, -2, -2])
+    node_sample_weight = np.asarray([100, 50, 38, 15, 23, 12, 50, 20, 30])
+
+    # create a classification tree model
+    values = [110, 105, 95, 20, 50, 100, 75, 10, 40]
+    values = [values[i] / max(values) for i in range(len(values))]
+    values = np.asarray(values)
+    print(values)
+
+    x_explain = np.asarray([-1, -0.5, 1, 0])
+
+    tree_model = TreeModel(
+        children_left=children_left,
+        children_right=children_right,
+        features=features,
+        thresholds=thresholds,
+        node_sample_weight=node_sample_weight,
+        values=values,
+        original_output_type="probability",
+    )
+
+    explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1)
+    explanation = explainer.explain(x_explain)
+
+    assert explanation[(0,)] == pytest.approx(-0.09263158, abs=1e-4)
+    assert explanation[(1,)] == pytest.approx(-0.12100478, abs=1e-4)
+    assert explanation[(2,)] == pytest.approx(0.02727273, abs=1e-4)
+    assert explanation[(3,)] == pytest.approx(0.0, abs=1e-4)

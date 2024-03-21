@@ -81,7 +81,8 @@ def test_init(dt_clf_model, background_clf_data):
         ),
     ],
 )
-def test_manual_tree(index: str, expected: dict):
+def test_against_old_treeshapiq_implementation(index: str, expected: dict):
+    """Test the tree explainer against the old TreeSHAP-IQ implementation's results."""
     # manual values for a tree to test against the original treeshapiq implementation
     children_left = np.asarray([1, 2, 3, -1, -1, -1, 7, -1, -1])
     children_right = np.asarray([6, 5, 4, -1, -1, -1, 8, -1, -1])

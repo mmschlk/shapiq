@@ -12,7 +12,7 @@ from shapiq.utils import generate_interaction_lookup, powerset
 
 from .base import EdgeTree, TreeModel
 from .conversion.edges import create_edge_tree
-from .validation import _validate_model
+from .validation import validate_tree_model
 
 
 class TreeSHAPIQ:
@@ -45,7 +45,7 @@ class TreeSHAPIQ:
         self._interaction_type: str = interaction_type
 
         # validate and parse model
-        validated_model = _validate_model(model)  # the parsed and validated model
+        validated_model = validate_tree_model(model)  # the parsed and validated model
         # TODO: add support for other sample weights
         self._tree: TreeModel = copy.deepcopy(validated_model)
         self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
