@@ -70,3 +70,7 @@ def test_nsii_estimation(sii_approximator, ksii_approximator):
     assert isinstance(transformed, np.ndarray)
     with pytest.raises(ValueError):
         _ = transforms_sii_to_ksii(sii_estimates.values)
+    # check with interaction_lookup = None
+    sii_estimates.interaction_lookup = None
+    transformed = transforms_sii_to_ksii(sii_estimates)
+    assert transformed.index == "k-SII"
