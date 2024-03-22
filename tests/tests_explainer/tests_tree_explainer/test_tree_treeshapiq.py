@@ -109,3 +109,28 @@ def test_against_old_treeshapiq_implementation(index: str, expected: dict):
 
     for key, value in expected.items():
         assert np.isclose(explanation[key], value, atol=1e-5)
+
+
+def test_edge_case_params():
+    """Test the TreeSHAPIQ class with edge case parameters."""
+    children_left = np.asarray([1, 2, 3, -1, -1, -1, 7, -1, -1])
+    children_right = np.asarray([6, 5, 4, -1, -1, -1, 8, -1, -1])
+    features = np.asarray([0, 1, 0, -2, -2, -2, 2, -2, -2])
+    thresholds = np.asarray([0, 0, -0.5, -2, -2, -2, 0, -2, -2])
+    node_sample_weight = np.asarray([100, 50, 38, 15, 23, 12, 50, 20, 30])
+    values = np.asarray([110, 105, 95, 20, 50, 100, 75, 10, 40])
+
+    #x_explain = np.asarray([-1, -0.5, 1, 0])
+
+    tree_model = TreeModel(
+        children_left=children_left,
+        children_right=children_right,
+        features=features,
+        thresholds=thresholds,
+        node_sample_weight=node_sample_weight,
+        values=values,
+    )
+
+    # test with max_order = 0
+    with pytest.raises(ValueError):
+        _ = TreeSHAPIQ(model=tree_model, max_order=0)

@@ -17,6 +17,7 @@ class TreeExplainer(Explainer):
         model: Union[dict, TreeModel, Any],
         max_order: int = 2,
         min_order: int = 1,
+        interaction_type: str = "SII",  # TODO: add tests and fix bug with k-SII not working
         class_label: Optional[int] = None,
         output_type: str = "raw",
     ) -> None:
@@ -36,7 +37,7 @@ class TreeExplainer(Explainer):
 
         # setup explainers for all trees
         self._treeshapiq_explainers: list[TreeSHAPIQ] = [
-            TreeSHAPIQ(model=_tree, max_order=self._max_order, interaction_type="SII")
+            TreeSHAPIQ(model=_tree, max_order=self._max_order, interaction_type=interaction_type)
             for _tree in self._trees
         ]
 
