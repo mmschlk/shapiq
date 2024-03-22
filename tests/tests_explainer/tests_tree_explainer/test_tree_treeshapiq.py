@@ -120,7 +120,7 @@ def test_edge_case_params():
     node_sample_weight = np.asarray([100, 50, 38, 15, 23, 12, 50, 20, 30])
     values = np.asarray([110, 105, 95, 20, 50, 100, 75, 10, 40])
 
-    #x_explain = np.asarray([-1, -0.5, 1, 0])
+    # x_explain = np.asarray([-1, -0.5, 1, 0])
 
     tree_model = TreeModel(
         children_left=children_left,
