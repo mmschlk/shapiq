@@ -112,8 +112,11 @@ def _calculate_ksii_from_sii(
             `min_order`, and `max_order` parameters. Defaults to `None`.
 
     Returns:
-        The nSII values.
+        The k-SII values.
     """
+    if interaction_lookup is None:
+        interaction_lookup = generate_interaction_lookup(n, 1, max_order)
+
     # compute nSII values from SII values
     bernoulli_numbers = bernoulli(max_order)
     nsii_values = np.zeros_like(sii_values)
@@ -128,8 +131,11 @@ def _calculate_ksii_from_sii(
         # go over all subsets T of length |S| + 1, ..., n that contain S
         for T in powerset(set(range(n)), min_size=interaction_size + 1, max_size=max_order):
             if set(subset).issubset(T):
-                effect_index = interaction_lookup[T]  # get the index of T
-                effect_value = sii_values[effect_index]  # get the effect of T
+                try:
+                    effect_index = interaction_lookup[T]  # get the index of T
+                    effect_value = sii_values[effect_index]  # get the effect of T
+                except KeyError:
+                    effect_value = 0  # if T is not in the interaction_lookup  # TODO: verify this
                 bernoulli_factor = bernoulli_numbers[len(T) - interaction_size]
                 ksii_value += bernoulli_factor * effect_value
         nsii_values[interaction_index] = ksii_value
