@@ -57,6 +57,11 @@ class TreeSHAPIQ:
         # set parameters
         self._root_node_id = 0
         self.verbose = verbose
+        if max_order < min_order or max_order < 1 or min_order < 1:
+            raise ValueError(
+                "The maximum order must be greater than the minimum order and both must be greater "
+                "than 0."
+            )
         self._max_order: int = max_order
         self._min_order: int = min_order
         self._interaction_type: str = interaction_type
