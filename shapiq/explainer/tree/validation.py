@@ -1,4 +1,5 @@
 """This module contains conversion functions for the tree explainer implementation."""
+
 from typing import Any, Optional, Union
 
 from shapiq.utils import safe_isinstance

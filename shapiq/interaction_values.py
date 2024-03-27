@@ -1,5 +1,6 @@
 """This module contains the InteractionValues Dataclass, which is used to store the interaction
 scores."""
+
 import copy
 import warnings
 from dataclasses import dataclass

@@ -1,4 +1,5 @@
 """This module contains all tests for the TreeExplainer class of the shapiq package."""
+
 import numpy as np
 import pytest
 
