@@ -1,49 +1,24 @@
-<p align="center">
-  <img height="250px" src="docs/source/_static/logo_shapiq_light.svg" alt="shapiq_logo">
-</p>
+
+---
+**NOTE:**
+
+`shapiq` is still in an alpha stage and under active development. The [initial release](https://github.com/mmschlk/shapiq/milestone/1) is scheduled to be May 31st.
+
+---
 
 <p align="center">
-  <!-- Coverage Test -->
-  <a href='https://coveralls.io/github/mmschlk/shapiq?branch=main'>
-    <img src='https://coveralls.io/repos/github/mmschlk/shapiq/badge.svg?branch=main' alt='Coverage Status' />
-  </a>
-  
-  <!-- Tests -->
-  <a href="https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml">
-    <img src="https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml/badge.svg" alt="unit-tests">
-  </a>
-
-  <!-- Read the Docs -->
-  <a href='https://shapiq.readthedocs.io/en/latest/?badge=latest'>
-      <img src='https://readthedocs.org/projects/shapiq/badge/?version=latest' alt='Documentation Status' />
-  </a>
-  
-  <!-- PyPI Version -->
-  <a href="https://pypi.org/project/shapiq">
-    <img src="https://img.shields.io/pypi/v/shapiq.svg?color=blue" alt="PyPi">
-  </a>
-  
-  <!-- PyPI status -->
-  <a href="https://pypi.org/project/shapiq">
-    <img src="https://img.shields.io/pypi/status/shapiq.svg?color=blue" alt="PyPi_status
-  </a>
-      
-  <!-- PePy -->
-  <a href="https://pepy.tech/project/shapiq">
-    <img src="https://static.pepy.tech/badge/shapiq?style=flat-square" alt="pepy">
-  </a>
-      
-  <!-- License -->
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-brightgreen.svg" alt="mit_license">
-  </a>
-
-  <!-- Codestyle -->
-  <a href="https://github.com/psf/black">
-    <img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="black_codestyle">
-  </a>
+  <img height="250px" src="docs/source/_static/logo_shapiq_light.svg" alt="shapiq_logo"/>
 </p>
 
+[![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
+[![Coverage Status](https://coveralls.io/repos/github/mmschlk/shapiq/badge.svg?branch=main)](https://coveralls.io/github/mmschlk/shapiq?branch=main)
+[![Tests](https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml)
+[![Read the Docs](https://readthedocs.org/projects/shapiq/badge/?version=latest)](https://shapiq.readthedocs.io/en/latest/?badge=latest)
+
+[![PyPI Version](https://img.shields.io/pypi/pyversions/shapiq.svg)](https://pypi.org/project/shapiq)
+[![PyPI status](https://img.shields.io/pypi/status/shapiq.svg?color=blue)](https://pypi.org/project/shapiq)
+[![PePy](https://static.pepy.tech/badge/shapiq?style=flat-square)](https://pepy.tech/project/shapiq)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # SHAP-IQ: SHAP Interaction Quantification
 > An interaction may speak more than a thousand main effects.
