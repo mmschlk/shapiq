@@ -48,8 +48,8 @@ class MoebiusConverter:
         """
         if index == "SII":
             shapley_interactions = self.moebius_to_sii(order)
-        if index in ["k-SII"]:
-            # shapley_interactions = self.base_aggregation(sii, order)
+        if index == "k-SII":
+            shapley_interactions = self.moebius_to_ksii(order)
         if index == "STII":
             shapley_interactions = self.moebius_to_stii(order)
         if index == "FSII":
