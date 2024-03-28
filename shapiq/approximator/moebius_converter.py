@@ -46,18 +46,20 @@ class MoebiusConverter:
         """
         Converts the Möbius coefficients to Shapley Interactions up to order k
         """
-        if index in ["k-SII"]:
+        if index == "SII":
             shapley_interactions = self.moebius_to_sii(order)
+        if index in ["k-SII"]:
             # shapley_interactions = self.base_aggregation(sii, order)
         if index == "STII":
             shapley_interactions = self.moebius_to_stii(order)
         if index == "FSII":
-            print("not available yet")
+            shapley_interactions = self.moebius_to_fsii(order)
         return shapley_interactions
 
     def moebius_to_sii(self, order):
         rslt = {}
         for moebius_set, moebius_val in self.moebius_coefficients.items():
+            #Distribute the value among all contained interactions
             moebius_size = len(moebius_set)
             for interaction in powerset(
                 moebius_set, min_size=1, max_size=int(min(moebius_size, order))
@@ -69,16 +71,37 @@ class MoebiusConverter:
                     rslt[interaction] = moebius_val / (moebius_size - interaction_size + 1)
         return rslt
 
-    def moebius_to_stii(self, order):
+    def moebius_to_ksii(self, order):
         rslt = {}
         for moebius_set, moebius_val in self.moebius_coefficients.items():
             moebius_size = len(moebius_set)
+            #For lower-order Möbius sets (size<= order) directly set interaction value
             if moebius_size <= order:
                 if moebius_set in rslt:
                     rslt[moebius_set] += moebius_val
                 else:
                     rslt[moebius_set] = moebius_val
             else:
+                #For higher-order Möbius sets (size > order) distribute the value among all contained interactions
+                for interaction in powerset(moebius_set, min_size=order, max_size=order):
+                    val_for_interaction = moebius_val / binom(moebius_size, moebius_size - order)
+                    if interaction in rslt:
+                        rslt[interaction] += val_for_interaction
+                    else:
+                        rslt[interaction] = val_for_interaction
+        return rslt
+    def moebius_to_stii(self, order):
+        rslt = {}
+        for moebius_set, moebius_val in self.moebius_coefficients.items():
+            moebius_size = len(moebius_set)
+            #For lower-order Möbius sets (size<= order) directly set interaction value
+            if moebius_size <= order:
+                if moebius_set in rslt:
+                    rslt[moebius_set] += moebius_val
+                else:
+                    rslt[moebius_set] = moebius_val
+            else:
+                #For higher-order Möbius sets (size > order) distribute the value among all contained interactions
                 for interaction in powerset(moebius_set, min_size=order, max_size=order):
                     val_for_interaction = moebius_val / binom(moebius_size, moebius_size - order)
                     if interaction in rslt:
@@ -92,11 +115,13 @@ class MoebiusConverter:
         for moebius_set, moebius_val in self.moebius_coefficients.items():
             moebius_size = len(moebius_set)
             if moebius_size <= order:
+                #For lower-order Möbius sets (size<= order) directly set interaction value
                 if moebius_set in rslt:
                     rslt[moebius_set] += moebius_val
                 else:
                     rslt[moebius_set] = moebius_val
             else:
+                #For higher-order Möbius sets (size > order) distribute the value among all contained interactions
                 for interaction in powerset(moebius_set, min_size=1, max_size=order):
                     interaction_size = len(interaction)
                     val_for_interaction = (
