@@ -49,6 +49,14 @@ class InteractionValues:
                 self.n_players, self.min_order, self.max_order
             )
 
+    @property
+    def dict_values(self) -> dict[tuple[int, ...], float]:
+        """Getter for the dict directly mapping from all interactions to scores."""
+        return {
+            interaction: self.values[self.interaction_lookup[interaction]]
+            for interaction in self.interaction_lookup
+        }
+
     def __repr__(self) -> str:
         """Returns the representation of the InteractionValues object."""
         representation = "InteractionValues(\n"
