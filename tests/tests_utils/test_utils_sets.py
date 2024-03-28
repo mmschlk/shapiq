@@ -2,12 +2,13 @@
 import numpy as np
 import pytest
 
-from utils import (
+from shapiq.utils import (
     powerset,
     pair_subset_sizes,
     split_subsets_budget,
     get_explicit_subsets,
     generate_interaction_lookup,
+    transform_coalitions_to_array,
 )
 
 
@@ -102,3 +103,28 @@ def test_get_explicit_subsets(n, subset_sizes, expected):
 def test_generate_interaction_lookup(n, min_order, max_order, expected):
     """Tests the generate_interaction_lookup function."""
     assert generate_interaction_lookup(n, min_order, max_order) == expected
+
+
+@pytest.mark.parametrize(
+    "coalitions, n_player, expected",
+    [
+        (
+            [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)],
+            None,
+            np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]]),
+        ),
+        (
+            [(0, 1), (1, 2), (0, 2)],
+            3,
+            np.array([[1, 1, 0], [0, 1, 1], [1, 0, 1]]),
+        ),
+        (
+            [(0, 1), (1, 2), (0, 2)],
+            4,
+            np.array([[1, 1, 0, 0], [0, 1, 1, 0], [1, 0, 1, 0]]),
+        ),
+    ],
+)
+def test_transform_coalitions_to_array(coalitions, n_player, expected):
+    """Tests the transform_coalitions_to_array function."""
+    assert np.all(transform_coalitions_to_array(coalitions, n_player) == expected)

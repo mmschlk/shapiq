@@ -60,8 +60,8 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values_2.interaction_lookup == interaction_lookup  # automatically generated
 
     # check the string representations (not semantics)
-    str(interaction_values)
-    repr(interaction_values)
+    assert isinstance(str(interaction_values), str)
+    assert isinstance(repr(interaction_values), str)
 
     # check equality
     interaction_values_copy = copy(interaction_values)
