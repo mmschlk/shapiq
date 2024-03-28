@@ -8,6 +8,8 @@ from sklearn.datasets import make_regression, make_classification
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 
+from shapiq.explainer.tree import TreeModel
+
 
 @pytest.fixture
 def dt_reg_model() -> DecisionTreeRegressor:
@@ -33,6 +35,26 @@ def dt_clf_model() -> DecisionTreeClassifier:
     model = DecisionTreeClassifier(random_state=42, max_depth=3)
     model.fit(X, y)
     return model
+
+
+@pytest.fixture
+def dt_clf_model_tree_model() -> TreeModel:
+    """Return a simple decision tree as a TreeModel."""
+    from shapiq.explainer.tree.validation import validate_tree_model
+
+    X, y = make_classification(
+        n_samples=100,
+        n_features=7,
+        random_state=42,
+        n_classes=3,
+        n_informative=7,
+        n_repeated=0,
+        n_redundant=0,
+    )
+    model = DecisionTreeClassifier(random_state=42, max_depth=3)
+    model.fit(X, y)
+    tree_model = validate_tree_model(model)
+    return tree_model
 
 
 @pytest.fixture

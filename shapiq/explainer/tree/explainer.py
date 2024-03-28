@@ -8,7 +8,7 @@ from explainer._base import Explainer
 from interaction_values import InteractionValues
 
 from .treeshapiq import TreeModel, TreeSHAPIQ
-from .validation import _validate_model
+from .validation import validate_tree_model
 
 
 class TreeExplainer(Explainer):
@@ -22,7 +22,9 @@ class TreeExplainer(Explainer):
         output_type: str = "raw",
     ) -> None:
         # validate and parse model
-        validated_model = _validate_model(model, class_label=class_label, output_type=output_type)
+        validated_model = validate_tree_model(
+            model, class_label=class_label, output_type=output_type
+        )
         self._trees: Union[TreeModel, list[TreeModel]] = copy.deepcopy(validated_model)
         if not isinstance(self._trees, list):
             self._trees = [self._trees]

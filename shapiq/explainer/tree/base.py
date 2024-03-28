@@ -27,6 +27,26 @@ class TreeModel:
             the empty prediction is computed from the leaf values and the sample weights.
         leaf_mask: The boolean mask of the leaf nodes in a tree. The default value is None. Then the
             leaf mask is computed from the children left and right arrays.
+        n_features_in_tree: The number of features in the tree model. The default value is None.
+            Then the number of features in the tree model is computed from the unique feature
+            indices in the features array.
+        max_feature_id: The maximum feature index in the tree model. The default value is None. Then
+            the maximum feature index in the tree model is computed from the features array.
+        feature_ids: The feature indices of the decision nodes in the tree model. The default value
+            is None. Then the feature indices of the decision nodes in the tree model are computed
+            from the unique feature indices in the features array.
+        root_node_id: The root node id of the tree model. The default value is None. Then the root
+            node id of the tree model is set to 0.
+        n_nodes: The number of nodes in the tree model. The default value is None. Then the number
+            of nodes in the tree model is computed from the children left array.
+        nodes: The node ids of the tree model. The default value is None. Then the node ids of the
+            tree model are computed from the number of nodes in the tree model.
+        feature_map_original_internal: A mapping of feature indices from the original feature
+            indices (as in the model) to the internal feature indices (as in the tree model).
+        feature_map_internal_original: A mapping of feature indices from the internal feature
+            indices (as in the tree model) to the original feature indices (as in the model).
+        original_output_type: The original output type of the tree model. The default value is
+            "raw".
     """
 
     children_left: np.ndarray[int]
@@ -43,11 +63,22 @@ class TreeModel:
     root_node_id: Optional[int] = None
     n_nodes: Optional[int] = None
     nodes: Optional[np.ndarray[int]] = None
-    feature_mapping_old_new: Optional[dict] = None
-    feature_mapping_new_old: Optional[dict] = None
+    feature_map_original_internal: Optional[dict[int, int]] = None
+    feature_map_internal_original: Optional[dict[int, int]] = None
+    original_output_type: str = "raw"
 
     def __getitem__(self, item) -> Any:
         return getattr(self, item)
+
+    def compute_empty_prediction(self) -> None:
+        """Compute the empty prediction of the tree model.
+
+        The method computes the empty prediction of the tree model by taking the weighted average of
+        the leaf node values. The method modifies the tree model in place.
+        """
+        self.empty_prediction = compute_empty_prediction(
+            self.values[self.leaf_mask], self.node_sample_weight[self.leaf_mask]
+        )
 
     def __post_init__(self) -> None:
         # setup leaf mask
@@ -59,9 +90,7 @@ class TreeModel:
         self.thresholds = np.where(self.leaf_mask, np.nan, self.thresholds)
         # setup empty prediction
         if self.empty_prediction is None:
-            self.empty_prediction = compute_empty_prediction(
-                self.values[self.leaf_mask], self.node_sample_weight[self.leaf_mask]
-            )
+            self.compute_empty_prediction()
         unique_features = set(np.unique(self.features))
         unique_features.discard(-2)  # remove leaf node "features"
         # setup number of features
@@ -83,11 +112,11 @@ class TreeModel:
         if self.nodes is None:
             self.nodes = np.arange(self.n_nodes)
         # setup original feature mapping
-        if self.feature_mapping_old_new is None:
-            self.feature_mapping_old_new = {i: i for i in unique_features}
+        if self.feature_map_original_internal is None:
+            self.feature_map_original_internal = {i: i for i in unique_features}
         # setup new feature mapping
-        if self.feature_mapping_new_old is None:
-            self.feature_mapping_new_old = {i: i for i in unique_features}
+        if self.feature_map_internal_original is None:
+            self.feature_map_internal_original = {i: i for i in unique_features}
 
     def reduce_feature_complexity(self) -> None:
         """Reduces the feature complexity of the tree model.
@@ -119,8 +148,8 @@ class TreeModel:
                 new_features[i] = new_value
             self.features = new_features
             self.feature_ids = new_feature_ids
-            self.feature_mapping_old_new = mapping_old_new
-            self.feature_mapping_new_old = mapping_new_old
+            self.feature_map_original_internal = mapping_old_new
+            self.feature_map_internal_original = mapping_new_old
             self.n_features_in_tree = len(new_feature_ids)
             self.max_feature_id = self.n_features_in_tree - 1
 
@@ -131,6 +160,8 @@ class EdgeTree:
 
     The dataclass stores the information of an edge representation of the tree in a way that is easy
     to access and manipulate for the TreeSHAP-IQ algorithm.
+
+    # TODO: add more information about the attributes
     """
 
     parents: np.ndarray[int]
@@ -153,3 +184,40 @@ class EdgeTree:
         # setup has ancestors
         if self.has_ancestors is None:
             self.has_ancestors = self.ancestors > -1
+
+
+def convert_tree_output_type(tree_model: TreeModel, output_type: str) -> tuple[TreeModel, bool]:
+    """Convert the output type of the tree model.
+
+    Args:
+        tree_model: The tree model to convert.
+        output_type: The output type to convert the tree model to. Can be "raw", "probability", or
+            "logit".
+
+    Returns:
+        The converted tree model and a warning flag indicating whether invalid probability values
+            were adjusted in logit transformation.
+    """
+    warning_flag = False
+    original_output_type = tree_model.original_output_type
+    if original_output_type == output_type or output_type == "raw":  # no conversion needed
+        return tree_model, warning_flag
+    # transform probability to logit
+    if original_output_type == "probability" and output_type == "logit":
+        tree_model.values = np.log(tree_model.values / (1 - tree_model.values))
+        # give a warning if leaf values are replaced
+        if np.any(tree_model.values[tree_model.leaf_mask] == np.inf) or np.any(
+            tree_model.values[tree_model.leaf_mask] == -np.inf
+        ):
+            warning_flag = True
+        # replace +inf with 14 and -inf with -14
+        tree_model.values = np.where(tree_model.values == np.inf, 14, tree_model.values)
+        tree_model.values = np.where(tree_model.values == -np.inf, -14, tree_model.values)
+        tree_model.compute_empty_prediction()  # recompute the empty prediction
+        tree_model.original_output_type = output_type
+    # transform logit to probability
+    if original_output_type == "logit" and output_type == "probability":
+        tree_model.values = 1 / (1 + np.exp(-tree_model.values))
+        tree_model.compute_empty_prediction()  # recompute the empty prediction
+        tree_model.original_output_type = output_type
+    return tree_model, warning_flag
