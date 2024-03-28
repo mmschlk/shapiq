@@ -7,6 +7,7 @@ from .sets import (
     pair_subset_sizes,
     powerset,
     split_subsets_budget,
+    transform_coalitions_to_array,
 )
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
     "split_subsets_budget",
     "get_explicit_subsets",
     "generate_interaction_lookup",
+    "transform_coalitions_to_array",
     # modules
     "safe_isinstance",
     "try_import",
