@@ -70,15 +70,26 @@ class InteractionValues:
         """Returns the string representation of the InteractionValues object."""
         return self.__repr__()
 
-    def __getitem__(self, item: tuple[int, ...]) -> float:
+    def __len__(self) -> int:
+        """Returns the length of the InteractionValues object."""
+        return len(self.values)  # might better to return the theoretical no. of interactions
+
+    def __iter__(self) -> np.nditer:
+        """Returns an iterator over the values of the InteractionValues object."""
+        return np.nditer(self.values)
+
+    def __getitem__(self, item: Union[int, tuple[int, ...]]) -> float:
         """Returns the score for the given interaction.
 
         Args:
-            item: The interaction for which to return the score.
+            item: The interaction as a tuple of integers for which to return the score. If `item` is
+                an integer it serves as the index to the values vector.
 
         Returns:
             The interaction value. If the interaction is not present zero is returned.
         """
+        if isinstance(item, int):
+            return float(self.values[item])
         item = tuple(sorted(item))
         try:
             return float(self.values[self.interaction_lookup[item]])
