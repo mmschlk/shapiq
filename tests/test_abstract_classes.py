@@ -2,6 +2,7 @@
 import numpy as np
 import pytest
 
+from shapiq.games.base import Game
 from shapiq.approximator._base import Approximator
 from shapiq.explainer.imputer._base import Imputer
 from shapiq.explainer._base import Explainer
@@ -52,3 +53,8 @@ def test_explainer():
     explainer = concreter(Explainer)()
     with pytest.raises(NotImplementedError):
         explainer.explain(np.array([[1, 2, 3]]))
+
+
+def test_game():
+    with pytest.raises(NotImplementedError):
+        game = concreter(Game)(n_players=6)
