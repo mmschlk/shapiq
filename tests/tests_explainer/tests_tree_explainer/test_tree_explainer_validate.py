@@ -30,7 +30,13 @@ def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model):
         validate_tree_model("unsupported_model")
 
 
-def test_validate_output_types(dt_clf_model, dt_clf_model_tree_model):
+def test_validate_output_types_parameters(dt_clf_model, dt_clf_model_tree_model):
+    """This test checks weather the correct output types are validated.
+
+    This test does not check if the conversion of the output types is semantically correct. This is
+    tested in the next test.
+
+    """
     class_path_str = ["explainer.tree.base.TreeModel"]
 
     # test with invalid output type
@@ -56,9 +62,9 @@ def test_validate_output_types(dt_clf_model, dt_clf_model_tree_model):
     tree_model_logit.original_output_type = "logit"
     # manually change the values to logit from probabilities
     tree_model_logit.values = np.log(tree_model_logit.values / (1 - tree_model_logit.values))
-    tree_model_logit = convert_tree_output_type(tree_model_logit, output_type="probability")
+    tree_model_logit, _ = convert_tree_output_type(tree_model_logit, output_type="probability")
     assert safe_isinstance(tree_model_logit, class_path_str)
 
     # test edge cases
-    tree_model = convert_tree_output_type(dt_clf_model_tree_model, output_type="raw")
+    tree_model, _ = convert_tree_output_type(dt_clf_model_tree_model, output_type="raw")
     assert safe_isinstance(tree_model, class_path_str)

@@ -186,7 +186,7 @@ class EdgeTree:
             self.has_ancestors = self.ancestors > -1
 
 
-def convert_tree_output_type(tree_model: TreeModel, output_type: str) -> TreeModel:
+def convert_tree_output_type(tree_model: TreeModel, output_type: str) -> tuple[TreeModel, bool]:
     """Convert the output type of the tree model.
 
     Args:
@@ -195,14 +195,24 @@ def convert_tree_output_type(tree_model: TreeModel, output_type: str) -> TreeMod
             "logit".
 
     Returns:
-        The converted tree model.
+        The converted tree model and a warning flag indicating whether invalid probability values
+            were adjusted in logit transformation.
     """
+    warning_flag = False
     original_output_type = tree_model.original_output_type
     if original_output_type == output_type or output_type == "raw":  # no conversion needed
-        return tree_model
+        return tree_model, warning_flag
     # transform probability to logit
     if original_output_type == "probability" and output_type == "logit":
         tree_model.values = np.log(tree_model.values / (1 - tree_model.values))
+        # give a warning if leaf values are replaced
+        if np.any(tree_model.values[tree_model.leaf_mask] == np.inf) or np.any(
+            tree_model.values[tree_model.leaf_mask] == -np.inf
+        ):
+            warning_flag = True
+        # replace +inf with 14 and -inf with -14
+        tree_model.values = np.where(tree_model.values == np.inf, 14, tree_model.values)
+        tree_model.values = np.where(tree_model.values == -np.inf, -14, tree_model.values)
         tree_model.compute_empty_prediction()  # recompute the empty prediction
         tree_model.original_output_type = output_type
     # transform logit to probability
@@ -210,4 +220,4 @@ def convert_tree_output_type(tree_model: TreeModel, output_type: str) -> TreeMod
         tree_model.values = 1 / (1 + np.exp(-tree_model.values))
         tree_model.compute_empty_prediction()  # recompute the empty prediction
         tree_model.original_output_type = output_type
-    return tree_model
+    return tree_model, warning_flag
