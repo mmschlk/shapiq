@@ -4,9 +4,9 @@ from copy import deepcopy, copy
 import numpy as np
 import pytest
 
-from interaction_values import InteractionValues
-from approximator.regression import RegressionFSI
-from games import DummyGame
+from shapiq.interaction_values import InteractionValues
+from shapiq.approximator.regression import RegressionFSI
+from shapiq.games import DummyGame
 
 
 @pytest.mark.parametrize(

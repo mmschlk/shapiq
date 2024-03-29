@@ -4,18 +4,18 @@ for users of the shapiq package."""
 from typing import Callable, Optional, Union
 
 import numpy as np
-from approximator import (
+
+from shapiq.approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTI,
     RegressionFSI,
     RegressionSII,
     ShapIQ,
 )
-from approximator._base import Approximator
-from interaction_values import InteractionValues
-
-from ._base import Explainer
-from .imputer import MarginalImputer
+from shapiq.approximator._base import Approximator
+from shapiq.interaction_values import InteractionValues
+from shapiq.explainer._base import Explainer
+from shapiq.explainer.imputer import MarginalImputer
 
 __all__ = ["TabularExplainer"]
 

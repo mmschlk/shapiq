@@ -1,6 +1,7 @@
 import setuptools
 import io
 import os
+import codecs
 
 NAME = "shapiq"
 DESCRIPTION = "SHAPley Interaction Quantification (SHAP-IQ) for Explainable AI"
@@ -11,9 +12,17 @@ AUTHOR = "Maximilian Muschalik Fabian Fumagalli"
 REQUIRES_PYTHON = ">=3.9.0"
 
 work_directory = os.path.abspath(os.path.dirname(__file__))
-version: dict = {}
-with open(os.path.join(work_directory, NAME, "__version__.py")) as f:
-    exec(f.read(), version)
+
+# https://packaging.python.org/guides/single-sourcing-package-version/
+def read(rel_path):
+    with codecs.open(os.path.join(work_directory, rel_path), 'r') as fp:
+        return fp.read()
+    
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith('__version__'):
+            delimiter = '"' if '"' in line else "'"
+            return line.split(delimiter)[1]
 
 with io.open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
     long_description = "\n" + f.read()
@@ -45,7 +54,7 @@ dev_packages = [
 
 setuptools.setup(
     name=NAME,
-    version=version["__version__"],
+    version=get_version("shapiq/__init__.py"),
     description=DESCRIPTION,
     long_description=long_description,
     long_description_content_type=LONG_DESCRIPTION_CONTENT_TYPE,
@@ -57,7 +66,7 @@ setuptools.setup(
         "Tracker": "https://github.com/mmschlk/shapiq/issues?q=is%3Aissue+label%3Abug",
         "Source": "https://github.com/mmschlk/shapiq",
     },
-    packages=setuptools.find_packages(exclude=("tests", "examples", "docs")),
+    packages=setuptools.find_packages(include=("shapiq", "shapiq.*")),
     install_requires=base_packages + plotting_packages,
     extras_require={
         "docs": base_packages + plotting_packages + doc_packages,

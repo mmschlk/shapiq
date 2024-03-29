@@ -4,8 +4,9 @@ import copy
 from typing import Any, Optional, Union
 
 import numpy as np
-from explainer._base import Explainer
-from interaction_values import InteractionValues
+
+from shapiq.explainer._base import Explainer
+from shapiq.interaction_values import InteractionValues
 
 from .treeshapiq import TreeModel, TreeSHAPIQ
 from .validation import validate_tree_model

@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from games import DummyGame
+from shapiq.games import DummyGame
 
 
 @pytest.mark.parametrize(

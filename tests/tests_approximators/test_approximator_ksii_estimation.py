@@ -2,13 +2,13 @@
 import numpy as np
 import pytest
 
-from approximator import (
+from shapiq.approximator import (
     convert_ksii_into_one_dimension,
     transforms_sii_to_ksii,
     PermutationSamplingSII,
     ShapIQ,
 )
-from games import DummyGame
+from shapiq.games import DummyGame
 
 
 @pytest.mark.parametrize(

@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from explainer.tree import TreeModel
+from shapiq.explainer.tree import TreeModel
 from shapiq.explainer.tree import TreeExplainer
 
 

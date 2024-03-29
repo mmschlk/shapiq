@@ -4,18 +4,17 @@ import copy
 import math
 from typing import Any, Optional, Union
 
-import networkx as nx
 import numpy as np
-from interaction_values import InteractionValues
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
+import networkx as nx
 from PIL import Image
-from utils import powerset
+
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils import powerset
 
 from ._config import BLUE, LINES, NEUTRAL, RED
 
-__all__ = [
-    "network_plot",
-]
+__all__ = ["network_plot"]
 
 
 def network_plot(

@@ -3,7 +3,8 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-from interaction_values import InteractionValues
+
+from shapiq.interaction_values import InteractionValues
 
 
 class Explainer(ABC):

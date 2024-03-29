@@ -11,7 +11,7 @@ from shapiq.explainer.tree.validation import validate_tree_model
 
 def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model):
     """Test the validation of the model."""
-    class_path_str = ["explainer.tree.base.TreeModel"]
+    class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
     # sklearn dt models are supported
     tree_model = validate_tree_model(dt_clf_model)
     assert safe_isinstance(tree_model, class_path_str)
@@ -37,7 +37,7 @@ def test_validate_output_types_parameters(dt_clf_model, dt_clf_model_tree_model)
     tested in the next test.
 
     """
-    class_path_str = ["explainer.tree.base.TreeModel"]
+    class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
 
     # test with invalid output type
     with pytest.raises(ValueError):

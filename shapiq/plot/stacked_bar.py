@@ -1,15 +1,15 @@
 """This module contains functions to plot the n_sii stacked bar charts."""
 
-__all__ = ["stacked_bar_plot"]
-
 from copy import deepcopy
 from typing import Optional, Union
 
 import numpy as np
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 from ._config import COLORS_N_SII
+
+__all__ = ["stacked_bar_plot"]
 
 
 def stacked_bar_plot(
