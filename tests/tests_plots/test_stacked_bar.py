@@ -1,8 +1,7 @@
 """This module contains all tests for the stacked bar plots."""
-import numpy as np
 
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 from shapiq.plot import stacked_bar_plot
 

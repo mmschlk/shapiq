@@ -1,13 +1,14 @@
 """This test module contains the test cases for the utils sets module."""
+
 import numpy as np
 import pytest
 
 from shapiq.utils import (
-    powerset,
-    pair_subset_sizes,
-    split_subsets_budget,
-    get_explicit_subsets,
     generate_interaction_lookup,
+    get_explicit_subsets,
+    pair_subset_sizes,
+    powerset,
+    split_subsets_budget,
     transform_coalitions_to_array,
 )
 

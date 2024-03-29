@@ -1,12 +1,14 @@
 """This module contains the InteractionValues Dataclass, which is used to store the interaction
 scores."""
+
 import copy
 import warnings
 from dataclasses import dataclass
 from typing import Optional, Union
 
 import numpy as np
-from utils import generate_interaction_lookup, powerset
+
+from shapiq.utils import generate_interaction_lookup, powerset
 
 AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "SV", "BZF"}
 

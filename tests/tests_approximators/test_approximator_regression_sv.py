@@ -1,12 +1,13 @@
 """This test module contains all tests regarding the SV KernelSHAP regression approximator."""
-from copy import deepcopy, copy
+
+from copy import copy, deepcopy
 
 import numpy as np
 import pytest
 
-from interaction_values import InteractionValues
-from approximator.regression import KernelSHAP
-from games import DummyGame
+from shapiq.approximator.regression import KernelSHAP
+from shapiq.games import DummyGame
+from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(

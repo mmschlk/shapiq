@@ -1,13 +1,14 @@
 """This module contains the tree explainer implementation."""
+
 import copy
 from math import factorial
 from typing import Any, Optional, Union
 
 import numpy as np
-from approximator import transforms_sii_to_ksii
-from interaction_values import InteractionValues
-from scipy.special import binom
+import scipy as sp
 
+from shapiq.approximator import transforms_sii_to_ksii
+from shapiq.interaction_values import InteractionValues
 from shapiq.utils import generate_interaction_lookup, powerset
 
 from .base import EdgeTree, TreeModel
@@ -139,7 +140,7 @@ class TreeSHAPIQ:
         interactions = np.asarray([], dtype=float)
         for order in range(self._min_order, self._max_order + 1):
             self.shapley_interactions = np.zeros(
-                int(binom(self._n_features_in_tree, order)), dtype=float
+                int(sp.special.binom(self._n_features_in_tree, order)), dtype=float
             )
             self._prepare_variables_for_order(interaction_order=order)
             self._compute_shapley_interaction_values(x_explain_relevant, order=order, node_id=0)
@@ -417,7 +418,7 @@ class TreeSHAPIQ:
             interaction_poly_down = np.zeros(
                 (
                     self._edge_tree.max_depth + 1,
-                    int(binom(self._n_features_in_tree, order)),
+                    int(sp.special.binom(self._n_features_in_tree, order)),
                     self.n_interpolation_size,
                 )
             )
@@ -426,7 +427,7 @@ class TreeSHAPIQ:
             quotient_poly_down = np.zeros(
                 (
                     self._edge_tree.max_depth + 1,
-                    int(binom(self._n_features_in_tree, order)),
+                    int(sp.special.binom(self._n_features_in_tree, order)),
                     self.n_interpolation_size,
                 )
             )
@@ -489,7 +490,9 @@ class TreeSHAPIQ:
 
         # prepare the interaction updates and positions
         for feature_i in range(n_features):
-            positions = np.zeros(int(binom(n_features - 1, interaction_order - 1)), dtype=int)
+            positions = np.zeros(
+                int(sp.special.binom(n_features - 1, interaction_order - 1)), dtype=int
+            )
             interaction_update_positions[feature_i] = positions.copy()
             interaction_updates[feature_i] = []
 
@@ -527,7 +530,7 @@ class TreeSHAPIQ:
 
         for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
             subset_ancestors[node_id] = np.full(
-                int(binom(n_features, interaction_order)), -1, dtype=int
+                int(sp.special.binom(n_features, interaction_order)), -1, dtype=int
             )
         for S in powerset(range(n_features), interaction_order, interaction_order):
             # self.shapley_interactions_lookup[S] = counter_interaction
@@ -573,7 +576,7 @@ class TreeSHAPIQ:
         # TODO: add docstring
         if self._interaction_type == "STI":
             return self._max_order / (
-                self._n_features_in_tree * binom(self._n_features_in_tree - 1, t)
+                self._n_features_in_tree * sp.special.binom(self._n_features_in_tree - 1, t)
             )
         if self._interaction_type == "FSI":
             return (
@@ -598,7 +601,7 @@ class TreeSHAPIQ:
     @staticmethod
     def _get_norm_weight(M) -> np.ndarray[float]:
         # TODO: add docstring and rename variables
-        return np.array([binom(M, i) for i in range(M + 1)])
+        return np.array([sp.special.binom(M, i) for i in range(M + 1)])
 
     @staticmethod
     def _cache(interpolated_poly: np.ndarray[float]) -> np.ndarray[float]:

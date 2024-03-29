@@ -3,11 +3,12 @@
 from typing import Callable, Optional
 
 import numpy as np
-from approximator._base import Approximator
-from approximator.sampling import ShapleySamplingMixin
-from interaction_values import InteractionValues
-from scipy.special import bernoulli, binom
-from utils import powerset
+import scipy as sp
+
+from shapiq.approximator._base import Approximator
+from shapiq.approximator.sampling import ShapleySamplingMixin
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils import powerset
 
 AVAILABLE_INDICES_REGRESSION = ["FSI", "SII", "SV"]
 
@@ -71,7 +72,7 @@ class Regression(Approximator, ShapleySamplingMixin):
             n, max_order=max_order, index=index, top_order=False, random_state=random_state
         )
         self.iteration_cost: int = 1
-        self._bernoulli_numbers = bernoulli(self.n)  # used for SII
+        self._bernoulli_numbers = sp.special.bernoulli(self.n)  # used for SII
 
     def approximate(
         self,
@@ -168,7 +169,9 @@ class Regression(Approximator, ShapleySamplingMixin):
             of players.
         """
         n_subsets = all_subsets.shape[0]
-        num_players = sum(int(binom(self.n, order)) for order in range(1, self.max_order + 1))
+        num_players = sum(
+            int(sp.special.binom(self.n, order)) for order in range(1, self.max_order + 1)
+        )
         regression_subsets = np.zeros(shape=(n_subsets, num_players), dtype=bool)
         for interaction_index, interaction in enumerate(
             powerset(self.N, min_size=1, max_size=self.max_order)
@@ -192,7 +195,9 @@ class Regression(Approximator, ShapleySamplingMixin):
             of players.
         """
         n_subsets = all_subsets.shape[0]
-        num_players = sum(int(binom(self.n, order)) for order in range(1, self.max_order + 1))
+        num_players = sum(
+            int(sp.special.binom(self.n, order)) for order in range(1, self.max_order + 1)
+        )
         regression_subsets = np.zeros(shape=(n_subsets, num_players), dtype=float)
         for interaction_index, interaction in enumerate(
             powerset(self.N, min_size=1, max_size=self.max_order)
@@ -215,7 +220,9 @@ class Regression(Approximator, ShapleySamplingMixin):
         """
         weight = 0
         for size in range(1, intersection_size + 1):
-            weight += binom(intersection_size, size) * self._bernoulli_numbers[r_prime - size]
+            weight += (
+                sp.special.binom(intersection_size, size) * self._bernoulli_numbers[r_prime - size]
+            )
         return weight
 
     def _get_bernoulli_weights(

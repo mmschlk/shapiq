@@ -2,11 +2,12 @@
 If it becomes too large, it can be split into multiple files like here:
 https://gist.github.com/peterhurford/09f7dcda0ab04b95c026c60fa49c2a68
 """
+
 import numpy as np
 import pytest
-from sklearn.datasets import make_regression, make_classification
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.datasets import make_classification, make_regression
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq.explainer.tree import TreeModel
 

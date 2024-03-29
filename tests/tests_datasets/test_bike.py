@@ -1,4 +1,5 @@
 """This test module contains the tests for the bike dataset."""
+
 from shapiq import load_bike
 
 

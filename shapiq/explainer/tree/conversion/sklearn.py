@@ -1,13 +1,14 @@
 """This module contains functions for converting scikit-learn decision trees to the format used by
- shapiq."""
+shapiq."""
 
 from typing import Optional
 
 import numpy as np
-from explainer.tree.base import TreeModel
 
 from shapiq.utils import safe_isinstance
 from shapiq.utils.types import Model
+
+from ..base import TreeModel
 
 
 def convert_sklearn_forest(

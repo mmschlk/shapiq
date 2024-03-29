@@ -1,12 +1,13 @@
 """This test module contains all tests regarding the STI permutation sampling approximator."""
+
 from copy import copy, deepcopy
 
 import numpy as np
 import pytest
 
-from interaction_values import InteractionValues
-from approximator.permutation import PermutationSamplingSTI
-from games import DummyGame
+from shapiq.approximator.permutation import PermutationSamplingSTI
+from shapiq.games import DummyGame
+from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(

@@ -4,9 +4,10 @@ from copy import copy, deepcopy
 
 import numpy as np
 import pytest
-from approximator.shapiq import ShapIQ
-from games import DummyGame
-from interaction_values import InteractionValues
+
+from shapiq.approximator.shapiq import ShapIQ
+from shapiq.games import DummyGame
+from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(

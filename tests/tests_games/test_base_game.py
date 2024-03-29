@@ -5,8 +5,6 @@ import os
 import numpy as np
 import pytest
 
-
-from shapiq.games.base import Game
 from shapiq.games.dummy import DummyGame  # used to test the base class
 
 

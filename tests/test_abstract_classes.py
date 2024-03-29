@@ -1,11 +1,12 @@
 """This test module contains all tests regarding the base approximator class."""
+
 import numpy as np
 import pytest
 
-from shapiq.games.base import Game
 from shapiq.approximator._base import Approximator
-from shapiq.explainer.imputer._base import Imputer
 from shapiq.explainer._base import Explainer
+from shapiq.explainer.imputer._base import Imputer
+from shapiq.games.base import Game
 
 
 def concreter(abclass):
