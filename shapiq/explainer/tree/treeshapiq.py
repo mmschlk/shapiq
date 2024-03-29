@@ -1,4 +1,5 @@
 """This module contains the tree explainer implementation."""
+
 import copy
 from math import factorial
 from typing import Any, Optional, Union
@@ -489,7 +490,9 @@ class TreeSHAPIQ:
 
         # prepare the interaction updates and positions
         for feature_i in range(n_features):
-            positions = np.zeros(int(sp.special.binom(n_features - 1, interaction_order - 1)), dtype=int)
+            positions = np.zeros(
+                int(sp.special.binom(n_features - 1, interaction_order - 1)), dtype=int
+            )
             interaction_update_positions[feature_i] = positions.copy()
             interaction_updates[feature_i] = []
 

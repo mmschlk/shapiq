@@ -1,12 +1,12 @@
 """This test module collects all tests for the conversions of the supported tree models for the
 TreeExplainer class."""
+
 import numpy as np
 
-
-from shapiq.utils import safe_isinstance
 from shapiq.explainer.tree.base import TreeModel
-from shapiq.explainer.tree.conversion.sklearn import convert_sklearn_tree, convert_sklearn_forest
 from shapiq.explainer.tree.conversion.edges import create_edge_tree
+from shapiq.explainer.tree.conversion.sklearn import convert_sklearn_forest, convert_sklearn_tree
+from shapiq.utils import safe_isinstance
 
 
 def test_tree_model_init():

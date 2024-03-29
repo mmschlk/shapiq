@@ -4,9 +4,9 @@ import copy
 import math
 from typing import Any, Optional, Union
 
-import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 from PIL import Image
 
 from shapiq.interaction_values import InteractionValues

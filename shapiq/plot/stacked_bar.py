@@ -3,8 +3,8 @@
 from copy import deepcopy
 from typing import Optional, Union
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.patches import Patch
 
 from ._config import COLORS_N_SII

@@ -1,9 +1,9 @@
 """This test module contains all tests for the tree explainer module of the shapiq package."""
+
 import numpy as np
 import pytest
 
-from shapiq.explainer.tree import TreeModel
-from shapiq.explainer.tree import TreeExplainer
+from shapiq.explainer.tree import TreeExplainer, TreeModel
 
 
 def test_decision_tree_classifier(dt_clf_model, background_clf_data):

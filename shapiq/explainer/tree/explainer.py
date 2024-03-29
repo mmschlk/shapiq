@@ -1,5 +1,6 @@
 """This module contains the TreeExplainer class making use of the TreeSHAPIQ algorithm for
 computing any-order Shapley Interactions for tree ensembles."""
+
 import copy
 from typing import Any, Optional, Union
 

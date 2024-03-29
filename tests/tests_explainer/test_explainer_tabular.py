@@ -1,14 +1,12 @@
-"""This test module contains all tests regarding the interaciton explainer for the shapiq package.
-"""
+"""This test module contains all tests regarding the interaciton explainer for the shapiq package."""
 
 import pytest
-
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.datasets import make_regression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.explainer import TabularExplainer
 from shapiq.approximator import RegressionFSI
+from shapiq.explainer import TabularExplainer
 
 
 @pytest.fixture

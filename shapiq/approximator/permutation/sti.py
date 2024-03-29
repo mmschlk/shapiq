@@ -77,7 +77,9 @@ class PermutationSamplingSTI(Approximator):
         counts: np.ndarray[int] = self._init_result(dtype=int)
 
         # compute all lower order interactions if budget allows it
-        lower_order_cost = sum(int(sp.special.binom(self.n, s)) for s in range(self.min_order, self.max_order))
+        lower_order_cost = sum(
+            int(sp.special.binom(self.n, s)) for s in range(self.min_order, self.max_order)
+        )
         if self.max_order > 1 and budget >= lower_order_cost:
             budget -= lower_order_cost
             used_budget += lower_order_cost

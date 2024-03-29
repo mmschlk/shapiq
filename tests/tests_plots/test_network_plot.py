@@ -1,12 +1,13 @@
 """This module contains all tests for the network plots."""
-import numpy as np
-import scipy as sp
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
+import scipy as sp
 from PIL import Image
 
-from shapiq.plot import network_plot
 from shapiq.interaction_values import InteractionValues
+from shapiq.plot import network_plot
 
 
 def test_network_plot():

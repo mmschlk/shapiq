@@ -1,6 +1,6 @@
 """This test module contains tests for utils.modules."""
-import pytest
 
+import pytest
 from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.utils import safe_isinstance, try_import

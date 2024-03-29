@@ -1,4 +1,5 @@
 """This test module contains all tests regarding the InteractionValues dataclass."""
+
 from copy import copy, deepcopy
 
 import numpy as np

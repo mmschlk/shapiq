@@ -1,4 +1,5 @@
 """This test module contains all tests for the marginal imputer module of the shapiq package."""
+
 import numpy as np
 
 from shapiq.explainer.imputer import MarginalImputer

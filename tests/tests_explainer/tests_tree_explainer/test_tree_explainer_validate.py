@@ -1,9 +1,10 @@
 """This test module contains all tests for the validation functions of the tree explainer
 implementation."""
+
 import copy
 
-import pytest
 import numpy as np
+import pytest
 
 from shapiq import safe_isinstance
 from shapiq.explainer.tree.validation import validate_tree_model

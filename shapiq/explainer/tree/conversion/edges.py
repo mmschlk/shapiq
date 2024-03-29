@@ -1,6 +1,7 @@
 """This module contains the conversion functions to parse a tree model into the edge representation.
 The edge representation is used by the TreeSHAP-IQ algorithm to compute the interaction values of a
 tree-based model."""
+
 import numpy as np
 from scipy.special import binom
 

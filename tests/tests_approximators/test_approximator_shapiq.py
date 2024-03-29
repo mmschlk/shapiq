@@ -1,12 +1,13 @@
 """This test module contains all tests regarding the shapiq approximator."""
+
 from copy import copy, deepcopy
 
 import numpy as np
 import pytest
 
 from shapiq.approximator.shapiq import ShapIQ
-from shapiq.interaction_values import InteractionValues
 from shapiq.games import DummyGame
+from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(

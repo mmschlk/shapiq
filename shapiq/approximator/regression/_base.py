@@ -169,7 +169,9 @@ class Regression(Approximator, ShapleySamplingMixin):
             of players.
         """
         n_subsets = all_subsets.shape[0]
-        num_players = sum(int(sp.special.binom(self.n, order)) for order in range(1, self.max_order + 1))
+        num_players = sum(
+            int(sp.special.binom(self.n, order)) for order in range(1, self.max_order + 1)
+        )
         regression_subsets = np.zeros(shape=(n_subsets, num_players), dtype=bool)
         for interaction_index, interaction in enumerate(
             powerset(self.N, min_size=1, max_size=self.max_order)
@@ -193,7 +195,9 @@ class Regression(Approximator, ShapleySamplingMixin):
             of players.
         """
         n_subsets = all_subsets.shape[0]
-        num_players = sum(int(sp.special.binom(self.n, order)) for order in range(1, self.max_order + 1))
+        num_players = sum(
+            int(sp.special.binom(self.n, order)) for order in range(1, self.max_order + 1)
+        )
         regression_subsets = np.zeros(shape=(n_subsets, num_players), dtype=float)
         for interaction_index, interaction in enumerate(
             powerset(self.N, min_size=1, max_size=self.max_order)
@@ -216,7 +220,9 @@ class Regression(Approximator, ShapleySamplingMixin):
         """
         weight = 0
         for size in range(1, intersection_size + 1):
-            weight += sp.special.binom(intersection_size, size) * self._bernoulli_numbers[r_prime - size]
+            weight += (
+                sp.special.binom(intersection_size, size) * self._bernoulli_numbers[r_prime - size]
+            )
         return weight
 
     def _get_bernoulli_weights(

@@ -1,7 +1,7 @@
-import setuptools
-import io
-import os
 import codecs
+import os
+
+import setuptools
 
 NAME = "shapiq"
 DESCRIPTION = "SHAPley Interaction Quantification (SHAP-IQ) for Explainable AI"
@@ -13,18 +13,21 @@ REQUIRES_PYTHON = ">=3.9.0"
 
 work_directory = os.path.abspath(os.path.dirname(__file__))
 
+
 # https://packaging.python.org/guides/single-sourcing-package-version/
 def read(rel_path):
-    with codecs.open(os.path.join(work_directory, rel_path), 'r') as fp:
+    with codecs.open(os.path.join(work_directory, rel_path), "r") as fp:
         return fp.read()
-    
+
+
 def get_version(rel_path):
     for line in read(rel_path).splitlines():
-        if line.startswith('__version__'):
+        if line.startswith("__version__"):
             delimiter = '"' if '"' in line else "'"
             return line.split(delimiter)[1]
 
-with io.open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
+
+with open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
     long_description = "\n" + f.read()
 
 base_packages = ["numpy", "scipy", "pandas", "tqdm"]
