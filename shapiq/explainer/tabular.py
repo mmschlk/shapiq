@@ -12,10 +12,10 @@ from approximator import (
     ShapIQ,
 )
 from approximator._base import Approximator
+from games.imputer import MarginalImputer
 from interaction_values import InteractionValues
 
 from ._base import Explainer
-from .imputer import MarginalImputer
 
 __all__ = ["TabularExplainer"]
 

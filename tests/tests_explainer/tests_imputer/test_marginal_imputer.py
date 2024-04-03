@@ -1,7 +1,7 @@
 """This test module contains all tests for the marginal imputer module of the shapiq package."""
 import numpy as np
 
-from shapiq.explainer.imputer import MarginalImputer
+from games.imputer import MarginalImputer
 
 
 def test_marginal_imputer_init():
@@ -67,5 +67,5 @@ def test_sample_replacements():
         random_state=42,
     )
 
-    imputed_values = imputer(subsets=np.array([[True, False, True], [False, True, False]]))
+    imputed_values = imputer(np.array([[True, False, True], [False, True, False]]))
     assert len(imputed_values) == 2

@@ -4,7 +4,7 @@ import pytest
 
 from shapiq.games.base import Game
 from shapiq.approximator._base import Approximator
-from shapiq.explainer.imputer._base import Imputer
+from games.imputer.base import Imputer
 from shapiq.explainer._base import Explainer
 
 
@@ -56,5 +56,7 @@ def test_explainer():
 
 
 def test_game():
+    n = 6
+    game = concreter(Game)(n_players=n)
     with pytest.raises(NotImplementedError):
-        game = concreter(Game)(n_players=6)
+        game(np.array([[True for _ in range(n)]]))
