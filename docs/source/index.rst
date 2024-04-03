@@ -23,3 +23,9 @@ Contents
    :caption: Development
 
    api
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Tutorials
+
+   notebooks/bike
