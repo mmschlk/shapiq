@@ -1,12 +1,14 @@
-"""Base class for imputers."""
+"""Base class for all imputers."""
 
 from abc import abstractmethod
 from typing import Callable, Optional
 
 import numpy as np
 
+from ..base import Game
 
-class Imputer:
+
+class Imputer(Game):
     """Base class for imputers.
 
     Args:
@@ -33,16 +35,5 @@ class Imputer:
         self._random_state = random_state
         self._rng = np.random.default_rng(self._random_state)
 
-    @abstractmethod
-    def __call__(self, subsets: np.ndarray[bool]) -> np.ndarray[float]:
-        """Imputes the missing values of a data point and calls the model.
-
-        Args:
-            subsets: A boolean array indicating which features are present (`True`) and which are
-                missing (`False`). The shape of the array must be (n_subsets, n_features).
-
-        Returns:
-            The model's predictions on the imputed data points. The shape of the array is
-            (n_subsets, n_outputs).
-        """
-        raise NotImplementedError("Method `__call__` must be implemented in a subclass.")
+        # the normalization_value needs to be set in the subclass
+        super().__init__(n_players=self._n_features, normalize=False)
