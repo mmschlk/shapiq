@@ -4,7 +4,7 @@ from .k_sii import convert_ksii_into_one_dimension, transforms_sii_to_ksii
 from .permutation.sii import PermutationSamplingSII
 from .permutation.sti import PermutationSamplingSTI
 from .regression import KernelSHAP, RegressionFSI, RegressionSII
-from .shapiq import ShapIQ
+from .shapiq import ShapIQ, UnbiasedKernelSHAP
 
 __all__ = [
     "PermutationSamplingSII",
@@ -13,6 +13,7 @@ __all__ = [
     "RegressionFSI",
     "RegressionSII",
     "ShapIQ",
+    "UnbiasedKernelSHAP",
     "transforms_sii_to_ksii",
     "convert_ksii_into_one_dimension",
 ]

@@ -11,7 +11,7 @@ from shapiq.approximator.sampling import ShapleySamplingMixin
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
-AVAILABLE_INDICES_SHAPIQ = {"SII", "STI", "FSI", "k-SII"}
+AVAILABLE_INDICES_SHAPIQ = {"SII", "STI", "FSI", "k-SII", "SV"}
 
 
 class ShapIQ(Approximator, ShapleySamplingMixin, KShapleyMixin):
@@ -229,7 +229,7 @@ class ShapIQ(Approximator, ShapleySamplingMixin, KShapleyMixin):
         Returns:
             float: The weight for the interaction type.
         """
-        if self.index == "SII" or self.index == "k-SII":  # in both cases return SII kernel
+        if self.index == "SII" or self.index == "k-SII" or self.index == "SV":  # SII kernel default
             return self._sii_weight_kernel(subset_size, interaction_size)
         elif self.index == "STI":
             return self._sti_weight_kernel(subset_size, interaction_size)
