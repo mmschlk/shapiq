@@ -42,6 +42,7 @@ def test_network_plot():
         n_players=n_players,
         min_order=1,
         max_order=2,
+        baseline_value=0.0,
     )
     fig, axes = network_plot(interaction_values=iv)
     assert fig is not None

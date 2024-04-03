@@ -28,7 +28,12 @@ def test_decision_tree_classifier(dt_clf_model, background_clf_data):
 
     explainer = _ = TreeExplainer(model=dt_clf_model, max_order=1, min_order=1, class_label=1)
     explanation = explainer.explain(x_explain)
-    print(explanation)
+
+    # compare baseline_value with empty_predictions
+    assert explainer.baseline_value == sum(
+        [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers]
+    )
+    assert explanation.baseline_value == explainer.baseline_value
 
 
 def test_decision_tree_regression(dt_reg_model, background_reg_data):
@@ -40,6 +45,12 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
+    # compare baseline_value with empty_predictions
+    assert explainer.baseline_value == sum(
+        [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers]
+    )
+    assert explanation.baseline_value == explainer.baseline_value
+
 
 def test_random_forrest_regression(rf_reg_model, background_reg_data):
     """Test TreeExplainer with a simple decision tree regressor."""
@@ -50,6 +61,12 @@ def test_random_forrest_regression(rf_reg_model, background_reg_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
+    # compare baseline_value with empty_predictions
+    assert explainer.baseline_value == sum(
+        [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers]
+    )
+    assert explanation.baseline_value == explainer.baseline_value
+
 
 def test_random_forrest_classification(rf_clf_model, background_clf_data):
     """Test TreeExplainer with a simple decision tree regressor."""
@@ -59,6 +76,12 @@ def test_random_forrest_classification(rf_clf_model, background_clf_data):
     explanation = explainer.explain(x_explain)
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
+
+    # compare baseline_value with empty_predictions
+    assert explainer.baseline_value == sum(
+        [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers]
+    )
+    assert explanation.baseline_value == explainer.baseline_value
 
 
 def test_against_shap_implementation():

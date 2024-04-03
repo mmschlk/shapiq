@@ -24,6 +24,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     """Tests the initialization of the InteractionValues dataclass."""
     interaction_lookup = {interaction: i for i, interaction in enumerate(powerset(range(n), 1, 2))}
     values = np.random.rand(len(interaction_lookup))
+    baseline_value = 2.0
     try:
         interaction_values = InteractionValues(
             values=values,
@@ -34,6 +35,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
             interaction_lookup=interaction_lookup,
             estimation_budget=estimation_budget,
             estimated=estimated,
+            baseline_value=baseline_value,
         )
     except ValueError:
         if index == "something":
@@ -55,6 +57,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
         n_players=n,
         min_order=min_order,
         max_order=max_order,
+        baseline_value=baseline_value,
     )
     assert interaction_values_2.estimation_budget is None  # default value is None
     assert interaction_values_2.estimated is True  # default value is True
@@ -97,6 +100,22 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     # test __len__
     assert len(interaction_values) == len(interaction_values.values)
 
+    # test baseline value
+    assert interaction_values.baseline_value == baseline_value
+    assert interaction_values[()] == baseline_value
+    with pytest.raises(ValueError):
+        InteractionValues(
+            values=values,
+            index=index,
+            n_players=n,
+            min_order=min_order,
+            max_order=max_order,
+            interaction_lookup=interaction_lookup,
+            estimation_budget=estimation_budget,
+            estimated=estimated,
+            baseline_value=None,
+        )
+
 
 def test_add():
     """Tests the __add__ method of the InteractionValues dataclass."""
@@ -116,6 +135,7 @@ def test_add():
         min_order=min_order,
         max_order=max_order,
         interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
     )
 
     # test adding scalar values
@@ -139,6 +159,7 @@ def test_add():
         min_order=min_order,
         max_order=max_order,
         interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
     )
     with pytest.raises(ValueError):
         interaction_values_first + interaction_values_second
@@ -157,6 +178,7 @@ def test_add():
         min_order=min_order,
         max_order=max_order + 1,
         interaction_lookup=interaction_lookup_second,
+        baseline_value=0.0,
     )
     with pytest.warns(UserWarning):
         interaction_values_added = interaction_values_first + interaction_values_second
@@ -194,6 +216,7 @@ def test_sub():
         min_order=min_order,
         max_order=max_order,
         interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
     )
 
     # test subtracting scalar values
@@ -225,6 +248,7 @@ def test_mul():
         min_order=min_order,
         max_order=max_order,
         interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
     )
 
     # test adding scalar values
@@ -253,6 +277,7 @@ def test_sum():
         min_order=min_order,
         max_order=max_order,
         interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
     )
 
     assert np.isclose(sum(interaction_values), np.sum(interaction_values.values))

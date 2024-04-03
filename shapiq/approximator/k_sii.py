@@ -78,6 +78,7 @@ def transforms_sii_to_ksii(
             interaction_lookup=sii_values.interaction_lookup,
             estimated=sii_values.estimated,
             estimation_budget=sii_values.estimation_budget,
+            baseline_value=sii_values.baseline_value,
         )
     elif approximator is not None:
         return _calculate_ksii_from_sii(

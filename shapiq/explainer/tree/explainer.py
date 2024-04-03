@@ -43,6 +43,11 @@ class TreeExplainer(Explainer):
             for _tree in self._trees
         ]
 
+        # TODO: for the current implementation this is correct for other trees this may vary
+        self.baseline_value = sum(
+            [treeshapiq.empty_prediction for treeshapiq in self._treeshapiq_explainers]
+        )
+
     def explain(self, x_explain: np.ndarray) -> InteractionValues:
         # run treeshapiq for all trees
         interaction_values: list[InteractionValues] = []
