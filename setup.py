@@ -26,9 +26,11 @@ def get_version(rel_path):
             delimiter = '"' if '"' in line else "'"
             return line.split(delimiter)[1]
 
-
 with open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
-    long_description = "\n" + f.read()
+    readme = f.read()
+
+with open(os.path.join(work_directory, 'CHANGELOG.md'), encoding='utf-8')as f:
+    changelog = f.read()
 
 base_packages = ["numpy", "scipy", "pandas", "tqdm"]
 
@@ -59,7 +61,7 @@ setuptools.setup(
     name=NAME,
     version=get_version("shapiq/__init__.py"),
     description=DESCRIPTION,
-    long_description=long_description,
+    long_description=u"\n\n".join([readme, changelog]),
     long_description_content_type=LONG_DESCRIPTION_CONTENT_TYPE,
     author=AUTHOR,
     author_email=EMAIL,
