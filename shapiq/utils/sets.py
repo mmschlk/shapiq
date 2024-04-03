@@ -15,6 +15,7 @@ __all__ = [
     "get_explicit_subsets",
     "generate_interaction_lookup",
     "transform_coalitions_to_array",
+    "transform_array_to_coalitions",
 ]
 
 
@@ -248,3 +249,24 @@ def transform_coalitions_to_array(
     for i, coalition in enumerate(coalitions):
         coalition_array[i, coalition] = True
     return coalition_array
+
+
+def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int]]:
+    """Transforms a 2d one-hot matrix of coalitions into a list of tuples.
+
+    Args:
+        coalitions: A binary array of coalitions.
+
+    Returns:
+        List of coalitions as tuples.
+
+    Examples:
+        >>> coalitions = np.array([[True, True, False], [False, True, True], [True, False, True]])
+        >>> transform_array_to_coalitions(coalitions)
+        [(0, 1), (1, 2), (0, 2)]
+
+        >>> coalitions = np.array([[False, False, False], [True, True, True]])
+        >>> transform_array_to_coalitions(coalitions)
+        [(), (0, 1, 2)]
+    """
+    return [tuple(np.where(coalition)[0]) for coalition in coalitions]

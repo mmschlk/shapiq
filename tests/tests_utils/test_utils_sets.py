@@ -10,6 +10,7 @@ from shapiq.utils import (
     powerset,
     split_subsets_budget,
     transform_coalitions_to_array,
+    transform_array_to_coalitions,
 )
 
 
@@ -129,3 +130,29 @@ def test_generate_interaction_lookup(n, min_order, max_order, expected):
 def test_transform_coalitions_to_array(coalitions, n_player, expected):
     """Tests the transform_coalitions_to_array function."""
     assert np.all(transform_coalitions_to_array(coalitions, n_player) == expected)
+
+
+@pytest.mark.parametrize(
+    "coalitions, expected",
+    [
+        (
+            np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]]),
+            [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)],
+        ),
+        (
+            np.array([[1, 1, 0], [0, 1, 1], [1, 0, 1]]),
+            [(0, 1), (1, 2), (0, 2)],
+        ),
+        (
+            np.array([[1, 1, 0, 0], [0, 1, 1, 0], [1, 0, 1, 0]]),
+            [(0, 1), (1, 2), (0, 2)],
+        ),
+        (
+            np.array([[False, False, False], [True, True, True]]),
+            [(), (0, 1, 2)],
+        ),
+    ],
+)
+def test_transform_array_to_coalitions(coalitions, expected):
+    """Tests the transform_array_to_coalitions function."""
+    assert transform_array_to_coalitions(coalitions) == expected
