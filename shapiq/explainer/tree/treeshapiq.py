@@ -155,6 +155,7 @@ class TreeSHAPIQ:
             n_players=n_players,
             estimated=False,
             interaction_lookup=self._interactions_lookup_relevant,
+            baseline_value=self.empty_prediction,
         )
 
         if self._interaction_type == "k-SII":

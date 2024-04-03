@@ -53,6 +53,7 @@ class TabularExplainer(Explainer):
     Attributes:
         index: The Shapley interaction index to use.
         background_data: The background data to use for the explainer.
+        baseline_value: The baseline value of the explainer.
     """
 
     def __init__(
@@ -97,8 +98,14 @@ class TabularExplainer(Explainer):
 
         # explain
         interaction_values = self._approximator.approximate(budget=budget, game=imputer)
+        interaction_values.baseline_value = self.baseline_value
 
         return interaction_values
+
+    @property
+    def baseline_value(self) -> float:
+        """Returns the baseline value of the explainer."""
+        return self._imputer.empty_prediction
 
     def _init_approximator(
         self, approximator: Union[Approximator, str], index: str, max_order: int

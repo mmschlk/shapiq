@@ -143,6 +143,7 @@ class Approximator(ABC):
             max_order=self.max_order,
             n_players=self.n,
             interaction_lookup=self._interaction_lookup,
+            baseline_value=0.0,  # Approximator are always normalized/centered games
         )
 
     @staticmethod
