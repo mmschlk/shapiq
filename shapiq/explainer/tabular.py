@@ -14,7 +14,7 @@ from shapiq.approximator import (
 )
 from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
-from shapiq.explainer.imputer import MarginalImputer
+from shapiq.games.imputer import MarginalImputer
 from shapiq.interaction_values import InteractionValues
 
 __all__ = ["TabularExplainer"]
