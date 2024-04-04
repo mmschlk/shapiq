@@ -74,7 +74,7 @@ class Game(ABC):
     @property
     def normalize(self) -> bool:
         """Indication whether the game values are normalized."""
-        return int(self.normalization_value) != 0
+        return self.normalization_value != 0
 
     def __call__(self, coalitions: np.ndarray) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
