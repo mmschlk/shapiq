@@ -39,6 +39,3 @@ def test_basic_function(mask_strategy):
         _ = SentimentClassificationGame(
             input_text=input_text, normalize=True, mask_strategy="undefined"
         )
-
-    # TODO: test for ImportError without transformers installed
-    # all stack overflow solutions are not working

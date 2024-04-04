@@ -14,6 +14,13 @@ class SentimentClassificationGame(Game):
     the coalition's text. The sentiment is encoded as a number between -1 (strong negative
     sentiment) and 1 (strong positive sentiment).
 
+    Note:
+        This benchmark game requires the `transformers` package to be installed. You can install it
+        via pip:
+        ```bash
+        pip install transformers
+        ```
+
     Args:
         input_text: The input text to be classified.
         normalize: Whether to normalize the game. Defaults to True.
@@ -48,13 +55,7 @@ class SentimentClassificationGame(Game):
 
     def __init__(self, input_text: str, normalize: bool = True, mask_strategy: str = "mask"):
         # import the required modules locally (to avoid having to install them for all)
-        try:
-            from transformers import pipeline
-        except ImportError:
-            raise ImportError(
-                "The 'transformers' package is required to use the SentimentClassificationGame."
-                "Consider installing it with 'pip install transformers'."
-            )
+        from transformers import pipeline
 
         if mask_strategy not in ["remove", "mask"]:
             raise ValueError(
