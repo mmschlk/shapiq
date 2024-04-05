@@ -34,16 +34,3 @@ def load_bike() -> pd.DataFrame:
     data.columns = list(map(str.title, data.columns))
 
     return data
-
-
-def load_california() -> pd.DataFrame:
-    """Load the California housing dataset as cleaned in the `sklearn` package.
-
-    Original source: https://www.dcc.fc.up.pt/~ltorgo/Regression/cal_housing.html
-
-    Returns:
-        The California housing dataset as a pandas DataFrame.
-    """
-    data = pd.read_csv(os.path.join(GITHUB_DATA_URL, "california.csv"))
-
-    return data
