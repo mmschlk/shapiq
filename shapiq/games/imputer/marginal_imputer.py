@@ -61,7 +61,7 @@ class MarginalImputer(Imputer):
         if normalize:
             self.normalization_value = self.empty_prediction
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
         """Imputes the missing values of a data point and calls the model.
 
         Args:
@@ -118,7 +118,7 @@ class MarginalImputer(Imputer):
                 self.replacement_data[:, feature] = summarized_feature
         return self
 
-    def fit(self, x_explain: np.ndarray[float]) -> "MarginalImputer":
+    def fit(self, x_explain: np.ndarray) -> "MarginalImputer":
         """Fits the imputer to the explanation point.
 
         Args:

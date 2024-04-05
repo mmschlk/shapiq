@@ -1,5 +1,5 @@
 """This module contains all tabular machine learning games."""
-
+import os
 from typing import Any, Callable, Optional, Union
 
 import numpy as np
@@ -17,13 +17,16 @@ class LocalExplanation(Game):
     of the data point (for more information see `MarginalImputer`).
 
     Args:
+        path_to_values: The path to the pre-computed game values to load. If provided, then the game
+            is loaded from the file and no other parameters are used. Defaults to `None`.
+        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
+            of shape (n_features). Defaults to `None` which will select a random data point from the
+            background data.
         x_data: The background data used to fit the imputer. Should be a 2d matrix of shape
             (n_samples, n_features).
         model: The model to explain as a callable function expecting data points as input and
             returning the model's predictions. The input should be a 2d matrix of shape
             (n_samples, n_features) and the output a 1d matrix of shape (n_samples).
-        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
-            of shape (n_features).
         random_state: The random state to use for the imputer. Defaults to `None`.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
@@ -42,7 +45,7 @@ class LocalExplanation(Game):
         >>> model.fit(x_data, y_data)
         >>> # create a LocalExplanation game
         >>> x_explain = x_data[0]
-        >>> game = LocalExplanation(x_data=x_data, model=model.predict, x_explain=x_explain)
+        >>> game = LocalExplanation(x_explain=x_explain,x_data=x_data,model=model.predict)
         >>> # evaluate the game on a specific coalition
         >>> coalition = np.zeros(shape=(1, 10), dtype=bool)
         >>> coalition[0][0, 1, 2] = True
@@ -56,29 +59,38 @@ class LocalExplanation(Game):
 
     def __init__(
         self,
-        x_data: np.ndarray,
-        model: Callable[[np.ndarray], np.ndarray],
-        x_explain: Union[np.ndarray, int],
+        *,
+        path_to_values: Optional[str] = None,
+        x_explain: Optional[Union[np.ndarray, int]] = None,
+        x_data: Optional[np.ndarray] = None,
+        model: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+        imputer: Optional[MarginalImputer] = None,
         random_state: Optional[int] = None,
         normalize: bool = True,
     ) -> None:
-        # set attributes
-        self._model = model
-        self._x_data = x_data
+        # check if path is provided
+        if path_to_values is not None:
+            super().__init__(path_to_values=path_to_values)
+            return
 
-        # set explanation point
-        if isinstance(x_explain, int):
-            x_explain = self._x_data[x_explain]
+        # get x_explain
         self.x_explain = x_explain
+        if self.x_explain is None:  # get a random data point from the test set
+            self.x_explain = x_data[np.random.randint(0, x_data.shape[0])]
+        # if x_explain is an index then get the data point
+        if isinstance(self.x_explain, int):
+            self.x_explain = x_data[x_explain]
 
         # init the imputer which serves as the workhorse of this Game
-        self._imputer = MarginalImputer(
-            model=self._model,
-            background_data=self._x_data,
-            x_explain=x_explain,
-            random_state=random_state,
-            normalize=False,
-        )
+        self._imputer = imputer
+        if self._imputer is None:
+            self._imputer = MarginalImputer(
+                model=model,
+                background_data=x_data,
+                x_explain=x_explain,
+                random_state=random_state,
+                normalize=False,
+            )
 
         self.empty_prediction: float = self._imputer.empty_prediction
 
@@ -110,22 +122,30 @@ class FeatureSelectionGame(Game):
     model's test set performance.
 
     Args:
+        path_to_values: The path to the pre-computed game values to load. If provided, then the game
+            is loaded from the file and no other parameters are used. Defaults to `None`.
         x_train: The training data used to fit the model. Should be a 2d matrix of shape
-            (n_samples, n_features).
+            (n_samples, n_features). Defaults to `None` but must be provided if `path_to_values` is
+            `None`.
         y_train: The training labels used to fit the model. Can be a 1d or 2d matrix of shape
-            (n_samples, n_outputs).
+            (n_samples, n_outputs). Defaults to `None` but must be provided if `path_to_values` is
+            `None`.
         x_test: The test data used to evaluate the model. Should be the same shape as `x_train`.
+            Defaults to `None` but must be provided if `path_to_values` is `None`.
         y_test: The test labels used to evaluate the model. Should be the same shape as `y_train`.
+            Defaults to `None` but must be provided if `path_to_values` is `None`.
         fit_function: The function that fits the model to the training data. It should take the
-            training data and labels as input.
+            training data and labels as input. Defaults to `None` but must be provided if
+            `path_to_values` is `None`.
         score_function: The function that scores the model's performance on the test data. It should
             take the test data and labels as input. If not provided, then `predict_function` and
-            `loss_function` must be provided.
+            `loss_function` must be provided (if `path_to_values` is `None`).
         predict_function: The function that predicts the test labels given the test data. It should
-            take the test data as input. If not provided, then `score_function` must be provided.
+            take the test data as input. If not provided, then `score_function` must be provided (if
+            `path_to_values` is `None`).
         loss_function: The function that computes the loss between the predicted and true test
-            labels. It should take the true and predicted test labels as input. If not provided, then
-            `score_function` must be provided.
+            labels. It should take the true and predicted test labels as input. If not provided,
+            then `score_function` must be provided (if `path_to_values` is `None`).
         empty_value: The value to return when the subset of features is empty. Defaults to 0.0.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
@@ -165,17 +185,24 @@ class FeatureSelectionGame(Game):
 
     def __init__(
         self,
-        x_train: np.ndarray,
-        y_train: np.ndarray,
-        x_test: np.ndarray,
-        y_test: np.ndarray,
-        fit_function: Callable[[np.ndarray, np.ndarray], Any],
+        *,
+        path_to_values: Optional[str] = None,
+        x_train: Optional[np.ndarray] = None,
+        y_train: Optional[np.ndarray] = None,
+        x_test: Optional[np.ndarray] = None,
+        y_test: Optional[np.ndarray] = None,
+        fit_function: Optional[Callable[[np.ndarray, np.ndarray], Any]] = None,
         score_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
         predict_function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         loss_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
         empty_value: float = 0.0,
         normalize: bool = True,
     ) -> None:
+        # check if path is provided
+        if path_to_values is not None:
+            super().__init__(path_to_values=path_to_values)
+            return
+
         super().__init__(x_train.shape[1], normalization_value=empty_value, normalize=normalize)
 
         # set datasets
@@ -227,3 +254,189 @@ class FeatureSelectionGame(Game):
                 score = self._loss_function(self._y_test, y_pred)  # compare prediction with gt
             scores[i] = score
         return scores
+
+
+class CaliforniaHousing(LocalExplanation):
+
+    """The CaliforniaHousing dataset as a LocalExplanation game.
+
+    The CaliforniaHousing dataset is a regression dataset that contains data on housing prices in
+    California. For this game a default model is trained if no model is provided by the user. The
+    value function of the game is the model's prediction on feature.
+
+    Note:
+        This game requires the `sklearn` package to be installed.
+
+    Args:
+        path_to_values: The path to the pre-computed game values to load. If provided, then the game
+            is loaded from the file and no other parameters are used. Defaults to `None`.
+        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
+            of shape (n_features).
+        model: The model to explain as a string or a callable function. If a string is provided it
+            should be one of the following:
+            - "sklearn_gbt": A gradient boosting regressor from the `sklearn` package is fitted.
+            - "torch_nn": A simple neural network model is trained using PyTorch.
+            If a callable function is provided, then it should be expecting data points as input and
+            returning the model's predictions. The input should be a 2d matrix of shape (n_samples,
+            n_features) and the output a 1d matrix of shape (n_samples). Defaults to `None`.
+        imputer: The imputer to use for the game. If not provided, then a default imputer is
+            created. Defaults to `None`.
+        random_state: The random state to use for the imputer. Defaults to `None`.
+        normalize: A flag to normalize the game values. If `True`, then the game values are
+            normalized and centered to be zero for the empty set of features. Defaults to `True`.
+        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
+
+    Attributes:
+        feature_names: The names of the features in the dataset in the order they appear.
+    """
+
+    def __init__(
+        self,
+        *,
+        path_to_values: Optional[str] = None,
+        x_explain: Optional[Union[np.ndarray, int]] = None,
+        model: Union[Callable[[np.ndarray], np.ndarray], str] = "sklearn_gbt",
+        imputer: Optional[MarginalImputer] = None,
+        random_state: Optional[int] = None,
+        normalize: bool = True,
+        verbose: bool = True,
+    ) -> None:
+        # check if path is provided
+        if path_to_values is not None:
+            super().__init__(path_to_values=path_to_values)
+            return
+
+        # validate the input
+        if isinstance(model, str) and model not in ["sklearn_gbt", "torch_nn"]:
+            raise ValueError(
+                "Invalid model string provided. Should be one of 'sklearn_gbt' or 'torch_nn'."
+            )
+
+        # do the imports for this class
+        from sklearn.datasets import fetch_california_housing
+        from sklearn.model_selection import train_test_split
+        from sklearn.preprocessing import StandardScaler
+
+        # load the dataset
+        data = fetch_california_housing()
+        self.feature_names = list(data.feature_names)
+
+        x_data, y_data = data.data, data.target
+
+        # split the data
+        x_train, x_test, y_train, y_test = train_test_split(
+            x_data, y_data, train_size=0.7, shuffle=True, random_state=42
+        )
+
+        # create a model if none is provided
+        if isinstance(model, str) and model == "sklearn_gbt":
+            model = self._get_sklearn_model(x_train, x_test, y_train, y_test, verbose)
+        self._torch_model = None
+        if isinstance(model, str) and model == "torch_nn":
+            self._load_torch_model()
+            model = self._torch_model_call
+            # scale the data
+            scaler = StandardScaler()
+            x_train = scaler.fit_transform(x_train)
+            x_test = scaler.transform(x_test)
+
+        # get x_explain
+        if x_explain is None:  # get a random data point from the test set
+            x_explain = x_test[np.random.randint(0, x_test.shape[0])]
+        # if x_explain is an index then get the data point
+        if isinstance(x_explain, int):
+            x_explain = x_test[x_explain]
+
+        # call the super constructor
+        super().__init__(
+            x_explain=x_explain,
+            x_data=x_train,
+            model=model,
+            imputer=imputer,
+            random_state=random_state,
+            normalize=normalize,
+        )
+
+    @staticmethod
+    def _get_sklearn_model(
+        x_train: np.ndarray,
+        x_test: np.ndarray,
+        y_train: np.ndarray,
+        y_test: np.ndarray,
+        verbose: bool = True,
+    ) -> Callable[[np.ndarray], np.ndarray]:
+        """Creates a default model for the CaliforniaHousing dataset and returns it as a callable
+            function.
+
+        Args:
+            x_train: The training data used to fit the model. Should be a 2d matrix of shape
+                (n_samples, n_features).
+            x_test: The test data used to evaluate the model. Should be the same shape as `x_train`.
+            y_train: The training labels used to fit the model. Can be a 1d or 2d matrix of shape
+                (n_samples, n_outputs).
+            y_test: The test labels used to evaluate the model. Should be the same shape as
+                `y_train`.
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                `True`.
+
+        Returns:
+            A callable function that predicts the output given the input data.
+        """
+        from sklearn.ensemble import GradientBoostingRegressor
+
+        # create a random forest regressor
+        model = GradientBoostingRegressor(n_estimators=50, random_state=42)
+        model.fit(x_train, y_train)
+
+        if verbose:
+            validation_score = model.score(x_test, y_test)
+            print(f"Validation score of fitted GradientBoostingRegressor: {validation_score:.4f}")
+
+        return model.predict
+
+    def _load_torch_model(self) -> None:
+        """Loads a pre-trained neural network model for the CaliforniaHousing dataset."""
+        import torch
+        from torch import nn
+
+        # create a simple neural network
+        class SmallNeuralNetwork(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.model = nn.Sequential(
+                    nn.Linear(8, 50),
+                    nn.ReLU(),
+                    nn.Linear(50, 100),
+                    nn.ReLU(),
+                    nn.Linear(100, 5),
+                    nn.Linear(5, 1),
+                )
+
+            def forward(self, x):
+                x = self.model(x)
+                return x
+
+        # instantiate the model
+        model = SmallNeuralNetwork()
+
+        # load model from file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(
+            current_dir, "precomputed", "models", "california_nn_0.812511_0.076331.weights"
+        )
+        model.load_state_dict(torch.load(model_path))
+        self._torch_model = model
+
+    def _torch_model_call(self, x: np.ndarray) -> np.ndarray:
+        """A wrapper function to call the pre-trained neural network model on the numpy input data.
+
+        Args:
+            x: The input data to predict on.
+
+        Returns:
+            The model's prediction on the input data.
+        """
+        import torch
+
+        x = torch.tensor(x.astype(float), dtype=torch.float32)
+        return self._torch_model(x).flatten().detach().numpy()

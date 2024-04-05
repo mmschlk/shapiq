@@ -68,3 +68,12 @@ def test_basic_function(background_reg_dataset):
     # clean up
     os.remove("test_game.pkl")
     assert not os.path.exists("test_game.pkl")
+
+    # test with path_to_values
+    game.save_values("test_values.npz")
+    new_game = FeatureSelectionGame(path_to_values="test_values.npz")
+    assert new_game.n_values_stored == game.n_values_stored
+
+    # clean up
+    os.remove("test_values.npz")
+    assert not os.path.exists("test_values.npz")
