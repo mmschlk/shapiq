@@ -14,7 +14,7 @@ def test_basic_function(background_reg_dataset, dt_reg_model):
     model = dt_reg_model
 
     # init game
-    game = LocalExplanation(x_data=x_data, model=model.predict, x=x)
+    game = LocalExplanation(data=x_data, model=model.predict, x=x)
     game.precompute()
 
     # test save and load
@@ -38,6 +38,6 @@ def test_basic_function(background_reg_dataset, dt_reg_model):
     assert not os.path.exists("test_game.pkl")
 
     # init game with integer
-    game = LocalExplanation(x_data=x_data, model=model.predict, x=0)
+    game = LocalExplanation(data=x_data, model=model.predict, x=0)
     # check if the x is valid
     assert np.all(game.x == x_data[0])

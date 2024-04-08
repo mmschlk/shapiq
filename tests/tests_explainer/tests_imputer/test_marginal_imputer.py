@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from games.imputer import MarginalImputer
+from shapiq.games.imputer import MarginalImputer
 
 
 def test_marginal_imputer_init():

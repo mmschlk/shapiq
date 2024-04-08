@@ -17,7 +17,7 @@ class LocalExplanation(Game):
     of the data point (for more information see `MarginalImputer`).
 
     Args:
-        x_data: The background data used to fit the imputer. Should be a 2d matrix of shape
+        data: The background data used to fit the imputer. Should be a 2d matrix of shape
             (n_samples, n_features).
         model: The model to explain as a callable function expecting data points as input and
             returning the model's predictions. The input should be a 2d matrix of shape
@@ -42,7 +42,7 @@ class LocalExplanation(Game):
         >>> model.fit(x_data, y_data)
         >>> # create a LocalExplanation game
         >>> x = x_data[0]
-        >>> game = LocalExplanation(x_data=x_data, model=model.predict, x=x)
+        >>> game = LocalExplanation(data=data, model=model.predict, x=x)
         >>> # evaluate the game on a specific coalition
         >>> coalition = np.zeros(shape=(1, 10), dtype=bool)
         >>> coalition[0][0, 1, 2] = True
@@ -56,7 +56,7 @@ class LocalExplanation(Game):
 
     def __init__(
         self,
-        x_data: np.ndarray,
+        data: np.ndarray,
         model: Callable[[np.ndarray], np.ndarray],
         x: Union[np.ndarray, int],
         random_state: Optional[int] = None,
@@ -64,17 +64,17 @@ class LocalExplanation(Game):
     ) -> None:
         # set attributes
         self._model = model
-        self._x_data = x_data
+        self._data = data
 
         # set explanation point
         if isinstance(x, int):
-            x = self._x_data[x]
+            x = self._data[x]
         self.x = x
 
         # init the imputer which serves as the workhorse of this Game
         self._imputer = MarginalImputer(
             model=self._model,
-            data=self._x_data,
+            data=self._data,
             x=x,
             random_state=random_state,
             normalize=False,
@@ -84,7 +84,7 @@ class LocalExplanation(Game):
 
         # init the base game
         super().__init__(
-            x_data.shape[1],
+            data.shape[1],
             normalize=normalize,
             normalization_value=self._imputer.empty_prediction,
         )
