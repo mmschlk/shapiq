@@ -7,7 +7,7 @@ import pandas as pd
 GITHUB_DATA_URL = "https://github.com/mmschlk/shapiq/raw/main/data/"
 
 
-def load_bike() -> pd.DataFrame:
+def load_bike() -> tuple[pd.DataFrame, pd.Series]:
     """Load the bike-sharing dataset from a Kaggle competition.
 
     Original source: https://www.kaggle.com/c/bike-sharing-demand
@@ -33,7 +33,11 @@ def load_bike() -> pd.DataFrame:
     data = data[["year", "month", "day", "hour"] + columns[1:]]
     data.columns = list(map(str.title, data.columns))
 
-    return data
+    # get the target column
+    x_data = data.drop(columns=["Count"])
+    y_data = data["Count"]
+
+    return x_data, y_data
 
 
 def _get_open_ml_dataset(open_ml_id, version=1):

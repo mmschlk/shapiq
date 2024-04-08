@@ -5,7 +5,7 @@ import os
 import numpy as np
 import pytest
 
-from shapiq.games.tabular import CaliforniaHousing
+from games import CaliforniaHousing
 
 
 @pytest.mark.parametrize("model", ["torch_nn", "sklearn_gbt", "invalid"])
