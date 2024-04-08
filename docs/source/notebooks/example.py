@@ -21,8 +21,8 @@ explainer_tree = shapiq.TreeExplainer(
     max_order=2
 )
 
-x_explain = X_test[0]
+x = X_test[0]
 
-interaction_values_tree = explainer_tree.explain(x_explain)
+interaction_values_tree = explainer_tree.explain(x)
 
 interaction_values_tree

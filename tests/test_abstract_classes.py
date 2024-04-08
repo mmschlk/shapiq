@@ -37,10 +37,10 @@ def test_approximator():
 
 def test_imputer():
     model = lambda x: x
-    background_data = np.asarray([[1, 2, 3], [4, 5, 6]])
-    imputer = concreter(Imputer)(model, background_data)
+    data = np.asarray([[1, 2, 3], [4, 5, 6]])
+    imputer = concreter(Imputer)(model, data)
     assert imputer._model == model
-    assert np.all(imputer._background_data == background_data)
+    assert np.all(imputer._data == data)
     assert imputer._n_features == 3
     assert imputer._cat_features == []
     assert imputer._random_state is None
@@ -51,9 +51,8 @@ def test_imputer():
 
 
 def test_explainer():
-    explainer = concreter(Explainer)()
-    with pytest.raises(NotImplementedError):
-        explainer.explain(np.array([[1, 2, 3]]))
+    with pytest.raises(TypeError):
+        Explainer()
 
 
 def test_game():

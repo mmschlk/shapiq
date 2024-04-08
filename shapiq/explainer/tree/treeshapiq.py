@@ -123,18 +123,18 @@ class TreeSHAPIQ:
         if self.verbose:
             self._print_tree_info()
 
-    def explain(self, x_explain: np.ndarray) -> InteractionValues:
+    def explain(self, x: np.ndarray) -> InteractionValues:
         """Computes the Shapley Interaction values for a given instance x and interaction order.
             This function is the main explanation function of this class.
 
         Args:
-            x_explain (np.ndarray): Instance to be explained.
+            x (np.ndarray): Instance to be explained.
 
         Returns:
             InteractionValues: The computed Shapley Interaction values.
         """
-        x_explain_relevant = x_explain[self._relevant_features]
-        n_players = max(x_explain.shape[0], self._n_features_in_tree)
+        x_relevant = x[self._relevant_features]
+        n_players = max(x.shape[0], self._n_features_in_tree)
 
         # compute the Shapley Interaction values
         interactions = np.asarray([], dtype=float)
@@ -143,7 +143,7 @@ class TreeSHAPIQ:
                 int(sp.special.binom(self._n_features_in_tree, order)), dtype=float
             )
             self._prepare_variables_for_order(interaction_order=order)
-            self._compute_shapley_interaction_values(x_explain_relevant, order=order, node_id=0)
+            self._compute_shapley_interaction_values(x_relevant, order=order, node_id=0)
             # append the computed Shapley Interaction values to the result
             interactions = np.append(interactions, self.shapley_interactions.copy())
 
@@ -165,7 +165,7 @@ class TreeSHAPIQ:
 
     def _compute_shapley_interaction_values(
         self,
-        x_explain: np.ndarray,
+        x: np.ndarray,
         order: int = 1,
         node_id: int = 0,
         *,
@@ -175,11 +175,11 @@ class TreeSHAPIQ:
         quotient_poly_down: np.ndarray[float] = None,
         depth: int = 0,
     ) -> None:
-        """Computes the Shapley Interaction values for a given instance x_explain and interaction
+        """Computes the Shapley Interaction values for a given instance x and interaction
         order. This function is called recursively for each node in the tree.
 
         Args:
-            x_explain: The instance to be explained.
+            x: The instance to be explained.
             order: The interaction order for which the Shapley Interaction values should be
                 computed. Defaults to 1.
             node_id: The node ID of the current node in the tree. Defaults to 0.
@@ -234,7 +234,7 @@ class TreeSHAPIQ:
 
         # if node is not a leaf -> set activations for children nodes accordingly
         if not is_leaf:
-            if x_explain[child_edge_feature] <= feature_threshold:
+            if x[child_edge_feature] <= feature_threshold:
                 activations[left_child], activations[right_child] = True, False
             else:
                 activations[left_child], activations[right_child] = False, True
@@ -279,7 +279,7 @@ class TreeSHAPIQ:
         else:  # not a leaf -> continue recursion
             # left child
             self._compute_shapley_interaction_values(
-                x_explain,
+                x,
                 order=order,
                 node_id=left_child,
                 summary_poly_down=summary_poly_down,
@@ -293,7 +293,7 @@ class TreeSHAPIQ:
             )
             # right child
             self._compute_shapley_interaction_values(
-                x_explain,
+                x,
                 order=order,
                 node_id=right_child,
                 summary_poly_down=summary_poly_down,

@@ -22,14 +22,14 @@ class LocalExplanation(Game):
         model: The model to explain as a callable function expecting data points as input and
             returning the model's predictions. The input should be a 2d matrix of shape
             (n_samples, n_features) and the output a 1d matrix of shape (n_samples).
-        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
+        x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features).
         random_state: The random state to use for the imputer. Defaults to `None`.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
 
     Attributes:
-        x_explain: The data point to explain.
+        x: The data point to explain.
         empty_prediction: The model's prediction on an empty data point (all features missing).
 
     Examples:
@@ -41,8 +41,8 @@ class LocalExplanation(Game):
         >>> model = DecisionTreeRegressor(max_depth=4)
         >>> model.fit(x_data, y_data)
         >>> # create a LocalExplanation game
-        >>> x_explain = x_data[0]
-        >>> game = LocalExplanation(x_data=x_data, model=model.predict, x_explain=x_explain)
+        >>> x = x_data[0]
+        >>> game = LocalExplanation(x_data=x_data, model=model.predict, x=x)
         >>> # evaluate the game on a specific coalition
         >>> coalition = np.zeros(shape=(1, 10), dtype=bool)
         >>> coalition[0][0, 1, 2] = True
@@ -58,7 +58,7 @@ class LocalExplanation(Game):
         self,
         x_data: np.ndarray,
         model: Callable[[np.ndarray], np.ndarray],
-        x_explain: Union[np.ndarray, int],
+        x: Union[np.ndarray, int],
         random_state: Optional[int] = None,
         normalize: bool = True,
     ) -> None:
@@ -67,15 +67,15 @@ class LocalExplanation(Game):
         self._x_data = x_data
 
         # set explanation point
-        if isinstance(x_explain, int):
-            x_explain = self._x_data[x_explain]
-        self.x_explain = x_explain
+        if isinstance(x, int):
+            x = self._x_data[x]
+        self.x = x
 
         # init the imputer which serves as the workhorse of this Game
         self._imputer = MarginalImputer(
             model=self._model,
-            background_data=self._x_data,
-            x_explain=x_explain,
+            data=self._x_data,
+            x=x,
             random_state=random_state,
             normalize=False,
         )
