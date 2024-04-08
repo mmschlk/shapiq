@@ -7,3 +7,5 @@ scikit-learn
 pandas
 ruff
 black
+transformers
+torch

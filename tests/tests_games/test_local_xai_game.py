@@ -38,6 +38,10 @@ def test_basic_function(background_reg_dataset, dt_reg_model):
     assert not os.path.exists("test_game.pkl")
 
     # init game with integer
-    game = LocalExplanation(data=x_data, model=model.predict, x=0)
-    # check if the x is valid
-    assert np.all(game.x == x_data[0])
+    game = LocalExplanation(x=0, data=x_data, model=model.predict)
+    # check if the x_explain is valid
+    assert np.all(game.x_explain == x_data[0])
+
+    # test game with no instance
+    game = LocalExplanation(x=None, data=x_data, model=model.predict)
+    assert game.x is not None

@@ -22,6 +22,8 @@ class Game(ABC):
             value for the empty coalition is zero. Defaults to `None`.  If `normalization` is set
             to `False` this value is not required. Otherwise, the value is needed to normalize and
             center the game. If no value is provided, the game raise a warning.
+        path_to_values: The path to load the game values from. If the path is provided, the game
+            values are loaded from the given path. Defaults to `None`.
 
     Note:
         This class is an abstract base class and should not be instantiated directly. All games
@@ -31,16 +33,18 @@ class Game(ABC):
     @abstractmethod
     def __init__(
         self,
-        n_players: int,
+        n_players: Optional[int] = None,
         normalize: bool = True,
         normalization_value: Optional[float] = None,
+        path_to_values: Optional[str] = None,
     ) -> None:
         # define storage variables
         self.value_storage: np.ndarray = np.zeros(0, dtype=float)
         self.coalition_lookup: dict[tuple[int, ...], int] = {}
+        self.n_players: int = n_players  # if path_to_values is provided, this will be overwritten
 
-        # define some handy variables describing the game
-        self.n_players: int = n_players
+        if path_to_values is not None:
+            self.load_values(path_to_values, precomputed=True)
 
         # setup normalization of the game
         self.normalization_value: float = 0.0
@@ -74,7 +78,7 @@ class Game(ABC):
     @property
     def normalize(self) -> bool:
         """Indication whether the game values are normalized."""
-        return int(self.normalization_value) != 0
+        return self.normalization_value != 0
 
     def __call__(self, coalitions: np.ndarray) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
@@ -226,11 +230,12 @@ class Game(ABC):
 
         data = np.load(path)
         n_players = data["n_players"]
-        if n_players != self.n_players:
+        if self.n_players is not None and n_players != self.n_players:
             raise ValueError(
                 f"The number of players in the game ({self.n_players}) does not match the number "
                 f"of players in the saved game ({n_players})."
             )
+        self.n_players = n_players
         self.value_storage = data["values"]
         self.coalition_lookup = transform_array_to_coalitions(data["coalitions"])
         self.precompute_flag = precomputed

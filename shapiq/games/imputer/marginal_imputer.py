@@ -61,7 +61,7 @@ class MarginalImputer(Imputer):
         if normalize:
             self.normalization_value = self.empty_prediction
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+    def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
         """Imputes the missing values of a data point and calls the model.
 
         Args:

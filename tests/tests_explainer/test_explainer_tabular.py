@@ -19,15 +19,6 @@ def dt_model():
 
 
 @pytest.fixture
-def rf_model():
-    """Return a simple decision tree model."""
-    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
-    model = RandomForestRegressor(random_state=42, max_depth=3, n_estimators=10)
-    model.fit(X, y)
-    return model
-
-
-@pytest.fixture
 def data():
     """Return data to use as background data."""
     X, y = make_regression(n_samples=100, n_features=7, random_state=42)
