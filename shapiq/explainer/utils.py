@@ -18,7 +18,7 @@ def get_predict_function_and_model_type(model, model_class):
     _model_type = "tabular" # default
 
     if callable(model):
-        _predict_function = model
+        _predict_function = predict_callable
     
     # sklearn
     if model_class in [
@@ -74,6 +74,10 @@ def get_predict_function_and_model_type(model, model_class):
                 f'{", ".join(print_classes_nicely(get_explainers()))}')
 
     return _predict_function, _model_type
+
+
+def predict_callable(m, d):
+    return m(d)
 
 
 def predict_default(m, d):

@@ -6,6 +6,7 @@ from typing import Callable, Optional
 import numpy as np
 
 from ..base import Game
+from ...explainer import utils
 
 
 class Imputer(Game):
@@ -23,17 +24,25 @@ class Imputer(Game):
     @abstractmethod
     def __init__(
         self,
-        model: Callable[[np.ndarray], np.ndarray],
+        model,
         data: np.ndarray,
         categorical_features: list[int] = None,
         random_state: Optional[int] = None,
     ) -> None:
-        self._model = model
-        self._data = data
-        self._n_features = self._data.shape[1]
+        if callable(model):
+            self._predict_function = utils.predict_callable
+        else: # shapiq.Explainer
+            self._predict_function = model._predict_function
+        self.model = model
+        self.data = data
+        self._n_features = self.data.shape[1]
         self._cat_features: list = [] if categorical_features is None else categorical_features
         self._random_state = random_state
         self._rng = np.random.default_rng(self._random_state)
 
         # the normalization_value needs to be set in the subclass
         super().__init__(n_players=self._n_features, normalize=False)
+
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        """Provides a unified prediction interface."""
+        return self._predict_function(self.model, x)

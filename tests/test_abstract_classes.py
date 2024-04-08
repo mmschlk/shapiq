@@ -39,8 +39,8 @@ def test_imputer():
     model = lambda x: x
     data = np.asarray([[1, 2, 3], [4, 5, 6]])
     imputer = concreter(Imputer)(model, data)
-    assert imputer._model == model
-    assert np.all(imputer._data == data)
+    assert imputer.model == model
+    assert np.all(imputer.data == data)
     assert imputer._n_features == 3
     assert imputer._cat_features == []
     assert imputer._random_state is None

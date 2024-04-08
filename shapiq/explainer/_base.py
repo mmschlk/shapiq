@@ -46,4 +46,4 @@ class Explainer:
 
     def predict(self, x: np.ndarray) -> np.ndarray:
         """Provides a unified prediction interface."""
-        return self._predict_function(x)
+        return self._predict_function(self.model, x)

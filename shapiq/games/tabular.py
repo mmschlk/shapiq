@@ -17,11 +17,11 @@ class LocalExplanation(Game):
     of the data point (for more information see `MarginalImputer`).
 
     Args:
-        data: The background data used to fit the imputer. Should be a 2d matrix of shape
-            (n_samples, n_features).
         model: The model to explain as a callable function expecting data points as input and
             returning the model's predictions. The input should be a 2d matrix of shape
             (n_samples, n_features) and the output a 1d matrix of shape (n_samples).
+        data: The background data used to fit the imputer. Should be a 2d matrix of shape
+            (n_samples, n_features).
         x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features).
         random_state: The random state to use for the imputer. Defaults to `None`.
@@ -56,25 +56,25 @@ class LocalExplanation(Game):
 
     def __init__(
         self,
-        data: np.ndarray,
         model: Callable[[np.ndarray], np.ndarray],
+        data: np.ndarray,
         x: Union[np.ndarray, int],
         random_state: Optional[int] = None,
         normalize: bool = True,
     ) -> None:
         # set attributes
-        self._model = model
-        self._data = data
+        self.model = model
+        self.data = data
 
         # set explanation point
         if isinstance(x, int):
-            x = self._data[x]
+            x = self.data[x]
         self.x = x
 
         # init the imputer which serves as the workhorse of this Game
         self._imputer = MarginalImputer(
-            model=self._model,
-            data=self._data,
+            model=self.model,
+            data=self.data,
             x=x,
             random_state=random_state,
             normalize=False,

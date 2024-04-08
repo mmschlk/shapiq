@@ -36,7 +36,7 @@ class MarginalImputer(Imputer):
 
     def __init__(
         self,
-        model: Callable[[np.ndarray], np.ndarray],
+        model,
         data: np.ndarray,
         x: Optional[np.ndarray] = None,
         sample_replacements: bool = False,
@@ -51,7 +51,7 @@ class MarginalImputer(Imputer):
         self._sample_replacements = sample_replacements
         self._sample_size: int = sample_size
         self.replacement_data: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten
-        self.init_background(self._data)
+        self.init_background(self.data)
         self._x: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten @ fit
         if x is not None:
             self.fit(x)
@@ -77,7 +77,7 @@ class MarginalImputer(Imputer):
         if not self._sample_replacements:
             replacement_data = np.tile(self.replacement_data, (n_subsets, 1))
             data[~coalitions] = replacement_data[~coalitions]
-            outputs = self._model(data)
+            outputs = self.predict(data)
         else:
             # sampling from background returning array of shape (sample_size, n_subsets, n_features)
             replacement_data = self._sample_replacement_values(coalitions)
@@ -85,26 +85,26 @@ class MarginalImputer(Imputer):
             for i in range(self._sample_size):
                 replacements = replacement_data[i].reshape(n_subsets, self._n_features)
                 data[~coalitions] = replacements[~coalitions]
-                outputs[i] = self._model(data)
+                outputs[i] = self.predict(data)
             outputs = np.mean(outputs, axis=0)  # average over the samples
         return outputs
 
-    def init_background(self, x_background: np.ndarray) -> "MarginalImputer":
+    def init_background(self, data: np.ndarray) -> "MarginalImputer":
         """Initializes the imputer to the background data.
 
         Args:
-            x_background: The background data to use for the imputer. The shape of the array must
+            data: The background data to use for the imputer. The shape of the array must
                 be (n_samples, n_features).
 
         Returns:
             The initialized imputer.
         """
         if self._sample_replacements:
-            self.replacement_data = x_background
+            self.replacement_data = data
         else:
             self.replacement_data = np.zeros((1, self._n_features), dtype=object)
             for feature in range(self._n_features):
-                feature_column = x_background[:, feature]
+                feature_column = data[:, feature]
                 if feature in self._cat_features:
                     # get mode for categorical features
                     counts = np.unique(feature_column, return_counts=True)
@@ -157,10 +157,10 @@ class MarginalImputer(Imputer):
             The empty prediction.
         """
         if self._sample_replacements:
-            shuffled_background = self._rng.permutation(self._data)
-            empty_predictions = self._model(shuffled_background)
+            shuffled_background = self._rng.permutation(self.data)
+            empty_predictions = self.predict(shuffled_background)
             empty_prediction = float(np.mean(empty_predictions))
             return empty_prediction
-        empty_prediction = self._model(self.replacement_data)
+        empty_prediction = self.predict(self.replacement_data)
         empty_prediction = float(empty_prediction)
         return empty_prediction
