@@ -275,7 +275,7 @@ class CaliforniaHousing(LocalExplanation):
         model: The model to explain as a string or a callable function. If a string is provided it
             should be one of the following:
             - "sklearn_gbt": A gradient boosting regressor from the `sklearn` package is fitted.
-            - "torch_nn": A simple neural network model is trained using PyTorch.
+            - "torch_nn": A simple neural network model is loaded using PyTorch.
             If a callable function is provided, then it should be expecting data points as input and
             returning the model's predictions. The input should be a 2d matrix of shape (n_samples,
             n_features) and the output a 1d matrix of shape (n_samples). Defaults to `None`.
@@ -288,6 +288,7 @@ class CaliforniaHousing(LocalExplanation):
 
     Attributes:
         feature_names: The names of the features in the dataset in the order they appear.
+        scaler: The scaler used to normalize the data (only fitted for the neural network model).
     """
 
     def __init__(
@@ -296,7 +297,6 @@ class CaliforniaHousing(LocalExplanation):
         path_to_values: Optional[str] = None,
         x_explain: Optional[Union[np.ndarray, int]] = None,
         model: Union[Callable[[np.ndarray], np.ndarray], str] = "sklearn_gbt",
-        imputer: Optional[MarginalImputer] = None,
         random_state: Optional[int] = None,
         normalize: bool = True,
         verbose: bool = True,
@@ -328,6 +328,8 @@ class CaliforniaHousing(LocalExplanation):
             x_data, y_data, train_size=0.7, shuffle=True, random_state=42
         )
 
+        self.scaler: StandardScaler = StandardScaler()
+
         # create a model if none is provided
         if isinstance(model, str) and model == "sklearn_gbt":
             model = self._get_sklearn_model(x_train, x_test, y_train, y_test, verbose)
@@ -336,9 +338,8 @@ class CaliforniaHousing(LocalExplanation):
             self._load_torch_model()
             model = self._torch_model_call
             # scale the data
-            scaler = StandardScaler()
-            x_train = scaler.fit_transform(x_train)
-            x_test = scaler.transform(x_test)
+            x_train = self.scaler.fit_transform(x_train)
+            x_test = self.scaler.transform(x_test)
 
         # get x_explain
         if x_explain is None:  # get a random data point from the test set
@@ -352,7 +353,6 @@ class CaliforniaHousing(LocalExplanation):
             x_explain=x_explain,
             x_data=x_train,
             model=model,
-            imputer=imputer,
             random_state=random_state,
             normalize=normalize,
         )
@@ -440,3 +440,152 @@ class CaliforniaHousing(LocalExplanation):
 
         x = torch.tensor(x.astype(float), dtype=torch.float32)
         return self._torch_model(x).flatten().detach().numpy()
+
+
+class AdultIncome(LocalExplanation):
+
+    """The AdultIncome dataset as a local explanation game.
+
+    This class represents the AdultIncome dataset as a local explanation game. The dataset is a
+    classification dataset that contains data on the income of individuals. The game evaluates the
+    model's prediction on feature subsets. The value function of the game is the model's predicted
+    class probability on feature subsets.
+
+    Note:
+        This game requires the `openml` and `sklearn` packages to be installed.
+
+    Args:
+        path_to_values: The path to the pre-computed game values to load. If provided, then the game
+            is loaded from the file and no other parameters are used. Defaults to `None`.
+        class_to_explain: The class label to explain. Should be either 0 or 1. Defaults to `1`.
+        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
+            of shape (n_features).
+        model: The model to explain as a string or a callable function. If a string is provided it
+            should be 'sklearn_rf'. If a callable function is provided, then it should be expecting
+            data points as input and returning the model's predictions. The input should be a 2d
+            matrix of shape (n_samples, n_features) and the output a 1d matrix of shape (n_samples).
+            Defaults to 'sklearn_rf'.
+        random_state: The random state to use for the imputer. Defaults to `None`.
+        normalize: A flag to normalize the game values. If `True`, then the game values are
+            normalized and centered to be zero for the empty set of features. Defaults to `True`.
+        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
+
+    Attributes:
+        feature_names: The names of the features in the dataset in the order they appear.
+        class_to_explain: The class label to explain.
+
+    Examples:
+        >>> game = AdultIncome(x_explain=0)
+        >>> game.n_players
+        14
+        >>> # precompute the game (if needed)
+        >>> game.precompute()
+        >>> # save and load the game
+        >>> game.save_values("adult_income.npz")
+        >>> new_game = AdultIncome(path_to_values="adult_income.npz")
+    """
+
+    def __init__(
+        self,
+        *,
+        path_to_values: Optional[str] = None,
+        class_to_explain: int = 1,
+        x_explain: Optional[Union[np.ndarray, int]] = None,
+        model: Union[Callable[[np.ndarray], np.ndarray], str] = "sklearn_rf",
+        random_state: Optional[int] = None,
+        normalize: bool = True,
+        verbose: bool = True,
+    ) -> None:
+        # check if path is provided
+        if path_to_values is not None:
+            super().__init__(path_to_values=path_to_values)
+            return
+
+        # validate the inputs
+        if isinstance(model, str) and model != "sklearn_rf":
+            raise ValueError(
+                f"Invalid model string provided. Should be 'sklearn_rf' but got '{model}'."
+            )
+        if class_to_explain not in [0, 1]:
+            raise ValueError(
+                f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}."
+            )
+
+        # import necessary packages
+        from sklearn.model_selection import train_test_split
+
+        from shapiq.datasets import load_adult_census
+
+        # get data
+        x_data, y_data = load_adult_census()
+        self.feature_names = list(x_data.columns)
+        self.class_to_explain = class_to_explain
+
+        x_data = x_data.to_numpy()
+        y_data = y_data.to_numpy()
+
+        # split the data
+        x_train, x_test, y_train, y_test = train_test_split(
+            x_data, y_data, train_size=0.7, shuffle=True, random_state=42
+        )
+
+        # create a model if none is provided
+        if isinstance(model, str) and model == "sklearn_rf":
+            model = self._get_sklearn_model(
+                x_train, x_test, y_train, y_test, verbose, self.class_to_explain
+            )
+
+        # get x_explain
+        if x_explain is None:  # get a random data point from the test set
+            x_explain = x_test[np.random.randint(0, x_test.shape[0])]
+        # if x_explain is an index then get the data point
+        if isinstance(x_explain, int):
+            x_explain = x_test[x_explain]
+
+        # call the super constructor
+        super().__init__(
+            x_explain=x_explain,
+            x_data=x_train,
+            model=model,
+            random_state=random_state,
+            normalize=normalize,
+        )
+
+    @staticmethod
+    def _get_sklearn_model(
+        x_train: np.ndarray,
+        x_test: np.ndarray,
+        y_train: np.ndarray,
+        y_test: np.ndarray,
+        verbose: bool = True,
+        class_to_explain: int = 1,
+    ):
+        """Creates a default model for the AdultIncome dataset and returns it as a callable
+            function.
+
+        Args:
+            x_train: The training data used to fit the model. Should be a 2d matrix of shape
+                (n_samples, n_features).
+            x_test: The test data used to evaluate the model. Should be the same shape as `x_train`.
+            y_train: The training labels used to fit the model. Can be a 1d or 2d matrix of shape
+                (n_samples, n_outputs).
+            y_test: The test labels used to evaluate the model. Should be the same shape as
+                `y_train`.
+            class_to_explain: The class to explain. Defaults to `1`.
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                `True`.
+
+        Returns:
+            A callable function that predicts the output given the input data.
+        """
+        from sklearn.ensemble import RandomForestClassifier
+
+        # create a random forest classifier
+        model = RandomForestClassifier(n_estimators=50, random_state=42)
+        model.fit(x_train, y_train)
+
+        if verbose:
+            validation_score = model.score(x_test, y_test)
+            print(f"Validation score of fitted RandomForestClassifier: {validation_score:.4f}")
+
+        return lambda x: model.predict_proba(x)[:, class_to_explain]
