@@ -106,7 +106,6 @@ def test_against_old_treeshapiq_implementation(index: str, expected: dict):
     explainer = TreeSHAPIQ(model=tree_model, max_order=2, interaction_type=index)
 
     explanation = explainer.explain(x_explain)
-    print(explanation)
 
     for key, value in expected.items():
         assert np.isclose(explanation[key], value, atol=1e-5)

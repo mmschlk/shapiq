@@ -6,6 +6,7 @@ import pytest
 from shapiq.games import SentimentClassificationGame
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mask_strategy", ["remove", "mask"])
 def test_basic_function(mask_strategy):
     """Tests the SentimentClassificationGame with a small input text."""

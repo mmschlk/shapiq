@@ -9,6 +9,7 @@ from shapiq.games._vit_setup import ViTModel
 from shapiq.games.image_classifier import ImageClassifierGame
 
 
+@pytest.mark.slow
 def test_vit_model_class(test_image_and_path):
     """Tests the creation of the ViTModel class."""
     test_image, _ = test_image_and_path
@@ -24,6 +25,7 @@ def test_vit_model_class(test_image_and_path):
         ViTModel(n_patches=10, input_image=test_image)
 
 
+@pytest.mark.slow
 def test_image_classifier_game_vit(test_image_and_path):
     """Tests the ImageClassifierGame with the ViT models."""
     test_image, path_from_test_root = test_image_and_path

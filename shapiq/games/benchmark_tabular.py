@@ -5,8 +5,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 
-from shapiq.games import LocalExplanation
-from shapiq.games.tabular import get_x_explain
+from .tabular import LocalExplanation, get_x_explain
 
 
 class AdultCensus(LocalExplanation):
