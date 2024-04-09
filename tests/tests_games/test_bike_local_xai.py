@@ -12,7 +12,7 @@ from shapiq.games import BikeRegression
 def test_basic_function(model):
     """Tests the BikeRegression game."""
 
-    game_n_players = 14
+    game_n_players = 12
 
     if model == "invalid":
         with pytest.raises(ValueError):
@@ -27,8 +27,8 @@ def test_basic_function(model):
         [
             np.zeros(game_n_players),
             np.ones(game_n_players),
-            np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0]),
-            np.array([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0]),
+            np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]),
+            np.array([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]),
         ],
         dtype=bool,
     )

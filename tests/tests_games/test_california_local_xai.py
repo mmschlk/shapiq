@@ -5,7 +5,7 @@ import os
 import numpy as np
 import pytest
 
-from games import CaliforniaHousing
+from shapiq.games import CaliforniaHousing
 
 
 @pytest.mark.slow

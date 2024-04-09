@@ -4,8 +4,7 @@ import os
 from typing import Callable, Optional, Union
 
 import numpy as np
-
-from .tabular import LocalExplanation, get_x_explain
+from games.tabular import LocalExplanation, get_x_explain
 
 
 class AdultCensus(LocalExplanation):
@@ -187,9 +186,9 @@ class BikeRegression(LocalExplanation):
     Examples:
         >>> game = BikeRegression(x_explain=1)
         >>> game.n_players
-        14
+        12
         >>> # call the game with a coalition
-        >>> coalition = np.ones(14, dtype=bool)
+        >>> coalition = np.ones(12, dtype=bool)
         >>> game(coalition)
         0.28  # [0.72, 0.28] for x_explain=1 (would be different for other x_explain)
         >>> # precompute the game (if needed)
@@ -466,9 +465,7 @@ class CaliforniaHousing(LocalExplanation):
 
         # load model from file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(
-            current_dir, "precomputed", "models", "california_nn_0.812511_0.076331.weights"
-        )
+        model_path = os.path.join(current_dir, "models", "california_nn_0.812511_0.076331.weights")
         model.load_state_dict(torch.load(model_path))
         self._torch_model = model
 
