@@ -41,11 +41,11 @@ class ResNetModel:
         if verbose:
             print(f"Predicted class: {class_label} with score: {original_score}")
 
-    def __call__(self, coalition: np.ndarray) -> np.ndarray[float]:
+    def __call__(self, coalitions: np.ndarray) -> np.ndarray[float]:
         """Returns the class probability of the coalition.
 
         Args:
-            coalition: The coalition of players (i.e. super-patches).
+            coalitions: The coalition of players (i.e. super-patches).
 
         Returns:
             The class probability of the coalition.

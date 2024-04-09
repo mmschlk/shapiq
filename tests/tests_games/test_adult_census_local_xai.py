@@ -8,6 +8,7 @@ import pytest
 from shapiq.games import AdultCensus
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("model", ["sklearn_rf", "invalid"])
 def test_basic_function(model):
     """Tests the AdultCensus game."""

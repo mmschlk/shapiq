@@ -8,6 +8,7 @@ import pytest
 from games import CaliforniaHousing
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("model", ["torch_nn", "sklearn_gbt", "invalid"])
 def test_basic_function(model):
     """Tests the CaliforniaHousing game with a small regression dataset."""
