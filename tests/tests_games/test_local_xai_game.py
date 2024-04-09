@@ -9,12 +9,12 @@ from shapiq.games.tabular import LocalExplanation
 def test_basic_function(background_reg_dataset, dt_reg_model):
     """Tests the FeatureSelection game with a small regression dataset."""
     x_data, y_data = background_reg_dataset
-    x_explain = x_data[0].copy()  # get first instance
+    x = x_data[0].copy()  # get first instance
 
     model = dt_reg_model
 
     # init game
-    game = LocalExplanation(x_explain=x_explain, x_data=x_data, model=model.predict)
+    game = LocalExplanation(data=x_data, model=model.predict, x=x)
     game.precompute()
 
     # test save and load
@@ -38,10 +38,10 @@ def test_basic_function(background_reg_dataset, dt_reg_model):
     assert not os.path.exists("test_game.pkl")
 
     # init game with integer
-    game = LocalExplanation(x_explain=0, x_data=x_data, model=model.predict)
+    game = LocalExplanation(x=0, data=x_data, model=model.predict)
     # check if the x_explain is valid
     assert np.all(game.x_explain == x_data[0])
 
     # test game with no instance
-    game = LocalExplanation(x_explain=None, x_data=x_data, model=model.predict)
-    assert game.x_explain is not None
+    game = LocalExplanation(x=None, data=x_data, model=model.predict)
+    assert game.x is not None

@@ -19,10 +19,10 @@ class LocalExplanation(Game):
     Args:
         path_to_values: The path to the pre-computed game values to load. If provided, then the game
             is loaded from the file and no other parameters are used. Defaults to `None`.
-        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
+        x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features). Defaults to `None` which will select a random data point from the
             background data.
-        x_data: The background data used to fit the imputer. Should be a 2d matrix of shape
+        data: The background data used to fit the imputer. Should be a 2d matrix of shape
             (n_samples, n_features).
         model: The model to explain as a callable function expecting data points as input and
             returning the model's predictions. The input should be a 2d matrix of shape
@@ -32,7 +32,7 @@ class LocalExplanation(Game):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
 
     Attributes:
-        x_explain: The data point to explain.
+        x: The data point to explain.
         empty_prediction: The model's prediction on an empty data point (all features missing).
 
     Examples:
@@ -44,8 +44,8 @@ class LocalExplanation(Game):
         >>> model = DecisionTreeRegressor(max_depth=4)
         >>> model.fit(x_data, y_data)
         >>> # create a LocalExplanation game
-        >>> x_explain = x_data[0]
-        >>> game = LocalExplanation(x_explain=x_explain,x_data=x_data,model=model.predict)
+        >>> x = x_data[0]
+        >>> game = LocalExplanation(x=x,data=x_data,model=model.predict)
         >>> # evaluate the game on a specific coalition
         >>> coalition = np.zeros(shape=(1, 10), dtype=bool)
         >>> coalition[0][0, 1, 2] = True
@@ -61,8 +61,8 @@ class LocalExplanation(Game):
         self,
         *,
         path_to_values: Optional[str] = None,
-        x_explain: Optional[Union[np.ndarray, int]] = None,
-        x_data: Optional[np.ndarray] = None,
+        x: Optional[Union[np.ndarray, int]] = None,
+        data: Optional[np.ndarray] = None,
         model: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         imputer: Optional[MarginalImputer] = None,
         random_state: Optional[int] = None,
@@ -73,21 +73,25 @@ class LocalExplanation(Game):
             super().__init__(path_to_values=path_to_values)
             return
 
-        # get x_explain
-        self.x_explain = x_explain
-        if self.x_explain is None:  # get a random data point from the test set
-            self.x_explain = x_data[np.random.randint(0, x_data.shape[0])]
+        # set attributes
+        self.model = model
+        self.data = data
+
+        # get x
+        self.x = x
+        if self.x is None:  # get a random data point from the test set
+            self.x = data[np.random.randint(0, data.shape[0])]
         # if x_explain is an index then get the data point
-        if isinstance(self.x_explain, int):
-            self.x_explain = x_data[x_explain]
+        if isinstance(self.x, int):
+            self.x_explain = data[x]
 
         # init the imputer which serves as the workhorse of this Game
         self._imputer = imputer
         if self._imputer is None:
             self._imputer = MarginalImputer(
                 model=model,
-                background_data=x_data,
-                x_explain=x_explain,
+                data=data,
+                x=x,
                 random_state=random_state,
                 normalize=False,
             )
@@ -96,7 +100,7 @@ class LocalExplanation(Game):
 
         # init the base game
         super().__init__(
-            x_data.shape[1],
+            data.shape[1],
             normalize=normalize,
             normalization_value=self._imputer.empty_prediction,
         )
@@ -270,7 +274,7 @@ class CaliforniaHousing(LocalExplanation):
     Args:
         path_to_values: The path to the pre-computed game values to load. If provided, then the game
             is loaded from the file and no other parameters are used. Defaults to `None`.
-        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
+        x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features).
         model: The model to explain as a string or a callable function. If a string is provided it
             should be one of the following:
@@ -294,7 +298,7 @@ class CaliforniaHousing(LocalExplanation):
         self,
         *,
         path_to_values: Optional[str] = None,
-        x_explain: Optional[Union[np.ndarray, int]] = None,
+        x: Optional[Union[np.ndarray, int]] = None,
         model: Union[Callable[[np.ndarray], np.ndarray], str] = "sklearn_gbt",
         imputer: Optional[MarginalImputer] = None,
         random_state: Optional[int] = None,
@@ -340,17 +344,17 @@ class CaliforniaHousing(LocalExplanation):
             x_train = scaler.fit_transform(x_train)
             x_test = scaler.transform(x_test)
 
-        # get x_explain
-        if x_explain is None:  # get a random data point from the test set
-            x_explain = x_test[np.random.randint(0, x_test.shape[0])]
-        # if x_explain is an index then get the data point
-        if isinstance(x_explain, int):
-            x_explain = x_test[x_explain]
+        # get x
+        if x is None:  # get a random data point from the test set
+            x = x_test[np.random.randint(0, x_test.shape[0])]
+        # if x is an index then get the data point
+        if isinstance(x, int):
+            x = x_test[x]
 
         # call the super constructor
         super().__init__(
-            x_explain=x_explain,
-            x_data=x_train,
+            x=x,
+            data=x_train,
             model=model,
             imputer=imputer,
             random_state=random_state,

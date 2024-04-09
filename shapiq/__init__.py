@@ -15,7 +15,7 @@ from .approximator import (
 from .datasets import load_bike
 
 # explainer classes
-from .explainer import TabularExplainer, TreeExplainer
+from .explainer import Explainer, TabularExplainer, TreeExplainer
 
 # game classes
 from .games import DummyGame
@@ -44,6 +44,7 @@ __all__ = [
     "RegressionSII",
     "RegressionFSI",
     # explainers
+    "Explainer",
     "TabularExplainer",
     "TreeExplainer",
     # games

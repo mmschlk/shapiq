@@ -14,14 +14,14 @@ def test_basic_function(model):
 
     if model == "invalid":
         with pytest.raises(ValueError):
-            _ = CaliforniaHousing(model=model, x_explain=0)
+            _ = CaliforniaHousing(model=model, x=0)
         return
 
     x_explain_id = 0
     if model == "torch_nn":  # test here the auto select
         x_explain_id = None
 
-    game = CaliforniaHousing(x_explain=x_explain_id, model=model)
+    game = CaliforniaHousing(x=x_explain_id, model=model)
     game.precompute()
     assert game.n_players == 8
     assert len(game.feature_names) == 8

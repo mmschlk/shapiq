@@ -3,6 +3,7 @@ for users of the shapiq package."""
 
 from typing import Callable, Optional, Union
 
+import warnings
 import numpy as np
 
 from shapiq.approximator import (
@@ -16,8 +17,6 @@ from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
 from shapiq.games.imputer import MarginalImputer
 from shapiq.interaction_values import InteractionValues
-
-__all__ = ["TabularExplainer"]
 
 
 APPROXIMATOR_CONFIGURATIONS = {
@@ -36,65 +35,71 @@ AVAILABLE_INDICES = {"SII", "k-SII", "STI", "FSI"}
 class TabularExplainer(Explainer):
     """The tabular explainer as the main interface for the shapiq package.
 
-    The `TabularExplainer` is the main interface for the shapiq package. It can be used to
-    explain the predictions of a model by estimating the Shapley interaction values.
+    The `TabularExplainer` class is the main interface for the `shapiq` package. It can be used 
+    to explain the predictions of a model by estimating the Shapley interaction values.
 
     Args:
         model: The model to explain as a callable function expecting a data points as input and
             returning the model's predictions.
-        background_data: The background data to use for the explainer.
-        approximator: The approximator to use for the explainer. Defaults to `"auto"`, which will
+        data: A background dataset to use for the explainer.
+        approximator: An approximator to use for the explainer. Defaults to `"auto"`, which will
             automatically choose the approximator based on the number of features and the number of
             samples in the background data.
-        index: The Shapley interaction index to use. Must be one of `"SII"` (Shapley Interaction Index),
-        `"k-SII"` (k-Shapley Interaction Index), `"STI"` (Shapley-Taylor Interaction Index), or
-        `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
+        index: Type of Shapley interaction index to use. Must be one of `"SII"` (Shapley Interaction Index),
+            `"k-SII"` (k-Shapley Interaction Index), `"STI"` (Shapley-Taylor Interaction Index), or
+            `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
 
     Attributes:
-        index: The Shapley interaction index to use.
-        background_data: The background data to use for the explainer.
-        baseline_value: The baseline value of the explainer.
+        index: Type of Shapley interaction index to use.
+        data: A background data to use for the explainer.
+        baseline_value: A baseline value of the explainer.
     """
 
     def __init__(
         self,
-        model: Callable[[np.ndarray], np.ndarray],
-        background_data: np.ndarray,
+        model,
+        data: np.ndarray,
         approximator: Union[str, Approximator] = "auto",
         index: str = "k-SII",
         max_order: int = 2,
         random_state: Optional[int] = None,
+        **kwargs
     ) -> None:
-        super().__init__()
-        self._n_features: int = background_data.shape[1]
-        self._model_function: Callable[[np.ndarray], np.ndarray] = model
-        self.background_data = background_data
-        self._imputer = MarginalImputer(self._model_function, self.background_data)
+        
         if index not in AVAILABLE_INDICES:
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
-        self.index = index
-        self._default_budget: int = 2_000
         if max_order < 2:
             raise ValueError("The maximum order must be at least 2.")
-        self._max_order: int = max_order
-        self._random_state = random_state
-        self._rng = np.random.default_rng(self._random_state)
-        self._approximator = self._init_approximator(approximator, index, max_order)
+        
+        super().__init__(model, data)
 
-    def explain(self, x_explain: np.ndarray, budget: Optional[int] = None) -> InteractionValues:
+        self._random_state = random_state
+        self._imputer = MarginalImputer(self.predict, self.data)
+        self._n_features: int = self.data.shape[1]
+
+        self.index = index
+        self._max_order: int = max_order
+        self._approximator = self._init_approximator(approximator, self.index, self._max_order)
+        self._rng = np.random.default_rng(self._random_state)
+
+
+    def explain(self, x: np.ndarray, budget: Optional[int] = None) -> InteractionValues:
         """Explains the model's predictions.
 
         Args:
-            x_explain: The data point to explain as a 2-dimensional array with shape
+            x: The data point to explain as a 2-dimensional array with shape
                 (1, n_features).
-            budget: The budget to use for the approximation. Defaults to `None`, which will choose
-                the budget automatically based on the number of features.
+            budget: The budget to use for the approximation. Defaults to `None`, which will
+                set the budget to 2**n_features based on the number of features.
         """
         if budget is None:
-            budget = min(2**self._n_features, self._default_budget)
+            budget = 2**self._n_features
+            if budget > 2048:
+                warnings.warn(f'Using the budget of 2**n_features={budget}, which might take long\
+                              to compute. Set the `budget` parameter to suppress this warning.')
 
         # initialize the imputer with the explanation point
-        imputer = self._imputer.fit(x_explain)
+        imputer = self._imputer.fit(x)
 
         # explain
         interaction_values = self._approximator.approximate(budget=budget, game=imputer)
@@ -102,10 +107,12 @@ class TabularExplainer(Explainer):
 
         return interaction_values
 
+
     @property
     def baseline_value(self) -> float:
         """Returns the baseline value of the explainer."""
         return self._imputer.empty_prediction
+
 
     def _init_approximator(
         self, approximator: Union[Approximator, str], index: str, max_order: int
