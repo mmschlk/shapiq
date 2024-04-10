@@ -55,11 +55,11 @@ from shapiq import TabularExplainer
 
 explainer = TabularExplainer(
     model=model.predict,
-    background_data=x_train,
+    data=x_train,
     index="k-SII",
     max_order=2
 )
-interaction_values = explainer.explain(x_explain, budget=2000)
+interaction_values = explainer.explain(x, budget=2000)
 print(interaction_values)
 
 >> > InteractionValues(
