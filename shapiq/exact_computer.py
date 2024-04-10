@@ -2,7 +2,6 @@ import copy
 from typing import Callable
 
 import numpy as np
-import tqdm
 from scipy.special import bernoulli, binom
 
 from shapiq import powerset
@@ -56,9 +55,7 @@ class ExactComputer:
         coalition_lookup = {}
         # compute the game values
         coalition_matrix = np.zeros((2**self.n, self.n))
-        for i, T in tqdm.tqdm(
-            enumerate(powerset(self.N, min_size=0, max_size=self.n)), total=2**self.n
-        ):
+        for i, T in enumerate(powerset(self.N, min_size=0, max_size=self.n)):
             coalition_lookup[T] = i
             coalition_matrix[i, T] = 1
         game_values = game_fun(coalition_matrix)
@@ -83,7 +80,7 @@ class ExactComputer:
         coalition_lookup = {}
         for i, S in enumerate(powerset(self.N)):
             coalition_lookup[S] = i
-        for i, S in tqdm.tqdm(enumerate(powerset(self.N)), total=2**self.n):
+        for i, S in enumerate(powerset(self.N)):
             s = len(S)
             S_pos = coalition_lookup[S]
             for T in powerset(S):
@@ -159,7 +156,9 @@ class ExactComputer:
         fsii_weights[0] = self.big_M
         fsii_weights[-1] = self.big_M
         for coalition_size in range(1, self.n):
-            fsii_weights[coalition_size] = 1 / (self.n - 1) * binom(self.n - 2, coalition_size - 1)
+            fsii_weights[coalition_size] = 1 / (
+                (self.n - 1) * binom(self.n - 2, coalition_size - 1)
+            )
         return fsii_weights
 
     def get_stii_weights(self, order: int):
@@ -245,7 +244,7 @@ class ExactComputer:
 
         base_interaction_values = np.zeros(self.n_interactions[order])
         base_weights = self.get_base_weights(index, order)
-        for coalition in tqdm.tqdm(powerset(self.N), total=2**self.n):
+        for coalition in powerset(self.N):
             coalition_size = len(coalition)
             coalition_pos = self.coalition_lookup[coalition]
             for j, interaction in enumerate(powerset(self.N, max_size=order)):
