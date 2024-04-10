@@ -2,33 +2,28 @@
 
 import pandas as pd
 
+GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
-def _get_open_ml_dataset(open_ml_id, version=1):
-    """Download a dataset from OpenML by its ID and version number.
 
-    Note:
-        The function requires the `openml` package to be installed.
-
-    Args:
-        open_ml_id: The ID of the dataset on OpenML.
-        version: The version number of the dataset.
+def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the California housing dataset.
 
     Returns:
-        The dataset as a pandas DataFrame and the name of the class label.
+        The California housing dataset as a pandas DataFrame.
     """
-    import openml
+    dataset = pd.read_csv(GITHUB_DATA_URL + "california_housing.csv")
+    class_label = "MedHouseVal"
+    y_data = dataset[class_label]
+    x_data = dataset.drop(columns=[class_label])
 
-    dataset = openml.datasets.get_dataset(open_ml_id, version=version, download_data=True)
-    class_label = dataset.default_target_attribute
-    x_data = dataset.get_data()[0]
-    return x_data, class_label
+    return x_data, y_data
 
 
 def load_bike() -> tuple[pd.DataFrame, pd.Series]:
     """Load the bike-sharing dataset from openml.
 
     Note:
-        The function requires the `openml` and `sklearn` packages to be installed.
+        The function requires the `sklearn` package to be installed.
 
     Returns:
         The bike-sharing dataset as a pandas DataFrame.
@@ -37,7 +32,9 @@ def load_bike() -> tuple[pd.DataFrame, pd.Series]:
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder, RobustScaler
 
-    dataset, class_label = _get_open_ml_dataset(42713, version=1)
+    dataset = pd.read_csv(GITHUB_DATA_URL + "bike.csv")
+    class_label = "count"
+
     num_feature_names = ["hour", "temp", "feel_temp", "humidity", "windspeed"]
     cat_feature_names = [
         "season",
@@ -79,7 +76,7 @@ def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
     Original source: https://archive.ics.uci.edu/ml/datasets/adult
 
     Note:
-        The function requires the `openml` and `sklearn` packages to be installed.
+        The function requires the `sklearn` package to be installed.
 
     Returns:
         The adult census dataset as a pandas DataFrame.
@@ -89,7 +86,9 @@ def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 
-    dataset, class_label = _get_open_ml_dataset("adult", version=2)
+    dataset = pd.read_csv(GITHUB_DATA_URL + "adult_census.csv")
+    class_label = "class"
+
     num_feature_names = ["age", "capital-gain", "capital-loss", "hours-per-week", "fnlwgt"]
     cat_feature_names = [
         "workclass",

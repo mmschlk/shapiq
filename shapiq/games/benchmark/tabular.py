@@ -8,7 +8,6 @@ from games.tabular import LocalExplanation, _get_x_explain
 
 
 class AdultCensus(LocalExplanation):
-
     """The AdultCensus dataset as a local explanation game.
 
     This class represents the AdultCensus dataset as a local explanation game. The dataset is a
@@ -153,7 +152,6 @@ class AdultCensus(LocalExplanation):
 
 
 class BikeRegression(LocalExplanation):
-
     """The BikeRental dataset as a local explanation game.
 
     This class represents the BikeRental regression dataset as a local explanation game. The dataset
@@ -289,7 +287,6 @@ class BikeRegression(LocalExplanation):
 
 
 class CaliforniaHousing(LocalExplanation):
-
     """The CaliforniaHousing dataset as a LocalExplanation game.
 
     The CaliforniaHousing dataset is a regression dataset that contains data on housing prices in
@@ -361,15 +358,17 @@ class CaliforniaHousing(LocalExplanation):
             )
 
         # do the imports for this class
-        from sklearn.datasets import fetch_california_housing
         from sklearn.model_selection import train_test_split
         from sklearn.preprocessing import StandardScaler
 
-        # load the dataset
-        data = fetch_california_housing()
-        self.feature_names = list(data.feature_names)
+        from shapiq.datasets import load_california_housing
 
-        x_data, y_data = data.data, data.target
+        # load the dataset
+
+        x_data, y_data = load_california_housing()
+        self.feature_names = list(x_data.columns)
+
+        x_data, y_data = x_data.values, y_data.values
 
         # split the data
         x_train, x_test, y_train, y_test = train_test_split(

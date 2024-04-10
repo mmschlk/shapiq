@@ -13,5 +13,4 @@ torch==2.2.2
 torchvision==0.17.2
 pytest==8.1.1
 coverage==7.4.4
-openml==0.14.2
 xgboost==2.0.3
