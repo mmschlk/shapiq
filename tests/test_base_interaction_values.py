@@ -1,4 +1,5 @@
 """This test module contains all tests regarding the InteractionValues dataclass."""
+
 from copy import copy, deepcopy
 
 import numpy as np
@@ -23,6 +24,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     """Tests the initialization of the InteractionValues dataclass."""
     interaction_lookup = {interaction: i for i, interaction in enumerate(powerset(range(n), 1, 2))}
     values = np.random.rand(len(interaction_lookup))
+    baseline_value = 2.0
     try:
         interaction_values = InteractionValues(
             values=values,
@@ -33,6 +35,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
             interaction_lookup=interaction_lookup,
             estimation_budget=estimation_budget,
             estimated=estimated,
+            baseline_value=baseline_value,
         )
     except ValueError:
         if index == "something":
@@ -54,14 +57,15 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
         n_players=n,
         min_order=min_order,
         max_order=max_order,
+        baseline_value=baseline_value,
     )
     assert interaction_values_2.estimation_budget is None  # default value is None
     assert interaction_values_2.estimated is True  # default value is True
     assert interaction_values_2.interaction_lookup == interaction_lookup  # automatically generated
 
     # check the string representations (not semantics)
-    str(interaction_values)
-    repr(interaction_values)
+    assert isinstance(str(interaction_values), str)
+    assert isinstance(repr(interaction_values), str)
 
     # check equality
     interaction_values_copy = copy(interaction_values)
@@ -89,6 +93,29 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     # check getitem with invalid interaction (not in interaction_lookup)
     assert interaction_values[(100, 101)] == 0  # invalid interaction is 0
 
+    # test getitem with integer as input
+    assert interaction_values[0] == interaction_values.values[0]
+    assert interaction_values[-1] == interaction_values.values[-1]
+
+    # test __len__
+    assert len(interaction_values) == len(interaction_values.values)
+
+    # test baseline value
+    assert interaction_values.baseline_value == baseline_value
+    assert interaction_values[()] == baseline_value
+    with pytest.raises(ValueError):
+        InteractionValues(
+            values=values,
+            index=index,
+            n_players=n,
+            min_order=min_order,
+            max_order=max_order,
+            interaction_lookup=interaction_lookup,
+            estimation_budget=estimation_budget,
+            estimated=estimated,
+            baseline_value=None,
+        )
+
 
 def test_add():
     """Tests the __add__ method of the InteractionValues dataclass."""
@@ -108,6 +135,7 @@ def test_add():
         min_order=min_order,
         max_order=max_order,
         interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
     )
 
     # test adding scalar values
@@ -131,6 +159,7 @@ def test_add():
         min_order=min_order,
         max_order=max_order,
         interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
     )
     with pytest.raises(ValueError):
         interaction_values_first + interaction_values_second
@@ -149,6 +178,7 @@ def test_add():
         min_order=min_order,
         max_order=max_order + 1,
         interaction_lookup=interaction_lookup_second,
+        baseline_value=0.0,
     )
     with pytest.warns(UserWarning):
         interaction_values_added = interaction_values_first + interaction_values_second
@@ -186,6 +216,7 @@ def test_sub():
         min_order=min_order,
         max_order=max_order,
         interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
     )
 
     # test subtracting scalar values
@@ -217,6 +248,7 @@ def test_mul():
         min_order=min_order,
         max_order=max_order,
         interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
     )
 
     # test adding scalar values
@@ -226,3 +258,26 @@ def test_mul():
     assert np.all(interaction_values_mul.values == 2 * interaction_values_first.values)
     interaction_values_mul = interaction_values_first * 2.0
     assert np.all(interaction_values_mul.values == 2.0 * interaction_values_first.values)
+
+
+def test_sum():
+    """Tests the sum method of the InteractionValues dataclass."""
+    index = "SII"
+    n = 5
+    min_order = 1
+    max_order = 2
+    interaction_lookup = {
+        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    }
+    values = np.random.rand(len(interaction_lookup))
+    interaction_values = InteractionValues(
+        values=values,
+        index=index,
+        n_players=n,
+        min_order=min_order,
+        max_order=max_order,
+        interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
+    )
+
+    assert np.isclose(sum(interaction_values), np.sum(interaction_values.values))

@@ -4,15 +4,11 @@
 import importlib
 import pkgutil
 import sys
+
 import pytest
 
 import shapiq
-from shapiq import approximator
-from shapiq import explainer
-from shapiq import games
-from shapiq import utils
-from shapiq import plot
-from shapiq import datasets
+from shapiq import approximator, datasets, explainer, games, plot, utils
 
 
 @pytest.mark.parametrize(

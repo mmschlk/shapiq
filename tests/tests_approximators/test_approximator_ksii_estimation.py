@@ -1,14 +1,15 @@
 """Tests the approximiation of nSII values with PermutationSamplingSII and ShapIQ."""
+
 import numpy as np
 import pytest
 
-from approximator import (
-    convert_ksii_into_one_dimension,
-    transforms_sii_to_ksii,
+from shapiq.approximator import (
     PermutationSamplingSII,
     ShapIQ,
+    convert_ksii_into_one_dimension,
+    transforms_sii_to_ksii,
 )
-from games import DummyGame
+from shapiq.games import DummyGame
 
 
 @pytest.mark.parametrize(

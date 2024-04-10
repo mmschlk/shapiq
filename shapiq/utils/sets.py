@@ -1,7 +1,7 @@
 """This module contains utility functions for dealing with sets, coalitions and game theory."""
 
 import copy
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from itertools import chain, combinations
 from typing import Any, Optional, Union
 
@@ -14,6 +14,8 @@ __all__ = [
     "split_subsets_budget",
     "get_explicit_subsets",
     "generate_interaction_lookup",
+    "transform_coalitions_to_array",
+    "transform_array_to_coalitions",
 ]
 
 
@@ -212,3 +214,59 @@ def generate_interaction_lookup(
         for i, interaction in enumerate(powerset(players, min_size=min_order, max_size=max_order))
     }
     return interaction_lookup
+
+
+def transform_coalitions_to_array(
+    coalitions: Collection[tuple[int]], n_players: Optional[int] = None
+) -> np.ndarray:
+    """Transforms a collection of coalitions to a binary array (one-hot encodings).
+
+    Args:
+        coalitions: Collection of coalitions.
+        n_players: Number of players. Defaults to None (determined from the coalitions). If
+            provided, n_players must be greater than the maximum player index in the coalitions.
+
+    Returns:
+        Binary array of coalitions.
+
+    Example:
+        >>> coalitions = [(0, 1), (1, 2), (0, 2)]
+        >>> transform_coalitions_to_array(coalitions)
+        array([[ True,  True, False],
+               [False,  True,  True],
+               [ True, False,  True]])
+
+        >>> transform_coalitions_to_array(coalitions, n_players=4)
+        array([[ True,  True, False, False],
+               [False,  True,  True, False],
+               [ True, False,  True, False]])
+    """
+    n_coalitions = len(coalitions)
+    if n_players is None:
+        n_players = max(max(coalition) for coalition in coalitions) + 1
+
+    coalition_array = np.zeros((n_coalitions, n_players), dtype=bool)
+    for i, coalition in enumerate(coalitions):
+        coalition_array[i, coalition] = True
+    return coalition_array
+
+
+def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int]]:
+    """Transforms a 2d one-hot matrix of coalitions into a list of tuples.
+
+    Args:
+        coalitions: A binary array of coalitions.
+
+    Returns:
+        List of coalitions as tuples.
+
+    Examples:
+        >>> coalitions = np.array([[True, True, False], [False, True, True], [True, False, True]])
+        >>> transform_array_to_coalitions(coalitions)
+        [(0, 1), (1, 2), (0, 2)]
+
+        >>> coalitions = np.array([[False, False, False], [True, True, True]])
+        >>> transform_array_to_coalitions(coalitions)
+        [(), (0, 1, 2)]
+    """
+    return [tuple(np.where(coalition)[0]) for coalition in coalitions]

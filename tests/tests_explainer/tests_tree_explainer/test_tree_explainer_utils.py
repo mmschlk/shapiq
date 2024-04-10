@@ -1,4 +1,5 @@
 """This test module collects all tests for the utility functions of the tree explainer."""
+
 import numpy as np
 
 from shapiq.explainer.tree.utils import (

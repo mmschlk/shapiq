@@ -1,14 +1,16 @@
 """This module contains the TreeExplainer class making use of the TreeSHAPIQ algorithm for
 computing any-order Shapley Interactions for tree ensembles."""
+
 import copy
 from typing import Any, Optional, Union
 
 import numpy as np
-from explainer._base import Explainer
-from interaction_values import InteractionValues
+
+from shapiq.explainer._base import Explainer
+from shapiq.interaction_values import InteractionValues
 
 from .treeshapiq import TreeModel, TreeSHAPIQ
-from .validation import _validate_model
+from .validation import validate_tree_model
 
 
 class TreeExplainer(Explainer):
@@ -20,9 +22,15 @@ class TreeExplainer(Explainer):
         interaction_type: str = "k-SII",
         class_label: Optional[int] = None,
         output_type: str = "raw",
+        **kwargs
     ) -> None:
+
+        super().__init__(model)
+
         # validate and parse model
-        validated_model = _validate_model(model, class_label=class_label, output_type=output_type)
+        validated_model = validate_tree_model(
+            model, class_label=class_label, output_type=output_type
+        )
         self._trees: Union[TreeModel, list[TreeModel]] = copy.deepcopy(validated_model)
         if not isinstance(self._trees, list):
             self._trees = [self._trees]
@@ -39,11 +47,16 @@ class TreeExplainer(Explainer):
             for _tree in self._trees
         ]
 
-    def explain(self, x_explain: np.ndarray) -> InteractionValues:
+        # TODO: for the current implementation this is correct for other trees this may vary
+        self.baseline_value = sum(
+            [treeshapiq.empty_prediction for treeshapiq in self._treeshapiq_explainers]
+        )
+
+    def explain(self, x: np.ndarray) -> InteractionValues:
         # run treeshapiq for all trees
         interaction_values: list[InteractionValues] = []
         for explainer in self._treeshapiq_explainers:
-            tree_explanation = explainer.explain(x_explain)
+            tree_explanation = explainer.explain(x)
             interaction_values.append(tree_explanation)
 
         # combine the explanations for all trees

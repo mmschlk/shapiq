@@ -1,13 +1,16 @@
 """This test module contains the test cases for the utils sets module."""
+
 import numpy as np
 import pytest
 
-from utils import (
-    powerset,
-    pair_subset_sizes,
-    split_subsets_budget,
-    get_explicit_subsets,
+from shapiq.utils import (
     generate_interaction_lookup,
+    get_explicit_subsets,
+    pair_subset_sizes,
+    powerset,
+    split_subsets_budget,
+    transform_coalitions_to_array,
+    transform_array_to_coalitions,
 )
 
 
@@ -102,3 +105,54 @@ def test_get_explicit_subsets(n, subset_sizes, expected):
 def test_generate_interaction_lookup(n, min_order, max_order, expected):
     """Tests the generate_interaction_lookup function."""
     assert generate_interaction_lookup(n, min_order, max_order) == expected
+
+
+@pytest.mark.parametrize(
+    "coalitions, n_player, expected",
+    [
+        (
+            [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)],
+            None,
+            np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]]),
+        ),
+        (
+            [(0, 1), (1, 2), (0, 2)],
+            3,
+            np.array([[1, 1, 0], [0, 1, 1], [1, 0, 1]]),
+        ),
+        (
+            [(0, 1), (1, 2), (0, 2)],
+            4,
+            np.array([[1, 1, 0, 0], [0, 1, 1, 0], [1, 0, 1, 0]]),
+        ),
+    ],
+)
+def test_transform_coalitions_to_array(coalitions, n_player, expected):
+    """Tests the transform_coalitions_to_array function."""
+    assert np.all(transform_coalitions_to_array(coalitions, n_player) == expected)
+
+
+@pytest.mark.parametrize(
+    "coalitions, expected",
+    [
+        (
+            np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]]),
+            [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)],
+        ),
+        (
+            np.array([[1, 1, 0], [0, 1, 1], [1, 0, 1]]),
+            [(0, 1), (1, 2), (0, 2)],
+        ),
+        (
+            np.array([[1, 1, 0, 0], [0, 1, 1, 0], [1, 0, 1, 0]]),
+            [(0, 1), (1, 2), (0, 2)],
+        ),
+        (
+            np.array([[False, False, False], [True, True, True]]),
+            [(), (0, 1, 2)],
+        ),
+    ],
+)
+def test_transform_array_to_coalitions(coalitions, expected):
+    """Tests the transform_array_to_coalitions function."""
+    assert transform_array_to_coalitions(coalitions) == expected

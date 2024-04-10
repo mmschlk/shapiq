@@ -1,10 +1,12 @@
 """This test module contains all tests regarding the base approximator class."""
+
 import numpy as np
 import pytest
 
 from shapiq.approximator._base import Approximator
-from shapiq.explainer.imputer._base import Imputer
 from shapiq.explainer._base import Explainer
+from shapiq.games.imputer.base import Imputer
+from shapiq.games.base import Game
 
 
 def concreter(abclass):
@@ -35,10 +37,10 @@ def test_approximator():
 
 def test_imputer():
     model = lambda x: x
-    background_data = np.asarray([[1, 2, 3], [4, 5, 6]])
-    imputer = concreter(Imputer)(model, background_data)
-    assert imputer._model == model
-    assert np.all(imputer._background_data == background_data)
+    data = np.asarray([[1, 2, 3], [4, 5, 6]])
+    imputer = concreter(Imputer)(model, data)
+    assert imputer.model == model
+    assert np.all(imputer.data == data)
     assert imputer._n_features == 3
     assert imputer._cat_features == []
     assert imputer._random_state is None
@@ -49,6 +51,12 @@ def test_imputer():
 
 
 def test_explainer():
-    explainer = concreter(Explainer)()
+    with pytest.raises(TypeError):
+        Explainer()
+
+
+def test_game():
+    n = 6
+    game = concreter(Game)(n_players=n)
     with pytest.raises(NotImplementedError):
-        explainer.explain(np.array([[1, 2, 3]]))
+        game(np.array([[True for _ in range(n)]]))

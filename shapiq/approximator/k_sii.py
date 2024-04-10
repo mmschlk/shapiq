@@ -3,10 +3,10 @@
 from typing import Optional, Union
 
 import numpy as np
-from interaction_values import InteractionValues
-from scipy.special import bernoulli
+import scipy as sp
 
 from shapiq.approximator._base import Approximator
+from shapiq.interaction_values import InteractionValues
 from shapiq.utils import generate_interaction_lookup, powerset
 
 
@@ -78,6 +78,7 @@ def transforms_sii_to_ksii(
             interaction_lookup=sii_values.interaction_lookup,
             estimated=sii_values.estimated,
             estimation_budget=sii_values.estimation_budget,
+            baseline_value=sii_values.baseline_value,
         )
     elif approximator is not None:
         return _calculate_ksii_from_sii(
@@ -118,7 +119,7 @@ def _calculate_ksii_from_sii(
         interaction_lookup = generate_interaction_lookup(n, 1, max_order)
 
     # compute nSII values from SII values
-    bernoulli_numbers = bernoulli(max_order)
+    bernoulli_numbers = sp.special.bernoulli(max_order)
     nsii_values = np.zeros_like(sii_values)
     # all subsets S with 1 <= |S| <= max_order
     for subset in powerset(set(range(n)), min_size=1, max_size=max_order):

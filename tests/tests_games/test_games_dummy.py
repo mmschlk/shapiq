@@ -1,8 +1,9 @@
 """This test module contains the tests for the DummyGame class."""
+
 import numpy as np
 import pytest
 
-from games import DummyGame
+from shapiq.games import DummyGame
 
 
 @pytest.mark.parametrize(

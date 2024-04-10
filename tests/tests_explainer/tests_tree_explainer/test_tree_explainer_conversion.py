@@ -1,11 +1,12 @@
 """This test module collects all tests for the conversions of the supported tree models for the
 TreeExplainer class."""
+
 import numpy as np
 
-
-from shapiq.utils import safe_isinstance
 from shapiq.explainer.tree.base import TreeModel
-from shapiq.explainer.tree.conversion.sklearn import convert_sklearn_tree, convert_sklearn_forest
+from shapiq.explainer.tree.conversion.edges import create_edge_tree
+from shapiq.explainer.tree.conversion.sklearn import convert_sklearn_forest, convert_sklearn_tree
+from shapiq.utils import safe_isinstance
 
 
 def test_tree_model_init():
@@ -39,8 +40,6 @@ def test_tree_model_init():
 
 def test_edge_tree_init():
     """Tests the initialization of the EdgeTree class."""
-
-    from explainer.tree.conversion.edges import create_edge_tree
 
     # setup test data (same as in test_manual_tree of test_tree_treeshapiq.py)
     children_left = np.asarray([1, 2, 3, -1, -1, -1, 7, -1, -1])
@@ -79,7 +78,7 @@ def test_edge_tree_init():
         subset_updates_pos_store=interaction_update_positions,
     )
 
-    assert safe_isinstance(edge_tree, ["explainer.tree.base.EdgeTree"])
+    assert safe_isinstance(edge_tree, ["shapiq.explainer.tree.base.EdgeTree"])
 
     # check if edge_tree can be accessed via __getitem__
     assert edge_tree["parents"] is not None
@@ -88,7 +87,7 @@ def test_edge_tree_init():
 def test_sklean_dt_conversion(dt_reg_model, dt_clf_model):
     """Test the conversion of a scikit-learn decision tree model."""
     # test regression model
-    tree_model_class_path_str = ["explainer.tree.base.TreeModel"]
+    tree_model_class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
     tree_model = convert_sklearn_tree(dt_reg_model)
     assert safe_isinstance(tree_model, tree_model_class_path_str)
     assert tree_model.empty_prediction is not None
@@ -111,7 +110,7 @@ def test_sklean_dt_conversion(dt_reg_model, dt_clf_model):
 
 def test_skleanr_rf_conversion(rf_clf_model, rf_reg_model):
     """Test the conversion of a scikit-learn random forest model."""
-    tree_model_class_path_str = ["explainer.tree.base.TreeModel"]
+    tree_model_class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
 
     # test the regression model
     tree_model = convert_sklearn_forest(rf_reg_model)

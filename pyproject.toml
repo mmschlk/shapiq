@@ -10,7 +10,7 @@ line-length = 100
 target-version = ['py39']
 
 [tool.ruff]
-select = ["E", "F", "I", "UP"]  # https://beta.ruff.rs/docs/rules/
+lint.select = ["E", "F", "I", "UP"]  # https://beta.ruff.rs/docs/rules/
+lint.ignore = ["E501"]
 line-length = 100
 target-version = 'py39'
-ignore = ["E501"]

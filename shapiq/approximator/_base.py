@@ -4,11 +4,10 @@ from abc import ABC, abstractmethod
 from typing import Callable, Optional
 
 import numpy as np
-from interaction_values import InteractionValues
 
+from shapiq.approximator._config import AVAILABLE_INDICES
+from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import generate_interaction_lookup
-
-from ._config import AVAILABLE_INDICES
 
 __all__ = [
     "Approximator",
@@ -144,6 +143,7 @@ class Approximator(ABC):
             max_order=self.max_order,
             n_players=self.n,
             interaction_lookup=self._interaction_lookup,
+            baseline_value=0.0,  # Approximator are always normalized/centered games
         )
 
     @staticmethod

@@ -1,12 +1,14 @@
 """This module contains the InteractionValues Dataclass, which is used to store the interaction
 scores."""
+
 import copy
 import warnings
 from dataclasses import dataclass
 from typing import Optional, Union
 
 import numpy as np
-from utils import generate_interaction_lookup, powerset
+
+from shapiq.utils import generate_interaction_lookup, powerset
 
 AVAILABLE_INDICES = {"k-SII", "SII", "STII", "FSII", "SV", "BZF", "Moebius"}
 
@@ -27,6 +29,10 @@ class InteractionValues:
             `min_order`, and `max_order` parameters. Defaults to `None`.
         estimated: Whether the interaction values are estimated or not. Defaults to `True`.
         estimation_budget: The budget used for the estimation. Defaults to `None`.
+        baseline_value: The value of the baseline interaction also known as 'empty prediction' or
+            'empty value' since it denotes the value of the empty coalition (empty set). If not
+            provided it is searched for in the values vector (raising an Error if not found).
+            Defaults to `None`.
     """
 
     values: np.ndarray[float]
@@ -37,6 +43,7 @@ class InteractionValues:
     interaction_lookup: dict[tuple[int], int] = None
     estimated: bool = True
     estimation_budget: Optional[int] = None
+    baseline_value: Optional[float] = None
 
     def __post_init__(self) -> None:
         """Checks if the index is valid."""
@@ -48,6 +55,11 @@ class InteractionValues:
             self.interaction_lookup = generate_interaction_lookup(
                 self.n_players, self.min_order, self.max_order
             )
+        if self.baseline_value is None:
+            try:
+                self.baseline_value = float(self.values[self.interaction_lookup[tuple()]])
+            except KeyError:
+                raise ValueError("Baseline value is not provided and cannot be computed.")
 
     @property
     def dict_values(self) -> dict[tuple[int, ...], float]:
@@ -63,6 +75,7 @@ class InteractionValues:
         representation += (
             f"    index={self.index}, max_order={self.max_order}, min_order={self.min_order}"
             f", estimated={self.estimated}, estimation_budget={self.estimation_budget},\n"
+            f"    n_players={self.n_players}, baseline_value={self.baseline_value},\n"
         ) + "    values={\n"
         for interaction in powerset(
             set(range(self.n_players)), min_size=1, max_size=self.max_order
@@ -78,16 +91,29 @@ class InteractionValues:
         """Returns the string representation of the InteractionValues object."""
         return self.__repr__()
 
-    def __getitem__(self, item: tuple[int, ...]) -> float:
+    def __len__(self) -> int:
+        """Returns the length of the InteractionValues object."""
+        return len(self.values)  # might better to return the theoretical no. of interactions
+
+    def __iter__(self) -> np.nditer:
+        """Returns an iterator over the values of the InteractionValues object."""
+        return np.nditer(self.values)
+
+    def __getitem__(self, item: Union[int, tuple[int, ...]]) -> float:
         """Returns the score for the given interaction.
 
         Args:
-            item: The interaction for which to return the score.
+            item: The interaction as a tuple of integers for which to return the score. If `item` is
+                an integer it serves as the index to the values vector.
 
         Returns:
             The interaction value. If the interaction is not present zero is returned.
         """
+        if isinstance(item, int):
+            return float(self.values[item])
         item = tuple(sorted(item))
+        if item == tuple():
+            return self.baseline_value
         try:
             return float(self.values[self.interaction_lookup[item]])
         except KeyError:
@@ -109,6 +135,7 @@ class InteractionValues:
             or self.max_order != other.max_order
             or self.min_order != other.min_order
             or self.n_players != other.n_players
+            or self.baseline_value != other.baseline_value
         ):
             return False
         if not np.allclose(self.values, other.values):
@@ -149,6 +176,7 @@ class InteractionValues:
             n_players=self.n_players,
             interaction_lookup=copy.deepcopy(self.interaction_lookup),
             min_order=self.min_order,
+            baseline_value=self.baseline_value,
         )
 
     def __deepcopy__(self, memo) -> "InteractionValues":
@@ -162,6 +190,7 @@ class InteractionValues:
             n_players=self.n_players,
             interaction_lookup=copy.deepcopy(self.interaction_lookup),
             min_order=self.min_order,
+            baseline_value=self.baseline_value,
         )
 
     def __add__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
@@ -200,12 +229,15 @@ class InteractionValues:
                 n_players = max(self.n_players, other.n_players)
                 min_order = min(self.min_order, other.min_order)
                 max_order = max(self.max_order, other.max_order)
+                baseline_value = self.baseline_value + other.baseline_value
             else:  # basic case with same interactions
                 added_values = self.values + other.values
                 interaction_lookup = self.interaction_lookup
+                baseline_value = self.baseline_value + other.baseline_value
         elif isinstance(other, (int, float)):
             added_values = self.values.copy() + other
             interaction_lookup = self.interaction_lookup.copy()
+            baseline_value = self.baseline_value + other
         else:
             raise TypeError("Cannot add InteractionValues with object of type " f"{type(other)}.")
         return InteractionValues(
@@ -217,6 +249,7 @@ class InteractionValues:
             interaction_lookup=interaction_lookup,
             estimated=self.estimated,
             estimation_budget=self.estimation_budget,
+            baseline_value=baseline_value,
         )
 
     def __radd__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
@@ -234,6 +267,7 @@ class InteractionValues:
             interaction_lookup=self.interaction_lookup,
             estimated=self.estimated,
             estimation_budget=self.estimation_budget,
+            baseline_value=-self.baseline_value,
         )
 
     def __sub__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
@@ -255,6 +289,7 @@ class InteractionValues:
             interaction_lookup=self.interaction_lookup,
             estimated=self.estimated,
             estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value * other,
         )
 
     def __rmul__(self, other: Union[int, float]) -> "InteractionValues":

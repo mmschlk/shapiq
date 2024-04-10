@@ -3,9 +3,9 @@ from abc import ABC
 from typing import Union
 
 import numpy as np
-from approximator._base import Approximator
-from scipy.special import binom
+import scipy as sp
 
+from shapiq.approximator._base import Approximator
 from shapiq.utils import get_explicit_subsets, split_subsets_budget
 
 
@@ -18,7 +18,7 @@ class ShapleySamplingMixin(ABC):
     """
 
     def _init_ksh_sampling_weights(
-        self: Union[Approximator, "ShapleySamplingMixin"]
+        self: Union[Approximator, "ShapleySamplingMixin"],
     ) -> np.ndarray[float]:
         """Initializes the weights for sampling subsets.
 
@@ -54,7 +54,9 @@ class ShapleySamplingMixin(ABC):
         ksh_weights = self._init_ksh_sampling_weights()  # indexed by subset size
         subset_sizes = np.sum(subsets, axis=1)
         weights = ksh_weights[subset_sizes]  # set the weights for each subset size
-        weights /= binom(self.n, subset_sizes)  # divide by the number of subsets of the same size
+        weights /= sp.special.binom(
+            self.n, subset_sizes
+        )  # divide by the number of subsets of the same size
 
         # set the weights for the empty and full sets to big M
         weights[np.logical_not(subsets).all(axis=1)] = float(1_000_000)
