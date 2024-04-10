@@ -144,11 +144,13 @@ class SOUM:
             else:
                 moebius_coefficients_dict[game.interaction] = self.linear_coefficients[i]
 
-        moebius_coefficients_values = np.zeros(2**self.n)
+        moebius_coefficients_values = np.zeros(len(moebius_coefficients_dict))
         moebius_coefficients_lookup = {}
         for i, (key, val) in enumerate(moebius_coefficients_dict.items()):
             moebius_coefficients_values[i] = val
             moebius_coefficients_lookup[key] = i
+
+        baseline_value = 0 if tuple() not in moebius_coefficients_dict else None
 
         moebius_coefficients = InteractionValues(
             values=moebius_coefficients_values,
@@ -158,6 +160,7 @@ class SOUM:
             n_players=self.n,
             interaction_lookup=moebius_coefficients_lookup,
             estimated=False,
+            baseline_value=baseline_value,
         )
 
         return moebius_coefficients
