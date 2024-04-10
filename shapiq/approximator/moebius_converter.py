@@ -56,22 +56,27 @@ class MoebiusConverter:
         # Lookup Bernoulli numbers
         bernoulli_numbers = bernoulli(order)
 
-        for i, S in enumerate(powerset(self.N, max_size=order)):
-            transformed_lookup[S] = i
-            if len(S) == 0:
+        for i, interaction in enumerate(powerset(self.N, max_size=order)):
+            transformed_lookup[interaction] = i
+            if len(interaction) == 0:
                 # Initialize emptyset baseline value
-                transformed_values[i] = self.moebius_coefficients[tuple()]
+                transformed_values[i] = base_interactions.baseline_value
             else:
-                S_effect = base_interactions[S]
-                subset_size = len(S)
+                S_effect = base_interactions[interaction]
+                subset_size = len(interaction)
                 # go over all subsets S_tilde of length |S| + 1, ..., n that contain S
-                for S_tilde in powerset(self.N, min_size=subset_size + 1, max_size=order):
-                    if not set(S).issubset(S_tilde):
+                for interaction_higher_order in powerset(
+                    self.N, min_size=subset_size + 1, max_size=order
+                ):
+                    if not set(interaction).issubset(interaction_higher_order):
                         continue
                     # get the effect of T
-                    S_tilde_effect = base_interactions[S_tilde]
+                    S_tilde_effect = base_interactions[interaction_higher_order]
                     # normalization with bernoulli numbers
-                    S_effect += bernoulli_numbers[len(S_tilde) - subset_size] * S_tilde_effect
+                    S_effect += (
+                        bernoulli_numbers[len(interaction_higher_order) - subset_size]
+                        * S_tilde_effect
+                    )
                 transformed_values[i] = S_effect
 
         transformed_index = "k-" + base_interactions.index
@@ -194,6 +199,7 @@ class MoebiusConverter:
             min_order=1,
             max_order=order,
             n_players=self.n,
+            baseline_value=self.moebius_coefficients[tuple()],
         )
 
         return base_interactions
