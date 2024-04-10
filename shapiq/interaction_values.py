@@ -40,7 +40,7 @@ class InteractionValues:
     max_order: int
     min_order: int
     n_players: int
-    interaction_lookup: dict[tuple[int], int] = None
+    interaction_lookup: dict[tuple[int, ...], int] = None
     estimated: bool = True
     estimation_budget: Optional[int] = None
     baseline_value: Optional[float] = None

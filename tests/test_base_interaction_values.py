@@ -50,6 +50,11 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values.estimated == estimated
     assert interaction_values.interaction_lookup == interaction_lookup
 
+    # test dict_values property
+    assert interaction_values.dict_values == {
+        interaction: value for interaction, value in zip(interaction_lookup, values)
+    }
+
     # check that default values are set correctly
     interaction_values_2 = InteractionValues(
         values=np.random.rand(len(interaction_lookup)),

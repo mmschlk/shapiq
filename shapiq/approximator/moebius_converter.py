@@ -20,7 +20,7 @@ class MoebiusConverter:
         n_interactions: A pre-computed array containing the number of interactions up to the size of the index, e.g. n_interactions[4] is the number of interactions up to size 4.
     """
 
-    def __init__(self, N: dict, moebius_coefficients: InteractionValues):
+    def __init__(self, N: set, moebius_coefficients: InteractionValues):
         self.N = N
         self.n = len(N)
         self.moebius_coefficients: InteractionValues = moebius_coefficients
@@ -136,6 +136,9 @@ class MoebiusConverter:
                     )
                 )
         if index == "k-SII":
+            raise NotImplementedError(
+                "This does not work currently, workaround is implemented via SII + base_aggregation"
+            )
             # This does not work currently, workaround is implemented via SII and base_aggregation
             if moebius_size <= order:
                 return 1
@@ -165,10 +168,10 @@ class MoebiusConverter:
         distribution_weights = np.zeros((self.n + 1, order + 1))
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
-                distribution_weights[
-                    moebius_size, interaction_size
-                ] = self.get_moebius_distribution_weight(
-                    moebius_size, interaction_size, order, index
+                distribution_weights[moebius_size, interaction_size] = (
+                    self.get_moebius_distribution_weight(
+                        moebius_size, interaction_size, order, index
+                    )
                 )
 
         for moebius_set, moebius_val in zip(
@@ -224,10 +227,10 @@ class MoebiusConverter:
 
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
-                distribution_weights[
-                    moebius_size, interaction_size
-                ] = self.get_moebius_distribution_weight(
-                    moebius_size, interaction_size, order, index
+                distribution_weights[moebius_size, interaction_size] = (
+                    self.get_moebius_distribution_weight(
+                        moebius_size, interaction_size, order, index
+                    )
                 )
 
         for moebius_set, moebius_val in zip(
@@ -288,10 +291,10 @@ class MoebiusConverter:
         distribution_weights = np.zeros((self.n + 1, order + 1))
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
-                distribution_weights[
-                    moebius_size, interaction_size
-                ] = self.get_moebius_distribution_weight(
-                    moebius_size, interaction_size, order, index
+                distribution_weights[moebius_size, interaction_size] = (
+                    self.get_moebius_distribution_weight(
+                        moebius_size, interaction_size, order, index
+                    )
                 )
 
         for moebius_set, moebius_val in zip(
@@ -299,7 +302,8 @@ class MoebiusConverter:
             self.moebius_coefficients.values,
         ):
             moebius_size = len(moebius_set)
-            # For higher-order Möbius sets (size > order) distribute the value among all contained interactions
+            # For higher-order Möbius sets (size > order) distribute the value among all
+            # contained interactions
             for interaction in powerset(moebius_set, min_size=1, max_size=order):
                 val_distributed = distribution_weights[moebius_size, len(interaction)]
                 # Check if Möbius value is distributed onto this interaction
@@ -338,13 +342,16 @@ class MoebiusConverter:
 
         if index == "STII":
             shapley_interactions = self.stii_routine(order)
-        if index == "FSII":
+        elif index == "FSII":
             shapley_interactions = self.fsii_routine(order)
-        if index == "k-SII":
-            # The distribution formula for k-SII is not correct. We therefore compute SII and aggregate the values.
+        elif index == "k-SII":
+            # The distribution formula for k-SII is not correct. We therefore compute SII and
+            # aggregate the values.
             base_interactions = self.moebius_to_base_interaction(order=order, index="SII")
             shapley_interactions = self.base_aggregation(
                 base_interactions=base_interactions, order=order
             )
+        else:
+            raise ValueError(f"Index {index} not supported. Please choose from STII, FSII, k-SII.")
 
         return shapley_interactions

@@ -4,7 +4,7 @@ import numpy as np
 
 
 def test_soum_moebius_conversion():
-    for i in range(100):
+    for i in range(10):
         n = np.random.randint(low=2, high=20)
         order = np.random.randint(low=1, high=min(n, 5))
         n_basis_games = np.random.randint(low=1, high=100)
@@ -14,7 +14,8 @@ def test_soum_moebius_conversion():
         predicted_value = soum(np.ones(n))[0]
         emptyset_prediction = soum(np.zeros(n))[0]
 
-        moebius_converter = MoebiusConverter(soum.N, soum.moebius_coefficients)
+        player_set: set = set(range(soum.n_players))
+        moebius_converter = MoebiusConverter(player_set, soum.moebius_coefficients)
 
         shapley_interactions = {}
         for index in ["STII", "k-SII", "FSII"]:

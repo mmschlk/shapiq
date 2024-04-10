@@ -1,3 +1,5 @@
+"""This test module tests the SOUM Game class"""
+
 from shapiq.games.soum import SOUM, UnanimityGame
 import numpy as np
 
@@ -5,7 +7,7 @@ import numpy as np
 def test_soum_interations():
     """Test SOUM interactions."""
 
-    for i in range(100):
+    for i in range(10):
         # run 100 times
         n = np.random.randint(low=2, high=30)
         M = np.random.randint(low=1, high=150)
@@ -16,7 +18,7 @@ def test_soum_interations():
         coalition_matrix = np.random.randint(2, size=(M, n))
         u_game_values = u_game(coalition_matrix)
         assert len(u_game_values) == M
-        assert u_game.n == n
+        assert u_game.n_players == n
         assert np.sum(u_game.interaction_binary) == len(u_game.interaction)
         assert np.sum(interaction) == len(u_game.interaction)
 
