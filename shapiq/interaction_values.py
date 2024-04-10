@@ -10,7 +10,7 @@ import numpy as np
 
 from shapiq.utils import generate_interaction_lookup, powerset
 
-AVAILABLE_INDICES = {"k-SII", "SII", "STII", "FSII", "SV", "BZF", "Moebius"}
+AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "STII", "FSII", "SV", "BZF", "Moebius"}
 
 
 @dataclass
