@@ -2,6 +2,7 @@
 """
 
 import numpy as np
+
 from shapiq.interaction_values import InteractionValues
 
 
@@ -86,11 +87,11 @@ class SOUM:
     ):
         self.n = n
         self.N = set(range(self.n))
-        if min_interaction_size == None:
+        if min_interaction_size is None:
             self.min_interaction_size: int = 0
         else:
             self.min_interaction_size: int = min_interaction_size
-        if max_interaction_size == None:
+        if max_interaction_size is None:
             self.max_interaction_size: int = self.n
         else:
             self.max_interaction_size: int = max_interaction_size

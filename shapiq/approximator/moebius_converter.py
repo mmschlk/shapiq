@@ -1,14 +1,8 @@
-from shapiq import powerset
-from collections.abc import Iterable
-from itertools import chain, combinations
-from typing import Any, Optional
-
 import numpy as np
 from scipy.special import bernoulli, binom
 
+from shapiq import powerset
 from shapiq.interaction_values import InteractionValues
-
-import copy
 
 
 class MoebiusConverter:
@@ -335,8 +329,6 @@ class MoebiusConverter:
         Returns:
             An InteractionValues object containing the Shapley interactions
         """
-
-        shapley_interactions_dict = {}
 
         if index == "STII":
             shapley_interactions = self.stii_routine(order)
