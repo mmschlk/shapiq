@@ -2,12 +2,10 @@
 """
 
 import numpy as np
-from scipy.special import binom
-
-from interaction_values import InteractionValues
+from shapiq.interaction_values import InteractionValues
 
 
-def transform_dict_to_interaction_values(rslt_dict):
+def _transform_dict_to_interaction_values(rslt_dict):
     rslt = np.zeros(len(rslt_dict))
     rslt_pos = {}
     for i, (set, val) in enumerate(rslt_dict.items()):
@@ -21,13 +19,20 @@ class UnanimityGame:
     When called, it returns 1, if the coalition contains the interaction, and 0 otherwise.
 
     Args:
-        interaction: The interaction of the game as a binary vector of shape (n,)
+        budget: The budget for the approximation (i.e., the number of game evaluations).
+        game: The game function as a callable that takes a set of players and returns the value.
+        batch_size: The size of the batch. If None, the batch size is set to `budget`.
+            Defaults to None.
+        pairing: Whether to use pairwise sampling (`True`) or not (`False`). Defaults to `True`.
+            Paired sampling can increase the approximation quality.
+        replacement: Whether to sample with replacement (`True`) or without replacement
+            (`False`). Defaults to `True`.
 
     Attributes:
         n: The number of players.
-        N: The set of players (starting from 0 to n - 1).
-        interaction: The interaction of the game as a tuple of player indices.
-        interaction_binary: Binary representation of the tuple.
+        N: A set of n players
+        interaction_binary: The interaction encoded in a binary vector
+        interaction: The interaction encoded as a tuple
     """
 
     def __init__(self, interaction_binary: np.ndarray):
@@ -58,13 +63,18 @@ class SOUM:
     Args:
         n: The number of players.
         n_basis_games: The number of UnanimityGames.
-
+        min_interaction_size: Smallest interaction size, if None then set to zero
+        max_interaction_size: Highest interaction size, if None then set to n
 
     Attributes:
         n: The number of players.
         N: The set of players (starting from 0 to n - 1).
-        interaction: The interaction of the game as a tuple of player indices.
-        interaction_binary: Binary representation of the tuple.
+        n_basis_games: The number of Unanimity gams
+        unanimity_games: A dictionary containing instances of UnanimityGame
+        linear_coefficients: A numpy array with coefficients between -1 and 1 for the unanimity games
+        min_interaction_size: The smallest interaction size
+        max_interaction_size: The highest interaction size.
+        moebius_coefficients: The list of non-zero Möbius coefficients used to compute ground truth values
     """
 
     def __init__(
@@ -100,10 +110,10 @@ class SOUM:
             self.unanimity_games[i] = UnanimityGame(interaction_binary)
 
         # Compute the Möbius transform
-        self.moebius_transform()
+        self.moebius_coefficients = self.moebius_transform()
 
     def __call__(self, coalition: np.ndarray) -> np.ndarray[float]:
-        """Returns 1, if the coalition contains self.interaction, and zero otherwise.
+        """Computes the worth of the coalition for the SOUM, i.e. sums up all linear coefficients, if coalition contains the interaction of the corresponding unanimity game.
 
         Args:
             coalition: The coalition as a binary vector of shape (n,) or (batch_size, n).
@@ -120,8 +130,12 @@ class SOUM:
         return worth
 
     def moebius_transform(self):
-        """
-        Computes the Möbius transform from the UnanimityGames
+        """Computes the (sparse) Möbius transform of the SOUM from the UnanimityGames. Used for ground truth calculations for interaction inidices.
+
+        Args:
+
+        Returns:
+            An InteractionValues object containing all non-zero Möbius coefficients of the SOUM.
         """
         moebius_coefficients_dict = {}
         for i, game in self.unanimity_games.items():
@@ -130,14 +144,14 @@ class SOUM:
             else:
                 moebius_coefficients_dict[game.interaction] = self.linear_coefficients[i]
 
-        moebius_coefficients = np.zeros(2**self.n)
+        moebius_coefficients_values = np.zeros(2**self.n)
         moebius_coefficients_lookup = {}
         for i, (key, val) in enumerate(moebius_coefficients_dict.items()):
-            moebius_coefficients[i] = val
+            moebius_coefficients_values[i] = val
             moebius_coefficients_lookup[key] = i
 
-        self.moebius_coefficients = InteractionValues(
-            values=moebius_coefficients,
+        moebius_coefficients = InteractionValues(
+            values=moebius_coefficients_values,
             index="Moebius",
             max_order=self.n,
             min_order=0,
@@ -145,3 +159,5 @@ class SOUM:
             interaction_lookup=moebius_coefficients_lookup,
             estimated=False,
         )
+
+        return moebius_coefficients
