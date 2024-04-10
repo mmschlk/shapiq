@@ -1,6 +1,6 @@
 """This module contains the marginal imputer for the shapiq package."""
 
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy as np
 
@@ -72,18 +72,18 @@ class MarginalImputer(Imputer):
             The model's predictions on the imputed data points. The shape of the array is
                (n_subsets, n_outputs).
         """
-        n_subsets = coalitions.shape[0]
-        data = np.tile(np.copy(self._x), (n_subsets, 1))
+        n_coalitions = coalitions.shape[0]
+        data = np.tile(np.copy(self._x), (n_coalitions, 1))
         if not self._sample_replacements:
-            replacement_data = np.tile(self.replacement_data, (n_subsets, 1))
+            replacement_data = np.tile(self.replacement_data, (n_coalitions, 1))
             data[~coalitions] = replacement_data[~coalitions]
             outputs = self.predict(data)
         else:
             # sampling from background returning array of shape (sample_size, n_subsets, n_features)
             replacement_data = self._sample_replacement_values(coalitions)
-            outputs = np.zeros((self._sample_size, n_subsets))
+            outputs = np.zeros((self._sample_size, n_coalitions))
             for i in range(self._sample_size):
-                replacements = replacement_data[i].reshape(n_subsets, self._n_features)
+                replacements = replacement_data[i].reshape(n_coalitions, self._n_features)
                 data[~coalitions] = replacements[~coalitions]
                 outputs[i] = self.predict(data)
             outputs = np.mean(outputs, axis=0)  # average over the samples
@@ -130,22 +130,26 @@ class MarginalImputer(Imputer):
         self._x = x
         return self
 
-    def _sample_replacement_values(self, subsets: np.ndarray[bool]) -> np.ndarray:
+    def _sample_replacement_values(self, coalitions: np.ndarray[bool]) -> np.ndarray:
         """Samples replacement values from the background data.
 
         Args:
-            subsets: A boolean array indicating which features are present (`True`) and which are
+            coalitions: A boolean array indicating which features are present (`True`) and which are
                 missing (`False`). The shape of the array must be (n_subsets, n_features).
 
         Returns:
             The sampled replacement values. The shape of the array is (sample_size, n_subsets,
                 n_features).
         """
-        n_subsets = subsets.shape[0]
-        replacement_data = np.zeros((self._sample_size, n_subsets, self._n_features), dtype=object)
+        n_coalitions = coalitions.shape[0]
+        replacement_data = np.zeros(
+            (self._sample_size, n_coalitions, self._n_features), dtype=object
+        )
         for feature in range(self._n_features):
             sampled_feature_values = self._rng.choice(
-                self.replacement_data[:, feature], size=(self._sample_size, n_subsets), replace=True
+                self.replacement_data[:, feature],
+                size=(self._sample_size, n_coalitions),
+                replace=True,
             )
             replacement_data[:, :, feature] = sampled_feature_values
         return replacement_data

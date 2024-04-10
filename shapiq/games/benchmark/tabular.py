@@ -4,7 +4,7 @@ import os
 from typing import Callable, Optional, Union
 
 import numpy as np
-from games.tabular import LocalExplanation, get_x_explain
+from games.tabular import LocalExplanation, _get_x_explain
 
 
 class AdultCensus(LocalExplanation):
@@ -23,7 +23,7 @@ class AdultCensus(LocalExplanation):
         path_to_values: The path to the pre-computed game values to load. If provided, then the game
             is loaded from the file and no other parameters are used. Defaults to `None`.
         class_to_explain: The class label to explain. Should be either 0 or 1. Defaults to `1`.
-        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
+        x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features).
         model: The model to explain as a string or a callable function. If a string is provided it
             should be 'sklearn_rf'. If a callable function is provided, then it should be expecting
@@ -40,7 +40,7 @@ class AdultCensus(LocalExplanation):
         class_to_explain: The class label to explain.
 
     Examples:
-        >>> game = AdultCensus(x_explain=0)
+        >>> game = AdultCensus(x=0)
         >>> game.n_players
         14
         >>> # precompute the game (if needed)
@@ -55,7 +55,7 @@ class AdultCensus(LocalExplanation):
         *,
         path_to_values: Optional[str] = None,
         class_to_explain: int = 1,
-        x_explain: Optional[Union[np.ndarray, int]] = None,
+        x: Optional[Union[np.ndarray, int]] = None,
         model: Union[Callable[[np.ndarray], np.ndarray], str] = "sklearn_rf",
         random_state: Optional[int] = None,
         normalize: bool = True,
@@ -101,12 +101,12 @@ class AdultCensus(LocalExplanation):
             )
 
         # get x_explain
-        x_explain = get_x_explain(x_explain, x_test)
+        x = _get_x_explain(x, x_test)
 
         # call the super constructor
         super().__init__(
-            x_explain=x_explain,
-            x_data=x_train,
+            x=x,
+            data=x_train,
             model=model,
             random_state=random_state,
             normalize=normalize,
@@ -168,7 +168,7 @@ class BikeRegression(LocalExplanation):
     Args:
         path_to_values: The path to the pre-computed game values to load. If provided, then the game
             is loaded from the file and no other parameters are used. Defaults to `None`.
-        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
+        x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features).
         model: The model to explain as a string or a callable function. If a string is provided it
             should be 'xgboost'. If a callable function is provided, then it should be expecting
@@ -184,7 +184,7 @@ class BikeRegression(LocalExplanation):
         feature_names: The names of the features in the dataset in the order they appear.
 
     Examples:
-        >>> game = BikeRegression(x_explain=1)
+        >>> game = BikeRegression(x=1)
         >>> game.n_players
         12
         >>> # call the game with a coalition
@@ -203,7 +203,7 @@ class BikeRegression(LocalExplanation):
         self,
         *,
         path_to_values: Optional[str] = None,
-        x_explain: Optional[Union[np.ndarray, int]] = None,
+        x: Optional[Union[np.ndarray, int]] = None,
         model: Union[Callable[[np.ndarray], np.ndarray], str] = "xgboost",
         random_state: Optional[int] = None,
         normalize: bool = True,
@@ -239,12 +239,12 @@ class BikeRegression(LocalExplanation):
             model = self._get_xgboost_model(x_train, x_test, y_train, y_test, verbose)
 
         # get x_explain
-        x_explain = get_x_explain(x_explain, x_test)
+        x = _get_x_explain(x, x_test)
 
         # call the super constructor
         super().__init__(
-            x_explain=x_explain,
-            x_data=x_train,
+            x=x,
+            data=x_train,
             model=model,
             random_state=random_state,
             normalize=normalize,
@@ -302,7 +302,7 @@ class CaliforniaHousing(LocalExplanation):
     Args:
         path_to_values: The path to the pre-computed game values to load. If provided, then the game
             is loaded from the file and no other parameters are used. Defaults to `None`.
-        x_explain: The data point to explain. Can be an index of the background data or a 1d matrix
+        x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features).
         model: The model to explain as a string or a callable function. If a string is provided it
             should be one of the following:
@@ -321,7 +321,7 @@ class CaliforniaHousing(LocalExplanation):
         scaler: The scaler used to normalize the data (only fitted for the neural network model).
 
     Examples:
-        >>> game = CaliforniaHousing(x_explain=0)
+        >>> game = CaliforniaHousing(x=0)
         >>> game.n_players
         8
         >>> # call the game with a coalition
@@ -343,7 +343,7 @@ class CaliforniaHousing(LocalExplanation):
         self,
         *,
         path_to_values: Optional[str] = None,
-        x_explain: Optional[Union[np.ndarray, int]] = None,
+        x: Optional[Union[np.ndarray, int]] = None,
         model: Union[Callable[[np.ndarray], np.ndarray], str] = "sklearn_gbt",
         random_state: Optional[int] = None,
         normalize: bool = True,
@@ -390,12 +390,12 @@ class CaliforniaHousing(LocalExplanation):
             x_test = self.scaler.transform(x_test)
 
         # get x_explain
-        x_explain = get_x_explain(x_explain, x_test)
+        x = _get_x_explain(x, x_test)
 
         # call the super constructor
         super().__init__(
-            x_explain=x_explain,
-            x_data=x_train,
+            x=x,
+            data=x_train,
             model=model,
             random_state=random_state,
             normalize=normalize,

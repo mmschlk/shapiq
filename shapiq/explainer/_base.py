@@ -2,23 +2,22 @@
 
 import numpy as np
 
-from . import utils
 from shapiq.interaction_values import InteractionValues
+
+from . import utils
 
 
 class Explainer:
     """The main Explainer class for a simpler user interface."""
-    def __init__(
-        self,
-        model,
-        data=None,
-        **kwargs
-    ) -> None:
+
+    def __init__(self, model, data=None, **kwargs) -> None:
         self.model = model
         self.data = data
-        
+
         self._model_class = utils.print_class(model)
-        self._predict_function, self._model_type = utils.get_predict_function_and_model_type(model, self._model_class)
+        self._predict_function, self._model_type = utils.get_predict_function_and_model_type(
+            model, self._model_class
+        )
 
         if data is not None:
             try:
@@ -28,7 +27,8 @@ class Explainer:
                         raise ValueError()
                 else:
                     raise ValueError()
-            except:
+            except Exception as e:
+                print(f"Error: The data provided is not compatible with the model. {e}")
                 pass
 
         # not super()
@@ -38,11 +38,9 @@ class Explainer:
                 self.__class__ = _explainer
                 _explainer.__init__(self, model=model, data=data, **kwargs)
 
-
     def explain(self, x: np.ndarray) -> InteractionValues:
         """Explain the model's prediction in terms of interaction values."""
         return {}
-            
 
     def predict(self, x: np.ndarray) -> np.ndarray:
         """Provides a unified prediction interface."""

@@ -40,7 +40,7 @@ def test_basic_function(background_reg_dataset, dt_reg_model):
     # init game with integer
     game = LocalExplanation(x=0, data=x_data, model=model.predict)
     # check if the x_explain is valid
-    assert np.all(game.x_explain == x_data[0])
+    assert np.all(game.x == x_data[0])
 
     # test game with no instance
     game = LocalExplanation(x=None, data=x_data, model=model.predict)

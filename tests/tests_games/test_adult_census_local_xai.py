@@ -17,11 +17,11 @@ def test_basic_function(model):
 
     if model == "invalid":
         with pytest.raises(ValueError):
-            _ = AdultCensus(model=model, x_explain=0)
+            _ = AdultCensus(model=model, x=0)
         return
 
     x_explain_id = 1
-    game = AdultCensus(x_explain=x_explain_id, model=model)
+    game = AdultCensus(x=x_explain_id, model=model)
     assert game.n_players == game_n_players
 
     # test full prediction output against underlying model
@@ -62,4 +62,4 @@ def test_basic_function(model):
 
     # value error for wrong class
     with pytest.raises(ValueError):
-        _ = AdultCensus(x_explain=x_explain_id, class_to_explain=2)
+        _ = AdultCensus(x=x_explain_id, class_to_explain=2)

@@ -16,11 +16,11 @@ def test_basic_function(model):
 
     if model == "invalid":
         with pytest.raises(ValueError):
-            _ = BikeRegression(model=model, x_explain=0)
+            _ = BikeRegression(model=model, x=0)
         return
 
     x_explain_id = 0
-    game = BikeRegression(x_explain=x_explain_id, model=model)
+    game = BikeRegression(x=x_explain_id, model=model)
     assert game.n_players == game_n_players
 
     test_coalitions_precompute = np.array(

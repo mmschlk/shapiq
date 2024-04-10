@@ -137,5 +137,5 @@ def test_image_and_path() -> tuple[Image.Image, str]:
     path_from_test_root = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "data", "test_croc.JPEG"
     )
-    image = Image.open("data/test_croc.JPEG")
+    image = Image.open(path_from_test_root)
     return image, path_from_test_root

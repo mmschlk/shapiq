@@ -1,12 +1,12 @@
 """Base class for all imputers."""
 
 from abc import abstractmethod
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy as np
 
-from ..base import Game
 from ...explainer import utils
+from ..base import Game
 
 
 class Imputer(Game):
