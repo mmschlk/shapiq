@@ -18,7 +18,7 @@ def test_soum_interations():
     assert np.sum(interaction) == len(u_game.interaction)
 
     # SOUM Test
-    n_interactions = 150
+    n_interactions = np.random.randint(low=1, high=200)
 
     soum = SOUM(n, n_interactions)
     soum_values = soum(coalition_matrix)
