@@ -21,7 +21,7 @@ class ExactComputer:
         n: The number of players.
         big_M: The infinite weight for KernelSHAP
         n_interactions: A pre-computed numpy array containing the number of interactions up to the size of the index, e.g. n_interactions[4] is the nuber of all interactions up to size 4
-        computed_interactions: A dictionary that stores computations of different indices
+        computed: A dictionary that stores computations of different indices
         game_fun: The callable game
         baseline_value: The baseline value, i.e. the emptyset prediction
         game_values: A numpy array containing the game evaluations of all subsets
@@ -37,7 +37,7 @@ class ExactComputer:
         self.n = len(N)
         self.big_M = 10e7
         self.n_interactions = self.get_n_interactions()
-        self.computed_interactions = {}
+        self.computed = {}
         self.game_fun = game_fun
         self.baseline_value, self.game_values, self.coalition_lookup = self.compute_game_values(
             game_fun
@@ -78,16 +78,18 @@ class ExactComputer:
         moebius_transform = np.zeros(2**self.n)
         # compute the Moebius transform
         coalition_lookup = {}
-        for i, S in enumerate(powerset(self.N)):
-            coalition_lookup[S] = i
-        for i, S in enumerate(powerset(self.N)):
-            s = len(S)
-            S_pos = coalition_lookup[S]
-            for T in powerset(S):
-                pos = self.coalition_lookup[T]
-                moebius_transform[S_pos] += (-1) ** (s - len(T)) * self.game_values[pos]
+        for interaction_pos, interaction in enumerate(powerset(self.N)):
+            coalition_lookup[interaction] = interaction_pos
+        for interaction in powerset(self.N):
+            interaction_size = len(interaction)
+            interaction_pos = coalition_lookup[interaction]
+            for coalition in powerset(interaction):
+                coalition_pos = self.coalition_lookup[coalition]
+                moebius_transform[interaction_pos] += (-1) ** (
+                    interaction_size - len(coalition)
+                ) * self.game_values[coalition_pos]
 
-        self.computed_interactions["Moebius"] = InteractionValues(
+        self.computed["Moebius"] = InteractionValues(
             values=moebius_transform,
             index="Moebius",
             max_order=self.n,
@@ -96,7 +98,7 @@ class ExactComputer:
             interaction_lookup=coalition_lookup,
             estimated=False,
         )
-        return copy.copy(self.computed_interactions["Moebius"])
+        return copy.copy(self.computed["Moebius"])
 
     def base_weights(self, coalition_size: int, interaction_size: int, index: str):
         """Computes the weight of different indices in their common representation,
@@ -231,7 +233,7 @@ class ExactComputer:
                 )
         return base_weights
 
-    def base_interactions(self, index: str, order: int):
+    def base_interaction(self, index: str, order: int):
         """Computes interactions based on representation with discrete derivatives, e.g. SII, BII
 
         Args:
@@ -261,7 +263,7 @@ class ExactComputer:
             interaction_lookup[interaction] = i
 
         # Transform into InteractionValues object
-        self.computed_interactions[index] = InteractionValues(
+        self.computed[index] = InteractionValues(
             values=base_interaction_values,
             index=index,
             max_order=order,
@@ -272,17 +274,23 @@ class ExactComputer:
             baseline_value=self.baseline_value,
         )
 
-        return copy.copy(self.computed_interactions[index])
+        return copy.copy(self.computed[index])
 
-    def base_generalized_values(self, index: str, order: int):
-        """Computes the Base Generalized Values according to the representation with marginal contributions, e.g. SGV, BGV, CGV
-
+    def base_generalized_value(self, index: str, order: int):
+        """
+        Computes Base Generalized Values, i.e. probabilistic generalized values that do not depend on the order
+        According to the underlying representation using marginal contributions from https://doi.org/10.1016/j.dam.2006.05.002
+        Currently covers:
+            - SGV: Shapley Generalized Value https://doi.org/10.1016/S0166-218X(00)00264-X
+            - BGV: Banzhaf Generalized Value https://doi.org/10.1016/S0166-218X(00)00264-X
+            - CHGV: Chaining Generalized Value https://doi.org/10.1016/j.dam.2006.05.002
         Args:
-            index: The interaction index
-            order: The interaction order
+            order: The highest order of interactions
+            index: The generalized value index
 
         Returns:
-            An InteractionValues object containing the base generalized values
+            An InteractionValues object containing generalized values
+
         """
 
         base_generalized_values = np.zeros(self.n_interactions[order])
@@ -306,7 +314,7 @@ class ExactComputer:
                 )
 
         # Transform into InteractionValues object
-        self.computed_interactions[index] = InteractionValues(
+        self.computed[index] = InteractionValues(
             values=base_generalized_values,
             index=index,
             max_order=order,
@@ -316,7 +324,7 @@ class ExactComputer:
             estimated=False,
         )
 
-        return self.computed_interactions[index].__copy__()
+        return copy.copy(self.computed[index])
 
     def base_aggregation(self, base_interactions: InteractionValues, order: int):
         """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII
@@ -615,7 +623,7 @@ class ExactComputer:
         )
         return jointSV
 
-    def shapley_generalized_values(self, order: int, index: str) -> InteractionValues:
+    def shapley_generalized_value(self, order: int, index: str) -> InteractionValues:
         """
         Computes Shapley Generalized Values, i.e. Generalized Values that satisfy efficiency
         According to the underlying representation in https://doi.org/10.1016/j.dam.2006.05.002
@@ -632,29 +640,7 @@ class ExactComputer:
         if index == "JointSV":
             shapley_generalized_value = self.compute_jointSV(order)
 
-        self.computed_interactions[index] = shapley_generalized_value
-        return copy.copy(shapley_generalized_value)
-
-    def shapleygeneralized_values(self, order: int, index: str) -> InteractionValues:
-        """
-        Computes Shapley Generalized Values, i.e. probabilistic generalized values that do not depend on the order
-        According to the underlying representation using marginal contributions from https://doi.org/10.1016/j.dam.2006.05.002
-        Currently covers:
-            - SGV: Shapley Generalized Value https://doi.org/10.1016/S0166-218X(00)00264-X
-            - BGV: Banzhaf Generalized Value https://doi.org/10.1016/S0166-218X(00)00264-X
-            - CHGV: Chaining Generalized Value https://doi.org/10.1016/j.dam.2006.05.002
-        Args:
-            order: The highest order of interactions
-            index: The generalized value index
-
-        Returns:
-            An InteractionValues object containing generalized values
-
-        """
-        if index == "JointSV":
-            shapley_generalized_value = self.compute_jointSV(order)
-
-        self.computed_interactions[index] = shapley_generalized_value
+        self.computed[index] = shapley_generalized_value
         return copy.copy(shapley_generalized_value)
 
     def shapley_interaction(self, order: int, index: str = "k-SII") -> InteractionValues:
@@ -676,19 +662,19 @@ class ExactComputer:
 
         """
         if index == "k-SII":
-            sii = self.base_interactions("SII", order)
-            self.computed_interactions["SII"] = sii
-            shapley_interactions = self.base_aggregation(sii, order)
+            sii = self.base_interaction("SII", order)
+            self.computed["SII"] = sii
+            shapley_interaction = self.base_aggregation(sii, order)
         if index == "STII":
-            shapley_interactions = self.compute_stii(order)
+            shapley_interaction = self.compute_stii(order)
         if index == "FSII":
-            shapley_interactions = self.compute_fsii(order)
+            shapley_interaction = self.compute_fsii(order)
         if index == "kADD-SHAP":
-            shapley_interactions = self.compute_kadd_shap(order)
+            shapley_interaction = self.compute_kadd_shap(order)
 
-        self.computed_interactions[index] = shapley_interactions
+        self.computed[index] = shapley_interaction
 
-        return copy.copy(shapley_interactions)
+        return copy.copy(shapley_interaction)
 
     def shapley_base_interaction(self, order: int, index: str) -> InteractionValues:
         """
@@ -707,11 +693,11 @@ class ExactComputer:
             An InteractionValues object containing interaction values
 
         """
-        base_interactions = self.base_interactions(index, order)
-        self.computed_interactions[index] = base_interactions
-        return copy.copy(base_interactions)
+        base_interaction = self.base_interaction(index, order)
+        self.computed[index] = base_interaction
+        return copy.copy(base_interaction)
 
-    def probabilistic_values(self, index: str) -> InteractionValues:
+    def probabilistic_value(self, index: str) -> InteractionValues:
         """Computes common semi-values or probabilistic values, i.e. shapley values without efficiency axiom. These are special of interaction indices and generalized values for order = 1.
         According to the underlying representation using marginal contributions, cf.
             - semi-values https://doi.org/10.1287/moor.6.1.122
@@ -727,7 +713,14 @@ class ExactComputer:
         Returns:
             An InteractionValues object containing probabilistic values
         """
-
-        probabilistic_value = self.base_interactions(index, 1)
-        self.computed_interactions[index] = probabilistic_value
+        if index == "BV":
+            probabilistic_value = self.base_interaction(index="BII", order=1)
+        if index == "SV":
+            probabilistic_value = self.base_interaction(index="SII", order=1)
+            # Change emptyset value of SII to baseline value
+            probabilistic_value.baseline_value = self.baseline_value
+            probabilistic_value.values[
+                probabilistic_value.interaction_lookup[tuple()]
+            ] = self.baseline_value
+        self.computed[index] = probabilistic_value
         return copy.copy(probabilistic_value)
