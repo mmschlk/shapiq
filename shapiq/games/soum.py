@@ -4,8 +4,7 @@
 import numpy as np
 from scipy.special import binom
 
-# from shapiq import InteractionValues
-# TODO: Convert to InteractionValues object
+from interaction_values import InteractionValues
 
 
 def transform_dict_to_interaction_values(rslt_dict):
@@ -89,9 +88,11 @@ class SOUM:
         self.n_basis_games: int = n_basis_games
 
         self.unanimity_games = {}
-        self.linear_coefficients = np.random.random(size=self.n_basis_games)
+        self.linear_coefficients = np.random.random(size=self.n_basis_games) * 2 - 1
         # Compute interaction sizes (exclude size 0)
-        interaction_sizes = np.random.randint(low=1, high=self.n, size=self.n_basis_games)
+        interaction_sizes = np.random.randint(
+            low=self.min_interaction_size, high=self.max_interaction_size, size=self.n_basis_games
+        )
         for i, size in enumerate(interaction_sizes):
             interaction = np.random.choice(tuple(self.N), size, replace=False)
             interaction_binary = np.zeros(self.n)
@@ -115,32 +116,32 @@ class SOUM:
 
         worth = 0
         for i, game in self.unanimity_games.items():
-            worth += self.linear_coefficients[i] * game.__call__(coalition)
+            worth += self.linear_coefficients[i] * game(coalition)
         return worth
 
     def moebius_transform(self):
         """
         Computes the Möbius transform from the UnanimityGames
         """
-        self.moebius_coefficients_dict = {}
+        moebius_coefficients_dict = {}
         for i, game in self.unanimity_games.items():
-            if game.interaction in self.moebius_coefficients_dict:
-                self.moebius_coefficients_dict[game.interaction] += self.linear_coefficients[i]
+            if game.interaction in moebius_coefficients_dict:
+                moebius_coefficients_dict[game.interaction] += self.linear_coefficients[i]
             else:
-                self.moebius_coefficients_dict[game.interaction] = self.linear_coefficients[i]
+                moebius_coefficients_dict[game.interaction] = self.linear_coefficients[i]
 
-        (
-            self.moebius_coefficients,
-            self.moebius_coefficients_lookup,
-        ) = transform_dict_to_interaction_values(self.moebius_coefficients_dict)
+        moebius_coefficients = np.zeros(2**self.n)
+        moebius_coefficients_lookup = {}
+        for i, (key, val) in enumerate(moebius_coefficients_dict.items()):
+            moebius_coefficients[i] = val
+            moebius_coefficients_lookup[key] = i
 
-
-if __name__ == "__main__":
-    n = 5
-    interaction = np.random.randint(2, size=n)
-    game = UnanimityGame(interaction)
-    coalition_matrix = np.random.randint(2, size=(5, n))
-    rslt = game.__call__(coalition_matrix)
-
-    soum = SOUM(n, 20)
-    soum_rslt = soum.__call__(coalition_matrix)
+        self.moebius_coefficients = InteractionValues(
+            values=moebius_coefficients,
+            index="Moebius",
+            max_order=self.n,
+            min_order=0,
+            n_players=self.n,
+            interaction_lookup=moebius_coefficients_lookup,
+            estimated=False,
+        )

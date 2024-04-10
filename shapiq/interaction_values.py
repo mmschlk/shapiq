@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 from utils import generate_interaction_lookup, powerset
 
-AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "SV", "BZF"}
+AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "SV", "BZF", "Moebius"}
 
 
 @dataclass
