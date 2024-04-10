@@ -10,8 +10,8 @@ def test_decision_tree_classifier(dt_clf_model, background_clf_data):
     """Test TreeExplainer with a simple decision tree classifier."""
     explainer = TreeExplainer(model=dt_clf_model, max_order=2, min_order=1)
 
-    x = background_clf_data[0]
-    explanation = explainer.explain(x)
+    x_explain = background_clf_data[0]
+    explanation = explainer.explain(x_explain)
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
@@ -27,7 +27,7 @@ def test_decision_tree_classifier(dt_clf_model, background_clf_data):
         )
 
     explainer = _ = TreeExplainer(model=dt_clf_model, max_order=1, min_order=1, class_label=1)
-    explanation = explainer.explain(x)
+    explanation = explainer.explain(x_explain)
 
     # compare baseline_value with empty_predictions
     assert explainer.baseline_value == sum(
@@ -40,8 +40,8 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
     """Test TreeExplainer with a simple decision tree regressor."""
     explainer = TreeExplainer(model=dt_reg_model, max_order=2, min_order=1)
 
-    x = background_reg_data[0]
-    explanation = explainer.explain(x)
+    x_explain = background_reg_data[0]
+    explanation = explainer.explain(x_explain)
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
@@ -56,8 +56,8 @@ def test_random_forrest_regression(rf_reg_model, background_reg_data):
     """Test TreeExplainer with a simple decision tree regressor."""
     explainer = TreeExplainer(model=rf_reg_model, max_order=2, min_order=1)
 
-    x = background_reg_data[0]
-    explanation = explainer.explain(x)
+    x_explain = background_reg_data[0]
+    explanation = explainer.explain(x_explain)
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
@@ -72,8 +72,8 @@ def test_random_forrest_classification(rf_clf_model, background_clf_data):
     """Test TreeExplainer with a simple decision tree regressor."""
     explainer = TreeExplainer(model=rf_clf_model, max_order=2, min_order=1)
 
-    x = background_clf_data[0]
-    explanation = explainer.explain(x)
+    x_explain = background_clf_data[0]
+    explanation = explainer.explain(x_explain)
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
@@ -97,9 +97,8 @@ def test_against_shap_implementation():
     values = [110, 105, 95, 20, 50, 100, 75, 10, 40]
     values = [values[i] / max(values) for i in range(len(values))]
     values = np.asarray(values)
-    print(values)
 
-    x = np.asarray([-1, -0.5, 1, 0])
+    x_explain = np.asarray([-1, -0.5, 1, 0])
 
     tree_model = TreeModel(
         children_left=children_left,
@@ -112,7 +111,7 @@ def test_against_shap_implementation():
     )
 
     explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1, interaction_type="SII")
-    explanation = explainer.explain(x)
+    explanation = explainer.explain(x_explain)
 
     assert explanation[(0,)] == pytest.approx(-0.09263158, abs=1e-4)
     assert explanation[(1,)] == pytest.approx(-0.12100478, abs=1e-4)
@@ -120,32 +119,28 @@ def test_against_shap_implementation():
     assert explanation[(3,)] == pytest.approx(0.0, abs=1e-4)
 
     explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1, interaction_type="SII")
-    explanation = explainer.explain(x)
-    print(explanation)
-    print(explainer._treeshapiq_explainers[0]._tree.empty_prediction)
+    explanation = explainer.explain(x_explain)
 
     explainer = TreeExplainer(
         model=tree_model, max_order=1, min_order=1, interaction_type="SII", output_type="logit"
     )
-    explanation = explainer.explain(x)
-    print(explanation)
-    print(explainer._treeshapiq_explainers[0]._tree.empty_prediction)
+    explanation = explainer.explain(x_explain)
 
 
 def test_logit_probit_conversion(dt_clf_model, background_clf_data):
     """This test checks the conversion of the output types for a tree classifier."""
-    x = background_clf_data[0]
+    x_explain = background_clf_data[0]
 
     # test with 'raw' output type (no change)
     explainer_raw = TreeExplainer(model=dt_clf_model, max_order=1, min_order=1, output_type="raw")
-    explainer_raw_explanation = explainer_raw.explain(x)
+    explainer_raw_explanation = explainer_raw.explain(x_explain)
     explainer_raw_empty_pred = explainer_raw._treeshapiq_explainers[0]._tree.empty_prediction
 
     # test with 'probability' output type (probability from probability, no change to raw)
     explainer_prob = TreeExplainer(
         model=dt_clf_model, max_order=1, min_order=1, output_type="probability"
     )
-    explainer_prob_explanation = explainer_prob.explain(x)
+    explainer_prob_explanation = explainer_prob.explain(x_explain)
     explainer_prob_empty_pred = explainer_prob._treeshapiq_explainers[0]._tree.empty_prediction
 
     # test with 'logit' output type (logit from probability)
@@ -153,7 +148,7 @@ def test_logit_probit_conversion(dt_clf_model, background_clf_data):
         explainer_logit = TreeExplainer(
             model=dt_clf_model, max_order=1, min_order=1, output_type="logit"
         )
-    explainer_logit_explanation = explainer_logit.explain(x)
+    explainer_logit_explanation = explainer_logit.explain(x_explain)
     explainer_logit_empty_pred = explainer_logit._treeshapiq_explainers[0]._tree.empty_prediction
 
     # make assertions

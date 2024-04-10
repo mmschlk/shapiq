@@ -1,9 +1,9 @@
 """This module contains the interaction explainer for the shapiq package. This is the main interface
 for users of the shapiq package."""
 
-from typing import Callable, Optional, Union
-
 import warnings
+from typing import Optional, Union
+
 import numpy as np
 
 from shapiq.approximator import (
@@ -17,7 +17,6 @@ from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
 from shapiq.games.imputer import MarginalImputer
 from shapiq.interaction_values import InteractionValues
-
 
 APPROXIMATOR_CONFIGURATIONS = {
     "Regression": {"SII": RegressionSII, "FSI": RegressionFSI, "k-SII": RegressionSII},
@@ -35,7 +34,7 @@ AVAILABLE_INDICES = {"SII", "k-SII", "STI", "FSI"}
 class TabularExplainer(Explainer):
     """The tabular explainer as the main interface for the shapiq package.
 
-    The `TabularExplainer` class is the main interface for the `shapiq` package. It can be used 
+    The `TabularExplainer` class is the main interface for the `shapiq` package. It can be used
     to explain the predictions of a model by estimating the Shapley interaction values.
 
     Args:
@@ -65,12 +64,12 @@ class TabularExplainer(Explainer):
         random_state: Optional[int] = None,
         **kwargs
     ) -> None:
-        
+
         if index not in AVAILABLE_INDICES:
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
         if max_order < 2:
             raise ValueError("The maximum order must be at least 2.")
-        
+
         super().__init__(model, data)
 
         self._random_state = random_state

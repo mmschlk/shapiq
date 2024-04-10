@@ -1,14 +1,12 @@
 import re
 import warnings
 
-import numpy as np
-
 from .. import explainer
 
 
 def get_explainers():
     return {
-        'tabular': explainer.TabularExplainer, 
+        'tabular': explainer.TabularExplainer,
         'tree': explainer.TreeExplainer
     }
 
@@ -19,7 +17,7 @@ def get_predict_function_and_model_type(model, model_class):
 
     if callable(model):
         _predict_function = predict_callable
-    
+
     # sklearn
     if model_class in [
         "sklearn.tree.DecisionTreeRegressor",
@@ -37,7 +35,7 @@ def get_predict_function_and_model_type(model, model_class):
     # lightgbm
     if model_class == "lightgbm.basic.Booster":
         _model_type = "tree"
-    
+
     # TODO: torch.Sequential
 
     # tensorflow
@@ -106,11 +104,11 @@ def predict_tf_first(m, d):
 
 
 def print_classes_nicely(obj):
-    """ 
+    """
     Converts a list of classes into *user-readable* class names. I/O examples:
-    [shapiq.explainer._base.Explainer] -> ['shapiq.Explainer'] 
-    {'tree': shapiq.explainer.tree.explainer.TreeExplainer}  -> ['shapiq.TreeExplainer'] 
-    {'tree': shapiq.TreeExplainer}  -> ['shapiq.TreeExplainer'] 
+    [shapiq.explainer._base.Explainer] -> ['shapiq.Explainer']
+    {'tree': shapiq.explainer.tree.explainer.TreeExplainer}  -> ['shapiq.TreeExplainer']
+    {'tree': shapiq.TreeExplainer}  -> ['shapiq.TreeExplainer']
     """
     if isinstance(obj, dict):
         return [".".join([print_class(v).split(".")[i] for i in (0, -1)]) for _, v in obj.items()]
@@ -119,14 +117,14 @@ def print_classes_nicely(obj):
 
 
 def print_class(obj):
-    """ 
+    """
     Converts a class or class type into a *user-readable* class name. I/O examples:
-    sklearn.ensemble._forest.RandomForestRegressor -> 'sklearn.ensemble._forest.RandomForestRegressor' 
-    type(sklearn.ensemble._forest.RandomForestRegressor) -> 'sklearn.ensemble._forest.RandomForestRegressor' 
+    sklearn.ensemble._forest.RandomForestRegressor -> 'sklearn.ensemble._forest.RandomForestRegressor'
+    type(sklearn.ensemble._forest.RandomForestRegressor) -> 'sklearn.ensemble._forest.RandomForestRegressor'
     shapiq.explainer.tree.explainer.TreeExplainer -> 'shapiq.explainer.tree.explainer.TreeExplainer'
     shapiq.TreeExplainer -> 'shapiq.explainer.tree.explainer.TreeExplainer'
     type(shapiq.TreeExplainer) -> 'shapiq.explainer.tree.explainer.TreeExplainer'
-    """ 
+    """
     if isinstance(obj, type):
         return re.search("(?<=<class ').*(?='>)", str(obj))[0]
     else:

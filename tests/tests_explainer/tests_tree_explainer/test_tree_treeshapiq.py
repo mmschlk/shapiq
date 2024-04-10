@@ -10,12 +10,12 @@ def test_init(dt_clf_model, background_clf_data):
     """Test the initialization of the TreeExplainer class."""
     explainer = TreeSHAPIQ(model=dt_clf_model, max_order=1, interaction_type="SII", verbose=True)
 
-    x = background_clf_data[0]
-    _ = explainer.explain(x)
+    x_explain = background_clf_data[0]
+    _ = explainer.explain(x_explain)
 
     explainer = TreeSHAPIQ(model=dt_clf_model, max_order=1, interaction_type="k-SII")
-    x = background_clf_data[0]
-    _ = explainer.explain(x)
+    x_explain = background_clf_data[0]
+    _ = explainer.explain(x_explain)
 
     # test with dict input as tree
     tree_model = {
@@ -27,8 +27,8 @@ def test_init(dt_clf_model, background_clf_data):
         "values": np.asarray([110, 105, 95, 20, 50, 100, 75, 10, 40]),
     }
     explainer = TreeSHAPIQ(model=tree_model, max_order=1, interaction_type="SII")
-    x = np.asarray([-1, -0.5, 1, 0])
-    _ = explainer.explain(x)
+    x_explain = np.asarray([-1, -0.5, 1, 0])
+    _ = explainer.explain(x_explain)
 
     assert True
 
@@ -92,7 +92,7 @@ def test_against_old_treeshapiq_implementation(index: str, expected: dict):
     node_sample_weight = np.asarray([100, 50, 38, 15, 23, 12, 50, 20, 30])
     values = np.asarray([110, 105, 95, 20, 50, 100, 75, 10, 40])
 
-    x = np.asarray([-1, -0.5, 1, 0])
+    x_explain = np.asarray([-1, -0.5, 1, 0])
 
     tree_model = TreeModel(
         children_left=children_left,
@@ -105,8 +105,7 @@ def test_against_old_treeshapiq_implementation(index: str, expected: dict):
 
     explainer = TreeSHAPIQ(model=tree_model, max_order=2, interaction_type=index)
 
-    explanation = explainer.explain(x)
-    print(explanation)
+    explanation = explainer.explain(x_explain)
 
     for key, value in expected.items():
         assert np.isclose(explanation[key], value, atol=1e-5)

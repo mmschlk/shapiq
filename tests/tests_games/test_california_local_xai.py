@@ -5,9 +5,10 @@ import os
 import numpy as np
 import pytest
 
-from shapiq.games.tabular import CaliforniaHousing
+from shapiq.games import CaliforniaHousing
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("model", ["torch_nn", "sklearn_gbt", "invalid"])
 def test_basic_function(model):
     """Tests the CaliforniaHousing game with a small regression dataset."""
@@ -17,11 +18,11 @@ def test_basic_function(model):
             _ = CaliforniaHousing(model=model, x=0)
         return
 
-    x_explain_id = 0
+    x_id = 0
     if model == "torch_nn":  # test here the auto select
-        x_explain_id = None
+        x_id = None
 
-    game = CaliforniaHousing(x=x_explain_id, model=model)
+    game = CaliforniaHousing(x=x_id, model=model)
     game.precompute()
     assert game.n_players == 8
     assert len(game.feature_names) == 8
@@ -29,7 +30,7 @@ def test_basic_function(model):
     assert game.precomputed
 
     # test save and load values
-    path = f"california_local_xai_{model}_id_{x_explain_id}.npz"
+    path = f"california_local_xai_{model}_id_{x_id}.npz"
     game.save_values(path)
 
     assert os.path.exists(path)
