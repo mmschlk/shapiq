@@ -137,7 +137,7 @@ class MoebiusConverter:
                     )
                 )
         if index == "k-SII":
-            # This does not work currently
+            # This does not work currently, workaround is implemented via SII and base_aggregation
             if moebius_size <= order:
                 return 1
             else:
