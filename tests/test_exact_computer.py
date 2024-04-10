@@ -10,10 +10,9 @@ def test_exact_computer_on_soum():
         N = set(range(n))
         order = np.random.randint(low=1, high=min(n, 5))
         n_basis_games = np.random.randint(low=1, high=100)
-        soum = SOUM(n, n_basis_games=1, min_interaction_size=1)
+        soum = SOUM(n, n_basis_games=n_basis_games)
 
         predicted_value = soum(np.ones(n))[0]
-        emptyset_prediction = soum(np.zeros(n))[0]
 
         # Compute via exactComputer
         exact_computer = ExactComputer(N, soum)
