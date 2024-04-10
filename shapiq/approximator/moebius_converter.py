@@ -172,7 +172,7 @@ class MoebiusConverter:
         ):
             moebius_size = len(moebius_set)
             # For higher-order Möbius sets (size > order) distribute the value among all contained interactions
-            for interaction in powerset(moebius_set, min_size=1, max_size=order):
+            for interaction in powerset(moebius_set, min_size=0, max_size=order):
                 val_distributed = distribution_weights[moebius_size, len(interaction)]
                 # Check if Möbius value is distributed onto this interaction
                 if interaction in base_interaction_dict:
