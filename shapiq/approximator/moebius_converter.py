@@ -64,7 +64,8 @@ class MoebiusConverter:
 
         for i, S in enumerate(powerset(self.N, max_size=order)):
             if len(S) == 0:
-                transformed[i] = self.baseline_value
+                transformed[i] = self.moebius_coefficients[tuple()]
+
             else:
                 S_effect = base_interactions[S]
                 subset_size = len(S)
@@ -102,7 +103,10 @@ class MoebiusConverter:
             return 1 / (moebius_size - interaction_size + 1)
         if index == "STII":
             if moebius_size <= order:
-                return 1
+                if moebius_size == interaction_size:
+                    return 1
+                else:
+                    return 0
             else:
                 if interaction_size == order:
                     return 1 / binom(moebius_size, moebius_size - interaction_size)
@@ -110,7 +114,10 @@ class MoebiusConverter:
                     return 0
         if index == "FSII":
             if moebius_size <= order:
-                return 1
+                if moebius_size == interaction_size:
+                    return 1
+                else:
+                    return 0
             else:
                 return (
                     (-1) ** (order - interaction_size)
@@ -122,6 +129,7 @@ class MoebiusConverter:
                     )
                 )
         if index == "k-SII":
+            # This does not work currently
             if moebius_size <= order:
                 return 1
             else:
@@ -204,7 +212,7 @@ class MoebiusConverter:
         # Pre-compute weights
         distribution_weights = np.zeros((self.n + 1, order + 1))
 
-        stii_dict[tuple()] = self.baseline_value
+        stii_dict[tuple()] = self.moebius_coefficients[tuple()]
 
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
@@ -266,7 +274,7 @@ class MoebiusConverter:
         fsii_dict = {}
         index = "FSII"
 
-        fsii_dict[tuple()] = self.baseline_value
+        fsii_dict[tuple()] = self.moebius_coefficients[tuple()]
 
         # Pre-compute weights
         distribution_weights = np.zeros((self.n + 1, order + 1))
@@ -284,7 +292,7 @@ class MoebiusConverter:
         ):
             moebius_size = len(moebius_set)
             # For higher-order Möbius sets (size > order) distribute the value among all contained interactions
-            for interaction in powerset(moebius_set, min_size=order, max_size=order):
+            for interaction in powerset(moebius_set, min_size=1, max_size=order):
                 val_distributed = distribution_weights[moebius_size, len(interaction)]
                 # Check if Möbius value is distributed onto this interaction
                 if interaction in fsii_dict:
@@ -295,8 +303,8 @@ class MoebiusConverter:
         fsii_values = np.zeros(len(fsii_dict))
         fsii_lookup = {}
 
-        for i, interaction in enumerate(stii_dict):
-            fsii_values[i] = stii_dict[interaction]
+        for i, interaction in enumerate(fsii_dict):
+            fsii_values[i] = fsii_dict[interaction]
             fsii_lookup[interaction] = i
 
         fsii = InteractionValues(
