@@ -57,15 +57,16 @@ class MoebiusConverter:
         Returns:
             InteractionValues object containing transformed base_interactions
         """
-        transformed = np.zeros(self._get_n_interactions()[order])
-        # Initialize emptyset baseline value
+        transformed_values = np.zeros(self._get_n_interactions()[order])
+        transformed_lookup = {}
         # Lookup Bernoulli numbers
         bernoulli_numbers = bernoulli(order)
 
         for i, S in enumerate(powerset(self.N, max_size=order)):
+            transformed_lookup[S] = i
             if len(S) == 0:
-                transformed[i] = self.moebius_coefficients[tuple()]
-
+                # Initialize emptyset baseline value
+                transformed_values[i] = self.moebius_coefficients[tuple()]
             else:
                 S_effect = base_interactions[S]
                 subset_size = len(S)
@@ -77,12 +78,19 @@ class MoebiusConverter:
                     S_tilde_effect = base_interactions[S_tilde]
                     # normalization with bernoulli numbers
                     S_effect += bernoulli_numbers[len(S_tilde) - subset_size] * S_tilde_effect
-                transformed[i] = S_effect
+                transformed_values[i] = S_effect
 
-        transformed_interactions = copy.copy(base_interactions)
-        transformed_interactions.values = transformed
-        if base_interactions.index == "SII":
-            transformed_interactions.index = "k-SII"
+        transformed_index = "k-" + base_interactions.index
+
+        transformed_interactions = InteractionValues(
+            values=transformed_values,
+            index=transformed_index,
+            min_order=0,
+            max_order=order,
+            interaction_lookup=transformed_lookup,
+            n_players=self.n,
+        )
+
         return transformed_interactions
 
     def get_moebius_distribution_weight(

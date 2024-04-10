@@ -7,12 +7,12 @@ def test_soum_moebius_conversion():
     for i in range(100):
         n = np.random.randint(low=2, high=20)
         order = np.random.randint(low=1, high=min(n, 5))
-        n_basis_games = np.random.randint(low=1, high=2)
+        n_basis_games = np.random.randint(low=1, high=100)
 
         soum = SOUM(n, n_basis_games=n_basis_games)
 
         predicted_value = soum(np.ones(n))[0]
-        emptyset_predictions = soum(np.zeros(n))[0]
+        emptyset_prediction = soum(np.zeros(n))[0]
 
         moebius_converter = MoebiusConverter(soum.N, soum.moebius_coefficients)
 
@@ -23,3 +23,4 @@ def test_soum_moebius_conversion():
             )
             # Assert efficiency
             assert (np.sum(shapley_interactions[index].values) - predicted_value) ** 2 < 10e-7
+            assert (shapley_interactions[index][tuple()] - emptyset_prediction) ** 2 < 10e-7
