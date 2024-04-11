@@ -79,7 +79,9 @@ class MoebiusConverter:
                     )
                 transformed_values[i] = S_effect
 
-        transformed_index = "k-" + base_interactions.index
+        transformed_index = base_interactions.index
+        if transformed_index not in ["SV", "BV"]:
+            transformed_index = "k-" + transformed_index
 
         transformed_interactions = InteractionValues(
             values=transformed_values,
@@ -329,12 +331,12 @@ class MoebiusConverter:
         )
         return fsii
 
-    def moebius_to_shapley_interaction(self, order, index):
+    def moebius_to_shapley_interaction(self, index: str, order: int):
         """Converts the Möbius coefficients to Shapley Interactions up to order k
 
         Args:
-            order: The order of the explanation
             index: The Shapley Interaction index, e.g. k-SII, STII, FSII
+            order: The order of the explanation
 
         Returns:
             An InteractionValues object containing the Shapley interactions

@@ -10,7 +10,25 @@ import numpy as np
 
 from shapiq.utils import generate_interaction_lookup, powerset
 
-AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "STII", "FSII", "SV", "BZF", "Moebius"}
+AVAILABLE_INDICES = {
+    "JointSV",
+    "SGV",
+    "BGV",
+    "CHGV",
+    "CHII",
+    "BII",
+    "kADD-SHAP",
+    "k-SII",
+    "SII",
+    "STI",
+    "FSI",
+    "STII",
+    "FSII",
+    "SV",
+    "BV",
+    "BZF",
+    "Moebius",
+}
 
 
 @dataclass
@@ -51,6 +69,22 @@ class InteractionValues:
             raise ValueError(
                 f"Index {self.index} is not valid. " f"Available indices are {AVAILABLE_INDICES}."
             )
+
+        # set BV if order is 1
+        if self.index == "BII" and self.max_order == 1:
+            self.index = "BV"
+
+        # set SV if order is 1
+        # TODO: check if this is correct and all indices are covered: at the moment all indices
+        # in the following set are covered + "k-" and "II" variants of them
+        indices_to_change_to_SV = {"SII", "SIII", "FSI", "FSII", "STI", "STII", "kADD-SHAP"}
+        if self.max_order == 1:
+            index_test = self.index
+            if index_test.startswith("k-"):  # remove aggregation k
+                index_test = index_test[2:]
+            if index_test in indices_to_change_to_SV:
+                self.index = "SV"
+
         if self.interaction_lookup is None:
             self.interaction_lookup = generate_interaction_lookup(
                 self.n_players, self.min_order, self.max_order
