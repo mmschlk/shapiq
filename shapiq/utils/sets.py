@@ -1,8 +1,9 @@
 """This module contains utility functions for dealing with sets, coalitions and game theory."""
+
 import copy
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from itertools import chain, combinations
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import numpy as np
 from scipy.special import binom
@@ -12,6 +13,9 @@ __all__ = [
     "pair_subset_sizes",
     "split_subsets_budget",
     "get_explicit_subsets",
+    "generate_interaction_lookup",
+    "transform_coalitions_to_array",
+    "transform_array_to_coalitions",
 ]
 
 
@@ -37,8 +41,11 @@ def powerset(
 
         >>> list(powerset([1, 2, 3], max_size=2))
         [(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3)]
+
+        >>> list(powerset(["A", "B", "C"], min_size=1, max_size=2))
+        [('A',), ('B',), ('C',), ('A', 'B'), ('A', 'C'), ('B', 'C')]
     """
-    s = list(iterable)
+    s = sorted(list(iterable))
     max_size = len(s) if max_size is None else min(max_size, len(s))
     return chain.from_iterable(combinations(s, r) for r in range(max(min_size, 0), max_size + 1))
 
@@ -175,3 +182,91 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
             subset_matrix[subset_index, subset] = True
             subset_index += 1
     return subset_matrix
+
+
+def generate_interaction_lookup(
+    players: Union[Iterable[Any], int], min_order: Optional[int], max_order: Optional[int]
+) -> dict[tuple[Any], int]:
+    """Generates a lookup dictionary for interactions.
+
+    Args:
+        players: A unique set of players or an Integer denoting the number of players.
+        min_order: The minimum order of the approximation.
+        max_order: The maximum order of the approximation.
+
+    Returns:
+        A dictionary that maps interactions to their index in the values vector.
+
+    Example:
+        >>> generate_interaction_lookup(3, 1, 3)
+        {(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5, (0, 1, 2): 6}
+        >>> generate_interaction_lookup(3, 2, 2)
+        {(0, 1): 0, (0, 2): 1, (1, 2): 2}
+        >>> generate_interaction_lookup(["A", "B", "C"], 1, 2)
+        {('A',): 0, ('B',): 1, ('C',): 2, ('A', 'B'): 3, ('A', 'C'): 4, ('B', 'C'): 5}
+    """
+    if isinstance(players, int):
+        players = set(range(players))
+    else:
+        players = set(sorted(players))
+    interaction_lookup = {
+        interaction: i
+        for i, interaction in enumerate(powerset(players, min_size=min_order, max_size=max_order))
+    }
+    return interaction_lookup
+
+
+def transform_coalitions_to_array(
+    coalitions: Collection[tuple[int]], n_players: Optional[int] = None
+) -> np.ndarray:
+    """Transforms a collection of coalitions to a binary array (one-hot encodings).
+
+    Args:
+        coalitions: Collection of coalitions.
+        n_players: Number of players. Defaults to None (determined from the coalitions). If
+            provided, n_players must be greater than the maximum player index in the coalitions.
+
+    Returns:
+        Binary array of coalitions.
+
+    Example:
+        >>> coalitions = [(0, 1), (1, 2), (0, 2)]
+        >>> transform_coalitions_to_array(coalitions)
+        array([[ True,  True, False],
+               [False,  True,  True],
+               [ True, False,  True]])
+
+        >>> transform_coalitions_to_array(coalitions, n_players=4)
+        array([[ True,  True, False, False],
+               [False,  True,  True, False],
+               [ True, False,  True, False]])
+    """
+    n_coalitions = len(coalitions)
+    if n_players is None:
+        n_players = max(max(coalition) for coalition in coalitions) + 1
+
+    coalition_array = np.zeros((n_coalitions, n_players), dtype=bool)
+    for i, coalition in enumerate(coalitions):
+        coalition_array[i, coalition] = True
+    return coalition_array
+
+
+def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int]]:
+    """Transforms a 2d one-hot matrix of coalitions into a list of tuples.
+
+    Args:
+        coalitions: A binary array of coalitions.
+
+    Returns:
+        List of coalitions as tuples.
+
+    Examples:
+        >>> coalitions = np.array([[True, True, False], [False, True, True], [True, False, True]])
+        >>> transform_array_to_coalitions(coalitions)
+        [(0, 1), (1, 2), (0, 2)]
+
+        >>> coalitions = np.array([[False, False, False], [True, True, True]])
+        >>> transform_array_to_coalitions(coalitions)
+        [(), (0, 1, 2)]
+    """
+    return [tuple(np.where(coalition)[0]) for coalition in coalitions]

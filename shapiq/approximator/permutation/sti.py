@@ -1,11 +1,14 @@
 """This module contains the permutation sampling algorithms to estimate STI scores."""
+
 import warnings
 from typing import Callable, Optional
 
 import numpy as np
-from approximator._base import Approximator, InteractionValues
-from scipy.special import binom
-from utils import get_explicit_subsets, powerset
+import scipy as sp
+
+from shapiq.approximator._base import Approximator
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils import get_explicit_subsets, powerset
 
 
 class PermutationSamplingSTI(Approximator):
@@ -74,7 +77,9 @@ class PermutationSamplingSTI(Approximator):
         counts: np.ndarray[int] = self._init_result(dtype=int)
 
         # compute all lower order interactions if budget allows it
-        lower_order_cost = sum(int(binom(self.n, s)) for s in range(self.min_order, self.max_order))
+        lower_order_cost = sum(
+            int(sp.special.binom(self.n, s)) for s in range(self.min_order, self.max_order)
+        )
         if self.max_order > 1 and budget >= lower_order_cost:
             budget -= lower_order_cost
             used_budget += lower_order_cost
@@ -159,7 +164,7 @@ class PermutationSamplingSTI(Approximator):
         Returns:
             int: The cost of a single iteration.
         """
-        iteration_cost = int(binom(self.n, self.max_order) * 2**self.max_order)
+        iteration_cost = int(sp.special.binom(self.n, self.max_order) * 2**self.max_order)
         return iteration_cost
 
     def _compute_lower_order_sti(

@@ -1,11 +1,12 @@
 """Regression with Faithful Shapley Interaction (FSI) index approximation."""
+
 from typing import Optional
 
+from ..k_sii import KShapleyMixin
 from ._base import Regression
-from .._base import NShapleyMixin
 
 
-class RegressionFSI(Regression, NShapleyMixin):
+class RegressionFSI(Regression, KShapleyMixin):
     """Estimates the FSI values [1] using the weighted least square approach.
 
     Args:

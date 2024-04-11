@@ -1,13 +1,17 @@
-"""This module implements the Permutation Sampling approximator for the SII (and nSII) index."""
+"""This module implements the Permutation Sampling approximator for the SII (and k-SII) index."""
+
 from typing import Callable, Optional
 
 import numpy as np
-from approximator._base import Approximator, InteractionValues, NShapleyMixin
-from utils import powerset
+
+from shapiq.approximator._base import Approximator
+from shapiq.approximator.k_sii import KShapleyMixin
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils import powerset
 
 
-class PermutationSamplingSII(Approximator, NShapleyMixin):
-    """Permutation Sampling approximator for the SII (and nSII) index.
+class PermutationSamplingSII(Approximator, KShapleyMixin):
+    """Permutation Sampling approximator for the SII (and k-SII) index.
 
     Args:
         n: The number of players.
@@ -60,8 +64,8 @@ class PermutationSamplingSII(Approximator, NShapleyMixin):
         top_order: bool = False,
         random_state: Optional[int] = None,
     ) -> None:
-        if index not in ["SII", "nSII"]:
-            raise ValueError(f"Invalid index {index}. Must be either 'SII' or 'nSII'.")
+        if index not in ["SII", "k-SII"]:
+            raise ValueError(f"Invalid index {index}. Must be either 'SII' or 'k-SII'.")
         super().__init__(n, max_order, index, top_order, random_state)
         self.iteration_cost: int = self._compute_iteration_cost()
 
@@ -153,7 +157,7 @@ class PermutationSamplingSII(Approximator, NShapleyMixin):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        if self.index == "nSII":
-            result: np.ndarray[float] = self.transforms_sii_to_nsii(result)
+        if self.index == "k-SII":
+            result: np.ndarray[float] = self.transforms_sii_to_ksii(result)
 
         return self._finalize_result(result, budget=used_budget, estimated=True)
