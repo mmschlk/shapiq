@@ -478,7 +478,9 @@ class ExactComputer:
                 transformed_values[i] = interaction_effect
 
         # setup interaction values
-        transformed_index = "k-" + base_interactions.index  # raname the index (e.g. SII -> k-SII)
+        transformed_index = base_interactions.index  # raname the index (e.g. SII -> k-SII)
+        if transformed_index not in ["SV", "BV"]:
+            transformed_index = "k-" + transformed_index
         transformed_interactions = InteractionValues(
             values=transformed_values,
             index=transformed_index,

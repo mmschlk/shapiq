@@ -33,7 +33,7 @@ def test_exact_computer_on_soum():
         shapley_interactions_exact = {}
         for index in ["STII", "k-SII", "FSII"]:
             shapley_interactions_gt[index] = moebius_converter.moebius_to_shapley_interaction(
-                order, index
+                index=index, order=order
             )
             shapley_interactions_exact[index] = exact_computer.shapley_interaction(
                 index=index, order=order
