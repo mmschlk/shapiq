@@ -78,12 +78,33 @@ class CoalitionSampler:
         assert (sampling_weights >= 0).all(), "All sampling weights must be non-negative"
 
     def get_coalitions_matrix(self):
+        """Returns a copy of the sampled_coalitions_matrix
+
+        Args:
+
+        Returns:
+            A copy of the sampled_coalitions_matrix
+        """
         return copy.deepcopy(self.sampled_coalitions_matrix)
 
     def get_coalitions_counter(self):
+        """Returns a copy of the sampled_coalitions_counter
+
+        Args:
+
+        Returns:
+            A copy of the sampled_coalitions_counter
+        """
         return copy.deepcopy(self.sampled_coalitions_counter)
 
     def get_coalitions_prob(self):
+        """Returns a copy of the sampled_coalitions_prob
+
+        Args:
+
+        Returns:
+            A copy of the sampled_coalitions_prob
+        """
         return copy.deepcopy(self.sampled_coalitions_prob)
 
     def execute_border_trick(self, sampling_budget):
@@ -125,6 +146,18 @@ class CoalitionSampler:
         return sampling_budget
 
     def execute_pairing_trick(self, sampling_budget, coalition_size, permutation):
+        """Executes the pairing-trick according to https://proceedings.mlr.press/v130/covert21a.html.
+        Includes the paired coalition in the sampled objects.
+        Works similar as the initial coalition, but throws a warning, if the subset is not allowed for sampling.
+
+        Args:
+            sampling_budget: The remaining sampling budget
+            coalition_size: The coalition size of the coalition that should be paired
+            permutation: The permutation from which the coalition was drawn
+
+        Returns:
+            The remaining sampling budget
+        """
         paired_coalition_size = self.n - coalition_size
         if paired_coalition_size not in self.coalitions_to_sample:
             # If the coalition size of the complement is not sampled, throw warning
