@@ -1,10 +1,7 @@
 """This module contains stochastic sampling procedures for coalitions of players."""
 
-# Used for CoalitionSampler
 import copy
 import warnings
-
-# Used for ShapleySamplingMixin
 from abc import ABC
 from typing import Optional, Union
 
@@ -18,10 +15,11 @@ from shapiq.utils.sets import powerset
 
 
 class CoalitionSampler:
-    """The coalition sampler to generate a collection of subsets as a basis for approximation methods.
+    """The coalition sampler to generate a collection of subsets as a basis for approximation
+    methods.
 
     Args:
-        n: Number of elements to sample from
+        n_players: The number of players in the game.
         sampling_weights: Sampling for weights for coalition sizes, must be non-negative and at least one >0.
         pairing_trick: Samples each coalition jointly with its complement, default is False
         random_state: The random state to use for the sampling process. Defaults to `None`.
@@ -43,22 +41,39 @@ class CoalitionSampler:
 
     def __init__(
         self,
-        n: np.ndarray,
+        n_players: int,
         sampling_weights: np.ndarray,
         pairing_trick: bool = False,
         random_state: Optional[int] = None,
     ) -> None:
-        self.n = n
-        self.N = np.array(range(n))
-        self.sampling_weights = sampling_weights / np.sum(sampling_weights)
-        self.pairing_trick = pairing_trick
-        self._random_state = random_state
-        self._rng: Optional[np.random.Generator] = np.random.default_rng(seed=self._random_state)
+
+        self.pairing_trick: bool = pairing_trick
+
+        # set sampling weights
+        if not (sampling_weights >= 0).all():  # Check non-negativity of sampling weights
+            raise ValueError("All sampling weights must be non-negative")
+        self.sampling_weights = sampling_weights / np.sum(sampling_weights)  # make probabilities
+
+        # set player numbers
+        if n_players + 1 != np.size(sampling_weights):  # shape of sampling weights -> sizes 0,...,n
+            raise ValueError(
+                f"{n_players} elements must correspond to {n_players + 1} coalition sizes "
+                "(including empty subsets)"
+            )
+        self.n: int = n_players
+        self.N = np.arange(self.n)
+
+        # set random state
+        self._rng: np.random.Generator = np.random.default_rng(seed=random_state)
+
+        # set variables for sampling
         self.coalitions_to_exclude = []
         self.coalitions_to_compute = []
         self.coalitions_to_sample = list(range(self.n + 1))
-        # Set maximum of possible coalitions by excluding zero-weighted coalition sizes
-        # Coalition sizes with zero weights, should be removed and excluded from total number of coalitions
+
+        # Set maximum of possible coalitions by excluding zero-weighted coalition sizes.
+        # Coalition sizes with zero weights should be removed and excluded from total number of
+        # coalitions
         self.n_max_coalitions = int(2**self.n)
         # Handle zero-weighted coalition sizes, move to coalition_to_exclude
         for size, weight in enumerate(self.sampling_weights):
@@ -67,50 +82,54 @@ class CoalitionSampler:
                 self.coalitions_to_exclude.extend(
                     [self.coalitions_to_sample.pop(self.coalitions_to_sample.index(size))]
                 )
-        self.adjusted_sampling_weights = self.sampling_weights[self.coalitions_to_sample] / np.sum(
-            self.sampling_weights[self.coalitions_to_sample]
-        )
-        # Check shape of sampling weights for coalition sizes 0,...,n
-        assert n + 1 == np.size(
-            sampling_weights
-        ), "n elements must correspond to n+1 coalition sizes (including empty subsets)"
-        # Check non-negativity of sampling weights
-        assert (sampling_weights >= 0).all(), "All sampling weights must be non-negative"
+        self.adjusted_sampling_weights = self.sampling_weights[self.coalitions_to_sample]
+        self.adjusted_sampling_weights /= self.adjusted_sampling_weights  # probability
 
-    def get_coalitions_matrix(self):
-        """Returns a copy of the sampled_coalitions_matrix
+        # initialize variables to be computed and stored
+        self.sampled_coalitions_dict: dict[tuple[int], int] = {}  # maps from coalition to TODO
+        self.coalitions_per_size = np.zeros(self.n + 1, dtype=int)
+        self.is_coalition_size_sampled = np.zeros(self.n + 1, dtype=bool)
 
-        Args:
+        # variables accessible through properties
+        self._sampled_coalitions_matrix = np.zeros((0, self.n), dtype=int)  # coalitions
+        self._sampled_coalitions_counter = np.zeros(0)  # coalitions_counter
+        self._sampled_coalitions_prob = np.zeros(0)  # coalitions_probability
 
-        Returns:
-            A copy of the sampled_coalitions_matrix
-        """
-        return copy.deepcopy(self.sampled_coalitions_matrix)
+        self.sampled = False
 
-    def get_coalitions_counter(self):
-        """Returns a copy of the sampled_coalitions_counter
-
-        Args:
+    @property
+    def coalitions_matrix(self) -> np.ndarray:
+        """Returns the binary matrix of sampled coalitions.
 
         Returns:
-            A copy of the sampled_coalitions_counter
+            A copy of the sampled coalitions matrix as a binary matrix of shape (n_coalitions,
+                n_players).
         """
-        return copy.deepcopy(self.sampled_coalitions_counter)
+        return copy.deepcopy(self._sampled_coalitions_matrix)
 
-    def get_coalitions_prob(self):
-        """Returns a copy of the sampled_coalitions_prob
-
-        Args:
+    @property
+    def coalitions_counter(self) -> np.ndarray:
+        """Returns the number of occurrences of the coalitions
 
         Returns:
-            A copy of the sampled_coalitions_prob
+            A copy of the sampled coalitions counter of shape (n_coalitions,).
         """
-        return copy.deepcopy(self.sampled_coalitions_prob)
+        return copy.deepcopy(self._sampled_coalitions_counter)
 
-    def execute_border_trick(self, sampling_budget):
-        """Moves coalition sizes from coalitions_to_sample to coalitions_to_compute,
-        if the expected number of coalitions is higher than the total number of coalitions of that size.
-        Based on a more general version of https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html
+    @property
+    def coalitions_probability(self) -> np.ndarray:
+        """Returns the coalition probabilities according to the sampling procedure.
+
+        Returns:
+            A copy of the sampled coalitions probabilities of shape (n_coalitions,).
+        """
+        return copy.deepcopy(self._sampled_coalitions_prob)
+
+    def execute_border_trick(self, sampling_budget: int) -> int:
+        """Moves coalition sizes from coalitions_to_sample to coalitions_to_compute, if the expected
+        number of coalitions is higher than the total number of coalitions of that size.
+
+        The border trick is based on a more general version of [Fumagalli et al. 2023](https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html).
 
         Args:
             sampling_budget: The number of coalitions to sample
@@ -145,10 +164,15 @@ class CoalitionSampler:
             )
         return sampling_budget
 
-    def execute_pairing_trick(self, sampling_budget, coalition_size, permutation):
-        """Executes the pairing-trick according to https://proceedings.mlr.press/v130/covert21a.html.
-        Includes the paired coalition in the sampled objects.
-        Works similar as the initial coalition, but throws a warning, if the subset is not allowed for sampling.
+    def execute_pairing_trick(self, sampling_budget: int, coalition_size: int, permutation):
+        """Executes the pairing-trick for a sampling budget and coalition sizes.
+
+        The pairing-trick is based on the idea of
+        [Covert and Lee 2021](https://proceedings.mlr.press/v130/covert21a.html) and pairs each
+        coalition with its complement.
+
+        Works similar as the initial coalition, but throws a warning, if the subset is not allowed
+            for sampling.
 
         Args:
             sampling_budget: The remaining sampling budget
@@ -161,56 +185,54 @@ class CoalitionSampler:
         paired_coalition_size = self.n - coalition_size
         if paired_coalition_size not in self.coalitions_to_sample:
             # If the coalition size of the complement is not sampled, throw warning
-            warnings.warn(
-                "Pairing is affected as weights are not symmetric.",
-                UserWarning,
-            )
+            warnings.warn(UserWarning("Pairing is affected as weights are not symmetric."))
         else:
             paired_coalition_indices = permutation[coalition_size:]
             paired_coalition_indices.sort()
             paired_coalition_tuple = tuple(paired_coalition_indices)
             self.coalitions_per_size[paired_coalition_size] += 1
             # Adjust coalitions counter using the paired coalition
-            if self.sampled_coalitions_dict.get(paired_coalition_tuple):
-                # if coalition is not new
+            try:  # if coalition is not new
                 self.sampled_coalitions_dict[paired_coalition_tuple] += 1
-            else:
+            except KeyError:  # if coalition is new
                 self.sampled_coalitions_dict[paired_coalition_tuple] = 1
                 sampling_budget -= 1
         return sampling_budget
 
-    def sample(self, sampling_budget: int) -> np.ndarray:
+    def sample(self, sampling_budget: int) -> None:
         """Samples distinct coalitions according to the specified budget.
-        Sampling is based on a more general variant of https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html
 
-        Args:
-            budget: The budget for the approximation (i.e., the number of distinct coalitions).
-
-        Returns:
-            All variables are stored in the sampler, no objects are returned. The following variables are computed:
-            - sampled_coalitions_matrix: A binary matrix that consists of one row for each sampled coalition
+        Sampling is based on a more general variant of [Fumagalli et al. 2023](https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html)
+        All variables are stored in the sampler, no objects are returned. The following variables
+        are computed:
+            - sampled_coalitions_matrix: A binary matrix that consists of one row for each sampled
+                coalition
             - sampled_coalitions_counter: An array with the number of occurrences of the coalitions
-            - sampled_coalitions_prob: An array with the coalition probabilities according to the sampling procedure
+            - sampled_coalitions_prob: An array with the coalition probabilities according to the
+                sampling procedure
             - coalitions_per_size: An array with the number of sampled coalitions per size
-            - is_coalition_size_sampled: An array that contains True, if the coalition size was sampled
+            - is_coalition_size_sampled: An array that contains True, if the coalition size was
+                sampled
             - coalitions_to_sample: The list of coalition sizes that are sampled
             - coalitions_to_compute: The list of coalition sizes that are exhaustively computed
             - sampled_coalitions_dict: A dictionary containing all sampled coalitions
+
+        Args:
+            sampling_budget: The budget for the approximation (i.e., the number of distinct
+                coalitions to sample/evaluate).
+
+        Raises:
+            UserWarning: If the sampling budget is higher than the maximum number of coalitions.
         """
 
-        self.sampled_coalitions_dict = {}
-
         if sampling_budget > self.n_max_coalitions:
-            warnings.warn("Not all budget is required due to the border-trick.", UserWarning)
+            warnings.warn(UserWarning("Not all budget is required due to the border-trick."))
             # Adjust sampling budget to max coalitions
             sampling_budget = min(sampling_budget, self.n_max_coalitions)
 
-        # Variables to be computed and stored
-        self.coalitions_per_size = np.zeros(self.n + 1, dtype=int)
-        self.sampled_coalitions_counter = np.zeros(sampling_budget)
-        self.sampled_coalitions_matrix = np.zeros((sampling_budget, self.n), dtype=int)
-        self.sampled_coalitions_prob = np.zeros((sampling_budget), dtype=float)
-        self.is_coalition_size_sampled = np.zeros(self.n + 1, dtype=bool)
+        self._sampled_coalitions_counter = np.zeros(sampling_budget)
+        self._sampled_coalitions_matrix = np.zeros((sampling_budget, self.n), dtype=int)
+        self._sampled_coalitions_prob = np.zeros(sampling_budget, dtype=float)
         permutation = np.arange(self.n)
 
         # Border-Trick: Enumerate all coalitions, where the expected number of coalitions exceeds the total number
@@ -268,18 +290,18 @@ class CoalitionSampler:
             for coalition in powerset(
                 range(self.n), min_size=coalition_size, max_size=coalition_size
             ):
-                self.sampled_coalitions_matrix[coalition_index, list(coalition)] = 1
-                self.sampled_coalitions_counter[coalition_index] = 1
+                self._sampled_coalitions_matrix[coalition_index, list(coalition)] = 1
+                self._sampled_coalitions_counter[coalition_index] = 1
                 # Weight is set to 1
-                self.sampled_coalitions_prob[coalition_index] = 1
+                self._sampled_coalitions_prob[coalition_index] = 1
                 coalition_index += 1
         # Add all coalitions that are sampled
         for coalition_tuple, count in self.sampled_coalitions_dict.items():
-            self.sampled_coalitions_matrix[coalition_index, list(coalition_tuple)] = 1
-            self.sampled_coalitions_counter[coalition_index] = count
+            self._sampled_coalitions_matrix[coalition_index, list(coalition_tuple)] = 1
+            self._sampled_coalitions_counter[coalition_index] = count
             # Probability of the sampled coalition,
             # i.e. sampling weight (for size) divided by number of coalitions of that size
-            self.sampled_coalitions_prob[coalition_index] = (
+            self._sampled_coalitions_prob[coalition_index] = (
                 self.adjusted_sampling_weights[
                     self.coalitions_to_sample.index(len(coalition_tuple))
                 ]

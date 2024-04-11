@@ -1,3 +1,5 @@
+"""This test module contains all tests for the CoalitionSampler class."""
+
 import numpy as np
 
 from shapiq.approximator.sampling import CoalitionSampler
@@ -19,7 +21,7 @@ def test_sampling():
             n, sampling_weights, pairing_trick=False, random_state=random_state
         )
         sampler.sample(budget)
-        coalitions_matrix = sampler.get_coalitions_matrix()
+        coalitions_matrix = sampler.coalitions_matrix
 
         # Assert number of unique coalitions
         assert len(np.unique(coalitions_matrix, axis=0)) == min(sampler.n_max_coalitions, budget)
@@ -29,16 +31,16 @@ def test_sampling():
             n, sampling_weights_scaled, pairing_trick=False, random_state=random_state
         )
         sampler_scaled.sample(budget)
-        coalitions_matrix_scaled = sampler_scaled.get_coalitions_matrix()
+        coalitions_matrix_scaled = sampler_scaled.coalitions_matrix
 
         # Assert similar output with scaled sampling weights and similar random_state
         assert np.sum((coalitions_matrix - coalitions_matrix_scaled) ** 2) < 10e-7
 
         # Assert that coalitions counter larger than sampling_budget
-        sampled_coalitions_counter = sampler.get_coalitions_counter()
+        sampled_coalitions_counter = sampler.coalitions_counter
         assert np.sum(sampled_coalitions_counter) >= min(sampler.n_max_coalitions, budget)
 
-        sampled_coalitions_weight = sampler.get_coalitions_prob()
+        sampled_coalitions_weight = sampler.coalitions_probability
 
         # Assert splitting of coalition sizes is correct
         assert (
