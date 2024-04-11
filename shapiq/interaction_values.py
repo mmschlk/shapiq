@@ -10,7 +10,7 @@ import numpy as np
 
 from shapiq.utils import generate_interaction_lookup, powerset
 
-AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "SV", "BZF"}
+AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "STII", "FSII", "SV", "BZF", "Moebius"}
 
 
 @dataclass
@@ -40,7 +40,7 @@ class InteractionValues:
     max_order: int
     min_order: int
     n_players: int
-    interaction_lookup: dict[tuple[int], int] = None
+    interaction_lookup: dict[tuple[int, ...], int] = None
     estimated: bool = True
     estimation_budget: Optional[int] = None
     baseline_value: Optional[float] = None
@@ -60,6 +60,14 @@ class InteractionValues:
                 self.baseline_value = float(self.values[self.interaction_lookup[tuple()]])
             except KeyError:
                 raise ValueError("Baseline value is not provided and cannot be computed.")
+
+    @property
+    def dict_values(self) -> dict[tuple[int, ...], float]:
+        """Getter for the dict directly mapping from all interactions to scores."""
+        return {
+            interaction: self.values[self.interaction_lookup[interaction]]
+            for interaction in self.interaction_lookup
+        }
 
     def __repr__(self) -> str:
         """Returns the representation of the InteractionValues object."""
