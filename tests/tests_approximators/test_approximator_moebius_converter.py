@@ -20,7 +20,7 @@ def test_soum_moebius_conversion():
         shapley_interactions = {}
         for index in ["STII", "k-SII", "FSII"]:
             shapley_interactions[index] = moebius_converter.moebius_to_shapley_interaction(
-                order, index
+                index=index, order=order
             )
             # Assert efficiency
             assert (np.sum(shapley_interactions[index].values) - predicted_value) ** 2 < 10e-7

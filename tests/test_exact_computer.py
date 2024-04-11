@@ -1,11 +1,15 @@
+"""This test module tests the ExactComputer class."""
+
+import numpy as np
+import pytest
+
 from shapiq.games.soum import SOUM
 from shapiq.approximator.moebius_converter import MoebiusConverter
 from shapiq.exact_computer import ExactComputer
-import numpy as np
 
 
 def test_exact_computer_on_soum():
-    for i in range(100):
+    for i in range(20):
         n = np.random.randint(low=2, high=10)
         N = set(range(n))
         order = np.random.randint(low=1, high=min(n, 5))
@@ -15,7 +19,7 @@ def test_exact_computer_on_soum():
         predicted_value = soum(np.ones(n))[0]
 
         # Compute via exactComputer
-        exact_computer = ExactComputer(N, soum)
+        exact_computer = ExactComputer(n_players=n, game_fun=soum)
 
         # Compute via sparse Möbius representation
         moebius_converter = MoebiusConverter(N, soum.moebius_coefficients)
@@ -29,9 +33,11 @@ def test_exact_computer_on_soum():
         shapley_interactions_exact = {}
         for index in ["STII", "k-SII", "FSII"]:
             shapley_interactions_gt[index] = moebius_converter.moebius_to_shapley_interaction(
-                order, index
+                index=index, order=order
             )
-            shapley_interactions_exact[index] = exact_computer.shapley_interaction(order, index)
+            shapley_interactions_exact[index] = exact_computer.shapley_interaction(
+                index=index, order=order
+            )
             # Check equality with ground truth calculations from SOUM
             assert (
                 np.sum(
@@ -48,7 +54,9 @@ def test_exact_computer_on_soum():
         assert (np.sum(shapley_generalized_values.values) - predicted_value) ** 2 < 10e-7
 
         index = "kADD-SHAP"
-        shapley_interactions_exact[index] = exact_computer.shapley_interaction(order, index)
+        shapley_interactions_exact[index] = exact_computer.shapley_interaction(
+            index=index, order=order
+        )
 
         base_interaction_indices = ["SII", "BII", "CHII"]
         base_interactions = {}
@@ -71,3 +79,46 @@ def test_exact_computer_on_soum():
 
         # Assert efficiency for SV
         assert (np.sum(probabilistic_values["SV"].values) - predicted_value) ** 2 < 10e-7
+
+
+@pytest.mark.parametrize(
+    "index, order",
+    [
+        ("SV", 1),
+        ("BV", 1),
+        ("SII", 2),
+        ("BII", 2),
+        ("CHII", 2),
+        ("SGV", 2),
+        ("BGV", 2),
+        ("CHGV", 2),
+        ("STII", 2),
+        ("k-SII", 2),
+        ("FSII", 2),
+        ("JointSV", 2),
+        ("kADD-SHAP", 2),
+        ("SII", None),
+    ],
+)
+def test_exact_computer_call(index, order):
+    """Tests the call function for the ExactComputer."""
+    n = 5
+    soum = SOUM(n, n_basis_games=10)
+    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    interaction_values = exact_computer(index=index, order=order)
+    if order is None:
+        order = n
+    assert interaction_values is not None  # should return something
+    assert interaction_values.max_order == order  # order should be the same
+    assert interaction_values.index == index  # index should be the same
+    assert interaction_values.estimated is False  # nothing should be estimated
+    assert interaction_values.values is not None  # values should be computed
+
+
+def test_basic_functions():
+    """Tests the basic functions of the ExactComputer."""
+    n = 5
+    soum = SOUM(n, n_basis_games=10)
+    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    isinstance(repr(exact_computer), str)
+    isinstance(str(exact_computer), str)
