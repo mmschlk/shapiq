@@ -54,6 +54,16 @@ class CoalitionSampler:
         coalitions_probability: The coalition probabilities according to the sampling procedure. The
              array is of shape (n_coalitions,).
         n_coalitions: The number of coalitions that have been sampled.
+
+    Examples:
+        >>> sampler = CoalitionSampler(n_players=3, sampling_weights=np.array([1, 0.5, 0.5, 1]))
+        >>> sampler.sample(5)
+        >>> print(sampler.coalitions_matrix)
+        [[False, False, False],
+         [False, False, True],
+         [True, True, True],
+         [True, False, False],
+         [False, True, True]]
     """
 
     def __init__(
