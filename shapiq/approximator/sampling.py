@@ -260,23 +260,29 @@ class CoalitionSampler:
         self._coalitions_to_sample.sort()
         self._coalitions_to_compute.sort()
 
+        # raise warning if budget is higher than 90% of samples remaining to be sampled
+        n_samples_remaining = np.sum([binom(self.n, size) for size in self._coalitions_to_sample])
+        if sampling_budget > 0.9 * n_samples_remaining:
+            warnings.warn(
+                UserWarning(
+                    "Sampling might be inefficient (stalls) due to the sampling budget being close "
+                    "to the total number of coalitions to be sampled."
+                )
+            )
+
         # sample coalitions
         if len(self._coalitions_to_sample) > 0:
-            max_samples_to_draw = int(sampling_budget * 4)  # buffer for sampling process
-            sample_counter = 0  # stores the number of samples drawn (duplicates included)
-            coalition_sizes = self._rng.choice(
-                self._coalitions_to_sample,
-                p=self.adjusted_sampling_weights,
-                size=max_samples_to_draw,
-            )
-            permutations = np.tile(np.arange(self.n, dtype=int), (max_samples_to_draw, 1))
-            self._rng.permuted(permutations, axis=1, out=permutations)
+            iteration_counter = 0  # stores the number of samples drawn (duplicates included)
+            coalition_sizes, permutations = self._draw_coalition_sizes(n_draws=sampling_budget * 2)
+            coalition_counter = 0  # stores the index of the coalition size
 
-            for coalition_counter, coalition_size in enumerate(coalition_sizes):
+            while sampling_budget > 0:
+                iteration_counter += 1
 
-                if sampling_budget == 0:
-                    break
-                sample_counter += 1
+                # draw new coalition sizes and permutations if all are used
+                if iteration_counter % len(coalition_sizes) == 0:
+                    coalition_sizes, permutations = self._draw_coalition_sizes(sampling_budget)
+                    coalition_counter = 0
 
                 # extract coalition by size from permutation
                 coalition_size = int(coalition_sizes[coalition_counter])  # get coalition size
@@ -296,10 +302,6 @@ class CoalitionSampler:
                     sampling_budget = self.execute_pairing_trick(
                         sampling_budget, coalition_size, permutation
                     )
-
-        # raise warning if sampling budget is not reached
-        if sampling_budget > 0:
-            warnings.warn(UserWarning("Less coalitions are sampled than the sampling budget."))
 
         # convert coalition counts to the output format
         coalition_index = 0
@@ -332,6 +334,24 @@ class CoalitionSampler:
             self.is_coalition_size_sampled[coalition_size] = True
 
         self.sampled = True
+
+    def _draw_coalition_sizes(self, n_draws: int) -> tuple[np.ndarray, np.ndarray]:
+        """Draws coalition sizes for the sampling process.
+
+        Args:
+            n_draws: The number of coalition sizes to draw.
+
+        Returns:
+            The coalition sizes and permutations for the sampling process.
+        """
+        coalition_sizes = self._rng.choice(
+            self._coalitions_to_sample,
+            p=self.adjusted_sampling_weights,
+            size=n_draws,
+        )
+        permutations = np.tile(np.arange(self.n, dtype=int), (n_draws, 1))
+        self._rng.permuted(permutations, axis=1, out=permutations)
+        return coalition_sizes, permutations
 
 
 class ShapleySamplingMixin(ABC):
