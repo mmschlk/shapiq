@@ -1,9 +1,9 @@
-"""This module contains all permutation-based sampling algorithms to estimate SII/nSII and STI."""
+"""This module contains all permutation-based sampling algorithms to estimate SII/nSII and STII."""
 
 from .sii import PermutationSamplingSII
-from .sti import PermutationSamplingSTI
+from .stii import PermutationSamplingSTII
 
 __all__ = [
     "PermutationSamplingSII",
-    "PermutationSamplingSTI",
+    "PermutationSamplingSTII",
 ]

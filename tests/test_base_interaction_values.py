@@ -13,8 +13,8 @@ from shapiq.utils import powerset
     "index, n, min_order, max_order, estimation_budget, estimated",
     [
         ("SII", 5, 1, 2, 100, True),
-        ("STI", 5, 1, 2, 100, True),
-        ("FSI", 5, 1, 2, 100, True),
+        ("STII", 5, 1, 2, 100, True),
+        ("FSII", 5, 1, 2, 100, True),
         ("k-SII", 5, 1, 2, 100, True),
         ("SII", 5, 1, 2, 100, False),
         ("something", 5, 1, 2, 100, False),  # expected to fail with ValueError
@@ -159,7 +159,7 @@ def test_add():
     # test adding InteractionValues with different indices
     interaction_values_second = InteractionValues(
         values=values,
-        index="STI",
+        index="STII",
         n_players=n,
         min_order=min_order,
         max_order=max_order,

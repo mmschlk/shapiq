@@ -7,8 +7,8 @@ __version__ = "0.0.6"
 # approximator classes
 from .approximator import (
     PermutationSamplingSII,
-    PermutationSamplingSTI,
-    RegressionFSI,
+    PermutationSamplingSTII,
+    RegressionFSII,
     RegressionSII,
     ShapIQ,
 )
@@ -40,9 +40,9 @@ __all__ = [
     # approximators
     "ShapIQ",
     "PermutationSamplingSII",
-    "PermutationSamplingSTI",
+    "PermutationSamplingSTII",
     "RegressionSII",
-    "RegressionFSI",
+    "RegressionFSII",
     # explainers
     "Explainer",
     "TabularExplainer",

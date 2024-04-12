@@ -24,8 +24,8 @@ class Approximator(ABC):
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        index: The interaction index to be estimated. Available indices are 'SII', 'kSII', 'STI',
-            and 'FSI'.
+        index: The interaction index to be estimated. Available indices are 'SII', 'kSII', 'STII',
+            and 'FSII'.
         top_order: If True, the approximation is performed only for the top order interactions. If
             False, the approximation is performed for all orders up to the specified order.
         random_state: The random state to use for the approximation. Defaults to None.
@@ -126,8 +126,8 @@ class Approximator(ABC):
             result: The result dictionary.
             estimated: Whether the interaction values are estimated or not. Defaults to True.
             budget: The budget used for the estimation. Defaults to None.
-            index: The interaction index estimated. Available indices are 'SII', 'kSII', 'STI', and
-                'FSI'. Defaults to None (i.e., the index of the approximator is used).
+            index: The interaction index estimated. Available indices are 'SII', 'kSII', 'STII', and
+                'FSII'. Defaults to None (i.e., the index of the approximator is used).
 
         Returns:
             The interaction values.

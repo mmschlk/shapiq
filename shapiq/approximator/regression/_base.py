@@ -1,4 +1,4 @@
-"""This module contains the regression algorithms to estimate FSI and SII scores."""
+"""This module contains the regression algorithms to estimate FSII and SII scores."""
 
 from typing import Callable, Optional
 
@@ -10,7 +10,7 @@ from shapiq.approximator.sampling import ShapleySamplingMixin
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
-AVAILABLE_INDICES_REGRESSION = ["FSI", "SII", "SV"]
+AVAILABLE_INDICES_REGRESSION = ["FSII", "SII", "SV"]
 
 
 class Regression(Approximator, ShapleySamplingMixin):
@@ -25,8 +25,8 @@ class Regression(Approximator, ShapleySamplingMixin):
         n: The number of players.
         N: The set of players (starting from 0 to n - 1).
         max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For FSI, min_order is equal to 1.
-        iteration_cost: The cost of a single iteration of the regression FSI.
+        min_order: The minimum order of the approximation. For FSII, min_order is equal to 1.
+        iteration_cost: The cost of a single iteration of the regression FSII.
 
     Example:
         >>> from games import DummyGame
@@ -35,7 +35,7 @@ class Regression(Approximator, ShapleySamplingMixin):
         >>> approximator = RegressionSII(n=5, max_order=2)
         >>> approximator.approximate(budget=100, game=game)
         InteractionValues(
-            index=FSI, order=2, estimated=False, estimation_budget=32,
+            index=FSII, order=2, estimated=False, estimation_budget=32,
             values={
                 (0,): 0.2,
                 (1,): 0.2,
@@ -60,7 +60,7 @@ class Regression(Approximator, ShapleySamplingMixin):
         self,
         n: int,
         max_order: int,
-        index: str = "FSI",
+        index: str = "FSII",
         random_state: Optional[int] = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_REGRESSION:
@@ -123,14 +123,14 @@ class Regression(Approximator, ShapleySamplingMixin):
         # if SII is used regression_subsets needs to be changed
         if self.index == "SII":
             regression_subsets, num_players = self._get_sii_subset_representation(all_subsets)  # A
-        else:  # FSI or SV
+        else:  # FSII or SV
             regression_subsets, num_players = self._get_fsi_subset_representation(all_subsets)  # A
 
         # initialize the regression variables
         game_values: np.ndarray[float] = np.zeros(shape=(n_subsets,), dtype=float)  # \nu(S)
         result: np.ndarray[float] = np.zeros(shape=(num_players,), dtype=float)
 
-        # main regression loop computing the FSI values
+        # main regression loop computing the FSII values
         for iteration in range(1, n_iterations + 1):
             batch_size = batch_size if iteration != n_iterations else last_batch_size
             batch_index = (iteration - 1) * batch_size
@@ -139,7 +139,7 @@ class Regression(Approximator, ShapleySamplingMixin):
             batch_subsets = all_subsets[batch_index : batch_index + batch_size]
             game_values[batch_index : batch_index + batch_size] = game(batch_subsets)
 
-            # compute the FSI values up to now
+            # compute the FSII values up to now
             A = regression_subsets[0 : batch_index + batch_size]
             B = game_values[0 : batch_index + batch_size]
             W = regression_weights[0 : batch_index + batch_size]
@@ -156,16 +156,16 @@ class Regression(Approximator, ShapleySamplingMixin):
     def _get_fsi_subset_representation(
         self, all_subsets: np.ndarray[bool]
     ) -> tuple[np.ndarray[bool], int]:
-        """Transforms a subset matrix into the FSI representation.
+        """Transforms a subset matrix into the FSII representation.
 
-        The FSI representation is a matrix of shape (n_subsets, num_players) where each interaction
+        The FSII representation is a matrix of shape (n_subsets, num_players) where each interaction
         up to the maximum order is an individual player.
 
         Args:
             all_subsets: subset matrix in shape (n_subsets, n).
 
         Returns:
-            FSI representation of the subset matrix in shape (n_subsets, num_players) and the number
+            FSII representation of the subset matrix in shape (n_subsets, num_players) and the number
             of players.
         """
         n_subsets = all_subsets.shape[0]

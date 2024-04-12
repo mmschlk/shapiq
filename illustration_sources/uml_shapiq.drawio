@@ -113,12 +113,12 @@
         <mxCell id="OzAOoLJQNEvyXBhDf94U-70" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="OzAOoLJQNEvyXBhDf94U-68" vertex="1">
           <mxGeometry y="52" width="160" height="8" as="geometry" />
         </mxCell>
-        <mxCell id="OzAOoLJQNEvyXBhDf94U-75" value="FSI Regression" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1" collapsed="1">
+        <mxCell id="OzAOoLJQNEvyXBhDf94U-75" value="FSII Regression" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1" collapsed="1">
           <mxGeometry x="1010" y="222" width="200" height="30" as="geometry">
             <mxRectangle x="1000" y="390" width="190" height="86" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="OzAOoLJQNEvyXBhDf94U-79" value="+ interaction index: &quot;FSI&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="OzAOoLJQNEvyXBhDf94U-75" vertex="1">
+        <mxCell id="OzAOoLJQNEvyXBhDf94U-79" value="+ interaction index: &quot;FSII&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="OzAOoLJQNEvyXBhDf94U-75" vertex="1">
           <mxGeometry y="26" width="190" height="26" as="geometry" />
         </mxCell>
         <mxCell id="OzAOoLJQNEvyXBhDf94U-106" value="+ regression weights: np.ndarray" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="OzAOoLJQNEvyXBhDf94U-75" vertex="1">
@@ -242,7 +242,7 @@
             <mxRectangle x="1450" y="646" width="270" height="86" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="OzAOoLJQNEvyXBhDf94U-131" value="+ interaction index: &quot;STI&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="OzAOoLJQNEvyXBhDf94U-122" vertex="1">
+        <mxCell id="OzAOoLJQNEvyXBhDf94U-131" value="+ interaction index: &quot;STII&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="OzAOoLJQNEvyXBhDf94U-122" vertex="1">
           <mxGeometry y="26" width="270" height="26" as="geometry" />
         </mxCell>
         <mxCell id="OzAOoLJQNEvyXBhDf94U-124" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="OzAOoLJQNEvyXBhDf94U-122" vertex="1">
@@ -251,12 +251,12 @@
         <mxCell id="OzAOoLJQNEvyXBhDf94U-132" value="+ approximate(budget, game): InteractionValues" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="OzAOoLJQNEvyXBhDf94U-122" vertex="1">
           <mxGeometry y="60" width="270" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="OzAOoLJQNEvyXBhDf94U-126" value="Permutation STI" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1" collapsed="1">
+        <mxCell id="OzAOoLJQNEvyXBhDf94U-126" value="Permutation STII" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1" collapsed="1">
           <mxGeometry x="1010" y="403.5" width="200" height="30" as="geometry">
             <mxRectangle x="1460" y="770" width="290" height="86" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="OzAOoLJQNEvyXBhDf94U-130" value="+ interaction index: &quot;STI&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="OzAOoLJQNEvyXBhDf94U-126" vertex="1">
+        <mxCell id="OzAOoLJQNEvyXBhDf94U-130" value="+ interaction index: &quot;STII&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="OzAOoLJQNEvyXBhDf94U-126" vertex="1">
           <mxGeometry y="26" width="290" height="26" as="geometry" />
         </mxCell>
         <mxCell id="OzAOoLJQNEvyXBhDf94U-128" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="OzAOoLJQNEvyXBhDf94U-126" vertex="1">
