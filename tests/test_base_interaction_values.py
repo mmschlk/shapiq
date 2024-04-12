@@ -286,3 +286,59 @@ def test_sum():
     )
 
     assert np.isclose(sum(interaction_values), np.sum(interaction_values.values))
+
+
+def test_sparsify():
+    """Tests the sparsify function of the InteractionValues dataclass."""
+
+    # parameters
+    values = np.array([1, 1e-1, 1e-3, 1e-4, 1, 1e-4, 1])
+    n_players = 7
+    interaction_lookup = {(i,): i for i in range(len(values))}
+    original_length = len(values)
+
+    # create InteractionValues object
+    interaction_values = InteractionValues(
+        values=values,
+        index="SV",
+        n_players=n_players,
+        min_order=1,
+        max_order=1,
+        interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
+    )
+
+    # test before sparsify
+    assert len(interaction_values.values) == original_length
+    assert np.all(interaction_values.values == values)
+    assert interaction_values[(3,)] == values[3]  # will be removed
+    assert interaction_values[(4,)] == values[4]
+    assert interaction_values[(5,)] == values[5]  # will be removed
+    assert interaction_values[(6,)] == values[6]
+    assert (3,) in interaction_values.interaction_lookup
+    assert (5,) in interaction_values.interaction_lookup
+
+    # sparsify
+    threshold = 1e-3
+    interaction_values.sparsify(threshold=threshold)
+
+    # test after sparsify
+    assert len(interaction_values.values) == original_length - 2  # two are removed
+    assert interaction_values[(3,)] != values[3]  # removed
+    assert interaction_values[(5,)] != values[5]  # removed
+    assert interaction_values[(3,)] == 0  # removed
+    assert interaction_values[(5,)] == 0  # removed
+    assert interaction_values[(4,)] == values[4]  # not removed
+    assert interaction_values[(6,)] == values[6]  # not removed
+    assert (3,) not in interaction_values.interaction_lookup  # removed
+    assert (5,) not in interaction_values.interaction_lookup  # removed
+
+    # sparsify again
+    threshold = 0.9
+    interaction_values.sparsify(threshold=threshold)
+
+    # test after sparsify
+    assert len(interaction_values.values) == 3
+    assert interaction_values[(4,)] == values[4]  # not removed
+    assert interaction_values[(6,)] == values[6]  # not removed
+    assert interaction_values[(0,)] == values[0]  # not removed
