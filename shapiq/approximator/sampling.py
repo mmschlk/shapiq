@@ -103,23 +103,17 @@ class CoalitionSampler:
         # set random state
         self._rng: np.random.Generator = np.random.default_rng(seed=random_state)
 
-        self._coalitions_to_compute: Optional[
-            list
-        ] = None  # coalitions to compute, set in sample method
-        self._coalitions_to_sample: Optional[
-            list
-        ] = None  #  coalitions to sample, set in sample method
-
-        # set variables for sampling
-        self._coalitions_to_exclude = []
-
-        # exclude coalition sizes with zero weight
+        # set variables for sampling and exclude coalition sizes with zero weight
+        self._coalitions_to_exclude: list[int] = []
         for size, weight in enumerate(self._sampling_weights):
             if weight == 0:
                 self.n_max_coalitions -= int(binom(self.n, size))
                 self._coalitions_to_exclude.extend([size])
-
         self.adjusted_sampling_weights: Optional[np.ndarray[float]] = None
+
+        # set sample size variables (for border trick)
+        self._coalitions_to_compute: Optional[list[int]] = None  # coalitions to compute
+        self._coalitions_to_sample: Optional[list[int]] = None  # coalitions to sample
 
         # initialize variables to be computed and stored
         self.sampled_coalitions_dict: Optional[dict[tuple[int, ...], int]] = None  # coal -> count
