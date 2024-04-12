@@ -53,6 +53,7 @@ class CoalitionSampler:
             (n_coalitions,).
         coalitions_probability: The coalition probabilities according to the sampling procedure. The
              array is of shape (n_coalitions,).
+        n_coalitions: The number of coalitions that have been sampled.
     """
 
     def __init__(
@@ -88,6 +89,7 @@ class CoalitionSampler:
                 "(including empty subsets)"
             )
         self.n: int = n_players
+        self.n_max_coalitions = int(2**self.n)
 
         # set random state
         self._rng: np.random.Generator = np.random.default_rng(seed=random_state)
@@ -97,19 +99,15 @@ class CoalitionSampler:
         self._coalitions_to_compute = []
         self._coalitions_to_sample = list(range(self.n + 1))
 
-        # Set maximum of possible coalitions by excluding zero-weighted coalition sizes.
-        # Coalition sizes with zero weights should be removed and excluded from total number of
-        # coalitions.
-        self.n_max_coalitions = int(2**self.n)
-        # Handle zero-weighted coalition sizes, move to coalition_to_exclude
+        # exclude coalition sizes with zero weight
         for size, weight in enumerate(self._sampling_weights):
             if weight == 0:
                 self.n_max_coalitions -= int(binom(self.n, size))
                 self._coalitions_to_exclude.extend(
                     [self._coalitions_to_sample.pop(self._coalitions_to_sample.index(size))]
                 )
-        self.adjusted_sampling_weights = self._sampling_weights[self._coalitions_to_sample]
-        self.adjusted_sampling_weights /= np.sum(self.adjusted_sampling_weights)  # probability
+
+        self.adjusted_sampling_weights: Optional[np.ndarray[float]] = None
 
         # initialize variables to be computed and stored
         self.sampled_coalitions_dict: Optional[dict[tuple[int, ...], int]] = None  # coal -> count
@@ -122,6 +120,15 @@ class CoalitionSampler:
         self._sampled_coalitions_prob: Optional[np.ndarray[float]] = None  # coalitions_probability
 
         self.sampled = False
+
+    @property
+    def n_coalitions(self) -> int:
+        """Returns the number of coalitions that have been sampled.
+
+        Returns:
+            The number of coalitions that have been sampled.
+        """
+        return int(self._sampled_coalitions_matrix.shape[0])
 
     @property
     def coalitions_matrix(self) -> np.ndarray:
@@ -234,6 +241,17 @@ class CoalitionSampler:
         self._sampled_coalitions_counter = np.zeros(sampling_budget, dtype=int)
         self._sampled_coalitions_matrix = np.zeros((sampling_budget, self.n), dtype=bool)
         self._sampled_coalitions_prob = np.zeros(sampling_budget, dtype=float)
+
+        self._coalitions_to_compute = []
+        self._coalitions_to_sample = [
+            coalition_size
+            for coalition_size in range(self.n + 1)
+            if coalition_size not in self._coalitions_to_exclude
+        ]
+        self.adjusted_sampling_weights = copy.deepcopy(
+            self._sampling_weights[self._coalitions_to_sample]
+        )
+        self.adjusted_sampling_weights /= np.sum(self.adjusted_sampling_weights)  # probability
 
     def sample(self, sampling_budget: int) -> None:
         """Samples distinct coalitions according to the specified budget.

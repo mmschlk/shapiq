@@ -28,6 +28,7 @@ def test_basic_functionality():
     assert sampler.coalitions_matrix.shape[0] == budget
     assert sampler.coalitions_counter.shape[0] == budget
     assert sampler.coalitions_probability.shape[0] == budget
+    assert sampler.n_coalitions == budget
     assert sampler.sampled is True
 
     # test with pairing
@@ -37,6 +38,8 @@ def test_basic_functionality():
     assert sampler.coalitions_matrix.shape[0] == budget
     assert sampler.coalitions_counter.shape[0] == budget
     assert sampler.coalitions_probability.shape[0] == budget
+    assert sampler.n_coalitions == budget
+    assert sampler.sampled is True
 
     # test for asymmetric sampling weights and pairing trick
     asymmetric_sampling_weights = np.ones(n + 1) / (n + 1)
@@ -53,6 +56,20 @@ def test_basic_functionality():
     # test for mismatch in player number and sampling weights
     with pytest.raises(ValueError):
         _ = CoalitionSampler(n, np.ones(n))
+
+    # test double sampling
+    n_first = 2**n - 2
+    n_second = 2**n - 3
+    sampler = CoalitionSampler(n, uniform_sampling_weights, pairing_trick=True)
+    sampler.sample(n_first)
+    assert sampler.n_coalitions == n_first
+    sampler.sample(n_second)
+    assert sampler.n_coalitions == n_second
+
+    # test for warning with sketchy budget (stalling)
+    with pytest.warns(UserWarning):
+        sampler = CoalitionSampler(n, uniform_sampling_weights)
+        sampler.sample(2**n - 1)
 
 
 def test_sampling():
