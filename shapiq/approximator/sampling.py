@@ -63,7 +63,6 @@ class CoalitionSampler:
         pairing_trick: bool = False,
         random_state: Optional[int] = None,
     ) -> None:
-
         self.pairing_trick: bool = pairing_trick
 
         # set sampling weights
@@ -96,16 +95,12 @@ class CoalitionSampler:
 
         # set variables for sampling
         self._coalitions_to_exclude = []
-        self._coalitions_to_compute = []
-        self._coalitions_to_sample = list(range(self.n + 1))
 
         # exclude coalition sizes with zero weight
         for size, weight in enumerate(self._sampling_weights):
             if weight == 0:
                 self.n_max_coalitions -= int(binom(self.n, size))
-                self._coalitions_to_exclude.extend(
-                    [self._coalitions_to_sample.pop(self._coalitions_to_sample.index(size))]
-                )
+                self._coalitions_to_exclude.extend([size])
 
         self.adjusted_sampling_weights: Optional[np.ndarray[float]] = None
 
