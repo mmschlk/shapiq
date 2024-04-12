@@ -75,9 +75,17 @@ class InteractionValues:
             self.index = "BV"
 
         # set SV if order is 1
-        # TODO: check if this is correct and all indices are covered: at the moment all indices
         # in the following set are covered + "k-" and "II" variants of them
-        indices_to_change_to_SV = {"SII", "SIII", "FSI", "FSII", "STI", "STII", "kADD-SHAP"}
+        indices_to_change_to_SV = {
+            "SII",
+            "FSI",
+            "FSII",
+            "STI",
+            "STII",
+            "kADD-SHAP",
+            "JointSV",
+            "SGV",
+        }
         if self.max_order == 1:
             index_test = self.index
             if index_test.startswith("k-"):  # remove aggregation k
