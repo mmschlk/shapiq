@@ -185,8 +185,9 @@ def test_add():
         interaction_lookup=interaction_lookup_second,
         baseline_value=0.0,
     )
-    with pytest.warns(UserWarning):
-        interaction_values_added = interaction_values_first + interaction_values_second
+
+    # test adding InteractionValues with different interactions
+    interaction_values_added = interaction_values_first + interaction_values_second
     assert interaction_values_added.n_players == n + 1  # is the maximum of the two
     assert interaction_values_added.min_order == min_order
     assert interaction_values_added.max_order == max_order + 1  # is the maximum of the two

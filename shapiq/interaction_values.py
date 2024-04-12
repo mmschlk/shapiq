@@ -2,7 +2,6 @@
 scores."""
 
 import copy
-import warnings
 from dataclasses import dataclass
 from typing import Optional, Union
 
@@ -249,12 +248,7 @@ class InteractionValues:
                 or self.n_players != other.n_players
                 or self.min_order != other.min_order
                 or self.max_order != other.max_order
-            ):  # different interactions
-                warnings.warn(
-                    "Adding InteractionValues with different interactions. Interactions will be "
-                    "merged and added together. The resulting InteractionValues will have the "
-                    "union of the interactions of the two original InteractionValues."
-                )
+            ):  # different interactions but addable
                 interaction_lookup = {**self.interaction_lookup}
                 position = len(self.interaction_lookup)
                 values_to_add = []
