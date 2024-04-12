@@ -93,6 +93,13 @@ class CoalitionSampler:
         # set random state
         self._rng: np.random.Generator = np.random.default_rng(seed=random_state)
 
+        self._coalitions_to_compute: Optional[
+            list
+        ] = None  # coalitions to compute, set in sample method
+        self._coalitions_to_sample: Optional[
+            list
+        ] = None  #  coalitions to sample, set in sample method
+
         # set variables for sampling
         self._coalitions_to_exclude = []
 
