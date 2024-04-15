@@ -4,7 +4,7 @@ from typing import Optional
 from warnings import warn
 
 import numpy as np
-from games.base import Game
+from ..base import Game
 
 
 class ImageClassifierGame(Game):

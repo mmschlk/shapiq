@@ -2,7 +2,7 @@
 the well established Shapley value and its generalization to interaction.
 """
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 
 # approximator classes
 from .approximator import (
@@ -12,7 +12,7 @@ from .approximator import (
     RegressionSII,
     ShapIQ,
 )
-from .datasets import load_bike
+from .datasets import load_bike, load_adult_census, load_california_housing
 from .exact import ExactComputer
 
 # explainer classes
