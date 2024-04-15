@@ -18,7 +18,7 @@ def test_soum_moebius_conversion():
         moebius_converter = MoebiusConverter(player_set, soum.moebius_coefficients)
 
         shapley_interactions = {}
-        for index in ["STIII", "k-SII", "FSIII"]:
+        for index in ["STII", "k-SII", "FSII"]:
             shapley_interactions[index] = moebius_converter.moebius_to_shapley_interaction(
                 index=index, order=order
             )

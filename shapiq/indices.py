@@ -33,11 +33,11 @@ ALL_AVAILABLE_CONCEPTS = {
         "name": "k-Shapley Interaction Index",
         "source": "https://proceedings.mlr.press/v206/bordt23a.html",
     },
-    "STIII": {
+    "STII": {
         "name": "Shapley-Taylor Interaction Index",
         "source": "https://proceedings.mlr.press/v119/sundararajan20a.html",
     },
-    "FSIII": {
+    "FSII": {
         "name": "Faithful Shapley Interaction Index",
         "source": "https://jmlr.org/papers/v24/22-0202.html",
     },

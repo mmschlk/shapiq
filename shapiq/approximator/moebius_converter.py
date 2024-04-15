@@ -103,14 +103,14 @@ class MoebiusConverter:
             moebius_size: The size of the Möbius coefficient
             interaction_size: The size of the interaction
             order: The order of the explanation
-            index: The interaction index, e.g. SII, k-SII, FSIII...
+            index: The interaction index, e.g. SII, k-SII, FSII...
 
         Returns:
             A distribution weight for the given combination
         """
         if index == "SII":
             return 1 / (moebius_size - interaction_size + 1)
-        if index == "STIII":
+        if index == "STII":
             if moebius_size <= order:
                 if moebius_size == interaction_size:
                     return 1
@@ -121,7 +121,7 @@ class MoebiusConverter:
                     return 1 / binom(moebius_size, moebius_size - interaction_size)
                 else:
                     return 0
-        if index == "FSIII":
+        if index == "FSII":
             if moebius_size <= order:
                 if moebius_size == interaction_size:
                     return 1
@@ -210,17 +210,17 @@ class MoebiusConverter:
         return base_interactions
 
     def stii_routine(self, order: int):
-        """Computes STIII. Routine to distribute the Moebius coefficients onto all interactions for STIII.
+        """Computes STII. Routine to distribute the Moebius coefficients onto all interactions for STII.
         The lower-order interactions are equal to their Moebius coefficients, whereas the top-order interactions contain the distributed higher-order interactions.
 
         Args:
             order: The order of the explanation
 
         Returns:
-            An InteractionValues object containing the STIII interactions
+            An InteractionValues object containing the STII interactions
         """
         stii_dict = {}
-        index = "STIII"
+        index = "STII"
 
         # Pre-compute weights
         distribution_weights = np.zeros((self.n + 1, order + 1))
@@ -241,7 +241,7 @@ class MoebiusConverter:
         ):
             moebius_size = len(moebius_set)
             if moebius_size < order:
-                # For STIII, interaction below size order are the Möbius coefficients
+                # For STII, interaction below size order are the Möbius coefficients
                 val_distributed = distribution_weights[moebius_size, moebius_size]
                 if moebius_set in stii_dict:
                     stii_dict[moebius_set] += moebius_val * val_distributed
@@ -275,17 +275,17 @@ class MoebiusConverter:
         return stii
 
     def fsii_routine(self, order: int):
-        """Computes STIII. Routine to distribute the Moebius coefficients onto all interactions for FSIII.
-        The higher-order interactions (size > order) are distributed onto all FSIII interactions (size <= order).
+        """Computes STII. Routine to distribute the Moebius coefficients onto all interactions for FSII.
+        The higher-order interactions (size > order) are distributed onto all FSII interactions (size <= order).
 
         Args:
             order: The order of the explanation
 
         Returns:
-            An InteractionValues object containing the FSIII interactions
+            An InteractionValues object containing the FSII interactions
         """
         fsii_dict = {}
-        index = "FSIII"
+        index = "FSII"
 
         fsii_dict[tuple()] = self.moebius_coefficients[tuple()]
 
@@ -335,16 +335,16 @@ class MoebiusConverter:
         """Converts the Möbius coefficients to Shapley Interactions up to order k
 
         Args:
-            index: The Shapley Interaction index, e.g. k-SII, STIII, FSIII
+            index: The Shapley Interaction index, e.g. k-SII, STII, FSII
             order: The order of the explanation
 
         Returns:
             An InteractionValues object containing the Shapley interactions
         """
 
-        if index == "STIII":
+        if index == "STII":
             shapley_interactions = self.stii_routine(order)
-        elif index == "FSIII":
+        elif index == "FSII":
             shapley_interactions = self.fsii_routine(order)
         elif index == "k-SII":
             # The distribution formula for k-SII is not correct. We therefore compute SII and
@@ -354,8 +354,6 @@ class MoebiusConverter:
                 base_interactions=base_interactions, order=order
             )
         else:
-            raise ValueError(
-                f"Index {index} not supported. Please choose from STIII, FSIII, k-SII."
-            )
+            raise ValueError(f"Index {index} not supported. Please choose from STII, FSII, k-SII.")
 
         return shapley_interactions
