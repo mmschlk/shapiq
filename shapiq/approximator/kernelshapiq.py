@@ -1,5 +1,6 @@
 """This module contains the KernelSHAPIQ approximator to compute SII and k-SII of arbitrary order."""
 
+import copy
 from typing import Callable, Optional
 
 import numpy as np
@@ -10,7 +11,7 @@ from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-AVAILABLE_INDICES_KERNELSHAPIQ = ["SII", "k-SII"]
+AVAILABLE_INDICES_KERNELSHAPIQ = ["SII"]
 
 
 class KernelSHAPIQ(Approximator):
@@ -40,9 +41,9 @@ class KernelSHAPIQ(Approximator):
         weight_vector = np.zeros(shape=self.n + 1)
         for coalition_size in range(0, self.n + 1):
             if (coalition_size < interaction_size) or (coalition_size > self.n - interaction_size):
-                weight_vector[coalition_size] = self._big_M * binom(self.n, coalition_size)
+                weight_vector[coalition_size] = self._big_M  # * binom(self.n, coalition_size)
             else:
-                weight_vector[coalition_size] = binom(self.n, coalition_size) / (
+                weight_vector[coalition_size] = 1 / (
                     (self.n - interaction_size + 1)
                     * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
                 )
@@ -94,38 +95,53 @@ class KernelSHAPIQ(Approximator):
         sampler.sample(budget)
 
         coalitions_matrix = sampler.coalitions_matrix
-        coalitions_counter = sampler.coalitions_counter
-        coalitions_prob = sampler.coalitions_probability
         coalitions_size = np.sum(coalitions_matrix, 1)
+        sampling_adjustment_weights = sampler.sampling_adjustment_weights
+        n_coalitions = sampler.n_coalitions
 
         game_values = game(coalitions_matrix)
         emptycoalition_value = game_values[0]
         game_values -= emptycoalition_value
 
         sii_values = np.array([])
+        residual_game_values = {}
+        residual_game_values[1] = copy.copy(game_values)
 
         for interaction_size in range(1, self.max_order + 1):
-            bernoulli_weights = self._get_bernoulli_weights(interaction_size)
-            regression_matrix = np.zeros(
-                (sampler.n_coalitions, int(binom(self.n, interaction_size)))
+            regression_coefficient_weight = self._get_regression_coefficient_weights(
+                interaction_size=interaction_size, index=self.index
             )
+            regression_matrix = np.zeros((n_coalitions, int(binom(self.n, interaction_size))))
             for coalition_pos, coalition in enumerate(coalitions_matrix):
                 for interaction_pos, interaction in enumerate(
                     powerset(self.N, min_size=interaction_size, max_size=interaction_size)
                 ):
                     intersection_size = np.sum(coalition[list(interaction)])
-                    regression_matrix[coalition_pos, interaction_pos] = bernoulli_weights[
-                        intersection_size
-                    ]
-            regression_weights = kernel_weights_dict[interaction_size][coalitions_size] / (
-                coalitions_prob * coalitions_counter
-            )
-            regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
-            regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
-            regression_rhs = np.dot(regression_weights_sqrt_matrix, game_values)
+                    regression_matrix[
+                        coalition_pos, interaction_pos
+                    ] = regression_coefficient_weight[intersection_size]
 
-            wlsq_solution = np.linalg.lstsq(regression_lhs, regression_rhs, rcond=None)[0]  # \phi_i
-            sii_values = np.hstack((sii_values, wlsq_solution))
+            # Regression weights adjusted by sampling weights
+            regression_weights = (
+                kernel_weights_dict[interaction_size][coalitions_size] * sampling_adjustment_weights
+            )
+
+            if interaction_size <= 2:
+                regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
+                regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
+                regression_rhs = np.dot(
+                    regression_weights_sqrt_matrix, residual_game_values[interaction_size]
+                )
+                wlsq_solution = np.linalg.lstsq(regression_lhs, regression_rhs, rcond=None)[
+                    0
+                ]  # \phi_i
+                approximations = np.dot(regression_matrix, wlsq_solution)
+                sii_values = np.hstack((sii_values, wlsq_solution))
+
+
+            residual_game_values[interaction_size + 1] = (
+                residual_game_values[interaction_size] - approximations
+            )
 
         sii = InteractionValues(
             baseline_value=emptycoalition_value,
@@ -139,14 +155,40 @@ class KernelSHAPIQ(Approximator):
 
         return sii
 
+    def _get_regression_coefficient_weights(self, interaction_size: int, index: str) -> float:
+        """Returns the weights for the regression coefficients based on the interaction index.
+
+        Args:
+            index: The interaction index
+
+        Returns:
+            An array with weights based on the interaction index
+        """
+        if index == "SII":
+            weights = self._get_bernoulli_weights(interaction_size)
+        if index == "k-SII":
+            weights = self._get_aggregation_weights(interaction_size)
+
+        return weights
+
+    def _get_aggregation_weights(self, interaction_size: int) -> np.ndarray:
+        """Pre-computes and array of weights for k-SII. Returns 1 if interaction is fully contained, 0 otherwise.
+
+        Returns:
+            An array of regression coefficient weights for k-SII
+        """
+        weights = np.zeros(interaction_size + 1)
+        weights[-1] = 1
+        return weights
+
     def _get_bernoulli_weights(self, interaction_size: int) -> np.ndarray:
-        """Pre-computes and array of Bernoulli weights for the current interaction size..
+        """Pre-computes and array of Bernoulli weights for the current interaction size.
 
         Args:
             interaction_size: The size of the interaction
 
         Returns:
-            An array of the Bernoulli weights for the current interaction size.
+            An array of the (regression coefficient) Bernoulli weights for the current interaction size.
         """
         bernoulli_weights = np.zeros(interaction_size + 1)
         for intersection_size in range(interaction_size + 1):
