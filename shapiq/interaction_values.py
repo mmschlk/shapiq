@@ -331,3 +331,33 @@ class InteractionValues:
     def __rmul__(self, other: Union[int, float]) -> "InteractionValues":
         """Multiplies an InteractionValues object by a scalar."""
         return self.__mul__(other)
+
+    def get_n_order_values(self, order: int) -> "np.ndarray":
+        """Returns the interaction values of a specific order as a numpy array.
+
+        Note:
+            Depending on the order and number of players the resulting array might be sparse and
+            very large.
+
+        Args:
+            order: The order of the interactions to return.
+
+        Returns:
+            The interaction values of the specified order as a numpy array of shape `(n_players,)`
+            for order 1 and `(n_players, n_players)` for order 2, etc.
+
+        Raises:
+            ValueError: If the order is less than 1.
+        """
+        from itertools import permutations
+
+        if order < 1:
+            raise ValueError("Order must be greater or equal to 1.")
+        values_shape = tuple([self.n_players] * order)
+        values = np.zeros(values_shape, dtype=float)
+        for interaction in powerset(range(self.n_players), min_size=1, max_size=order):
+            # get all orderings of the interaction (e.g. (0, 1) and (1, 0) for interaction (0, 1))
+            for perm in permutations(interaction):
+                values[perm] = self[interaction]
+
+        return values
