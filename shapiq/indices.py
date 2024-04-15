@@ -2,10 +2,6 @@
 in the `shapiq` package."""
 
 ALL_AVAILABLE_CONCEPTS = {
-    "Moebius": {
-        "name": "Moebius Transformation",
-        "source": "",  # TODO: Add source
-    },
     # Base Interactions
     "SII": {
         "name": "Shapley Interaction Index",
@@ -56,12 +52,18 @@ ALL_AVAILABLE_CONCEPTS = {
     },
     "BV": {
         "name": "Banzhaf Value",
-        "source": "",  # TODO: Add source
+        "source": "Banzhaf III, J. F. (1965). Weighted Voting Doesn’t Work: A Mathematical "
+        "Analysis. Rutgers Law Review, 19, 317-343.",  # no doi
     },
     # Shapley Generalized Values
     "JointSV": {
-        "name": "JointSV",
+        "name": "",  # TODO Add name
         "source": "https://openreview.net/forum?id=vcUmUvQCloe",
+    },
+    # Moebius Transformation
+    "Moebius": {
+        "name": "Moebius Transformation",
+        "source": "",  # TODO: Add source
     },
 }
 

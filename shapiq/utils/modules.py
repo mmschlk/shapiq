@@ -1,7 +1,5 @@
-import importlib
 import sys
-from types import ModuleType
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 
 def safe_isinstance(obj: Any, class_path_str: Union[str, list[str], tuple[str]]) -> bool:
@@ -57,23 +55,3 @@ def safe_isinstance(obj: Any, class_path_str: Union[str, list[str], tuple[str]])
             return True
 
     return False
-
-
-def try_import(name: str, package: Optional[str] = None) -> Optional[ModuleType]:
-    """
-    Try to import a module and return None if it fails.
-
-    Note:
-        Solution adapted from [stack overflow](https://stackoverflow.com/a/53241197).
-
-    Args:
-        name: The name of the module to import.
-        package: The package to import the module from.
-
-    Returns:
-        The imported module or None if the import fails.
-    """
-    try:
-        return importlib.import_module(name, package=package)
-    except ImportError:
-        return None

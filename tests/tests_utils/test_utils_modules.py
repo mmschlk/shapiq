@@ -3,7 +3,7 @@
 import pytest
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.utils import safe_isinstance, try_import
+from shapiq.utils import safe_isinstance
 
 
 def test_safe_isinstance():
@@ -21,14 +21,3 @@ def test_safe_isinstance():
         safe_isinstance(model, None)
     assert not safe_isinstance(model, "my.made.up.module")
     assert not safe_isinstance(model, ["sklearn.ensemble.DecisionTreeRegressor"])
-
-
-def test_try_import():
-    """Tests the try_import function."""
-
-    # Test with a package that exists
-    try_import("DecisionTreeClassifier", package="sklearn.tree")
-    # check if the module is imported in the current environment namespace
-
-    # Test with a package that does not exist
-    try_import("DecisionTreeClassifier", package="my.made.up.module")

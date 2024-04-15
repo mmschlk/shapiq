@@ -5,7 +5,7 @@ import pytest
 
 from shapiq.games.soum import SOUM
 from shapiq.approximator.moebius_converter import MoebiusConverter
-from shapiq.exact_computer import ExactComputer
+from shapiq.exact import ExactComputer
 
 
 def test_exact_computer_on_soum():
