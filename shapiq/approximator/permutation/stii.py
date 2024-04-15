@@ -1,4 +1,4 @@
-"""This module contains the permutation sampling algorithms to estimate STI scores."""
+"""This module contains the permutation sampling algorithms to estimate STII scores."""
 
 import warnings
 from typing import Callable, Optional
@@ -11,8 +11,8 @@ from shapiq.interaction_values import InteractionValues
 from shapiq.utils import get_explicit_subsets, powerset
 
 
-class PermutationSamplingSTI(Approximator):
-    """Permutation Sampling approximator for the Shapley Taylor Index (STI).
+class PermutationSamplingSTII(Approximator):
+    """Permutation Sampling approximator for the Shapley Taylor Index (STII).
 
     Args:
         n: The number of players.
@@ -27,12 +27,12 @@ class PermutationSamplingSTI(Approximator):
 
     Example:
         >>> from games import DummyGame
-        >>> from approximator import PermutationSamplingSTI
+        >>> from approximator import PermutationSamplingSTII
         >>> game = DummyGame(n=5, interaction=(1, 2))
-        >>> approximator = PermutationSamplingSTI(n=5, max_order=2)
+        >>> approximator = PermutationSamplingSTII(n=5, max_order=2)
         >>> approximator.approximate(budget=200, game=game)
         InteractionValues(
-            index=STI, order=2, estimated=True, estimation_budget=165,
+            index=STII, order=2, estimated=True, estimation_budget=165,
             values={
                 (0,): 0.2,
                 (1,): 0.2,
@@ -54,7 +54,7 @@ class PermutationSamplingSTI(Approximator):
     """
 
     def __init__(self, n: int, max_order: int, random_state: Optional[int] = None) -> None:
-        super().__init__(n, max_order, index="STI", top_order=False, random_state=random_state)
+        super().__init__(n, max_order, index="STII", top_order=False, random_state=random_state)
         self.iteration_cost: int = self._compute_iteration_cost()
 
     def approximate(
@@ -87,7 +87,7 @@ class PermutationSamplingSTI(Approximator):
         else:
             warnings.warn(
                 message=f"The budget {budget} is too small to compute the lower order interactions "
-                f"of the STI index, which requires {lower_order_cost} evaluations. Consider "
+                f"of the STII index, which requires {lower_order_cost} evaluations. Consider "
                 f"increasing the budget.",
                 category=UserWarning,
             )
@@ -159,7 +159,7 @@ class PermutationSamplingSTI(Approximator):
 
     def _compute_iteration_cost(self) -> int:
         """Computes the cost of performing a single iteration of the permutation sampling given
-        the order, the number of players, and the STI index.
+        the order, the number of players, and the STII index.
 
         Returns:
             int: The cost of a single iteration.
@@ -170,7 +170,7 @@ class PermutationSamplingSTI(Approximator):
     def _compute_lower_order_sti(
         self, game: Callable[[np.ndarray], np.ndarray], result: np.ndarray[float]
     ) -> np.ndarray[float]:
-        """Computes all lower order interactions for the STI index up to order max_order - 1.
+        """Computes all lower order interactions for the STII index up to order max_order - 1.
 
         Args:
             game: The game function as a callable that takes a set of players and returns the value.

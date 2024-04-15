@@ -37,7 +37,7 @@ class TreeSHAPIQ:
             interaction values up to that order. Defaults to 2.
         min_order: The minimum interaction order to be computed. Defaults to 1.
         interaction_type: The type of interaction to be computed. The interaction type can be
-            "k-SII" (default), "SII", "STI", "FSI", or "BZF". All indices apart from "BZF" will
+            "k-SII" (default), "SII", "STII", "FSII", or "BZF". All indices apart from "BZF" will
             reduce to the "SV" (Shapley value) for order 1.
         verbose: Whether to print information about the tree during initialization. Defaults to
             False.
@@ -575,11 +575,11 @@ class TreeSHAPIQ:
 
     def _get_subset_weight_cii(self, t, order) -> Optional[float]:
         # TODO: add docstring
-        if self._interaction_type == "STI":
+        if self._interaction_type == "STII":
             return self._max_order / (
                 self._n_features_in_tree * sp.special.binom(self._n_features_in_tree - 1, t)
             )
-        if self._interaction_type == "FSI":
+        if self._interaction_type == "FSII":
             return (
                 factorial(2 * self._max_order - 1)
                 / factorial(self._max_order - 1) ** 2

@@ -1,1 +1,1 @@
-AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "SV"}
+AVAILABLE_INDICES = {"k-SII", "SII", "STII", "FSII", "SV"}

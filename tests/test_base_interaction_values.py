@@ -12,9 +12,8 @@ from shapiq.utils import powerset
 @pytest.mark.parametrize(
     "index, n, min_order, max_order, estimation_budget, estimated",
     [
-        ("SII", 5, 1, 2, 100, True),
-        ("STI", 5, 1, 2, 100, True),
-        ("FSI", 5, 1, 2, 100, True),
+        ("STII", 5, 1, 2, 100, True),
+        ("FSII", 5, 1, 2, 100, True),
         ("k-SII", 5, 1, 2, 100, True),
         ("SII", 5, 1, 2, 100, False),
         ("something", 5, 1, 2, 100, False),  # expected to fail with ValueError
@@ -159,7 +158,7 @@ def test_add():
     # test adding InteractionValues with different indices
     interaction_values_second = InteractionValues(
         values=values,
-        index="STI",
+        index="STII",
         n_players=n,
         min_order=min_order,
         max_order=max_order,
@@ -185,8 +184,9 @@ def test_add():
         interaction_lookup=interaction_lookup_second,
         baseline_value=0.0,
     )
-    with pytest.warns(UserWarning):
-        interaction_values_added = interaction_values_first + interaction_values_second
+
+    # test adding InteractionValues with different interactions
+    interaction_values_added = interaction_values_first + interaction_values_second
     assert interaction_values_added.n_players == n + 1  # is the maximum of the two
     assert interaction_values_added.min_order == min_order
     assert interaction_values_added.max_order == max_order + 1  # is the maximum of the two
@@ -286,6 +286,48 @@ def test_sum():
     )
 
     assert np.isclose(sum(interaction_values), np.sum(interaction_values.values))
+
+
+def test_n_order_transform():
+    """Tests the n_order_transform method of the InteractionValues dataclass."""
+    index = "SII"
+    n = 5
+    min_order = 1
+    max_order = 3
+    interaction_lookup = {
+        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    }
+    values = np.random.rand(len(interaction_lookup))
+    interaction_values = InteractionValues(
+        values=values,
+        index=index,
+        n_players=n,
+        min_order=min_order,
+        max_order=max_order,
+        interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
+    )
+
+    # test n_order_transform order 1
+    interaction_values_transformed = interaction_values.get_n_order_values(1)
+    assert interaction_values_transformed.shape == (n,)
+    assert interaction_values_transformed[3] == interaction_values[(3,)]
+
+    # test n_order_transform order 2
+    interaction_values_transformed = interaction_values.get_n_order_values(2)
+    assert interaction_values_transformed.shape == (n, n)
+    assert interaction_values_transformed[3, 4] == interaction_values[(3, 4)]
+
+    # test n_order_transform order 3
+    interaction_values_transformed = interaction_values.get_n_order_values(3)
+    assert interaction_values_transformed.shape == (n, n, n)
+    assert interaction_values_transformed[0, 3, 4] == interaction_values[(0, 3, 4)]
+    assert interaction_values_transformed[4, 3, 0] == interaction_values[(0, 3, 4)]
+    assert interaction_values_transformed[0, 4, 3] == interaction_values[(0, 3, 4)]
+    assert interaction_values_transformed[4, 0, 3] == interaction_values[(0, 3, 4)]
+
+    with pytest.raises(ValueError):
+        _ = interaction_values.get_n_order_values(0)
 
 
 def test_sparsify():

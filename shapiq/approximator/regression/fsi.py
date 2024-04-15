@@ -1,4 +1,4 @@
-"""Regression with Faithful Shapley Interaction (FSI) index approximation."""
+"""Regression with Faithful Shapley Interaction (FSII) index approximation."""
 
 from typing import Optional
 
@@ -6,8 +6,8 @@ from ..k_sii import KShapleyMixin
 from ._base import Regression
 
 
-class RegressionFSI(Regression, KShapleyMixin):
-    """Estimates the FSI values [1] using the weighted least square approach.
+class RegressionFSII(Regression, KShapleyMixin):
+    """Estimates the FSII values [1] using the weighted least square approach.
 
     Args:
         n: The number of players.
@@ -18,8 +18,8 @@ class RegressionFSI(Regression, KShapleyMixin):
         n: The number of players.
         N: The set of players (starting from 0 to n - 1).
         max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For FSI, min_order is equal to 1.
-        iteration_cost: The cost of a single iteration of the regression FSI.
+        min_order: The minimum order of the approximation. For FSII, min_order is equal to 1.
+        iteration_cost: The cost of a single iteration of the regression FSII.
 
     References:
         [1]:  Tsai, C.-P., Yeh, C.-K., & Ravikumar, P. (2023). Faith-Shap: The Faithful Shapley
@@ -28,12 +28,12 @@ class RegressionFSI(Regression, KShapleyMixin):
 
     Example:
         >>> from games import DummyGame
-        >>> from approximator import RegressionFSI
+        >>> from approximator import RegressionFSII
         >>> game = DummyGame(n=5, interaction=(1, 2))
-        >>> approximator = RegressionFSI(n=5, max_order=2)
+        >>> approximator = RegressionFSII(n=5, max_order=2)
         >>> approximator.approximate(budget=100, game=game)
         InteractionValues(
-            index=FSI, order=2, estimated=False, estimation_budget=32,
+            index=FSII, order=2, estimated=False, estimation_budget=32,
             values={
                 (0,): 0.2,
                 (1,): 0.7,
@@ -55,4 +55,4 @@ class RegressionFSI(Regression, KShapleyMixin):
     """
 
     def __init__(self, n: int, max_order: int, random_state: Optional[int] = None):
-        super().__init__(n, max_order, index="FSI", random_state=random_state)
+        super().__init__(n, max_order, index="FSII", random_state=random_state)
