@@ -138,7 +138,6 @@ class KernelSHAPIQ(Approximator):
                 approximations = np.dot(regression_matrix, wlsq_solution)
                 sii_values = np.hstack((sii_values, wlsq_solution))
 
-
             residual_game_values[interaction_size + 1] = (
                 residual_game_values[interaction_size] - approximations
             )
