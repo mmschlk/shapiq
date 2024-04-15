@@ -21,8 +21,8 @@ Approximators
 
     shapiq.approximator.ShapIQ
     shapiq.approximator.PermutationSamplingSII
-    shapiq.approximator.PermutationSamplingSTI
-    shapiq.approximator.RegressionFSI
+    shapiq.approximator.PermutationSamplingSTII
+    shapiq.approximator.RegressionFSII
 
 Plotting
 --------

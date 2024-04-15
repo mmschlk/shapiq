@@ -1,7 +1,7 @@
 """This module contains utility functions for the shapiq package."""
 
 from .datasets import shuffle_data
-from .modules import safe_isinstance, try_import
+from .modules import safe_isinstance
 from .sets import (
     generate_interaction_lookup,
     get_explicit_subsets,
@@ -26,7 +26,6 @@ __all__ = [
     "transform_array_to_coalitions",
     # modules
     "safe_isinstance",
-    "try_import",
     # datasets
     "shuffle_data",
 ]

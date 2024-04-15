@@ -1,11 +1,11 @@
-"""This test module contains all tests regarding the STI permutation sampling approximator."""
+"""This test module contains all tests regarding the STII permutation sampling approximator."""
 
 from copy import copy, deepcopy
 
 import numpy as np
 import pytest
 
-from shapiq.approximator.permutation import PermutationSamplingSTI
+from shapiq.approximator.permutation import PermutationSamplingSTII
 from shapiq.games import DummyGame
 from shapiq.interaction_values import InteractionValues
 
@@ -22,14 +22,14 @@ from shapiq.interaction_values import InteractionValues
     ],
 )
 def test_initialization(n, max_order, iteration_cost):
-    """Tests the initialization of the PermutationSamplingSTI approximator."""
-    approximator = PermutationSamplingSTI(n, max_order)
+    """Tests the initialization of the PermutationSamplingSTII approximator."""
+    approximator = PermutationSamplingSTII(n, max_order)
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order is False
     assert approximator.min_order == 1
     assert approximator.iteration_cost == iteration_cost
-    assert approximator.index == "STI"
+    assert approximator.index == "STII"
 
     approximator_copy = copy(approximator)
     approximator_deepcopy = deepcopy(approximator)
@@ -52,10 +52,10 @@ def test_initialization(n, max_order, iteration_cost):
     ],
 )
 def test_approximate(n, max_order, budget, batch_size):
-    """Tests the approximation of the PermutationSamplingSTI approximator."""
+    """Tests the approximation of the PermutationSamplingSTII approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = PermutationSamplingSTI(n, max_order, random_state=42)
+    approximator = PermutationSamplingSTII(n, max_order, random_state=42)
     sti_estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(sti_estimates, InteractionValues)
     assert sti_estimates.max_order == max_order
@@ -81,7 +81,7 @@ def test_small_budget_warning():
     n, max_order = 10, 3
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = PermutationSamplingSTI(n, max_order, random_state=42)
+    approximator = PermutationSamplingSTII(n, max_order, random_state=42)
     # lower_order_cost is 55
     with pytest.warns(UserWarning):
         _ = approximator.approximate(1, game)  # not even lower_order_cost
