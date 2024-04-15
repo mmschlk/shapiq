@@ -19,7 +19,7 @@ from shapiq.interaction_values import InteractionValues
     ],
 )
 def test_initialization(n):
-    """Tests the initialization of the RegressionFSI approximator."""
+    """Tests the initialization of the RegressionFSII approximator."""
     approximator = KernelSHAP(n)
     assert approximator.n == n
     assert approximator.max_order == 1

@@ -9,7 +9,7 @@ from shapiq.games import DummyGame
 
 
 def test_basic_functionality():
-    """Tests the initialization of the RegressionFSI approximator."""
+    """Tests the initialization of the RegressionFSII approximator."""
     n_players = 7
 
     approximator = UnbiasedKernelSHAP(n_players)

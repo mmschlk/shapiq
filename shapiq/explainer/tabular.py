@@ -8,8 +8,8 @@ import numpy as np
 
 from shapiq.approximator import (
     PermutationSamplingSII,
-    PermutationSamplingSTI,
-    RegressionFSI,
+    PermutationSamplingSTII,
+    RegressionFSII,
     RegressionSII,
     ShapIQ,
 )
@@ -19,16 +19,16 @@ from shapiq.games.imputer import MarginalImputer
 from shapiq.interaction_values import InteractionValues
 
 APPROXIMATOR_CONFIGURATIONS = {
-    "Regression": {"SII": RegressionSII, "FSI": RegressionFSI, "k-SII": RegressionSII},
+    "Regression": {"SII": RegressionSII, "FSII": RegressionFSII, "k-SII": RegressionSII},
     "Permutation": {
         "SII": PermutationSamplingSII,
-        "STI": PermutationSamplingSTI,
+        "STII": PermutationSamplingSTII,
         "kSII": PermutationSamplingSII,
     },
-    "ShapIQ": {"SII": ShapIQ, "STI": ShapIQ, "FSI": ShapIQ, "k-SII": ShapIQ},
+    "ShapIQ": {"SII": ShapIQ, "STII": ShapIQ, "FSII": ShapIQ, "k-SII": ShapIQ},
 }
 
-AVAILABLE_INDICES = {"SII", "k-SII", "STI", "FSI"}
+AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII"}
 
 
 class TabularExplainer(Explainer):
@@ -45,8 +45,8 @@ class TabularExplainer(Explainer):
             automatically choose the approximator based on the number of features and the number of
             samples in the background data.
         index: Type of Shapley interaction index to use. Must be one of `"SII"` (Shapley Interaction Index),
-            `"k-SII"` (k-Shapley Interaction Index), `"STI"` (Shapley-Taylor Interaction Index), or
-            `"FSI"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
+            `"k-SII"` (k-Shapley Interaction Index), `"STII"` (Shapley-Taylor Interaction Index), or
+            `"FSII"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
 
     Attributes:
         index: Type of Shapley interaction index to use.
@@ -62,7 +62,7 @@ class TabularExplainer(Explainer):
         index: str = "k-SII",
         max_order: int = 2,
         random_state: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
 
         if index not in AVAILABLE_INDICES:
@@ -81,7 +81,6 @@ class TabularExplainer(Explainer):
         self._approximator = self._init_approximator(approximator, self.index, self._max_order)
         self._rng = np.random.default_rng(self._random_state)
 
-
     def explain(self, x: np.ndarray, budget: Optional[int] = None) -> InteractionValues:
         """Explains the model's predictions.
 
@@ -94,8 +93,10 @@ class TabularExplainer(Explainer):
         if budget is None:
             budget = 2**self._n_features
             if budget > 2048:
-                warnings.warn(f'Using the budget of 2**n_features={budget}, which might take long\
-                              to compute. Set the `budget` parameter to suppress this warning.')
+                warnings.warn(
+                    f"Using the budget of 2**n_features={budget}, which might take long\
+                              to compute. Set the `budget` parameter to suppress this warning."
+                )
 
         # initialize the imputer with the explanation point
         imputer = self._imputer.fit(x)
@@ -106,12 +107,10 @@ class TabularExplainer(Explainer):
 
         return interaction_values
 
-
     @property
     def baseline_value(self) -> float:
         """Returns the baseline value of the explainer."""
         return self._imputer.empty_prediction
-
 
     def _init_approximator(
         self, approximator: Union[Approximator, str], index: str, max_order: int
@@ -119,8 +118,8 @@ class TabularExplainer(Explainer):
         if isinstance(approximator, Approximator):  # if the approximator is already given
             return approximator
         if approximator == "auto":
-            if index == "FSI":
-                return RegressionFSI(
+            if index == "FSII":
+                return RegressionFSII(
                     n=self._n_features,
                     max_order=max_order,
                     random_state=self._random_state,

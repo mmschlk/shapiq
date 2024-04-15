@@ -5,37 +5,13 @@ import copy
 from typing import Callable, Union
 
 import numpy as np
+from indices import ALL_AVAILABLE_CONCEPTS
 from scipy.special import bernoulli, binom
 
-from shapiq import powerset
 from shapiq.interaction_values import InteractionValues
+from shapiq.utils import powerset
 
 __all__ = ["ExactComputer", "get_bernoulli_weights"]
-
-
-ALL_AVAILABLE_CONCEPTS: dict[str, str] = {
-    "Moebius": "Moebius Transformation",
-    # Base Interactions
-    "SII": "Shapley Interaction Index",
-    "BII": "Banzhaf Interaction Index",
-    "CHII": "Chaining Interaction Index",
-    # Base Generalized Values
-    "SGV": "Shapley Generalized Value",
-    "BGV": "Banzhaf Generalized Value",
-    "CHGV": "Chaining Generalized Value",
-    # Shapley Interactions
-    "k-SII": "k-Shapley Interaction Index",
-    "STII": "Shapley-Taylor Interaction Index",
-    "FSII": "Faithful Shapley Interaction Index",
-    "kADD-SHAP": "k-additive Shapley Values",
-    # Probabilistic Values
-    "SV": "Shapley Value",
-    "BV": "Banzhaf Value",
-    # Shapley Generalized Values
-    "JointSV": "JointSV",
-}
-
-ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 
 
 class ExactComputer:
@@ -87,8 +63,8 @@ class ExactComputer:
             "Moebius": self.moebius_transform,
             # shapley_interaction
             "k-SII": self.shapley_interaction,
-            "STII": self.shapley_interaction,
-            "FSII": self.shapley_interaction,
+            "STIII": self.shapley_interaction,
+            "FSIII": self.shapley_interaction,
             "kADD-SHAP": self.shapley_interaction,
             # base_generalized_value
             "SGV": self.base_generalized_value,
@@ -105,7 +81,7 @@ class ExactComputer:
             "JointSV": self.shapley_generalized_value,
         }
         self.available_indices: set[str] = set(self._index_mapping.keys())
-        self.available_concepts: dict[str, str] = ALL_AVAILABLE_CONCEPTS
+        self.available_concepts: dict[str, dict] = ALL_AVAILABLE_CONCEPTS
 
     def __repr__(self) -> str:
         return f"ExactComputer(n_players={self.n}, game_fun={self.game_fun})"
@@ -227,7 +203,7 @@ class ExactComputer:
             raise ValueError(f"Index {index} not supported")
 
     def _stii_weight(self, coalition_size: int, interaction_size: int, order: int) -> float:
-        """Sets the weight for the representation of STII as a CII (using discrete derivatives).
+        """Sets the weight for the representation of STIII as a CII (using discrete derivatives).
 
         Args:
             coalition_size: Size of the Discrete Derivative
@@ -235,7 +211,7 @@ class ExactComputer:
             order: Interaction order
 
         Returns:
-            The weight of STII
+            The weight of STIII
         """
 
         if interaction_size == order:
@@ -247,7 +223,7 @@ class ExactComputer:
                 return 0.0
 
     def _get_fsii_weights(self) -> np.ndarray:
-        """Pre-computes the kernel weight for the least square representation of FSII
+        """Pre-computes the kernel weight for the least square representation of FSIII
 
         Returns:
             An array of the kernel weights for 0,...,n with "infinite weight" on 0 and n.
@@ -262,7 +238,7 @@ class ExactComputer:
         return fsii_weights
 
     def _get_stii_weights(self, order: int) -> np.ndarray:
-        """Pre-computes the STII weights for the CII representation (using discrete derivatives)
+        """Pre-computes the STIII weights for the CII representation (using discrete derivatives)
 
         Args:
             order: The interaction order
@@ -493,13 +469,13 @@ class ExactComputer:
         return copy.deepcopy(transformed_interactions)
 
     def compute_stii(self, order: int) -> InteractionValues:
-        """Computes the STII index up to order "order".
+        """Computes the STIII index up to order "order".
 
         Args:
             order: The highest order of interactions
 
         Returns:
-            InteractionValues object containing STII
+            InteractionValues object containing STIII
         """
 
         stii_values = np.zeros(self._n_interactions[order])
@@ -518,10 +494,10 @@ class ExactComputer:
                 interaction, tuple()
             )
 
-        # pre-compute STII weights
+        # pre-compute STIII weights
         stii_weights = self._get_stii_weights(order)
 
-        # top-order STII interactions
+        # top-order STIII interactions
         for interaction in powerset(self._grand_coalition_set, min_size=order, max_size=order):
             interaction_pos = interaction_lookup[interaction]
             for coalition_pos, coalition in enumerate(powerset(self._grand_coalition_set)):
@@ -536,7 +512,7 @@ class ExactComputer:
         # transform into InteractionValues object
         stii = InteractionValues(
             values=stii_values,
-            index="STII",
+            index="STIII",
             max_order=order,
             min_order=0,
             n_players=self.n,
@@ -546,14 +522,14 @@ class ExactComputer:
         return copy.deepcopy(stii)
 
     def compute_fsii(self, order: int) -> InteractionValues:
-        """Computes the FSII index up to order "order" after
+        """Computes the FSIII index up to order "order" after
             [Tsai et al. 2023](https://jmlr.org/papers/v24/22-0202.html).
 
         Args:
             order: The highest order of interactions
 
         Returns:
-            InteractionValues object containing STII
+            InteractionValues object containing FSIII
         """
         fsii_weights = self._get_fsii_weights()
         least_squares_weights = np.zeros(2**self.n, dtype=float)
@@ -586,7 +562,7 @@ class ExactComputer:
         fsii_values[0] = self.baseline_value  # set baseline value
         fsii = InteractionValues(
             values=fsii_values,
-            index="FSII",
+            index="FSIII",
             max_order=order,
             min_order=0,
             n_players=self.n,
@@ -620,7 +596,7 @@ class ExactComputer:
         return weights
 
     def compute_kadd_shap(self, order: int) -> InteractionValues:
-        """Computes the kADD-SHAP index up to order "order". This is similar to FSII except that the
+        """Computes the kADD-SHAP index up to order "order". This is similar to FSIII except that the
             coalition matrix contains the Bernoulli weights.
 
         The implementation is according to
@@ -647,7 +623,7 @@ class ExactComputer:
             for interaction in powerset(self._grand_coalition_set, min_size=1, max_size=order):
                 intersection_size = len(set(coalition).intersection(interaction))
                 interaction_size = len(interaction)
-                # This is different from FSII
+                # This is different from FSIII
                 coalition_matrix[coalition_pos, interaction_lookup[interaction]] = (
                     bernoulli_weights[interaction_size, intersection_size]
                 )
@@ -753,8 +729,8 @@ class ExactComputer:
         According to the underlying representation using discrete derivatives from
         https://doi.org/10.1016/j.geb.2005.03.002, the following indices are supported:
             - k-SII: k-Shapley Values https://proceedings.mlr.press/v206/bordt23a.html
-            - STII:  Shapley-Taylor Interaction Index https://proceedings.mlr.press/v119/sundararajan20a.html
-            - FSII: Faithful Shapley Interaction Index https://jmlr.org/papers/v24/22-0202.html
+            - STIII:  Shapley-Taylor Interaction Index https://proceedings.mlr.press/v119/sundararajan20a.html
+            - FSIII: Faithful Shapley Interaction Index https://jmlr.org/papers/v24/22-0202.html
             - kADD-SHAP: k-additive Shapley Values https://doi.org/10.1016/j.artint.2023.104014
 
         Args:
@@ -771,9 +747,9 @@ class ExactComputer:
             sii = self.base_interaction("SII", order)
             self._computed["SII"] = sii  # nice
             shapley_interaction = self.base_aggregation(sii, order)
-        elif index == "STII":
+        elif index == "STIII":
             shapley_interaction = self.compute_stii(order)
-        elif index == "FSII":
+        elif index == "FSIII":
             shapley_interaction = self.compute_fsii(order)
         elif index == "kADD-SHAP":
             shapley_interaction = self.compute_kadd_shap(order)
@@ -815,7 +791,7 @@ class ExactComputer:
         [probabilistic values](https://doi.org/10.1017/CBO9780511528446.008) the following indices
         are currently supported:
             - SV: Shapley value: https://doi.org/10.1515/9781400881970-018
-            - BV: Banzhaf value: https://doi.org/10.1515/9781400881970-018
+            - BV: Banzhaf value: # TODO add reference
 
         Args:
             index: The interaction index

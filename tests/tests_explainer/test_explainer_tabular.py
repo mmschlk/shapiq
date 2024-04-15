@@ -5,7 +5,7 @@ from sklearn.datasets import make_regression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.approximator import RegressionFSI
+from shapiq.approximator import RegressionFSII
 from shapiq.explainer import TabularExplainer
 
 
@@ -25,7 +25,7 @@ def data():
     return X
 
 
-INDICES = ["SII", "k-SII", "STI", "FSI"]
+INDICES = ["SII", "k-SII", "STII", "FSII"]
 MAX_ORDERS = [2, 3]
 
 
@@ -47,8 +47,8 @@ def test_init_params(dt_model, data, index, max_order):
     assert explainer._max_order == max_order
     assert explainer._random_state == 42
     # test defaults
-    if index == "FSI":
-        assert explainer._approximator.__class__.__name__ == "RegressionFSI"
+    if index == "FSII":
+        assert explainer._approximator.__class__.__name__ == "RegressionFSII"
     else:
         assert explainer._approximator.__class__.__name__ == "ShapIQ"
 
@@ -95,20 +95,20 @@ def test_init_params_approx(dt_model, data):
         )
     explainer = TabularExplainer(
         approximator="Regression",
-        index="FSI",
+        index="FSII",
         model=model_function,
         data=data,
     )
-    assert explainer._approximator.__class__.__name__ == "RegressionFSI"
+    assert explainer._approximator.__class__.__name__ == "RegressionFSII"
 
     # init explainer with manual approximator
-    approximator = RegressionFSI(n=9, max_order=2)
+    approximator = RegressionFSII(n=9, max_order=2)
     explainer = TabularExplainer(
         model=model_function,
         data=data,
         approximator=approximator,
     )
-    assert explainer._approximator.__class__.__name__ == "RegressionFSI"
+    assert explainer._approximator.__class__.__name__ == "RegressionFSII"
     assert explainer._approximator == approximator
 
 

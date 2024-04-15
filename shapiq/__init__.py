@@ -7,12 +7,13 @@ __version__ = "0.0.6"
 # approximator classes
 from .approximator import (
     PermutationSamplingSII,
-    PermutationSamplingSTI,
-    RegressionFSI,
+    PermutationSamplingSTII,
+    RegressionFSII,
     RegressionSII,
     ShapIQ,
 )
 from .datasets import load_bike
+from .exact import ExactComputer
 
 # explainer classes
 from .explainer import Explainer, TabularExplainer, TreeExplainer
@@ -37,12 +38,13 @@ __all__ = [
     "__version__",
     # base
     "InteractionValues",
+    "ExactComputer",
     # approximators
     "ShapIQ",
     "PermutationSamplingSII",
-    "PermutationSamplingSTI",
+    "PermutationSamplingSTII",
     "RegressionSII",
-    "RegressionFSI",
+    "RegressionFSII",
     # explainers
     "Explainer",
     "TabularExplainer",

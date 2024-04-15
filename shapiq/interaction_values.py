@@ -19,10 +19,10 @@ AVAILABLE_INDICES = {
     "kADD-SHAP",
     "k-SII",
     "SII",
-    "STI",
-    "FSI",
     "STII",
     "FSII",
+    "STIII",
+    "FSIII",
     "SV",
     "BV",
     "BZF",
@@ -36,8 +36,8 @@ class InteractionValues:
 
     Attributes:
         values: The interaction values of the model in vectorized form.
-        index: The interaction index estimated. Available indices are 'SII', 'kSII', 'STI', and
-            'FSI'.
+        index: The interaction index estimated. Available indices are 'SII', 'kSII', 'STII', and
+            'FSII'.
         max_order: The order of the approximation.
         min_order: The minimum order of the approximation.
         n_players: The number of players.
@@ -77,10 +77,10 @@ class InteractionValues:
         # in the following set are covered + "k-" and "II" variants of them
         indices_to_change_to_SV = {
             "SII",
-            "FSI",
             "FSII",
-            "STI",
+            "FSIII",
             "STII",
+            "STIII",
             "kADD-SHAP",
             "JointSV",
             "SGV",
