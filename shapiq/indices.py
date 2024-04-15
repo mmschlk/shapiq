@@ -63,7 +63,9 @@ ALL_AVAILABLE_CONCEPTS = {
     # Moebius Transformation
     "Moebius": {
         "name": "Moebius Transformation",
-        "source": "",  # TODO: Add source
+        "source": "https://doi.org/10.2307/2525487",
+        # see also 2.10 in "Michel Grabisch (2016) Set Functions, Games and Capacities in Decision
+        # Making" Link: http://www.getniif.com/component/rsfiles/previsualizar?path=Set%2BFunctions%2BGames%2Band%2BCapacities%2Bin%2BDecision%2BMaking%2B-%2BMichel%2BGrabisch%2BSpringer.pdf
     },
 }
 
