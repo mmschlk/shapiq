@@ -57,7 +57,7 @@ ALL_AVAILABLE_CONCEPTS = {
     },
     # Shapley Generalized Values
     "JointSV": {
-        "name": "",  # TODO Add name
+        "name": "Joint Shapley Values",
         "source": "https://openreview.net/forum?id=vcUmUvQCloe",
     },
     # Moebius Transformation
