@@ -21,12 +21,37 @@ class DatasetValuation(Game):
 
 
     Examples:
+        >>> import numpy as np
         >>> from sklearn.ensemble import RandomForestRegressor
-        >>> from shapiq.datasets import load_bike
+        >>> from sklearn.metrics import r2_score
+        >>> from sklearn.model_selection import train_test_split
         >>> from shapiq.games.valuation import DatasetValuation
-        >>> data, target = load_bike()
+        >>> from shapiq.datasets import load_california_housing
+        >>> # load the data
+        >>> x_train, y_train = load_california_housing()
+        >>> x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.2)
+        >>> # define the fit, predict, and loss functions
         >>> model = RandomForestRegressor()
-
+        >>> fit_function = model.fit
+        >>> predict_function = model.predict
+        >>> loss_function = r2_score
+        >>> # create the game
+        >>> game = DatasetValuation(
+        ...     x_train=x_train,
+        ...     y_train=y_train,
+        ...     x_test=x_test,
+        ...     y_test=y_test,
+        ...     fit_function=fit_function,
+        ...     predict_function=predict_function,
+        ...     loss_function=loss_function,
+        ...     player_sizes=[0.25, 0.25, 0.5],
+        ...     random_state=42,
+        ... )
+        >>> # get the worth of the coalitions
+        >>> coalitions = np.array([[1, 0, 0], [1, 1, 0], [1, 1, 1]], dtype=bool)
+        >>> worth = game(coalitions)
+        >>> worth
+        array([some_value, some_value, some_value])
     """
 
     def __init__(

@@ -72,6 +72,9 @@ class CaliforniaHousing(DatasetValuation):
             sizes. If a list of floats, the players have the given sizes. Defaults to 'increasing'.
         random_state: The random state to use for shuffling the data. Defaults to `None`.
 
+    Note:
+        This game uses models from the `sklearn` library. Install the library to use this game.
+
     Examples:
         >>> import numpy as np
         >>> from shapiq.games.benchmark.valuation import CaliforniaHousing
@@ -146,6 +149,9 @@ class BikeSharing(DatasetValuation):
             sizes. If a list of floats, the players have the given sizes. Defaults to 'increasing'.
         random_state: The random state to use for shuffling the data. Defaults to `None`.
 
+    Note:
+        This game uses models from the `sklearn` library. Install the library to use this game.
+
     Examples:
         >>> import numpy as np
         >>> from shapiq.games.benchmark.valuation import BikeSharing
@@ -218,6 +224,9 @@ class AdultCensus(DatasetValuation):
             'increasing', the players have increasing sizes. If 'random', the players have random
             sizes. If a list of floats, the players have the given sizes. Defaults to 'increasing'.
         random_state: The random state to use for shuffling the data. Defaults to `None`.
+
+    Note:
+        This game uses models from the `sklearn` library. Install the library to use this game.
 
     Examples:
         >>> import numpy as np
