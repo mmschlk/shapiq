@@ -352,6 +352,10 @@ class TreeSHAPIQ:
                     if self._interaction_type not in ("SII", "k-SII"):
                         D_power = self.D_powers[self._n_features_in_tree - current_height]
                         index_quotient = self._n_features_in_tree - order
+                    try:
+                        index_quotient = int(index_quotient)
+                    except TypeError:
+                        index_quotient = int(max(index_quotient))  # double ancestor bug
                     update = np.dot(
                         interaction_poly_down[depth - 1, interactions_with_ancestor_to_update],
                         self.Ns_id[self.n_interpolation_size, : self.n_interpolation_size],
@@ -361,7 +365,7 @@ class TreeSHAPIQ:
                         D_power,
                         quotient_poly_down[depth - 1, interactions_with_ancestor_to_update],
                         self.Ns,
-                        int(index_quotient),
+                        index_quotient,
                     )
                     self.shapley_interactions[interactions_with_ancestor_to_update] -= update
 
