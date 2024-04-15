@@ -1,6 +1,7 @@
 """This module contains the Sentiment Classification Game class, which is a subclass of the Game"""
 
 import numpy as np
+
 from ..base import Game
 
 

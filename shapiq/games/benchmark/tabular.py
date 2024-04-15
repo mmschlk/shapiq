@@ -4,6 +4,7 @@ import os
 from typing import Callable, Optional, Union
 
 import numpy as np
+
 from ..tabular import LocalExplanation, _get_x_explain
 
 
