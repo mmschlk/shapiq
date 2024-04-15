@@ -323,6 +323,9 @@ def test_n_order_transform():
     interaction_values_transformed = interaction_values.get_n_order_values(3)
     assert interaction_values_transformed.shape == (n, n, n)
     assert interaction_values_transformed[0, 3, 4] == interaction_values[(0, 3, 4)]
+    assert interaction_values_transformed[4, 3, 0] == interaction_values[(0, 3, 4)]
+    assert interaction_values_transformed[0, 4, 3] == interaction_values[(0, 3, 4)]
+    assert interaction_values_transformed[4, 0, 3] == interaction_values[(0, 3, 4)]
 
     with pytest.raises(ValueError):
         _ = interaction_values.get_n_order_values(0)
