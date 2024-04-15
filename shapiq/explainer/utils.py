@@ -21,9 +21,13 @@ def get_predict_function_and_model_type(model, model_class):
     # sklearn
     if model_class in [
         "sklearn.tree.DecisionTreeRegressor",
+        "sklearn.tree._classes.DecisionTreeRegressor",
         "sklearn.tree.DecisionTreeClassifier",
+        "sklearn.tree._classes.DecisionTreeClassifier",
         "sklearn.ensemble.RandomForestClassifier",
+        "sklearn.ensemble._forest.RandomForestClassifier",
         "sklearn.ensemble.RandomForestRegressor",
+        "sklearn.ensemble._forest.RandomForestRegressor",
     ]:
         _model_type = "tree"
 
