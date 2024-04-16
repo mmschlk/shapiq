@@ -1,6 +1,7 @@
 """This module contains the approximators to estimate the Shapley interaction values."""
 
 from .k_sii import convert_ksii_into_one_dimension, transforms_sii_to_ksii
+from .marginals import StratifiedSamplingSV
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
@@ -11,6 +12,7 @@ __all__ = [
     "PermutationSamplingSII",
     "PermutationSamplingSTII",
     "PermutationSamplingSV",
+    "StratifiedSamplingSV",
     "KernelSHAP",
     "RegressionFSII",
     "RegressionSII",
