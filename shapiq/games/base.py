@@ -2,7 +2,7 @@
 
 import pickle
 import warnings
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Optional
 
 import numpy as np
@@ -21,16 +21,62 @@ class Game(ABC):
         normalization_value: The value to normalize and center the game values with such that the
             value for the empty coalition is zero. Defaults to `None`.  If `normalization` is set
             to `False` this value is not required. Otherwise, the value is needed to normalize and
-            center the game. If no value is provided, the game raise a warning.
+            center the game. If no value is provided, the game raises a warning.
         path_to_values: The path to load the game values from. If the path is provided, the game
             values are loaded from the given path. Defaults to `None`.
 
+    Properties:
+        n_values_stored: The number of values stored in the game.
+        precomputed: Indication whether the game has been precomputed.
+        normalize: Indication whether the game values are normalized.
+
+    Attributes:
+        precompute_flag: A flag to manually override the precomputed check. If set to `True`, the
+            game is considered precomputed and only uses the lookup.
+        value_storage: The storage for the game values without normalization applied.
+        coalition_lookup: A lookup dictionary mapping from coalitions to indices in the
+            `value_storage`.
+        n_players: The number of players in the game.
+        normalization_value: The value to normalize and center the game values with.
+        empty_coalition: The empty coalition of the game.
+        grand_coalition: The grand coalition of the game.
+
     Note:
-        This class is an abstract base class and should not be instantiated directly. All games
-        should inherit from this class and implement the abstract methods.
+        This class is a base class and all games should inherit from this class and implement the
+        `value_function` methods. Only use this class directly for dealing with precomputed games.
+
+    Examples:
+        >>> from shapiq.games import DummyGame, Game
+        >>> game = DummyGame(4, interaction=(1, 2))
+        >>> game.precomputed, game.n_values_stored
+        False, 0
+        >>> game.precompute()
+        >>> game.precomputed, game.n_values_stored
+        True, 16
+        >>> # precompute only a subset of coalitions
+        >>> game = DummyGame(4, interaction=(1, 2))
+        >>> coals = np.asarray([[True, False, False, False], [False, True, True, False]])
+        >>> game.precompute(coalitions=coals)
+        >>> game.precomputed, game.n_values_stored
+        True, 2
+        >>> # store values
+        >>> game.save_values("dummy_game.npz")
+        >>> # load values in other game
+        >>> new_game = DummyGame(4, interaction=(1, 2))
+        >>> new_game.load_values("dummy_game.npz")
+        >>> game.precomputed, game.n_values_stored
+        True, 2
+        >>> # you can also load a game of any class with the Game class
+        >>> new_game = Game(path_to_values="dummy_game.npz")
+        >>> new_game.precomputed, new_game.n_values_stored
+        True, 2
+        >>> # save and load the game
+        >>> game.save("game.pkl")
+        >>> new_game = DummyGame.load("game.pkl")
+        >>> new_game.precomputed, new_game.n_values_stored
+        True, 2
     """
 
-    @abstractmethod
     def __init__(
         self,
         n_players: Optional[int] = None,
@@ -38,23 +84,31 @@ class Game(ABC):
         normalization_value: Optional[float] = None,
         path_to_values: Optional[str] = None,
     ) -> None:
+        # manual flag for choosing precomputed values even if not all values might be stored
+        self.precompute_flag: bool = False  # flag to manually override the precomputed check
+
         # define storage variables
         self.value_storage: np.ndarray = np.zeros(0, dtype=float)
         self.coalition_lookup: dict[tuple[int, ...], int] = {}
-        self.n_players: int = n_players  # if path_to_values is provided, this will be overwritten
+        self.n_players: int = n_players  # if path_to_values is provided, this may be overwritten
 
-        if path_to_values is not None:
-            self.load_values(path_to_values, precomputed=True)
+        if n_players is None and path_to_values is None:
+            raise ValueError(
+                "The number of players has to be provided if game is not loaded from values."
+            )
 
         # setup normalization of the game
         self.normalization_value: float = 0.0
-        if normalize:
+        if normalize and path_to_values is None:
             self.normalization_value = normalization_value
-            if self.normalization_value is None:
+            if normalization_value is None:
+                # this is desired behavior, as in some cases normalization is set by the subclasses
+                # after init of the base Game class. For example, in the imputer classes.
                 warnings.warn(
                     RuntimeWarning(
                         "Normalization value is set to `None`. No normalization value was provided"
-                        " at initialization."
+                        " at initialization. Make sure to set the normalization value before"
+                        " calling the game."
                     )
                 )
 
@@ -62,8 +116,8 @@ class Game(ABC):
         self.empty_coalition = np.zeros(n_players, dtype=bool)
         self.grand_coalition = np.ones(n_players, dtype=bool)
 
-        # manual flag for choosing precomputed values even if not all values might be stored
-        self.precompute_flag: bool = False  # flag to manually override the precomputed check
+        if path_to_values is not None:
+            self.load_values(path_to_values, precomputed=True)
 
     @property
     def n_values_stored(self) -> int:
@@ -97,17 +151,19 @@ class Game(ABC):
         if not self.precomputed:
             values = self.value_function(coalitions)
         else:
-            # lookup the values present in the storage
-            values = np.zeros(coalitions.shape[0], dtype=float)
-            for i, coalition in enumerate(coalitions):
-                # convert one-hot vector to tuple
-                coalition_tuple = tuple(np.where(coalition)[0])
-                index = self.coalition_lookup[coalition_tuple]
-                values[i] = self.value_storage[index]
+            values = self._lookup_coalitions(coalitions)  # lookup the values present in the storage
 
         return values - self.normalization_value
 
-    @abstractmethod
+    def _lookup_coalitions(self, coalitions: np.ndarray) -> np.ndarray:
+        """Lookup the values of the coalitions in the storage."""
+        values = np.zeros(coalitions.shape[0], dtype=float)
+        for i, coalition in enumerate(coalitions):
+            # convert one-hot vector to tuple
+            coalition_tuple = tuple(np.where(coalition)[0])
+            values[i] = self.value_storage[self.coalition_lookup[coalition_tuple]]
+        return values
+
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """The value function of the game, which models the behavior of the game. The value function
         is the core of the game and should be implemented in the inheriting class.
@@ -175,8 +231,10 @@ class Game(ABC):
             coalitions_tuple = transform_array_to_coalitions(coalitions=coalitions_array)
             coalitions_dict = {coal: i for i, coal in enumerate(coalitions_tuple)}
 
-        # run the game for all coalitions
+        # run the game for all coalitions (no normalization)
+        norm_value, self.normalization_value = self.normalization_value, 0
         game_values: np.ndarray = self(coalitions_array)  # call the game with the coalitions
+        self.normalization_value = norm_value
 
         # update the storage with the new coalitions and values
         self.value_storage = game_values.astype(float)
@@ -200,7 +258,7 @@ class Game(ABC):
             self.precompute()
 
         # transform the values_storage to float16 for compression
-        self.value_storage = self.value_storage.astype(np.float16)
+        self.value_storage.astype(np.float16)
 
         # cast the coalitions_in_storage to bool
         coalitions_in_storage = transform_coalitions_to_array(
@@ -213,6 +271,7 @@ class Game(ABC):
             values=self.value_storage,
             coalitions=coalitions_in_storage,
             n_players=self.n_players,
+            normalization_value=self.normalization_value,
         )
 
     def load_values(self, path: str, precomputed: bool = False) -> None:
@@ -237,8 +296,10 @@ class Game(ABC):
             )
         self.n_players = n_players
         self.value_storage = data["values"]
-        self.coalition_lookup = transform_array_to_coalitions(data["coalitions"])
+        coalition_lookup: list[tuple] = transform_array_to_coalitions(data["coalitions"])
+        self.coalition_lookup = {coal: i for i, coal in enumerate(coalition_lookup)}
         self.precompute_flag = precomputed
+        self.normalization_value = float(data["normalization_value"])
 
     def save(self, path: str) -> None:
         """Saves and serializes the game object to the given path.
@@ -262,7 +323,10 @@ class Game(ABC):
 
     def __repr__(self) -> str:
         """Return a string representation of the game."""
-        return f"{self.__class__.__name__}({self.n_players} players, normalize={self.normalize})"
+        return (
+            f"{self.__class__.__name__}({self.n_players} players, normalize={self.normalize}"
+            f", normalization_value={self.normalization_value}, precomputed={self.precomputed})"
+        )
 
     def __str__(self) -> str:
         """Return a string representation of the game."""

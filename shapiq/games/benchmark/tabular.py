@@ -5,7 +5,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 
-from ..tabular import LocalExplanation, _get_x_explain
+from ..local_xai import LocalExplanation, _get_x_explain
 
 
 class AdultCensus(LocalExplanation):
@@ -53,7 +53,6 @@ class AdultCensus(LocalExplanation):
     def __init__(
         self,
         *,
-        path_to_values: Optional[str] = None,
         class_to_explain: int = 1,
         x: Optional[Union[np.ndarray, int]] = None,
         model: Union[Callable[[np.ndarray], np.ndarray], str] = "sklearn_rf",
@@ -61,11 +60,6 @@ class AdultCensus(LocalExplanation):
         normalize: bool = True,
         verbose: bool = True,
     ) -> None:
-        # check if path is provided
-        if path_to_values is not None:
-            super().__init__(path_to_values=path_to_values)
-            return
-
         # validate the inputs
         if isinstance(model, str) and model != "sklearn_rf":
             raise ValueError(
@@ -201,17 +195,12 @@ class BikeRegression(LocalExplanation):
     def __init__(
         self,
         *,
-        path_to_values: Optional[str] = None,
         x: Optional[Union[np.ndarray, int]] = None,
         model: Union[Callable[[np.ndarray], np.ndarray], str] = "xgboost",
         random_state: Optional[int] = None,
         normalize: bool = True,
         verbose: bool = True,
     ) -> None:
-        if path_to_values is not None:
-            super().__init__(path_to_values=path_to_values)
-            return
-
         # validate the inputs
         if isinstance(model, str) and model != "xgboost":
             raise ValueError(
@@ -340,18 +329,12 @@ class CaliforniaHousing(LocalExplanation):
     def __init__(
         self,
         *,
-        path_to_values: Optional[str] = None,
         x: Optional[Union[np.ndarray, int]] = None,
         model: Union[Callable[[np.ndarray], np.ndarray], str] = "sklearn_gbt",
         random_state: Optional[int] = None,
         normalize: bool = True,
         verbose: bool = True,
     ) -> None:
-        # check if path is provided
-        if path_to_values is not None:
-            super().__init__(path_to_values=path_to_values)
-            return
-
         # validate the input
         if isinstance(model, str) and model not in ["sklearn_gbt", "torch_nn"]:
             raise ValueError(

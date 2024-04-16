@@ -103,7 +103,7 @@ class CaliforniaHousing(DatasetValuation):
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = None,
     ) -> None:
-
+        # TODO: remove path to values logic from subclass
         if path_to_values is not None:
             super().__init__(path_to_values=path_to_values)
             return
@@ -180,7 +180,7 @@ class BikeSharing(DatasetValuation):
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = None,
     ) -> None:
-
+        # TODO: remove path to values logic from subclass
         if path_to_values is not None:
             super().__init__(path_to_values=path_to_values)
             return
@@ -256,7 +256,7 @@ class AdultCensus(DatasetValuation):
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = None,
     ) -> None:
-
+        # TODO: remove path to values logic from subclass
         if path_to_values is not None:
             super().__init__(path_to_values=path_to_values)
             return

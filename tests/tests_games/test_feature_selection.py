@@ -1,11 +1,12 @@
 """This test module contains all tests regarding the FeatureSelection game."""
+
 import os
 
 import numpy as np
 import pytest
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.games.tabular import FeatureSelectionGame
+from shapiq.games.feature_selection import FeatureSelectionGame
 
 
 def loss_function(y_pred, y_test):
@@ -77,3 +78,18 @@ def test_basic_function(background_reg_dataset):
     # clean up
     os.remove("test_values.npz")
     assert not os.path.exists("test_values.npz")
+
+
+def test_california():
+    """Test the FeatureSelection game with the california housing dataset."""
+    raise NotImplementedError("The game is not implemented yet.")
+
+
+def test_adult_census():
+    """Test the FeatureSelection game with the adult census dataset."""
+    raise NotImplementedError("The game is not implemented yet.")
+
+
+def test_bike_sharing():
+    """Test the FeatureSelection game with the bike sharing dataset."""
+    raise NotImplementedError("The game is not implemented yet.")

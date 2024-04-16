@@ -71,7 +71,7 @@ class DatasetValuation(Game):
         empty_value: float = 0.0,
         normalize: bool = True,
     ) -> None:
-
+        # TODO: remove path to values logic from subclass
         # path to values
         if path_to_values is not None:
             super().__init__(path_to_values=path_to_values, normalize=normalize)
