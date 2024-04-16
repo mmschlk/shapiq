@@ -2,8 +2,6 @@
 
 from .sii import PermutationSamplingSII
 from .sti import PermutationSamplingSTI
+from .sv import PermutationSamplingSV
 
-__all__ = [
-    "PermutationSamplingSII",
-    "PermutationSamplingSTI",
-]
+__all__ = ["PermutationSamplingSII", "PermutationSamplingSTI", "PermutationSamplingSV"]
