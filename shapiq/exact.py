@@ -5,37 +5,13 @@ import copy
 from typing import Callable, Union
 
 import numpy as np
+from indices import ALL_AVAILABLE_CONCEPTS
 from scipy.special import bernoulli, binom
 
-from shapiq import powerset
 from shapiq.interaction_values import InteractionValues
+from shapiq.utils import powerset
 
 __all__ = ["ExactComputer", "get_bernoulli_weights"]
-
-
-ALL_AVAILABLE_CONCEPTS: dict[str, str] = {
-    "Moebius": "Moebius Transformation",
-    # Base Interactions
-    "SII": "Shapley Interaction Index",
-    "BII": "Banzhaf Interaction Index",
-    "CHII": "Chaining Interaction Index",
-    # Base Generalized Values
-    "SGV": "Shapley Generalized Value",
-    "BGV": "Banzhaf Generalized Value",
-    "CHGV": "Chaining Generalized Value",
-    # Shapley Interactions
-    "k-SII": "k-Shapley Interaction Index",
-    "STII": "Shapley-Taylor Interaction Index",
-    "FSII": "Faithful Shapley Interaction Index",
-    "kADD-SHAP": "k-additive Shapley Values",
-    # Probabilistic Values
-    "SV": "Shapley Value",
-    "BV": "Banzhaf Value",
-    # Shapley Generalized Values
-    "JointSV": "JointSV",
-}
-
-ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 
 
 class ExactComputer:
@@ -105,7 +81,7 @@ class ExactComputer:
             "JointSV": self.shapley_generalized_value,
         }
         self.available_indices: set[str] = set(self._index_mapping.keys())
-        self.available_concepts: dict[str, str] = ALL_AVAILABLE_CONCEPTS
+        self.available_concepts: dict[str, dict] = ALL_AVAILABLE_CONCEPTS
 
     def __repr__(self) -> str:
         return f"ExactComputer(n_players={self.n}, game_fun={self.game_fun})"
@@ -553,7 +529,7 @@ class ExactComputer:
             order: The highest order of interactions
 
         Returns:
-            InteractionValues object containing STII
+            InteractionValues object containing FSII
         """
         fsii_weights = self._get_fsii_weights()
         least_squares_weights = np.zeros(2**self.n, dtype=float)
@@ -815,7 +791,7 @@ class ExactComputer:
         [probabilistic values](https://doi.org/10.1017/CBO9780511528446.008) the following indices
         are currently supported:
             - SV: Shapley value: https://doi.org/10.1515/9781400881970-018
-            - BV: Banzhaf value: https://doi.org/10.1515/9781400881970-018
+            - BV: Banzhaf value: # TODO add reference
 
         Args:
             index: The interaction index

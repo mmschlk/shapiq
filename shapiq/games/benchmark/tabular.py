@@ -4,7 +4,8 @@ import os
 from typing import Callable, Optional, Union
 
 import numpy as np
-from games.tabular import LocalExplanation, _get_x_explain
+
+from ..tabular import LocalExplanation, _get_x_explain
 
 
 class AdultCensus(LocalExplanation):

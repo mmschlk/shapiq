@@ -421,7 +421,7 @@ class ShapleySamplingMixin(ABC):
     """Mixin class for the computation of Shapley weights.
 
     Provides the common functionality for regression-based approximators like
-    :class:`~shapiq.approximators.RegressionFSI`. The class offers computation of Shapley weights
+    :class:`~shapiq.approximators.RegressionFSII`. The class offers computation of Shapley weights
     and the corresponding sampling weights for the KernelSHAP-like estimation approaches.
     """
 
