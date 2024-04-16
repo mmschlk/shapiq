@@ -173,8 +173,6 @@ class InteractionValues:
         if isinstance(item, int):
             return float(self.values[item])
         item = tuple(sorted(item))
-        if item == tuple():
-            return self.baseline_value
         try:
             return float(self.values[self.interaction_lookup[item]])
         except KeyError:

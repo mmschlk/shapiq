@@ -106,7 +106,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
 
     # test baseline value
     assert interaction_values.baseline_value == baseline_value
-    assert interaction_values[()] == baseline_value
+
     with pytest.raises(ValueError):
         InteractionValues(
             values=values,
