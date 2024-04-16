@@ -12,7 +12,10 @@ AVAILABLE_INDICES_SHAPIQ = {"SV"}
 
 
 class StratifiedSamplingSV(Approximator):
-    """The Stratified Sampling approximator for estimating the Shapley value (SV).
+    """The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random marginal contributions
+    for each player and each coalition size. The marginal contributions are grouped into strata by size.
+    The strata are aggregated for each player after sampling to obtain the final estimate.
+    For more information, see [Maleki et al. (2009)](http://arxiv.org/abs/1306.4265).
 
     Args:
         n: The number of players.
@@ -23,6 +26,15 @@ class StratifiedSamplingSV(Approximator):
         N: The set of players (starting from 0 to n - 1).
         N_arr: The array of players (starting from 0 to n).
         iteration_cost: The cost of a single iteration of the approximator.
+
+    Examples:
+        >>> from shapiq.approximator import StratifiedSamplingSV
+        >>> from shapiq.games import DummyGame
+        >>> game = DummyGame(5, (1, 2))
+        >>> approximator = StratifiedSamplingSV(game.n_players, random_state=42)
+        >>> sv_estimates = approximator.approximate(100, game)
+        >>> print(sv_estimates.values)
+        [0.2 0.7 0.7 0.2 0.2]
     """
 
     def __init__(

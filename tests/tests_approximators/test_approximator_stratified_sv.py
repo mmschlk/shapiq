@@ -20,6 +20,13 @@ def test_approximate(n, budget, batch_size):
 
     assert approximator.index == "SV"
 
+    # test for init parameter
+    assert approximator.index == "SV"
+    assert approximator.n == n
+    assert approximator.iteration_cost == n - 1
+    assert approximator.max_order == 1
+    assert approximator.top_order is False
+
     sv_estimates = approximator.approximate(budget, game, batch_size=batch_size)
 
     # check that the budget is respected
