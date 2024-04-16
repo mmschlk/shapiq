@@ -9,8 +9,9 @@ from .benchmark import (
     SentimentClassificationGame,
 )
 from .dummy import DummyGame
+from .feature_selection import FeatureSelectionGame
 from .imputer import MarginalImputer
-from .tabular import FeatureSelectionGame, LocalExplanation
+from .local_xai import LocalExplanation
 
 __all__ = [
     "DummyGame",
@@ -18,9 +19,9 @@ __all__ = [
     "MarginalImputer",
     "SentimentClassificationGame",
     "LocalExplanation",
-    "FeatureSelectionGame",
     "CaliforniaHousing",
     "BikeRegression",
     "AdultCensus",
     "ImageClassifierGame",
+    "FeatureSelectionGame",
 ]
