@@ -6,11 +6,18 @@ from shapiq.games.soum import SOUM
 
 
 def test_approximator_kernelshapiq():
-    for RANDOM_STATE in range(10):
-        n = np.random.randint(low=8, high=12)
+    N_RUNS = 10
+    LOWEST_BUDGET_PERC = 10
+    PREV_BUDGET_PERC = 0
+    N_BUDGET_STEPS = 5
+    N_ITERATIONS = 5
+    approximation_improvement_counter = 0
+
+    for RANDOM_STATE in range(N_RUNS):
+        n = np.random.randint(low=6, high=8)
         total_budget = 2**n
         N = set(range(n))
-        order = 2
+        order = np.random.randint(low=1, high=n)
         n_basis_games = np.random.randint(low=10, high=200)
         soum = SOUM(n, n_basis_games=n_basis_games)
         index = "SII"
@@ -21,16 +28,11 @@ def test_approximator_kernelshapiq():
         moebius_converter = MoebiusConverter(N, soum.moebius_coefficients)
 
         sii = moebius_converter(index=index, order=order)
+        sii.values[sii.interaction_lookup[tuple()]] = 0
+
         kernelshapiq = KernelSHAPIQ(n=n, order=order, index=index)
 
         squared_errors = {}
-
-        LOWEST_BUDGET_PERC = 10
-        PREV_BUDGET_PERC = 0
-        N_BUDGET_STEPS = 5
-        N_ITERATIONS = 5
-
-        approximation_improvement_counter = 0
 
         for budget_perc in np.linspace(LOWEST_BUDGET_PERC, 100, N_BUDGET_STEPS):
             budget = int(budget_perc / 100 * total_budget)
@@ -42,7 +44,18 @@ def test_approximator_kernelshapiq():
 
             # Assert efficiency
             assert (
-                np.sum(sii_approximated.values[:n]) + sii_approximated.baseline_value
+                np.sum(
+                    sii_approximated.values[
+                        np.array(
+                            [
+                                pos
+                                for key, pos in sii_approximated.interaction_lookup.items()
+                                if len(key) == 1
+                            ]
+                        )
+                    ]
+                )
+                + sii_approximated.baseline_value
             ) - predicted_value < 10e-5
 
             # Compute squared errors
@@ -53,5 +66,7 @@ def test_approximator_kernelshapiq():
                 )
             PREV_BUDGET_PERC = budget_perc
 
-        # Assert 80%-ratio of improvements over previous calculation
-        assert approximation_improvement_counter / N_BUDGET_STEPS >= 0.8
+        assert squared_errors[100] < 10e-7
+
+    # Assert 80%-ratio of improvements over previous calculation
+    assert approximation_improvement_counter / (N_BUDGET_STEPS * N_ITERATIONS) >= 0.8
