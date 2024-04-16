@@ -191,6 +191,8 @@ class TreeSHAPIQ:
                 (init).
             depth: The depth of the current node in the tree. Defaults to 0.
         """
+        # fmt: off
+        # manually formatted for better readability in formulas and equations
         # reset activations for new calculations
         if node_id == 0:
             self._activations.fill(False)
@@ -250,26 +252,19 @@ class TreeSHAPIQ:
             summary_poly_down[depth] = summary_poly_down[depth - 1] * (self.D + p_e_current)
             # update quotient polynomials
             quotient_poly_down[depth, :] = quotient_poly_down[depth - 1, :].copy()
-            quotient_poly_down[depth, interaction_sets] = quotient_poly_down[
-                depth, interaction_sets
-            ] * (self.D + p_e_current)
+            quotient_poly_down[depth, interaction_sets] = quotient_poly_down[depth, interaction_sets] * (self.D + p_e_current)
             # update interaction polynomial
             interaction_poly_down[depth, :] = interaction_poly_down[depth - 1, :].copy()
-            interaction_poly_down[depth, interaction_sets] = interaction_poly_down[
-                depth, interaction_sets
-            ] * (-self.D + p_e_current)
+            interaction_poly_down[depth, interaction_sets] = interaction_poly_down[depth, interaction_sets] * (-self.D + p_e_current)
             # remove previous polynomial factor if node has ancestors
             if has_ancestor:
                 p_e_ancestor = 0.0
                 if activations[ancestor_id]:
                     p_e_ancestor = self._edge_tree.p_e_values[ancestor_id]
+                # rescale the polynomials
                 summary_poly_down[depth] = summary_poly_down[depth] / (self.D + p_e_ancestor)
-                quotient_poly_down[depth, interaction_sets] = quotient_poly_down[
-                    depth, interaction_sets
-                ] / (self.D + p_e_ancestor)
-                interaction_poly_down[depth, interaction_sets] = interaction_poly_down[
-                    depth, interaction_sets
-                ] / (-self.D + p_e_ancestor)
+                quotient_poly_down[depth, interaction_sets] = quotient_poly_down[depth, interaction_sets] / (self.D + p_e_ancestor)
+                interaction_poly_down[depth, interaction_sets] = interaction_poly_down[depth, interaction_sets] / (-self.D + p_e_ancestor)
 
         # if node is leaf -> add the empty prediction to the summary polynomial and store it
         if is_leaf:  # recursion base case
@@ -309,13 +304,13 @@ class TreeSHAPIQ:
         # if node is not the root node -> calculate the Shapley Interaction values for the node
         if node_id is not self._root_node_id:
             interactions_seen = interaction_sets[
-                self.interaction_height[node_id][interaction_sets] == order
+                self._int_height[node_id][interaction_sets] == order
             ]
             if len(interactions_seen) > 0:
-                if self._interaction_type not in ("SII", "k-SII"):
+                if self._interaction_type not in ("SII", "k-SII"):  # for CII
                     D_power = self.D_powers[self._n_features_in_tree - current_height]
                     index_quotient = self._n_features_in_tree - order
-                else:
+                else:  # for SII and k-SII
                     D_power = self.D_powers[0]
                     index_quotient = current_height - order
                 interaction_update = np.dot(
@@ -330,17 +325,16 @@ class TreeSHAPIQ:
                     index_quotient,
                 )
                 self.shapley_interactions[interactions_seen] += interaction_update
+
             # if node has ancestors -> adjust the Shapley Interaction values for the node
-            ancestor_node_id = self.subset_ancestors[node_id][interaction_sets]  # inter. ancestors
-            if np.mean(ancestor_node_id) > -1:  # if there exist ancestors # TODO why mean?
-                ancestor_node_id_exists = ancestor_node_id > -1
+            ancestors_of_interactions = self.subset_ancestors[node_id][interaction_sets]
+            if np.any(ancestors_of_interactions > -1):  # at least one ancestor exists (not -1)
+                ancestor_node_id_exists = ancestors_of_interactions > -1  # get mask of ancestors
                 interactions_with_ancestor = interaction_sets[ancestor_node_id_exists]
                 cond_interaction_seen = (
-                    self.interaction_height[parent_id][interactions_with_ancestor] == order
+                    self._int_height[parent_id][interactions_with_ancestor] == order
                 )
-                interactions_ancestors = ancestor_node_id[
-                    ancestor_node_id_exists
-                ]  # ancestors of interactions with ancestor
+                interactions_ancestors = ancestors_of_interactions[ancestor_node_id_exists]
                 interactions_with_ancestor_to_update = interactions_with_ancestor[
                     cond_interaction_seen
                 ]
@@ -348,34 +342,54 @@ class TreeSHAPIQ:
                     ancestor_heights = self._edge_tree.edge_heights[
                         interactions_ancestors[cond_interaction_seen]
                     ]
-                    D_power = self.D_powers[ancestor_heights - current_height].astype(int)
-                    index_quotient = ancestor_heights - order
-                    if self._interaction_type not in ("SII", "k-SII"):
+                    if self._interaction_type not in ("SII", "k-SII"):  # for CII
                         D_power = self.D_powers[self._n_features_in_tree - current_height]
                         index_quotient = self._n_features_in_tree - order
-                    try:
-                        index_quotient = int(index_quotient)
-                    except TypeError as e:
-                        print(index_quotient, ancestor_heights, current_height, order)
-                        index_quotient = int(max(index_quotient))  # double ancestor bug fix by max
-                        print(index_quotient, ancestor_heights, current_height, order)
-                        raise e
+                    else:  # for SII and k-SII
+                        D_power = self.D_powers[ancestor_heights - current_height].astype(int)
+                        index_quotient = ancestor_heights - order
                     update = np.dot(
                         interaction_poly_down[depth - 1, interactions_with_ancestor_to_update],
                         self.Ns_id[self.n_interpolation_size, : self.n_interpolation_size],
                     )
-                    update *= self._psi(
+                    to_update = self._psi_ancestor(
                         summary_poly_up[depth],
                         D_power,
                         quotient_poly_down[depth - 1, interactions_with_ancestor_to_update],
                         self.Ns,
                         index_quotient,
                     )
+                    try:
+                        update *= to_update
+                    except ValueError:
+                        update *= float(to_update)  # cast out shape of (1, 1) to float
+                    # fmt: on
                     self.shapley_interactions[interactions_with_ancestor_to_update] -= update
 
     @staticmethod
+    def _psi_ancestor(E, D_power, quotient_poly, Ns, degree) -> np.ndarray[float]:
+        """Similar to _psi but with ancestors."""
+        d = degree + 1
+        n = Ns[d].T  # Variant of _psi that can deal with multiple inputs in degree
+        return np.diag((E * D_power / quotient_poly).dot(n)) / (d)
+
+    @staticmethod
     def _psi(E, D_power, quotient_poly, Ns, degree) -> np.ndarray[float]:
-        # TODO: add docstring
+        """Computes the psi function for the TreeSHAP-IQ algorithm.
+
+        It scales the interaction polynomials with the summary polynomial and the quotient
+        polynomial. For more information: https://ojs.aaai.org/index.php/AAAI/article/view/29352
+
+        Args:
+            E: The summary polynomial.
+            D_power: The power of the D polynomial.
+            quotient_poly: The quotient polynomial.
+            Ns: The Ns polynomial.
+            degree: The degree of the interaction polynomial.
+
+        Returns:
+            np.ndarray: The computed psi function.
+        """
         d = degree + 1
         n = Ns[d, :d]
         return ((E * D_power / quotient_poly)[:, :d]).dot(n) / d
@@ -455,7 +469,7 @@ class TreeSHAPIQ:
         self.subset_ancestors = self.subset_ancestors_store[interaction_order]
         self.D = self.D_store[interaction_order]
         self.D_powers = self.D_powers_store[interaction_order]
-        self.interaction_height = self._edge_tree.interaction_height_store[interaction_order]
+        self._int_height = self._edge_tree.interaction_height_store[interaction_order]
         self.Ns_id = self.Ns_id_store[interaction_order]
         self.Ns = self.Ns_store[interaction_order]
 
