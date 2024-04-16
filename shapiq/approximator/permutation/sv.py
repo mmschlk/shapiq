@@ -9,8 +9,6 @@ import numpy as np
 from shapiq.approximator._base import Approximator
 from shapiq.interaction_values import InteractionValues
 
-AVAILABLE_INDICES_SHAPIQ = {"SV"}
-
 
 class PermutationSamplingSV(Approximator):
     """The Permutation Sampling approximator for estimating the Shapley value (SV).
@@ -24,6 +22,15 @@ class PermutationSamplingSV(Approximator):
         N: The set of players (starting from 0 to n - 1).
         N_arr: The array of players (starting from 0 to n).
         iteration_cost: The cost of a single iteration of the approximator.
+
+    Examples:
+        >>> from shapiq.approximator import PermutationSamplingSV
+        >>> from shapiq.games import DummyGame
+        >>> game = DummyGame(5, (1, 2))
+        >>> approximator = PermutationSamplingSV(game.n_players, random_state=42)
+        >>> sv_estimates = approximator.approximate(100, game)
+        >>> print(sv_estimates.values)
+        [0.2 0.7 0.7 0.2 0.2]
     """
 
     def __init__(
@@ -38,6 +45,10 @@ class PermutationSamplingSV(Approximator):
         self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: Optional[int] = 5
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
+
+        The ApproShapley algorithm estimates the Shapley values by sampling random permutations of
+        the player set and extracting all marginal contributions from each permutation. For more
+        information, see [Castro et al. (2009)](https://doi.org/10.1016/j.cor.2008.04.004).
 
         Args:
             budget: The number of game evaluations for approximation

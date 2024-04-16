@@ -18,7 +18,12 @@ def test_approximate(n, budget, batch_size):
 
     approximator = PermutationSamplingSV(n, random_state=42)
 
+    # test for init parameter
     assert approximator.index == "SV"
+    assert approximator.n == n
+    assert approximator.iteration_cost == n - 1
+    assert approximator.max_order == 1
+    assert approximator.top_order is False
 
     sv_estimates = approximator.approximate(budget, game, batch_size=batch_size)
 
@@ -39,3 +44,9 @@ def test_approximate(n, budget, batch_size):
     if budget >= 1000:
         assert sv_estimates[(1,)] == pytest.approx(0.7, 0.1)
         assert sv_estimates[(2,)] == pytest.approx(0.7, 0.1)
+
+    # check for single player game (caught edge case in code)
+    game = DummyGame(1, (0,))
+    approximator = PermutationSamplingSV(1, random_state=42)
+    sv_estimates = approximator.approximate(10, game)
+    assert sv_estimates[(0,)] == pytest.approx(2.0, 0.001)
