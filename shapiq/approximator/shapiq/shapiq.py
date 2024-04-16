@@ -11,7 +11,7 @@ from shapiq.approximator.sampling import ShapleySamplingMixin
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
-AVAILABLE_INDICES_SHAPIQ = {"SII", "STI", "FSI", "k-SII", "SV"}
+AVAILABLE_INDICES_SHAPIQ = {"SII", "STII", "FSII", "k-SII", "SV"}
 
 
 class ShapIQ(Approximator, ShapleySamplingMixin, KShapleyMixin):
@@ -172,7 +172,7 @@ class ShapIQ(Approximator, ShapleySamplingMixin, KShapleyMixin):
         return math.factorial(self.n - t - s) * math.factorial(t) / math.factorial(self.n - s + 1)
 
     def _sti_weight_kernel(self, subset_size: int, interaction_size: int) -> float:
-        """Returns the STI discrete derivative weight given the subset size and interaction size.
+        """Returns the STII discrete derivative weight given the subset size and interaction size.
 
         TODO add formula and reference to paper.
 
@@ -195,7 +195,7 @@ class ShapIQ(Approximator, ShapleySamplingMixin, KShapleyMixin):
             return 1.0 * (t == 0)
 
     def _fsi_weight_kernel(self, subset_size: int, interaction_size: int) -> float:
-        """Returns the FSI discrete derivative weight given the subset size and interaction size.
+        """Returns the FSII discrete derivative weight given the subset size and interaction size.
 
         TODO add formula and reference to paper.
 
@@ -231,9 +231,9 @@ class ShapIQ(Approximator, ShapleySamplingMixin, KShapleyMixin):
         """
         if self.index == "SII" or self.index == "k-SII" or self.index == "SV":  # SII kernel default
             return self._sii_weight_kernel(subset_size, interaction_size)
-        elif self.index == "STI":
+        elif self.index == "STII":
             return self._sti_weight_kernel(subset_size, interaction_size)
-        elif self.index == "FSI":
+        elif self.index == "FSII":
             return self._fsi_weight_kernel(subset_size, interaction_size)
         else:
             raise ValueError(f"Unknown index {self.index}.")

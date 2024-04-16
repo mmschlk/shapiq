@@ -5,7 +5,7 @@ from sklearn.datasets import make_regression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.approximator import RegressionFSI
+from shapiq.approximator import RegressionFSII
 from shapiq.explainer import TabularExplainer
 
 
@@ -19,24 +19,24 @@ def dt_model():
 
 
 @pytest.fixture
-def background_data():
+def data():
     """Return data to use as background data."""
     X, y = make_regression(n_samples=100, n_features=7, random_state=42)
     return X
 
 
-INDICES = ["SII", "k-SII", "STI", "FSI"]
+INDICES = ["SII", "k-SII", "STII", "FSII"]
 MAX_ORDERS = [2, 3]
 
 
 @pytest.mark.parametrize("index", INDICES)
 @pytest.mark.parametrize("max_order", MAX_ORDERS)
-def test_init_params(dt_model, background_data, index, max_order):
+def test_init_params(dt_model, data, index, max_order):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
     explainer = TabularExplainer(
         model=model_function,
-        background_data=background_data,
+        data=data,
         random_state=42,
         index=index,
         max_order=max_order,
@@ -47,18 +47,18 @@ def test_init_params(dt_model, background_data, index, max_order):
     assert explainer._max_order == max_order
     assert explainer._random_state == 42
     # test defaults
-    if index == "FSI":
-        assert explainer._approximator.__class__.__name__ == "RegressionFSI"
+    if index == "FSII":
+        assert explainer._approximator.__class__.__name__ == "RegressionFSII"
     else:
         assert explainer._approximator.__class__.__name__ == "ShapIQ"
 
 
-def test_auto_params(dt_model, background_data):
+def test_auto_params(dt_model, data):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
     explainer = TabularExplainer(
         model=model_function,
-        background_data=background_data,
+        data=data,
     )
     assert explainer.index == "k-SII"
     assert explainer._approximator.index == "k-SII"
@@ -67,48 +67,48 @@ def test_auto_params(dt_model, background_data):
     assert explainer._approximator.__class__.__name__ == "ShapIQ"
 
 
-def test_init_params_error(dt_model, background_data):
+def test_init_params_error(dt_model, data):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
     with pytest.raises(ValueError):
         TabularExplainer(
             model=model_function,
-            background_data=background_data,
+            data=data,
             index="invalid",
         )
     with pytest.raises(ValueError):
         TabularExplainer(
             model=model_function,
-            background_data=background_data,
+            data=data,
             max_order=0,
         )
 
 
-def test_init_params_approx(dt_model, background_data):
+def test_init_params_approx(dt_model, data):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
     with pytest.raises(ValueError):
         TabularExplainer(
             model=model_function,
-            background_data=background_data,
+            data=data,
             approximator="invalid",
         )
     explainer = TabularExplainer(
         approximator="Regression",
-        index="FSI",
+        index="FSII",
         model=model_function,
-        background_data=background_data,
+        data=data,
     )
-    assert explainer._approximator.__class__.__name__ == "RegressionFSI"
+    assert explainer._approximator.__class__.__name__ == "RegressionFSII"
 
     # init explainer with manual approximator
-    approximator = RegressionFSI(n=9, max_order=2)
+    approximator = RegressionFSII(n=9, max_order=2)
     explainer = TabularExplainer(
         model=model_function,
-        background_data=background_data,
+        data=data,
         approximator=approximator,
     )
-    assert explainer._approximator.__class__.__name__ == "RegressionFSI"
+    assert explainer._approximator.__class__.__name__ == "RegressionFSII"
     assert explainer._approximator == approximator
 
 
@@ -118,19 +118,19 @@ BUDGETS = [2**5, 2**8, None]
 @pytest.mark.parametrize("budget", BUDGETS)
 @pytest.mark.parametrize("index", INDICES)
 @pytest.mark.parametrize("max_order", MAX_ORDERS)
-def test_explain(dt_model, background_data, index, budget, max_order):
+def test_explain(dt_model, data, index, budget, max_order):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
     explainer = TabularExplainer(
         model=model_function,
-        background_data=background_data,
+        data=data,
         random_state=42,
         index=index,
         max_order=max_order,
         approximator="auto",
     )
-    x_explain = background_data[0].reshape(1, -1)
-    interaction_values = explainer.explain(x_explain, budget=budget)
+    x = data[0].reshape(1, -1)
+    interaction_values = explainer.explain(x, budget=budget)
     assert interaction_values.index == index
     assert interaction_values.max_order == max_order
     if budget is None:

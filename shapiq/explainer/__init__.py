@@ -1,6 +1,7 @@
 """This module contains the explainer for the shapiq package."""
 
+from ._base import Explainer
 from .tabular import TabularExplainer
 from .tree import TreeExplainer
 
-__all__ = ["TabularExplainer", "TreeExplainer"]
+__all__ = ["Explainer", "TabularExplainer", "TreeExplainer"]

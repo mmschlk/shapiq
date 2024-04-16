@@ -1,5 +1,5 @@
 """This module contains the KernelSHAP regression approximator for estimating the SV.
-Regression with Faithful Shapley Interaction (FSI) index approximation."""
+Regression with Faithful Shapley Interaction (FSII) index approximation."""
 
 from typing import Optional
 
@@ -7,7 +7,7 @@ from ._base import Regression
 
 
 class KernelSHAP(Regression):
-    """Estimates the FSI values using the weighted least square approach.
+    """Estimates the FSII values using the weighted least square approach.
 
     Args:
         n: The number of players.
@@ -18,8 +18,8 @@ class KernelSHAP(Regression):
         n: The number of players.
         N: The set of players (starting from 0 to n - 1).
         max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For FSI, min_order is equal to 1.
-        iteration_cost: The cost of a single iteration of the regression FSI.
+        min_order: The minimum order of the approximation. For FSII, min_order is equal to 1.
+        iteration_cost: The cost of a single iteration of the regression FSII.
 
     Example:
         >>> from games import DummyGame

@@ -2,20 +2,21 @@
 the well established Shapley value and its generalization to interaction.
 """
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 
 # approximator classes
 from .approximator import (
     PermutationSamplingSII,
-    PermutationSamplingSTI,
-    RegressionFSI,
+    PermutationSamplingSTII,
+    RegressionFSII,
     RegressionSII,
     ShapIQ,
 )
-from .datasets import load_bike
+from .datasets import load_adult_census, load_bike, load_california_housing
+from .exact import ExactComputer
 
 # explainer classes
-from .explainer import TabularExplainer, TreeExplainer
+from .explainer import Explainer, TabularExplainer, TreeExplainer
 
 # game classes
 from .games import DummyGame
@@ -37,13 +38,15 @@ __all__ = [
     "__version__",
     # base
     "InteractionValues",
+    "ExactComputer",
     # approximators
     "ShapIQ",
     "PermutationSamplingSII",
-    "PermutationSamplingSTI",
+    "PermutationSamplingSTII",
     "RegressionSII",
-    "RegressionFSI",
+    "RegressionFSII",
     # explainers
+    "Explainer",
     "TabularExplainer",
     "TreeExplainer",
     # games
@@ -58,4 +61,6 @@ __all__ = [
     "safe_isinstance",
     # datasets
     "load_bike",
+    "load_adult_census",
+    "load_california_housing",
 ]

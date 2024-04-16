@@ -1,11 +1,11 @@
-"""This test module contains all tests regarding the FSI regression approximator."""
+"""This test module contains all tests regarding the FSII regression approximator."""
 
 from copy import copy, deepcopy
 
 import numpy as np
 import pytest
 
-from shapiq.approximator.regression import RegressionFSI
+from shapiq.approximator.regression import RegressionFSII
 from shapiq.games import DummyGame
 from shapiq.interaction_values import InteractionValues
 
@@ -22,14 +22,14 @@ from shapiq.interaction_values import InteractionValues
     ],
 )
 def test_initialization(n, max_order):
-    """Tests the initialization of the RegressionFSI approximator."""
-    approximator = RegressionFSI(n, max_order)
+    """Tests the initialization of the RegressionFSII approximator."""
+    approximator = RegressionFSII(n, max_order)
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order is False
     assert approximator.min_order == 1
     assert approximator.iteration_cost == 1
-    assert approximator.index == "FSI"
+    assert approximator.index == "FSII"
 
     approximator_copy = copy(approximator)
     approximator_deepcopy = deepcopy(approximator)
@@ -48,10 +48,10 @@ def test_initialization(n, max_order):
     "n, max_order, budget, batch_size", [(7, 2, 380, 100), (7, 2, 380, None), (7, 2, 100, None)]
 )
 def test_approximate(n, max_order, budget, batch_size):
-    """Tests the approximation of the RegressionFSI approximator."""
+    """Tests the approximation of the RegressionFSII approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = RegressionFSI(n, max_order, random_state=42)
+    approximator = RegressionFSII(n, max_order, random_state=42)
     fsi_estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(fsi_estimates, InteractionValues)
     assert fsi_estimates.max_order == max_order

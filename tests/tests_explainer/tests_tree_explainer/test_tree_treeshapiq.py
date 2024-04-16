@@ -59,7 +59,7 @@ def test_init(dt_clf_model, background_clf_data):
             },
         ),
         (
-            "FSI",
+            "FSII",
             {
                 (0,): -39.45789474,
                 (1,): -45.82105263,
@@ -70,7 +70,7 @@ def test_init(dt_clf_model, background_clf_data):
             },
         ),
         (
-            "STI",
+            "STII",
             {
                 (0,): -20.37894737,
                 (1,): -26.62105263,
@@ -106,7 +106,6 @@ def test_against_old_treeshapiq_implementation(index: str, expected: dict):
     explainer = TreeSHAPIQ(model=tree_model, max_order=2, interaction_type=index)
 
     explanation = explainer.explain(x_explain)
-    print(explanation)
 
     for key, value in expected.items():
         assert np.isclose(explanation[key], value, atol=1e-5)

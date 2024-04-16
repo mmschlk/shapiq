@@ -2,7 +2,6 @@
 scores."""
 
 import copy
-import warnings
 from dataclasses import dataclass
 from typing import Optional, Union
 
@@ -10,7 +9,35 @@ import numpy as np
 
 from shapiq.utils import generate_interaction_lookup, powerset
 
-AVAILABLE_INDICES = {"k-SII", "SII", "STI", "FSI", "SV", "BZF"}
+AVAILABLE_INDICES = {
+    "JointSV",
+    "SGV",
+    "BGV",
+    "CHGV",
+    "CHII",
+    "BII",
+    "kADD-SHAP",
+    "k-SII",
+    "SII",
+    "STII",
+    "FSII",
+    "SV",
+    "BV",
+    "BZF",
+    "Moebius",
+}
+
+# indices that generalize the SV become the SV for max_order = 1
+INDICES_GENERALIZING_SV = {
+    "SII",
+    "FSI",
+    "FSII",
+    "STI",
+    "STII",
+    "kADD-SHAP",
+    "JointSV",
+    "SGV",
+}
 
 
 @dataclass
@@ -19,8 +46,8 @@ class InteractionValues:
 
     Attributes:
         values: The interaction values of the model in vectorized form.
-        index: The interaction index estimated. Available indices are 'SII', 'kSII', 'STI', and
-            'FSI'.
+        index: The interaction index estimated. Available indices are 'SII', 'kSII', 'STII', and
+            'FSII'.
         max_order: The order of the approximation.
         min_order: The minimum order of the approximation.
         n_players: The number of players.
@@ -40,7 +67,7 @@ class InteractionValues:
     max_order: int
     min_order: int
     n_players: int
-    interaction_lookup: dict[tuple[int], int] = None
+    interaction_lookup: dict[tuple[int, ...], int] = None
     estimated: bool = True
     estimation_budget: Optional[int] = None
     baseline_value: Optional[float] = None
@@ -51,15 +78,57 @@ class InteractionValues:
             raise ValueError(
                 f"Index {self.index} is not valid. " f"Available indices are {AVAILABLE_INDICES}."
             )
+
+        # set BV if order is 1
+        if self.index == "BII" and self.max_order == 1:
+            self.index = "BV"
+
+        # set index to SV if order is 1 and index generalizes SV
+        if self.max_order == 1:
+            index_to_check = self.index
+            if index_to_check.startswith("k-"):  # remove potential aggregation of index 'k-'
+                index_to_check = index_to_check[2:]
+            if index_to_check in INDICES_GENERALIZING_SV:
+                self.index = "SV"
+
+        # populate interaction_lookup and reverse_interaction_lookup
         if self.interaction_lookup is None:
             self.interaction_lookup = generate_interaction_lookup(
                 self.n_players, self.min_order, self.max_order
             )
+
+        # set baseline value if not provided
         if self.baseline_value is None:
             try:
                 self.baseline_value = float(self.values[self.interaction_lookup[tuple()]])
             except KeyError:
                 raise ValueError("Baseline value is not provided and cannot be computed.")
+
+    @property
+    def dict_values(self) -> dict[tuple[int, ...], float]:
+        """Getter for the dict directly mapping from all interactions to scores."""
+        return {
+            interaction: self.values[self.interaction_lookup[interaction]]
+            for interaction in self.interaction_lookup
+        }
+
+    def sparsify(self, threshold: float = 1e-3) -> None:
+        """Manually sets values close to zero actually to zero (removing values).
+
+        Args:
+            threshold: The threshold value below which interactions are zeroed out. Defaults to
+                1e-3.
+        """
+        # find interactions to remove in self.values
+        interactions_to_remove: set[int] = set(np.where(np.abs(self.values) < threshold)[0])
+        new_values = np.delete(self.values, list(interactions_to_remove))
+        new_interaction_lookup = {}
+        for index, interaction in enumerate(self.interaction_lookup):
+            if index not in interactions_to_remove:
+                interaction = tuple(sorted(interaction))
+                new_interaction_lookup[interaction] = len(new_interaction_lookup)
+        self.values = new_values
+        self.interaction_lookup = new_interaction_lookup
 
     def __repr__(self) -> str:
         """Returns the representation of the InteractionValues object."""
@@ -199,12 +268,7 @@ class InteractionValues:
                 or self.n_players != other.n_players
                 or self.min_order != other.min_order
                 or self.max_order != other.max_order
-            ):  # different interactions
-                warnings.warn(
-                    "Adding InteractionValues with different interactions. Interactions will be "
-                    "merged and added together. The resulting InteractionValues will have the "
-                    "union of the interactions of the two original InteractionValues."
-                )
+            ):  # different interactions but addable
                 interaction_lookup = {**self.interaction_lookup}
                 position = len(self.interaction_lookup)
                 values_to_add = []
@@ -287,3 +351,33 @@ class InteractionValues:
     def __rmul__(self, other: Union[int, float]) -> "InteractionValues":
         """Multiplies an InteractionValues object by a scalar."""
         return self.__mul__(other)
+
+    def get_n_order_values(self, order: int) -> "np.ndarray":
+        """Returns the interaction values of a specific order as a numpy array.
+
+        Note:
+            Depending on the order and number of players the resulting array might be sparse and
+            very large.
+
+        Args:
+            order: The order of the interactions to return.
+
+        Returns:
+            The interaction values of the specified order as a numpy array of shape `(n_players,)`
+            for order 1 and `(n_players, n_players)` for order 2, etc.
+
+        Raises:
+            ValueError: If the order is less than 1.
+        """
+        from itertools import permutations
+
+        if order < 1:
+            raise ValueError("Order must be greater or equal to 1.")
+        values_shape = tuple([self.n_players] * order)
+        values = np.zeros(values_shape, dtype=float)
+        for interaction in powerset(range(self.n_players), min_size=1, max_size=order):
+            # get all orderings of the interaction (e.g. (0, 1) and (1, 0) for interaction (0, 1))
+            for perm in permutations(interaction):
+                values[perm] = self[interaction]
+
+        return values

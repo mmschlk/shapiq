@@ -97,7 +97,6 @@ def test_against_shap_implementation():
     values = [110, 105, 95, 20, 50, 100, 75, 10, 40]
     values = [values[i] / max(values) for i in range(len(values))]
     values = np.asarray(values)
-    print(values)
 
     x_explain = np.asarray([-1, -0.5, 1, 0])
 
@@ -121,15 +120,11 @@ def test_against_shap_implementation():
 
     explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1, interaction_type="SII")
     explanation = explainer.explain(x_explain)
-    print(explanation)
-    print(explainer._treeshapiq_explainers[0]._tree.empty_prediction)
 
     explainer = TreeExplainer(
         model=tree_model, max_order=1, min_order=1, interaction_type="SII", output_type="logit"
     )
     explanation = explainer.explain(x_explain)
-    print(explanation)
-    print(explainer._treeshapiq_explainers[0]._tree.empty_prediction)
 
 
 def test_logit_probit_conversion(dt_clf_model, background_clf_data):
