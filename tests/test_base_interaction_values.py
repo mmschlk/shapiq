@@ -106,6 +106,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
 
     # test baseline value
     assert interaction_values.baseline_value == baseline_value
+    # expected behavior of interactions is 0 for emptyset
     assert interaction_values[()] == 0
 
     with pytest.raises(ValueError):
