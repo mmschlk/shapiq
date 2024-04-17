@@ -7,10 +7,10 @@ from typing import Optional, Union
 import numpy as np
 
 from shapiq.approximator import (
+    InconsistentKernelSHAPIQ,
     PermutationSamplingSII,
     PermutationSamplingSTII,
     RegressionFSII,
-    RegressionSII,
     ShapIQ,
 )
 from shapiq.approximator._base import Approximator
@@ -19,7 +19,11 @@ from shapiq.games.imputer import MarginalImputer
 from shapiq.interaction_values import InteractionValues
 
 APPROXIMATOR_CONFIGURATIONS = {
-    "Regression": {"SII": RegressionSII, "FSII": RegressionFSII, "k-SII": RegressionSII},
+    "Regression": {
+        "SII": InconsistentKernelSHAPIQ,
+        "FSII": RegressionFSII,
+        "k-SII": InconsistentKernelSHAPIQ,
+    },
     "Permutation": {
         "SII": PermutationSamplingSII,
         "STII": PermutationSamplingSTII,
@@ -64,7 +68,6 @@ class TabularExplainer(Explainer):
         random_state: Optional[int] = None,
         **kwargs,
     ) -> None:
-
         if index not in AVAILABLE_INDICES:
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
         if max_order < 2:

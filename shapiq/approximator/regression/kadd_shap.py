@@ -5,14 +5,13 @@ from typing import Optional
 from ._base import Regression
 
 
-class RegressionFSII(Regression):
-    """Estimates the SII values using KernelSHAP-IQ.
-    Algorithm described in TODO: add citation
+class kADDSHAP(Regression):
+    """Estimates the kADD-SHAP values using the kADD-SHAP algorithm.
+    Algorithm described in https://doi.org/10.1016/j.artint.2023.104014
 
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        index: The interaction index
         random_state: The random state of the estimator. Defaults to `None`.
 
     Attributes:
@@ -25,4 +24,4 @@ class RegressionFSII(Regression):
     """
 
     def __init__(self, n: int, max_order: int, random_state: Optional[int] = None):
-        super().__init__(n, max_order, index="FSII", random_state=random_state)
+        super().__init__(n, max_order, index="kADD-SHAP", random_state=random_state)

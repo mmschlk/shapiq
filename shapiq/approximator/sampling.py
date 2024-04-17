@@ -320,8 +320,8 @@ class CoalitionSampler:
         sampling_budget = self.execute_border_trick(sampling_budget)
 
         # Sort by size for esthetics
-        self._coalitions_to_sample.sort()
-        self._coalitions_to_compute.sort()
+        self._coalitions_to_sample.sort(key=self._sort_coalitions)
+        self._coalitions_to_compute.sort(key=self._sort_coalitions)
 
         # raise warning if budget is higher than 90% of samples remaining to be sampled
         n_samples_remaining = np.sum([binom(self.n, size) for size in self._coalitions_to_sample])
@@ -415,6 +415,18 @@ class CoalitionSampler:
         permutations = np.tile(np.arange(self.n, dtype=int), (n_draws, 1))
         self._rng.permuted(permutations, axis=1, out=permutations)
         return coalition_sizes, permutations
+
+    def _sort_coalitions(self, value):
+        """Used to sort coalition sizes by distance to center, i.e. grand coalition and emptyset first
+
+        Args:
+            value: The size of the coalition.
+
+        Returns:
+            The negative distance to the center n/2
+        """
+        # Sort by distance to center
+        return -abs(self.n / 2 - value)
 
 
 class ShapleySamplingMixin(ABC):

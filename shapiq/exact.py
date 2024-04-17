@@ -552,10 +552,12 @@ class ExactComputer:
             coalition_store[coalition] = coalition_pos
         weight_matrix_sqrt = np.sqrt(np.diag(least_squares_weights))
         coalition_matrix_weighted_sqrt = np.dot(weight_matrix_sqrt, coalition_matrix)
-        game_value_weighted_sqrt = np.dot(self.game_values, weight_matrix_sqrt)
+
+        regression_response = self.game_values - self.baseline_value  # normalization
+        regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
         # solve the weighted least squares (WLSQ) problem
         fsii_values, residuals, rank, singular_values = np.linalg.lstsq(
-            coalition_matrix_weighted_sqrt, game_value_weighted_sqrt, rcond=None
+            coalition_matrix_weighted_sqrt, regression_response_weighted_sqrt, rcond=None
         )
 
         # transform into InteractionValues object
@@ -624,15 +626,17 @@ class ExactComputer:
                 intersection_size = len(set(coalition).intersection(interaction))
                 interaction_size = len(interaction)
                 # This is different from FSII
-                coalition_matrix[coalition_pos, interaction_lookup[interaction]] = (
-                    bernoulli_weights[interaction_size, intersection_size]
-                )
+                coalition_matrix[
+                    coalition_pos, interaction_lookup[interaction]
+                ] = bernoulli_weights[interaction_size, intersection_size]
 
         weight_matrix_sqrt = np.sqrt(np.diag(least_squares_weights))
         coalition_matrix_weighted_sqrt = np.dot(weight_matrix_sqrt, coalition_matrix)
-        game_value_weighted_sqrt = np.dot(self.game_values, weight_matrix_sqrt)
+
+        regression_response = self.game_values - self.baseline_value  # normalization
+        regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
         kADD_shap_values, residuals, rank, singular_values = np.linalg.lstsq(
-            coalition_matrix_weighted_sqrt, game_value_weighted_sqrt, rcond=None
+            coalition_matrix_weighted_sqrt, regression_response_weighted_sqrt, rcond=None
         )
 
         # Set baseline value
@@ -809,9 +813,9 @@ class ExactComputer:
             probabilistic_value = self.base_interaction(index="SII", order=1)
             # Change emptyset value of SII to baseline value
             probabilistic_value.baseline_value = self.baseline_value
-            probabilistic_value.values[probabilistic_value.interaction_lookup[tuple()]] = (
-                self.baseline_value
-            )
+            probabilistic_value.values[
+                probabilistic_value.interaction_lookup[tuple()]
+            ] = self.baseline_value
         else:
             raise ValueError(f"Index {index} not supported")
         self._computed[index] = probabilistic_value

@@ -40,4 +40,4 @@ class KernelSHAP(Regression):
     """
 
     def __init__(self, n: int, random_state: Optional[int] = None):
-        super().__init__(n, max_order=1, index="SV", random_state=random_state)
+        super().__init__(n, max_order=1, index="SII", random_state=random_state)

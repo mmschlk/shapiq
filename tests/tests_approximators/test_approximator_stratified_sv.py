@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from approximator.marginals import StratifiedSamplingSV
+from shapiq.approximator.marginals import StratifiedSamplingSV
 from shapiq.games import DummyGame
 
 

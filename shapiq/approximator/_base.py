@@ -24,6 +24,7 @@ class Approximator(ABC):
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
+        min_order: The minimum interaction order, default is 1, but regression uses 0 currently TODO:rework
         index: The interaction index to be estimated. Available indices are 'SII', 'kSII', 'STII',
             and 'FSII'.
         top_order: If True, the approximation is performed only for the top order interactions. If
@@ -32,14 +33,14 @@ class Approximator(ABC):
 
     Attributes:
         n: The number of players.
-        N: The set of players (starting from 0 to n - 1).
+        N: The set of players (starting from 0 to n - 1). TODO: Change to _grand_coalition_set
         N_arr: The array of players (starting from 0 to n).
         max_order: The interaction order of the approximation.
         index: The interaction index to be estimated.
         top_order: If True, the approximation is performed only for the top order interactions. If
             False, the approximation is performed for all orders up to the specified order.
         min_order: The minimum order of the approximation. If top_order is True, min_order is equal
-            to max_order. Otherwise, min_order is equal to 1.
+            to max_order. Otherwise, min_order is equal to 0.
         iteration_cost: The cost of a single iteration of the approximator.
 
     """
@@ -51,6 +52,7 @@ class Approximator(ABC):
         max_order: int,
         index: str,
         top_order: bool,
+        min_order: int = 1,
         random_state: Optional[int] = None,
     ) -> None:
         """Initializes the approximator."""
@@ -60,11 +62,12 @@ class Approximator(ABC):
                 f"Index {self.index} is not valid. " f"Available indices are {AVAILABLE_INDICES}."
             )
         self.n: int = n
-        self.N: set = set(range(self.n))
+        self.N: set = set(range(self.n))  # TODO: remove from approximator
+        self._grand_coalition_set = set(range(self.n))
         self.N_arr: np.ndarray[int] = np.arange(self.n + 1)
         self.top_order: bool = top_order
         self.max_order: int = max_order
-        self.min_order: int = self.max_order if self.top_order else 1
+        self.min_order: int = self.max_order if self.top_order else min_order
         self.iteration_cost: int = 1  # default value, can be overwritten by subclasses
         self._interaction_lookup = generate_interaction_lookup(
             self.n, self.min_order, self.max_order
@@ -132,6 +135,13 @@ class Approximator(ABC):
         Returns:
             The interaction values.
         """
+        if tuple() in self.interaction_lookup:
+            baseline_value = result[
+                0
+            ]  # Set baseline value in for emptyset in values, if available in lookup
+        else:
+            baseline_value = 0.0
+
         if index is None:
             index = self.index
         return InteractionValues(
@@ -143,7 +153,7 @@ class Approximator(ABC):
             max_order=self.max_order,
             n_players=self.n,
             interaction_lookup=self._interaction_lookup,
-            baseline_value=0.0,  # Approximator are always normalized/centered games
+            baseline_value=baseline_value,
         )
 
     @staticmethod

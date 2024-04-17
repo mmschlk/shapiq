@@ -1,7 +1,8 @@
 """This module contains the regression-based approximators to estimate Shapley interaction values."""
 
 from .fsi import RegressionFSII
-from .sii import RegressionSII
+from .kadd_shap import kADDSHAP
+from .kernelshapiq import InconsistentKernelSHAPIQ, KernelSHAPIQ
 from .sv import KernelSHAP
 
-__all__ = ["RegressionSII", "RegressionFSII", "KernelSHAP"]
+__all__ = ["kADDSHAP", "RegressionFSII", "KernelSHAP", "KernelSHAPIQ", "InconsistentKernelSHAPIQ"]

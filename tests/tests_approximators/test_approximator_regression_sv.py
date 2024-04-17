@@ -24,9 +24,8 @@ def test_initialization(n):
     assert approximator.n == n
     assert approximator.max_order == 1
     assert approximator.top_order is False
-    assert approximator.min_order == 1
+    assert approximator.min_order == 0
     assert approximator.iteration_cost == 1
-    assert approximator.index == "SV"
 
     approximator_copy = copy(approximator)
     approximator_deepcopy = deepcopy(approximator)
@@ -52,11 +51,10 @@ def test_approximate(n, budget, batch_size):
     sv_estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(sv_estimates, InteractionValues)
     assert sv_estimates.max_order == 1
-    assert sv_estimates.min_order == 1
-    assert sv_estimates.index == "SV"
+    assert sv_estimates.min_order == 0
 
     # check that the budget is respected
-    assert game.access_counter <= budget + 2
+    assert game.access_counter <= budget
 
     # check that the values are in the correct range
     # check that the estimates are correct

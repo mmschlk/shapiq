@@ -5,7 +5,7 @@ from .marginals import StratifiedSamplingSV
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
-from .regression import KernelSHAP, RegressionFSII, RegressionSII
+from .regression import InconsistentKernelSHAPIQ, KernelSHAP, KernelSHAPIQ, RegressionFSII, kADDSHAP
 from .shapiq import ShapIQ, UnbiasedKernelSHAP
 
 __all__ = [
@@ -15,8 +15,10 @@ __all__ = [
     "StratifiedSamplingSV",
     "KernelSHAP",
     "RegressionFSII",
-    "RegressionSII",
+    "KernelSHAPIQ",
+    "InconsistentKernelSHAPIQ",
     "ShapIQ",
+    "kADDSHAP",
     "UnbiasedKernelSHAP",
     "transforms_sii_to_ksii",
     "convert_ksii_into_one_dimension",

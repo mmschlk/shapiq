@@ -6,11 +6,13 @@ __version__ = "0.0.7"
 
 # approximator classes
 from .approximator import (
+    InconsistentKernelSHAPIQ,
+    KernelSHAPIQ,
     PermutationSamplingSII,
     PermutationSamplingSTII,
     RegressionFSII,
-    RegressionSII,
     ShapIQ,
+    kADDSHAP,
 )
 from .datasets import load_adult_census, load_bike, load_california_housing
 from .exact import ExactComputer
@@ -43,7 +45,9 @@ __all__ = [
     "ShapIQ",
     "PermutationSamplingSII",
     "PermutationSamplingSTII",
-    "RegressionSII",
+    "InconsistentKernelSHAPIQ",
+    "KernelSHAPIQ",
+    "kADDSHAP",
     "RegressionFSII",
     # explainers
     "Explainer",
