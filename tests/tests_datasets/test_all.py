@@ -2,11 +2,11 @@
 
 from pandas import DataFrame, Series
 
-from shapiq.datasets import load_bike, load_adult_census, load_california_housing
+from shapiq.datasets import load_bike_sharing, load_adult_census, load_california_housing
 
 
 def test_load_bike():
-    x_data, y_data = load_bike()
+    x_data, y_data = load_bike_sharing()
     # test if data is a pandas dataframe and series
     assert isinstance(x_data, DataFrame)
     assert isinstance(y_data, Series)

@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from ..base import Game
+from shapiq.games.base import Game
 
 
-class SentimentClassificationGame(Game):
+class SentimentAnalysis(Game):
     """Sentiment Classification Game.
 
     The Sentiment Classification Game uses a sentiment classification model from huggingface to
@@ -40,7 +40,7 @@ class SentimentClassificationGame(Game):
         normalize: Whether the game is normalized.
 
     Examples:
-        >>> game = SentimentClassificationGame("This is a six word sentence")
+        >>> game = SentimentAnalysis("This is a six word sentence")
         >>> game.n_players
         6
         >>> game.original_input_text

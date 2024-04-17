@@ -27,7 +27,7 @@ class RegressionFSII(Regression, KShapleyMixin):
             http://jmlr.org/papers/v24/22-0202.html
 
     Example:
-        >>> from games import DummyGame
+        >>> from shapiq.games import DummyGame
         >>> from approximator import RegressionFSII
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = RegressionFSII(n=5, max_order=2)

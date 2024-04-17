@@ -35,7 +35,7 @@ class ShapIQ(Approximator, ShapleySamplingMixin, KShapleyMixin):
         iteration_cost: The cost of a single iteration of the permutation sampling.
 
     Example:
-        >>> from games import DummyGame
+        >>> from shapiq.games import DummyGame
         >>> from approximator import ShapIQ
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = ShapIQ(n=5, max_order=2, index="SII")

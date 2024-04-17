@@ -2,8 +2,9 @@
 
 from typing import Optional, Union
 
-from shapiq.games.valuation import DatasetValuation
 from shapiq.utils.datasets import shuffle_data
+
+from .base import DatasetValuation
 
 
 def _get_decision_tree_regressor():
@@ -62,8 +63,6 @@ class CaliforniaHousing(DatasetValuation):
     """The California Housing dataset as a DatasetValuation game.
 
     Args:
-        path_to_values: The path to load the game values from. If the path is provided, the game
-            values are loaded from the given path. Defaults to `None`.
         n_players: The number of players in the game. Defaults to 10.
         model: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
             Defaults to 'decision_tree'.
@@ -77,7 +76,7 @@ class CaliforniaHousing(DatasetValuation):
 
     Examples:
         >>> import numpy as np
-        >>> from shapiq.games.benchmark.valuation import CaliforniaHousing
+        >>> from shapiq.games.benchmark.dataset_valuation import CaliforniaHousing
         >>> game = CaliforniaHousing(n_players=4)
         >>> game.n_players
         4
@@ -90,23 +89,19 @@ class CaliforniaHousing(DatasetValuation):
         >>> game.precompute()
         >>> game.save_values("california_housing_values.npz")
         >>> # load the values from the file
-        >>> game = CaliforniaHousing(path_to_values="california_housing_values.npz")
+        >>> from shapiq.games import Game  # for loading the game via its values
+        >>> game = Game(path_to_values="california_housing_values.npz")
         >>> game.n_players
         4
     """
 
     def __init__(
         self,
-        path_to_values: str = None,
         n_players: int = 10,
         model: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = None,
     ) -> None:
-        # TODO: remove path to values logic from subclass
-        if path_to_values is not None:
-            super().__init__(path_to_values=path_to_values)
-            return
 
         if model == "decision_tree":
             fit_function, predict_function, loss_function = _get_decision_tree_regressor()
@@ -139,8 +134,6 @@ class BikeSharing(DatasetValuation):
     """The Bike Sharing dataset as a DatasetValuation game.
 
     Args:
-        path_to_values: The path to load the game values from. If the path is provided, the game
-            values are loaded from the given path. Defaults to `None`.
         n_players: The number of players in the game. Defaults to 10.
         model: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
             Defaults to 'decision_tree'.
@@ -154,7 +147,7 @@ class BikeSharing(DatasetValuation):
 
     Examples:
         >>> import numpy as np
-        >>> from shapiq.games.benchmark.valuation import BikeSharing
+        >>> from shapiq.games.benchmark.dataset_valuation import BikeSharing
         >>> game = BikeSharing(n_players=4)
         >>> game.n_players
         4
@@ -167,23 +160,19 @@ class BikeSharing(DatasetValuation):
         >>> game.precompute()
         >>> game.save_values("bike_sharing_values.npz")
         >>> # load the values from the file
-        >>> game = BikeSharing(path_to_values="bike_sharing_values.npz")
+        >>> from shapiq.games import Game  # for loading the game via its values
+        >>> game = Game(path_to_values="bike_sharing_values.npz")
         >>> game.n_players
         4
     """
 
     def __init__(
         self,
-        path_to_values: str = None,
         n_players: int = 10,
         model: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = None,
     ) -> None:
-        # TODO: remove path to values logic from subclass
-        if path_to_values is not None:
-            super().__init__(path_to_values=path_to_values)
-            return
 
         if model == "decision_tree":
             fit_function, predict_function, loss_function = _get_decision_tree_regressor()
@@ -192,9 +181,9 @@ class BikeSharing(DatasetValuation):
         else:
             raise ValueError("Model must be 'decision_tree' or 'random_forest'.")
 
-        from shapiq.datasets import load_bike
+        from shapiq.datasets import load_bike_sharing
 
-        x_train, y_train = load_bike()
+        x_train, y_train = load_bike_sharing()
         x_train, y_train = shuffle_data(x_train.values, y_train.values, random_state=random_state)
 
         super().__init__(
@@ -215,8 +204,6 @@ class AdultCensus(DatasetValuation):
     """The Adult Census dataset as a DatasetValuation game.
 
     Args:
-        path_to_values: The path to load the game values from. If the path is provided, the game
-            values are loaded from the given path. Defaults to `None`.
         n_players: The number of players in the game. Defaults to 10.
         model: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
             Defaults to 'decision_tree'.
@@ -230,7 +217,7 @@ class AdultCensus(DatasetValuation):
 
     Examples:
         >>> import numpy as np
-        >>> from shapiq.games.benchmark.valuation import AdultCensus
+        >>> from shapiq.games.benchmark.dataset_valuation import AdultCensus
         >>> game = AdultCensus(n_players=4)
         >>> game.n_players
         4
@@ -243,23 +230,19 @@ class AdultCensus(DatasetValuation):
         >>> game.precompute()
         >>> game.save_values("adult_census_values.npz")
         >>> # load the values from the file
-        >>> game = AdultCensus(path_to_values="adult_census_values.npz")
+        >>> from shapiq.games import Game  # for loading the game via its values
+        >>> game = Game(path_to_values="adult_census_values.npz")
         >>> game.n_players
         4
     """
 
     def __init__(
         self,
-        path_to_values: str = None,
         n_players: int = 10,
         model: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = None,
     ) -> None:
-        # TODO: remove path to values logic from subclass
-        if path_to_values is not None:
-            super().__init__(path_to_values=path_to_values)
-            return
 
         if model == "decision_tree":
             fit_function, predict_function, loss_function = _get_decision_tree_classifier()

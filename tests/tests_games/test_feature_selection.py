@@ -6,7 +6,12 @@ import numpy as np
 import pytest
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.games.feature_selection import FeatureSelectionGame
+from shapiq.games import FeatureSelectionGame, Game
+from shapiq.games import (
+    AdultCensusFeatureSelection,
+    BikeSharingFeatureSelection,
+    CaliforniaHousingFeatureSelection,
+)
 
 
 def loss_function(y_pred, y_test):
@@ -72,7 +77,7 @@ def test_basic_function(background_reg_dataset):
 
     # test with path_to_values
     game.save_values("test_values.npz")
-    new_game = FeatureSelectionGame(path_to_values="test_values.npz")
+    new_game = Game(path_to_values="test_values.npz")
     assert new_game.n_values_stored == game.n_values_stored
 
     # clean up
@@ -80,16 +85,40 @@ def test_basic_function(background_reg_dataset):
     assert not os.path.exists("test_values.npz")
 
 
-def test_california():
+@pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
+def test_california(model_name):
     """Test the FeatureSelection game with the california housing dataset."""
-    raise NotImplementedError("The game is not implemented yet.")
+    n_players = 8
+    test_coalition = np.zeros(shape=(1, n_players), dtype=bool)
+    test_coalition[0][0] = True
+
+    game = CaliforniaHousingFeatureSelection(model_name=model_name)
+    value = game(test_coalition)
+    assert game.n_players == n_players
+    assert len(value) == 1
 
 
-def test_adult_census():
+@pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
+def test_adult_census(model_name):
     """Test the FeatureSelection game with the adult census dataset."""
-    raise NotImplementedError("The game is not implemented yet.")
+    n_players = 14
+    test_coalition = np.zeros(shape=(1, n_players), dtype=bool)
+    test_coalition[0][0] = True
+
+    game = AdultCensusFeatureSelection(model_name=model_name)
+    value = game(test_coalition)
+    assert game.n_players == n_players
+    assert len(value) == 1
 
 
-def test_bike_sharing():
+@pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
+def test_bike_sharing(model_name):
     """Test the FeatureSelection game with the bike sharing dataset."""
-    raise NotImplementedError("The game is not implemented yet.")
+    n_players = 12
+    test_coalition = np.zeros(shape=(1, n_players), dtype=bool)
+    test_coalition[0][0] = True
+
+    game = BikeSharingFeatureSelection(model_name=model_name)
+    value = game(test_coalition)
+    assert game.n_players == n_players
+    assert len(value) == 1

@@ -5,7 +5,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 
-from ..local_xai import LocalExplanation, _get_x_explain
+from .base import LocalExplanation, _get_x_explain
 
 
 class AdultCensus(LocalExplanation):
@@ -20,8 +20,6 @@ class AdultCensus(LocalExplanation):
         This game requires the `openml` and `sklearn` packages to be installed.
 
     Args:
-        path_to_values: The path to the pre-computed game values to load. If provided, then the game
-            is loaded from the file and no other parameters are used. Defaults to `None`.
         class_to_explain: The class label to explain. Should be either 0 or 1. Defaults to `1`.
         x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features).
@@ -43,11 +41,17 @@ class AdultCensus(LocalExplanation):
         >>> game = AdultCensus(x=0)
         >>> game.n_players
         14
+        >>> # call the game with a coalition
+        >>> coalition = np.ones(14, dtype=bool)
+        >>> game(coalition)  # returns some value
         >>> # precompute the game (if needed)
         >>> game.precompute()
-        >>> # save and load the game
+        >>> # save and load the game values
         >>> game.save_values("adult_income.npz")
-        >>> new_game = AdultCensus(path_to_values="adult_income.npz")
+        >>> from shapiq.games import Game  # (for loading the game)
+        >>> loaded_game = Game(path_to_values="adult_income.npz")
+        >>> loaded_game.n_values_stored
+        16384  # 2^14
     """
 
     def __init__(
@@ -146,10 +150,10 @@ class AdultCensus(LocalExplanation):
         return lambda x: model.predict_proba(x)[:, class_to_explain]
 
 
-class BikeRegression(LocalExplanation):
-    """The BikeRental dataset as a local explanation game.
+class BikeSharing(LocalExplanation):
+    """The BikeSharing dataset as a local explanation game.
 
-    This class represents the BikeRental regression dataset as a local explanation game. The dataset
+    This class represents the BikeSharing regression dataset as a local explanation game. The dataset
     contains data on bike rentals in a city given various features such as the weather or time of
     day. The value function of the game is the model's prediction on feature subsets. Missing
     features are removed using marginal imputation.
@@ -159,8 +163,6 @@ class BikeRegression(LocalExplanation):
         For the default model, the game requires the `xgboost` package to be installed.
 
     Args:
-        path_to_values: The path to the pre-computed game values to load. If provided, then the game
-            is loaded from the file and no other parameters are used. Defaults to `None`.
         x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features).
         model: The model to explain as a string or a callable function. If a string is provided it
@@ -177,19 +179,20 @@ class BikeRegression(LocalExplanation):
         feature_names: The names of the features in the dataset in the order they appear.
 
     Examples:
-        >>> game = BikeRegression(x=1)
+        >>> game = BikeSharing(x=1)
         >>> game.n_players
         12
         >>> # call the game with a coalition
         >>> coalition = np.ones(12, dtype=bool)
-        >>> game(coalition)
-        0.28  # [0.72, 0.28] for x_explain=1 (would be different for other x_explain)
+        >>> game(coalition)  # returns some value
         >>> # precompute the game (if needed)
         >>> game.precompute()
-        >>> # save and load the game
-        >>> game.save_values("bike_rental.npz")
-        >>> new_game = BikeRegression(path_to_values="bike_rental.npz")
-
+        >>> # save and load the game values
+        >>> game.save_values("bike_sharing.npz")
+        >>> from shapiq.games import Game  # (for loading the game values)
+        >>> loaded_game = Game(path_to_values="bike_sharing.npz")
+        >>> loaded_game.n_values_stored
+        4096  # 2^12
     """
 
     def __init__(
@@ -209,9 +212,9 @@ class BikeRegression(LocalExplanation):
 
         from sklearn.model_selection import train_test_split
 
-        from shapiq.datasets import load_bike
+        from shapiq.datasets import load_bike_sharing
 
-        x_data, y_data = load_bike()
+        x_data, y_data = load_bike_sharing()
         self.feature_names = list(x_data.columns)
 
         # transform to numpy
@@ -287,8 +290,6 @@ class CaliforniaHousing(LocalExplanation):
         This game requires the `sklearn` package to be installed.
 
     Args:
-        path_to_values: The path to the pre-computed game values to load. If provided, then the game
-            is loaded from the file and no other parameters are used. Defaults to `None`.
         x: The data point to explain. Can be an index of the background data or a 1d matrix
             of shape (n_features).
         model: The model to explain as a string or a callable function. If a string is provided it
@@ -313,17 +314,18 @@ class CaliforniaHousing(LocalExplanation):
         8
         >>> # call the game with a coalition
         >>> coalition = np.ones(8, dtype=bool)
-        >>> game(coalition)
-        ... # some value
+        >>> game(coalition)  # returns some value
         >>> # precompute the game (if needed)
         >>> game.precompute()
-        >>> # save and load the game
+        >>> # save and load the game values
         >>> game.save_values("california_housing.npz")
-        >>> new_game = CaliforniaHousing(path_to_values="california_housing.npz")
-        >>> # load the game with a torch model
+        >>> from shapiq.games import Game  # (for loading the game values)
+        >>> loaded_game = Game(path_to_values="california_housing.npz")
+        >>> loaded_game.n_values_stored
+        256  # 2^8
+        >>> # initialize the game with a torch model
         >>> game = CaliforniaHousing(model="torch_nn")
-        >>> game(coalition)
-        ... # some value but this time the values are logarithmic
+        >>> game(coalition)  # returns some value but this time the values are logarithmic
     """
 
     def __init__(

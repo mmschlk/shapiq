@@ -4,8 +4,8 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 
-from .base import Game
-from .imputer import MarginalImputer
+from shapiq.games.base import Game
+from shapiq.games.imputer import MarginalImputer
 
 
 class LocalExplanation(Game):
@@ -36,7 +36,7 @@ class LocalExplanation(Game):
     Examples:
         >>> from sklearn.tree import DecisionTreeRegressor
         >>> from sklearn.datasets import make_regression
-        >>> from shapiq.games.local_xai import LocalExplanation
+        >>> from shapiq.games.benchmark.local_xai import LocalExplanation
         >>> # create a regression dataset and fit the model
         >>> x_data, y_data = make_regression(n_samples=100, n_features=10, noise=0.1)
         >>> model = DecisionTreeRegressor(max_depth=4)

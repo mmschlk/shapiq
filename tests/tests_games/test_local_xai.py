@@ -5,13 +5,17 @@ import os
 import numpy as np
 import pytest
 
-from shapiq.games.base import Game
-from shapiq.games.local_xai import LocalExplanation
-from shapiq.games.benchmark.tabular import AdultCensus, CaliforniaHousing, BikeRegression
-from shapiq.games.benchmark.sentiment_language import SentimentClassificationGame
-from shapiq.games.benchmark.image_classifier import ImageClassifierGame
-from shapiq.games.benchmark._vit_setup import ViTModel
-from shapiq.games.benchmark._resnet_setup import ResNetModel
+from shapiq.games import Game
+from shapiq.games import (
+    LocalExplanation,
+    AdultCensusLocalXAI,
+    CaliforniaHousingLocalXAI,
+    BikeSharingLocalXAI,
+    SentimentAnalysisLocalXAI,
+    ImageClassifierLocalXAI,
+)
+from shapiq.games.benchmark.setup._vit_setup import ViTModel
+from shapiq.games.benchmark.setup._resnet_setup import ResNetModel
 
 
 def test_basic_function(background_reg_dataset, dt_reg_model):
@@ -64,11 +68,11 @@ def test_basic_function(model):
 
     if model == "invalid":
         with pytest.raises(ValueError):
-            _ = AdultCensus(model=model, x=0)
+            _ = AdultCensusLocalXAI(model=model, x=0)
         return
 
     x_explain_id = 1
-    game = AdultCensus(x=x_explain_id, model=model)
+    game = AdultCensusLocalXAI(x=x_explain_id, model=model)
     assert game.n_players == game_n_players
 
     # test full prediction output against underlying model
@@ -112,7 +116,7 @@ def test_basic_function(model):
 
     # value error for wrong class
     with pytest.raises(ValueError):
-        _ = AdultCensus(x=x_explain_id, class_to_explain=2)
+        _ = AdultCensusLocalXAI(x=x_explain_id, class_to_explain=2)
 
 
 @pytest.mark.slow
@@ -123,7 +127,7 @@ def test_basic_function(model):
 
     if model == "invalid":
         with pytest.raises(ValueError):
-            _ = CaliforniaHousing(model=model, x=0)
+            _ = CaliforniaHousingLocalXAI(model=model, x=0)
         return
 
     x_id = 0
@@ -140,7 +144,7 @@ def test_basic_function(model):
         dtype=bool,
     )
 
-    game = CaliforniaHousing(x=x_id, model=model)
+    game = CaliforniaHousingLocalXAI(x=x_id, model=model)
     game.precompute(coalitions=test_coalitions_precompute)
     assert game.n_players == game_n_players
     assert len(game.feature_names) == game_n_players
@@ -169,17 +173,17 @@ def test_basic_function(model):
 
 @pytest.mark.parametrize("model", ["xgboost", "invalid"])
 def test_basic_function(model):
-    """Tests the BikeRegression game."""
+    """Tests the BikeSharing game."""
 
     game_n_players = 12
 
     if model == "invalid":
         with pytest.raises(ValueError):
-            _ = BikeRegression(model=model, x=0)
+            _ = BikeSharingLocalXAI(model=model, x=0)
         return
 
     x_explain_id = 0
-    game = BikeRegression(x=x_explain_id, model=model)
+    game = BikeSharingLocalXAI(x=x_explain_id, model=model)
     assert game.n_players == game_n_players
 
     test_coalitions_precompute = np.array(
@@ -223,7 +227,7 @@ def test_basic_function(mask_strategy):
     """Tests the SentimentClassificationGame with a small input text."""
     input_text = "this is a six word sentence"
     n_players = 6
-    game = SentimentClassificationGame(
+    game = SentimentAnalysisLocalXAI(
         input_text=input_text, normalize=True, mask_strategy=mask_strategy
     )
 
@@ -248,7 +252,7 @@ def test_basic_function(mask_strategy):
 
     # test ValueError with wrong param
     with pytest.raises(ValueError):
-        _ = SentimentClassificationGame(
+        _ = SentimentAnalysisLocalXAI(
             input_text=input_text, normalize=True, mask_strategy="undefined"
         )
 
@@ -280,7 +284,7 @@ def test_image_classifier_game_resnet(test_image_and_path):
     """Tests the ImageClassifierGame with the ResNet models."""
     # TODO: maybe remove this test and check all of it in the ImageClassifierGame test
     test_image, path_from_test_root = test_image_and_path
-    game = ImageClassifierGame(
+    game = ImageClassifierLocalXAI(
         model_name="resnet_18", verbose=True, x_explain_path=path_from_test_root
     )
     assert game.n_players == 14
@@ -289,7 +293,7 @@ def test_image_classifier_game_resnet(test_image_and_path):
     grand_coal_output = game(game.grand_coalition)
     assert grand_coal_output == pytest.approx(0.2925054 - game.normalization_value, abs=1e-3)
 
-    game_small = ImageClassifierGame(
+    game_small = ImageClassifierLocalXAI(
         model_name="resnet_18",
         verbose=False,
         x_explain_path=path_from_test_root,
@@ -320,7 +324,7 @@ def test_vit_model_class(test_image_and_path):
 def test_image_classifier_game_vit(test_image_and_path):
     """Tests the ImageClassifierGame with the ViT models."""
     test_image, path_from_test_root = test_image_and_path
-    game = ImageClassifierGame(
+    game = ImageClassifierLocalXAI(
         x_explain_path=path_from_test_root, model_name="vit_9_patches", normalize=True, verbose=True
     )
     assert game.n_players == 9
@@ -345,7 +349,7 @@ def test_image_classifier_game_vit(test_image_and_path):
     assert os.path.exists("test_values.npz")
 
     # load
-    new_game = ImageClassifierGame(path_to_values="test_values.npz")
+    new_game = Game(path_to_values="test_values.npz")
     assert new_game.n_values_stored == 4
     assert np.allclose(game.value_storage, new_game.value_storage)
 
@@ -354,7 +358,7 @@ def test_image_classifier_game_vit(test_image_and_path):
     assert not os.path.exists("test_values.npz")
 
     # create vit with 16 patches
-    game_16 = ImageClassifierGame(
+    game_16 = ImageClassifierLocalXAI(
         x_explain_path=path_from_test_root,
         model_name="vit_16_patches",
         normalize=True,
@@ -365,8 +369,8 @@ def test_image_classifier_game_vit(test_image_and_path):
 
     # wrong model
     with pytest.raises(ValueError):
-        _ = ImageClassifierGame(x_explain_path=path_from_test_root, model_name="wrong_model")
+        _ = ImageClassifierLocalXAI(x_explain_path=path_from_test_root, model_name="wrong_model")
 
     # no image path
     with pytest.raises(ValueError):
-        _ = ImageClassifierGame(model_name="vit_9_patches")
+        _ = ImageClassifierLocalXAI(model_name="vit_9_patches")
