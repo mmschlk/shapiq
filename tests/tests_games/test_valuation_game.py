@@ -8,8 +8,8 @@ import pytest
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 from sklearn.metrics import mean_squared_error, accuracy_score
 
-from shapiq.games import Game
-from shapiq.games import (
+from shapiq.games.base import Game
+from shapiq.games.benchmark import (
     DatasetValuation,
     AdultCensusDatasetValuation,
     BikeSharingDatasetValuation,
@@ -101,13 +101,13 @@ def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
     game.precompute(test_coalitions)
     game.save_values("test_game.npz")
     assert os.path.exists("test_game.npz")
-    _ = DatasetValuation(path_to_values="test_game.npz")
+    _ = Game(path_to_values="test_game.npz")
     os.remove("test_game.npz")
     assert not os.path.exists("test_game.npz")
 
     # check for ValueError for missing params
     with pytest.raises(ValueError):
-        _ = DatasetValuation()
+        _ = DatasetValuation(x_train=x_train, y_train=y_train)
 
     # check for ValueError with no x_test, y_test and x_train as list
     with pytest.raises(ValueError):
@@ -207,11 +207,11 @@ def test_california():
     assert not os.path.exists("test_california_game.npz")
 
     # check for model loads
-    game = CaliforniaHousingDatasetValuation(model="random_forest")
+    game = CaliforniaHousingDatasetValuation(model_name="random_forest")
     assert game.n_players == 10
 
     with pytest.raises(ValueError):
-        _ = CaliforniaHousingDatasetValuation(model="wrong_model")
+        _ = CaliforniaHousingDatasetValuation(model_name="wrong_model")
 
 
 def test_bike():
@@ -233,11 +233,11 @@ def test_bike():
     assert not os.path.exists("test_bike_game.npz")
 
     # check for model loads
-    game = BikeSharingDatasetValuation(model="random_forest")
+    game = BikeSharingDatasetValuation(model_name="random_forest")
     assert game.n_players == 10
 
     with pytest.raises(ValueError):
-        _ = BikeSharingDatasetValuation(model="wrong_model")
+        _ = BikeSharingDatasetValuation(model_name="wrong_model")
 
 
 def test_adult_census():
@@ -258,8 +258,8 @@ def test_adult_census():
     os.remove("test_adult_census_game.npz")
 
     # check for model loads
-    game = AdultCensusDatasetValuation(model="random_forest")
+    game = AdultCensusDatasetValuation(model_name="random_forest")
     assert game.n_players == 10
 
     with pytest.raises(ValueError):
-        _ = AdultCensusDatasetValuation(model="wrong_model")
+        _ = AdultCensusDatasetValuation(model_name="wrong_model")

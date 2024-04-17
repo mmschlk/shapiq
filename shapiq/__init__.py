@@ -19,7 +19,6 @@ from .exact import ExactComputer
 from .explainer import Explainer, TabularExplainer, TreeExplainer
 
 # game classes
-from .games import DummyGame
 from .interaction_values import InteractionValues
 
 # plotting functions
@@ -49,8 +48,6 @@ __all__ = [
     "Explainer",
     "TabularExplainer",
     "TreeExplainer",
-    # games
-    "DummyGame",
     # plots
     "network_plot",
     "stacked_bar_plot",
