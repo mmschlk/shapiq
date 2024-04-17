@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 
-from shapiq.games import DummyGame, SOUM, UnanimityGame
+from shapiq.games.benchmark import DummyGame, SOUM, UnanimityGame
 
 
 def test_soum_interations():

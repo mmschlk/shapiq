@@ -5,8 +5,8 @@ import os
 import numpy as np
 import pytest
 
-from shapiq.games import Game
-from shapiq.games import (
+from shapiq.games.base import Game
+from shapiq.games.benchmark import (
     LocalExplanation,
     AdultCensusLocalXAI,
     CaliforniaHousingLocalXAI,
@@ -68,11 +68,11 @@ def test_basic_function(model):
 
     if model == "invalid":
         with pytest.raises(ValueError):
-            _ = AdultCensusLocalXAI(model=model, x=0)
+            _ = AdultCensusLocalXAI(model_name=model, x=0)
         return
 
     x_explain_id = 1
-    game = AdultCensusLocalXAI(x=x_explain_id, model=model)
+    game = AdultCensusLocalXAI(x=x_explain_id, model_name=model)
     assert game.n_players == game_n_players
 
     # test full prediction output against underlying model

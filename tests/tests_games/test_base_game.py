@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 
-from shapiq.games import DummyGame  # used to test the base class
+from shapiq.games.benchmark import DummyGame  # used to test the base class
 
 
 def test_precompute():

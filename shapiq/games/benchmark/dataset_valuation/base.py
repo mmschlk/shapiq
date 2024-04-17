@@ -15,9 +15,6 @@ class DatasetValuation(Game):
     of rows of the dataset, and the worth of a coalition is the performance of a model on a seperate
     holdout set, trained on the union of the players' subsets.
 
-    Args:
-        path_to_values: The path to load the game values from. If the path is provided, the game
-            values are loaded from the given path. Defaults to `None`.
 
 
     Examples:
@@ -25,7 +22,7 @@ class DatasetValuation(Game):
         >>> from sklearn.ensemble import RandomForestRegressor
         >>> from sklearn.metrics import r2_score
         >>> from sklearn.model_selection import train_test_split
-        >>> from shapiq.games.valuation import DatasetValuation
+        >>> from shapiq.games.benchmark import DatasetValuation
         >>> from shapiq.datasets import load_california_housing
         >>> # load the data
         >>> x_train, y_train = load_california_housing()
@@ -56,9 +53,8 @@ class DatasetValuation(Game):
 
     def __init__(
         self,
-        path_to_values: str = None,
-        x_train: Optional[Union[np.ndarray, list[np.ndarray]]] = None,
-        y_train: Optional[Union[np.ndarray, list[np.ndarray]]] = None,
+        x_train: Union[np.ndarray, list[np.ndarray]],
+        y_train: Union[np.ndarray, list[np.ndarray]],
         x_test: Optional[np.ndarray] = None,
         y_test: Optional[np.ndarray] = None,
         test_size: float = 0.2,
@@ -71,11 +67,6 @@ class DatasetValuation(Game):
         empty_value: float = 0.0,
         normalize: bool = True,
     ) -> None:
-        # TODO: remove path to values logic from subclass
-        # path to values
-        if path_to_values is not None:
-            super().__init__(path_to_values=path_to_values, normalize=normalize)
-            return
 
         # check if all required functions are given, otherwise
         if (

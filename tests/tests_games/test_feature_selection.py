@@ -6,8 +6,9 @@ import numpy as np
 import pytest
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.games import FeatureSelectionGame, Game
-from shapiq.games import (
+from shapiq.games.base import Game
+from shapiq.games.benchmark import (
+    FeatureSelectionGame,
     AdultCensusFeatureSelection,
     BikeSharingFeatureSelection,
     CaliforniaHousingFeatureSelection,

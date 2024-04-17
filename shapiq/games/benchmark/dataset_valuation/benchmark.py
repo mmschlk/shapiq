@@ -2,61 +2,8 @@
 
 from typing import Optional, Union
 
-from shapiq.utils.datasets import shuffle_data
-
+from ..setup import BenchmarkSetup
 from .base import DatasetValuation
-
-
-def _get_decision_tree_regressor():
-    """Get the decision tree regressor model and functions."""
-    from sklearn.metrics import r2_score
-    from sklearn.tree import DecisionTreeRegressor
-
-    model = DecisionTreeRegressor()
-
-    fit_function = model.fit
-    predict_function = model.predict
-    loss_function = r2_score
-    return fit_function, predict_function, loss_function
-
-
-def _get_random_forest_regressor():
-    """Get the random forest regressor model and functions."""
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.metrics import r2_score
-
-    model = RandomForestRegressor()
-
-    fit_function = model.fit
-    predict_function = model.predict
-    loss_function = r2_score
-    return fit_function, predict_function, loss_function
-
-
-def _get_decision_tree_classifier():
-    """Get the decision tree classifier model and functions."""
-    from sklearn.metrics import accuracy_score
-    from sklearn.tree import DecisionTreeClassifier
-
-    model = DecisionTreeClassifier()
-
-    fit_function = model.fit
-    predict_function = model.predict
-    loss_function = accuracy_score
-    return fit_function, predict_function, loss_function
-
-
-def _get_random_forest_classifier():
-    """Get the random forest classifier model and functions."""
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.metrics import accuracy_score
-
-    model = RandomForestClassifier()
-
-    fit_function = model.fit
-    predict_function = model.predict
-    loss_function = accuracy_score
-    return fit_function, predict_function, loss_function
 
 
 class CaliforniaHousing(DatasetValuation):
@@ -64,7 +11,7 @@ class CaliforniaHousing(DatasetValuation):
 
     Args:
         n_players: The number of players in the game. Defaults to 10.
-        model: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
+        model_name: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
             Defaults to 'decision_tree'.
         player_sizes: The sizes of the players. If 'uniform', the players have equal sizes. If
             'increasing', the players have increasing sizes. If 'random', the players have random
@@ -98,31 +45,25 @@ class CaliforniaHousing(DatasetValuation):
     def __init__(
         self,
         n_players: int = 10,
-        model: str = "decision_tree",
+        model_name: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = None,
     ) -> None:
 
-        if model == "decision_tree":
-            fit_function, predict_function, loss_function = _get_decision_tree_regressor()
-        elif model == "random_forest":
-            fit_function, predict_function, loss_function = _get_random_forest_regressor()
-        else:
-            raise ValueError("Model must be 'decision_tree' or 'random_forest'.")
-
-        from shapiq.datasets import load_california_housing
-
-        x_train, y_train = load_california_housing()
-        self.feature_names = list(x_train.columns)
-        x_train, y_train = shuffle_data(x_train.values, y_train.values, random_state=random_state)
+        setup = BenchmarkSetup(
+            dataset_name="california_housing",
+            model_name=model_name,
+            random_state=random_state,
+        )
 
         super().__init__(
-            x_train=x_train,
-            y_train=y_train,
-            test_size=0.2,
-            fit_function=fit_function,
-            predict_function=predict_function,
-            loss_function=loss_function,
+            x_train=setup.x_train,
+            y_train=setup.y_train,
+            x_test=setup.x_test,
+            y_test=setup.y_test,
+            fit_function=setup.fit_function,
+            predict_function=setup.predict_function,
+            loss_function=setup.loss_function,
             n_players=n_players,
             player_sizes=player_sizes,
             random_state=random_state,
@@ -135,7 +76,7 @@ class BikeSharing(DatasetValuation):
 
     Args:
         n_players: The number of players in the game. Defaults to 10.
-        model: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
+        model_name: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
             Defaults to 'decision_tree'.
         player_sizes: The sizes of the players. If 'uniform', the players have equal sizes. If
             'increasing', the players have increasing sizes. If 'random', the players have random
@@ -169,30 +110,25 @@ class BikeSharing(DatasetValuation):
     def __init__(
         self,
         n_players: int = 10,
-        model: str = "decision_tree",
+        model_name: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = None,
     ) -> None:
 
-        if model == "decision_tree":
-            fit_function, predict_function, loss_function = _get_decision_tree_regressor()
-        elif model == "random_forest":
-            fit_function, predict_function, loss_function = _get_random_forest_regressor()
-        else:
-            raise ValueError("Model must be 'decision_tree' or 'random_forest'.")
-
-        from shapiq.datasets import load_bike_sharing
-
-        x_train, y_train = load_bike_sharing()
-        x_train, y_train = shuffle_data(x_train.values, y_train.values, random_state=random_state)
+        setup = BenchmarkSetup(
+            dataset_name="bike_sharing",
+            model_name=model_name,
+            random_state=random_state,
+        )
 
         super().__init__(
-            x_train=x_train,
-            y_train=y_train,
-            test_size=0.2,
-            fit_function=fit_function,
-            predict_function=predict_function,
-            loss_function=loss_function,
+            x_train=setup.x_train,
+            y_train=setup.y_train,
+            x_test=setup.x_test,
+            y_test=setup.y_test,
+            fit_function=setup.fit_function,
+            predict_function=setup.predict_function,
+            loss_function=setup.loss_function,
             n_players=n_players,
             player_sizes=player_sizes,
             random_state=random_state,
@@ -205,7 +141,7 @@ class AdultCensus(DatasetValuation):
 
     Args:
         n_players: The number of players in the game. Defaults to 10.
-        model: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
+        model_name: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
             Defaults to 'decision_tree'.
         player_sizes: The sizes of the players. If 'uniform', the players have equal sizes. If
             'increasing', the players have increasing sizes. If 'random', the players have random
@@ -239,30 +175,25 @@ class AdultCensus(DatasetValuation):
     def __init__(
         self,
         n_players: int = 10,
-        model: str = "decision_tree",
+        model_name: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = None,
     ) -> None:
 
-        if model == "decision_tree":
-            fit_function, predict_function, loss_function = _get_decision_tree_classifier()
-        elif model == "random_forest":
-            fit_function, predict_function, loss_function = _get_random_forest_classifier()
-        else:
-            raise ValueError("Model must be 'decision_tree' or 'random_forest'.")
-
-        from shapiq.datasets import load_adult_census
-
-        x_train, y_train = load_adult_census()
-        x_train, y_train = shuffle_data(x_train.values, y_train.values, random_state=random_state)
+        setup = BenchmarkSetup(
+            dataset_name="adult_census",
+            model_name=model_name,
+            random_state=random_state,
+        )
 
         super().__init__(
-            x_train=x_train,
-            y_train=y_train,
-            test_size=0.2,
-            fit_function=fit_function,
-            predict_function=predict_function,
-            loss_function=loss_function,
+            x_train=setup.x_train,
+            y_train=setup.y_train,
+            x_test=setup.x_test,
+            y_test=setup.y_test,
+            fit_function=setup.fit_function,
+            predict_function=setup.predict_function,
+            loss_function=setup.loss_function,
             n_players=n_players,
             player_sizes=player_sizes,
             random_state=random_state,
