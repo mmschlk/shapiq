@@ -19,7 +19,7 @@ def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
     return x_data, y_data
 
 
-def load_bike() -> tuple[pd.DataFrame, pd.Series]:
+def load_bike_sharing() -> tuple[pd.DataFrame, pd.Series]:
     """Load the bike-sharing dataset from openml.
 
     Note:
@@ -124,5 +124,8 @@ def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
 
     x_data = dataset
     y_data = dataset.pop(class_label)
+
+    # transform '>50K' to 1 and '<=50K' to 0
+    y_data = y_data.apply(lambda x: 1 if x == ">50K" else 0)
 
     return x_data, y_data

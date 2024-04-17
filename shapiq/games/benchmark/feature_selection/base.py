@@ -15,30 +15,22 @@ class FeatureSelectionGame(Game):
     model's test set performance.
 
     Args:
-        path_to_values: The path to the pre-computed game values to load. If provided, then the game
-            is loaded from the file and no other parameters are used. Defaults to `None`.
         x_train: The training data used to fit the model. Should be a 2d matrix of shape
-            (n_samples, n_features). Defaults to `None` but must be provided if `path_to_values` is
-            `None`.
+            (n_samples, n_features).
         y_train: The training labels used to fit the model. Can be a 1d or 2d matrix of shape
-            (n_samples, n_outputs). Defaults to `None` but must be provided if `path_to_values` is
-            `None`.
+            (n_samples, n_outputs).
         x_test: The test data used to evaluate the model. Should be the same shape as `x_train`.
-            Defaults to `None` but must be provided if `path_to_values` is `None`.
         y_test: The test labels used to evaluate the model. Should be the same shape as `y_train`.
-            Defaults to `None` but must be provided if `path_to_values` is `None`.
         fit_function: The function that fits the model to the training data. It should take the
-            training data and labels as input. Defaults to `None` but must be provided if
-            `path_to_values` is `None`.
+            training data and labels as input.
         score_function: The function that scores the model's performance on the test data. It should
             take the test data and labels as input. If not provided, then `predict_function` and
-            `loss_function` must be provided (if `path_to_values` is `None`).
+            `loss_function` must be provided.
         predict_function: The function that predicts the test labels given the test data. It should
-            take the test data as input. If not provided, then `score_function` must be provided (if
-            `path_to_values` is `None`).
+            take the test data as input. If not provided, then `score_function` must be provided.
         loss_function: The function that computes the loss between the predicted and true test
             labels. It should take the true and predicted test labels as input. If not provided,
-            then `score_function` must be provided (if `path_to_values` is `None`).
+            then `score_function` must be provided.
         empty_value: The value to return when the subset of features is empty. Defaults to 0.0.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
@@ -50,7 +42,7 @@ class FeatureSelectionGame(Game):
         >>> from sklearn.tree import DecisionTreeRegressor
         >>> from sklearn.datasets import make_regression
         >>> from sklearn.model_selection import train_test_split
-        >>> from shapiq.games.tabular import FeatureSelectionGame
+        >>> from shapiq.games import FeatureSelectionGame
         >>> # create a regression dataset
         >>> x_data, y_data = make_regression(n_samples=100, n_features=10, noise=0.1)
         >>> x_train, x_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.2)
@@ -79,23 +71,17 @@ class FeatureSelectionGame(Game):
     def __init__(
         self,
         *,
-        path_to_values: Optional[str] = None,
-        x_train: Optional[np.ndarray] = None,
-        y_train: Optional[np.ndarray] = None,
-        x_test: Optional[np.ndarray] = None,
-        y_test: Optional[np.ndarray] = None,
-        fit_function: Optional[Callable[[np.ndarray, np.ndarray], Any]] = None,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+        x_test: np.ndarray,
+        y_test: np.ndarray,
+        fit_function: Callable[[np.ndarray, np.ndarray], Any],
         score_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
         predict_function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         loss_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
         empty_value: float = 0.0,
         normalize: bool = True,
     ) -> None:
-        # TODO: remove path to values logic from subclass
-        # check if path is provided
-        if path_to_values is not None:
-            super().__init__(path_to_values=path_to_values)
-            return
 
         super().__init__(x_train.shape[1], normalization_value=empty_value, normalize=normalize)
 

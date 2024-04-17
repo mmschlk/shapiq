@@ -12,7 +12,7 @@ from .approximator import (
     RegressionSII,
     ShapIQ,
 )
-from .datasets import load_adult_census, load_bike, load_california_housing
+from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 from .exact import ExactComputer
 
 # explainer classes
@@ -60,7 +60,7 @@ __all__ = [
     "split_subsets_budget",
     "safe_isinstance",
     # datasets
-    "load_bike",
+    "load_bike_sharing",
     "load_adult_census",
     "load_california_housing",
 ]

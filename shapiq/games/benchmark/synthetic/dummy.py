@@ -6,7 +6,7 @@ from typing import Union
 
 import numpy as np
 
-from .base import Game
+from shapiq.games.base import Game
 
 
 class DummyGame(Game):

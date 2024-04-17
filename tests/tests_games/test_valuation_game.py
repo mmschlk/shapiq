@@ -8,8 +8,13 @@ import pytest
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 from sklearn.metrics import mean_squared_error, accuracy_score
 
-from shapiq.games.valuation import DatasetValuation
-from shapiq.games.benchmark.valuation import CaliforniaHousing, BikeSharing, AdultCensus
+from shapiq.games import Game
+from shapiq.games import (
+    DatasetValuation,
+    AdultCensusDatasetValuation,
+    BikeSharingDatasetValuation,
+    CaliforniaHousingDatasetValuation,
+)
 
 
 def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
@@ -186,7 +191,7 @@ def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
 def test_california():
     """Tests the california housing Dataset Valuation Benchmark game."""
 
-    game = CaliforniaHousing()
+    game = CaliforniaHousingDatasetValuation()
     assert game.n_players == 10  # Default Value
     assert game.empty_value == 0.0  # Default Value
 
@@ -197,22 +202,22 @@ def test_california():
     game.precompute(test_coalitions)
     game.save_values("test_california_game.npz")
     assert os.path.exists("test_california_game.npz")
-    _ = CaliforniaHousing(path_to_values="test_california_game.npz")
+    _ = Game(path_to_values="test_california_game.npz")
     os.remove("test_california_game.npz")
     assert not os.path.exists("test_california_game.npz")
 
     # check for model loads
-    game = CaliforniaHousing(model="random_forest")
+    game = CaliforniaHousingDatasetValuation(model="random_forest")
     assert game.n_players == 10
 
     with pytest.raises(ValueError):
-        _ = CaliforniaHousing(model="wrong_model")
+        _ = CaliforniaHousingDatasetValuation(model="wrong_model")
 
 
 def test_bike():
     """Tests the bike sharing Dataset Valuation Benchmark game."""
 
-    game = BikeSharing()
+    game = BikeSharingDatasetValuation()
     assert game.n_players == 10  # Default Value
     assert game.empty_value == 0.0  # Default Value
 
@@ -223,22 +228,22 @@ def test_bike():
     game.precompute(test_coalitions)
     game.save_values("test_bike_game.npz")
     assert os.path.exists("test_bike_game.npz")
-    _ = BikeSharing(path_to_values="test_bike_game.npz")
+    _ = Game(path_to_values="test_bike_game.npz")
     os.remove("test_bike_game.npz")
     assert not os.path.exists("test_bike_game.npz")
 
     # check for model loads
-    game = BikeSharing(model="random_forest")
+    game = BikeSharingDatasetValuation(model="random_forest")
     assert game.n_players == 10
 
     with pytest.raises(ValueError):
-        _ = BikeSharing(model="wrong_model")
+        _ = BikeSharingDatasetValuation(model="wrong_model")
 
 
 def test_adult_census():
     """Tests the adult census Dataset Valuation Benchmark game."""
 
-    game = AdultCensus()
+    game = AdultCensusDatasetValuation()
     assert game.n_players == 10  # Default Value
     assert game.empty_value == 0.0  # Default Value
 
@@ -249,12 +254,12 @@ def test_adult_census():
     game.precompute(test_coalitions)
     game.save_values("test_adult_census_game.npz")
     assert os.path.exists("test_adult_census_game.npz")
-    _ = AdultCensus(path_to_values="test_adult_census_game.npz")
+    _ = Game(path_to_values="test_adult_census_game.npz")
     os.remove("test_adult_census_game.npz")
 
     # check for model loads
-    game = AdultCensus(model="random_forest")
+    game = AdultCensusDatasetValuation(model="random_forest")
     assert game.n_players == 10
 
     with pytest.raises(ValueError):
-        _ = AdultCensus(model="wrong_model")
+        _ = AdultCensusDatasetValuation(model="wrong_model")

@@ -5,11 +5,10 @@ from warnings import warn
 
 import numpy as np
 
-from ..base import Game
+from shapiq.games import Game
 
 
-class ImageClassifierGame(Game):
-
+class ImageClassifier(Game):
     """An image classifier as a benchmark game.
 
     This benchmark game is based on image classifiers retrieved from huggingface's model hub or
@@ -32,9 +31,6 @@ class ImageClassifierGame(Game):
             `transformers` packages to be installed.
 
     Args:
-        path_to_values: The path to the precomputed values of the game. If provided, the game is
-            initialized with the precomputed values. If not provided, the game is initialized with
-            the given model.
         model_name: The model used for the game. This can be either a callable that takes an image in
             form of a numpy array or and returns the class probabilities, or a string that specifies
             the pre-trained model to be used. The default models are 'vit_16_patches',
@@ -52,31 +48,27 @@ class ImageClassifierGame(Game):
             superpixels.
 
     Examples:
-        >>> from shapiq.games.image_classifier import ImageClassifierGame
-        >>> game = ImageClassifierGame(x_explain_path='path/to/image.jpg')
-        >>> game(game.grand_coalition)
-        some value
+        >>> from shapiq.games.benchmark.local_xai import ImageClassifier
+        >>> game = ImageClassifier(x_explain_path='path/to/image.jpg')
+        >>> game(game.grand_coalition)  # returns some value
         >>> game.n_players
         16
         >>> # precompute, save, and load values
         >>> game.precompute()
         >>> game.save_values('path/to/save.npz')
-        >>> new_game = ImageClassifierGame(path_to_values='path/to/save.npz')
+        >>> from shapiq.games import Game
+        >>> loaded_game = Game(path_to_values='path/to/save.npz')
+
     """
 
     def __init__(
         self,
-        path_to_values: Optional[str] = None,
         model_name: str = "vit_16_patches",
         n_superpixel_resnet: int = 14,
         x_explain_path: Optional[str] = None,
         normalize: bool = True,
         verbose: bool = True,
     ) -> None:
-        # check path
-        if path_to_values is not None:
-            super().__init__(path_to_values=path_to_values)
-            return
 
         if x_explain_path is None:
             raise ValueError("The image to be explained must be provided.")
@@ -96,7 +88,7 @@ class ImageClassifierGame(Game):
         # setup the models model
         self.model_function = model_name
         if model_name == "vit_16_patches" or model_name == "vit_9_patches":
-            from ._vit_setup import ViTModel
+            from shapiq.games.benchmark.setup._vit_setup import ViTModel
 
             n_players = 9
             if model_name == "vit_16_patches":
@@ -105,7 +97,7 @@ class ImageClassifierGame(Game):
             normalization_value = vit_model.empty_value
             self.model_function = vit_model
         else:
-            from ._resnet_setup import ResNetModel
+            from shapiq.games.benchmark.setup._resnet_setup import ResNetModel
 
             n_sp = n_superpixel_resnet
             resnet_model = ResNetModel(
