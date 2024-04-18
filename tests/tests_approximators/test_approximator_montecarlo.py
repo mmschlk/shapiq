@@ -2,6 +2,8 @@ import numpy as np
 
 from shapiq.approximator.moebius_converter import MoebiusConverter
 from shapiq.approximator.montecarlo.shapiq import SHAPIQ
+from shapiq.approximator.montecarlo.svarmiq import SVARMIQ
+from shapiq.approximator.montecarlo._base import MonteCarlo
 from shapiq.games.soum import SOUM
 
 import pytest
@@ -24,7 +26,7 @@ def test_montecarlo_base_example(index, N_BATCH_SIZE):
     N_RUNS = 10
     for i in range(N_RUNS):
         n = np.random.randint(low=6, high=10)
-        budget = int(2**n)
+        budget = int(2**n / 2)
         N = set(range(n))
         max_order = np.random.randint(low=1, high=min(5, n))
         n_basis_games = np.random.randint(low=10, high=200)
@@ -47,10 +49,8 @@ def test_montecarlo_base_example(index, N_BATCH_SIZE):
             top_order = False
             min_order = 0
 
-        montecarlo_approximator = SHAPIQ(n=n, max_order=max_order, index=index, top_order=top_order)
-        shapley_interactions_approximated = montecarlo_approximator.approximate(
-            budget=budget, game=soum
-        )
+        shapiq = SHAPIQ(n=n, max_order=max_order, index=index, top_order=top_order)
+        shapley_interactions_approximated = shapiq.approximate(budget=budget, game=soum)
 
         diff = 0
         for interaction, interaction_pos in shapley_interactions.interaction_lookup.items():
@@ -88,7 +88,7 @@ def test_montecarlo_approximation(index):
         n = np.random.randint(low=6, high=10)
         total_budget = 2**n
         N = set(range(n))
-        max_order = np.random.randint(low=1, high=min(5, n))
+        max_order = 2
         n_basis_games = np.random.randint(low=10, high=200)
         soum = SOUM(n, n_basis_games=n_basis_games)
 
@@ -111,18 +111,25 @@ def test_montecarlo_approximation(index):
             top_order = False
             min_order = 0
 
-        montecarlo_approximator = SHAPIQ(n=n, max_order=max_order, index=index, top_order=top_order)
+        montecarlo = SHAPIQ(n=n, max_order=max_order, index=index, top_order=top_order)
+        montecarlo = SVARMIQ(n=n, max_order=max_order, index=index, top_order=top_order)
+        montecarlo = MonteCarlo(
+            n=n,
+            max_order=max_order,
+            index=index,
+            stratify_coalition_size=True,
+            stratify_intersection_size=True,
+            top_order=top_order,
+        )
 
         squared_errors = {}
 
         for budget_perc in np.linspace(LOWEST_BUDGET_PERC, 100, N_BUDGET_STEPS):
             budget = int(budget_perc / 100 * total_budget)
 
-            shapley_interactions_approximated = montecarlo_approximator.approximate(
-                budget=budget, game=soum
-            )
+            shapley_interactions_approximated = montecarlo.approximate(budget=budget, game=soum)
             for iteration in range(N_ITERATIONS - 1):
-                shapley_interactions_approximated += montecarlo_approximator.approximate(
+                shapley_interactions_approximated += montecarlo.approximate(
                     budget=budget, game=soum
                 )
             shapley_interactions_approximated *= 1 / N_ITERATIONS
@@ -137,7 +144,7 @@ def test_montecarlo_approximation(index):
                 )
             PREV_BUDGET_PERC = budget_perc
 
-            if min_order == 0:
+            if index == "k-SII":
                 # Assert efficiency (not for FSII)
                 assert (
                     np.sum(

@@ -182,21 +182,48 @@ class MonteCarlo(Approximator, KShapleyMixin):
 
             if self.stratify_coalition_size and self.stratify_intersection_size:
                 # Default SVARM-IQ Routine
-                shapley_interaction_values[interaction_pos] = np.sum(
-                    game_values_centered * interaction_weights * sampling_adjustment_weights
-                )
+                size_strata = np.unique(coalitions_size)
+                intersection_strata = np.unique(intersections_size)
+                for intersection_stratum in intersection_strata:
+                    for size_stratum in size_strata:
+                        in_stratum = (intersections_size == intersection_stratum) * (
+                            coalitions_size == size_stratum
+                        )
+                        in_stratum_and_sampled = in_stratum * is_coalition_sampled
+                        stratum_probabilities = np.ones(n_coalitions)
+                        stratum_probabilities[in_stratum_and_sampled] = 1 / binom(
+                            self.n - interaction_size,
+                            coalitions_size[in_stratum_and_sampled] - intersection_stratum,
+                        )
+                        # Get sampled coalitions per stratum
+                        stratum_n_samples = np.sum(coalitions_counter[in_stratum_and_sampled])
+                        n_samples_helper = np.array([1, stratum_n_samples])
+                        coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
+                        sampling_adjustment_weights[in_stratum] = coalitions_counter[in_stratum] / (
+                            coalitions_n_samples[in_stratum] * stratum_probabilities[in_stratum]
+                        )
+
             elif self.stratify_coalition_size and not self.stratify_intersection_size:
-                shapley_interaction_values[interaction_pos] = np.sum(
-                    game_values_centered * interaction_weights * sampling_adjustment_weights
-                )
+                size_strata = np.unique(coalitions_size)
+                for size_stratum in size_strata:
+                    in_stratum = coalitions_size == size_stratum
+                    in_stratum_and_sampled = in_stratum * is_coalition_sampled
+                    stratum_probabilities = np.ones(n_coalitions)
+                    stratum_probabilities[in_stratum_and_sampled] = 1 / binom(
+                        self.n,
+                        coalitions_size[in_stratum_and_sampled],
+                    )
+                    # Get sampled coalitions per stratum
+                    stratum_n_samples = np.sum(coalitions_counter[in_stratum_and_sampled])
+                    n_samples_helper = np.array([1, stratum_n_samples])
+                    coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
+                    sampling_adjustment_weights[in_stratum] = coalitions_counter[in_stratum] / (
+                        coalitions_n_samples[in_stratum] * stratum_probabilities[in_stratum]
+                    )
+
             elif not self.stratify_coalition_size and self.stratify_intersection_size:
-                intersection_strata, intersection_counts = np.unique(
-                    intersections_size, return_counts=True
-                )
-                intersection_strata_values = np.zeros(self.max_order + 1)
-                for intersection_stratum, intersection_count in zip(
-                    intersection_strata, intersection_counts
-                ):
+                intersection_strata = np.unique(intersections_size)
+                for intersection_stratum in intersection_strata:
                     # Flag all coalitions that belong to the stratum and are sampled
                     in_stratum = intersections_size == intersection_stratum
                     in_stratum_and_sampled = in_stratum * is_coalition_sampled
@@ -211,17 +238,15 @@ class MonteCarlo(Approximator, KShapleyMixin):
                     n_samples_helper = np.array([1, stratum_n_samples])
                     coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
 
-                    sampling_adjustment_weights = coalitions_counter / (
-                        coalitions_n_samples * stratum_probabilities * coalitions_in_size_probs
+                    sampling_adjustment_weights[in_stratum] = coalitions_counter[in_stratum] / (
+                        coalitions_n_samples[in_stratum]
+                        * stratum_probabilities[in_stratum]
+                        * coalitions_size_probs[in_stratum]
                     )
 
-                    intersection_strata_values[intersection_stratum] = np.sum(
-                        game_values[in_stratum]
-                        * interaction_weights[in_stratum]
-                        * sampling_adjustment_weights[in_stratum]
-                    )
-
-                shapley_interaction_values[interaction_pos] = np.sum(intersection_strata_values)
+                shapley_interaction_values[interaction_pos] = np.sum(
+                    game_values_centered * interaction_weights * sampling_adjustment_weights
+                )
             else:
                 # Default SHAP-IQ routine
                 n_samples = np.sum(coalitions_counter[is_coalition_sampled])
@@ -232,10 +257,9 @@ class MonteCarlo(Approximator, KShapleyMixin):
                     coalitions_size_probs * coalitions_in_size_probs * coalitions_n_samples
                 )
 
-                # Compute interaction estimates
-                shapley_interaction_values[interaction_pos] = np.sum(
-                    game_values_centered * interaction_weights * sampling_adjustment_weights
-                )
+            shapley_interaction_values[interaction_pos] = np.sum(
+                game_values_centered * interaction_weights * sampling_adjustment_weights
+            )
 
         if self.min_order == 0:
             # Set emptyset interaction manually to baseline, required for SII
