@@ -14,8 +14,8 @@ from shapiq.games.benchmark import (
     SentimentAnalysisLocalXAI,
     ImageClassifierLocalXAI,
 )
-from shapiq.games.benchmark.setup._vit_setup import ViTModel
-from shapiq.games.benchmark.setup._resnet_setup import ResNetModel
+from shapiq.games.benchmark._setup._vit_setup import ViTModel
+from shapiq.games.benchmark._setup._resnet_setup import ResNetModel
 
 
 def test_basic_function(background_reg_dataset, dt_reg_model):

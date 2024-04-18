@@ -1,6 +1,5 @@
 """This module contains all benchmark games."""
 
-# local explanation games
 # dataset valuation games
 from .dataset_valuation.base import DatasetValuation
 from .dataset_valuation.benchmark import AdultCensus as AdultCensusDatasetValuation
@@ -12,6 +11,14 @@ from .feature_selection.base import FeatureSelectionGame
 from .feature_selection.benchmark import AdultCensus as AdultCensusFeatureSelection
 from .feature_selection.benchmark import BikeSharing as BikeSharingFeatureSelection
 from .feature_selection.benchmark import CaliforniaHousing as CaliforniaHousingFeatureSelection
+
+# global explanation games
+from .global_xai.base import GlobalExplanation
+from .global_xai.benchmark_tabular import AdultCensus as AdultCensusGlobalXAI
+from .global_xai.benchmark_tabular import BikeSharing as BikeSharingGlobalXAI
+from .global_xai.benchmark_tabular import CaliforniaHousing as CaliforniaHousingGlobalXAI
+
+# local explanation games
 from .local_xai.base import LocalExplanation
 from .local_xai.benchmark_image import ImageClassifier as ImageClassifierLocalXAI
 from .local_xai.benchmark_language import SentimentAnalysis as SentimentAnalysisLocalXAI
@@ -41,6 +48,11 @@ __all__ = [
     "AdultCensusFeatureSelection",
     "BikeSharingFeatureSelection",
     "CaliforniaHousingFeatureSelection",
+    # global_xai games
+    "GlobalExplanation",
+    "AdultCensusGlobalXAI",
+    "BikeSharingGlobalXAI",
+    "CaliforniaHousingGlobalXAI",
     # synthetic games
     "DummyGame",
     "SOUM",

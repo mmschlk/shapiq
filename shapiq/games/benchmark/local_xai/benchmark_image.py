@@ -88,7 +88,7 @@ class ImageClassifier(Game):
         # setup the models model
         self.model_function = model_name
         if model_name == "vit_16_patches" or model_name == "vit_9_patches":
-            from shapiq.games.benchmark.setup._vit_setup import ViTModel
+            from shapiq.games.benchmark._setup._vit_setup import ViTModel
 
             n_players = 9
             if model_name == "vit_16_patches":
@@ -97,7 +97,7 @@ class ImageClassifier(Game):
             normalization_value = vit_model.empty_value
             self.model_function = vit_model
         else:
-            from shapiq.games.benchmark.setup._resnet_setup import ResNetModel
+            from shapiq.games.benchmark._setup._resnet_setup import ResNetModel
 
             n_sp = n_superpixel_resnet
             resnet_model = ResNetModel(

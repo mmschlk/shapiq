@@ -2,6 +2,7 @@
 If it becomes too large, it can be split into multiple files like here:
 https://gist.github.com/peterhurford/09f7dcda0ab04b95c026c60fa49c2a68
 """
+
 import os
 
 import numpy as np
@@ -139,3 +140,11 @@ def test_image_and_path() -> tuple[Image.Image, str]:
     )
     image = Image.open(path_from_test_root)
     return image, path_from_test_root
+
+
+@pytest.fixture
+def mae_loss():
+    """Returns the mean absolute error loss function."""
+    from sklearn.metrics import mean_absolute_error
+
+    return mean_absolute_error

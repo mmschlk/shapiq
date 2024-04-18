@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from approximator.permutation import PermutationSamplingSV
-from shapiq.games import DummyGame
+from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(

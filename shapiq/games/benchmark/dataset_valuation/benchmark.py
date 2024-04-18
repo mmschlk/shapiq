@@ -2,7 +2,7 @@
 
 from typing import Optional, Union
 
-from ..setup import BenchmarkSetup
+from .._setup import BenchmarkSetup
 from .base import DatasetValuation
 
 

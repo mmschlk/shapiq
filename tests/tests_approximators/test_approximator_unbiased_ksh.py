@@ -5,7 +5,7 @@ import copy
 import pytest
 
 from shapiq.approximator import UnbiasedKernelSHAP
-from shapiq.games import DummyGame
+from shapiq.games.benchmark import DummyGame
 
 
 def test_basic_functionality():
