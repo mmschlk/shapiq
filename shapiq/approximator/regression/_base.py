@@ -13,7 +13,7 @@ from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-AVAILABLE_INDICES_REGRESSION = ["k-SII", "SII", "kADD-SHAP", "FSII"]
+AVAILABLE_INDICES_REGRESSION = ["k-SII", "SII", "kADD-SHAP", "FSII", "kADD-SHAP"]
 
 
 class Regression(Approximator, KShapleyMixin):
