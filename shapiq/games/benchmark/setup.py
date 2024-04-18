@@ -21,8 +21,8 @@ class BenchmarkSetup:
     Args:
         dataset_name: The dataset to load the models for. Available datasets are 'adult_census',
             'bike_sharing', and 'california_housing'.
-        model_name: The name of the model to load. Available models for the datasets are the
-            following:
+        model_name: If specified, the name of the model to load. Defaults to `None` Available
+            models for the datasets are the following:
             - 'adult_census': 'decision_tree', 'random_forest', 'gradient_boosting'
             - 'bike_sharing': 'decision_tree', 'random_forest', 'gradient_boosting'
             - 'california_housing': 'decision_tree', 'random_forest', 'gradient_boosting',
@@ -79,7 +79,7 @@ class BenchmarkSetup:
     def __init__(
         self,
         dataset_name: str,
-        model_name: str,
+        model_name: Optional[str] = None,
         loss_function: Optional[str] = None,
         verbose: bool = True,
         train_size: float = 0.7,
@@ -162,7 +162,7 @@ class BenchmarkSetup:
                 self.init_california_neural_network()
 
         # check if the model is loaded
-        if self.model is None:
+        if self.model is None and model_name is not None:
             raise ValueError(f"Invalid model name {model_name} for the {dataset_name} dataset.")
 
         from sklearn.metrics import (
@@ -174,19 +174,19 @@ class BenchmarkSetup:
         )
 
         # set up the functions
-        if self.dataset_type == "classification":
+        if self.dataset_type == "classification" and model_name is not None:
             self.loss_function = _accuracy  # custom accuracy function
             self.score_function = self.model.score
             self.fit_function = self.model.fit
             self.predict_function = self.model.predict_proba
-        else:
+        if self.dataset_type == "regression" and model_name is not None:
             self.loss_function = r2_score
             self.score_function = self.model.score
             self.fit_function = self.model.fit
             self.predict_function = self.model.predict
 
         # update loss function if specified
-        if loss_function is not None:
+        if loss_function is not None and model_name is not None:
             if loss_function == "mean_squared_error":
                 self.loss_function = mean_squared_error
             elif loss_function == "mean_absolute_error":
@@ -201,7 +201,7 @@ class BenchmarkSetup:
                 self.loss_function = roc_auc_score
 
         # print the performance of the model on the test data
-        if verbose:
+        if verbose and model_name is not None:
             self.print_train_performance()
 
     def print_train_performance(self):

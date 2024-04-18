@@ -30,6 +30,12 @@ from .local_xai.benchmark_tabular import CaliforniaHousing as CaliforniaHousingL
 from .synthetic.dummy import DummyGame
 from .synthetic.soum import SOUM, UnanimityGame
 
+# cluster explanation games
+from .unsupervised.base import ClusterExplanation
+from .unsupervised.benchmark import AdultCensus as AdultCensusClusterExplanation
+from .unsupervised.benchmark import BikeSharing as BikeSharingClusterExplanation
+from .unsupervised.benchmark import CaliforniaHousing as CaliforniaHousingClusterExplanation
+
 __all__ = [
     # local_xai games
     "LocalExplanation",
@@ -53,6 +59,11 @@ __all__ = [
     "AdultCensusGlobalXAI",
     "BikeSharingGlobalXAI",
     "CaliforniaHousingGlobalXAI",
+    # cluster explanation games
+    "ClusterExplanation",
+    "AdultCensusClusterExplanation",
+    "BikeSharingClusterExplanation",
+    "CaliforniaHousingClusterExplanation",
     # synthetic games
     "DummyGame",
     "SOUM",
