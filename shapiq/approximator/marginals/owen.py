@@ -71,19 +71,19 @@ class OwenSamplingSV(Approximator):
             budget - 2, batch_size, self.iteration_cost
         )
 
-        #anchors = np.zeros((self.n, self.M), dtype=float)
-        #counts = np.zeros((self.n, self.M), dtype=int)
+        # anchors = np.zeros((self.n, self.M), dtype=float)
+        # counts = np.zeros((self.n, self.M), dtype=int)
 
         result = np.zeros(self.n)
 
         return self._finalize_result(result, budget=used_budget, estimated=True)
 
-    def get_anchor_points(self, M: int):
-        if M <= 0:
+    def get_anchor_points(self, m: int):
+        if m <= 0:
             raise ValueError("The number of anchor points needs to be greater than 0.")
 
-        if M == 1:
+        if m == 1:
             return np.array([0.5])
 
-        step_size = 1.0 / (M - 1.0)
-        return np.arange(0.0, step_size, 1.0 + step_size)
+        step_size = 1.0 / (m - 1.0)
+        return np.arange(0.0, 1.0 + step_size, step_size)
