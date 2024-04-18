@@ -134,7 +134,14 @@ class MonteCarlo(Approximator, KShapleyMixin):
 
             batch_game_values = game_values[0 : batch_index + current_batch_size]
 
-            shapley_interactions_values = self.montecarlo_routine({},batch_game_values,batch_coalitions_matrix,batch_coalitions_size,batch_sampling_adjustment_weights,self.index)
+            shapley_interactions_values = self.montecarlo_routine(
+                {},
+                batch_game_values,
+                batch_coalitions_matrix,
+                batch_coalitions_size,
+                batch_sampling_adjustment_weights,
+                self.index,
+            )
 
             if np.shape(coalitions_matrix)[0] >= 2**self.n:
                 estimated_indicator = False
@@ -146,13 +153,13 @@ class MonteCarlo(Approximator, KShapleyMixin):
         )
 
     def montecarlo_routine(
-            self,
-            kernel_weights_dict: dict,
-            batch_game_values: np.ndarray,
-            batch_coalitions_matrix: np.ndarray,
-            batch_coalitions_size: np.ndarray,
-            batch_sampling_adjustment_weights: np.ndarray,
-            index_approximation: str,
+        self,
+        kernel_weights_dict: dict,
+        batch_game_values: np.ndarray,
+        batch_coalitions_matrix: np.ndarray,
+        batch_coalitions_size: np.ndarray,
+        batch_sampling_adjustment_weights: np.ndarray,
+        index_approximation: str,
     ):
         return {}
 
