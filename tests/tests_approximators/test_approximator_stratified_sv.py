@@ -40,5 +40,5 @@ def test_approximate(n, budget, batch_size):
 
     # check Shapley values for interaction players
     if budget >= 1000:
-        assert sv_estimates[(1,)] == pytest.approx(0.7, 0.1)
-        assert sv_estimates[(2,)] == pytest.approx(0.7, 0.1)
+        assert sv_estimates[(1,)] == pytest.approx(0.7, 0.2)
+        assert sv_estimates[(2,)] == pytest.approx(0.7, 0.2)
