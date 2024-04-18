@@ -12,6 +12,7 @@ def test_approximator_kernelshapiq_sii():
     N_BUDGET_STEPS = 5
     N_ITERATIONS = 5
     approximation_improvement_counter = 0
+    counter = 0
 
     for RANDOM_STATE in range(N_RUNS):
         n = np.random.randint(low=6, high=8)
@@ -62,6 +63,7 @@ def test_approximator_kernelshapiq_sii():
             # Compute squared errors
             squared_errors[budget_perc] = np.mean(((sii_approximated - sii).values) ** 2)
             if PREV_BUDGET_PERC in squared_errors:
+                counter += 1
                 approximation_improvement_counter += (
                     squared_errors[budget_perc] < squared_errors[PREV_BUDGET_PERC]
                 )
@@ -71,7 +73,8 @@ def test_approximator_kernelshapiq_sii():
         assert squared_errors[100] < 10e-7
 
     # Assert 80%-ratio of improvements over previous calculation
-    assert approximation_improvement_counter / (N_BUDGET_STEPS * N_RUNS) >= 0.6
+    assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.8
+    # sanity check for runs
 
 
 def test_approximator_kernelshapiq_sii_batch():
@@ -160,7 +163,7 @@ def test_approximator_kernelshapiq_ksii():
         assert squared_errors[100] < 10e-7
 
     # Assert 80%-ratio of improvements over previous calculation
-    assert approximation_improvement_counter / (N_BUDGET_STEPS * N_RUNS) >= 0.6
+    assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.6
 
 
 def test_approximator_kernelshapiq_ksii_batch():

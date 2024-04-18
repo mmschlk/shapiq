@@ -68,7 +68,7 @@ def test_approximator_kaddshap():
         assert squared_errors[100] < 10e-7
 
     # Assert 80%-ratio of improvements over previous calculation
-    assert approximation_improvement_counter / (N_BUDGET_STEPS * N_RUNS) >= 0.6
+    assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.8
 
 
 def test_approximator_kaddshap_batch():
