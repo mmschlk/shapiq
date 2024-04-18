@@ -74,7 +74,6 @@ def test_approximator_kernelshapiq_sii():
 
     # Assert 80%-ratio of improvements over previous calculation
     assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.8
-    # sanity check for runs
 
 
 def test_approximator_kernelshapiq_sii_batch():
