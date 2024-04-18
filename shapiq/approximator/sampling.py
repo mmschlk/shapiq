@@ -53,6 +53,10 @@ class CoalitionSampler:
             (n_coalitions,).
         coalitions_probability: The coalition probabilities according to the sampling procedure. The
              array is of shape (n_coalitions,).
+        coalitions_size_probability: The coalitions size probabilities according to the sampling procedure. The
+             array is of shape (n_coalitions,).
+        coalitions_size_probability: The coalitions probabilities in their size according to the sampling procedure.
+            The array is of shape (n_coalitions,).
         n_coalitions: The number of coalitions that have been sampled.
         sampling_adjustment_weights: The weights that account for the sampling procedure (importance sampling)
 
@@ -124,7 +128,12 @@ class CoalitionSampler:
         # variables accessible through properties
         self._sampled_coalitions_matrix: Optional[np.ndarray[bool]] = None  # coalitions
         self._sampled_coalitions_counter: Optional[np.ndarray[int]] = None  # coalitions_counter
-        self._sampled_coalitions_prob: Optional[np.ndarray[float]] = None  # coalitions_probability
+        self._sampled_coalitions_size_prob: Optional[
+            np.ndarray[float]
+        ] = None  # coalitions_size_probability
+        self._sampled_coalitions_in_size_prob: Optional[
+            np.ndarray[float]
+        ] = None  # coalitions_in_size_probability
         self._is_coalition_size_sampled: Optional[
             np.ndarray[bool]
         ] = None  # is_coalition_size_sampled
@@ -150,24 +159,33 @@ class CoalitionSampler:
         return copy.deepcopy(self._is_coalition_size_sampled)
 
     @property
-    def sampling_adjustment_weights(self) -> np.ndarray:
+    def is_coalition_sampled(self) -> np.ndarray:
+        """Returns a Boolean array indicating whether the coalition was sampled.
+
+        Returns:
+            The Boolean array whether the coalition was sampled.
+        """
+        coalitions_size = np.sum(self.coalitions_matrix, axis=1)
+        return self._is_coalition_size_sampled[coalitions_size]
+
+    @property
+    def sampling_adjustment_weights(
+        self, stratify_coalition_size: bool = False, stratify_intersection_size: bool = False
+    ) -> np.ndarray:
         """Returns the weights that account for the sampling procedure
 
         Returns:
             An array with adjusted weight for each coalition
         """
-        coalitions_size = np.sum(self.coalitions_matrix, axis=1)
         coalitions_counter = self.coalitions_counter
+        is_coalition_sampled = self.is_coalition_sampled
         # Number of coalitions sampled
-        n_total_samples = np.sum(
-            coalitions_counter[(self._is_coalition_size_sampled[coalitions_size])]
-        )
+
+        n_total_samples = np.sum(coalitions_counter[is_coalition_sampled])
         # Helper array for computed and sampled coalitions
         total_samples_values = np.array([1, n_total_samples])
         # Create array per coalition and the total samples values, or 1, if computed
-        n_coalitions_total_samples = total_samples_values[
-            self._is_coalition_size_sampled[coalitions_size].astype(int)
-        ]
+        n_coalitions_total_samples = total_samples_values[is_coalition_sampled.astype(int)]
         # Create array with the adjusted weights
         sampling_adjustment_weights = self.coalitions_counter / (
             self.coalitions_probability * n_coalitions_total_samples
@@ -196,12 +214,38 @@ class CoalitionSampler:
 
     @property
     def coalitions_probability(self) -> np.ndarray:
-        """Returns the coalition probabilities according to the sampling procedure.
+        """Returns the coalition probabilities according to the sampling procedure. The coalitions probability is
+        calculated as the product of the probability of the size of the coalition times the probability of the coalition
+        in that size.
 
         Returns:
             A copy of the sampled coalitions probabilities of shape (n_coalitions,).
         """
-        return copy.deepcopy(self._sampled_coalitions_prob)
+        if (
+            self._sampled_coalitions_size_prob is not None
+            and self._sampled_coalitions_in_size_prob is not None
+        ):
+            return self._sampled_coalitions_size_prob
+
+    @property
+    def coalitions_size_probability(self) -> np.ndarray:
+        """Returns the probabilities of the coalition sizes according to the sampling procedure.
+        The probability is determined by the sampling procedure.
+
+        Returns:
+            A copy of the probabilities of shape (n_coalitions,).
+        """
+        return copy.deepcopy(self._sampled_coalitions_size_prob)
+
+    @property
+    def coalitions_in_size_probability(self) -> np.ndarray:
+        """Returns the probabilities of the coalition in the corresponding coalition size according to the sampling.
+        Due to uniform sampling, this is always 1/binom(n,coalition_size).
+
+        Returns:
+            A copy of the sampled probabilities of shape (n_coalitions,).
+        """
+        return copy.deepcopy(self._sampled_coalitions_in_size_prob)
 
     def execute_border_trick(self, sampling_budget: int) -> int:
         """Moves coalition sizes from coalitions_to_sample to coalitions_to_compute, if the expected
@@ -285,7 +329,8 @@ class CoalitionSampler:
         self._is_coalition_size_sampled = np.zeros(self.n + 1, dtype=bool)
         self._sampled_coalitions_counter = np.zeros(sampling_budget, dtype=int)
         self._sampled_coalitions_matrix = np.zeros((sampling_budget, self.n), dtype=bool)
-        self._sampled_coalitions_prob = np.zeros(sampling_budget, dtype=float)
+        self._sampled_coalitions_size_prob = np.zeros(sampling_budget, dtype=float)
+        self._sampled_coalitions_in_size_prob = np.zeros(sampling_budget, dtype=float)
 
         self._coalitions_to_compute = []
         self._coalitions_to_sample = [
@@ -376,7 +421,8 @@ class CoalitionSampler:
             ):
                 self._sampled_coalitions_matrix[coalition_index, list(coalition)] = 1
                 self._sampled_coalitions_counter[coalition_index] = 1
-                self._sampled_coalitions_prob[coalition_index] = 1  # weight is set to 1
+                self._sampled_coalitions_size_prob[coalition_index] = 1  # weight is set to 1
+                self._sampled_coalitions_in_size_prob[coalition_index] = 1  # weight is set to 1
                 coalition_index += 1
         # add all coalitions that are sampled
         for coalition_tuple, count in self.sampled_coalitions_dict.items():
@@ -384,11 +430,11 @@ class CoalitionSampler:
             self._sampled_coalitions_counter[coalition_index] = count
             # probability of the sampled coalition, i.e. sampling weight (for size) divided by
             # number of coalitions of that size
-            self._sampled_coalitions_prob[coalition_index] = (
-                self.adjusted_sampling_weights[
-                    self._coalitions_to_sample.index(len(coalition_tuple))
-                ]
-                / self.n_max_coalitions_per_size[len(coalition_tuple)]
+            self._sampled_coalitions_size_prob[coalition_index] = self.adjusted_sampling_weights[
+                self._coalitions_to_sample.index(len(coalition_tuple))
+            ]
+            self._sampled_coalitions_in_size_prob[coalition_index] = (
+                1 / self.n_max_coalitions_per_size[len(coalition_tuple)]
             )
             coalition_index += 1
 

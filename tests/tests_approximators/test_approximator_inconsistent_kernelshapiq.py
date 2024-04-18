@@ -68,37 +68,6 @@ def test_approximator_inconsistent_kernelshapiq_sii():
     assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.8
 
 
-def test_approximator_inconsistent_kernelshapiq_sii_batch():
-    N_RUNS = 5
-    N_BATCH_SIZE = 50
-    N_ITERATIONS = 5
-
-    for RANDOM_STATE in range(N_RUNS):
-        n = np.random.randint(low=8, high=10)
-        max_order = np.random.randint(low=1, high=n)
-        n_basis_games = np.random.randint(low=10, high=200)
-        soum = SOUM(n, n_basis_games=n_basis_games)
-        index = "SII"
-
-        exact_computer = ExactComputer(n_players=n, game_fun=soum)
-        kadd_shap = exact_computer.shapley_interaction(index="kADD-SHAP", order=max_order)
-
-        kernelshapiq = InconsistentKernelSHAPIQ(n=n, max_order=max_order, index=index)
-
-        budget = 2**n
-
-        sii_approximated = kernelshapiq.approximate(
-            budget=budget, game=soum, batch_size=N_BATCH_SIZE
-        )
-        for iteration in range(N_ITERATIONS - 1):
-            sii_approximated += kernelshapiq.approximate(budget=budget, game=soum)
-        sii_approximated *= 1 / N_ITERATIONS
-
-        # Assert ground truth kADD-SHAP values at 100% batching capacity
-        kadd_shap.index = index
-        assert np.mean(((sii_approximated - kadd_shap).values) ** 2) < 10e-7
-
-
 def test_approximator_inconsistent_kernelshapiq_kaddshap():
     N_RUNS = 10
 

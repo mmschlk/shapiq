@@ -12,7 +12,6 @@ def test_approximator_kernelshapiq_sii():
     N_BUDGET_STEPS = 5
     N_ITERATIONS = 5
     approximation_improvement_counter = 0
-    counter = 0
 
     for RANDOM_STATE in range(N_RUNS):
         n = np.random.randint(low=6, high=8)
@@ -63,7 +62,6 @@ def test_approximator_kernelshapiq_sii():
             # Compute squared errors
             squared_errors[budget_perc] = np.mean(((sii_approximated - sii).values) ** 2)
             if PREV_BUDGET_PERC in squared_errors:
-                counter += 1
                 approximation_improvement_counter += (
                     squared_errors[budget_perc] < squared_errors[PREV_BUDGET_PERC]
                 )
@@ -74,41 +72,6 @@ def test_approximator_kernelshapiq_sii():
 
     # Assert 80%-ratio of improvements over previous calculation
     assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.8
-
-
-def test_approximator_kernelshapiq_sii_batch():
-    N_RUNS = 5
-    N_BATCH_SIZE = 50
-    N_ITERATIONS = 5
-
-    for RANDOM_STATE in range(N_RUNS):
-        n = np.random.randint(low=8, high=10)
-        N = set(range(n))
-        max_order = np.random.randint(low=1, high=n)
-        n_basis_games = np.random.randint(low=10, high=200)
-        soum = SOUM(n, n_basis_games=n_basis_games)
-        index = "SII"
-
-        # Compute via sparse Möbius representation
-        moebius_converter = MoebiusConverter(N, soum.moebius_coefficients)
-
-        sii = moebius_converter(index=index, order=max_order)
-        # set emptyset value to baseline
-        sii.values[sii.interaction_lookup[tuple()]] = sii.baseline_value
-
-        kernelshapiq = KernelSHAPIQ(n=n, max_order=max_order, index=index)
-
-        budget = 2**n
-
-        sii_approximated = kernelshapiq.approximate(
-            budget=budget, game=soum, batch_size=N_BATCH_SIZE
-        )
-        for iteration in range(N_ITERATIONS - 1):
-            sii_approximated += kernelshapiq.approximate(budget=budget, game=soum)
-        sii_approximated *= 1 / N_ITERATIONS
-
-        # Assert ground truth values at 100% batching capacity
-        assert np.mean(((sii_approximated - sii).values) ** 2) < 10e-7
 
 
 def test_approximator_kernelshapiq_ksii():
@@ -163,36 +126,3 @@ def test_approximator_kernelshapiq_ksii():
 
     # Assert 80%-ratio of improvements over previous calculation
     assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.6
-
-
-def test_approximator_kernelshapiq_ksii_batch():
-    N_RUNS = 5
-    N_BATCH_SIZE = 50
-    N_ITERATIONS = 5
-
-    for RANDOM_STATE in range(N_RUNS):
-        n = np.random.randint(low=8, high=10)
-        N = set(range(n))
-        max_order = np.random.randint(low=1, high=n)
-        n_basis_games = np.random.randint(low=10, high=200)
-        soum = SOUM(n, n_basis_games=n_basis_games)
-        index = "k-SII"
-
-        # Compute via sparse Möbius representation
-        moebius_converter = MoebiusConverter(N, soum.moebius_coefficients)
-
-        k_sii = moebius_converter(index=index, order=max_order)
-
-        kernelshapiq = KernelSHAPIQ(n=n, max_order=max_order, index=index)
-
-        budget = 2**n
-
-        sii_approximated = kernelshapiq.approximate(
-            budget=budget, game=soum, batch_size=N_BATCH_SIZE
-        )
-        for iteration in range(N_ITERATIONS - 1):
-            sii_approximated += kernelshapiq.approximate(budget=budget, game=soum)
-        sii_approximated *= 1 / N_ITERATIONS
-
-        # Assert ground truth values at 100% batching capacity
-        assert np.mean(((sii_approximated - k_sii).values) ** 2) < 10e-7

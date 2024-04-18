@@ -13,7 +13,7 @@ from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-AVAILABLE_INDICES_REGRESSION = ["k-SII", "SII", "kADD-SHAP", "FSII", "kADD-SHAP"]
+AVAILABLE_INDICES_REGRESSION = ["k-SII", "SII", "kADD-SHAP", "FSII"]
 
 
 class Regression(Approximator, KShapleyMixin):
@@ -113,9 +113,6 @@ class Regression(Approximator, KShapleyMixin):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray = None,
     ) -> InteractionValues:
-        # validate input parameters
-        batch_size = budget if batch_size is None else batch_size
-
         if sampling_weights is None:
             # Initialize default sampling weights
             sampling_weights = self._init_sampling_weights()
@@ -134,71 +131,46 @@ class Regression(Approximator, KShapleyMixin):
 
         coalitions_matrix = sampler.coalitions_matrix
         sampling_adjustment_weights = sampler.sampling_adjustment_weights
-        n_coalitions = sampler.n_coalitions
+        coalitions_size = np.sum(coalitions_matrix, axis=1)
+        sampling_adjustment_weights = sampling_adjustment_weights
 
-        # calculate the number of iterations and the last batch size
-        n_iterations, last_batch_size = self._calc_iteration_count(
-            n_coalitions, batch_size, iteration_cost=self.iteration_cost
-        )
+        # query the game for the current batch of coalitions
+        game_values = game(coalitions_matrix)
 
-        game_values: np.ndarray[float] = np.zeros(shape=(n_coalitions,), dtype=float)
+        if self.index == "k-SII":
+            # For k-SII the SII values are approximated and then aggregated
+            index_approximation = "SII"
+        else:
+            index_approximation = self.index
 
-        # main regression loop computing the FSII values
-        for iteration in range(1, n_iterations + 1):
-            current_batch_size = batch_size if iteration != n_iterations else last_batch_size
-            batch_index = (iteration - 1) * batch_size
-
-            batch_coalitions_size = np.sum(
-                coalitions_matrix[0 : batch_index + current_batch_size, :], 1
+        if index_approximation == "SII" and self._sii_consistent:
+            shapley_interactions_values = self.kernelshapiq_routine(
+                kernel_weights_dict=kernel_weights_dict,
+                game_values=game_values,
+                coalitions_matrix=coalitions_matrix,
+                coalitions_size=coalitions_size,
+                sampling_adjustment_weights=sampling_adjustment_weights,
+                index_approximation=index_approximation,
             )
-            batch_coalitions_matrix = coalitions_matrix[0 : batch_index + current_batch_size, :]
-            batch_sampling_adjustment_weights = sampling_adjustment_weights[
-                0 : batch_index + current_batch_size
-            ]
-
-            # query the game for the current batch of coalitions
-            game_values[batch_index : batch_index + current_batch_size] = game(
-                batch_coalitions_matrix[batch_index : batch_index + current_batch_size, :]
+        else:
+            shapley_interactions_values = self.regression_routine(
+                kernel_weights=kernel_weights_dict[1],
+                game_values=game_values,
+                coalitions_matrix=coalitions_matrix,
+                coalitions_size=coalitions_size,
+                sampling_adjustment_weights=sampling_adjustment_weights,
+                index_approximation=index_approximation,
             )
 
-            batch_game_values = game_values[0 : batch_index + current_batch_size]
-
-            if self.index == "k-SII":
-                # For k-SII the SII values are approximated and then aggregated
-                index_approximation = "SII"
-            else:
-                index_approximation = self.index
-
-            if index_approximation == "SII" and self._sii_consistent:
-                shapley_interactions_values = self.kernelshapiq_routine(
-                    kernel_weights_dict=kernel_weights_dict,
-                    batch_game_values=batch_game_values,
-                    batch_coalitions_matrix=batch_coalitions_matrix,
-                    batch_coalitions_size=batch_coalitions_size,
-                    batch_sampling_adjustment_weights=batch_sampling_adjustment_weights,
-                    index_approximation=index_approximation,
-                )
-            else:
-                shapley_interactions_values = self.regression_routine(
-                    kernel_weights=kernel_weights_dict[1],
-                    batch_game_values=batch_game_values,
-                    batch_coalitions_matrix=batch_coalitions_matrix,
-                    batch_coalitions_size=batch_coalitions_size,
-                    batch_sampling_adjustment_weights=batch_sampling_adjustment_weights,
-                    index_approximation=index_approximation,
-                )
-
-            if self.index == "k-SII":
-                baseline_value = shapley_interactions_values[0]
-                # Aggregate SII to k-SII, will change SII -> k-SII
-                shapley_interactions_values = self.transforms_sii_to_ksii(
-                    shapley_interactions_values
-                )
-                shapley_interactions_values[0] = baseline_value
-            if np.shape(coalitions_matrix)[0] >= 2**self.n:
-                estimated_indicator = False
-            else:
-                estimated_indicator = True
+        if self.index == "k-SII":
+            baseline_value = shapley_interactions_values[0]
+            # Aggregate SII to k-SII, will change SII -> k-SII
+            shapley_interactions_values = self.transforms_sii_to_ksii(shapley_interactions_values)
+            shapley_interactions_values[0] = baseline_value
+        if np.shape(coalitions_matrix)[0] >= 2**self.n:
+            estimated_indicator = False
+        else:
+            estimated_indicator = True
         return self._finalize_result(
             result=shapley_interactions_values, estimated=estimated_indicator, budget=budget
         )
@@ -206,15 +178,15 @@ class Regression(Approximator, KShapleyMixin):
     def kernelshapiq_routine(
         self,
         kernel_weights_dict: dict,
-        batch_game_values: np.ndarray,
-        batch_coalitions_matrix: np.ndarray,
-        batch_coalitions_size: np.ndarray,
-        batch_sampling_adjustment_weights: np.ndarray,
+        game_values: np.ndarray,
+        coalitions_matrix: np.ndarray,
+        coalitions_size: np.ndarray,
+        sampling_adjustment_weights: np.ndarray,
         index_approximation: str,
     ):
         residual_game_values = {}
-        residual_game_values[1] = copy.copy(batch_game_values)
-        emptycoalition_value = residual_game_values[1][batch_coalitions_size == 0][0]
+        residual_game_values[1] = copy.copy(game_values)
+        emptycoalition_value = residual_game_values[1][coalitions_size == 0][0]
         residual_game_values[1] -= emptycoalition_value
 
         sii_values = np.array([emptycoalition_value])
@@ -225,9 +197,9 @@ class Regression(Approximator, KShapleyMixin):
 
         for interaction_size in range(1, self.max_order + 1):
             regression_matrix = np.zeros(
-                (np.shape(batch_coalitions_matrix)[0], int(binom(self.n, interaction_size)))
+                (np.shape(coalitions_matrix)[0], int(binom(self.n, interaction_size)))
             )
-            for coalition_pos, coalition in enumerate(batch_coalitions_matrix):
+            for coalition_pos, coalition in enumerate(coalitions_matrix):
                 for interaction_pos, interaction in enumerate(
                     powerset(self.N, min_size=interaction_size, max_size=interaction_size)
                 ):
@@ -238,8 +210,7 @@ class Regression(Approximator, KShapleyMixin):
 
             # Regression weights adjusted by sampling weights
             regression_weights = (
-                kernel_weights_dict[interaction_size][batch_coalitions_size]
-                * batch_sampling_adjustment_weights
+                kernel_weights_dict[interaction_size][coalitions_size] * sampling_adjustment_weights
             )
 
             weighted_regression_matrix = regression_weights[:, None] * regression_matrix
@@ -269,11 +240,11 @@ class Regression(Approximator, KShapleyMixin):
 
             else:
                 # For order > 2 use ground truth weights for sizes < interaction_size and > n - interaction_size
-                ground_truth_weights_indicator = (batch_coalitions_size < interaction_size) + (
-                    batch_coalitions_size > self.n - interaction_size
+                ground_truth_weights_indicator = (coalitions_size < interaction_size) + (
+                    coalitions_size > self.n - interaction_size
                 )
                 weights_from_ground_truth = self._get_ground_truth_sii_weights(
-                    batch_coalitions_matrix[ground_truth_weights_indicator], interaction_size
+                    coalitions_matrix[ground_truth_weights_indicator], interaction_size
                 )
                 sii_values_current_size_minus = np.dot(
                     weights_from_ground_truth.T,
@@ -319,14 +290,14 @@ class Regression(Approximator, KShapleyMixin):
     def regression_routine(
         self,
         kernel_weights: np.ndarray,
-        batch_game_values: np.ndarray,
-        batch_coalitions_matrix: np.ndarray,
-        batch_coalitions_size: np.ndarray,
-        batch_sampling_adjustment_weights: np.ndarray,
+        game_values: np.ndarray,
+        coalitions_matrix: np.ndarray,
+        coalitions_size: np.ndarray,
+        sampling_adjustment_weights: np.ndarray,
         index_approximation: str,
     ):
-        regression_response = copy.copy(batch_game_values)
-        emptycoalition_value = regression_response[batch_coalitions_size == 0][0]
+        regression_response = copy.copy(game_values)
+        emptycoalition_value = regression_response[coalitions_size == 0][0]
         regression_response -= emptycoalition_value
         regression_coefficient_weight = self._get_regression_coefficient_weights(
             max_order=self.max_order, index=index_approximation
@@ -334,9 +305,9 @@ class Regression(Approximator, KShapleyMixin):
         n_interactions = np.sum(
             [int(binom(self.n, interaction_size)) for interaction_size in range(self.max_order + 1)]
         )
-        regression_matrix = np.zeros((np.shape(batch_coalitions_matrix)[0], n_interactions))
+        regression_matrix = np.zeros((np.shape(coalitions_matrix)[0], n_interactions))
 
-        for coalition_pos, coalition in enumerate(batch_coalitions_matrix):
+        for coalition_pos, coalition in enumerate(coalitions_matrix):
             for interaction_pos, interaction in enumerate(
                 powerset(self.N, max_size=self.max_order)
             ):
@@ -347,9 +318,7 @@ class Regression(Approximator, KShapleyMixin):
                 ]
 
         # Regression weights adjusted by sampling weights
-        regression_weights = (
-            kernel_weights[batch_coalitions_size] * batch_sampling_adjustment_weights
-        )
+        regression_weights = kernel_weights[coalitions_size] * sampling_adjustment_weights
         weighted_regression_matrix = regression_weights[:, None] * regression_matrix
 
         try:
