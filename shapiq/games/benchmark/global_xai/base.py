@@ -11,7 +11,13 @@ from shapiq.games.base import Game
 class GlobalExplanation(Game):
     """The GlobalExplanation game class.
 
-    # TODO: Add more details about the game class.
+    The GlobalExplanation game is a benchmark game for global explanation methods. It evaluates the
+    worth of coalitions of features towards the model's performance. The players are individual
+    features, and the worth of a coalition is the performance of the model on a random subset of the
+    data where missing features are removed by setting the feature values to a random value from the
+    background data. For more details, we highly recommend reading the
+    [SAGE paper](https://arxiv.org/abs/2004.00668) by Covert et al. or the
+    [blog post](https://iancovert.com/blog/understanding-shap-sage/).
 
     Args:
         data: The background data used to fit the imputer. Should be a 2d matrix of shape
