@@ -17,6 +17,21 @@ AVAILABLE_INDICES_REGRESSION = ["k-SII", "SII", "kADD-SHAP", "FSII", "kADD-SHAP"
 
 
 class Regression(Approximator, KShapleyMixin):
+    """This class is the base class for all regression approximators.
+
+    Regression approximators are based on a representation of the interaction index as a solution to a weighted
+    least sqaure problem. The objective of this optimization problem is approximated and then solved exactly.
+    For the SV this method is known as KernelSHAP.
+
+    Args:
+        n: The number of players.
+        max_order: The interaction order of the approximation.
+        index: The interaction index to be estimated. Available indices are 'SII', 'kSII', 'STII',
+            and 'FSII'.
+        sii_consistent: If True, the KernelSHAP-IQ method is used for SII, else Inconsistent KernelSHAP-IQ
+        random_state: The random state to use for the approximation. Defaults to None.
+    """
+
     def __init__(
         self,
         n: int,
@@ -129,7 +144,6 @@ class Regression(Approximator, KShapleyMixin):
         game_values: np.ndarray[float] = np.zeros(shape=(n_coalitions,), dtype=float)
 
         # main regression loop computing the FSII values
-        batch_index = 0
         for iteration in range(1, n_iterations + 1):
             current_batch_size = batch_size if iteration != n_iterations else last_batch_size
             batch_index = (iteration - 1) * batch_size
