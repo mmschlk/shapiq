@@ -1,22 +1,23 @@
 """This module contains tabular benchmark games for local explanation."""
 
-from typing import Optional, Union
-
-import numpy as np
+from typing import Optional
 
 from .._setup import BenchmarkSetup
-from .base import LocalExplanation, _get_x_explain
+from .base import GlobalExplanation
 
 
-class AdultCensus(LocalExplanation):
-    """The AdultCensus dataset as a local explanation game.
+class AdultCensus(GlobalExplanation):
+    """The AdultCensus dataset as a global explanation game.
 
     Args:
-        class_to_explain: The class label to explain. Defaults to 1.
-        x: The data point to explain. Can be an index of the background data or a 1d matrix
-            of shape (n_features).
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree', 'random_forest', and 'gradient_boosting'.
+        loss_function: The loss function to use for the model. Defaults to 'accuracy_score'.
+            Available loss functions are described in the `BenchmarkSetup` class.
+        n_samples_eval: The number of samples to use for the evaluation of the value function.
+            Defaults to 10.
+        n_samples_empty: The number of samples to use for the empty subset estimation. Defaults to
+            200.
         random_state: The random state to use for the imputer. Defaults to `None`.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
@@ -26,49 +27,46 @@ class AdultCensus(LocalExplanation):
     def __init__(
         self,
         *,
-        class_to_explain: int = 1,
-        x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
+        loss_function: str = "accuracy_score",
+        n_samples_eval: int = 10,
+        n_samples_empty: int = 200,
         random_state: Optional[int] = None,
         normalize: bool = True,
         verbose: bool = True,
     ) -> None:
-        # validate the inputs
-        if class_to_explain not in [0, 1]:
-            raise ValueError(
-                f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}."
-            )
 
         setup = BenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
+            loss_function=loss_function,
             verbose=verbose,
         )
 
-        # get x_explain
-        x = _get_x_explain(x, setup.x_test)
-
-        def predict_function(x):
-            return setup.predict_function(x)[:, class_to_explain]
-
         # call the super constructor
         super().__init__(
-            x=x,
             data=setup.x_train,
-            model=predict_function,
+            model=setup.predict_function,
+            loss_function=setup.loss_function,
+            n_samples_eval=n_samples_eval,
+            n_samples_empty=n_samples_empty,
             random_state=random_state,
             normalize=normalize,
         )
 
 
-class BikeSharing(LocalExplanation):
-    """The BikeSharing dataset as a Local Explanation game.
+class BikeSharing(GlobalExplanation):
+    """The Bike Sharing regression dataset as a global explanation game.
 
     Args:
-        x: The data point to explain. Can be an index of the background data or a 1d matrix
-            of shape (n_features).
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree', 'random_forest', and 'gradient_boosting'.
+        loss_function: The loss function to use for the model. Defaults to 'mean_absolute_error'.
+            Available loss functions are described in the `BenchmarkSetup` class.
+        n_samples_eval: The number of samples to use for the evaluation of the value function.
+            Defaults to 10.
+        n_samples_empty: The number of samples to use for the empty subset estimation. Defaults to
+            200.
         random_state: The random state to use for the imputer. Defaults to `None`.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
@@ -78,8 +76,10 @@ class BikeSharing(LocalExplanation):
     def __init__(
         self,
         *,
-        x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
+        loss_function: str = "mean_absolute_error",
+        n_samples_eval: int = 10,
+        n_samples_empty: int = 200,
         random_state: Optional[int] = None,
         normalize: bool = True,
         verbose: bool = True,
@@ -88,32 +88,34 @@ class BikeSharing(LocalExplanation):
         setup = BenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
+            loss_function=loss_function,
             verbose=verbose,
         )
 
-        # get x_explain
-        x = _get_x_explain(x, setup.x_test)
-
-        predict_function = setup.predict_function
-
         # call the super constructor
         super().__init__(
-            x=x,
-            data=setup.x_test,
-            model=predict_function,
+            data=setup.x_train,
+            model=setup.predict_function,
+            loss_function=setup.loss_function,
+            n_samples_eval=n_samples_eval,
+            n_samples_empty=n_samples_empty,
             random_state=random_state,
             normalize=normalize,
         )
 
 
-class CaliforniaHousing(LocalExplanation):
-    """The CaliforniaHousing dataset as a LocalExplanation game.
+class CaliforniaHousing(GlobalExplanation):
+    """The California Housing regression dataset as a global explanation game.
 
     Args:
-        x: The data point to explain. Can be an index of the background data or a 1d matrix
-            of shape (n_features).
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', 'gradient_boosting', and 'neural_network'.
+            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
+        loss_function: The loss function to use for the model. Defaults to 'mean_absolute_error'.
+            Available loss functions are described in the `BenchmarkSetup` class.
+        n_samples_eval: The number of samples to use for the evaluation of the value function.
+            Defaults to 10.
+        n_samples_empty: The number of samples to use for the empty subset estimation. Defaults to
+            200.
         random_state: The random state to use for the imputer. Defaults to `None`.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
@@ -123,8 +125,10 @@ class CaliforniaHousing(LocalExplanation):
     def __init__(
         self,
         *,
-        x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
+        loss_function: str = "mean_absolute_error",
+        n_samples_eval: int = 10,
+        n_samples_empty: int = 200,
         random_state: Optional[int] = None,
         normalize: bool = True,
         verbose: bool = True,
@@ -133,17 +137,17 @@ class CaliforniaHousing(LocalExplanation):
         setup = BenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
+            loss_function=loss_function,
             verbose=verbose,
         )
 
-        # get x_explain
-        x = _get_x_explain(x, setup.x_test)
-
         # call the super constructor
         super().__init__(
-            x=x,
-            data=setup.x_test,
+            data=setup.x_train,
             model=setup.predict_function,
+            n_samples_eval=n_samples_eval,
+            n_samples_empty=n_samples_empty,
+            loss_function=setup.loss_function,
             random_state=random_state,
             normalize=normalize,
         )

@@ -1,10 +1,9 @@
 """This test module contains all tests regarding the SV stratified sampling approximator."""
 
-import numpy as np
 import pytest
 
 from approximator.marginals import StratifiedSamplingSV
-from shapiq.games import DummyGame
+from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(

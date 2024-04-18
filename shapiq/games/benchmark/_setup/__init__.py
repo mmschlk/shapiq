@@ -1,4 +1,4 @@
-from .base import BenchmarkSetup
+from shapiq.games.benchmark.setup import BenchmarkSetup
 
 __all__ = ["BenchmarkSetup"]
 

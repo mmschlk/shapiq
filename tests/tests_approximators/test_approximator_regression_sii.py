@@ -7,7 +7,7 @@ import pytest
 
 from shapiq.approximator.regression import RegressionSII
 from shapiq.approximator.regression._base import Regression
-from shapiq.games import DummyGame
+from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
 
 

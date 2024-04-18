@@ -1,6 +1,6 @@
 """This module contains all benchmark games for the feature selection setting."""
 
-from shapiq.games.benchmark.setup import BenchmarkSetup
+from shapiq.games.benchmark._setup import BenchmarkSetup
 
 from .base import FeatureSelectionGame
 

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from shapiq.approximator.permutation import PermutationSamplingSII
-from shapiq.games import DummyGame
+from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
 
 

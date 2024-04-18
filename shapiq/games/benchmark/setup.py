@@ -27,6 +27,14 @@ class BenchmarkSetup:
             - 'bike_sharing': 'decision_tree', 'random_forest', 'gradient_boosting'
             - 'california_housing': 'decision_tree', 'random_forest', 'gradient_boosting',
                 'neural_network'
+        loss_function: If specified, the loss function to use for the game as a string. Defaults to
+            `None`. Available loss functions are:
+            - 'mean_squared_error'
+            - 'mean_absolute_error'
+            - 'log_loss'
+            - 'r2_score'
+            - 'accuracy_score'
+            - 'roc_auc_score'
         verbose: Whether to print the predicted class and score. Defaults to True.
         train_size: The size of the training set. Defaults to 0.8.
         random_state: The random state to use for all random operations. Defaults to 42.
@@ -72,6 +80,7 @@ class BenchmarkSetup:
         self,
         dataset_name: str,
         model_name: str,
+        loss_function: Optional[str] = None,
         verbose: bool = True,
         train_size: float = 0.7,
         random_state: Optional[int] = 42,
@@ -156,27 +165,40 @@ class BenchmarkSetup:
         if self.model is None:
             raise ValueError(f"Invalid model name {model_name} for the {dataset_name} dataset.")
 
-        # set functions if they are None
-        if self.score_function is None:
-            self.score_function = self.model.score
-            self.fit_function = self.model.fit
-            self.predict_function = self.model.predict
+        from sklearn.metrics import (
+            log_loss,
+            mean_absolute_error,
+            mean_squared_error,
+            r2_score,
+            roc_auc_score,
+        )
 
         # set up the functions
         if self.dataset_type == "classification":
-            from sklearn.metrics import log_loss
-
-            self.loss_function = log_loss
+            self.loss_function = _accuracy  # custom accuracy function
             self.score_function = self.model.score
             self.fit_function = self.model.fit
             self.predict_function = self.model.predict_proba
         else:
-            from sklearn.metrics import r2_score
-
             self.loss_function = r2_score
             self.score_function = self.model.score
             self.fit_function = self.model.fit
             self.predict_function = self.model.predict
+
+        # update loss function if specified
+        if loss_function is not None:
+            if loss_function == "mean_squared_error":
+                self.loss_function = mean_squared_error
+            elif loss_function == "mean_absolute_error":
+                self.loss_function = mean_absolute_error
+            elif loss_function == "log_loss":
+                self.loss_function = log_loss
+            elif loss_function == "r2_score":
+                self.loss_function = r2_score
+            elif loss_function == "accuracy_score":
+                self.loss_function = _accuracy  # custom accuracy function
+            elif loss_function == "roc_auc_score":
+                self.loss_function = roc_auc_score
 
         # print the performance of the model on the test data
         if verbose:
@@ -232,7 +254,7 @@ class BenchmarkSetup:
     def init_california_neural_network(self):
         """Initializes a neural network model for the California Housing dataset."""
 
-        from ._california_torch_setup import CaliforniaHousingTorchModel
+        from ._setup._california_torch_setup import CaliforniaHousingTorchModel
 
         self.model = CaliforniaHousingTorchModel()
 
@@ -248,3 +270,15 @@ class BenchmarkSetup:
         self.y_train = np.log10(self.y_train)
         self.y_test = np.log10(self.y_test)
         self.y_data = np.log10(self.y_data)
+
+
+def _accuracy(y_true: np.ndarray, y_pred: np.ndarray, threshold: float = 0.5) -> float:
+    """Returns the accuracy score of the model."""
+    from sklearn.metrics import accuracy_score
+
+    if y_true.ndim > 1:
+        y_true = np.argmax(y_true, axis=1)
+    if y_pred.ndim > 1:
+        y_pred = np.argmax(y_pred, axis=1)
+
+    return accuracy_score(y_true, y_pred)
