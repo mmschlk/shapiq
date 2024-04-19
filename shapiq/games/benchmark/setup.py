@@ -39,6 +39,8 @@ class BenchmarkSetup:
         verbose: Whether to print the predicted class and score. Defaults to True.
         train_size: The size of the training set. Defaults to 0.8.
         random_state: The random state to use for all random operations. Defaults to 42.
+        random_forest_n_estimators: The number of estimators to use for the random forest model if
+            the model is a random forest. Defaults to 10.
 
     Attributes:
         dataset_name: The name of the dataset.
@@ -85,6 +87,7 @@ class BenchmarkSetup:
         verbose: bool = True,
         train_size: float = 0.7,
         random_state: Optional[int] = 42,
+        random_forest_n_estimators: int = 10,
     ) -> None:
         self.random_state: Optional[int] = random_state
 
@@ -129,6 +132,7 @@ class BenchmarkSetup:
         self.y_test: np.ndarray = copy.deepcopy(y_data[self.n_train :])
 
         self.model_name = model_name
+        self._random_forest_n_estimators = random_forest_n_estimators
 
         # to be set in the model initialization
         self.model: Optional[Model] = None
@@ -224,7 +228,9 @@ class BenchmarkSetup:
         """Initializes and trains a random forest model for a classification dataset."""
         from sklearn.ensemble import RandomForestClassifier
 
-        self.model = RandomForestClassifier(n_estimators=10, random_state=self.random_state)
+        self.model = RandomForestClassifier(
+            n_estimators=self._random_forest_n_estimators, random_state=self.random_state
+        )
         self.model.fit(self.x_train, self.y_train)
 
     def init_gradient_boosting_classifier(self):
