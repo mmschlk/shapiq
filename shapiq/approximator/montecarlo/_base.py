@@ -233,10 +233,10 @@ class MonteCarlo(Approximator, KShapleyMixin):
                     # Compute probabilities for a sample to be placed in this stratum
                     stratum_probabilities = np.ones(n_coalitions)
                     stratum_probabilities[in_stratum_and_sampled] = 1 / binom(
-                       self.n - interaction_size,
+                        self.n - interaction_size,
                         coalitions_size[in_stratum_and_sampled] - intersection_stratum,
                     )
-                    #stratum_probabilities = np.sum(sampling_size_probabilities*self.n)
+                    # stratum_probabilities = np.sum(sampling_size_probabilities*self.n)
                     # Get sampled coalitions per stratum
                     stratum_n_samples = np.sum(coalitions_counter[in_stratum_and_sampled])
                     n_samples_helper = np.array([1, stratum_n_samples])
