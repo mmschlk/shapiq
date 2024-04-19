@@ -26,6 +26,9 @@ class AdultCensus(ClusterExplanation):
         if cluster_method == "agglomerative":
             cluster_params = {"n_clusters": 3}
 
+        # standardize the data
+        data = (data - data.mean()) / data.std()
+
         super().__init__(
             data=data,
             cluster_method=cluster_method,
@@ -56,6 +59,9 @@ class BikeSharing(ClusterExplanation):
         if cluster_method == "agglomerative":
             cluster_params = {"n_clusters": 3}
 
+        # standardize the data
+        data = (data - data.mean()) / data.std()
+
         super().__init__(
             data=data,
             cluster_method=cluster_method,
@@ -85,6 +91,9 @@ class CaliforniaHousing(ClusterExplanation):
             cluster_params = {"n_clusters": 3}
         if cluster_method == "agglomerative":
             cluster_params = {"n_clusters": 3}
+
+        # standardize the data
+        data = (data - data.mean()) / data.std()
 
         super().__init__(
             data=data,
