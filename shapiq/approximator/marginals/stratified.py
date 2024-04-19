@@ -64,7 +64,7 @@ class StratifiedSamplingSV(Approximator):
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget - 2, batch_size, self.iteration_cost
+            budget, batch_size, self.iteration_cost
         )
 
         strata = np.zeros((self.n, self.n), dtype=float)
