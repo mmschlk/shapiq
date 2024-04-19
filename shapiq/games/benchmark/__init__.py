@@ -6,8 +6,7 @@ from .dataset_valuation.benchmark import AdultCensus as AdultCensusDatasetValuat
 from .dataset_valuation.benchmark import BikeSharing as BikeSharingDatasetValuation
 from .dataset_valuation.benchmark import CaliforniaHousing as CaliforniaHousingDatasetValuation
 
-# ensemble selection games
-# RandomForestEnsembleSelection
+# ensemble selection and random forest ensemble selection games
 from .ensemble_selection.base import EnsembleSelection, RandomForestEnsembleSelection
 from .ensemble_selection.benchmark import AdultCensus as AdultCensusEnsembleSelection
 from .ensemble_selection.benchmark import BikeSharing as BikeSharingEnsembleSelection
@@ -47,10 +46,16 @@ from .synthetic.dummy import DummyGame
 from .synthetic.soum import SOUM, UnanimityGame
 
 # cluster explanation games
-from .unsupervised.base import ClusterExplanation
-from .unsupervised.benchmark import AdultCensus as AdultCensusClusterExplanation
-from .unsupervised.benchmark import BikeSharing as BikeSharingClusterExplanation
-from .unsupervised.benchmark import CaliforniaHousing as CaliforniaHousingClusterExplanation
+from .unsupervised_cluster.base import ClusterExplanation
+from .unsupervised_cluster.benchmark import AdultCensus as AdultCensusClusterExplanation
+from .unsupervised_cluster.benchmark import BikeSharing as BikeSharingClusterExplanation
+from .unsupervised_cluster.benchmark import CaliforniaHousing as CaliforniaHousingClusterExplanation
+
+# unsupervised data games
+from .unsupervised_data.base import UnsupervisedData
+from .unsupervised_data.benchmark import AdultCensus as AdultCensusUnsupervisedData
+from .unsupervised_data.benchmark import BikeSharing as BikeSharingUnsupervisedData
+from .unsupervised_data.benchmark import CaliforniaHousing as CaliforniaHousingUnsupervisedData
 
 __all__ = [
     # local_xai games
@@ -90,6 +95,11 @@ __all__ = [
     "AdultCensusRandomForestEnsembleSelection",
     "BikeSharingRandomForestEnsembleSelection",
     "CaliforniaHousingRandomForestEnsembleSelection",
+    # unspervised data
+    "UnsupervisedData",
+    "AdultCensusUnsupervisedData",
+    "BikeSharingUnsupervisedData",
+    "CaliforniaHousingUnsupervisedData",
     # synthetic games
     "DummyGame",
     "SOUM",
