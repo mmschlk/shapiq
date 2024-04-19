@@ -11,6 +11,7 @@ from shapiq.games.benchmark import (
     CaliforniaHousingUnsupervisedData,
 )
 
+
 @pytest.mark.skip(reason="This test is not ready, yet. The code still depends on pyitlib.")
 def test_base_class():
     """This function tests the setup and logic of the game."""
