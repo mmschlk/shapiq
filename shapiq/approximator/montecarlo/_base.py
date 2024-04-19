@@ -109,6 +109,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
         coalitions_size_probs = sampler.coalitions_size_probability
         coalitions_in_size_probs = sampler.coalitions_in_size_probability
         is_coalition_sampled = sampler.is_coalition_sampled
+        sampling_size_probabilities = sampler.sampling_size_probabilities
 
         # query the game for the current batch of coalitions
         game_values = game(coalitions_matrix)
@@ -128,6 +129,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
             coalitions_size_probs,
             coalitions_in_size_probs,
             is_coalition_sampled,
+            sampling_size_probabilities,
         )
 
         if np.shape(coalitions_matrix)[0] >= 2**self.n:
@@ -155,6 +157,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
         coalitions_size_probs,
         coalitions_in_size_probs,
         is_coalition_sampled,
+        sampling_size_probabilities,
     ):
         standard_form_weights = self._get_standard_form_weights(index_approximation)
         shapley_interaction_values = np.zeros(len(self.interaction_lookup))
@@ -230,9 +233,10 @@ class MonteCarlo(Approximator, KShapleyMixin):
                     # Compute probabilities for a sample to be placed in this stratum
                     stratum_probabilities = np.ones(n_coalitions)
                     stratum_probabilities[in_stratum_and_sampled] = 1 / binom(
-                        self.n - interaction_size,
+                       self.n - interaction_size,
                         coalitions_size[in_stratum_and_sampled] - intersection_stratum,
                     )
+                    #stratum_probabilities = np.sum(sampling_size_probabilities*self.n)
                     # Get sampled coalitions per stratum
                     stratum_n_samples = np.sum(coalitions_counter[in_stratum_and_sampled])
                     n_samples_helper = np.array([1, stratum_n_samples])

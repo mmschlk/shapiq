@@ -59,7 +59,7 @@ class CoalitionSampler:
             The array is of shape (n_coalitions,).
         n_coalitions: The number of coalitions that have been sampled.
         sampling_adjustment_weights: The weights that account for the sampling procedure (importance sampling)
-
+        sampling_size_probabilities: The probabilities of each coalition size to be sampled.
     Examples:
         >>> sampler = CoalitionSampler(n_players=3, sampling_weights=np.array([1, 0.5, 0.5, 1]))
         >>> sampler.sample(5)
@@ -202,6 +202,17 @@ class CoalitionSampler:
                 n_players).
         """
         return copy.deepcopy(self._sampled_coalitions_matrix)
+
+    @property
+    def sampling_size_probabilities(self) -> np.ndarray:
+        """Returns the probabilities of sampling a coalition size.
+
+        Returns:
+            An array containing the probabilities of shappe (n+1,)
+        """
+        size_probs = np.zeros(self.n + 1)
+        size_probs[self._coalitions_to_sample] = self.adjusted_sampling_weights
+        return size_probs
 
     @property
     def coalitions_counter(self) -> np.ndarray:
