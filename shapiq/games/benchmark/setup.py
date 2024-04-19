@@ -35,6 +35,7 @@ class BenchmarkSetup:
             - 'r2_score'
             - 'accuracy_score'
             - 'roc_auc_score'
+            - 'f1_score'
         verbose: Whether to print the predicted class and score. Defaults to True.
         train_size: The size of the training set. Defaults to 0.8.
         random_state: The random state to use for all random operations. Defaults to 42.
@@ -166,6 +167,7 @@ class BenchmarkSetup:
             raise ValueError(f"Invalid model name {model_name} for the {dataset_name} dataset.")
 
         from sklearn.metrics import (
+            f1_score,
             log_loss,
             mean_absolute_error,
             mean_squared_error,
@@ -186,7 +188,7 @@ class BenchmarkSetup:
             self.predict_function = self.model.predict
 
         # update loss function if specified
-        if loss_function is not None and model_name is not None:
+        if loss_function is not None:
             if loss_function == "mean_squared_error":
                 self.loss_function = mean_squared_error
             elif loss_function == "mean_absolute_error":
@@ -197,6 +199,8 @@ class BenchmarkSetup:
                 self.loss_function = r2_score
             elif loss_function == "accuracy_score":
                 self.loss_function = _accuracy  # custom accuracy function
+            elif loss_function == "f1_score":
+                self.loss_function = f1_score
             elif loss_function == "roc_auc_score":
                 self.loss_function = roc_auc_score
 

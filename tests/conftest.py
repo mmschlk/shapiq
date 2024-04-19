@@ -132,6 +132,21 @@ def background_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
 
 
 @pytest.fixture
+def background_clf_dataset_binary() -> tuple[np.ndarray, np.ndarray]:
+    """Return a simple background dataset."""
+    X, y = make_classification(
+        n_samples=100,
+        n_features=7,
+        random_state=42,
+        n_classes=2,
+        n_informative=7,
+        n_repeated=0,
+        n_redundant=0,
+    )
+    return X, y
+
+
+@pytest.fixture
 def test_image_and_path() -> tuple[Image.Image, str]:
     """Reads and returns the test image."""
     # get path for this file's directory

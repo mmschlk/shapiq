@@ -1,10 +1,17 @@
 """This module contains all benchmark games."""
 
+# synthetic games
 # dataset valuation games
 from .dataset_valuation.base import DatasetValuation
 from .dataset_valuation.benchmark import AdultCensus as AdultCensusDatasetValuation
 from .dataset_valuation.benchmark import BikeSharing as BikeSharingDatasetValuation
 from .dataset_valuation.benchmark import CaliforniaHousing as CaliforniaHousingDatasetValuation
+
+# ensemble selection games
+from .ensemble_selection.base import EnsembleSelection
+from .ensemble_selection.benchmark import AdultCensus as AdultCensusEnsembleSelection
+from .ensemble_selection.benchmark import BikeSharing as BikeSharingEnsembleSelection
+from .ensemble_selection.benchmark import CaliforniaHousing as CaliforniaHousingEnsembleSelection
 
 # feature selection games
 from .feature_selection.base import FeatureSelectionGame
@@ -25,8 +32,6 @@ from .local_xai.benchmark_language import SentimentAnalysis as SentimentAnalysis
 from .local_xai.benchmark_tabular import AdultCensus as AdultCensusLocalXAI
 from .local_xai.benchmark_tabular import BikeSharing as BikeSharingLocalXAI
 from .local_xai.benchmark_tabular import CaliforniaHousing as CaliforniaHousingLocalXAI
-
-# synthetic games
 from .synthetic.dummy import DummyGame
 from .synthetic.soum import SOUM, UnanimityGame
 
@@ -64,6 +69,11 @@ __all__ = [
     "AdultCensusClusterExplanation",
     "BikeSharingClusterExplanation",
     "CaliforniaHousingClusterExplanation",
+    # ensemble selection games
+    "EnsembleSelection",
+    "AdultCensusEnsembleSelection",
+    "BikeSharingEnsembleSelection",
+    "CaliforniaHousingEnsembleSelection",
     # synthetic games
     "DummyGame",
     "SOUM",
