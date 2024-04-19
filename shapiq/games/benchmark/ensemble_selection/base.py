@@ -1,6 +1,6 @@
 """This module contains the base class for the ensemble selection games."""
 
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import numpy as np
 from utils import Model
@@ -52,7 +52,7 @@ class EnsembleSelection(Game):
         y_test: np.ndarray,
         loss_function: Callable[[np.ndarray, np.ndarray], float],
         dataset_type: str = "classification",
-        ensemble_members: Optional[list[str]] = None,
+        ensemble_members: Optional[Union[list[str], list[Model]]] = None,
         n_members: int = 10,
         verbose: bool = True,
         random_state: Optional[int] = None,
@@ -72,6 +72,9 @@ class EnsembleSelection(Game):
             raise ValueError("No loss function provided.")
         self._empty_coalition_value: float = 0.0  # is set to 0 for all games
 
+        # set the ensemble members attribute
+        self.ensemble_members: dict[int, Model] = {}
+
         # create the sanitized ensemble members list
         self.available_members: list[str] = [
             "regression",
@@ -85,13 +88,24 @@ class EnsembleSelection(Game):
             ensemble_members = []
             for i in range(n_members):
                 ensemble_members.append(self.available_members[i % len(self.available_members)])
-        else:  # check if all ensemble members are available
+
+        # get the ensemble member models
+        if any(isinstance(member, str) for member in ensemble_members):
             for member in ensemble_members:
                 if member not in self.available_members:
                     raise ValueError(
                         f"Invalid ensemble member provided. Got {member} but expected one of "
                         f"{self.available_members}."
                     )
+            self.player_names: list[str] = ensemble_members
+            self.ensemble_members = self._init_ensemble_members()  # initialize the ensemble members
+            for member_id, member in self.ensemble_members.items():  # fit the ensemble members
+                if verbose:
+                    print(f"Fitting ensemble member {member_id + 1} ({member})  ...")
+                member.fit(x_train, y_train)
+        else:
+            self.player_names: list[str] = [str(member) for member in ensemble_members]
+            self.ensemble_members = {i: member for i, member in enumerate(ensemble_members)}
 
         # setup base game and attributes
         self.player_names: list[str] = ensemble_members
@@ -101,17 +115,6 @@ class EnsembleSelection(Game):
             normalize=normalize,
             normalization_value=self._empty_coalition_value,  # is set to 0 for all games
         )
-
-        # init ensemble members
-        self.ensemble_members: dict[int, Model] = self._init_ensemble_members()
-
-        # fit the ensemble members
-        for member_id, member in self.ensemble_members.items():
-            if verbose:
-                print(
-                    f"Fitting ensemble member {member_id + 1} ({self.player_names[member_id]})  ..."
-                )
-            member.fit(x_train, y_train)
 
         # compute the predictions of the ensemble members
         self.predictions: np.ndarray = np.zeros((n_players, y_test.shape[0]))
@@ -198,3 +201,67 @@ class EnsembleSelection(Game):
 
             ensemble_members[member_id] = model
         return ensemble_members
+
+
+class RandomForestEnsembleSelection(EnsembleSelection):
+    """The RandomForest Ensemble Selection game.
+
+    The RandomForest ensemble selection game models ensemble selection problems as a cooperative
+    games. The players are trees of a random forest and the value of a coalition is the performance
+    of the ensemble on a test set.
+
+    Args:
+        random_forest: The random forest to use for the game.
+        x_train: The training data as a numpy array of shape (n_samples, n_features).
+        y_train: The training labels as a numpy array of shape (n_samples,).
+        x_test: The test data as a numpy array of shape (n_samples, n_features).
+        y_test: The test labels as a numpy array of shape (n_samples,).
+        loss_function: The loss function to use for the ensemble members as a callable expecting
+            two arguments: y_true and y_pred and returning a float.
+        dataset_type: The type of dataset. Available dataset types are 'classification' and
+            'regression'. Defaults to 'classification'.
+        verbose: Whether to print information about the game and the ensemble members. Defaults to
+            True.
+        normalize: Whether to normalize the game values. Defaults to True.
+    """
+
+    def __init__(
+        self,
+        random_forest: Model,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+        x_test: np.ndarray,
+        y_test: np.ndarray,
+        loss_function: Callable[[np.ndarray, np.ndarray], float],
+        dataset_type: str = "classification",
+        verbose: bool = True,
+        normalize: bool = True,
+    ) -> None:
+
+        from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+
+        # check if the random forest is a sklearn random forest
+        if not isinstance(random_forest, RandomForestClassifier) and not isinstance(
+            random_forest, RandomForestRegressor
+        ):
+            raise ValueError(
+                "Invalid random forest provided. Expected a RandomForestClassifier or "
+                "RandomForestRegressor as provided by sklearn."
+            )
+
+        # get the ensemble members
+        ensemble_members = random_forest.estimators_
+        ensemble_members = [member for member in ensemble_members]
+
+        super().__init__(
+            x_train=x_train,
+            y_train=y_train,
+            x_test=x_test,
+            y_test=y_test,
+            loss_function=loss_function,
+            dataset_type=dataset_type,
+            ensemble_members=ensemble_members,
+            n_members=len(ensemble_members),
+            verbose=verbose,
+            normalize=normalize,
+        )

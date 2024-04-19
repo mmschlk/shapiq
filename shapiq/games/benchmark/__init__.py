@@ -1,6 +1,5 @@
 """This module contains all benchmark games."""
 
-# synthetic games
 # dataset valuation games
 from .dataset_valuation.base import DatasetValuation
 from .dataset_valuation.benchmark import AdultCensus as AdultCensusDatasetValuation
@@ -8,10 +7,20 @@ from .dataset_valuation.benchmark import BikeSharing as BikeSharingDatasetValuat
 from .dataset_valuation.benchmark import CaliforniaHousing as CaliforniaHousingDatasetValuation
 
 # ensemble selection games
-from .ensemble_selection.base import EnsembleSelection
+# RandomForestEnsembleSelection
+from .ensemble_selection.base import EnsembleSelection, RandomForestEnsembleSelection
 from .ensemble_selection.benchmark import AdultCensus as AdultCensusEnsembleSelection
 from .ensemble_selection.benchmark import BikeSharing as BikeSharingEnsembleSelection
 from .ensemble_selection.benchmark import CaliforniaHousing as CaliforniaHousingEnsembleSelection
+from .ensemble_selection.benchmark_random_forest import (
+    AdultCensus as AdultCensusRandomForestEnsembleSelection,
+)
+from .ensemble_selection.benchmark_random_forest import (
+    BikeSharing as BikeSharingRandomForestEnsembleSelection,
+)
+from .ensemble_selection.benchmark_random_forest import (
+    CaliforniaHousing as CaliforniaHousingRandomForestEnsembleSelection,
+)
 
 # feature selection games
 from .feature_selection.base import FeatureSelectionGame
@@ -32,6 +41,8 @@ from .local_xai.benchmark_language import SentimentAnalysis as SentimentAnalysis
 from .local_xai.benchmark_tabular import AdultCensus as AdultCensusLocalXAI
 from .local_xai.benchmark_tabular import BikeSharing as BikeSharingLocalXAI
 from .local_xai.benchmark_tabular import CaliforniaHousing as CaliforniaHousingLocalXAI
+
+# synthetic games
 from .synthetic.dummy import DummyGame
 from .synthetic.soum import SOUM, UnanimityGame
 
@@ -74,6 +85,11 @@ __all__ = [
     "AdultCensusEnsembleSelection",
     "BikeSharingEnsembleSelection",
     "CaliforniaHousingEnsembleSelection",
+    # RandomForestEnsembleSelection
+    "RandomForestEnsembleSelection",
+    "AdultCensusRandomForestEnsembleSelection",
+    "BikeSharingRandomForestEnsembleSelection",
+    "CaliforniaHousingRandomForestEnsembleSelection",
     # synthetic games
     "DummyGame",
     "SOUM",
