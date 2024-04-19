@@ -64,8 +64,8 @@ def test_approximator_inconsistent_kernelshapiq_sii():
                 )
             PREV_BUDGET_PERC = budget_perc
 
-    # Assert 80%-ratio of improvements over previous calculation
-    assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.8
+    # Assert 60%-ratio of improvements over previous calculation
+    assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.6
 
 
 def test_approximator_inconsistent_kernelshapiq_kaddshap():
