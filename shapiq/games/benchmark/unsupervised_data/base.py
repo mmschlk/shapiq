@@ -15,9 +15,10 @@ class UnsupervisedData(Game):
     For more information we refer to the following paper: https://arxiv.org/pdf/2205.09060.pdf
 
     Note:
-        This game requires the pyitlib package to be installed. You can install it via pip:
+        This game requires the pyitlib and sklearn package to be installed. You can install it via
+        pip:
         ```
-        pip install pyitlib
+        pip install pyitlib scikit-learn
         ```
 
     Args:
@@ -35,9 +36,6 @@ class UnsupervisedData(Game):
         self.data = data
         self._n_features = data.shape[1]
         self.empty_coalition_value = empty_coalition_value
-
-        #
-        # TODO: add pyitlib to requirements
 
         # discretize the data
         from sklearn.preprocessing import KBinsDiscretizer
