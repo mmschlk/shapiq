@@ -2,7 +2,7 @@ import numpy as np
 
 from shapiq.exact import ExactComputer
 from shapiq.approximator.regression.kadd_shap import kADDSHAP
-from shapiq.games.soum import SOUM
+from shapiq.games.benchmark import SOUM
 
 
 def test_approximator_kaddshap():

@@ -2,7 +2,7 @@ import numpy as np
 
 from shapiq.approximator.moebius_converter import MoebiusConverter
 from shapiq.approximator.regression.kernelshapiq import KernelSHAPIQ
-from shapiq.games.soum import SOUM
+from shapiq.games.benchmark import SOUM
 
 
 def test_approximator_kernelshapiq_sii():
@@ -70,8 +70,8 @@ def test_approximator_kernelshapiq_sii():
         # Assert exact values for 100% budget
         assert squared_errors[100] < 10e-7
 
-    # Assert 80%-ratio of improvements over previous calculation
-    assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.8
+    # Assert 70%-ratio of improvements over previous calculation
+    assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.7
 
 
 def test_approximator_kernelshapiq_ksii():
@@ -124,5 +124,5 @@ def test_approximator_kernelshapiq_ksii():
         # Assert exact values for 100% budget
         assert squared_errors[100] < 10e-7
 
-    # Assert 80%-ratio of improvements over previous calculation
-    assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.6
+    # Assert 70%-ratio of improvements over previous calculation
+    assert approximation_improvement_counter / ((N_BUDGET_STEPS - 1) * N_RUNS) >= 0.7

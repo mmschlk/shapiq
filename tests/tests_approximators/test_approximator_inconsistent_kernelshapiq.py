@@ -3,7 +3,7 @@ import numpy as np
 from shapiq.approximator.moebius_converter import MoebiusConverter
 from shapiq.approximator.regression.kernelshapiq import InconsistentKernelSHAPIQ
 from shapiq.exact import ExactComputer
-from shapiq.games.soum import SOUM
+from shapiq.games.benchmark import SOUM
 
 
 def test_approximator_inconsistent_kernelshapiq_sii():

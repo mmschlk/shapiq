@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from shapiq.approximator.marginals import StratifiedSamplingSV
-from shapiq.games import DummyGame
+from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
