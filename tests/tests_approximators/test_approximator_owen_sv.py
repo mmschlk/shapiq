@@ -26,7 +26,7 @@ def test_anchorpoints(n, m, expected):
 
 
 @pytest.mark.parametrize(
-    "n, M, budget, batch_size",
+    "n, m, budget, batch_size",
     [
         (5, 3, 102, 1),
         (5, 3, 102, 2),
@@ -38,19 +38,19 @@ def test_anchorpoints(n, m, expected):
         (5, 10, 1000, 10),
     ],
 )
-def test_approximate(n, M, budget, batch_size):
+def test_approximate(n, m, budget, batch_size):
     """Tests the approximation of the OwenSamplingSV approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
 
-    approximator = OwenSamplingSV(n, M, random_state=42)
+    approximator = OwenSamplingSV(n, m, random_state=42)
 
     assert approximator.index == "SV"
 
     # test for init parameter
     assert approximator.index == "SV"
     assert approximator.n == n
-    assert approximator.iteration_cost == 2 * n * M
+    assert approximator.iteration_cost == 2 * n * m
     assert approximator.max_order == 1
     assert approximator.top_order is False
 
