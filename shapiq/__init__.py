@@ -12,14 +12,13 @@ from .approximator import (
     RegressionSII,
     ShapIQ,
 )
-from .datasets import load_adult_census, load_bike, load_california_housing
+from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 from .exact import ExactComputer
 
 # explainer classes
 from .explainer import Explainer, TabularExplainer, TreeExplainer
 
 # game classes
-from .games import DummyGame
 from .interaction_values import InteractionValues
 
 # plotting functions
@@ -49,8 +48,6 @@ __all__ = [
     "Explainer",
     "TabularExplainer",
     "TreeExplainer",
-    # games
-    "DummyGame",
     # plots
     "network_plot",
     "stacked_bar_plot",
@@ -60,7 +57,7 @@ __all__ = [
     "split_subsets_budget",
     "safe_isinstance",
     # datasets
-    "load_bike",
+    "load_bike_sharing",
     "load_adult_census",
     "load_california_housing",
 ]

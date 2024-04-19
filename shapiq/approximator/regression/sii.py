@@ -23,7 +23,7 @@ class RegressionSII(Regression, KShapleyMixin):
         iteration_cost: The cost of a single iteration of the regression SII.
 
     Example:
-        >>> from games import DummyGame
+        >>> from shapiq.games import DummyGame
         >>> from approximator import RegressionSII
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = RegressionSII(n=5, max_order=2)

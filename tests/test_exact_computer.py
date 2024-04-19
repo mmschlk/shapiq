@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from shapiq.games.soum import SOUM
+from shapiq.games.benchmark.synthetic.soum import SOUM
 from shapiq.approximator.moebius_converter import MoebiusConverter
 from shapiq.exact import ExactComputer
 

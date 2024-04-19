@@ -29,7 +29,7 @@ class PermutationSamplingSII(Approximator, KShapleyMixin):
         iteration_cost: The cost of a single iteration of the permutation sampling.
 
     Example:
-        >>> from games import DummyGame
+        >>> from shapiq.games import DummyGame
         >>> from approximator import PermutationSamplingSII
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = PermutationSamplingSII(n=5, max_order=2)
