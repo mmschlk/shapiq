@@ -3,6 +3,7 @@
 from typing import Callable, Optional, Union
 
 import numpy as np
+from scipy.stats import mode
 from utils import Model
 
 from ...base import Game
@@ -141,9 +142,11 @@ class EnsembleSelection(Game):
             if sum(coalition) == 0:
                 worth[i] = self._empty_coalition_value
                 continue
-            coalition_predictions = self.predictions[coalition].mean(axis=0)
-            if self.dataset_type == "classification":
-                coalition_predictions = np.round(coalition_predictions)  # round to class labels
+            if self.dataset_type == "regression":
+                coalition_predictions = self.predictions[coalition].mean(axis=0)
+            else:
+                coalition_predictions = self.predictions[coalition]
+                coalition_predictions = mode(coalition_predictions, axis=0)[0].ravel()
             worth[i] = self.loss_function(self._y_test, coalition_predictions)
         return worth
 
