@@ -5,7 +5,7 @@ from typing import Optional
 
 import numpy as np
 
-from shapiq.games import Game
+from shapiq.games.base import Game
 from shapiq.interaction_values import InteractionValues
 
 

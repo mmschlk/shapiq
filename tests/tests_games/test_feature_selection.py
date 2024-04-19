@@ -1,11 +1,18 @@
 """This test module contains all tests regarding the FeatureSelection game."""
+
 import os
 
 import numpy as np
 import pytest
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.games.tabular import FeatureSelectionGame
+from shapiq.games.base import Game
+from shapiq.games.benchmark import (
+    FeatureSelectionGame,
+    AdultCensusFeatureSelection,
+    BikeSharingFeatureSelection,
+    CaliforniaHousingFeatureSelection,
+)
 
 
 def loss_function(y_pred, y_test):
@@ -71,9 +78,48 @@ def test_basic_function(background_reg_dataset):
 
     # test with path_to_values
     game.save_values("test_values.npz")
-    new_game = FeatureSelectionGame(path_to_values="test_values.npz")
+    new_game = Game(path_to_values="test_values.npz")
     assert new_game.n_values_stored == game.n_values_stored
 
     # clean up
     os.remove("test_values.npz")
     assert not os.path.exists("test_values.npz")
+
+
+@pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
+def test_california(model_name):
+    """Test the FeatureSelection game with the california housing dataset."""
+    n_players = 8
+    test_coalition = np.zeros(shape=(1, n_players), dtype=bool)
+    test_coalition[0][0] = True
+
+    game = CaliforniaHousingFeatureSelection(model_name=model_name)
+    value = game(test_coalition)
+    assert game.n_players == n_players
+    assert len(value) == 1
+
+
+@pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
+def test_adult_census(model_name):
+    """Test the FeatureSelection game with the adult census dataset."""
+    n_players = 14
+    test_coalition = np.zeros(shape=(1, n_players), dtype=bool)
+    test_coalition[0][0] = True
+
+    game = AdultCensusFeatureSelection(model_name=model_name)
+    value = game(test_coalition)
+    assert game.n_players == n_players
+    assert len(value) == 1
+
+
+@pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
+def test_bike_sharing(model_name):
+    """Test the FeatureSelection game with the bike sharing dataset."""
+    n_players = 12
+    test_coalition = np.zeros(shape=(1, n_players), dtype=bool)
+    test_coalition[0][0] = True
+
+    game = BikeSharingFeatureSelection(model_name=model_name)
+    value = game(test_coalition)
+    assert game.n_players == n_players
+    assert len(value) == 1

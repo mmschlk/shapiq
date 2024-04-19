@@ -22,7 +22,7 @@ class KernelSHAP(Regression):
         iteration_cost: The cost of a single iteration of the regression FSII.
 
     Example:
-        >>> from games import DummyGame
+        >>> from shapiq.games import DummyGame
         >>> from approximator import KernelSHAP
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = KernelSHAP(n=5)

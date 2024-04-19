@@ -9,7 +9,7 @@ from shapiq.approximator import (
     convert_ksii_into_one_dimension,
     transforms_sii_to_ksii,
 )
-from shapiq.games import DummyGame
+from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
