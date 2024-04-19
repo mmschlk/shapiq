@@ -39,6 +39,6 @@ class SVARMIQ(MonteCarlo):
             index=index,
             top_order=top_order,
             stratify_coalition_size=True,
-            stratify_intersection_size=True,
+            stratify_intersection=True,
             random_state=random_state,
         )

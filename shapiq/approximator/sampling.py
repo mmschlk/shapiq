@@ -376,7 +376,6 @@ class CoalitionSampler:
         sampling_budget = self.execute_border_trick(sampling_budget)
 
         # Sort by size for esthetics
-        self._coalitions_to_sample.sort(key=self._sort_coalitions)
         self._coalitions_to_compute.sort(key=self._sort_coalitions)
 
         # raise warning if budget is higher than 90% of samples remaining to be sampled

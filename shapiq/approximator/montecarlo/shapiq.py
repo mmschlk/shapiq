@@ -39,6 +39,6 @@ class SHAPIQ(MonteCarlo):
             index=index,
             top_order=top_order,
             stratify_coalition_size=False,
-            stratify_intersection_size=False,
+            stratify_intersection=False,
             random_state=random_state,
         )

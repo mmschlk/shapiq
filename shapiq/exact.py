@@ -5,9 +5,9 @@ import copy
 from typing import Callable, Union
 
 import numpy as np
-from indices import ALL_AVAILABLE_CONCEPTS
 from scipy.special import bernoulli, binom
 
+from shapiq.indices import ALL_AVAILABLE_CONCEPTS
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
