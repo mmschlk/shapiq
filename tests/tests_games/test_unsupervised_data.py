@@ -1,6 +1,7 @@
 """This module contains the tests for the unsupervised data benchmark games."""
 
 import numpy as np
+import pytest
 
 from shapiq.games.base import Game
 from shapiq.games.benchmark import UnsupervisedData
@@ -10,7 +11,7 @@ from shapiq.games.benchmark import (
     CaliforniaHousingUnsupervisedData,
 )
 
-
+@pytest.mark.skip(reason="This test is not ready, yet. The code still depends on pyitlib.")
 def test_base_class():
     """This function tests the setup and logic of the game."""
 
@@ -36,6 +37,7 @@ def test_base_class():
     assert np.all(values[1:] != 0.0)  # rest should not be zero
 
 
+@pytest.mark.skip(reason="This test is not ready, yet. The code still depends on pyitlib.")
 def test_adult():
     """This function tests the adult census unsupervised data game."""
     n_players = 14
@@ -47,6 +49,7 @@ def test_adult():
     # no test for value function as it takes too long
 
 
+@pytest.mark.skip(reason="This test is not ready, yet. The code still depends on pyitlib.")
 def test_bike_sharing():
     """This function tests the bike sharing unsupervised data game."""
     n_players = 12
@@ -58,6 +61,7 @@ def test_bike_sharing():
     # no test for value function as it takes too long
 
 
+@pytest.mark.skip(reason="This test is not ready, yet. The code still depends on pyitlib.")
 def test_california_housing():
     """This function tests the california housing unsupervised data game."""
     n_players = 8
