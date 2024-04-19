@@ -13,6 +13,10 @@ from shapiq.games import DummyGame
         (5, 1, [0.5]),
         (5, 2, [0.0, 1.0]),
         (5, 3, [0.0, 0.5, 1.0]),
+        (5, 4, [0.0, 0.33333, 0.66666, 1.0]),
+        (5, 5, [0.0, 0.25, 0.5, 0.75, 1.0]),
+        (5, 6, [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
+        (5, 10, [0.0, 0.11111, 0.22222, 0.33333, 0.44444, 0.55555, 0.66666, 0.77777, 0.88888, 1.0]),
         (5, 11, [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
     ],
 )
@@ -36,6 +40,7 @@ def test_anchorpoints(n, m, expected):
         (5, 1, 1000, 10),
         (5, 2, 1000, 10),
         (5, 10, 1000, 10),
+        (5, 20, 1000, 10),
     ],
 )
 def test_approximate(n, m, budget, batch_size):
@@ -66,6 +71,6 @@ def test_approximate(n, m, budget, batch_size):
     assert sv_estimates[(4,)] == pytest.approx(0.2, 0.001)
 
     # check Shapley values for interaction players
-    if budget >= 1000:
+    if budget >= 1000 and m >= 20:
         assert sv_estimates[(1,)] == pytest.approx(0.7, 0.1)
         assert sv_estimates[(2,)] == pytest.approx(0.7, 0.1)

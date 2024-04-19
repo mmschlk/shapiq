@@ -15,13 +15,13 @@ class OwenSamplingSV(Approximator):
     """The Owen Sampling algorithm estimates the Shapley values (SV) by sampling random marginal contributions
     for each player and each coalition size. The marginal contributions are used to update an integral representation of the SV.
     For more information, see [Okhrati and Lipani (2020)](https://www.computer.org/csdl/proceedings-article/icpr/2021/09412511/1tmicWxYo2Q).
-    The number of points M at which the integral is to be palpated share the avilable budget for each player equally.
+    The number of anchor points M at which the integral is to be palpated share the avilable budget for each player equally.
     A higher M increases the resolution of the integral reducing bias while reducing the accuracy of the estimation at each point.
 
     Args:
         n: The number of players.
         random_state: The random state to use for the permutation sampling. Defaults to `None`.
-        M: Number of points at which the integral is to be palpated.
+        M: Number of anchor points at which the integral is to be palpated.
 
     Attributes:
         n: The number of players.
@@ -68,14 +68,61 @@ class OwenSamplingSV(Approximator):
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget - 2, batch_size, self.iteration_cost
+            budget, batch_size, self.iteration_cost
         )
 
-        # anchors = np.zeros((self.n, self.M), dtype=float)
-        # counts = np.zeros((self.n, self.M), dtype=int)
+        anchors = self.get_anchor_points(self.M)
+        estimates = np.zeros((self.n, self.M), dtype=float)
+        counts = np.zeros((self.n, self.M), dtype=int)
 
-        result = np.zeros(self.n)
+        # main sampling loop going through all anchor points of all players with each segment
+        for iteration in range(1, n_iterations + 1):
+            batch_size = batch_size if iteration != n_iterations else last_batch_size
+            n_segments = batch_size
+            n_coalitions = n_segments * self.iteration_cost
+            coalitions = np.zeros(shape=(n_coalitions, self.n), dtype=bool)
+            coalition_index = 0
+            # iterate through each segment
+            for segment in range(n_segments):
+                # iterate through each player
+                for player in range(self.n):
+                    # iterate through each anchor point
+                    for q in anchors:
+                        # draw a subset of players without player: all are inserted independently with probability q
+                        coalition = np.random.choice(
+                            [True, False], self.n - 1, replace=True, p=[q, 1 - q]
+                        )
+                        # add information that player is absent
+                        coalition = np.insert(coalition, player, False)
+                        coalitions[coalition_index] = coalition
+                        # add information that player is present to complete marginal contribution
+                        coalition[player] = True
+                        coalitions[coalition_index + 1] = coalition
+                        coalition_index += 2
 
+            # evaluate the collected coalitions
+            game_values: np.ndarray[float] = game(coalitions)
+            used_budget += len(coalitions)
+
+            # update the anchor estimates
+            coalition_index = 0
+            # iterate through each segment
+            for segment in range(n_segments):
+                for player in range(self.n):
+                    for m in range(self.M):
+                        # calculate the marginal contribution and update the anchor estimate
+                        marginal_con = (
+                            game_values[coalition_index + 1] - game_values[coalition_index]
+                        )
+                        estimates[player][m] += marginal_con
+                        counts[player][m] += 1
+                        coalition_index += 2
+
+        # aggregate the anchor estimates: divide each anchor sum by its sample number, sum up the means, divide by the number of valid anchor estimates
+        estimates = np.divide(estimates, counts, out=estimates, where=counts != 0)
+        result = np.sum(estimates, axis=1)
+        non_zeros = np.count_nonzero(counts, axis=1)
+        result = np.divide(result, non_zeros, out=result, where=non_zeros != 0)
         return self._finalize_result(result, budget=used_budget, estimated=True)
 
     def get_anchor_points(self, m: int):
@@ -84,6 +131,5 @@ class OwenSamplingSV(Approximator):
 
         if m == 1:
             return np.array([0.5])
-
-        step_size = 1.0 / (m - 1.0)
-        return np.arange(0.0, 1.0 + step_size, step_size)
+        else:
+            return np.linspace(0.0, 1.0, num=m)
