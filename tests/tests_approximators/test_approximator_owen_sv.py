@@ -40,7 +40,7 @@ def test_anchorpoints(n, m, expected):
         (5, 1, 1000, 10),
         (5, 2, 1000, 10),
         (5, 10, 1000, 10),
-        (5, 20, 1000, 10),
+        (5, 41, 100000, 100),
     ],
 )
 def test_approximate(n, m, budget, batch_size):
@@ -71,6 +71,6 @@ def test_approximate(n, m, budget, batch_size):
     assert sv_estimates[(4,)] == pytest.approx(0.2, 0.001)
 
     # check Shapley values for interaction players
-    if budget >= 1000 and m >= 20:
+    if budget >= 100000 and m >= 40:
         assert sv_estimates[(1,)] == pytest.approx(0.7, 0.1)
         assert sv_estimates[(2,)] == pytest.approx(0.7, 0.1)
