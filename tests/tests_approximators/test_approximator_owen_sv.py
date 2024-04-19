@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from approximator.marginals import OwenSamplingSV
-from shapiq.games import DummyGame
+from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
