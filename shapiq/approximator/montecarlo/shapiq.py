@@ -18,6 +18,10 @@ class SHAPIQ(MonteCarlo):
         max_order: The interaction order of the approximation.
         index: The interaction index
         random_state: The random state of the estimator. Defaults to `None`.
+        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
+            to `False`.
+        sampling_weights: An optional array of weights for the sampling procedure. The weights must
+            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
 
     Attributes:
         n: The number of players.
@@ -34,6 +38,8 @@ class SHAPIQ(MonteCarlo):
         max_order: int,
         index: str = "k-SII",
         top_order: bool = False,
+        sampling_weights: Optional[float] = None,
+        pairing_trick: bool = False,
         random_state: Optional[int] = None,
     ):
         super().__init__(
@@ -44,6 +50,8 @@ class SHAPIQ(MonteCarlo):
             stratify_coalition_size=False,
             stratify_intersection=False,
             random_state=random_state,
+            sampling_weights=sampling_weights,
+            pairing_trick=pairing_trick,
         )
 
 
@@ -61,6 +69,11 @@ class UnbiasedKernelSHAP(SHAPIQ):
     Args:
         n: The number of players.
         random_state: The random state of the estimator. Defaults to `None`.
+        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
+            to `False`.
+        sampling_weights: An optional array of weights for the sampling procedure. The weights must
+            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
+            of a certain size. Defaults to `None`.
 
     Example:
         >>> from shapiq.games.benchmark import DummyGame
@@ -84,5 +97,15 @@ class UnbiasedKernelSHAP(SHAPIQ):
         self,
         n: int,
         random_state: Optional[int] = None,
+        pairing_trick: bool = False,
+        sampling_weights: Optional[float] = None,
     ):
-        super().__init__(n, 1, "SV", False, random_state)
+        super().__init__(
+            n,
+            max_order=1,
+            index="SV",
+            top_order=False,
+            random_state=random_state,
+            pairing_trick=pairing_trick,
+            sampling_weights=sampling_weights,
+        )

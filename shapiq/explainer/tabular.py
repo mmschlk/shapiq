@@ -7,11 +7,11 @@ from typing import Optional, Union
 import numpy as np
 
 from shapiq.approximator import (
+    SHAPIQ,
     InconsistentKernelSHAPIQ,
     PermutationSamplingSII,
     PermutationSamplingSTII,
     RegressionFSII,
-    ShapIQ,
 )
 from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
@@ -29,7 +29,7 @@ APPROXIMATOR_CONFIGURATIONS = {
         "STII": PermutationSamplingSTII,
         "kSII": PermutationSamplingSII,
     },
-    "ShapIQ": {"SII": ShapIQ, "STII": ShapIQ, "FSII": ShapIQ, "k-SII": ShapIQ},
+    "ShapIQ": {"SII": SHAPIQ, "STII": SHAPIQ, "FSII": SHAPIQ, "k-SII": SHAPIQ},
 }
 
 AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII"}
@@ -128,7 +128,7 @@ class TabularExplainer(Explainer):
                     random_state=self._random_state,
                 )
             else:  # default to ShapIQ
-                return ShapIQ(
+                return SHAPIQ(
                     n=self._n_features,
                     max_order=max_order,
                     top_order=False,

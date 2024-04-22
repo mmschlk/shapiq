@@ -128,15 +128,15 @@ class CoalitionSampler:
         # variables accessible through properties
         self._sampled_coalitions_matrix: Optional[np.ndarray[bool]] = None  # coalitions
         self._sampled_coalitions_counter: Optional[np.ndarray[int]] = None  # coalitions_counter
-        self._sampled_coalitions_size_prob: Optional[
-            np.ndarray[float]
-        ] = None  # coalitions_size_probability
-        self._sampled_coalitions_in_size_prob: Optional[
-            np.ndarray[float]
-        ] = None  # coalitions_in_size_probability
-        self._is_coalition_size_sampled: Optional[
-            np.ndarray[bool]
-        ] = None  # is_coalition_size_sampled
+        self._sampled_coalitions_size_prob: Optional[np.ndarray[float]] = (
+            None  # coalitions_size_probability
+        )
+        self._sampled_coalitions_in_size_prob: Optional[np.ndarray[float]] = (
+            None  # coalitions_in_size_probability
+        )
+        self._is_coalition_size_sampled: Optional[np.ndarray[bool]] = (
+            None  # is_coalition_size_sampled
+        )
 
         self.sampled = False
 
@@ -169,9 +169,7 @@ class CoalitionSampler:
         return self._is_coalition_size_sampled[coalitions_size]
 
     @property
-    def sampling_adjustment_weights(
-        self, stratify_coalition_size: bool = False, stratify_intersection_size: bool = False
-    ) -> np.ndarray:
+    def sampling_adjustment_weights(self) -> np.ndarray:
         """Returns the weights that account for the sampling procedure
 
         Returns:
@@ -257,6 +255,26 @@ class CoalitionSampler:
             A copy of the sampled probabilities of shape (n_coalitions,).
         """
         return copy.deepcopy(self._sampled_coalitions_in_size_prob)
+
+    @property
+    def coalitions_size(self) -> np.ndarray:
+        """Returns the coalition sizes of the sampled coalitions.
+
+        Returns:
+            The coalition sizes of the sampled coalitions.
+        """
+        return np.sum(self.coalitions_matrix, axis=1)
+
+    @property
+    def empty_coalition_index(self) -> Optional[int]:
+        """Returns the index of the empty coalition.
+
+        Returns:
+            The index of the empty coalition or `None` if the empty coalition was not sampled.
+        """
+        if 0 in self.coalitions_per_size:
+            return int(np.where(self.coalitions_size == 0)[0][0])
+        return None
 
     def execute_border_trick(self, sampling_budget: int) -> int:
         """Moves coalition sizes from coalitions_to_sample to coalitions_to_compute, if the expected

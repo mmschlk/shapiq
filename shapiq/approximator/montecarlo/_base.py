@@ -7,7 +7,6 @@ from scipy.special import binom, factorial
 
 from shapiq.approximator._base import Approximator
 from shapiq.approximator.k_sii import KShapleyMixin
-from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
@@ -45,6 +44,8 @@ class MonteCarlo(Approximator, KShapleyMixin):
         stratify_intersection: bool = True,
         top_order: bool = False,
         random_state: Optional[int] = None,
+        pairing_trick: bool = False,
+        sampling_weights: np.ndarray = None,
     ):
         if index not in AVAILABLE_INDICES_REGRESSION:
             raise ValueError(
@@ -58,90 +59,40 @@ class MonteCarlo(Approximator, KShapleyMixin):
             index=index,
             top_order=top_order,
             random_state=random_state,
+            pairing_trick=pairing_trick,
+            sampling_weights=sampling_weights,
         )
-        self._big_M: int = int(10e7)
         self.stratify_coalition_size = stratify_coalition_size
         self.stratify_intersection = stratify_intersection
-
-    def _init_sampling_weights(self) -> np.ndarray:
-        """Initializes the weights for sampling subsets.
-
-        The sampling weights are of size n + 1 and indexed by the size of the subset. The edges
-        All weights are set to _big_M, if size < order or size > n - order to ensure efficiency.
-
-        Returns:
-            The weights for sampling subsets of size s in shape (n + 1,).
-        """
-        weight_vector = np.zeros(shape=self.n + 1)
-        for coalition_size in range(0, self.n + 1):
-            if (coalition_size == 0) or (coalition_size == self.n):
-                # prioritize these subsets
-                weight_vector[coalition_size] = self._big_M**2
-            elif (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
-                # prioritize these subsets
-                weight_vector[coalition_size] = self._big_M
-            else:
-                # KernelSHAP sampling weights
-                weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
-        sampling_weight = weight_vector / np.sum(weight_vector)
-        return sampling_weight
 
     def approximate(
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        pairing_trick: bool = False,
-        sampling_weights: np.ndarray = None,
     ) -> InteractionValues:
-        if sampling_weights is None:
-            # Initialize default sampling weights
-            sampling_weights = self._init_sampling_weights()
 
-        sampler = CoalitionSampler(
-            n_players=self.n,
-            sampling_weights=sampling_weights,
-            pairing_trick=pairing_trick,
-            random_state=self._random_state,
-        )
-
-        # Sample with current budget
-        sampler.sample(budget)
-        # Extract sampling properties, used for MonteCarlo procedure and stratification
-        coalitions_matrix = sampler.coalitions_matrix
-        coalitions_size = np.sum(coalitions_matrix, axis=1)
-        coalitions_counter = sampler.coalitions_counter
-        coalitions_size_probs = sampler.coalitions_size_probability
-        coalitions_in_size_probs = sampler.coalitions_in_size_probability
-        is_coalition_sampled = sampler.is_coalition_sampled
-        sampling_size_probabilities = sampler.sampling_size_probabilities
+        # sample with current budget
+        self._sampler.sample(budget)
+        coalitions_matrix = self._sampler.coalitions_matrix  # binary matrix of coalitions
 
         # query the game for the current batch of coalitions
         game_values = game(coalitions_matrix)
 
-        if self.index == "k-SII":
-            # For k-SII approximate SII values and then aggregate
+        index_approximation = self.index
+        if self.index == "k-SII":  # For k-SII approximate SII values and then aggregate
             index_approximation = "SII"
-        else:
-            index_approximation = self.index
 
         # Approximate the shapley interaction values using Monte Carlo for the specified index_approximation
-        shapley_interactions_values = self.montecarlo_routine(
+        shapley_interactions_values = self.monte_carlo_routine(
             game_values,
             coalitions_matrix,
-            coalitions_size,
-            index_approximation,
-            coalitions_counter,
-            coalitions_size_probs,
-            coalitions_in_size_probs,
-            is_coalition_sampled,
-            sampling_size_probabilities,
+            index_approximation=index_approximation,
         )
 
+        estimated_indicator = True
         if np.shape(coalitions_matrix)[0] >= 2**self.n:
             # If budget exceeds number of coalitions, set estimated to False
             estimated_indicator = False
-        else:
-            estimated_indicator = True
 
         if self.index == "k-SII":
             # If index is k-SII then SII values have been approximated, now aggregate to k-SII
@@ -155,163 +106,207 @@ class MonteCarlo(Approximator, KShapleyMixin):
             result=shapley_interactions_values, estimated=estimated_indicator, budget=budget
         )
 
-    def montecarlo_routine(
+    def monte_carlo_routine(
         self,
         game_values: np.ndarray,
         coalitions_matrix: np.ndarray,
-        coalitions_size: np.ndarray,
         index_approximation: str,
-        coalitions_counter,
-        coalitions_size_probs,
-        coalitions_in_size_probs,
-        is_coalition_sampled,
-        sampling_size_probabilities,
-    ):
+    ) -> np.ndarray:
+        """Approximates the Shapley interaction values using Monte Carlo sampling.
+
+        Args:
+            game_values: The game values for the coalitions. The values are of shape
+                `(n_coalitions,)`.
+            coalitions_matrix: The coalitions matrix used to evaluate the game. The matrix is of
+                shape `(n_coalitions, n)`.
+            index_approximation: The index to approximate.
+        """
+
+        # get sampling parameters
+        coalitions_size = self._sampler.coalitions_size
+
         # Get standard form weights, i.e. (-1)**(s-|T\cap S|)*w(t,|T \cap S|), where w is the discrete derivative weight
         # and S the interactions, T the coalition
         standard_form_weights = self._get_standard_form_weights(index_approximation)
         shapley_interaction_values = np.zeros(len(self.interaction_lookup))
-        # Mean center games for better performance
-        emptycoalition_value = game_values[coalitions_size == 0][0]
-        game_values_centered = game_values - emptycoalition_value
-        n_coalitions = len(game_values_centered)
 
+        # mean center games for better performance
+        empty_coalition_value = game_values[coalitions_size == 0][0]
+        # TODO: use either the above or the below
+        empty_coalition_value = float(game_values[self._sampler.empty_coalition_index])
+        game_values_centered = game_values - empty_coalition_value
+
+        # compute approximations per interaction with monte carlo
         for interaction, interaction_pos in self.interaction_lookup.items():
-            # Compute approximations per interaction
             interaction_binary = np.zeros(self.n, dtype=int)
-            interaction_binary[list(interaction)] = 1
+            interaction_binary[interaction] = 1
             interaction_size = len(interaction)
-            # Find intersection sizes with current interaction
+            # find intersection sizes with current interaction
             intersections_size = np.sum(coalitions_matrix * interaction_binary, axis=1)
-            # Pre-compute all coalition weights based on interaction_size, coalitions_size and intersection_size
+            # pre-compute all coalition weights with interaction, coalition, and intersection size
             interaction_weights = standard_form_weights[
                 interaction_size, coalitions_size, intersections_size
             ]
 
-            # Set default weights to one, initialize adjustment weights
-            sampling_adjustment_weights = np.ones(n_coalitions)
-
-            if self.stratify_coalition_size and self.stratify_intersection:
-                # Default SVARM-IQ Routine
-                size_strata = np.unique(coalitions_size)
-                for intersection in powerset(interaction):
-                    # Stratify by intersection for interaction and coalition
-                    intersection_size = len(intersection)
-                    intersection_binary = np.zeros(self.n, dtype=int)
-                    intersection_binary[list(intersection)] = 1
-                    # Compute current intersection stratum
-                    in_intersection_stratum = np.prod(
-                        coalitions_matrix == intersection_binary, axis=1
-                    )
-                    for size_stratum in size_strata:
-                        # Compute current intersection-coalition-size stratum
-                        in_stratum = in_intersection_stratum * (coalitions_size == size_stratum)
-                        in_stratum_and_sampled = in_stratum * is_coalition_sampled
-                        # Set default probabilities to 1
-                        stratum_probabilities = np.ones(n_coalitions)
-                        # Set stratum probabilities (without size probs, since it cancels with coalitions_size_probs)
-                        # Stratum probabilities are #coalitions with coalition \cap interaction = intersection
-                        # divided by #coalitions of size coalition_size
-                        stratum_probabilities[in_stratum_and_sampled] = binom(
-                            self.n - interaction_size,
-                            coalitions_size[in_stratum_and_sampled] - intersection_size,
-                        ) / binom(self.n, coalitions_size[in_stratum_and_sampled])
-                        # Get sampled coalitions per stratum
-                        stratum_n_samples = np.sum(coalitions_counter[in_stratum_and_sampled])
-                        n_samples_helper = np.array([1, stratum_n_samples])
-                        coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
-                        # Set sampling adjustment weights for stratum
-                        sampling_adjustment_weights[in_stratum] = (
-                            coalitions_counter[in_stratum]
-                            * stratum_probabilities[in_stratum]
-                            / (
-                                coalitions_n_samples[in_stratum]
-                                * coalitions_in_size_probs[in_stratum]
-                            )
-                        )
-            elif self.stratify_coalition_size and not self.stratify_intersection:
-                # Stratify by coalition size but not by intersection
-                size_strata = np.unique(coalitions_size)
-                for size_stratum in size_strata:
-                    # Stratify by coalition size
-                    in_stratum = coalitions_size == size_stratum
-                    in_stratum_and_sampled = in_stratum * is_coalition_sampled
-                    stratum_probabilities = np.ones(n_coalitions)
-                    # Set probabilities as 1/#coalitions of size coalition_size (coalition size probs cancel out)
-                    stratum_probabilities[in_stratum_and_sampled] = 1 / binom(
-                        self.n,
-                        coalitions_size[in_stratum_and_sampled],
-                    )
-                    # Get sampled coalitions per stratum
-                    stratum_n_samples = np.sum(coalitions_counter[in_stratum_and_sampled])
-                    n_samples_helper = np.array([1, stratum_n_samples])
-                    coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
-                    # Set sampling adjustment weights for stratum
-                    sampling_adjustment_weights[in_stratum] = coalitions_counter[in_stratum] / (
-                        coalitions_n_samples[in_stratum] * stratum_probabilities[in_stratum]
-                    )
-
+            # get the sampling adjustment weights depending on the stratification strategy
+            if self.stratify_coalition_size and self.stratify_intersection:  # this is SVARM-IQ
+                sampling_adjustment_weights = self._svarmiq_routine(interaction)
             elif not self.stratify_coalition_size and self.stratify_intersection:
-                # Stratify by intersection, but not by coalition size
-                for intersection in powerset(interaction):
-                    # Stratify by intersection of coalition and interaction
-                    intersection_size = len(intersection)
-                    intersection_binary = np.zeros(self.n, dtype=int)
-                    intersection_binary[list(intersection)] = 1
-                    # Compute current stratum
-                    in_stratum = np.prod(coalitions_matrix == intersection_binary, axis=1)
-                    # Flag all coalitions that belong to the stratum and are sampled
-                    in_stratum_and_sampled = in_stratum * is_coalition_sampled
-                    # Compute probabilities for a sample to be placed in this stratum
-                    stratum_probabilities = np.ones(n_coalitions)
-                    stratum_probability = 0
-                    # The probability is the sum over all coalition_sizes, due to law of total expectation
-                    for sampling_size, sampling_size_prob in enumerate(sampling_size_probabilities):
-                        if sampling_size_prob > 0:
-                            stratum_probability += (
-                                sampling_size_prob
-                                * binom(
-                                    self.n - interaction_size,
-                                    sampling_size - intersection_size,
-                                )
-                                / binom(self.n, sampling_size)
-                            )
-                    stratum_probabilities[in_stratum_and_sampled] = stratum_probability
-                    # Get sampled coalitions per stratum
-                    stratum_n_samples = np.sum(coalitions_counter[in_stratum_and_sampled])
-                    n_samples_helper = np.array([1, stratum_n_samples])
-                    coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
-                    # Set weights for current stratum
-                    sampling_adjustment_weights[in_stratum] = (
-                        coalitions_counter[in_stratum]
-                        * stratum_probabilities[in_stratum]
-                        / (
-                            coalitions_n_samples[in_stratum]
-                            * coalitions_size_probs[in_stratum]
-                            * coalitions_in_size_probs[in_stratum]
-                        )
-                    )
-            else:
-                # Default SHAP-IQ routine
-                n_samples = np.sum(coalitions_counter[is_coalition_sampled])
-                n_samples_helper = np.array([1, n_samples])
-                # n_samples for sampled coalitions, else 1
-                coalitions_n_samples = n_samples_helper[is_coalition_sampled.astype(int)]
-                # Set weights by dividing through the probabilities
-                sampling_adjustment_weights = coalitions_counter / (
-                    coalitions_size_probs * coalitions_in_size_probs * coalitions_n_samples
-                )
+                sampling_adjustment_weights = self._intersection_stratification(interaction)
+            elif self.stratify_coalition_size and not self.stratify_intersection:
+                sampling_adjustment_weights = self._coalition_size_stratification()
+            else:  # this is SHAP-IQ
+                sampling_adjustment_weights = self._shapiq_routine()
 
-            # Compute interaction approximation using the previously computed adjustment weights and interaction weights.
+            # compute interaction approximation (using adjustment weights and interaction weights)
             shapley_interaction_values[interaction_pos] = np.sum(
                 game_values_centered * interaction_weights * sampling_adjustment_weights
             )
 
+        # manually set emptyset interaction to baseline
         if self.min_order == 0:
-            # Set emptyset interaction manually to baseline
-            shapley_interaction_values[0] = emptycoalition_value
+            shapley_interaction_values[0] = empty_coalition_value
 
         return shapley_interaction_values
+
+    def _intersection_stratification(self, interaction: tuple[int, ...]) -> np.ndarray:
+        sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
+        interaction_size = len(interaction)
+        # Stratify by intersection, but not by coalition size
+        for intersection in powerset(interaction):
+            # Stratify by intersection of coalition and interaction
+            intersection_size = len(intersection)
+            intersection_binary = np.zeros(self.n, dtype=int)
+            intersection_binary[list(intersection)] = 1
+            # Compute current stratum
+            in_stratum = np.prod(self._sampler.coalitions_matrix == intersection_binary, axis=1)
+            # Flag all coalitions that belong to the stratum and are sampled
+            in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
+            # Compute probabilities for a sample to be placed in this stratum
+            stratum_probabilities = np.ones(self._sampler.n_coalitions)
+            stratum_probability = 0
+            # The probability is the sum over all coalition_sizes, due to law of total expectation
+            for sampling_size, sampling_size_prob in enumerate(
+                self._sampler.sampling_size_probabilities
+            ):
+                if sampling_size_prob > 0:
+                    stratum_probability += (
+                        sampling_size_prob
+                        * binom(
+                            self.n - interaction_size,
+                            sampling_size - intersection_size,
+                        )
+                        / binom(self.n, sampling_size)
+                    )
+            stratum_probabilities[in_stratum_and_sampled] = stratum_probability
+            # Get sampled coalitions per stratum
+            stratum_n_samples = np.sum(self._sampler.coalitions_counter[in_stratum_and_sampled])
+            n_samples_helper = np.array([1, stratum_n_samples])
+            coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
+            # Set weights for current stratum
+            sampling_adjustment_weights[in_stratum] = (
+                self._sampler.coalitions_counter[in_stratum]
+                * stratum_probabilities[in_stratum]
+                / (
+                    coalitions_n_samples[in_stratum]
+                    * self._sampler.coalitions_size_probability[in_stratum]
+                    * self._sampler.coalitions_in_size_probability[in_stratum]
+                )
+            )
+        return sampling_adjustment_weights
+
+    def _coalition_size_stratification(self) -> np.ndarray:
+        sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
+        # Stratify by coalition size but not by intersection
+        size_strata = np.unique(self._sampler.coalitions_size)
+        for size_stratum in size_strata:
+            # Stratify by coalition size
+            in_stratum = self._sampler.coalitions_size == size_stratum
+            in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
+            stratum_probabilities = np.ones(self._sampler.n_coalitions)
+            # Set probabilities as 1/#coalitions of size coalition_size (coalition size probs cancel out)
+            stratum_probabilities[in_stratum_and_sampled] = 1 / binom(
+                self.n,
+                self._sampler.coalitions_size[in_stratum_and_sampled],
+            )
+            # Get sampled coalitions per stratum
+            stratum_n_samples = np.sum(self._sampler.coalitions_counter[in_stratum_and_sampled])
+            n_samples_helper = np.array([1, stratum_n_samples])
+            coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
+            # Set sampling adjustment weights for stratum
+            sampling_adjustment_weights[in_stratum] = self._sampler.coalitions_counter[
+                in_stratum
+            ] / (coalitions_n_samples[in_stratum] * stratum_probabilities[in_stratum])
+        return sampling_adjustment_weights
+
+    def _svarmiq_routine(self, interaction: tuple[int, ...]) -> np.ndarray:
+        """The SVARM-IQ monte carlo routine.
+
+        Args:
+            interaction: The interaction for which the sampling adjustment weights are computed.
+
+        Returns:
+            np.ndarray: The sampling adjustment weights for the SVARM-IQ routine.
+        """
+        sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
+        interaction_size = len(interaction)
+        size_strata = np.unique(self._sampler.coalitions_size)
+        for intersection in powerset(interaction):
+            # Stratify by intersection for interaction and coalition
+            intersection_size = len(intersection)
+            intersection_binary = np.zeros(self.n, dtype=int)
+            intersection_binary[list(intersection)] = 1
+            # Compute current intersection stratum
+            in_intersection_stratum = np.prod(
+                self._sampler.coalitions_matrix == intersection_binary, axis=1
+            )
+            for size_stratum in size_strata:
+                # Compute current intersection-coalition-size stratum
+                in_stratum = in_intersection_stratum * (
+                    self._sampler.coalitions_size == size_stratum
+                )
+                in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
+                # Set default probabilities to 1
+                stratum_probabilities = np.ones(self._sampler.n_coalitions)
+                # Set stratum probabilities (without size probs, since it cancels with coalitions_size_probs)
+                # Stratum probabilities are #coalitions with coalition \cap interaction = intersection
+                # divided by #coalitions of size coalition_size
+                stratum_probabilities[in_stratum_and_sampled] = binom(
+                    self.n - interaction_size,
+                    self._sampler.coalitions_size[in_stratum_and_sampled] - intersection_size,
+                ) / binom(self.n, self._sampler.coalitions_size[in_stratum_and_sampled])
+                # Get sampled coalitions per stratum
+                stratum_n_samples = np.sum(self._sampler.coalitions_counter[in_stratum_and_sampled])
+                n_samples_helper = np.array([1, stratum_n_samples])
+                coalitions_n_samples = n_samples_helper[in_stratum_and_sampled.astype(int)]
+                # Set sampling adjustment weights for stratum
+                sampling_adjustment_weights[in_stratum] = (
+                    self._sampler.coalitions_counter[in_stratum]
+                    * stratum_probabilities[in_stratum]
+                    / (
+                        coalitions_n_samples[in_stratum]
+                        * self._sampler.coalitions_in_size_probability[in_stratum]
+                    )
+                )
+        return sampling_adjustment_weights
+
+    def _shapiq_routine(self) -> np.ndarray:
+        """The SHAP-IQ monte carlo routine.
+
+        Returns:
+            np.ndarray: The sampling adjustment weights for the SHAP-IQ routine.  # TODO better description here?
+        """
+        # TODO is n_samples the right variable name here? for me this sounds like the number of coalitions sampled
+        n_samples = np.sum(self._sampler.coalitions_counter[self._sampler.is_coalition_sampled])
+        n_samples_helper = np.array([1, n_samples])  # n_samples for sampled coalitions, else 1
+        coalitions_n_samples = n_samples_helper[self._sampler.is_coalition_sampled.astype(int)]
+        # Set weights by dividing through the probabilities
+        sampling_adjustment_weights = self._sampler.coalitions_counter / (
+            self._sampler.coalitions_size_probability
+            * self._sampler.coalitions_in_size_probability
+            * coalitions_n_samples
+        )
+        return sampling_adjustment_weights
 
     def _sii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Returns the SII discrete derivative weight given the coalition size and interaction size.
@@ -345,9 +340,12 @@ class MonteCarlo(Approximator, KShapleyMixin):
             return 1.0 * (coalition_size == 0)
 
     def _fsii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Returns the FSII discrete derivative weight given the coalition size and interaction size.
+        """Returns the FSII discrete derivative weight given the coalition size and interaction
+        size.
 
-        Representation according to Theorem 19 in https://www.jmlr.org/papers/volume24/22-0202/22-0202.pdf
+        The representation is based on the FSII representation according to Theorem 19 in this
+            [paper](https://www.jmlr.org/papers/volume24/22-0202/22-0202.pdf).
+
         Args:
             coalition_size: The size of the subset.
             interaction_size: The size of the interaction.
@@ -386,9 +384,9 @@ class MonteCarlo(Approximator, KShapleyMixin):
         else:
             raise ValueError(f"Unknown index {index}.")
 
-    def _get_standard_form_weights(self, index: str) -> dict[int, np.ndarray[float]]:
-        """Initializes the weights for the interaction index re-written from discrete derivatives to standard form.
-         Standard form according to Theorem 1 in https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html
+    def _get_standard_form_weights(self, index: str) -> np.ndarray:
+        """Initializes the weights for the interaction index re-written from discrete derivatives to
+        standard form. Standard form according to Theorem 1 in [Fumagalli et al 2023](https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html).
 
         Args:
             index: The interaction index
