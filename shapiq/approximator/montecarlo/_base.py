@@ -82,10 +82,10 @@ class MonteCarlo(Approximator, KShapleyMixin):
         if self.index == "k-SII":  # For k-SII approximate SII values and then aggregate
             index_approximation = "SII"
 
-        # Approximate the shapley interaction values using Monte Carlo for the specified index_approximation
+        # approximate the shapley interaction values using Monte Carlo
         shapley_interactions_values = self.monte_carlo_routine(
-            game_values,
-            coalitions_matrix,
+            game_values=game_values,
+            coalitions_matrix=coalitions_matrix,
             index_approximation=index_approximation,
         )
 
@@ -111,7 +111,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
         game_values: np.ndarray,
         coalitions_matrix: np.ndarray,
         index_approximation: str,
-    ) -> np.ndarray:
+    ) -> np.ndarray[float]:
         """Approximates the Shapley interaction values using Monte Carlo sampling.
 
         Args:
@@ -125,8 +125,8 @@ class MonteCarlo(Approximator, KShapleyMixin):
         # get sampling parameters
         coalitions_size = self._sampler.coalitions_size
 
-        # Get standard form weights, i.e. (-1)**(s-|T\cap S|)*w(t,|T \cap S|), where w is the discrete derivative weight
-        # and S the interactions, T the coalition
+        # get standard form weights, i.e. (-1) ** (s-|T\cap S|) * w(t,|T \cap S|), where w is the
+        # discrete derivative weight and S the interactions, T the coalition  # TODO add what "s" is (order)
         standard_form_weights = self._get_standard_form_weights(index_approximation)
         shapley_interaction_values = np.zeros(len(self.interaction_lookup))
 
@@ -170,6 +170,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
         return shapley_interaction_values
 
     def _intersection_stratification(self, interaction: tuple[int, ...]) -> np.ndarray:
+        """TODO: Add docstring here."""
         sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
         interaction_size = len(interaction)
         # Stratify by intersection, but not by coalition size
@@ -216,6 +217,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
         return sampling_adjustment_weights
 
     def _coalition_size_stratification(self) -> np.ndarray:
+        """TODO: Add docstring here."""
         sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
         # Stratify by coalition size but not by intersection
         size_strata = np.unique(self._sampler.coalitions_size)
@@ -224,7 +226,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
             in_stratum = self._sampler.coalitions_size == size_stratum
             in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
             stratum_probabilities = np.ones(self._sampler.n_coalitions)
-            # Set probabilities as 1/#coalitions of size coalition_size (coalition size probs cancel out)
+            # set probabilities as 1 or the number of coalitions with a coalition size
             stratum_probabilities[in_stratum_and_sampled] = 1 / binom(
                 self.n,
                 self._sampler.coalitions_size[in_stratum_and_sampled],
@@ -242,6 +244,8 @@ class MonteCarlo(Approximator, KShapleyMixin):
     def _svarmiq_routine(self, interaction: tuple[int, ...]) -> np.ndarray:
         """The SVARM-IQ monte carlo routine.
 
+        # TODO: Add description here.
+
         Args:
             interaction: The interaction for which the sampling adjustment weights are computed.
 
@@ -252,7 +256,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
         interaction_size = len(interaction)
         size_strata = np.unique(self._sampler.coalitions_size)
         for intersection in powerset(interaction):
-            # Stratify by intersection for interaction and coalition
+            # stratify by intersection for interaction and coalition
             intersection_size = len(intersection)
             intersection_binary = np.zeros(self.n, dtype=int)
             intersection_binary[list(intersection)] = 1
@@ -261,16 +265,16 @@ class MonteCarlo(Approximator, KShapleyMixin):
                 self._sampler.coalitions_matrix == intersection_binary, axis=1
             )
             for size_stratum in size_strata:
-                # Compute current intersection-coalition-size stratum
+                # compute current intersection-coalition-size stratum
                 in_stratum = in_intersection_stratum * (
                     self._sampler.coalitions_size == size_stratum
                 )
                 in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
-                # Set default probabilities to 1
-                stratum_probabilities = np.ones(self._sampler.n_coalitions)
-                # Set stratum probabilities (without size probs, since it cancels with coalitions_size_probs)
-                # Stratum probabilities are #coalitions with coalition \cap interaction = intersection
-                # divided by #coalitions of size coalition_size
+                stratum_probabilities = np.ones(self._sampler.n_coalitions)  # default prob. are 1
+                # set stratum probabilities (without size probabilities, since they cancel with
+                # coalitions size probabilities): stratum probabilities are number of coalitions
+                # with coalition \cap interaction = intersection divided by the number of
+                # coalitions of size coalition_size
                 stratum_probabilities[in_stratum_and_sampled] = binom(
                     self.n - interaction_size,
                     self._sampler.coalitions_size[in_stratum_and_sampled] - intersection_size,
@@ -293,8 +297,10 @@ class MonteCarlo(Approximator, KShapleyMixin):
     def _shapiq_routine(self) -> np.ndarray:
         """The SHAP-IQ monte carlo routine.
 
+        # TODO: Add description here.
+
         Returns:
-            np.ndarray: The sampling adjustment weights for the SHAP-IQ routine.  # TODO better description here?
+            np.ndarray: The sampling adjustment weights for the SHAP-IQ routine.
         """
         # TODO is n_samples the right variable name here? for me this sounds like the number of coalitions sampled
         n_samples = np.sum(self._sampler.coalitions_counter[self._sampler.is_coalition_sampled])
