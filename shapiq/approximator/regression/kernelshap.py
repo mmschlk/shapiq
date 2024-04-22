@@ -3,6 +3,8 @@ Regression with Faithful Shapley Interaction (FSII) index approximation."""
 
 from typing import Optional
 
+import numpy as np
+
 from ._base import Regression
 
 
@@ -43,5 +45,18 @@ class KernelSHAP(Regression):
         )
     """
 
-    def __init__(self, n: int, random_state: Optional[int] = None):
-        super().__init__(n, max_order=1, index="SII", random_state=random_state)
+    def __init__(
+        self,
+        n: int,
+        random_state: Optional[int] = None,
+        pairing_trick: bool = False,
+        sampling_weights: Optional[np.ndarray] = None,
+    ):
+        super().__init__(
+            n,
+            max_order=1,
+            index="SII",
+            random_state=random_state,
+            pairing_trick=pairing_trick,
+            sampling_weights=sampling_weights,
+        )

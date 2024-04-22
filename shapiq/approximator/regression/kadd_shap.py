@@ -13,7 +13,7 @@ class kADDSHAP(Regression):
 
     Args:
         n: The number of players.
-        max_order: The interaction order of the approximation.
+        max_order: The interaction order of the approximation. Defaults to `1`.
         random_state: The random state of the estimator. Defaults to `None`.
         pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
             to `False`.
@@ -33,7 +33,7 @@ class kADDSHAP(Regression):
     def __init__(
         self,
         n: int,
-        max_order: int,
+        max_order: int = 1,
         random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,

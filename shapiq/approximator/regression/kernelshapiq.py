@@ -15,8 +15,9 @@ class KernelSHAPIQ(Regression):
 
     Args:
         n: The number of players.
-        max_order: The interaction order of the approximation.
-        index: The interaction index
+        max_order: The interaction order of the approximation. Defaults to `2`.
+        index: The interaction index to be used. Choose from `{"k-SII", "SII"}`. Defaults to
+            `"k-SII"`.
         random_state: The random state of the estimator. Defaults to `None`.
         pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
             to `False`.
@@ -28,12 +29,12 @@ class KernelSHAPIQ(Regression):
     def __init__(
         self,
         n: int,
-        max_order: int,
+        max_order: int = 2,
         index: str = "k-SII",
         random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,
-    ):
+    ) -> None:
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
             raise ValueError(
                 f"Index {index} not available for KernelSHAP-IQ. Choose from "
@@ -56,7 +57,7 @@ class InconsistentKernelSHAPIQ(Regression):
 
     Args:
         n: The number of players.
-        max_order: The interaction order of the approximation.
+        max_order: The interaction order of the approximation. Defaults to `2`.
         random_state: The random state of the estimator. Defaults to `None`.
         pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
             to `False`.
@@ -68,12 +69,17 @@ class InconsistentKernelSHAPIQ(Regression):
     def __init__(
         self,
         n: int,
-        max_order: int,
+        max_order: int = 2,
         index: str = "k-SII",
         random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,
-    ):
+    ) -> None:
+        if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
+            raise ValueError(
+                f"Index {index} not available for KernelSHAP-IQ. Choose from "
+                f"{AVAILABLE_INDICES_KERNELSHAPIQ}."
+            )
         super().__init__(
             n,
             max_order,

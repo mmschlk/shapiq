@@ -2,7 +2,7 @@
 
 from .fsi import RegressionFSII
 from .kadd_shap import kADDSHAP
+from .kernelshap import KernelSHAP
 from .kernelshapiq import InconsistentKernelSHAPIQ, KernelSHAPIQ
-from .sv import KernelSHAP
 
 __all__ = ["kADDSHAP", "RegressionFSII", "KernelSHAP", "KernelSHAPIQ", "InconsistentKernelSHAPIQ"]
