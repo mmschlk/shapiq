@@ -5,7 +5,7 @@ import pytest
 
 from shapiq.approximator import (
     PermutationSamplingSII,
-    ShapIQ,
+    SHAPIQ,
     convert_ksii_into_one_dimension,
     transforms_sii_to_ksii,
 )
@@ -20,8 +20,8 @@ from shapiq.games.benchmark import DummyGame
             PermutationSamplingSII(7, 2, "k-SII", False, random_state=42),
         ),
         (
-            ShapIQ(7, 2, "SII", False, random_state=42),
-            ShapIQ(7, 2, "k-SII", False, random_state=42),
+            SHAPIQ(7, 2, "SII", False, random_state=42),
+            SHAPIQ(7, 2, "k-SII", False, random_state=42),
         ),
     ],
 )
@@ -32,9 +32,9 @@ def test_nsii_estimation(sii_approximator, ksii_approximator):
     interaction = (1, 2)
     game = DummyGame(n, interaction)
     # sii_approximator = PermutationSamplingSII(n, max_order, "SII", False, random_state=42)
-    sii_estimates = sii_approximator.approximate(1_000, game, batch_size=None)
+    sii_estimates = sii_approximator.approximate(1_000, game)
     # nsii_approximator = PermutationSamplingSII(n, max_order, "kSII", False, random_state=42)
-    ksii_estimates = ksii_approximator.approximate(1_000, game, batch_size=None)
+    ksii_estimates = ksii_approximator.approximate(1_000, game)
     assert sii_estimates != ksii_estimates
     assert ksii_estimates.index == "k-SII"
 

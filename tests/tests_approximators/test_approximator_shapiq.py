@@ -5,7 +5,7 @@ from copy import copy, deepcopy
 import numpy as np
 import pytest
 
-from shapiq.approximator.shapiq import ShapIQ
+from shapiq.approximator.montecarlo import SHAPIQ
 from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
 
@@ -24,7 +24,7 @@ from shapiq.interaction_values import InteractionValues
 def test_initialization(n, max_order, index, top_order):
     """Tests the initialization of the ShapIQ approximator."""
     try:
-        approximator = ShapIQ(n, max_order, index=index, top_order=top_order)
+        approximator = SHAPIQ(n, max_order, index=index, top_order=top_order)
     except ValueError:
         if index == "FSII" and not top_order:
             return
@@ -32,7 +32,7 @@ def test_initialization(n, max_order, index, top_order):
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order is top_order
-    assert approximator.min_order == (max_order if top_order else 1)
+    assert approximator.min_order == (max_order if top_order else 0)
     assert approximator.iteration_cost == 1
     assert approximator.index == index
 
@@ -47,17 +47,17 @@ def test_initialization(n, max_order, index, top_order):
     assert hash(approximator) != hash(approximator_deepcopy)
     with pytest.raises(ValueError):
         _ = approximator == 1
-    with pytest.raises(ValueError):
-        approximator_deepcopy._weight_kernel(3, 2)
+    # with pytest.raises(ValueError):
+    #    approximator_deepcopy._weight_kernel(3, 2)
 
 
-@pytest.mark.parametrize("n, max_order, budget, batch_size", [(7, 2, 100, None), (7, 2, 100, 10)])
-def test_approximate_fsi(n, max_order, budget, batch_size):
+@pytest.mark.parametrize("n, max_order, budget", [(7, 2, 100), (7, 2, 100)])
+def test_approximate_fsi(n, max_order, budget):
     """Tests the approximation of the ShapIQ FSII approximation."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = ShapIQ(n, max_order, index="FSII", top_order=True, random_state=42)
-    estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    approximator = SHAPIQ(n, max_order, index="FSII", top_order=True, random_state=42)
+    estimates = approximator.approximate(budget, game)
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == max_order
     assert estimates.min_order == max_order  # only top order for FSII
@@ -71,18 +71,18 @@ def test_approximate_fsi(n, max_order, budget, batch_size):
 
 
 @pytest.mark.parametrize(
-    "n, max_order, top_order, budget, batch_size",
-    [(7, 2, False, 100, None), (7, 2, True, 100, 10), (7, 2, False, 300, None)],
+    "n, max_order, top_order, budget",
+    [(7, 2, False, 100), (7, 2, True, 100), (7, 2, False, 300)],
 )
-def test_approximate_sii(n, max_order, top_order, budget, batch_size):
+def test_approximate_sii(n, max_order, top_order, budget):
     """Tests the approximation of the ShapIQ SII approximation."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = ShapIQ(n, max_order, index="SII", top_order=top_order, random_state=42)
-    estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    approximator = SHAPIQ(n, max_order, index="SII", top_order=top_order, random_state=42)
+    estimates = approximator.approximate(budget, game)
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == max_order
-    assert estimates.min_order == (max_order if top_order else 1)
+    assert estimates.min_order == (max_order if top_order else 0)
 
     # check that the budget is respected
     assert game.access_counter <= budget + 2
@@ -103,18 +103,16 @@ def test_approximate_sii(n, max_order, top_order, budget, batch_size):
         assert np.sum(estimates.values[:n]) == pytest.approx(2.0, 0.4)
 
 
-@pytest.mark.parametrize(
-    "n, max_order, top_order, budget, batch_size", [(7, 2, False, 100, None), (7, 2, True, 100, 10)]
-)
-def test_approximate_sti(n, max_order, top_order, budget, batch_size):
+@pytest.mark.parametrize("n, max_order, top_order, budget", [(7, 2, False, 100), (7, 2, True, 100)])
+def test_approximate_sti(n, max_order, top_order, budget):
     """Tests the approximation of the ShapIQ STII approximation."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = ShapIQ(n, max_order, index="STII", top_order=top_order, random_state=42)
-    estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    approximator = SHAPIQ(n, max_order, index="STII", top_order=top_order, random_state=42)
+    estimates = approximator.approximate(budget, game)
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == max_order
-    assert estimates.min_order == (max_order if top_order else 1)
+    assert estimates.min_order == (max_order if top_order else 0)
 
     # check that the budget is respected
     assert game.access_counter <= budget + 2

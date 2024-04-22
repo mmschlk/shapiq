@@ -40,15 +40,15 @@ def test_initialization(n):
         _ = approximator == 1
 
 
-@pytest.mark.parametrize("n, budget, batch_size", [(7, 380, 100), (7, 380, None), (7, 100, None)])
-def test_approximate(n, budget, batch_size):
+@pytest.mark.parametrize("n, budget", [(7, 380), (7, 380), (7, 100)])
+def test_approximate(n, budget):
     """Tests the approximation of the KernelSHAP approximator."""
 
     interaction = (1, 2)
     game = DummyGame(n, interaction)
 
     approximator = KernelSHAP(n)
-    sv_estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    sv_estimates = approximator.approximate(budget, game)
     assert isinstance(sv_estimates, InteractionValues)
     assert sv_estimates.max_order == 1
     assert sv_estimates.min_order == 0

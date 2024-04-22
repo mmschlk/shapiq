@@ -8,8 +8,9 @@ from ._base import Regression
 
 
 class RegressionFSII(Regression):
-    """Estimates the SII values using KernelSHAP-IQ.
-    Algorithm described in TODO: add citation
+    """Estimates the FSII values using KernelSHAP.
+
+    The Algorithm is described in TODO: add FSI citation here
 
     Args:
         n: The number of players.

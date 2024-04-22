@@ -160,7 +160,7 @@ def convert_ksii_into_one_dimension(
             "transforms_sii_to_ksii method to convert SII values into k-SII values."
         )
     max_order = ksii_values.max_order
-    min_order = ksii_values.min_order
+    min_order = max(ksii_values.min_order, 1)
     n = ksii_values.n_players
 
     pos_ksii_values = np.zeros(shape=(n,), dtype=float)

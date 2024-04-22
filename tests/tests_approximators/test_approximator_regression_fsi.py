@@ -44,15 +44,13 @@ def test_initialization(n, max_order):
         _ = approximator == 1
 
 
-@pytest.mark.parametrize(
-    "n, max_order, budget, batch_size", [(7, 2, 380, 100), (7, 2, 380, None), (7, 2, 100, None)]
-)
-def test_approximate(n, max_order, budget, batch_size):
+@pytest.mark.parametrize("n, max_order, budget", [(7, 2, 380), (7, 2, 380), (7, 2, 100)])
+def test_approximate(n, max_order, budget):
     """Tests the approximation of the RegressionFSII approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
     approximator = RegressionFSII(n, max_order, random_state=42)
-    fsi_estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    fsi_estimates = approximator.approximate(budget, game)
     assert isinstance(fsi_estimates, InteractionValues)
     assert fsi_estimates.max_order == max_order
     assert fsi_estimates.min_order == 0

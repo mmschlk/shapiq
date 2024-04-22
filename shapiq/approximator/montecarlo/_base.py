@@ -131,15 +131,13 @@ class MonteCarlo(Approximator, KShapleyMixin):
         shapley_interaction_values = np.zeros(len(self.interaction_lookup))
 
         # mean center games for better performance
-        empty_coalition_value = game_values[coalitions_size == 0][0]
-        # TODO: use either the above or the below
         empty_coalition_value = float(game_values[self._sampler.empty_coalition_index])
         game_values_centered = game_values - empty_coalition_value
 
         # compute approximations per interaction with monte carlo
         for interaction, interaction_pos in self.interaction_lookup.items():
             interaction_binary = np.zeros(self.n, dtype=int)
-            interaction_binary[interaction] = 1
+            interaction_binary[list(interaction)] = 1
             interaction_size = len(interaction)
             # find intersection sizes with current interaction
             intersections_size = np.sum(coalitions_matrix * interaction_binary, axis=1)
@@ -381,14 +379,13 @@ class MonteCarlo(Approximator, KShapleyMixin):
         Returns:
             float: The weight for the interaction type.
         """
-        if index == "SII":  # SII default
-            return self._sii_weight(coalition_size, interaction_size)
-        elif index == "STII":
+        if index == "STII":
             return self._stii_weight(coalition_size, interaction_size)
         elif index == "FSII":
             return self._fsii_weight(coalition_size, interaction_size)
-        else:
-            raise ValueError(f"Unknown index {index}.")
+        else:  # SII is default for all other indices (including k-SII or SV)
+            return self._sii_weight(coalition_size, interaction_size)
+        # TODO: extend to BII and BV
 
     def _get_standard_form_weights(self, index: str) -> np.ndarray:
         """Initializes the weights for the interaction index re-written from discrete derivatives to

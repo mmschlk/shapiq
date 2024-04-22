@@ -2,7 +2,7 @@
 
 from .k_sii import convert_ksii_into_one_dimension, transforms_sii_to_ksii
 from .marginals import OwenSamplingSV, StratifiedSamplingSV
-from .montecarlo import SHAPIQ, UnbiasedKernelSHAP
+from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
@@ -19,6 +19,8 @@ __all__ = [
     "KernelSHAPIQ",
     "InconsistentKernelSHAPIQ",
     "SHAPIQ",
+    "SVARM",
+    "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
     "transforms_sii_to_ksii",

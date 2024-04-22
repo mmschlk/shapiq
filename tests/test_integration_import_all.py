@@ -60,17 +60,13 @@ def test_approximator_imports():
         KernelSHAPIQ,
         kADDSHAP,
         RegressionFSII,
-        ShapIQ,
-    )
-
-    from shapiq import (
-        ShapIQ,
-        PermutationSamplingSII,
-        PermutationSamplingSTII,
-        RegressionFSII,
-        KernelSHAPIQ,
-        InconsistentKernelSHAPIQ,
-        kADDSHAP,
+        SHAPIQ,
+        UnbiasedKernelSHAP,
+        SVARM,
+        SVARMIQ,
+        OwenSamplingSV,
+        StratifiedSamplingSV,
+        PermutationSamplingSV,
     )
 
     assert True
