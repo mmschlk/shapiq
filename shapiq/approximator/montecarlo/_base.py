@@ -11,17 +11,17 @@ from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-AVAILABLE_INDICES_REGRESSION = ["k-SII", "SII", "STII", "FSII"]
+AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "STII", "FSII", "SV"}
 
 
 class MonteCarlo(Approximator, KShapleyMixin):
     """This class is the base class for all MonteCarlo approximators, e.g. SHAP-IQ and SVARM-IQ.
 
-    MonteCarlo approximators are based on a representation of the interaction index as a weighted sum over discrete
-    derivatives. The sum is re-written and approximated using Monte Carlo sampling.
-    The sum may be stratified by coalition size or by the intersection size of the coalition and the interaction.
-    The standard form for approximation is based on Theorem 1 in
-    https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html
+    MonteCarlo approximators are based on a representation of the interaction index as a weighted
+    sum over discrete derivatives. The sum is re-written and approximated using Monte Carlo
+    sampling. The sum may be stratified by coalition size or by the intersection size of the
+    coalition and the interaction. The standard form for approximation is based on Theorem 1 in
+    (Fumagalli et al. 2023)[https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html].
 
     Args:
         n: The number of players.
@@ -29,8 +29,10 @@ class MonteCarlo(Approximator, KShapleyMixin):
         index: The interaction index to be estimated. Available indices are 'SII', 'kSII', 'STII',
             and 'FSII'.
         stratify_coalition_size: If True, then each coalition size is estimated separately
-        stratify_intersection: If True, then each coalition is stratified by the intersection with the interaction
-        top_order: If True, then only highest order interaction values are computed, e.g. required for FSII
+        stratify_intersection: If True, then each coalition is stratified by the intersection with
+            the interaction
+        top_order: If True, then only highest order interaction values are computed, e.g. required
+            for FSII
         random_state: The random state to use for the approximation. Defaults to None.
     """
 
@@ -57,7 +59,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
             top_order=top_order,
             random_state=random_state,
         )
-        self._big_M: int = 10e7
+        self._big_M: int = int(10e7)
         self.stratify_coalition_size = stratify_coalition_size
         self.stratify_intersection = stratify_intersection
 

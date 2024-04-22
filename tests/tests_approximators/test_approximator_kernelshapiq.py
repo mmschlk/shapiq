@@ -43,8 +43,8 @@ def test_approximator_kernelshapiq_sii():
                 sii_approximated += kernelshapiq.approximate(budget=budget, game=soum)
             sii_approximated *= 1 / N_ITERATIONS
 
-            # Assert efficiency
-            assert (
+            # test efficiency
+            sum_of_values = (
                 np.sum(
                     sii_approximated.values[
                         np.array(
@@ -57,10 +57,11 @@ def test_approximator_kernelshapiq_sii():
                     ]
                 )
                 + sii_approximated.baseline_value
-            ) - predicted_value < 10e-5
+            )
+            assert sum_of_values - predicted_value < 10e-5
 
             # Compute squared errors
-            squared_errors[budget_perc] = np.mean(((sii_approximated - sii).values) ** 2)
+            squared_errors[budget_perc] = np.mean((sii_approximated - sii).values ** 2)
             if PREV_BUDGET_PERC in squared_errors:
                 approximation_improvement_counter += (
                     squared_errors[budget_perc] < squared_errors[PREV_BUDGET_PERC]

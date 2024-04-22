@@ -2,6 +2,8 @@
 
 from typing import Optional
 
+import numpy as np
+
 from ._base import Regression
 
 
@@ -13,6 +15,11 @@ class kADDSHAP(Regression):
         n: The number of players.
         max_order: The interaction order of the approximation.
         random_state: The random state of the estimator. Defaults to `None`.
+        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
+            to `False`.
+        sampling_weights: An optional array of weights for the sampling procedure. The weights must
+            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
+             of a certain size. Defaults to `None`.
 
     Attributes:
         n: The number of players.
@@ -23,5 +30,19 @@ class kADDSHAP(Regression):
         iteration_cost: The cost of a single iteration of the regression SII.
     """
 
-    def __init__(self, n: int, max_order: int, random_state: Optional[int] = None):
-        super().__init__(n, max_order, index="kADD-SHAP", random_state=random_state)
+    def __init__(
+        self,
+        n: int,
+        max_order: int,
+        random_state: Optional[int] = None,
+        pairing_trick: bool = False,
+        sampling_weights: Optional[np.ndarray] = None,
+    ):
+        super().__init__(
+            n,
+            max_order,
+            index="kADD-SHAP",
+            random_state=random_state,
+            pairing_trick=pairing_trick,
+            sampling_weights=sampling_weights,
+        )

@@ -7,7 +7,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from shapiq.utils import generate_interaction_lookup, powerset
+from shapiq.utils.sets import generate_interaction_lookup, powerset
 
 AVAILABLE_INDICES = {
     "JointSV",

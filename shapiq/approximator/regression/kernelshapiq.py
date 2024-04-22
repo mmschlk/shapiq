@@ -2,9 +2,11 @@
 
 from typing import Optional
 
+import numpy as np
+
 from ._base import Regression
 
-AVAILABLE_INDICES_KERNELSHAPIQ = ["k-SII", "SII"]
+AVAILABLE_INDICES_KERNELSHAPIQ = {"k-SII", "SII"}
 
 
 class KernelSHAPIQ(Regression):
@@ -16,25 +18,36 @@ class KernelSHAPIQ(Regression):
         max_order: The interaction order of the approximation.
         index: The interaction index
         random_state: The random state of the estimator. Defaults to `None`.
-
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from 0 to n - 1).
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For the regression estimator, min_order
-            is equal to 1.
-        iteration_cost: The cost of a single iteration of the regression SII.
+        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
+            to `False`.
+        sampling_weights: An optional array of weights for the sampling procedure. The weights must
+            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
+             of a certain size. Defaults to `None`.
     """
 
     def __init__(
-        self, n: int, max_order: int, index: str = "k-SII", random_state: Optional[int] = None
+        self,
+        n: int,
+        max_order: int,
+        index: str = "k-SII",
+        random_state: Optional[int] = None,
+        pairing_trick: bool = False,
+        sampling_weights: Optional[np.ndarray] = None,
     ):
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
             raise ValueError(
                 f"Index {index} not available for KernelSHAP-IQ. Choose from "
                 f"{AVAILABLE_INDICES_KERNELSHAPIQ}."
             )
-        super().__init__(n, max_order, index=index, sii_consistent=True, random_state=random_state)
+        super().__init__(
+            n,
+            max_order,
+            index=index,
+            sii_consistent=True,
+            random_state=random_state,
+            pairing_trick=pairing_trick,
+            sampling_weights=sampling_weights,
+        )
 
 
 class InconsistentKernelSHAPIQ(Regression):
@@ -45,17 +58,28 @@ class InconsistentKernelSHAPIQ(Regression):
         n: The number of players.
         max_order: The interaction order of the approximation.
         random_state: The random state of the estimator. Defaults to `None`.
-
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from 0 to n - 1).
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For the regression estimator, min_order
-            is equal to 1.
-        iteration_cost: The cost of a single iteration of the regression SII.
+        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
+            to `False`.
+        sampling_weights: An optional array of weights for the sampling procedure. The weights must
+            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
+             of a certain size. Defaults to `None`.
     """
 
     def __init__(
-        self, n: int, max_order: int, index: str = "k-SII", random_state: Optional[int] = None
+        self,
+        n: int,
+        max_order: int,
+        index: str = "k-SII",
+        random_state: Optional[int] = None,
+        pairing_trick: bool = False,
+        sampling_weights: Optional[np.ndarray] = None,
     ):
-        super().__init__(n, max_order, index=index, sii_consistent=False, random_state=random_state)
+        super().__init__(
+            n,
+            max_order,
+            index=index,
+            sii_consistent=False,
+            random_state=random_state,
+            pairing_trick=pairing_trick,
+            sampling_weights=sampling_weights,
+        )

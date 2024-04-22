@@ -42,3 +42,35 @@ class SVARMIQ(MonteCarlo):
             stratify_intersection=True,
             random_state=random_state,
         )
+
+
+class SVARM(SVARMIQ):
+    """The SVARM approximator for estimating the Shapley value (SV).
+
+    TODO: Add description.
+
+    Args:
+        n: The number of players.
+        random_state: The random state of the estimator. Defaults to `None`.
+
+    Attributes:
+        n: The number of players.
+        N: The set of players (starting from 0 to n - 1).
+        max_order: The interaction order of the approximation.
+        min_order: The minimum order of the approximation. For the regression estimator, min_order
+            is equal to 1.
+        iteration_cost: The cost of a single iteration of the regression SII.
+    """
+
+    def __init__(
+        self,
+        n: int,
+        random_state: Optional[int] = None,
+    ):
+        super().__init__(
+            n,
+            max_order=1,
+            index="SV",
+            top_order=False,
+            random_state=random_state,
+        )
