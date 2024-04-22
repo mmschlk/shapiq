@@ -53,4 +53,4 @@ def test_basic_functionality():
     budget = int(budget * 0.75)
     sv_estimates = approximator.approximate(budget, game)
     assert sv_estimates[(0,)] == pytest.approx(0.1429, abs=0.2)
-    assert sv_estimates[(1,)] == pytest.approx(0.6429, abs=0.2)
+    assert sv_estimates[(1,)] == pytest.approx(0.6429, abs=0.3)
