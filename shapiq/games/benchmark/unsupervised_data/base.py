@@ -1,6 +1,7 @@
 """This module contains the base game for the unsupervised data analysis setting."""
 
 import numpy as np
+from scipy import stats
 
 from ...base import Game
 
@@ -15,10 +16,9 @@ class UnsupervisedData(Game):
     For more information we refer to the following paper: https://arxiv.org/pdf/2205.09060.pdf
 
     Note:
-        This game requires the pyitlib and sklearn package to be installed. You can install it via
-        pip:
+        This game requires the sklearn package to be installed. You can install it via pip:
         ```
-        pip install pyitlib scikit-learn
+        pip install scikit-learn
         ```
 
     Args:
@@ -44,7 +44,7 @@ class UnsupervisedData(Game):
         self.data_discrete = np.zeros_like(data)
         for i in range(self._n_features):
             self.data_discrete[:, i] = discretizer.fit_transform(data[:, i].reshape(-1, 1)).ravel()
-        self.data_discrete = self.data_discrete.astype(int)
+        self.data_discrete = self.data_discrete.astype(int).astype(str)
 
         super().__init__(
             n_players=self._n_features,
@@ -75,42 +75,30 @@ class UnsupervisedData(Game):
 def total_correlation(data) -> float:
     """Compute the total correlation of a data subset.
 
-    The computation computes the total correlation C of a set of random variables X_1,...,X_n such
-    that C(X_1,...,X_n) = H(X_1) + ... + H(X_n) - H(X_1,...,X_n). For more information see:
-    https://arxiv.org/pdf/2205.09060.pdf
+    The total correlation is the sum of the entropies of the marginal distributions minus the joint
+    entropy of the joint distribution.
 
     Args:
         data: The data subset as a numpy array of shape (n_samples, n_features).
 
     Returns:
         The total correlation of the data subset.
-
-    Note:
-        This function requires the pyitlib package to be installed. You can install it via pip:
-        ```
-        pip install pyitlib
-        ```
     """
-    from pyitlib import discrete_random_variable as drv
+    n_samples, n_features = data.shape
 
-    return drv.information_multi(data)
+    # entropy of the marginal distributions
+    entropy = np.zeros(n_features)
+    for i in range(n_features):
+        frequencies = np.unique(data[:, i], return_counts=True)[1]
+        entropy[i] = stats.entropy(frequencies)
 
+    # joint entropy of the joint distribution
+    joint_entropy = entropy[0]
+    if n_features > 1:
+        joint_data = np.apply_along_axis(lambda x: " ".join(x), 1, data)
+        joint_frequencies = np.unique(joint_data, return_counts=True)[1]
+        joint_entropy = stats.entropy(joint_frequencies)
 
-def entropy(data):
-    """Compute the Shannon entropy H of a set of random variables X_1,...,X_n.
+    total_corr = np.sum(entropy) - joint_entropy
 
-    Args:
-        data: The data subset as a numpy array of shape (n_samples, n_features).
-
-    Returns:
-        The Shannon entropy of the data subset.
-
-    Note:
-        This function requires the pyitlib package to be installed. You can install it via pip:
-        ```
-        pip install pyitlib
-        ```
-    """
-    from pyitlib import discrete_random_variable as drv
-
-    return drv.entropy_joint(data)
+    return total_corr
