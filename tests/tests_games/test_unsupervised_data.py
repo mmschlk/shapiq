@@ -1,9 +1,9 @@
 """This module contains the tests for the unsupervised data benchmark games."""
 
 import numpy as np
-import pytest
 
 from shapiq.games.base import Game
+from shapiq.utils import powerset
 from shapiq.games.benchmark import UnsupervisedData
 from shapiq.games.benchmark import (
     AdultCensusUnsupervisedData,
@@ -12,7 +12,6 @@ from shapiq.games.benchmark import (
 )
 
 
-@pytest.mark.skip(reason="This test is not ready, yet. The code still depends on pyitlib.")
 def test_base_class():
     """This function tests the setup and logic of the game."""
 
@@ -30,15 +29,22 @@ def test_base_class():
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
 
-    # test value function
-    coalitions = np.array([[1, 0, 0, 0], [1, 1, 0, 0], [1, 1, 1, 0], [1, 1, 1, 1]]).astype(bool)
+    # test value function on all coalitions
+    coalitions = np.zeros((2**n_players, n_players), dtype=bool)
+    for i, coalition in enumerate(powerset(range(n_players))):
+        coalitions[i, list(coalition)] = True
     values = game(coalitions)
-    assert values.shape == (4,)
-    assert values[0] == 0.0  # should be zero
-    assert np.all(values[1:] != 0.0)  # rest should not be zero
+
+    # check if the values are correct
+    assert values.shape == (2**n_players,)
+
+    for i, coalition in enumerate(powerset(range(n_players))):
+        if len(coalition) <= 1:
+            assert values[i] == 0.0  # must be zero for empty and single player coalitions
+        else:
+            assert values[i] != 0.0  # should be non-zero for non-empty coalitions
 
 
-@pytest.mark.skip(reason="This test is not ready, yet. The code still depends on pyitlib.")
 def test_adult():
     """This function tests the adult census unsupervised data game."""
     n_players = 14
@@ -47,10 +53,19 @@ def test_adult():
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
-    # no test for value function as it takes too long
+
+    test_coalitions = np.array(
+        [game.empty_coalition, game.empty_coalition, game.grand_coalition]
+    ).astype(bool)
+    test_coalitions[1][2] = True  # one player coalition
+
+    test_values = game(test_coalitions)
+    assert test_values.shape == (3,)
+    assert test_values[0] == 0.0
+    assert test_values[1] == 0.0
+    assert test_values[2] != 0.0
 
 
-@pytest.mark.skip(reason="This test is not ready, yet. The code still depends on pyitlib.")
 def test_bike_sharing():
     """This function tests the bike sharing unsupervised data game."""
     n_players = 12
@@ -59,10 +74,19 @@ def test_bike_sharing():
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
-    # no test for value function as it takes too long
+
+    test_coalitions = np.array(
+        [game.empty_coalition, game.empty_coalition, game.grand_coalition]
+    ).astype(bool)
+    test_coalitions[1][2] = True  # one player coalition
+
+    test_values = game(test_coalitions)
+    assert test_values.shape == (3,)
+    assert test_values[0] == 0.0
+    assert test_values[1] == 0.0
+    assert test_values[2] != 0.0
 
 
-@pytest.mark.skip(reason="This test is not ready, yet. The code still depends on pyitlib.")
 def test_california_housing():
     """This function tests the california housing unsupervised data game."""
     n_players = 8
@@ -71,4 +95,14 @@ def test_california_housing():
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
-    # no test for value function as it takes too long
+
+    test_coalitions = np.array(
+        [game.empty_coalition, game.empty_coalition, game.grand_coalition]
+    ).astype(bool)
+    test_coalitions[1][2] = True  # one player coalition
+
+    test_values = game(test_coalitions)
+    assert test_values.shape == (3,)
+    assert test_values[0] == 0.0
+    assert test_values[1] == 0.0
+    assert test_values[2] != 0.0
