@@ -10,7 +10,7 @@ from shapiq.approximator.k_sii import KShapleyMixin
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "STII", "FSII", "SV"}
+AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "STII", "FSII", "SV", "CHII", "BII"}
 
 
 class MonteCarlo(Approximator, KShapleyMixin):
@@ -70,7 +70,6 @@ class MonteCarlo(Approximator, KShapleyMixin):
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
     ) -> InteractionValues:
-
         # sample with current budget
         self._sampler.sample(budget)
         coalitions_matrix = self._sampler.coalitions_matrix  # binary matrix of coalitions
@@ -126,7 +125,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
         coalitions_size = self._sampler.coalitions_size
 
         # get standard form weights, i.e. (-1) ** (s-|T\cap S|) * w(t,|T \cap S|), where w is the
-        # discrete derivative weight and S the interactions, T the coalition  # TODO add what "s" is (order)
+        # discrete derivative weight and S the interactions, T the coalition, s the size of the interactions
         standard_form_weights = self._get_standard_form_weights(index_approximation)
         shapley_interaction_values = np.zeros(len(self.interaction_lookup))
 
@@ -168,7 +167,15 @@ class MonteCarlo(Approximator, KShapleyMixin):
         return shapley_interaction_values
 
     def _intersection_stratification(self, interaction: tuple[int, ...]) -> np.ndarray:
-        """TODO: Add docstring here."""
+        """Computes the adjusted sampling weights for all coalitions and a single interactions.
+         The approach uses intersection stratification over all subsets of the interaction.
+
+        Args:
+            interaction: The interaction for the intersection stratification.
+
+        Returns:
+            The adjusted sampling weights as numpy array for all coalitions.
+        """
         sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
         interaction_size = len(interaction)
         # Stratify by intersection, but not by coalition size
@@ -215,7 +222,11 @@ class MonteCarlo(Approximator, KShapleyMixin):
         return sampling_adjustment_weights
 
     def _coalition_size_stratification(self) -> np.ndarray:
-        """TODO: Add docstring here."""
+        """Computes the adjusted sampling weights for all coalitions stratified by coalition size.
+
+        Returns:
+            The adjusted sampling weights as numpy array for all coalitions.
+        """
         sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
         # Stratify by coalition size but not by intersection
         size_strata = np.unique(self._sampler.coalitions_size)
@@ -240,12 +251,12 @@ class MonteCarlo(Approximator, KShapleyMixin):
         return sampling_adjustment_weights
 
     def _svarmiq_routine(self, interaction: tuple[int, ...]) -> np.ndarray:
-        """The SVARM-IQ monte carlo routine.
-
-        # TODO: Add description here.
+        """Computes the adjusted sampling weights for the SVARM-IQ monte carlo routine.
+        Method according to https://arxiv.org/abs/2401.13371.
+        The method deploys both, intersection and coalition size stratification.
 
         Args:
-            interaction: The interaction for which the sampling adjustment weights are computed.
+            interaction: The interaction for the intersection stratification.
 
         Returns:
             np.ndarray: The sampling adjustment weights for the SVARM-IQ routine.
@@ -293,14 +304,14 @@ class MonteCarlo(Approximator, KShapleyMixin):
         return sampling_adjustment_weights
 
     def _shapiq_routine(self) -> np.ndarray:
-        """The SHAP-IQ monte carlo routine.
-
-        # TODO: Add description here.
+        """Computes the adjusted sampling weights for the SHAP-IQ monte carlo routine.
+        Method according to https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html
+        The method deploys no stratification and returns the relative counts divided by the probabilities.
 
         Returns:
             np.ndarray: The sampling adjustment weights for the SHAP-IQ routine.
         """
-        # TODO is n_samples the right variable name here? for me this sounds like the number of coalitions sampled
+        # Compute the number of sampled coalitions, which are not explicitly computed in the border trick
         n_samples = np.sum(self._sampler.coalitions_counter[self._sampler.is_coalition_sampled])
         n_samples_helper = np.array([1, n_samples])  # n_samples for sampled coalitions, else 1
         coalitions_n_samples = n_samples_helper[self._sampler.is_coalition_sampled.astype(int)]
@@ -325,6 +336,30 @@ class MonteCarlo(Approximator, KShapleyMixin):
         return 1 / (
             (self.n - interaction_size + 1) * binom(self.n - interaction_size, coalition_size)
         )
+
+    def _bii_weight(self, coalition_size: int, interaction_size: int) -> float:
+        """Returns the BII discrete derivative weight given the coalition size and interaction size.
+
+        Args:
+            coalition_size: The size of the subset.
+            interaction_size: The size of the interaction.
+
+        Returns:
+            float: The weight for the interaction type.
+        """
+        return 1 / 2 ** (coalition_size - interaction_size)
+
+    def _chii_weight(self, coalition_size: int, interaction_size: int) -> float:
+        """Returns the CHII discrete derivative weight given the coalition size and interaction size.
+
+        Args:
+            coalition_size: The size of the subset.
+            interaction_size: The size of the interaction.
+
+        Returns:
+            float: The weight for the interaction type.
+        """
+        return interaction_size / coalition_size
 
     def _stii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Returns the STII discrete derivative weight given the coalition size and interaction size.
@@ -383,9 +418,14 @@ class MonteCarlo(Approximator, KShapleyMixin):
             return self._stii_weight(coalition_size, interaction_size)
         elif index == "FSII":
             return self._fsii_weight(coalition_size, interaction_size)
-        else:  # SII is default for all other indices (including k-SII or SV)
+        elif index in ["SII", "SV"]:
             return self._sii_weight(coalition_size, interaction_size)
-        # TODO: extend to BII and BV
+        elif index == "BII":
+            return self._bii_weight(coalition_size, interaction_size)
+        elif index == "CHII":
+            return self._chii_weight(coalition_size, interaction_size)
+        else:
+            raise ValueError(f"The index {index} is not supported.")
 
     def _get_standard_form_weights(self, index: str) -> np.ndarray:
         """Initializes the weights for the interaction index re-written from discrete derivatives to

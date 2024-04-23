@@ -10,7 +10,7 @@ from ._base import Regression
 class RegressionFSII(Regression):
     """Estimates the FSII values using KernelSHAP.
 
-    The Algorithm is described in TODO: add FSI citation here
+    The Algorithm is described in https://jmlr.org/papers/v24/22-0202.html
 
     Args:
         n: The number of players.

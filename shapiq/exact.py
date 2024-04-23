@@ -430,11 +430,13 @@ class ExactComputer:
         transformed_values = np.zeros(self.get_n_interactions(self.n)[order])
         transformed_lookup = {}
         bernoulli_numbers = bernoulli(order)  # lookup Bernoulli numbers
-        for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order)):
-            transformed_lookup[interaction] = i
+        for interaction_pos, interaction in enumerate(
+            powerset(self._grand_coalition_set, max_size=order)
+        ):
+            transformed_lookup[interaction] = interaction_pos
             if len(interaction) == 0:
                 # Initialize emptyset baseline value
-                transformed_values[i] = base_interactions.baseline_value
+                transformed_values[interaction_pos] = base_interactions.baseline_value
             else:
                 interaction_effect = base_interactions[interaction]
                 subset_size = len(interaction)
@@ -451,7 +453,7 @@ class ExactComputer:
                         bernoulli_numbers[len(interaction_higher_order) - subset_size]
                         * interaction_tilde_effect
                     )
-                transformed_values[i] = interaction_effect
+                transformed_values[interaction_pos] = interaction_effect
 
         # setup interaction values
         transformed_index = base_interactions.index  # raname the index (e.g. SII -> k-SII)
@@ -795,7 +797,7 @@ class ExactComputer:
         [probabilistic values](https://doi.org/10.1017/CBO9780511528446.008) the following indices
         are currently supported:
             - SV: Shapley value: https://doi.org/10.1515/9781400881970-018
-            - BV: Banzhaf value: # TODO add reference
+            - BV: Banzhaf value: Banzhaf III, J. F. (1964). Weighted voting doesn't work: A mathematical analysis. Rutgers L. Rev., 19, 317.
 
         Args:
             index: The interaction index
