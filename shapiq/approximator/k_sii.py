@@ -128,7 +128,7 @@ def _calculate_ksii_from_sii(
             interaction_index = interaction_lookup[subset]
             ksii_value = sii_values[interaction_index]
         except KeyError:
-            continue  # a zero value is not scaled # TODO: verify this
+            continue  # a zero value is not scaled # TODO: change this and set ksii_value intially to zero (issue #141)
         # go over all subsets T of length |S| + 1, ..., n that contain S
         for T in powerset(set(range(n)), min_size=interaction_size + 1, max_size=max_order):
             if set(subset).issubset(T):
@@ -136,7 +136,7 @@ def _calculate_ksii_from_sii(
                     effect_index = interaction_lookup[T]  # get the index of T
                     effect_value = sii_values[effect_index]  # get the effect of T
                 except KeyError:
-                    effect_value = 0  # if T is not in the interaction_lookup  # TODO: verify this
+                    effect_value = 0  # if T is not in the interaction_lookup
                 bernoulli_factor = bernoulli_numbers[len(T) - interaction_size]
                 ksii_value += bernoulli_factor * effect_value
         nsii_values[interaction_index] = ksii_value
