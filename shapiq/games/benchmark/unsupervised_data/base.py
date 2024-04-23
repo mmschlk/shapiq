@@ -15,10 +15,9 @@ class UnsupervisedData(Game):
     For more information we refer to the following paper: https://arxiv.org/pdf/2205.09060.pdf
 
     Note:
-        This game requires the pyitlib and sklearn package to be installed. You can install it via
-        pip:
+        This game requires the sklearn package to be installed. You can install it via pip:
         ```
-        pip install pyitlib scikit-learn
+        pip install scikit-learn
         ```
 
     Args:
@@ -85,32 +84,11 @@ def total_correlation(data) -> float:
     Returns:
         The total correlation of the data subset.
 
-    Note:
-        This function requires the pyitlib package to be installed. You can install it via pip:
-        ```
-        pip install pyitlib
         ```
     """
-    from pyitlib import discrete_random_variable as drv
+    total_corr = 0.0
+    for i in range(data.shape[1]):
+        total_corr += np.sum(np.var(data[:, i]))
+    total_corr -= np.sum(np.var(data, axis=0))
 
-    return drv.information_multi(data)
-
-
-def entropy(data):
-    """Compute the Shannon entropy H of a set of random variables X_1,...,X_n.
-
-    Args:
-        data: The data subset as a numpy array of shape (n_samples, n_features).
-
-    Returns:
-        The Shannon entropy of the data subset.
-
-    Note:
-        This function requires the pyitlib package to be installed. You can install it via pip:
-        ```
-        pip install pyitlib
-        ```
-    """
-    from pyitlib import discrete_random_variable as drv
-
-    return drv.entropy_joint(data)
+    return total_corr
