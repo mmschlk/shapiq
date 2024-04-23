@@ -27,7 +27,7 @@ def test_initialization(n, max_order):
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order is False
-    assert approximator.min_order == 1
+    assert approximator.min_order == 0
     assert approximator.iteration_cost == 1
     assert approximator.index == "FSII"
 
@@ -44,26 +44,24 @@ def test_initialization(n, max_order):
         _ = approximator == 1
 
 
-@pytest.mark.parametrize(
-    "n, max_order, budget, batch_size", [(7, 2, 380, 100), (7, 2, 380, None), (7, 2, 100, None)]
-)
-def test_approximate(n, max_order, budget, batch_size):
+@pytest.mark.parametrize("n, max_order, budget", [(7, 2, 380), (7, 2, 380), (7, 2, 100)])
+def test_approximate(n, max_order, budget):
     """Tests the approximation of the RegressionFSII approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
     approximator = RegressionFSII(n, max_order, random_state=42)
-    fsi_estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    fsi_estimates = approximator.approximate(budget, game)
     assert isinstance(fsi_estimates, InteractionValues)
     assert fsi_estimates.max_order == max_order
-    assert fsi_estimates.min_order == 1
+    assert fsi_estimates.min_order == 0
 
     # check that the budget is respected
-    assert game.access_counter <= budget + 2
+    assert game.access_counter <= budget
 
     # check that the estimates are correct
 
     # for order 1 all players should be equal
-    first_order: np.ndarray = fsi_estimates.values[:n]  # fist n values are first order
+    first_order: np.ndarray = fsi_estimates.values[1 : n + 1]  # fist n values are first order
     assert np.allclose(first_order, first_order[0])
 
     # for order 2 the interaction between player 1 and 2 is the most important (1.0)

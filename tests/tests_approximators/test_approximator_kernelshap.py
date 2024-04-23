@@ -24,9 +24,8 @@ def test_initialization(n):
     assert approximator.n == n
     assert approximator.max_order == 1
     assert approximator.top_order is False
-    assert approximator.min_order == 1
+    assert approximator.min_order == 0
     assert approximator.iteration_cost == 1
-    assert approximator.index == "SV"
 
     approximator_copy = copy(approximator)
     approximator_deepcopy = deepcopy(approximator)
@@ -41,22 +40,21 @@ def test_initialization(n):
         _ = approximator == 1
 
 
-@pytest.mark.parametrize("n, budget, batch_size", [(7, 380, 100), (7, 380, None), (7, 100, None)])
-def test_approximate(n, budget, batch_size):
+@pytest.mark.parametrize("n, budget", [(7, 380), (7, 380), (7, 100)])
+def test_approximate(n, budget):
     """Tests the approximation of the KernelSHAP approximator."""
 
     interaction = (1, 2)
     game = DummyGame(n, interaction)
 
     approximator = KernelSHAP(n)
-    sv_estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    sv_estimates = approximator.approximate(budget, game)
     assert isinstance(sv_estimates, InteractionValues)
     assert sv_estimates.max_order == 1
-    assert sv_estimates.min_order == 1
-    assert sv_estimates.index == "SV"
+    assert sv_estimates.min_order == 0
 
     # check that the budget is respected
-    assert game.access_counter <= budget + 2
+    assert game.access_counter <= budget
 
     # check that the values are in the correct range
     # check that the estimates are correct

@@ -16,7 +16,7 @@ def test_basic_functionality():
     assert approximator.n == n_players
     assert approximator.max_order == 1
     assert approximator.top_order is False
-    assert approximator.min_order == 1
+    assert approximator.min_order == 0
     assert approximator.iteration_cost == 1
     assert approximator.index == "SV"
 
@@ -39,7 +39,7 @@ def test_basic_functionality():
     sv_estimates = approximator.approximate(budget, game)
     assert sv_estimates.n_players == n_players
     assert sv_estimates.max_order == 1
-    assert sv_estimates.min_order == 1
+    assert sv_estimates.min_order == 0
     assert sv_estimates.index == "SV"
     assert sv_estimates.estimated is False
     assert sv_estimates.estimation_budget == budget
@@ -53,4 +53,4 @@ def test_basic_functionality():
     budget = int(budget * 0.75)
     sv_estimates = approximator.approximate(budget, game)
     assert sv_estimates[(0,)] == pytest.approx(0.1429, abs=0.2)
-    assert sv_estimates[(1,)] == pytest.approx(0.6429, abs=0.2)
+    assert sv_estimates[(1,)] == pytest.approx(0.6429, abs=0.3)

@@ -7,11 +7,11 @@ from typing import Optional, Union
 import numpy as np
 
 from shapiq.approximator import (
+    SHAPIQ,
+    InconsistentKernelSHAPIQ,
     PermutationSamplingSII,
     PermutationSamplingSTII,
     RegressionFSII,
-    RegressionSII,
-    ShapIQ,
 )
 from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
@@ -19,13 +19,17 @@ from shapiq.games.imputer import MarginalImputer
 from shapiq.interaction_values import InteractionValues
 
 APPROXIMATOR_CONFIGURATIONS = {
-    "Regression": {"SII": RegressionSII, "FSII": RegressionFSII, "k-SII": RegressionSII},
+    "Regression": {
+        "SII": InconsistentKernelSHAPIQ,
+        "FSII": RegressionFSII,
+        "k-SII": InconsistentKernelSHAPIQ,
+    },
     "Permutation": {
         "SII": PermutationSamplingSII,
         "STII": PermutationSamplingSTII,
         "kSII": PermutationSamplingSII,
     },
-    "ShapIQ": {"SII": ShapIQ, "STII": ShapIQ, "FSII": ShapIQ, "k-SII": ShapIQ},
+    "ShapIQ": {"SII": SHAPIQ, "STII": SHAPIQ, "FSII": SHAPIQ, "k-SII": SHAPIQ},
 }
 
 AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII"}
@@ -64,7 +68,6 @@ class TabularExplainer(Explainer):
         random_state: Optional[int] = None,
         **kwargs,
     ) -> None:
-
         if index not in AVAILABLE_INDICES:
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
         if max_order < 2:
@@ -125,7 +128,7 @@ class TabularExplainer(Explainer):
                     random_state=self._random_state,
                 )
             else:  # default to ShapIQ
-                return ShapIQ(
+                return SHAPIQ(
                     n=self._n_features,
                     max_order=max_order,
                     top_order=False,

@@ -7,7 +7,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from shapiq.utils import generate_interaction_lookup, powerset
+from shapiq.utils.sets import generate_interaction_lookup, powerset
 
 AVAILABLE_INDICES = {
     "JointSV",
@@ -173,8 +173,6 @@ class InteractionValues:
         if isinstance(item, int):
             return float(self.values[item])
         item = tuple(sorted(item))
-        if item == tuple():
-            return self.baseline_value
         try:
             return float(self.values[self.interaction_lookup[item]])
         except KeyError:

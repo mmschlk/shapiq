@@ -56,17 +56,17 @@ def test_approximator_imports():
     from shapiq.approximator import (
         PermutationSamplingSII,
         PermutationSamplingSTII,
-        RegressionSII,
+        InconsistentKernelSHAPIQ,
+        KernelSHAPIQ,
+        kADDSHAP,
         RegressionFSII,
-        ShapIQ,
-    )
-
-    from shapiq import (
-        ShapIQ,
-        PermutationSamplingSII,
-        PermutationSamplingSTII,
-        RegressionSII,
-        RegressionFSII,
+        SHAPIQ,
+        UnbiasedKernelSHAP,
+        SVARM,
+        SVARMIQ,
+        OwenSamplingSV,
+        StratifiedSamplingSV,
+        PermutationSamplingSV,
     )
 
     assert True

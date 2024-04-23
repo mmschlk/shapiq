@@ -50,7 +50,7 @@ def test_init_params(dt_model, data, index, max_order):
     if index == "FSII":
         assert explainer._approximator.__class__.__name__ == "RegressionFSII"
     else:
-        assert explainer._approximator.__class__.__name__ == "ShapIQ"
+        assert explainer._approximator.__class__.__name__ == "SHAPIQ"
 
 
 def test_auto_params(dt_model, data):
@@ -64,7 +64,7 @@ def test_auto_params(dt_model, data):
     assert explainer._approximator.index == "k-SII"
     assert explainer._max_order == 2
     assert explainer._random_state is None
-    assert explainer._approximator.__class__.__name__ == "ShapIQ"
+    assert explainer._approximator.__class__.__name__ == "SHAPIQ"
 
 
 def test_init_params_error(dt_model, data):

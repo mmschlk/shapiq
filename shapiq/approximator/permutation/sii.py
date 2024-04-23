@@ -66,7 +66,9 @@ class PermutationSamplingSII(Approximator, KShapleyMixin):
     ) -> None:
         if index not in ["SII", "k-SII"]:
             raise ValueError(f"Invalid index {index}. Must be either 'SII' or 'k-SII'.")
-        super().__init__(n, max_order, index, top_order, random_state)
+        super().__init__(
+            n=n, max_order=max_order, index=index, top_order=top_order, random_state=random_state
+        )
         self.iteration_cost: int = self._compute_iteration_cost()
 
     def _compute_iteration_cost(self) -> int:

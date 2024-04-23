@@ -2,15 +2,11 @@
 
 import copy
 import warnings
-from abc import ABC
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
-import scipy as sp
 from scipy.special import binom
 
-from shapiq.approximator._base import Approximator
-from shapiq.utils import get_explicit_subsets, split_subsets_budget
 from shapiq.utils.sets import powerset
 
 
@@ -37,7 +33,8 @@ class CoalitionSampler:
 
     Args:
         n_players: The number of players in the game.
-        sampling_weights: Sampling for weights for coalition sizes, must be non-negative and at least one >0.
+        sampling_weights: Sampling for weights for coalition sizes, must be non-negative and at
+            least one >0.
         pairing_trick: Samples each coalition jointly with its complement, default is False
         random_state: The random state to use for the sampling process. Defaults to `None`.
 
@@ -53,8 +50,14 @@ class CoalitionSampler:
             (n_coalitions,).
         coalitions_probability: The coalition probabilities according to the sampling procedure. The
              array is of shape (n_coalitions,).
+        coalitions_size_probability: The coalitions size probabilities according to the sampling
+            procedure. The array is of shape (n_coalitions,).
+        coalitions_size_probability: The coalitions probabilities in their size according to the
+            sampling procedure. The array is of shape (n_coalitions,).
         n_coalitions: The number of coalitions that have been sampled.
-
+        sampling_adjustment_weights: The weights that account for the sampling procedure
+            (importance sampling)
+        sampling_size_probabilities: The probabilities of each coalition size to be sampled.
     Examples:
         >>> sampler = CoalitionSampler(n_players=3, sampling_weights=np.array([1, 0.5, 0.5, 1]))
         >>> sampler.sample(5)
@@ -99,6 +102,7 @@ class CoalitionSampler:
             )
         self.n: int = n_players
         self.n_max_coalitions = int(2**self.n)
+        self.n_max_coalitions_per_size = np.array([binom(self.n, k) for k in range(self.n + 1)])
 
         # set random state
         self._rng: np.random.Generator = np.random.default_rng(seed=random_state)
@@ -118,12 +122,19 @@ class CoalitionSampler:
         # initialize variables to be computed and stored
         self.sampled_coalitions_dict: Optional[dict[tuple[int, ...], int]] = None  # coal -> count
         self.coalitions_per_size: Optional[np.ndarray[int]] = None  # number of coalitions per size
-        self.is_coalition_size_sampled: Optional[np.ndarray[bool]] = None  # flag if size is sampled
 
         # variables accessible through properties
         self._sampled_coalitions_matrix: Optional[np.ndarray[bool]] = None  # coalitions
         self._sampled_coalitions_counter: Optional[np.ndarray[int]] = None  # coalitions_counter
-        self._sampled_coalitions_prob: Optional[np.ndarray[float]] = None  # coalitions_probability
+        self._sampled_coalitions_size_prob: Optional[np.ndarray[float]] = (
+            None  # coalitions_size_probability
+        )
+        self._sampled_coalitions_in_size_prob: Optional[np.ndarray[float]] = (
+            None  # coalitions_in_size_probability
+        )
+        self._is_coalition_size_sampled: Optional[np.ndarray[bool]] = (
+            None  # is_coalition_size_sampled
+        )
 
         self.sampled = False
 
@@ -137,6 +148,48 @@ class CoalitionSampler:
         return int(self._sampled_coalitions_matrix.shape[0])
 
     @property
+    def is_coalition_size_sampled(self) -> np.ndarray:
+        """Returns a Boolean array indicating whether the coalition size was sampled.
+
+        Returns:
+            The Boolean array whether the coalition size was sampled.
+        """
+        return copy.deepcopy(self._is_coalition_size_sampled)
+
+    @property
+    def is_coalition_sampled(self) -> np.ndarray:
+        """Returns a Boolean array indicating whether the coalition was sampled.
+
+        Returns:
+            The Boolean array whether the coalition was sampled.
+        """
+        coalitions_size = np.sum(self.coalitions_matrix, axis=1)
+        return self._is_coalition_size_sampled[coalitions_size]
+
+    @property
+    def sampling_adjustment_weights(self) -> np.ndarray:
+        """Returns the weights that account for the sampling procedure
+
+        Returns:
+            An array with adjusted weight for each coalition
+        """
+        coalitions_counter = self.coalitions_counter
+        is_coalition_sampled = self.is_coalition_sampled
+        # Number of coalitions sampled
+
+        n_total_samples = np.sum(coalitions_counter[is_coalition_sampled])
+        # Helper array for computed and sampled coalitions
+        total_samples_values = np.array([1, n_total_samples])
+        # Create array per coalition and the total samples values, or 1, if computed
+        n_coalitions_total_samples = total_samples_values[is_coalition_sampled.astype(int)]
+        # Create array with the adjusted weights
+        sampling_adjustment_weights = self.coalitions_counter / (
+            self.coalitions_probability * n_coalitions_total_samples
+        )
+
+        return sampling_adjustment_weights
+
+    @property
     def coalitions_matrix(self) -> np.ndarray:
         """Returns the binary matrix of sampled coalitions.
 
@@ -145,6 +198,17 @@ class CoalitionSampler:
                 n_players).
         """
         return copy.deepcopy(self._sampled_coalitions_matrix)
+
+    @property
+    def sampling_size_probabilities(self) -> np.ndarray:
+        """Returns the probabilities of sampling a coalition size.
+
+        Returns:
+            An array containing the probabilities of shappe (n+1,)
+        """
+        size_probs = np.zeros(self.n + 1)
+        size_probs[self._coalitions_to_sample] = self.adjusted_sampling_weights
+        return size_probs
 
     @property
     def coalitions_counter(self) -> np.ndarray:
@@ -157,12 +221,61 @@ class CoalitionSampler:
 
     @property
     def coalitions_probability(self) -> np.ndarray:
-        """Returns the coalition probabilities according to the sampling procedure.
+        """Returns the coalition probabilities according to the sampling procedure. The coalitions probability is
+        calculated as the product of the probability of the size of the coalition times the probability of the coalition
+        in that size.
 
         Returns:
             A copy of the sampled coalitions probabilities of shape (n_coalitions,).
         """
-        return copy.deepcopy(self._sampled_coalitions_prob)
+        if (
+            self._sampled_coalitions_size_prob is not None
+            and self._sampled_coalitions_in_size_prob is not None
+        ):
+            return self._sampled_coalitions_size_prob
+
+    @property
+    def coalitions_size_probability(self) -> np.ndarray:
+        """Returns the probabilities of the coalition sizes according to the sampling procedure.
+        The probability is determined by the sampling procedure.
+
+        Returns:
+            A copy of the probabilities of shape (n_coalitions,).
+        """
+        return copy.deepcopy(self._sampled_coalitions_size_prob)
+
+    @property
+    def coalitions_in_size_probability(self) -> np.ndarray:
+        """Returns the probabilities of the coalition in the corresponding coalition size according
+        to the sampling.
+
+        Note:
+            Due to uniform sampling, this is always 1/binom(n,coalition_size).
+
+        Returns:
+            A copy of the sampled probabilities of shape (n_coalitions,).
+        """
+        return copy.deepcopy(self._sampled_coalitions_in_size_prob)
+
+    @property
+    def coalitions_size(self) -> np.ndarray:
+        """Returns the coalition sizes of the sampled coalitions.
+
+        Returns:
+            The coalition sizes of the sampled coalitions.
+        """
+        return np.sum(self.coalitions_matrix, axis=1)
+
+    @property
+    def empty_coalition_index(self) -> Optional[int]:
+        """Returns the index of the empty coalition.
+
+        Returns:
+            The index of the empty coalition or `None` if the empty coalition was not sampled.
+        """
+        if self.coalitions_per_size[0] >= 1:
+            return int(np.where(self.coalitions_size == 0)[0][0])
+        return None
 
     def execute_border_trick(self, sampling_budget: int) -> int:
         """Moves coalition sizes from coalitions_to_sample to coalitions_to_compute, if the expected
@@ -243,10 +356,11 @@ class CoalitionSampler:
         """
         self.sampled_coalitions_dict = {}
         self.coalitions_per_size = np.zeros(self.n + 1, dtype=int)
-        self.is_coalition_size_sampled = np.zeros(self.n + 1, dtype=bool)
+        self._is_coalition_size_sampled = np.zeros(self.n + 1, dtype=bool)
         self._sampled_coalitions_counter = np.zeros(sampling_budget, dtype=int)
         self._sampled_coalitions_matrix = np.zeros((sampling_budget, self.n), dtype=bool)
-        self._sampled_coalitions_prob = np.zeros(sampling_budget, dtype=float)
+        self._sampled_coalitions_size_prob = np.zeros(sampling_budget, dtype=float)
+        self._sampled_coalitions_in_size_prob = np.zeros(sampling_budget, dtype=float)
 
         self._coalitions_to_compute = []
         self._coalitions_to_sample = [
@@ -281,8 +395,7 @@ class CoalitionSampler:
         sampling_budget = self.execute_border_trick(sampling_budget)
 
         # Sort by size for esthetics
-        self._coalitions_to_sample.sort()
-        self._coalitions_to_compute.sort()
+        self._coalitions_to_compute.sort(key=self._sort_coalitions)
 
         # raise warning if budget is higher than 90% of samples remaining to be sampled
         n_samples_remaining = np.sum([binom(self.n, size) for size in self._coalitions_to_sample])
@@ -337,7 +450,8 @@ class CoalitionSampler:
             ):
                 self._sampled_coalitions_matrix[coalition_index, list(coalition)] = 1
                 self._sampled_coalitions_counter[coalition_index] = 1
-                self._sampled_coalitions_prob[coalition_index] = 1  # weight is set to 1
+                self._sampled_coalitions_size_prob[coalition_index] = 1  # weight is set to 1
+                self._sampled_coalitions_in_size_prob[coalition_index] = 1  # weight is set to 1
                 coalition_index += 1
         # add all coalitions that are sampled
         for coalition_tuple, count in self.sampled_coalitions_dict.items():
@@ -345,17 +459,17 @@ class CoalitionSampler:
             self._sampled_coalitions_counter[coalition_index] = count
             # probability of the sampled coalition, i.e. sampling weight (for size) divided by
             # number of coalitions of that size
-            self._sampled_coalitions_prob[coalition_index] = (
-                self.adjusted_sampling_weights[
-                    self._coalitions_to_sample.index(len(coalition_tuple))
-                ]
-                / self.coalitions_per_size[len(coalition_tuple)]
+            self._sampled_coalitions_size_prob[coalition_index] = self.adjusted_sampling_weights[
+                self._coalitions_to_sample.index(len(coalition_tuple))
+            ]
+            self._sampled_coalitions_in_size_prob[coalition_index] = (
+                1 / self.n_max_coalitions_per_size[len(coalition_tuple)]
             )
             coalition_index += 1
 
         # set the flag to indicate that these sizes are sampled
         for coalition_size in self._coalitions_to_sample:
-            self.is_coalition_size_sampled[coalition_size] = True
+            self._is_coalition_size_sampled[coalition_size] = True
 
         self.sampled = True
 
@@ -377,176 +491,14 @@ class CoalitionSampler:
         self._rng.permuted(permutations, axis=1, out=permutations)
         return coalition_sizes, permutations
 
-
-class ShapleySamplingMixin(ABC):
-    """Mixin class for the computation of Shapley weights.
-
-    Provides the common functionality for regression-based approximators like
-    :class:`~shapiq.approximators.RegressionFSII`. The class offers computation of Shapley weights
-    and the corresponding sampling weights for the KernelSHAP-like estimation approaches.
-    """
-
-    def _init_ksh_sampling_weights(
-        self: Union[Approximator, "ShapleySamplingMixin"],
-    ) -> np.ndarray[float]:
-        """Initializes the weights for sampling subsets.
-
-        The sampling weights are of size n + 1 and indexed by the size of the subset. The edges
-        (the first, empty coalition, and the last element, full coalition) are set to 0.
-
-        Returns:
-            The weights for sampling subsets of size s in shape (n + 1,).
-        """
-
-        weight_vector = np.zeros(shape=self.n - 1, dtype=float)
-        for subset_size in range(1, self.n):
-            weight_vector[subset_size - 1] = (self.n - 1) / (subset_size * (self.n - subset_size))
-        sampling_weight = (np.asarray([0] + [*weight_vector] + [0])) / sum(weight_vector)
-        return sampling_weight
-
-    def _get_ksh_subset_weights(
-        self: Union[Approximator, "ShapleySamplingMixin"], subsets: np.ndarray[bool]
-    ) -> np.ndarray[float]:
-        """Computes the KernelSHAP regression weights for the given subsets.
-
-        The weights for the subsets of size s are set to ksh_weights[s] / binom(n, s). The weights
-        for the empty and full sets are set to a big number.
+    def _sort_coalitions(self, value):
+        """Used to sort coalition sizes by distance to center, i.e. grand coalition and emptyset first
 
         Args:
-            subsets: one-hot matrix of subsets for which to compute the weights in shape
-                (n_subsets, n).
+            value: The size of the coalition.
 
         Returns:
-            The KernelSHAP regression weights in shape (n_subsets,).
+            The negative distance to the center n/2
         """
-        # set the weights for each subset to ksh_weights[|S|] / binom(n, |S|)
-        ksh_weights = self._init_ksh_sampling_weights()  # indexed by subset size
-        subset_sizes = np.sum(subsets, axis=1)
-        weights = ksh_weights[subset_sizes]  # set the weights for each subset size
-        weights /= sp.special.binom(
-            self.n, subset_sizes
-        )  # divide by the number of subsets of the same size
-
-        # set the weights for the empty and full sets to big M
-        weights[np.logical_not(subsets).all(axis=1)] = float(1_000_000)
-        weights[subsets.all(axis=1)] = float(1_000_000)
-        return weights
-
-    def _sample_subsets(
-        self: Union[Approximator, "ShapleySamplingMixin"],
-        budget: int,
-        sampling_weights: np.ndarray[float],
-        replacement: bool = False,
-        pairing: bool = True,
-    ) -> np.ndarray[bool]:
-        """Samples subsets with the given budget.
-
-        Args:
-            budget: budget for the sampling.
-            sampling_weights: weights for sampling subsets of certain sizes and indexed by the size.
-                The shape is expected to be (n + 1,). A size that is not to be sampled has weight 0.
-            pairing: whether to use pairing (`True`) sampling or not (`False`). Defaults to `False`.
-
-        Returns:
-            sampled subsets.
-        """
-        # sanitize input parameters
-        sampling_weights = copy.copy(sampling_weights)
-        sampling_weights /= np.sum(sampling_weights)
-
-        # adjust budget for paired sampling
-        if pairing:
-            budget = budget - budget % 2  # must be even for pairing
-            budget = int(budget / 2)
-
-        # create storage array for given budget
-        subset_matrix = np.zeros(shape=(budget, self.n), dtype=bool)
-
-        # sample subsets
-        sampled_sizes = self._rng.choice(self.N_arr, size=budget, p=sampling_weights).astype(int)
-        if replacement:  # sample subsets with replacement
-            permutations = np.tile(np.arange(self.n), (budget, 1))
-            self._rng.permuted(permutations, axis=1, out=permutations)
-            for i, subset_size in enumerate(sampled_sizes):
-                subset = permutations[i, :subset_size]
-                subset_matrix[i, subset] = True
-        else:  # sample subsets without replacement
-            sampled_subsets, n_sampled = set(), 0  # init sampling variables
-            while n_sampled < budget:
-                subset_size = sampled_sizes[n_sampled]
-                subset = tuple(sorted(self._rng.choice(np.arange(0, self.n), size=subset_size)))
-                sampled_subsets.add(subset)
-                if len(sampled_subsets) != n_sampled:  # subset was not already sampled
-                    subset_matrix[n_sampled, subset] = True
-                    n_sampled += 1  # continue sampling
-
-        if pairing:
-            subset_matrix = np.repeat(subset_matrix, repeats=2, axis=0)  # extend the subset matrix
-            subset_matrix[1::2] = np.logical_not(subset_matrix[1::2])  # flip sign of paired subsets
-
-        return subset_matrix
-
-    def _generate_shapley_dataset(
-        self: Union[Approximator, "ShapleySamplingMixin"],
-        budget: int,
-        pairing: bool = True,
-        replacement: bool = False,
-    ) -> tuple[np.ndarray[bool], bool, int]:
-        """Generates the two-part dataset containing explicit and sampled subsets.
-
-        The first part of the dataset contains all explicit subsets. The second half contains the
-        sampled subsets. The parts can be determined by the `n_explicit_subsets` parameter.
-
-        Args:
-            budget: The budget for the approximation (i.e., the number of allowed game evaluations).
-            pairing: Whether to use pairwise sampling (`True`) or not (`False`). Defaults to `True`.
-                Paired sampling can increase the approximation quality.
-            replacement: Whether to sample with replacement (`True`) or without replacement
-                (`False`). Defaults to `False`.
-
-        Returns:
-            - The dataset containing explicit and sampled subsets. The dataset is a 2D array of
-                shape (n_subsets, n_players) where each row is a subset.
-            - A flag indicating whether the approximation is estimated (`True`) or exact (`False`).
-            - The number of explicit subsets.
-        """
-        estimation_flag = True
-        # create storage array for given budget
-        all_subsets: np.ndarray[bool] = np.zeros(shape=(budget, self.n), dtype=bool)
-        n_subsets = 0
-        # split the subset sizes into explicit and sampling parts
-        sampling_weights: np.ndarray[float] = self._init_ksh_sampling_weights()
-        explicit_sizes, sampling_sizes, remaining_budget = split_subsets_budget(
-            order=1, n=self.n, budget=budget, sampling_weights=sampling_weights
-        )
-        # enumerate all explicit subsets
-        explicit_subsets: np.ndarray[bool] = get_explicit_subsets(self.n, explicit_sizes)
-        n_explicit_subsets = explicit_subsets.shape[0]
-        all_subsets[:n_explicit_subsets] = explicit_subsets
-        n_subsets += n_explicit_subsets
-        sampling_weights[explicit_sizes] = 0.0  # zero out sampling weights for explicit sizes
-        # sample the remaining subsets with the remaining budget
-        if len(sampling_sizes) > 0:
-            if remaining_budget > 0:
-                sampling_subsets: np.ndarray[bool] = self._sample_subsets(
-                    budget=remaining_budget,
-                    sampling_weights=sampling_weights,
-                    replacement=replacement,
-                    pairing=pairing,
-                )
-                n_subsets += sampling_subsets.shape[0]
-                all_subsets[n_explicit_subsets:n_subsets] = sampling_subsets
-                all_subsets = all_subsets[:n_subsets]  # remove unnecessary rows
-        else:
-            estimation_flag = False  # no sampling needed computation is exact
-            all_subsets = all_subsets[:n_explicit_subsets]  # remove unnecessary rows
-        # add empty and full set to all_subsets in the beginning
-        all_subsets = np.concatenate(
-            (
-                np.zeros(shape=(1, self.n), dtype=bool),  # empty set
-                np.ones(shape=(1, self.n), dtype=bool),  # full set
-                all_subsets,  # explicit and sampled subsets
-            )
-        )
-        n_explicit_subsets += 2  # add empty and full set
-        return all_subsets, estimation_flag, n_explicit_subsets
+        # Sort by distance to center
+        return -abs(self.n / 2 - value)

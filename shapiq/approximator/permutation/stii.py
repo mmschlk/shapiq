@@ -54,7 +54,9 @@ class PermutationSamplingSTII(Approximator):
     """
 
     def __init__(self, n: int, max_order: int, random_state: Optional[int] = None) -> None:
-        super().__init__(n, max_order, index="STII", top_order=False, random_state=random_state)
+        super().__init__(
+            n=n, max_order=max_order, index="STII", top_order=False, random_state=random_state
+        )
         self.iteration_cost: int = self._compute_iteration_cost()
 
     def approximate(
