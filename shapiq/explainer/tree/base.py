@@ -66,7 +66,7 @@ class TreeModel:
     nodes: Optional[np.ndarray[int]] = None
     feature_map_original_internal: Optional[dict[int, int]] = None
     feature_map_internal_original: Optional[dict[int, int]] = None
-    original_output_type: str = "raw"
+    original_output_type: str = "raw"  # not used at the moment
 
     def __getitem__(self, item) -> Any:
         return getattr(self, item)
@@ -185,40 +185,3 @@ class EdgeTree:
         # setup has ancestors
         if self.has_ancestors is None:
             self.has_ancestors = self.ancestors > -1
-
-
-def convert_tree_output_type(tree_model: TreeModel, output_type: str) -> tuple[TreeModel, bool]:
-    """Convert the output type of the tree model.
-
-    Args:
-        tree_model: The tree model to convert.
-        output_type: The output type to convert the tree model to. Can be "raw", "probability", or
-            "logit".
-
-    Returns:
-        The converted tree model and a warning flag indicating whether invalid probability values
-            were adjusted in logit transformation.
-    """
-    warning_flag = False
-    original_output_type = tree_model.original_output_type
-    if original_output_type == output_type or output_type == "raw":  # no conversion needed
-        return tree_model, warning_flag
-    # transform probability to logit
-    if original_output_type == "probability" and output_type == "logit":
-        tree_model.values = np.log(tree_model.values / (1 - tree_model.values))
-        # give a warning if leaf values are replaced
-        if np.any(tree_model.values[tree_model.leaf_mask] == np.inf) or np.any(
-            tree_model.values[tree_model.leaf_mask] == -np.inf
-        ):
-            warning_flag = True
-        # replace +inf with 14 and -inf with -14
-        tree_model.values = np.where(tree_model.values == np.inf, 14, tree_model.values)
-        tree_model.values = np.where(tree_model.values == -np.inf, -14, tree_model.values)
-        tree_model.compute_empty_prediction()  # recompute the empty prediction
-        tree_model.original_output_type = output_type
-    # transform logit to probability
-    if original_output_type == "logit" and output_type == "probability":
-        tree_model.values = 1 / (1 + np.exp(-tree_model.values))
-        tree_model.compute_empty_prediction()  # recompute the empty prediction
-        tree_model.original_output_type = output_type
-    return tree_model, warning_flag
