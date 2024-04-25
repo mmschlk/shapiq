@@ -137,7 +137,7 @@ class Regression(Approximator):
                 index_approximation=index_approximation,
             )
 
-        # TODO: @Fabi, this needs to be the correct baseline value it should also work when the min_order is not 0
+        # TODO (Fabi) this needs to be the correct baseline value it should also work when the min_order is not 0
         baseline_value = 0.0
 
         return self._finalize_result(

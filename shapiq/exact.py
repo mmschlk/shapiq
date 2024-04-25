@@ -167,7 +167,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=coalition_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO: Fabia is this correct?
+            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
         )
         self._computed["Moebius"] = copy.deepcopy(interaction_values)
         return copy.deepcopy(interaction_values)
@@ -412,7 +412,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
+            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
         )
         self._computed[index] = copy.deepcopy(base_generalized_values)
         return copy.deepcopy(base_generalized_values)
@@ -486,7 +486,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
+            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
         )
         return copy.deepcopy(stii)
 
@@ -539,7 +539,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
+            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
         )
         return copy.deepcopy(fsii)
 
@@ -621,7 +621,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
+            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
         )
 
         return kADD_shap
@@ -669,7 +669,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
+            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
         )
         return jointSV
 
