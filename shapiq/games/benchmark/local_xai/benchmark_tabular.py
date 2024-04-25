@@ -5,7 +5,8 @@ from typing import Optional, Union
 import numpy as np
 
 from .._setup import BenchmarkSetup
-from .base import LocalExplanation, _get_x_explain
+from ..setup import get_x_explain
+from .base import LocalExplanation
 
 
 class AdultCensus(LocalExplanation):
@@ -46,7 +47,7 @@ class AdultCensus(LocalExplanation):
         )
 
         # get x_explain
-        x = _get_x_explain(x, setup.x_test)
+        x = get_x_explain(x, setup.x_test)
 
         def predict_function(x):
             return setup.predict_function(x)[:, class_to_explain]
@@ -92,7 +93,7 @@ class BikeSharing(LocalExplanation):
         )
 
         # get x_explain
-        x = _get_x_explain(x, setup.x_test)
+        x = get_x_explain(x, setup.x_test)
 
         predict_function = setup.predict_function
 
@@ -137,7 +138,7 @@ class CaliforniaHousing(LocalExplanation):
         )
 
         # get x_explain
-        x = _get_x_explain(x, setup.x_test)
+        x = get_x_explain(x, setup.x_test)
 
         # call the super constructor
         super().__init__(

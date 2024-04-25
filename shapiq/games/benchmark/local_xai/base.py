@@ -7,6 +7,8 @@ import numpy as np
 from shapiq.games.base import Game
 from shapiq.games.imputer import MarginalImputer
 
+from ..setup import get_x_explain
+
 
 class LocalExplanation(Game):
     """The LocalExplanation game class.
@@ -71,7 +73,7 @@ class LocalExplanation(Game):
     ) -> None:
 
         # get x_explain
-        self.x = x if x is not None else _get_x_explain(x, data)
+        self.x = x if x is not None else get_x_explain(x, data)
 
         # init the imputer which serves as the workhorse of this Game
         self._imputer = imputer
@@ -103,22 +105,3 @@ class LocalExplanation(Game):
             The output of the model on feature subsets.
         """
         return self._imputer(coalitions)
-
-
-def _get_x_explain(x: Optional[Union[np.ndarray, int]], x_set: np.ndarray) -> np.ndarray:
-    """Returns the data point to explain given the input.
-
-    Args:
-        x: The data point to explain. Can be an index of the background data or a 1d matrix of shape
-            (n_features).
-        x_set: The data set to select the data point from. Should be a 2d matrix of shape
-            (n_samples, n_features).
-
-    Returns:
-        The data point to explain as a numpy array.
-    """
-    if x is None:
-        x = x_set[np.random.randint(0, x_set.shape[0])]
-    if isinstance(x, int):
-        x = x_set[x]
-    return x
