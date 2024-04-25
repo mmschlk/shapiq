@@ -46,6 +46,8 @@ def test_approximate(n, budget):
     assert sv_estimates.max_order == 1
     assert sv_estimates.min_order == 0
     assert sv_estimates.index == "SV"
+    assert sv_estimates.estimation_budget <= budget
+    assert sv_estimates.estimated != (budget >= 2**n)
 
     # check that the budget is respected
     assert game.access_counter <= budget

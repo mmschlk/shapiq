@@ -60,6 +60,8 @@ def test_approximate(n, max_order, budget, batch_size):
     assert isinstance(sti_estimates, InteractionValues)
     assert sti_estimates.max_order == max_order
     assert sti_estimates.min_order == 0
+    assert sti_estimates.estimated is True  # always estimated
+    assert sti_estimates.estimation_budget <= budget
 
     # check that the budget is respected
     assert game.access_counter <= budget
