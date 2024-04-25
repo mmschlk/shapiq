@@ -95,8 +95,8 @@ class MonteCarlo(Approximator):
             index_approximation=index_approximation,
         )
 
-        # TODO (Fabi) this needs to be the correct baseline value it should also work when the min_order is not 0
-        baseline_value = 0.0
+        # TODO (Fabi) is this ok and always there?
+        baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
         return self._finalize_result(
             result=shapley_interactions_values, baseline_value=baseline_value, budget=budget
