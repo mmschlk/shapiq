@@ -7,10 +7,10 @@ from typing import Any, Optional, Union
 import numpy as np
 import scipy as sp
 
-from shapiq.approximator import transforms_sii_to_ksii
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import generate_interaction_lookup, powerset
-
+from ...aggregation import aggregate_interaction_values
+from ...indices import get_computation_index
+from ...interaction_values import InteractionValues
+from ...utils.sets import generate_interaction_lookup, powerset
 from .base import EdgeTree, TreeModel
 from .conversion.edges import create_edge_tree
 from .validation import validate_tree_model
@@ -66,6 +66,7 @@ class TreeSHAPIQ:
         self._max_order: int = max_order
         self._min_order: int = min_order
         self._interaction_type: str = interaction_type
+        self._base_interaction_type: str = get_computation_index(self._interaction_type)
 
         # validate and parse model
         validated_model = validate_tree_model(model)  # the parsed and validated model
@@ -149,7 +150,7 @@ class TreeSHAPIQ:
 
         shapley_interaction_values = InteractionValues(
             values=interactions,
-            index=self._interaction_type,
+            index=self._base_interaction_type,
             min_order=self._min_order,
             max_order=self._max_order,
             n_players=n_players,
@@ -158,8 +159,8 @@ class TreeSHAPIQ:
             baseline_value=self.empty_prediction,
         )
 
-        if self._interaction_type == "k-SII":
-            shapley_interaction_values = transforms_sii_to_ksii(shapley_interaction_values)
+        if self._base_interaction_type != self._interaction_type:
+            shapley_interaction_values = aggregate_interaction_values(shapley_interaction_values)
 
         return shapley_interaction_values
 

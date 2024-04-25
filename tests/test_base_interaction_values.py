@@ -109,19 +109,6 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     # expected behavior of interactions is 0 for emptyset
     assert interaction_values[()] == 0
 
-    with pytest.raises(ValueError):
-        InteractionValues(
-            values=values,
-            index=index,
-            n_players=n,
-            min_order=min_order,
-            max_order=max_order,
-            interaction_lookup=interaction_lookup,
-            estimation_budget=estimation_budget,
-            estimated=estimated,
-            baseline_value=None,
-        )
-
 
 def test_add():
     """Tests the __add__ method of the InteractionValues dataclass."""

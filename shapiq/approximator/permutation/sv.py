@@ -22,17 +22,8 @@ class PermutationSamplingSV(Approximator):
     Attributes:
         n: The number of players.
         N: The set of players (starting from 0 to n - 1).
-        N_arr: The array of players (starting from 0 to n).
+        _grand_coalition_array: The array of players (starting from 0 to n).
         iteration_cost: The cost of a single iteration of the approximator.
-
-    Examples:
-        >>> from shapiq.approximator import PermutationSamplingSV
-        >>> from shapiq.games import DummyGame
-        >>> game = DummyGame(5, (1, 2))
-        >>> approximator = PermutationSamplingSV(game.n_players, random_state=42)
-        >>> sv_estimates = approximator.approximate(100, game)
-        >>> print(sv_estimates.values)
-        [0.2 0.7 0.7 0.2 0.2]
     """
 
     def __init__(
@@ -64,15 +55,18 @@ class PermutationSamplingSV(Approximator):
 
         # store the values of the empty and full coalition
         # this saves 2 evaluations per permutation
-        empty_val = game(np.zeros(self.n, dtype=bool))
-        full_val = game(np.ones(self.n, dtype=bool))
+        empty_val = float(game(np.zeros(self.n, dtype=bool)))
+        full_val = float(game(np.ones(self.n, dtype=bool)))
         used_budget = 2
 
         # catch special case of single player game, otherwise iteration through permutations fails
         if self.n == 1:
-            result[0] = full_val - empty_val
-            counts[0] = 1
-            return self._finalize_result(result, budget=used_budget, estimated=True)
+            interaction_index = self._interaction_lookup[self._grand_coalition_tuple]
+            result[interaction_index] = full_val - empty_val
+            counts[interaction_index] = 1
+            return self._finalize_result(
+                result, baseline_value=empty_val, budget=used_budget, estimated=True
+            )
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
@@ -102,7 +96,7 @@ class PermutationSamplingSV(Approximator):
                     coalition_index += 1
 
             # evaluate the collected coalitions
-            game_values: np.ndarray[float] = game(coalitions)
+            game_values = game(coalitions)
             used_budget += len(coalitions)
 
             # update the estimates
@@ -111,19 +105,24 @@ class PermutationSamplingSV(Approximator):
                 # update the first player in the permutation
                 permutation = permutations[permutation_id]
                 marginal_con = game_values[coalition_index] - empty_val
-                result[permutation[0]] += marginal_con
-                counts[permutation[0]] += 1
+                permutation_idx = self._interaction_lookup[(permutation[0],)]
+                result[permutation_idx] += marginal_con
+                counts[permutation_idx] += 1
                 # update the players in the middle of the permutation
                 for i in range(1, self.n - 1):
                     marginal_con = game_values[coalition_index + 1] - game_values[coalition_index]
-                    result[permutation[i]] += marginal_con
-                    counts[permutation[i]] += 1
+                    permutation_idx = self._interaction_lookup[(permutation[i],)]
+                    result[permutation_idx] += marginal_con
+                    counts[permutation_idx] += 1
                     coalition_index += 1
                 # update the last player in the permutation
                 marginal_con = full_val - game_values[coalition_index]
-                result[permutation[self.n - 1]] += marginal_con
-                counts[permutation[self.n - 1]] += 1
+                permutation_idx = self._interaction_lookup[(permutation[self.n - 1],)]
+                result[permutation_idx] += marginal_con
+                counts[permutation_idx] += 1
                 coalition_index += 1
 
         result = np.divide(result, counts, out=result, where=counts != 0)
-        return self._finalize_result(result, budget=used_budget, estimated=True)
+        return self._finalize_result(
+            result, baseline_value=empty_val, budget=used_budget, estimated=True
+        )

@@ -24,7 +24,7 @@ class StratifiedSamplingSV(Approximator):
     Attributes:
         n: The number of players.
         N: The set of players (starting from 0 to n - 1).
-        N_arr: The array of players (starting from 0 to n).
+        _grand_coalition_array: The array of players (starting from 0 to n).
         iteration_cost: The cost of a single iteration of the approximator.
 
     Examples:
@@ -62,9 +62,13 @@ class StratifiedSamplingSV(Approximator):
         used_budget = 0
         batch_size = 1 if batch_size is None else batch_size
 
+        # get empty value
+        empty_value = float(game(np.zeros(self.n, dtype=bool)))
+        used_budget += 1
+
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget, batch_size, self.iteration_cost
+            budget - used_budget, batch_size, self.iteration_cost
         )
 
         strata = np.zeros((self.n, self.n), dtype=float)
@@ -81,7 +85,7 @@ class StratifiedSamplingSV(Approximator):
             for segment in range(n_segments):
                 # iterate through each player
                 for player in range(self.n):
-                    available_players = list(self.N)
+                    available_players = list(self._grand_coalition_set)
                     available_players.remove(player)
                     # iterate through each stratum
                     for stratum in range(self.n):
@@ -118,4 +122,14 @@ class StratifiedSamplingSV(Approximator):
         result = np.sum(strata, axis=1)
         non_zeros = np.count_nonzero(counts, axis=1)
         result = np.divide(result, non_zeros, out=result, where=non_zeros != 0)
-        return self._finalize_result(result, budget=used_budget, estimated=True)
+
+        # create vector of interaction values with correct length and order
+        result_to_finalize = self._init_result(dtype=float)
+        result_to_finalize[self._interaction_lookup[()]] = empty_value
+        for player in range(self.n):
+            idx = self._interaction_lookup[(player,)]
+            result_to_finalize[idx] = result[player]
+
+        return self._finalize_result(
+            result_to_finalize, baseline_value=empty_value, budget=used_budget, estimated=True
+        )

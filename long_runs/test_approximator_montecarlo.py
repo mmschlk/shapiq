@@ -1,6 +1,6 @@
 import numpy as np
 
-from shapiq.approximator.moebius_converter import MoebiusConverter
+from moebius_converter import MoebiusConverter
 from shapiq.approximator.montecarlo.shapiq import SHAPIQ
 from shapiq.approximator.montecarlo.svarmiq import SVARMIQ
 from shapiq.approximator.montecarlo._base import MonteCarlo
@@ -32,9 +32,9 @@ def test_montecarlo_base_example(index):
 
         shapley_interactions = moebius_converter(index=index, order=max_order)
         # set emptyset value to baseline, required for SII
-        shapley_interactions.values[
-            shapley_interactions.interaction_lookup[tuple()]
-        ] = shapley_interactions.baseline_value
+        shapley_interactions.values[shapley_interactions.interaction_lookup[tuple()]] = (
+            shapley_interactions.baseline_value
+        )
 
         if index == "FSII":
             # Only top-order for FSII
@@ -107,9 +107,9 @@ def test_montecarlo_approximation(index, stratify_coalition_size, stratify_inter
 
         shapley_interactions = moebius_converter(index=index, order=max_order)
         # set emptyset value to baseline, required for SII
-        shapley_interactions.values[
-            shapley_interactions.interaction_lookup[tuple()]
-        ] = shapley_interactions.baseline_value
+        shapley_interactions.values[shapley_interactions.interaction_lookup[tuple()]] = (
+            shapley_interactions.baseline_value
+        )
 
         if index == "FSII":
             # Only top-order for FSII
@@ -215,9 +215,9 @@ def test_montecarlo_shapiq(index):
 
         shapley_interactions = moebius_converter(index=index, order=max_order)
         # set emptyset value to baseline, required for SII
-        shapley_interactions.values[
-            shapley_interactions.interaction_lookup[tuple()]
-        ] = shapley_interactions.baseline_value
+        shapley_interactions.values[shapley_interactions.interaction_lookup[tuple()]] = (
+            shapley_interactions.baseline_value
+        )
 
         if index == "FSII":
             # Only top-order for FSII
@@ -319,9 +319,9 @@ def test_montecarlo_svarmiq(index):
 
         shapley_interactions = moebius_converter(index=index, order=max_order)
         # set emptyset value to baseline, required for SII
-        shapley_interactions.values[
-            shapley_interactions.interaction_lookup[tuple()]
-        ] = shapley_interactions.baseline_value
+        shapley_interactions.values[shapley_interactions.interaction_lookup[tuple()]] = (
+            shapley_interactions.baseline_value
+        )
 
         if index == "FSII":
             # Only top-order for FSII

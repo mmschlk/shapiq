@@ -1,6 +1,5 @@
 """This module contains the approximators to estimate the Shapley interaction values."""
 
-from .k_sii import convert_ksii_into_one_dimension, transforms_sii_to_ksii
 from .marginals import OwenSamplingSV, StratifiedSamplingSV
 from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII
@@ -23,6 +22,4 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
-    "transforms_sii_to_ksii",
-    "convert_ksii_into_one_dimension",
 ]

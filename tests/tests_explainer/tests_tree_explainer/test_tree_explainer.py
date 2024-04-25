@@ -127,6 +127,7 @@ def test_against_shap_implementation():
     explanation = explainer.explain(x_explain)
 
 
+@pytest.mark.skip(reason="The logic for the output type conversion will be removed.")
 def test_logit_probit_conversion(dt_clf_model, background_clf_data):
     """This test checks the conversion of the output types for a tree classifier."""
     x_explain = background_clf_data[0]
