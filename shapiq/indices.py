@@ -16,7 +16,7 @@ ALL_AVAILABLE_CONCEPTS = {
     "CHII": {
         "name": "Chaining Interaction Index",
         "source": "https://link.springer.com/chapter/10.1007/978-94-017-0647-6_5",
-        "generalizes": None,  # TODO (Fabi) might be wrong
+        "generalizes": "SV",
     },
     # Base Generalized Values
     "SGV": {
@@ -32,7 +32,7 @@ ALL_AVAILABLE_CONCEPTS = {
     "CHGV": {
         "name": "Chaining Generalized Value",
         "source": "https://doi.org/10.1016/j.dam.2006.05.002",
-        "generalizes": None,  # TODO (Fabi) might be wrong
+        "generalizes": "SV",
     },
     # Shapley Interactions
     "k-SII": {

@@ -70,7 +70,6 @@ class Approximator(ABC):
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray[float]] = None,
     ) -> None:
-
         # check if index can be approximated
         self.index: str = index
         self.approximation_index: str = get_computation_index(index)
@@ -144,10 +143,7 @@ class Approximator(ABC):
         """
         weight_vector = np.zeros(shape=self.n + 1)
         for coalition_size in range(0, self.n + 1):
-            if (coalition_size == 0) or (coalition_size == self.n):
-                # prioritize these subsets
-                weight_vector[coalition_size] = self._big_M**2
-            elif (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
+            if (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
                 # prioritize these subsets
                 weight_vector[coalition_size] = self._big_M
             else:
