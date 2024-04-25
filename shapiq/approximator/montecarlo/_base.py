@@ -6,10 +6,9 @@ import numpy as np
 from scipy.special import binom, factorial
 
 from shapiq.approximator._base import Approximator
+from shapiq.indices import AVAILABLE_INDICES_MONTE_CARLO
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
-
-AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "STII", "FSII", "SV", "CHII", "BII"}
 
 
 class MonteCarlo(Approximator):
@@ -46,10 +45,10 @@ class MonteCarlo(Approximator):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray = None,
     ):
-        if index not in AVAILABLE_INDICES_REGRESSION:
+        if index not in AVAILABLE_INDICES_MONTE_CARLO:
             raise ValueError(
                 f"Index {index} not available for Regression Approximator. Choose from "
-                f"{AVAILABLE_INDICES_REGRESSION}."
+                f"{AVAILABLE_INDICES_MONTE_CARLO}."
             )
         super().__init__(
             n,

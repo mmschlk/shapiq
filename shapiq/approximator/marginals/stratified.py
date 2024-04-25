@@ -8,8 +8,6 @@ import numpy as np
 from shapiq.approximator._base import Approximator
 from shapiq.interaction_values import InteractionValues
 
-AVAILABLE_INDICES_SHAPIQ = {"SV"}
-
 
 class StratifiedSamplingSV(Approximator):
     """The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random marginal contributions
@@ -26,15 +24,6 @@ class StratifiedSamplingSV(Approximator):
         N: The set of players (starting from 0 to n - 1).
         _grand_coalition_array: The array of players (starting from 0 to n).
         iteration_cost: The cost of a single iteration of the approximator.
-
-    Examples:
-        >>> from shapiq.approximator import StratifiedSamplingSV
-        >>> from shapiq.games import DummyGame
-        >>> game = DummyGame(5, (1, 2))
-        >>> approximator = StratifiedSamplingSV(game.n_players, random_state=42)
-        >>> sv_estimates = approximator.approximate(100, game)
-        >>> print(sv_estimates.values)
-        [0.2 0.7 0.7 0.2 0.2]
     """
 
     def __init__(

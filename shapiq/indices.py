@@ -233,3 +233,4 @@ def is_empty_value_the_baseline(index: str) -> bool:
 
 
 AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII"}
+AVAILABLE_INDICES_MONTE_CARLO = {"k-SII", "SII", "STII", "FSII", "SV", "CHII", "BII"}
