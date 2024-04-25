@@ -31,6 +31,7 @@ def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model):
         validate_tree_model("unsupported_model")
 
 
+@pytest.mark.skip(reason="The logic for the output type conversion will be removed.")
 def test_validate_output_types_parameters(dt_clf_model, dt_clf_model_tree_model):
     """This test checks weather the correct output types are validated.
 
