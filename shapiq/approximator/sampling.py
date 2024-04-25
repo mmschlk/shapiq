@@ -15,6 +15,7 @@ class CoalitionSampler:
     methods.
 
     Sampling is based on a more general variant of [Fumagalli et al. 2023](https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html)
+    The empty and grand coalition are always prioritized, and sampling budget is required >= 2.
     All variables are stored in the sampler, no objects are returned. The following variables
     are computed:
         - sampled_coalitions_matrix: A binary matrix that consists of one row for each sampled
@@ -34,7 +35,8 @@ class CoalitionSampler:
     Args:
         n_players: The number of players in the game.
         sampling_weights: Sampling for weights for coalition sizes, must be non-negative and at
-            least one >0.
+            least one >0. The sampling weights for size 0 and n are ignored, as these are always
+            sampled.
         pairing_trick: Samples each coalition jointly with its complement, default is False
         random_state: The random state to use for the sampling process. Defaults to `None`.
 
@@ -110,7 +112,7 @@ class CoalitionSampler:
         # set variables for sampling and exclude coalition sizes with zero weight
         self._coalitions_to_exclude: list[int] = []
         for size, weight in enumerate(self._sampling_weights):
-            if weight == 0:
+            if weight == 0 and size > 0 and size < self.n:
                 self.n_max_coalitions -= int(binom(self.n, size))
                 self._coalitions_to_exclude.extend([size])
         self.adjusted_sampling_weights: Optional[np.ndarray[float]] = None
@@ -126,15 +128,15 @@ class CoalitionSampler:
         # variables accessible through properties
         self._sampled_coalitions_matrix: Optional[np.ndarray[bool]] = None  # coalitions
         self._sampled_coalitions_counter: Optional[np.ndarray[int]] = None  # coalitions_counter
-        self._sampled_coalitions_size_prob: Optional[np.ndarray[float]] = (
-            None  # coalitions_size_probability
-        )
-        self._sampled_coalitions_in_size_prob: Optional[np.ndarray[float]] = (
-            None  # coalitions_in_size_probability
-        )
-        self._is_coalition_size_sampled: Optional[np.ndarray[bool]] = (
-            None  # is_coalition_size_sampled
-        )
+        self._sampled_coalitions_size_prob: Optional[
+            np.ndarray[float]
+        ] = None  # coalitions_size_probability
+        self._sampled_coalitions_in_size_prob: Optional[
+            np.ndarray[float]
+        ] = None  # coalitions_in_size_probability
+        self._is_coalition_size_sampled: Optional[
+            np.ndarray[bool]
+        ] = None  # is_coalition_size_sampled
 
         self.sampled = False
 
@@ -376,8 +378,43 @@ class CoalitionSampler:
         )
         self.adjusted_sampling_weights /= np.sum(self.adjusted_sampling_weights)  # probability
 
+    def execute_empty_grand_coalition(self, sampling_budget):
+        """Ensures empty and grand coalition are prioritized and computed independent of
+        the sampling weights. Works similar to border-trick but only with empty and grand coalition.
+
+        Args:
+            sampling_budget: The budget for the approximation (i.e., the number of distinct
+                coalitions to sample/evaluate).
+
+        Returns:
+            The remaining sampling budget, i.e. reduced by 2.
+        """
+        empty_grand_coalition_indicator = np.zeros_like(self.adjusted_sampling_weights, dtype=bool)
+        empty_grand_coalition_size = [0, self.n]
+        empty_grand_coalition_index = [
+            self._coalitions_to_sample.index(size) for size in empty_grand_coalition_size
+        ]
+        empty_grand_coalition_indicator[empty_grand_coalition_index] = True
+        coalitions_to_move = [
+            self._coalitions_to_sample[index]
+            for index, include in enumerate(empty_grand_coalition_indicator)
+            if include
+        ]
+        self._coalitions_to_compute.extend(
+            [
+                self._coalitions_to_sample.pop(self._coalitions_to_sample.index(move_this))
+                for move_this in coalitions_to_move
+            ]
+        )
+        self.adjusted_sampling_weights = self.adjusted_sampling_weights[
+            ~empty_grand_coalition_indicator
+        ] / np.sum(self.adjusted_sampling_weights[~empty_grand_coalition_indicator])
+        sampling_budget -= 2
+        return sampling_budget
+
     def sample(self, sampling_budget: int) -> None:
         """Samples distinct coalitions according to the specified budget.
+        The empty and grand coalition are always prioritized, and sampling budget is required >= 2.
 
         Args:
             sampling_budget: The budget for the approximation (i.e., the number of distinct
@@ -386,12 +423,18 @@ class CoalitionSampler:
         Raises:
             UserWarning: If the sampling budget is higher than the maximum number of coalitions.
         """
+        if sampling_budget < 2:
+            # Empty and grand coalition always have to be computed.
+            raise ValueError("A minimum sampling budget of 2 samples is required.")
 
         if sampling_budget > self.n_max_coalitions:
             warnings.warn(UserWarning("Not all budget is required due to the border-trick."))
             sampling_budget = min(sampling_budget, self.n_max_coalitions)  # set budget to max coals
 
         self._reset_variables(sampling_budget)
+
+        # Prioritize empty and grand coalition
+        sampling_budget = self.execute_empty_grand_coalition(sampling_budget)
 
         # Border-Trick: enumerate all coalitions, where the expected number of coalitions exceeds
         # the total number of coalitions of that size (i.e. binom(n_players, coalition_size))
