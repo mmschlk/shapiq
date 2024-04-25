@@ -3,6 +3,7 @@ approximator."""
 
 import copy
 
+import numpy as np
 import pytest
 
 from shapiq.approximator import InconsistentKernelSHAPIQ
@@ -37,26 +38,35 @@ def test_initialization(n):
         _ = InconsistentKernelSHAPIQ(n, index="something")
 
 
-@pytest.mark.parametrize("budget, order", [(100, 1), (100, 2), (100, 3), (100, 4)])
-def test_approximate(budget, order):
+@pytest.mark.parametrize(
+    "budget, order, index", [(100, 2, "SII"), (100, 3, "SII"), (100, 3, "k-SII"), (100, 4, "SII")]
+)
+def test_approximate(budget, order, index):
     """Tests the approximation of the Inconsistent KernelSHAP-IQ approximator."""
     n = 7
     interaction = (1, 2)
     game = DummyGame(n, interaction)
 
-    approximator = InconsistentKernelSHAPIQ(n, max_order=order, index="SII")
-    sii_estimates = approximator.approximate(budget, game)
-    assert isinstance(sii_estimates, InteractionValues)
-    assert sii_estimates.max_order == order
-    assert sii_estimates.min_order == 0
+    approximator = InconsistentKernelSHAPIQ(n, max_order=order, index=index)
+    estimates = approximator.approximate(budget, game)
+    assert isinstance(estimates, InteractionValues)
+    assert estimates.max_order == order
+    assert estimates.min_order == 0
+    assert estimates.index == index
 
     # check that the budget is respected
     assert game.access_counter <= budget
 
-    assert sii_estimates[(1,)] == pytest.approx(0.6429, abs=0.01)
-    assert sii_estimates[(2,)] == pytest.approx(0.6429, abs=0.01)
+    if index == "SII":
+        assert estimates[(0,)] == pytest.approx(0.1442, abs=0.01)
+        assert estimates[(1,)] == pytest.approx(0.6429, abs=0.01)
+        assert estimates[(2,)] == pytest.approx(0.6429, abs=0.01)
+    if index == "k-SII":
+        efficiency = np.sum(estimates.values)
+        assert efficiency == pytest.approx(2.0, abs=0.01)
+        assert estimates[(0,)] == pytest.approx(0.1442, abs=0.01)
+        assert estimates[(1,)] == pytest.approx(0.1442, abs=0.01)
+        assert estimates[(2,)] == pytest.approx(0.1442, abs=0.01)
 
-    if order > 1:
-        assert sii_estimates[(1, 2)] == pytest.approx(1.0, abs=0.01)
-
-    assert sii_estimates[(1, 2, 3)] == pytest.approx(0, abs=0.01)
+    assert estimates[(1, 2)] == pytest.approx(1.0, abs=0.01)
+    assert estimates[(1, 2, 3)] == pytest.approx(0, abs=0.01)

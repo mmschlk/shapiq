@@ -105,7 +105,7 @@ def aggregate_interaction_values(
         index=new_index,
         interaction_lookup=lookup,
         baseline_value=base_interactions.baseline_value,
-        min_order=0,
+        min_order=base_interactions.min_order,
         max_order=order,
         estimated=base_interactions.estimated,
         estimation_budget=base_interactions.estimation_budget,

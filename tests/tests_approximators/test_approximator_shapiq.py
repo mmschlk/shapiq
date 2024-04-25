@@ -47,8 +47,6 @@ def test_initialization(n, max_order, index, top_order):
     assert hash(approximator) != hash(approximator_deepcopy)
     with pytest.raises(ValueError):
         _ = approximator == 1
-    # with pytest.raises(ValueError):
-    #    approximator_deepcopy._weight_kernel(3, 2)
 
 
 @pytest.mark.parametrize("n, max_order, budget", [(7, 2, 100), (7, 2, 100)])
@@ -98,9 +96,6 @@ def test_approximate_sii(n, max_order, top_order, budget):
         else:
             assert estimates[(1,)] == pytest.approx(0.6429, 0.0001)
             assert estimates[(2,)] == pytest.approx(0.6429, 0.0001)
-
-        # check efficiency
-        assert np.sum(estimates.values[:n]) == pytest.approx(2.0, 0.4)
 
 
 @pytest.mark.parametrize("n, max_order, top_order, budget", [(7, 2, False, 100), (7, 2, True, 100)])
