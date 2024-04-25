@@ -40,7 +40,7 @@ class InteractionValues:
     n_players: int
     min_order: int
     baseline_value: float
-    interaction_lookup: dict[tuple[int], int] = None
+    interaction_lookup: dict[tuple[int, ...], int] = None
     estimated: bool = True
     estimation_budget: Optional[int] = None
 
@@ -96,6 +96,27 @@ class InteractionValues:
         self.values = new_values
         self.interaction_lookup = new_interaction_lookup
 
+    def get_top_k_interactions(
+        self, k: int
+    ) -> tuple[dict[tuple[int, ...], float], list[tuple[int, ...], float]]:
+        """Returns the top k interactions.
+
+        Args:
+            k: The number of top interactions to return.
+
+        Returns:
+            The top k interactions.
+        """
+        top_k_indices = np.argsort(np.abs(self.values))[::-1][:k]
+        top_k_interactions = {}
+        for interaction, index in self.interaction_lookup.items():
+            if index in top_k_indices:
+                top_k_interactions[interaction] = self.values[index]
+        sorted_top_k_interactions = []
+        for interaction in sorted(top_k_interactions, key=top_k_interactions.get, reverse=True):
+            sorted_top_k_interactions.append((interaction, top_k_interactions[interaction]))
+        return top_k_interactions, sorted_top_k_interactions
+
     def __repr__(self) -> str:
         """Returns the representation of the InteractionValues object."""
         representation = "InteractionValues(\n"
@@ -103,20 +124,21 @@ class InteractionValues:
             f"    index={self.index}, max_order={self.max_order}, min_order={self.min_order}"
             f", estimated={self.estimated}, estimation_budget={self.estimation_budget},\n"
             f"    n_players={self.n_players}, baseline_value={self.baseline_value},\n"
-        ) + "    values={\n"
-        for interaction in powerset(
-            set(range(self.n_players)), min_size=1, max_size=self.max_order
-        ):
-            representation += f"        {interaction}: "
-            interaction_value = str(round(self[interaction], 4))
-            representation += f"{interaction_value},\n"
-        representation = representation[:-2]  # remove last "," and add closing bracket
-        representation += "\n    }\n)"
+            ")"
+        )
         return representation
 
     def __str__(self) -> str:
         """Returns the string representation of the InteractionValues object."""
-        return self.__repr__()
+        representation = self.__repr__()
+        representation = representation[:-1]  # remove the last ")" and add values
+        _, sorted_top_10_interactions = self.get_top_k_interactions(10)  # get top 10 interactions
+        # add values to string representation
+        representation += "    Top 10 interactions:\n"
+        for interaction, value in sorted_top_10_interactions:
+            representation += f"        {interaction}: {value}\n"
+        representation += "\n)"
+        return representation
 
     def __len__(self) -> int:
         """Returns the length of the InteractionValues object."""
