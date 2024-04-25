@@ -70,6 +70,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     # check the string representations (not semantics)
     assert isinstance(str(interaction_values), str)
     assert isinstance(repr(interaction_values), str)
+    assert repr(interaction_values) != str(interaction_values)
 
     # check equality
     interaction_values_copy = copy(interaction_values)
@@ -373,3 +374,55 @@ def test_sparsify():
     assert interaction_values[(4,)] == values[4]  # not removed
     assert interaction_values[(6,)] == values[6]  # not removed
     assert interaction_values[(0,)] == values[0]  # not removed
+
+
+def test_top_k():
+    """Tests the top-k selection of the InteractionValues dataclass."""
+
+    # parameters
+    values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
+    n_players = 10
+    interaction_lookup = {(i,): i for i in range(len(values))}
+    original_length = len(values)
+
+    # create InteractionValues object
+    interaction_values = InteractionValues(
+        values=values,
+        index="SV",
+        n_players=n_players,
+        min_order=1,
+        max_order=1,
+        interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
+    )
+
+    # test before top-k
+    assert len(interaction_values.values) == original_length
+    assert np.all(interaction_values.values == values)
+    for i in range(n_players):
+        assert interaction_values[(i,)] == values[i]
+
+    print(interaction_values)
+
+    # top-k
+    k = 3
+    top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k_interactions(k=k)
+
+    assert len(top_k_interaction) == len(sorted_top_k_interactions) == k
+    assert sorted_top_k_interactions[0] == ((9,), 10)
+    assert sorted_top_k_interactions[1] == ((8,), 9)
+    assert sorted_top_k_interactions[2] == ((6,), 8)
+
+    assert (9,) in top_k_interaction
+    assert (8,) in top_k_interaction
+    assert (6,) in top_k_interaction
+
+    # test with k > len(values)
+    k = 20
+    top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k_interactions(k=k)
+    assert len(top_k_interaction) == len(sorted_top_k_interactions) == original_length
+
+    # test with k = 0
+    k = 0
+    top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k_interactions(k=k)
+    assert len(top_k_interaction) == len(sorted_top_k_interactions) == 0
