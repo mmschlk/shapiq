@@ -1,7 +1,7 @@
 """This module contains a setup for the tabular benchmark games."""
 
 import copy
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
@@ -292,3 +292,22 @@ def _accuracy(y_true: np.ndarray, y_pred: np.ndarray, threshold: float = 0.5) ->
         y_pred = np.argmax(y_pred, axis=1)
 
     return accuracy_score(y_true, y_pred)
+
+
+def get_x_explain(x: Optional[Union[np.ndarray, int]], x_set: np.ndarray) -> np.ndarray:
+    """Returns the data point to explain given the input.
+
+    Args:
+        x: The data point to explain. Can be an index of the background data or a 1d matrix of shape
+            (n_features).
+        x_set: The data set to select the data point from. Should be a 2d matrix of shape
+            (n_samples, n_features).
+
+    Returns:
+        The data point to explain as a numpy array.
+    """
+    if x is None:
+        x = x_set[np.random.randint(0, x_set.shape[0])]
+    if isinstance(x, int):
+        x = x_set[x]
+    return x
