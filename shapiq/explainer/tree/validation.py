@@ -24,7 +24,7 @@ def validate_tree_model(
     Args:
         model: The model to validate.
         class_label: The class label of the model to explain. Only used for classification models.
-        output_type: The output type of the model. Can be "raw" (default), "probability", or "logit".  # TODO: add support for "probability" and "logit"
+        output_type: The output type of the model. Can be "raw" (default), "probability", or "logit".  # TODO: remove support for "probability" and "logit"
 
     Returns:
         The validated model and the model function.

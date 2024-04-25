@@ -288,7 +288,7 @@ class MoebiusConverter:
             min_order=0,
             max_order=order,
             n_players=self.n,
-            baseline_value=self.moebius_coefficients[tuple()],  # TODO: Fabi is this correct?
+            baseline_value=self.moebius_coefficients[tuple()],  # TODO (Fabi) is this correct?
         )
         return stii
 
@@ -346,7 +346,7 @@ class MoebiusConverter:
             min_order=0,
             max_order=order,
             n_players=self.n,
-            baseline_value=self.moebius_coefficients[tuple()],  # TODO: Fabi is this correct?
+            baseline_value=self.moebius_coefficients[tuple()],  # TODO (Fabi) is this correct?
         )
         return fsii
 

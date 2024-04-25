@@ -32,7 +32,7 @@ class Approximator(ABC):
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        min_order: The minimum interaction order, default is 1, but regression uses 0 currently TODO:rework
+        min_order: The minimum interaction order, default is 0.
         index: The interaction index to be estimated. Available indices are 'SII', 'kSII', 'STII',
             and 'FSII'.
         top_order: If True, the approximation is performed only for the top order interactions. If
