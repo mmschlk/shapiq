@@ -137,8 +137,8 @@ class Regression(Approximator):
                 index_approximation=index_approximation,
             )
 
-        # TODO (Fabi) this needs to be the correct baseline value it should also work when the min_order is not 0
-        baseline_value = 0.0
+        # TODO (Fabi) is this correct? is it always there?
+        baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
         return self._finalize_result(
             result=shapley_interactions_values, baseline_value=baseline_value, budget=budget
@@ -162,7 +162,7 @@ class Regression(Approximator):
             game_values: The computed game values for the sampled coalitions.
 
         Returns:
-            The approximated SII values of the KernelSHAP-IQ routine.
+            The approximated SII values of the KernelSHAP-IQ routine
         """
 
         coalitions_matrix = self._sampler.coalitions_matrix
@@ -245,7 +245,7 @@ class Regression(Approximator):
                 residual_game_values[interaction_size] - approximations
             )
 
-        return sii_values
+        return sii_values, empty_coalition_value
 
     def regression_routine(
         self,
