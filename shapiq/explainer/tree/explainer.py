@@ -21,16 +21,13 @@ class TreeExplainer(Explainer):
         min_order: int = 1,
         interaction_type: str = "k-SII",
         class_label: Optional[int] = None,
-        output_type: str = "raw",
-        **kwargs
+        **kwargs,
     ) -> None:
 
         super().__init__(model)
 
         # validate and parse model
-        validated_model = validate_tree_model(
-            model, class_label=class_label, output_type=output_type
-        )
+        validated_model = validate_tree_model(model, class_label=class_label)
         self._trees: Union[TreeModel, list[TreeModel]] = copy.deepcopy(validated_model)
         if not isinstance(self._trees, list):
             self._trees = [self._trees]
@@ -39,7 +36,6 @@ class TreeExplainer(Explainer):
         self._max_order: int = max_order
         self._min_order: int = min_order
         self._class_label: Optional[int] = class_label
-        self._output_type: str = output_type
 
         # setup explainers for all trees
         self._treeshapiq_explainers: list[TreeSHAPIQ] = [
