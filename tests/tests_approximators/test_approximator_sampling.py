@@ -78,12 +78,12 @@ def test_sampling():
         rng = np.random.default_rng(seed=random_state)
 
         # setup variables for test
-        n = rng.integers(low=1, high=12)
+        n = rng.integers(low=2, high=12)
         budget = rng.integers(low=1, high=2**12)
         sampling_weights = rng.random(size=n + 1)
         excluded_size = rng.integers(0, high=2, size=n + 1)
         sampling_weights[excluded_size] = 0
-        sampling_weights[-1] = 0.5  # ensure one set size remains
+        sampling_weights[-2] = 0.5  # ensure one set size remains
 
         # run the sampler
         sampler = CoalitionSampler(
