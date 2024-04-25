@@ -1,9 +1,13 @@
+"""This test module contains all tests regarding the Möbius converter class."""
+
+import numpy as np
+
 from shapiq.games.benchmark.synthetic.soum import SOUM
 from shapiq.moebius_converter import MoebiusConverter
-import numpy as np
 
 
 def test_soum_moebius_conversion():
+    """Test the basic funcitonality of the Möbius converter."""
     for i in range(10):
         n = np.random.randint(low=2, high=20)
         order = np.random.randint(low=1, high=min(n, 5))

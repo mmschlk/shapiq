@@ -10,14 +10,7 @@ from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
 
 
-@pytest.mark.parametrize(
-    "n",
-    [
-        3,
-        7,  # used in subsequent tests
-        10,
-    ],
-)
+@pytest.mark.parametrize("n", [3, 7, 10])
 def test_initialization(n):
     """Tests the initialization of the RegressionFSII approximator."""
     approximator = KernelSHAP(n)
@@ -52,6 +45,7 @@ def test_approximate(n, budget):
     assert isinstance(sv_estimates, InteractionValues)
     assert sv_estimates.max_order == 1
     assert sv_estimates.min_order == 0
+    assert sv_estimates.index == "SV"
 
     # check that the budget is respected
     assert game.access_counter <= budget

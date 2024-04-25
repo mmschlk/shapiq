@@ -29,6 +29,7 @@ def test_approximate(n, budget, batch_size):
 
     # check that the budget is respected
     assert game.access_counter <= budget
+    assert sv_estimates.index == "SV"
 
     # check efficiency
     efficiency = np.sum(sv_estimates.values)

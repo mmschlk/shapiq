@@ -31,6 +31,7 @@ def test_approximate(n, budget, batch_size):
 
     # check that the budget is respected
     assert game.access_counter <= budget
+    assert sv_estimates.index == "SV"
 
     # check Shapley values for all players that have only marginal contributions of size 0.2
     # their estimates must be exactly 0.2

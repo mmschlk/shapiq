@@ -49,6 +49,7 @@ def test_initialization(n, max_order, top_order, index, expected):
         _ = approximator == 1
 
 
+@pytest.mark.parametrize("index", ["SII", "k-SII"])
 @pytest.mark.parametrize(
     "n, max_order, top_order, budget, batch_size",
     [
@@ -58,24 +59,30 @@ def test_initialization(n, max_order, top_order, index, expected):
         (7, 2, True, 500, None),
     ],
 )
-def test_approximate(n, max_order, top_order, budget, batch_size):
+def test_approximate(n, max_order, top_order, budget, batch_size, index):
     """Tests the approximation of the PermutationSamplingSII approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = PermutationSamplingSII(n, max_order, "SII", top_order, random_state=42)
-    sii_estimates = approximator.approximate(budget, game, batch_size=batch_size)
-    assert isinstance(sii_estimates, InteractionValues)
-    assert sii_estimates.max_order == max_order
-    assert sii_estimates.min_order == (max_order if top_order else 0)
+    approximator = PermutationSamplingSII(n, max_order, index, top_order, random_state=42)
+    estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    assert isinstance(estimates, InteractionValues)
+    assert estimates.max_order == max_order
+    assert estimates.min_order == (max_order if top_order else 0)
+    assert estimates.index == index
 
     # check that the budget is respected
     assert game.access_counter <= budget
 
     # check that the estimates are correct
     if not top_order:
-        # for order 1 player 1 and 2 are the most important with 0.6429
-        assert sii_estimates[(1,)] == pytest.approx(0.6429, abs=0.2)  # a large interval
-        assert sii_estimates[(2,)] == pytest.approx(0.6429, abs=0.2)
+        assert estimates[(0,)] == pytest.approx(0.1442, abs=0.1)
+
+        if index == "SII":
+            assert estimates[(1,)] == pytest.approx(0.6429, abs=0.2)  # large interval
+            assert estimates[(2,)] == pytest.approx(0.6429, abs=0.2)
+        if index == "k-SII":
+            assert estimates[(1,)] == pytest.approx(0.1442, abs=0.2)
+            assert estimates[(2,)] == pytest.approx(0.1442, abs=0.2)
 
     # for order 2 the interaction between player 1 and 2 is the most important
-    assert sii_estimates[(1, 2)] == pytest.approx(1.0, 0.2)
+    assert estimates[(1, 2)] == pytest.approx(1.0, 0.2)
