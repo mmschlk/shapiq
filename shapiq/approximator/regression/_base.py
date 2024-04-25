@@ -245,7 +245,7 @@ class Regression(Approximator):
                 residual_game_values[interaction_size] - approximations
             )
 
-        return sii_values, empty_coalition_value
+        return sii_values
 
     def regression_routine(
         self,
