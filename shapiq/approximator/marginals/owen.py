@@ -8,8 +8,6 @@ import numpy as np
 from shapiq.approximator._base import Approximator
 from shapiq.interaction_values import InteractionValues
 
-AVAILABLE_INDICES_SHAPIQ = {"SV"}
-
 
 class OwenSamplingSV(Approximator):
     """The Owen Sampling algorithm estimates the Shapley values (SV) by sampling random marginal contributions
