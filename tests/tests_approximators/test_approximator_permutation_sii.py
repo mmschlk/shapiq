@@ -69,6 +69,8 @@ def test_approximate(n, max_order, top_order, budget, batch_size, index):
     assert estimates.max_order == max_order
     assert estimates.min_order == (max_order if top_order else 0)
     assert estimates.index == index
+    assert estimates.estimated is True  # always estimated
+    assert estimates.estimation_budget <= budget
 
     # check that the budget is respected
     assert game.access_counter <= budget

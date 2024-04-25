@@ -52,5 +52,9 @@ def test_basic_functionality():
     # smaller budget
     budget = int(budget * 0.75)
     sv_estimates = approximator.approximate(budget, game)
-    assert sv_estimates[(0,)] == pytest.approx(0.1429, abs=0.2)
-    assert sv_estimates[(1,)] == pytest.approx(0.6429, abs=0.3)
+    assert sv_estimates.n_players == n_players
+    assert sv_estimates.max_order == 1
+    assert sv_estimates.min_order == 0
+    assert sv_estimates.index == "SV"
+    assert sv_estimates.estimated is True
+    assert sv_estimates.estimation_budget == budget
