@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from approximator.permutation import PermutationSamplingSV
+from shapiq.approximator.permutation import PermutationSamplingSV
 from shapiq.games.benchmark import DummyGame
 
 
@@ -31,7 +31,7 @@ def test_approximate(n, budget, batch_size):
     assert game.access_counter <= budget
 
     # check efficiency
-    efficiency = np.sum(sv_estimates.values[:n])
+    efficiency = np.sum(sv_estimates.values)
     assert efficiency == pytest.approx(2, 0.01)
 
     # check Shapley values for all players that have only marginal contributions of size 0.2

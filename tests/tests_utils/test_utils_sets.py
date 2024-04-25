@@ -11,6 +11,7 @@ from shapiq.utils import (
     split_subsets_budget,
     transform_coalitions_to_array,
     transform_array_to_coalitions,
+    count_interactions,
 )
 
 
@@ -156,3 +157,21 @@ def test_transform_coalitions_to_array(coalitions, n_player, expected):
 def test_transform_array_to_coalitions(coalitions, expected):
     """Tests the transform_array_to_coalitions function."""
     assert transform_array_to_coalitions(coalitions) == expected
+
+
+@pytest.mark.parametrize(
+    "n, max_order, min_order, expected",
+    [
+        (3, None, 0, 8),
+        (3, 1, 1, 3),
+        (3, 2, 1, 6),
+        (3, 2, 0, 7),
+        (3, 3, 1, 7),
+        (3, 3, 2, 4),
+    ],
+)
+def test_count_interactions(n, max_order, min_order, expected):
+    """Tests the count_interactions function."""
+    count = count_interactions(n, max_order, min_order)
+    assert count == expected
+    assert isinstance(count, int)

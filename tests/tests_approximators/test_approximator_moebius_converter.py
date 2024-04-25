@@ -1,5 +1,5 @@
 from shapiq.games.benchmark.synthetic.soum import SOUM
-from shapiq.approximator.moebius_converter import MoebiusConverter
+from shapiq.moebius_converter import MoebiusConverter
 import numpy as np
 
 

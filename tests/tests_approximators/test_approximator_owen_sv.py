@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from approximator.marginals import OwenSamplingSV
+from shapiq.approximator.marginals import OwenSamplingSV
 from shapiq.games.benchmark import DummyGame
 
 

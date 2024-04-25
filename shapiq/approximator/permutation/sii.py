@@ -4,13 +4,12 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from shapiq.approximator._base import Approximator
-from shapiq.approximator.k_sii import KShapleyMixin
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
+from ...interaction_values import InteractionValues
+from ...utils.sets import powerset
+from .._base import Approximator
 
 
-class PermutationSamplingSII(Approximator, KShapleyMixin):
+class PermutationSamplingSII(Approximator):
     """Permutation Sampling approximator for the SII (and k-SII) index.
 
     Args:
@@ -27,33 +26,6 @@ class PermutationSamplingSII(Approximator, KShapleyMixin):
             to the specified order (`False`).
         min_order: The minimum order to approximate.
         iteration_cost: The cost of a single iteration of the permutation sampling.
-
-    Example:
-        >>> from shapiq.games import DummyGame
-        >>> from approximator import PermutationSamplingSII
-        >>> game = DummyGame(n=5, interaction=(1, 2))
-        >>> approximator = PermutationSamplingSII(n=5, max_order=2)
-        >>> approximator.approximate(budget=1_000, game=game)
-        InteractionValues(
-            index=SII, order=2, estimated=True, estimation_budget=988,
-            values={
-                (0,): 0.2,
-                (1,): 0.7,
-                (2,): 0.7,
-                (3,): 0.2,
-                (4,): 0.2,
-                (0, 1): 0,
-                (0, 2): 0,
-                (0, 3): 0,
-                (0, 4): 0,
-                (1, 2): 1.0,
-                (1, 3): 0,
-                (1, 4): 0,
-                (2, 3): 0,
-                (2, 4): 0,
-                (3, 4): 0
-            }
-        )
     """
 
     def __init__(
@@ -79,9 +51,19 @@ class PermutationSamplingSII(Approximator, KShapleyMixin):
             int: The cost of a single iteration.
         """
         iteration_cost: int = 0
-        for s in self._order_iterator:
+        min_order = 1 if not self.top_order else self.max_order
+        for s in range(min_order, self.max_order + 1):
             iteration_cost += (self.n - s + 1) * 2**s
         return iteration_cost
+
+    def _compute_order_iterator(self) -> np.ndarray:
+        """Computes the order iterator for the SII index.
+
+        Returns:
+            np.ndarray: The order iterator.
+        """
+        min_order = 1 if not self.top_order else self.max_order
+        return np.arange(min_order, self.max_order + 1)
 
     def approximate(
         self,
@@ -103,12 +85,15 @@ class PermutationSamplingSII(Approximator, KShapleyMixin):
         batch_size = 1 if batch_size is None else batch_size
         used_budget = 0
 
-        result: np.ndarray[float] = self._init_result()
-        counts: np.ndarray[int] = self._init_result(dtype=int)
+        result = self._init_result()
+        counts = self._init_result(dtype=int)
+
+        empty_value = float(game(np.zeros(self.n, dtype=bool)))
+        used_budget += 1
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget, batch_size, self.iteration_cost
+            budget - used_budget, batch_size, self.iteration_cost
         )
 
         # main permutation sampling loop
@@ -126,7 +111,7 @@ class PermutationSamplingSII(Approximator, KShapleyMixin):
             subsets = np.zeros(shape=(n_subsets, self.n), dtype=bool)
             subset_index = 0
             for permutation_id in range(n_permutations):
-                for order in self._order_iterator:
+                for order in self._compute_order_iterator():
                     for k in range(self.n - order + 1):
                         subset = permutations[permutation_id, k : k + order]
                         previous_subset = permutations[permutation_id, :k]
@@ -136,12 +121,12 @@ class PermutationSamplingSII(Approximator, KShapleyMixin):
                             subset_index += 1
 
             # evaluate all subsets on the game
-            game_values: np.ndarray[float] = game(subsets)
+            game_values = game(subsets)
 
             # update the interaction scores by iterating over the permutations again
             subset_index = 0
             for permutation_id in range(n_permutations):
-                for order in self._order_iterator:
+                for order in self._compute_order_iterator():
                     for k in range(self.n - order + 1):
                         interaction = permutations[permutation_id, k : k + order]
                         interaction = tuple(sorted(interaction))
@@ -159,7 +144,6 @@ class PermutationSamplingSII(Approximator, KShapleyMixin):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        if self.index == "k-SII":
-            result: np.ndarray[float] = self.transforms_sii_to_ksii(result)
-
-        return self._finalize_result(result, budget=used_budget, estimated=True)
+        return self._finalize_result(
+            result, baseline_value=empty_value, budget=used_budget, estimated=True
+        )

@@ -155,7 +155,10 @@ class SOUM(Game):
             moebius_coefficients_lookup[key] = i
 
         # handle baseline value and set to 0 if no empty set is present
-        baseline_value = 0 if tuple() not in moebius_coefficients_dict else None
+        try:
+            baseline_value = moebius_coefficients_dict[tuple()]
+        except KeyError:
+            baseline_value = 0.0
 
         moebius_coefficients = InteractionValues(
             values=moebius_coefficients_values,

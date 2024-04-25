@@ -1,6 +1,6 @@
 import numpy as np
+from moebius_converter import MoebiusConverter
 
-from shapiq.approximator.moebius_converter import MoebiusConverter
 from shapiq.approximator.regression.kernelshapiq import InconsistentKernelSHAPIQ
 from shapiq.exact import ExactComputer
 from shapiq.games.benchmark import SOUM

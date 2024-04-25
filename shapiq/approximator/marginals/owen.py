@@ -25,18 +25,8 @@ class OwenSamplingSV(Approximator):
 
     Attributes:
         n: The number of players.
-        N: The set of players (starting from 0 to n - 1).
-        N_arr: The array of players (starting from 0 to n).
+        _grand_coalition_array: The array of players (starting from 0 to n).
         iteration_cost: The cost of a single iteration of the approximator.
-
-    Examples:
-        >>> from shapiq.approximator import StratifiedSamplingSV
-        >>> from shapiq.games import DummyGame
-        >>> game = DummyGame(5, (1, 2))
-        >>> approximator = OwenSamplingSV(game.n_players, 10, random_state=42)
-        >>> sv_estimates = approximator.approximate(100, game)
-        >>> print(sv_estimates.values)
-        [0.2 0.7 0.7 0.2 0.2]
     """
 
     def __init__(
@@ -66,9 +56,12 @@ class OwenSamplingSV(Approximator):
         used_budget = 0
         batch_size = 1 if batch_size is None else batch_size
 
+        empty_value = float(game(np.zeros(self.n, dtype=bool)))
+        used_budget += 1
+
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget, batch_size, self.iteration_cost
+            budget - used_budget, batch_size, self.iteration_cost
         )
 
         anchors = self.get_anchor_points(self.M)
@@ -123,7 +116,17 @@ class OwenSamplingSV(Approximator):
         result = np.sum(estimates, axis=1)
         non_zeros = np.count_nonzero(counts, axis=1)
         result = np.divide(result, non_zeros, out=result, where=non_zeros != 0)
-        return self._finalize_result(result, budget=used_budget, estimated=True)
+
+        # create vector of interaction values with correct length and order
+        result_to_finalize = self._init_result(dtype=float)
+        result_to_finalize[self._interaction_lookup[()]] = empty_value
+        for player in range(self.n):
+            idx = self._interaction_lookup[(player,)]
+            result_to_finalize[idx] = result[player]
+
+        return self._finalize_result(
+            result_to_finalize, baseline_value=empty_value, budget=used_budget, estimated=True
+        )
 
     def get_anchor_points(self, m: int):
         if m <= 0:

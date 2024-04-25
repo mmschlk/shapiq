@@ -8,14 +8,12 @@ import numpy as np
 from scipy.special import bernoulli, binom
 
 from shapiq.approximator._base import Approximator
-from shapiq.approximator.k_sii import KShapleyMixin
+from shapiq.indices import AVAILABLE_INDICES_REGRESSION
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII"}
 
-
-class Regression(Approximator, KShapleyMixin):
+class Regression(Approximator):
     """This class is the base class for all regression approximators.
 
     Regression approximators are based on a representation of the interaction index as a solution
@@ -98,10 +96,11 @@ class Regression(Approximator, KShapleyMixin):
         game: Callable[[np.ndarray], np.ndarray],
     ) -> InteractionValues:
         """The main approximation routine for the regression approximators.
-        The regression estimators approximate Shapley Interactions based on a representation as a weighted least-square
-        (WLSQ) problem. The regression approximator first approximates the objective of the WLSQ problem by Monte Carlo
-        sampling and then computes an exact WLSQ solution based on the approximated objective. This approximation is
-        an extension of KernelSHAP with different variants of kernel weights and regression settings
+        The regression estimators approximate Shapley Interactions based on a representation as a
+        weighted least-square (WLSQ) problem. The regression approximator first approximates the
+        objective of the WLSQ problem by Monte Carlo sampling and then computes an exact WLSQ
+        solution based on the approximated objective. This approximation is an extension of
+        KernelSHAP with different variants of kernel weights and regression settings
         https://papers.nips.cc/paper_files/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html.
 
         Args:
@@ -138,32 +137,28 @@ class Regression(Approximator, KShapleyMixin):
                 index_approximation=index_approximation,
             )
 
-        # aggregate SII to k-SII, will change SII -> k-SII
-        if self.index == "k-SII":
-            baseline_value = shapley_interactions_values[0]
-            shapley_interactions_values = self.transforms_sii_to_ksii(shapley_interactions_values)
-            shapley_interactions_values[0] = baseline_value
-
-        # check if the budget was sufficient
-        estimated_indicator = True
-        if self._sampler.n_coalitions >= 2**self.n:
-            estimated_indicator = False
+        # TODO: @Fabi, this needs to be the correct baseline value it should also work when the min_order is not 0
+        baseline_value = 0.0
 
         return self._finalize_result(
-            result=shapley_interactions_values, estimated=estimated_indicator, budget=budget
+            result=shapley_interactions_values, baseline_value=baseline_value, budget=budget
         )
 
     def kernel_shap_iq_routine(
         self, kernel_weights_dict: dict, game_values: np.ndarray
     ) -> np.ndarray[float]:
         """The main regression routine for the KernelSHAP-IQ approximator.
-        Method according to TODO: add citation
-        This method solves for each interaction_size up to self.max_order separate regression problems iteratively.
-        The following regression is thereby fit on the residuals of the previous regression problem.
+
+        TODO: add citation
+        KernelSHAP-IQ is implemented according to this paper: ...
+        This method solves for each interaction_size up to self.max_order separate regression
+        problems iteratively. The following regression is thereby fit on the residuals of the
+        previous regression problem.
 
         Args:
-            kernel_weights_dict: The weights of the regression problem as a dictionary per interaction size containing
-                a numpy array with the regression weights per coalition size.
+            kernel_weights_dict: The weights of the regression problem as a dictionary per
+                interaction size containing a numpy array with the regression weights per
+                coalition size.
             game_values: The computed game values for the sampled coalitions.
 
         Returns:
@@ -192,12 +187,16 @@ class Regression(Approximator, KShapleyMixin):
             )
             for coalition_pos, coalition in enumerate(coalitions_matrix):
                 for interaction_pos, interaction in enumerate(
-                    powerset(self.N, min_size=interaction_size, max_size=interaction_size)
+                    powerset(
+                        self._grand_coalition_set,
+                        min_size=interaction_size,
+                        max_size=interaction_size,
+                    )
                 ):
                     intersection_size = np.sum(coalition[list(interaction)])
-                    regression_matrix[
-                        coalition_pos, interaction_pos
-                    ] = regression_coefficient_weight[interaction_size, intersection_size]
+                    regression_matrix[coalition_pos, interaction_pos] = (
+                        regression_coefficient_weight[interaction_size, intersection_size]
+                    )
 
             # Regression weights adjusted by sampling weights
             regression_weights = (
@@ -255,9 +254,11 @@ class Regression(Approximator, KShapleyMixin):
         index_approximation: str,
     ) -> np.ndarray[float]:
         """The main regression routine for the regression approximators.
-        Solves a weighted least-square problem based on the representation of the target index. First, approximates
-        the objective of the regression problem and then solves the regression problem using the approximated objective.
-        Extends on KernelSHAP in different forms and computes all interactions using a single regression problem.
+
+        Solves a weighted least-square problem based on the representation of the target index.
+        First, approximates the objective of the regression problem and then solves the regression
+        problem using the approximated objective. Extends on KernelSHAP in different forms and
+        computes all interactions using a single regression problem.
 
         Args:
             kernel_weights: An array of the regression weights associated with each coalition size.
@@ -285,7 +286,7 @@ class Regression(Approximator, KShapleyMixin):
 
         for coalition_pos, coalition in enumerate(coalitions_matrix):
             for interaction_pos, interaction in enumerate(
-                powerset(self.N, max_size=self.max_order)
+                powerset(self._grand_coalition_set, max_size=self.max_order)
             ):
                 interaction_size = len(interaction)
                 intersection_size = np.sum(coalition[list(interaction)])
@@ -311,10 +312,12 @@ class Regression(Approximator, KShapleyMixin):
         regression_response: np.ndarray,
         regression_weights: np.ndarray,
     ) -> np.ndarray[float]:
-        """Solves the regression problem using the weighted least squares method. Returns all approximated interactions.
+        """Solves the regression problem using the weighted least squares method. Returns all
+        approximated interactions.
 
         Args:
-            regression_matrix: The regression matrix of shape [n_coalitions, n_interactions]. Depends on the index.
+            regression_matrix: The regression matrix of shape [n_coalitions, n_interactions].
+                Depends on the index.
             regression_response: The response vector for each coalition.
             regression_weights: The weights for the regression problem for each coalition.
 
@@ -427,10 +430,10 @@ class Regression(Approximator, KShapleyMixin):
         # Pre-compute weights
         for coalition_size_pos, coalition_size in enumerate(coalition_sizes):
             for intersection_size in range(min(coalition_size, interaction_size) + 1):
-                ground_truth_sii_weights[
-                    coalition_size_pos, intersection_size
-                ] = self._ground_truth_sii_weight(
-                    coalition_size, interaction_size, intersection_size
+                ground_truth_sii_weights[coalition_size_pos, intersection_size] = (
+                    self._ground_truth_sii_weight(
+                        coalition_size, interaction_size, intersection_size
+                    )
                 )
 
         # Compute ground truth weights

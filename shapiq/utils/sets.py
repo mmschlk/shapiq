@@ -16,6 +16,7 @@ __all__ = [
     "generate_interaction_lookup",
     "transform_coalitions_to_array",
     "transform_array_to_coalitions",
+    "count_interactions",
 ]
 
 
@@ -270,3 +271,28 @@ def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int]]:
         [(), (0, 1, 2)]
     """
     return [tuple(np.where(coalition)[0]) for coalition in coalitions]
+
+
+def count_interactions(n: int, max_order: Optional[int] = None, min_order: int = 0) -> int:
+    """Counts the number of interactions for a given number of players and maximum order.
+
+    Args:
+        n: Number of players.
+        max_order: Maximum order of the interactions. If `None`, it is set to the number of players.
+            Defaults to `None`.
+        min_order: Minimum order of the interactions. Defaults to 0.
+
+    Returns:
+        The number of interactions.
+
+    Examples:
+        >>> count_interactions(3)
+        8
+        >>> count_interactions(3, 2)
+        7
+        >>> count_interactions(3, 2, 1)
+        6
+    """
+    if max_order is None:
+        max_order = n
+    return int(sum(binom(n, size) for size in range(min_order, max_order + 1)))

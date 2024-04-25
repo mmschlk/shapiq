@@ -145,7 +145,10 @@ class CoalitionSampler:
         Returns:
             The number of coalitions that have been sampled.
         """
-        return int(self._sampled_coalitions_matrix.shape[0])
+        try:
+            return int(self._sampled_coalitions_matrix.shape[0])
+        except AttributeError:  # if not sampled
+            return 0
 
     @property
     def is_coalition_size_sampled(self) -> np.ndarray:

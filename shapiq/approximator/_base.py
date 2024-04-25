@@ -1,14 +1,21 @@
 """This module contains the base approximator classes for the shapiq package."""
 
+import copy
 from abc import ABC, abstractmethod
 from typing import Callable, Optional
 
 import numpy as np
 
-from shapiq.approximator._config import AVAILABLE_INDICES
 from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import generate_interaction_lookup
+
+from ..indices import (
+    AVAILABLE_INDICES_FOR_APPROXIMATION,
+    get_computation_index,
+    is_empty_value_the_baseline,
+    is_index_aggregated,
+)
 
 __all__ = [
     "Approximator",
@@ -39,8 +46,8 @@ class Approximator(ABC):
 
     Attributes:
         n: The number of players.
-        N: The set of players (starting from 0 to n - 1). TODO: Change to _grand_coalition_set
-        N_arr: The array of players (starting from 0 to n).
+        _grand_coalition_set: The set of players (starting from 0 to n - 1).
+        _grand_coalition_array: The array of players (starting from 0 to n).
         max_order: The interaction order of the approximation.
         index: The interaction index to be estimated.
         top_order: If True, the approximation is performed only for the top order interactions. If
@@ -58,32 +65,39 @@ class Approximator(ABC):
         max_order: int,
         index: str,
         top_order: bool,
-        min_order: int = 1,
+        min_order: int = 0,
         random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray[float]] = None,
     ) -> None:
-        """Initializes the approximator."""
+
+        # check if index can be approximated
         self.index: str = index
-        if self.index not in AVAILABLE_INDICES:
+        self.approximation_index: str = get_computation_index(index)
+        if self.approximation_index not in AVAILABLE_INDICES_FOR_APPROXIMATION:
             raise ValueError(
-                f"Index {self.index} is not valid. " f"Available indices are {AVAILABLE_INDICES}."
+                f"Index {self.index} cannot be approximated. Available indices are"
+                f"{AVAILABLE_INDICES_FOR_APPROXIMATION}."
             )
+
+        # get approximation parameters
         self.n: int = n
-        self.N: set = set(range(self.n))  # TODO: remove from approximator
-        self._grand_coalition_set = set(range(self.n))
-        self.N_arr: np.ndarray[int] = np.arange(self.n + 1, dtype=int)
         self.top_order: bool = top_order
         self.max_order: int = max_order
         self.min_order: int = self.max_order if self.top_order else min_order
+        self._grand_coalition_set = set(range(self.n))
+        self._grand_coalition_tuple = tuple(range(self.n))
+        self._grand_coalition_array: np.ndarray = np.arange(self.n + 1, dtype=int)
         self.iteration_cost: int = 1  # default value, can be overwritten by subclasses
         self._interaction_lookup = generate_interaction_lookup(
             self.n, self.min_order, self.max_order
         )
+
+        # set up random state and random number generators
         self._random_state: Optional[int] = random_state
         self._rng: Optional[np.random.Generator] = np.random.default_rng(seed=self._random_state)
 
-        # set up the coalition sampler
+        # set up a coalition sampler
         self._big_M: int = 100_000_000  # large number for sampling weights
         if sampling_weights is None:  # init default sampling weights
             sampling_weights = self._init_sampling_weights()
@@ -93,6 +107,12 @@ class Approximator(ABC):
             pairing_trick=pairing_trick,
             random_state=self._random_state,
         )
+
+    def __call__(
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+    ) -> InteractionValues:
+        """Calls the approximate method."""
+        return self.approximate(budget, game, *args, **kwargs)
 
     @abstractmethod
     def approximate(
@@ -161,42 +181,58 @@ class Approximator(ABC):
     def _finalize_result(
         self,
         result,
-        estimated: bool = True,
+        baseline_value: float,
+        *,
+        estimated: Optional[bool] = None,
         budget: Optional[int] = None,
-        index: Optional[str] = None,
     ) -> InteractionValues:
         """Finalizes the result dictionary.
 
         Args:
-            result: The result dictionary.
-            estimated: Whether the interaction values are estimated or not. Defaults to True.
-            budget: The budget used for the estimation. Defaults to None.
-            index: The interaction index estimated. Available indices are 'SII', 'kSII', 'STII', and
-                'FSII'. Defaults to None (i.e., the index of the approximator is used).
+            # TODO: add args
 
         Returns:
             The interaction values.
-        """
-        if tuple() in self.interaction_lookup:
-            baseline_value = result[
-                0
-            ]  # Set baseline value in for emptyset in values, if available in lookup
-        else:
-            baseline_value = 0.0
 
-        if index is None:
-            index = self.index
-        return InteractionValues(
+        Raises:
+            ValueError: If the baseline value is not provided for SII and k-SII.
+        """
+
+        if budget is None:  # try to get budget from sampler
+            budget = self._sampler.n_coalitions
+            if budget == 0:
+                raise ValueError("Budget is 0. Cannot finalize interaction values.")
+                # Note to developer: This should not happen, the finalize method should be called
+                # with a valid budget.
+
+        if estimated is None:
+            estimated = False if budget >= 2**self.n else True
+
+        # set empty value as baseline value if necessary
+        if tuple() in self._interaction_lookup:
+            idx = self._interaction_lookup[tuple()]
+            empty_value = result[idx]
+            # only for SII empty value is not the baseline value
+            if empty_value != baseline_value and is_empty_value_the_baseline(self.index):
+                result[idx] = baseline_value
+
+        interactions = InteractionValues(
             values=result,
             estimated=estimated,
             estimation_budget=budget,
-            index=index,
+            index=self.approximation_index,  # can be different from self.index
             min_order=self.min_order,
             max_order=self.max_order,
             n_players=self.n,
-            interaction_lookup=self._interaction_lookup,
+            interaction_lookup=copy.deepcopy(self.interaction_lookup),
             baseline_value=baseline_value,
         )
+
+        # if index needs to be aggregated
+        if is_index_aggregated(self.index):
+            interactions = self.aggregate_interaction_values(interactions)
+
+        return interactions
 
     @staticmethod
     def _calc_iteration_count(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
@@ -260,3 +296,41 @@ class Approximator(ABC):
     @property
     def interaction_lookup(self):
         return self._interaction_lookup
+
+    @staticmethod
+    def aggregate_interaction_values(
+        base_interactions: InteractionValues,
+        order: Optional[int] = None,
+        player_set: Optional[set[int]] = None,
+    ) -> InteractionValues:
+        """Aggregates the interaction values.
+
+        Args:
+            base_interactions: The base interaction values to aggregate.
+            order: The order of the aggregation. For example, the order of the k-SII aggregation. If
+                `None`, the maximum order of the base interactions is used. Defaults to `None`.
+            player_set: The set of players to consider for the aggregation. If `None`, all players
+                are considered. Defaults to `None`.
+
+        Returns:
+            The aggregated interaction values.
+        """
+        from ..aggregation import aggregate_interaction_values
+
+        return aggregate_interaction_values(base_interactions, order=order, player_set=player_set)
+
+    @staticmethod
+    def aggregate_to_one_dimension(
+        interaction_values: InteractionValues,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Aggregates the interaction values to one dimension.
+
+        Args:
+            interaction_values: The interaction values to aggregate.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray]: The positive and negative aggregated values.
+        """
+        from ..aggregation import aggregate_to_one_dimension
+
+        return aggregate_to_one_dimension(interaction_values)

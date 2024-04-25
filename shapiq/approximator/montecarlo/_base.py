@@ -6,14 +6,13 @@ import numpy as np
 from scipy.special import binom, factorial
 
 from shapiq.approximator._base import Approximator
-from shapiq.approximator.k_sii import KShapleyMixin
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
 AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "STII", "FSII", "SV", "CHII", "BII"}
 
 
-class MonteCarlo(Approximator, KShapleyMixin):
+class MonteCarlo(Approximator):
     """This class is the base class for all MonteCarlo approximators, e.g. SHAP-IQ and SVARM-IQ.
 
     MonteCarlo approximators are based on a representation of the interaction index as a weighted
@@ -97,21 +96,11 @@ class MonteCarlo(Approximator, KShapleyMixin):
             index_approximation=index_approximation,
         )
 
-        estimated_indicator = True
-        if np.shape(coalitions_matrix)[0] >= 2**self.n:
-            # If budget exceeds number of coalitions, set estimated to False
-            estimated_indicator = False
-
-        if self.index == "k-SII":
-            # If index is k-SII then SII values have been approximated, now aggregate to k-SII
-            baseline_value = shapley_interactions_values[0]
-            shapley_interactions_values = self.transforms_sii_to_ksii(shapley_interactions_values)
-            if self.min_order == 0:
-                # Reset baseline value after transformation
-                shapley_interactions_values[0] = baseline_value
+        # TODO: @Fabi, this needs to be the correct baseline value it should also work when the min_order is not 0
+        baseline_value = 0.0
 
         return self._finalize_result(
-            result=shapley_interactions_values, estimated=estimated_indicator, budget=budget
+            result=shapley_interactions_values, baseline_value=baseline_value, budget=budget
         )
 
     def monte_carlo_routine(
@@ -175,7 +164,7 @@ class MonteCarlo(Approximator, KShapleyMixin):
 
         # manually set emptyset interaction to baseline
         if self.min_order == 0:
-            shapley_interaction_values[0] = empty_coalition_value
+            shapley_interaction_values[self.interaction_lookup[tuple()]] = empty_coalition_value
 
         return shapley_interaction_values
 

@@ -167,6 +167,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=coalition_lookup,
             estimated=False,
+            baseline_value=self.baseline_value,  # TODO: Fabia is this correct?
         )
         self._computed["Moebius"] = copy.deepcopy(interaction_values)
         return copy.deepcopy(interaction_values)
@@ -411,6 +412,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
+            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
         )
         self._computed[index] = copy.deepcopy(base_generalized_values)
         return copy.deepcopy(base_generalized_values)
@@ -427,46 +429,10 @@ class ExactComputer:
         Returns:
             InteractionValues object containing transformed base_interactions
         """
-        transformed_values = np.zeros(self.get_n_interactions(self.n)[order])
-        transformed_lookup = {}
-        bernoulli_numbers = bernoulli(order)  # lookup Bernoulli numbers
-        for interaction_pos, interaction in enumerate(
-            powerset(self._grand_coalition_set, max_size=order)
-        ):
-            transformed_lookup[interaction] = interaction_pos
-            if len(interaction) == 0:
-                # Initialize emptyset baseline value
-                transformed_values[interaction_pos] = base_interactions.baseline_value
-            else:
-                interaction_effect = base_interactions[interaction]
-                subset_size = len(interaction)
-                # go over all subsets S_tilde of length |S| + 1, ..., n that contain S
-                for interaction_higher_order in powerset(
-                    self._grand_coalition_set, min_size=subset_size + 1, max_size=order
-                ):
-                    if not set(interaction).issubset(interaction_higher_order):
-                        continue
-                    # get the effect of T
-                    interaction_tilde_effect = base_interactions[interaction_higher_order]
-                    # normalization with bernoulli numbers
-                    interaction_effect += (
-                        bernoulli_numbers[len(interaction_higher_order) - subset_size]
-                        * interaction_tilde_effect
-                    )
-                transformed_values[interaction_pos] = interaction_effect
+        from .aggregation import aggregate_interaction_values
 
-        # setup interaction values
-        transformed_index = base_interactions.index  # raname the index (e.g. SII -> k-SII)
-        if transformed_index not in ["SV", "BV"]:
-            transformed_index = "k-" + transformed_index
-        transformed_interactions = InteractionValues(
-            values=transformed_values,
-            index=transformed_index,
-            min_order=0,
-            max_order=order,
-            interaction_lookup=transformed_lookup,
-            n_players=self.n,
-            estimated=False,
+        transformed_interactions = aggregate_interaction_values(
+            base_interactions, order, player_set=self._grand_coalition_set
         )
         return copy.deepcopy(transformed_interactions)
 
@@ -520,6 +486,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
+            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
         )
         return copy.deepcopy(stii)
 
@@ -572,6 +539,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
+            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
         )
         return copy.deepcopy(fsii)
 
@@ -628,9 +596,9 @@ class ExactComputer:
                 intersection_size = len(set(coalition).intersection(interaction))
                 interaction_size = len(interaction)
                 # This is different from FSII
-                coalition_matrix[
-                    coalition_pos, interaction_lookup[interaction]
-                ] = bernoulli_weights[interaction_size, intersection_size]
+                coalition_matrix[coalition_pos, interaction_lookup[interaction]] = (
+                    bernoulli_weights[interaction_size, intersection_size]
+                )
 
         weight_matrix_sqrt = np.sqrt(np.diag(least_squares_weights))
         coalition_matrix_weighted_sqrt = np.dot(weight_matrix_sqrt, coalition_matrix)
@@ -653,6 +621,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
+            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
         )
 
         return kADD_shap
@@ -700,6 +669,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
+            baseline_value=self.baseline_value,  # TODO: Fabi: is this correct?
         )
         return jointSV
 
@@ -815,9 +785,9 @@ class ExactComputer:
             probabilistic_value = self.base_interaction(index="SII", order=1)
             # Change emptyset value of SII to baseline value
             probabilistic_value.baseline_value = self.baseline_value
-            probabilistic_value.values[
-                probabilistic_value.interaction_lookup[tuple()]
-            ] = self.baseline_value
+            probabilistic_value.values[probabilistic_value.interaction_lookup[tuple()]] = (
+                self.baseline_value
+            )
         else:
             raise ValueError(f"Index {index} not supported")
         self._computed[index] = probabilistic_value

@@ -27,7 +27,7 @@ def test_initialization(n, max_order, iteration_cost):
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order is False
-    assert approximator.min_order == 1
+    assert approximator.min_order == 0
     assert approximator.iteration_cost == iteration_cost
     assert approximator.index == "STII"
 
@@ -59,7 +59,7 @@ def test_approximate(n, max_order, budget, batch_size):
     sti_estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(sti_estimates, InteractionValues)
     assert sti_estimates.max_order == max_order
-    assert sti_estimates.min_order == 1
+    assert sti_estimates.min_order == 0
 
     # check that the budget is respected
     assert game.access_counter <= budget
@@ -86,4 +86,4 @@ def test_small_budget_warning():
     with pytest.warns(UserWarning):
         _ = approximator.approximate(1, game)  # not even lower_order_cost
     with pytest.warns(UserWarning):
-        _ = approximator.approximate(56, game)  # lower_order_cost but no iteration
+        _ = approximator.approximate(55, game)  # lower_order_cost but no iteration

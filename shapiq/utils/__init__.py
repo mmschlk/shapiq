@@ -3,6 +3,7 @@
 from .datasets import shuffle_data
 from .modules import safe_isinstance
 from .sets import (
+    count_interactions,
     generate_interaction_lookup,
     get_explicit_subsets,
     pair_subset_sizes,
@@ -24,6 +25,7 @@ __all__ = [
     "generate_interaction_lookup",
     "transform_coalitions_to_array",
     "transform_array_to_coalitions",
+    "count_interactions",
     # modules
     "safe_isinstance",
     # datasets

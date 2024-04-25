@@ -4,40 +4,12 @@ scores."""
 import copy
 from dataclasses import dataclass
 from typing import Optional, Union
+from warnings import warn
 
 import numpy as np
 
-from shapiq.utils.sets import generate_interaction_lookup, powerset
-
-AVAILABLE_INDICES = {
-    "JointSV",
-    "SGV",
-    "BGV",
-    "CHGV",
-    "CHII",
-    "BII",
-    "kADD-SHAP",
-    "k-SII",
-    "SII",
-    "STII",
-    "FSII",
-    "SV",
-    "BV",
-    "BZF",
-    "Moebius",
-}
-
-# indices that generalize the SV become the SV for max_order = 1
-INDICES_GENERALIZING_SV = {
-    "SII",
-    "FSI",
-    "FSII",
-    "STI",
-    "STII",
-    "kADD-SHAP",
-    "JointSV",
-    "SGV",
-}
+from .indices import ALL_AVAILABLE_INDICES, index_generalizes_bv, index_generalizes_sv
+from .utils.sets import generate_interaction_lookup, powerset
 
 
 @dataclass
@@ -49,8 +21,8 @@ class InteractionValues:
         index: The interaction index estimated. Available indices are 'SII', 'kSII', 'STII', and
             'FSII'.
         max_order: The order of the approximation.
-        min_order: The minimum order of the approximation.
         n_players: The number of players.
+        min_order: The minimum order of the approximation. Defaults to 0.
         interaction_lookup: A dictionary that maps interactions to their index in the values
             vector. If `interaction_lookup` is not provided, it is computed from the `n_players`,
             `min_order`, and `max_order` parameters. Defaults to `None`.
@@ -65,30 +37,28 @@ class InteractionValues:
     values: np.ndarray[float]
     index: str
     max_order: int
-    min_order: int
     n_players: int
-    interaction_lookup: dict[tuple[int, ...], int] = None
+    min_order: int
+    baseline_value: float
+    interaction_lookup: dict[tuple[int], int] = None
     estimated: bool = True
     estimation_budget: Optional[int] = None
-    baseline_value: Optional[float] = None
 
     def __post_init__(self) -> None:
         """Checks if the index is valid."""
-        if self.index not in AVAILABLE_INDICES:
-            raise ValueError(
-                f"Index {self.index} is not valid. " f"Available indices are {AVAILABLE_INDICES}."
+        if self.index not in ALL_AVAILABLE_INDICES:
+            warn(
+                UserWarning(
+                    f"Index {self.index} is not a valid index as defined in "
+                    f"{ALL_AVAILABLE_INDICES}. This might lead to unexpected behavior."
+                )
             )
 
-        # set BV if order is 1
-        if self.index == "BII" and self.max_order == 1:
-            self.index = "BV"
-
-        # set index to SV if order is 1 and index generalizes SV
+        # set BV or SV if max_order is 1
         if self.max_order == 1:
-            index_to_check = self.index
-            if index_to_check.startswith("k-"):  # remove potential aggregation of index 'k-'
-                index_to_check = index_to_check[2:]
-            if index_to_check in INDICES_GENERALIZING_SV:
+            if index_generalizes_bv(self.index):
+                self.index = "BV"
+            if index_generalizes_sv(self.index):
                 self.index = "SV"
 
         # populate interaction_lookup and reverse_interaction_lookup
@@ -97,12 +67,8 @@ class InteractionValues:
                 self.n_players, self.min_order, self.max_order
             )
 
-        # set baseline value if not provided
-        if self.baseline_value is None:
-            try:
-                self.baseline_value = float(self.values[self.interaction_lookup[tuple()]])
-            except KeyError:
-                raise ValueError("Baseline value is not provided and cannot be computed.")
+        if not isinstance(self.baseline_value, (int, float)):
+            raise TypeError("Baseline value must be provided as a number.")
 
     @property
     def dict_values(self) -> dict[tuple[int, ...], float]:
