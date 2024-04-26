@@ -45,6 +45,10 @@ from .local_xai.benchmark_tabular import CaliforniaHousing as CaliforniaHousingL
 from .synthetic.dummy import DummyGame
 from .synthetic.soum import SOUM, UnanimityGame
 
+# treeshap-iq explanation games
+from .treeshapiq_xai.base import TreeSHAPIQXAI
+from .treeshapiq_xai.benchmark import CaliforniaHousing as CaliforniaHousingTreeSHAPIQXAI
+
 # cluster explanation games
 from .unsupervised_cluster.base import ClusterExplanation
 from .unsupervised_cluster.benchmark import AdultCensus as AdultCensusClusterExplanation
@@ -100,6 +104,9 @@ __all__ = [
     "AdultCensusUnsupervisedData",
     "BikeSharingUnsupervisedData",
     "CaliforniaHousingUnsupervisedData",
+    # treeshapiq_xai games
+    "TreeSHAPIQXAI",
+    "CaliforniaHousingTreeSHAPIQXAI",
     # synthetic games
     "DummyGame",
     "SOUM",

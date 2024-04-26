@@ -4,8 +4,7 @@ from typing import Optional
 
 import numpy as np
 
-from shapiq.explainer import TreeExplainer
-from shapiq.explainer.tree import TreeModel
+from shapiq.explainer.tree import TreeExplainer, TreeModel
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.types import Model
 
