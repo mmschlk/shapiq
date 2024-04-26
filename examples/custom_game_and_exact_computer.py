@@ -20,6 +20,15 @@ class MyGame(Game):
         self.baseline_value = np.random.random()
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+        """This function is mandatory and defines the logic of the game by returning the worth of all coalitions.
+
+        Args:
+            coalitions: A binary matrix of shapley (n_coalitions, n_players) indicating the presence of the players.
+
+        Returns:
+            The worth of all coalitions.
+        """
+        # Insert your custom logic here
         worth = np.sum(coalitions, axis=1) / self.n_players
         worth[
             np.sum(coalitions[:, self.interaction_tuple], axis=1) == len(self.interaction_tuple)
