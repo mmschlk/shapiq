@@ -4,8 +4,8 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 from scipy.stats import mode
-from utils import Model
 
+from ....utils.types import Model
 from ...base import Game
 
 
