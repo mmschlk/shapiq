@@ -3,22 +3,42 @@
 import numpy as np
 import pytest
 
+# old tree_shap_iq
 from shapiq.approximator.montecarlo import SHAPIQ
+from shapiq.exact import ExactComputer
+
+# own treeshap_iq
 from shapiq.games import Game
-from shapiq.games.benchmark import TreeSHAPIQXAI
+from shapiq.games.benchmark import CaliforniaHousingTreeSHAPIQXAI, TreeSHAPIQXAI
 from shapiq.utils.sets import powerset
 
 
+@pytest.mark.parametrize("task", ["clf", "reg"])
 @pytest.mark.parametrize("max_order", [2, 3])
 @pytest.mark.parametrize("index", ["k-SII", "SII", "STII"])
-def test_random_forest_selection(index, max_order, dt_clf_model, background_clf_dataset):
+def test_random_forest_selection(
+    index,
+    max_order,
+    task,
+    dt_clf_model,
+    dt_reg_model,
+    background_clf_dataset,
+    background_reg_dataset,
+):
     """Tests the base TreeSHAP-IQ explanation game."""
 
     # start with classification model
-    model = dt_clf_model
-    data, target = background_clf_dataset
-    x_explain = data[0]
-    class_label = int(target[0])
+    if task == "clf":
+        model = dt_clf_model
+        data, target = background_clf_dataset
+        class_label = int(target[0])
+        x_explain = data[0]
+    else:
+        model = dt_reg_model
+        data, target = background_reg_dataset
+        class_label = None
+        x_explain = data[0]
+
     min_order = 1 if index not in ["STII", "FSII"] else max_order
 
     game = TreeSHAPIQXAI(
@@ -55,8 +75,13 @@ def test_random_forest_selection(index, max_order, dt_clf_model, background_clf_
     assert estimates.estimation_budget <= budget and not estimates.estimated
     assert estimates.index == index
 
+    # test against the exact computation
+    exact = ExactComputer(n_players=n_players, game_fun=game)
+    exact_values = exact(index=index, order=max_order)
+
     for interaction in powerset(range(n_players), min_size=min_order, max_size=max_order):
         assert np.isclose(estimates[interaction], gt_interaction_values[interaction])
+        assert np.isclose(exact_values[interaction], gt_interaction_values[interaction])
 
 
 def test_adult():
@@ -66,7 +91,27 @@ def test_adult():
 
 def test_california():
     """Test the CaliforniaHousing TreeSHAP-IQ explanation game."""
-    raise NotImplementedError("TODO: Implement this test!")
+    max_order = 2
+    min_order = 1
+    index = "SII"
+
+    # benchmark game
+    game = CaliforniaHousingTreeSHAPIQXAI(
+        x=1,
+        model_name="decision_tree",
+        index=index,
+        max_order=max_order,
+        min_order=min_order,
+        normalize=False,
+    )
+    gt_interaction_values = game.gt_interaction_values
+
+    # test against the exact computation
+    exact = ExactComputer(n_players=game.n_players, game_fun=game)
+    exact_values = exact(index=index, order=max_order)
+
+    for interaction in powerset(range(game.n_players), min_size=min_order, max_size=max_order):
+        assert np.isclose(exact_values[interaction], gt_interaction_values[interaction])
 
 
 def test_bike():

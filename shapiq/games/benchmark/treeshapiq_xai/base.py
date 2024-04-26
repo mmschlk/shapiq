@@ -1,5 +1,6 @@
 """This module contains the base TreeSHAP-IQ xai game."""
 
+import copy
 from typing import Optional
 
 import numpy as np
@@ -24,6 +25,8 @@ class TreeSHAPIQXAI(Game):
         normalize: bool = True,
     ) -> None:
         n_players = x.shape[-1]
+
+        self.model = copy.deepcopy(tree_model)
 
         # set up explainer for ground truth explanation
         self._tree_explainer = TreeExplainer(
