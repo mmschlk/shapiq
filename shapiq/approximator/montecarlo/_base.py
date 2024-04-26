@@ -95,7 +95,6 @@ class MonteCarlo(Approximator):
             index_approximation=index_approximation,
         )
 
-        # TODO (Fabi) is this ok and always there?
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
         return self._finalize_result(
