@@ -13,6 +13,20 @@ from ...base import Game
 
 
 class TreeSHAPIQXAI(Game):
+    """A TreeSHAP-IQ explanation game for tree models.
+
+    The game is based on the TreeSHAP-IQ algorithm and is used to explain the predictions of tree
+    models. TreeSHAP-IQ is used to compute Shapley interaction values for tree models.
+
+    Args:
+        x: The feature vector to be explained.
+        tree_model: The tree model to be explained.
+        index: The type of interaction index to be computed. The default value is "k-SII".
+        class_label: The class label to be explained. The default value is None.
+        max_order: The maximum order of interactions to be computed. The default value is 2.
+        min_order: The minimum order of interactions to be computed. The default value is 1.
+        normalize: A boolean flag to normalize/center the game values. The default value is True.
+    """
 
     def __init__(
         self,

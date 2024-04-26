@@ -47,6 +47,8 @@ from .synthetic.soum import SOUM, UnanimityGame
 
 # treeshap-iq explanation games
 from .treeshapiq_xai.base import TreeSHAPIQXAI
+from .treeshapiq_xai.benchmark import AdultCensus as AdultCensusTreeSHAPIQXAI
+from .treeshapiq_xai.benchmark import BikeSharing as BikeSharingTreeSHAPIQXAI
 from .treeshapiq_xai.benchmark import CaliforniaHousing as CaliforniaHousingTreeSHAPIQXAI
 
 # cluster explanation games
@@ -106,6 +108,8 @@ __all__ = [
     "CaliforniaHousingUnsupervisedData",
     # treeshapiq_xai games
     "TreeSHAPIQXAI",
+    "AdultCensusTreeSHAPIQXAI",
+    "BikeSharingTreeSHAPIQXAI",
     "CaliforniaHousingTreeSHAPIQXAI",
     # synthetic games
     "DummyGame",
