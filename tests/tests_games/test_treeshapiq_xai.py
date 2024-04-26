@@ -3,13 +3,15 @@
 import numpy as np
 import pytest
 
-# old tree_shap_iq
 from shapiq.approximator.montecarlo import SHAPIQ
 from shapiq.exact import ExactComputer
-
-# own treeshap_iq
 from shapiq.games import Game
-from shapiq.games.benchmark import CaliforniaHousingTreeSHAPIQXAI, TreeSHAPIQXAI
+from shapiq.games.benchmark import (
+    AdultCensusTreeSHAPIQXAI,
+    BikeSharingTreeSHAPIQXAI,
+    CaliforniaHousingTreeSHAPIQXAI,
+    TreeSHAPIQXAI,
+)
 from shapiq.utils.sets import powerset
 
 
@@ -86,7 +88,27 @@ def test_random_forest_selection(
 
 def test_adult():
     """Test the AdultCensus TreeSHAP-IQ explanation game."""
-    raise NotImplementedError("TODO: Implement this test!")
+    max_order = 2
+    min_order = 1
+    index = "SII"
+
+    # benchmark game
+    game = AdultCensusTreeSHAPIQXAI(
+        x=1,
+        model_name="decision_tree",
+        index=index,
+        max_order=max_order,
+        min_order=min_order,
+        normalize=False,
+    )
+    gt_interaction_values = game.gt_interaction_values
+
+    # test against the exact computation
+    exact = ExactComputer(n_players=game.n_players, game_fun=game)
+    exact_values = exact(index=index, order=max_order)
+
+    for interaction in powerset(range(game.n_players), min_size=min_order, max_size=max_order):
+        assert np.isclose(exact_values[interaction], gt_interaction_values[interaction])
 
 
 def test_california():
@@ -116,4 +138,24 @@ def test_california():
 
 def test_bike():
     """Test the BikeSharing TreeSHAP-IQ explanation game."""
-    raise NotImplementedError("TODO: Implement this test!")
+    max_order = 2
+    min_order = 1
+    index = "SII"
+
+    # benchmark game
+    game = BikeSharingTreeSHAPIQXAI(
+        x=1,
+        model_name="decision_tree",
+        index=index,
+        max_order=max_order,
+        min_order=min_order,
+        normalize=False,
+    )
+    gt_interaction_values = game.gt_interaction_values
+
+    # test against the exact computation
+    exact = ExactComputer(n_players=game.n_players, game_fun=game)
+    exact_values = exact(index=index, order=max_order)
+
+    for interaction in powerset(range(game.n_players), min_size=min_order, max_size=max_order):
+        assert np.isclose(exact_values[interaction], gt_interaction_values[interaction])
