@@ -72,4 +72,4 @@ if __name__ == "__main__":
     # Print Shapley values
     print("Shapley values: ", shapley_values)
     # Print pairwise Shapley interactions
-    print("Shapley values: ", shapley_interactions)
+    print("Shapley interactions: ", shapley_interactions)
