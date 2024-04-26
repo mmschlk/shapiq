@@ -347,7 +347,7 @@ class TreeSHAPIQ:
                         D_power = self.D_powers[self._n_features_in_tree - current_height]
                         index_quotient = self._n_features_in_tree - order
                     else:  # for SII and k-SII
-                        D_power = self.D_powers[ancestor_heights - current_height].astype(int)
+                        D_power = self.D_powers[ancestor_heights - current_height]
                         index_quotient = ancestor_heights - order
                     update = np.dot(
                         interaction_poly_down[depth - 1, interactions_with_ancestor_to_update],
