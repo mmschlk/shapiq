@@ -73,7 +73,7 @@ class LocalExplanation(Game):
     ) -> None:
 
         # get x_explain
-        self.x = x if x is not None else get_x_explain(x, data)
+        self.x = get_x_explain(x, data)
 
         # init the imputer which serves as the workhorse of this Game
         self._imputer = imputer
