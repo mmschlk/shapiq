@@ -31,7 +31,7 @@ class PermutationSamplingSII(Approximator):
     def __init__(
         self,
         n: int,
-        max_order: int,
+        max_order: int = 2,
         index: str = "SII",
         top_order: bool = False,
         random_state: Optional[int] = None,

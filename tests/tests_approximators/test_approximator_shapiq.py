@@ -23,12 +23,13 @@ from shapiq.interaction_values import InteractionValues
 )
 def test_initialization(n, max_order, index, top_order):
     """Tests the initialization of the ShapIQ approximator."""
-    try:
-        approximator = SHAPIQ(n, max_order, index=index, top_order=top_order)
-    except ValueError:
-        if index == "FSII" and not top_order:
-            return
-        raise
+
+    if index == "FSII" and not top_order:
+        with pytest.raises(ValueError):
+            _ = SHAPIQ(n, max_order, index=index, top_order=top_order)
+        return
+
+    approximator = SHAPIQ(n, max_order, index=index, top_order=top_order)
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order is top_order

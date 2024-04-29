@@ -193,9 +193,9 @@ class Regression(Approximator):
                     )
                 ):
                     intersection_size = np.sum(coalition[list(interaction)])
-                    regression_matrix[
-                        coalition_pos, interaction_pos
-                    ] = regression_coefficient_weight[interaction_size, intersection_size]
+                    regression_matrix[coalition_pos, interaction_pos] = (
+                        regression_coefficient_weight[interaction_size, intersection_size]
+                    )
 
             # Regression weights adjusted by sampling weights
             regression_weights = (
@@ -429,10 +429,10 @@ class Regression(Approximator):
         # Pre-compute weights
         for coalition_size_pos, coalition_size in enumerate(coalition_sizes):
             for intersection_size in range(min(coalition_size, interaction_size) + 1):
-                ground_truth_sii_weights[
-                    coalition_size_pos, intersection_size
-                ] = self._ground_truth_sii_weight(
-                    coalition_size, interaction_size, intersection_size
+                ground_truth_sii_weights[coalition_size_pos, intersection_size] = (
+                    self._ground_truth_sii_weight(
+                        coalition_size, interaction_size, intersection_size
+                    )
                 )
 
         # Compute ground truth weights

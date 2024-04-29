@@ -35,7 +35,7 @@ class SVARMIQ(MonteCarlo):
     def __init__(
         self,
         n: int,
-        max_order: int,
+        max_order: int = 2,
         index: str = "k-SII",
         top_order: bool = False,
         pairing_trick: bool = False,
