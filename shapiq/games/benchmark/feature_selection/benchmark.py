@@ -2,10 +2,10 @@
 
 from shapiq.games.benchmark._setup import BenchmarkSetup
 
-from .base import FeatureSelectionGame
+from .base import FeatureSelection
 
 
-class AdultCensus(FeatureSelectionGame):
+class AdultCensus(FeatureSelection):
     """The Adult Census dataset as a Feature Selection benchmark game."""
 
     def __init__(self, model_name: str, normalize: bool = True, verbose: bool = True) -> None:
@@ -27,7 +27,7 @@ class AdultCensus(FeatureSelectionGame):
         )
 
 
-class BikeSharing(FeatureSelectionGame):
+class BikeSharing(FeatureSelection):
     """The Bike Sharing dataset as a Feature Selection benchmark game."""
 
     def __init__(self, model_name: str, normalize: bool = True, verbose: bool = True) -> None:
@@ -48,7 +48,7 @@ class BikeSharing(FeatureSelectionGame):
         )
 
 
-class CaliforniaHousing(FeatureSelectionGame):
+class CaliforniaHousing(FeatureSelection):
     """The California Housing dataset as a Feature Selection benchmark game."""
 
     def __init__(self, model_name: str, normalize: bool = True, verbose: bool = True) -> None:
