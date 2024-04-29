@@ -66,6 +66,7 @@ def test_adult_census(model):
 
     game_n_players = 14
     x_explain_id = 1
+    game_name = "AdultCensus(LocalExplanation)"
 
     if model == "invalid":
         with pytest.raises(ValueError):
@@ -74,6 +75,7 @@ def test_adult_census(model):
 
     game = AdultCensusLocalXAI(x=x_explain_id, model_name=model)
     assert game.n_players == game_n_players
+    assert game.game_name == game_name
 
     test_coalitions_precompute = np.array(
         [
@@ -101,6 +103,7 @@ def test_california_housing(model):
 
     game_n_players = 8
     x_id = 0
+    game_name = "CaliforniaHousing(LocalExplanation)"
 
     if model == "invalid":
         with pytest.raises(ValueError):
@@ -109,6 +112,7 @@ def test_california_housing(model):
 
     game = CaliforniaHousingLocalXAI(x=x_id, model_name=model)
     assert game.n_players == game_n_players
+    assert game.game_name == game_name
 
     test_coalitions = np.array(
         [
@@ -132,6 +136,7 @@ def test_bike_sharing(model):
 
     game_n_players = 12
     x_explain_id = 0
+    game_name = "BikeSharing(LocalExplanation)"
 
     if model == "invalid":
         with pytest.raises(ValueError):
@@ -140,6 +145,7 @@ def test_bike_sharing(model):
 
     game = BikeSharingLocalXAI(x=x_explain_id, model_name=model)
     assert game.n_players == game_n_players
+    assert game.game_name == game_name
 
     test_coalitions_precompute = np.array(
         [
@@ -165,6 +171,7 @@ def test_sentiment_classifier(mask_strategy):
     )
 
     assert game.n_players == n_players
+    assert game.game_name == "SentimentAnalysis(Game)"
     assert game.original_input_text == input_text
     assert game.original_model_output == game._full_output
 
@@ -220,6 +227,7 @@ def test_image_classifier_game_resnet(test_image_and_path):
         model_name="resnet_18", verbose=True, x_explain_path=path_from_test_root
     )
     assert game.n_players == 14
+    assert game.game_name == "ImageClassifier(Game)"
     assert game.normalization_value == game.model_function.empty_value
     assert game.normalize  # should be True as empty value is around 0.005 and not 0
     grand_coal_output = game(game.grand_coalition)

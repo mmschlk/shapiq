@@ -22,7 +22,7 @@ from .ensemble_selection.benchmark_random_forest import (
 )
 
 # feature selection games
-from .feature_selection.base import FeatureSelectionGame
+from .feature_selection.base import FeatureSelection
 from .feature_selection.benchmark import AdultCensus as AdultCensusFeatureSelection
 from .feature_selection.benchmark import BikeSharing as BikeSharingFeatureSelection
 from .feature_selection.benchmark import CaliforniaHousing as CaliforniaHousingFeatureSelection
@@ -77,7 +77,7 @@ __all__ = [
     "BikeSharingDatasetValuation",
     "CaliforniaHousingDatasetValuation",
     # feature_selection games
-    "FeatureSelectionGame",
+    "FeatureSelection",
     "AdultCensusFeatureSelection",
     "BikeSharingFeatureSelection",
     "CaliforniaHousingFeatureSelection",

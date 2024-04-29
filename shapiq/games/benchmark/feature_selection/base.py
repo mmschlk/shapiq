@@ -7,7 +7,7 @@ import numpy as np
 from shapiq.games.base import Game
 
 
-class FeatureSelectionGame(Game):
+class FeatureSelection(Game):
     """The FeatureSelection game.
 
     The `FeatureSelectionGame` is a game that evaluates the goodness of fit of a model on a subset

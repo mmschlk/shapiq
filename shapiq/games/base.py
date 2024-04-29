@@ -134,6 +134,15 @@ class Game(ABC):
         """Indication whether the game values are normalized."""
         return self.normalization_value != 0
 
+    @property
+    def game_name(self) -> str:
+        """The name of the game."""
+        # get name of first two classes in the inheritance hierarchy
+        name = self.__class__.__name__
+        if self.__class__.__bases__:
+            name += f"({self.__class__.__bases__[0].__name__})"
+        return name
+
     def __call__(self, coalitions: np.ndarray) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
         value function.
