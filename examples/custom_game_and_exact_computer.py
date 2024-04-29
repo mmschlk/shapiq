@@ -12,7 +12,7 @@ class MyGame(Game):
     """
 
     def __init__(self, n_players):
-        super().__init__(n_players=n_players, normalize=False)
+        super().__init__(n_players=n_players, normalize=False, verbose=True)
         self.interaction_tuple = tuple(
             np.random.choice(self.n_players, size=min(self.n_players, 2), replace=False)
         )

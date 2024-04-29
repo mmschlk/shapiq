@@ -1,11 +1,13 @@
 """This module contains the base class for all games in the shapiq package."""
 
+import os
 import pickle
 import warnings
 from abc import ABC
 from typing import Optional
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from shapiq.utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
 
@@ -24,11 +26,15 @@ class Game(ABC):
             center the game. If no value is provided, the game raises a warning.
         path_to_values: The path to load the game values from. If the path is provided, the game
             values are loaded from the given path. Defaults to `None`.
+        verbose: Whether to show a progress bar for the evaluation. Defaults to `False`. Note
+            that this only has an effect if the game is not precomputed and may slow down the
+            evaluation.
 
     Properties:
         n_values_stored: The number of values stored in the game.
         precomputed: Indication whether the game has been precomputed.
         normalize: Indication whether the game values are normalized.
+        game_name: The name of the game.
 
     Attributes:
         precompute_flag: A flag to manually override the precomputed check. If set to `True`, the
@@ -40,6 +46,7 @@ class Game(ABC):
         normalization_value: The value to normalize and center the game values with.
         empty_coalition: The empty coalition of the game.
         grand_coalition: The grand coalition of the game.
+        verbose: Whether to show a progress bar for the evaluation.
 
     Note:
         This class is a base class and all games should inherit from this class and implement the
@@ -83,6 +90,7 @@ class Game(ABC):
         normalize: bool = True,
         normalization_value: Optional[float] = None,
         path_to_values: Optional[str] = None,
+        verbose: bool = False,
     ) -> None:
         # manual flag for choosing precomputed values even if not all values might be stored
         self.precompute_flag: bool = False  # flag to manually override the precomputed check
@@ -115,9 +123,13 @@ class Game(ABC):
         # define some handy coalition variables
         self.empty_coalition = np.zeros(n_players, dtype=bool)
         self.grand_coalition = np.ones(n_players, dtype=bool)
+        self.game_id: str = str(hash(self))[:8]
 
         if path_to_values is not None:
             self.load_values(path_to_values, precomputed=True)
+            self.game_id = path_to_values.split(os.path.sep)[-1].split(".")[0]
+
+        self.verbose = verbose
 
     @property
     def n_values_stored(self) -> int:
@@ -143,12 +155,13 @@ class Game(ABC):
             name += f"({self.__class__.__bases__[0].__name__})"
         return name
 
-    def __call__(self, coalitions: np.ndarray) -> np.ndarray:
+    def __call__(self, coalitions: np.ndarray, verbose: bool = False) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
         value function.
 
         Args:
             coalitions: The coalitions to evaluate.
+            verbose: Whether to show a progress bar for the evaluation. Defaults to `False`.
 
         Returns:
             The values of the coalitions.
@@ -157,8 +170,17 @@ class Game(ABC):
         if coalitions.ndim == 1:
             coalitions = coalitions.reshape((1, self.n_players))
 
-        if not self.precomputed:
+        verbose = verbose or self.verbose
+
+        if not self.precomputed and not verbose:
             values = self.value_function(coalitions)
+        elif not self.precomputed and verbose:
+            values = np.zeros(coalitions.shape[0], dtype=float)
+            for i, coalition in enumerate(
+                tqdm(coalitions, desc="Evaluating game", unit=" coalition")
+            ):
+                coalition = coalition.reshape((1, self.n_players))
+                values[i] = self.value_function(coalition)
         else:
             values = self._lookup_coalitions(coalitions)  # lookup the values present in the storage
 
@@ -340,3 +362,25 @@ class Game(ABC):
     def __str__(self) -> str:
         """Return a string representation of the game."""
         return self.__repr__()
+
+    def exact_values(self, index: str, order: int):  # TODO add type hint
+        """Uses the ExactComputer to compute the exact interaction values.
+
+        Args:
+            index: The index to compute the interaction values for. Choose from `{"SII", "k-SII"}`.
+            order: The maximum order of the interaction values.
+
+        Returns:
+            InteractionValues: The exact interaction values.
+        """
+        from ..exact import ExactComputer
+
+        # raise warning if the game is not precomputed and n_players > 16
+        if not self.precomputed and self.n_players > 16:
+            warnings.warn(
+                "The game is not precomputed and the number of players is greater than 16. "
+                "Computing the exact interaction values via brute force might take a long time."
+            )
+
+        exact_computer = ExactComputer(self.n_players, game_fun=self)
+        return exact_computer(index=index, order=order)
