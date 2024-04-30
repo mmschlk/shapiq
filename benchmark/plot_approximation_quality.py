@@ -66,7 +66,7 @@ def plot_curves(metric_values: pd.DataFrame, metric: str = "MSE") -> tuple[plt.F
                 data_order["budget"],
                 data_order[metric]["mean"] - data_order[metric]["std"],
                 data_order[metric]["mean"] + data_order[metric]["std"],
-                alpha=0.2,
+                alpha=0.0,
                 color=get_color(str(approximator)),
             )
 
@@ -78,21 +78,21 @@ if __name__ == "__main__":
     GAME_NAME = "Language Model"
 
     data = pd.read_csv("results.csv")
-    metric = "Precision@k"  # "MSE"
+    metric = "MSE"  # "MSE"
 
-    # groub metric_value by budget and approximator
     metric_data = (
-        data.groupby(by=["budget", "approximator", "order"])
-        .agg({metric: ["mean", "std", "median", "min", "max"]})
+        data.groupby(["approximator", "order", "budget"])
+        .agg({metric: ["mean", "std"]})
         .reset_index()
     )
 
     fig, ax = plot_curves(metric_data, metric=metric)
 
     # set ylim to (0, 1.4e-3)
+    ax.set_ylim(0, 0.01)
     ax.set_xlabel("Budget")
-    ax.set_ylabel("MSE")
-    ax.legend()
+    ax.set_ylabel(metric)
+    # ax.legend()
     ax.set_title(GAME_NAME)
 
     plt.show()

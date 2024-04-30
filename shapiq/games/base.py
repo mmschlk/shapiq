@@ -120,14 +120,14 @@ class Game(ABC):
                     )
                 )
 
-        # define some handy coalition variables
-        self.empty_coalition = np.zeros(n_players, dtype=bool)
-        self.grand_coalition = np.ones(n_players, dtype=bool)
-        self.game_id: str = str(hash(self))[:8]
-
         if path_to_values is not None:
             self.load_values(path_to_values, precomputed=True)
             self.game_id = path_to_values.split(os.path.sep)[-1].split(".")[0]
+
+        # define some handy coalition variables
+        self.empty_coalition = np.zeros(self.n_players, dtype=bool)
+        self.grand_coalition = np.ones(self.n_players, dtype=bool)
+        self.game_id: str = str(hash(self))[:8]
 
         self.verbose = verbose
 
