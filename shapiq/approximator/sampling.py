@@ -128,15 +128,15 @@ class CoalitionSampler:
         # variables accessible through properties
         self._sampled_coalitions_matrix: Optional[np.ndarray[bool]] = None  # coalitions
         self._sampled_coalitions_counter: Optional[np.ndarray[int]] = None  # coalitions_counter
-        self._sampled_coalitions_size_prob: Optional[np.ndarray[float]] = (
-            None  # coalitions_size_probability
-        )
-        self._sampled_coalitions_in_size_prob: Optional[np.ndarray[float]] = (
-            None  # coalitions_in_size_probability
-        )
-        self._is_coalition_size_sampled: Optional[np.ndarray[bool]] = (
-            None  # is_coalition_size_sampled
-        )
+        self._sampled_coalitions_size_prob: Optional[
+            np.ndarray[float]
+        ] = None  # coalitions_size_probability
+        self._sampled_coalitions_in_size_prob: Optional[
+            np.ndarray[float]
+        ] = None  # coalitions_in_size_probability
+        self._is_coalition_size_sampled: Optional[
+            np.ndarray[bool]
+        ] = None  # is_coalition_size_sampled
 
         self.sampled = False
 
@@ -212,7 +212,9 @@ class CoalitionSampler:
             An array containing the probabilities of shappe (n+1,)
         """
         size_probs = np.zeros(self.n + 1)
-        size_probs[self._coalitions_to_sample] = self.adjusted_sampling_weights
+        size_probs[self._coalitions_to_sample] = self.adjusted_sampling_weights / np.sum(
+            self.adjusted_sampling_weights
+        )
         return size_probs
 
     @property

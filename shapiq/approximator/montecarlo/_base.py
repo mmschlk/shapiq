@@ -178,6 +178,8 @@ class MonteCarlo(Approximator):
         """
         sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
         interaction_size = len(interaction)
+        interaction_binary = np.zeros(self.n, dtype=int)
+        interaction_binary[list(interaction)] = 1
         # Stratify by intersection, but not by coalition size
         for intersection in powerset(interaction):
             # Stratify by intersection of coalition and interaction
@@ -185,9 +187,11 @@ class MonteCarlo(Approximator):
             intersection_binary = np.zeros(self.n, dtype=int)
             intersection_binary[list(intersection)] = 1
             # Compute current stratum
-            in_stratum = np.prod(self._sampler.coalitions_matrix == intersection_binary, axis=1)
+            in_stratum = np.prod(
+                self._sampler.coalitions_matrix * interaction_binary == intersection_binary, axis=1
+            )
             # Flag all coalitions that belong to the stratum and are sampled
-            in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
+            in_stratum_and_sampled = (in_stratum * self._sampler.is_coalition_sampled).astype(bool)
             # Compute probabilities for a sample to be placed in this stratum
             stratum_probabilities = np.ones(self._sampler.n_coalitions)
             stratum_probability = 0
@@ -233,7 +237,7 @@ class MonteCarlo(Approximator):
         for size_stratum in size_strata:
             # Stratify by coalition size
             in_stratum = self._sampler.coalitions_size == size_stratum
-            in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
+            in_stratum_and_sampled = (in_stratum * self._sampler.is_coalition_sampled).astype(bool)
             stratum_probabilities = np.ones(self._sampler.n_coalitions)
             # set probabilities as 1 or the number of coalitions with a coalition size
             stratum_probabilities[in_stratum_and_sampled] = 1 / binom(
@@ -263,6 +267,8 @@ class MonteCarlo(Approximator):
         """
         sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
         interaction_size = len(interaction)
+        interaction_binary = np.zeros(self.n, dtype=int)
+        interaction_binary[list(interaction)] = 1
         size_strata = np.unique(self._sampler.coalitions_size)
         for intersection in powerset(interaction):
             # stratify by intersection for interaction and coalition
@@ -271,14 +277,16 @@ class MonteCarlo(Approximator):
             intersection_binary[list(intersection)] = 1
             # Compute current intersection stratum
             in_intersection_stratum = np.prod(
-                self._sampler.coalitions_matrix == intersection_binary, axis=1
-            )
+                self._sampler.coalitions_matrix * interaction_binary == intersection_binary, axis=1
+            ).astype(bool)
             for size_stratum in size_strata:
                 # compute current intersection-coalition-size stratum
-                in_stratum = in_intersection_stratum * (
-                    self._sampler.coalitions_size == size_stratum
+                in_stratum = (
+                    in_intersection_stratum * (self._sampler.coalitions_size == size_stratum)
+                ).astype(bool)
+                in_stratum_and_sampled = (in_stratum * self._sampler.is_coalition_sampled).astype(
+                    bool
                 )
-                in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
                 stratum_probabilities = np.ones(self._sampler.n_coalitions)  # default prob. are 1
                 # set stratum probabilities (without size probabilities, since they cancel with
                 # coalitions size probabilities): stratum probabilities are number of coalitions
@@ -286,8 +294,8 @@ class MonteCarlo(Approximator):
                 # coalitions of size coalition_size
                 stratum_probabilities[in_stratum_and_sampled] = binom(
                     self.n - interaction_size,
-                    self._sampler.coalitions_size[in_stratum_and_sampled] - intersection_size,
-                ) / binom(self.n, self._sampler.coalitions_size[in_stratum_and_sampled])
+                    size_stratum - intersection_size,
+                )
                 # Get sampled coalitions per stratum
                 stratum_n_samples = np.sum(self._sampler.coalitions_counter[in_stratum_and_sampled])
                 n_samples_helper = np.array([1, stratum_n_samples])
@@ -296,10 +304,7 @@ class MonteCarlo(Approximator):
                 sampling_adjustment_weights[in_stratum] = (
                     self._sampler.coalitions_counter[in_stratum]
                     * stratum_probabilities[in_stratum]
-                    / (
-                        coalitions_n_samples[in_stratum]
-                        * self._sampler.coalitions_in_size_probability[in_stratum]
-                    )
+                    / (coalitions_n_samples[in_stratum])
                 )
         return sampling_adjustment_weights
 
