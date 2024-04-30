@@ -237,7 +237,7 @@ class CoalitionSampler:
             self._sampled_coalitions_size_prob is not None
             and self._sampled_coalitions_in_size_prob is not None
         ):
-            return self._sampled_coalitions_size_prob
+            return self._sampled_coalitions_size_prob * self._sampled_coalitions_in_size_prob
 
     @property
     def coalitions_size_probability(self) -> np.ndarray:
