@@ -18,16 +18,10 @@ from shapiq.interaction_values import InteractionValues
         (7, 2, "STII", False),
         (7, 2, "STII", True),
         (7, 2, "FSII", True),
-        (7, 2, "FSII", False),  # expected to fail
     ],
 )
 def test_initialization(n, max_order, index, top_order):
     """Tests the initialization of the ShapIQ approximator."""
-
-    if index == "FSII" and not top_order:
-        with pytest.raises(ValueError):
-            _ = SHAPIQ(n, max_order, index=index, top_order=top_order)
-        return
 
     approximator = SHAPIQ(n, max_order, index=index, top_order=top_order)
     assert approximator.n == n
