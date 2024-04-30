@@ -48,7 +48,7 @@ def plot_curves(metric_values: pd.DataFrame, metric: str = "MSE") -> tuple[plt.F
     Returns:
         The figure and axes of the plot.
     """
-    fig, ax = plt.subplots(figsize=(6, 6))
+    fig, ax = plt.subplots()
 
     for approximator, data in metric_values.groupby("approximator"):
         data = data.reset_index()
@@ -86,13 +86,20 @@ if __name__ == "__main__":
         .reset_index()
     )
 
+    params = {
+        "legend.fontsize": "x-large",
+        "figure.figsize": (6, 7),
+        "axes.labelsize": "x-large",
+        "axes.titlesize": "x-large",
+        "xtick.labelsize": "x-large",
+        "ytick.labelsize": "x-large",
+    }
+    plt.rcParams.update(params)
     fig, ax = plot_curves(metric_data, metric=metric)
 
-    # set ylim to (0, 1.4e-3)
     ax.set_ylim(0, 0.01)
     ax.set_xlabel("Budget")
     ax.set_ylabel(metric)
-    # ax.legend()
     ax.set_title(GAME_NAME)
 
     plt.show()
