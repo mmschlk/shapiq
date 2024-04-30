@@ -21,6 +21,7 @@ COLORS = {
 }
 
 LINE_STYLES_ORDER = {0: "solid", 1: "dotted", 2: "solid", 3: "dashed", 4: "dashdot"}
+LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "s", 3: "X", 4: "d"}
 
 
 def get_color(approximator: Union[str, Approximator]) -> str:
@@ -53,13 +54,17 @@ def plot_curves(metric_values: pd.DataFrame, metric: str = "MSE") -> tuple[plt.F
     for approximator, data in metric_values.groupby("approximator"):
         data = data.reset_index()
         for order, data_order in data.groupby("order"):
-            line_style = LINE_STYLES_ORDER[int(order)]
+            order = int(order)
+            line_style = LINE_STYLES_ORDER[order]
+            line_marker = LINE_MARKERS_ORDER[order]
             ax.plot(
                 data_order["budget"],
                 data_order[metric]["mean"],
                 label=approximator,
                 color=get_color(str(approximator)),
                 linestyle=line_style,
+                marker=line_marker,
+                mec="white",
             )
             # plot the error bars
             ax.fill_between(
