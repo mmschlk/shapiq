@@ -189,9 +189,9 @@ class MonteCarlo(Approximator):
             # Compute current stratum
             in_stratum = np.prod(
                 self._sampler.coalitions_matrix * interaction_binary == intersection_binary, axis=1
-            )
+            ).astype(bool)
             # Flag all coalitions that belong to the stratum and are sampled
-            in_stratum_and_sampled = (in_stratum * self._sampler.is_coalition_sampled).astype(bool)
+            in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
             # Compute probabilities for a sample to be placed in this stratum
             stratum_probabilities = np.ones(self._sampler.n_coalitions)
             stratum_probability = 0
@@ -237,7 +237,7 @@ class MonteCarlo(Approximator):
         for size_stratum in size_strata:
             # Stratify by coalition size
             in_stratum = self._sampler.coalitions_size == size_stratum
-            in_stratum_and_sampled = (in_stratum * self._sampler.is_coalition_sampled).astype(bool)
+            in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
             stratum_probabilities = np.ones(self._sampler.n_coalitions)
             # set probabilities as 1 or the number of coalitions with a coalition size
             stratum_probabilities[in_stratum_and_sampled] = 1 / binom(
@@ -281,12 +281,10 @@ class MonteCarlo(Approximator):
             ).astype(bool)
             for size_stratum in size_strata:
                 # compute current intersection-coalition-size stratum
-                in_stratum = (
-                    in_intersection_stratum * (self._sampler.coalitions_size == size_stratum)
-                ).astype(bool)
-                in_stratum_and_sampled = (in_stratum * self._sampler.is_coalition_sampled).astype(
-                    bool
+                in_stratum = in_intersection_stratum * (
+                    self._sampler.coalitions_size == size_stratum
                 )
+                in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
                 stratum_probabilities = np.ones(self._sampler.n_coalitions)  # default prob. are 1
                 # set stratum probabilities (without size probabilities, since they cancel with
                 # coalitions size probabilities): stratum probabilities are number of coalitions
