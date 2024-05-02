@@ -1,10 +1,45 @@
+"""Pre-compute the values for the games and store them in a file."""
+
 import multiprocessing as mp
 import os
 from typing import Optional
 
-from tqdm.asyncio import tqdm
+from tqdm.auto import tqdm
 
-from shapiq.games import Game
+from ..base import Game
+
+__all__ = [
+    "pre_compute_and_store",
+    "pre_compute_and_store_from_list",
+    "SHAPIQ_DATA_DIR",
+    "get_game_files",
+]
+
+
+SHAPIQ_DATA_DIR = os.path.join(os.path.dirname(__file__), "precomputed")
+
+
+def get_game_files(game: Game.__class__, n_players: int) -> list[str]:
+    """Get the files for the given game and number of players.
+
+    Args:
+        game: The game to get the files for.
+        n_players: The number of players in the game.
+
+    Returns:
+        The list of files for the given game and number of players.
+    """
+    game_name = game.__name__
+    try:
+        game_name = game_name + "(" + game.__mro__.__name__ + ")"
+        # TODO: fix tomorrow that
+    except AttributeError:
+        pass
+    save_dir = os.path.join(SHAPIQ_DATA_DIR, game_name, str(n_players))
+    try:
+        return os.listdir(save_dir)
+    except FileNotFoundError:
+        return []
 
 
 def pre_compute_and_store(
@@ -23,7 +58,9 @@ def pre_compute_and_store(
     """
 
     if save_dir is None:
-        save_dir = os.path.join(os.getcwd(), game.game_name, str(game.n_players))
+        # this file path
+        save_dir = os.path.dirname(__file__)
+        save_dir = os.path.join(save_dir, "precomputed", game.game_name, str(game.n_players))
     else:  # check if n_players is in the path
         if str(game.n_players) not in save_dir:
             save_dir = os.path.join(save_dir, str(game.n_players))

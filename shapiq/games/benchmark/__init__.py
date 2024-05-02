@@ -41,6 +41,26 @@ from .local_xai.benchmark_tabular import AdultCensus as AdultCensusLocalXAI
 from .local_xai.benchmark_tabular import BikeSharing as BikeSharingLocalXAI
 from .local_xai.benchmark_tabular import CaliforniaHousing as CaliforniaHousingLocalXAI
 
+# metrics
+from .metrics import (
+    compute_kendall_tau,
+    compute_mae,
+    compute_mse,
+    compute_precision_at_k,
+    get_all_metrics,
+)
+
+# precompute util functions
+from .precompute import (
+    SHAPIQ_DATA_DIR,
+    get_game_files,
+    pre_compute_and_store,
+    pre_compute_and_store_from_list,
+)
+
+# util functions
+from .run import run_benchmark, save_results
+
 # synthetic games
 from .synthetic.dummy import DummyGame
 from .synthetic.soum import SOUM, UnanimityGame
@@ -64,6 +84,19 @@ from .unsupervised_data.benchmark import BikeSharing as BikeSharingUnsupervisedD
 from .unsupervised_data.benchmark import CaliforniaHousing as CaliforniaHousingUnsupervisedData
 
 __all__ = [
+    # util functions
+    "run_benchmark",
+    "save_results",
+    "pre_compute_and_store",
+    "pre_compute_and_store_from_list",
+    "SHAPIQ_DATA_DIR",
+    "get_game_files",
+    # all metrics
+    "get_all_metrics",
+    "compute_mae",
+    "compute_mse",
+    "compute_kendall_tau",
+    "compute_precision_at_k",
     # local_xai games
     "LocalExplanation",
     "AdultCensusLocalXAI",

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from ..setup import GameBenchmarkSetup
+from .._config import GameBenchmarkSetup
 from .base import EnsembleSelection
 
 

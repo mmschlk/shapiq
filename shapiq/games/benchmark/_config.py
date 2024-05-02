@@ -5,8 +5,8 @@ from typing import Optional, Union
 
 import numpy as np
 
-from shapiq.utils import Model
-from shapiq.utils.datasets import shuffle_data
+from ...utils import Model
+from ...utils.datasets import shuffle_data
 
 AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 

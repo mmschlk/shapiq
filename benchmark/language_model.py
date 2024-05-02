@@ -1,14 +1,11 @@
 """This module contains the benchmark conducted on the language model game."""
 
 import os
-import sys
 import glob
 
 import numpy as np
-import pandas as pd
 
-from benchmark.legacy.legacy import OldLMGame, check_interaction
-from run import run_benchmark
+from shapiq.games.benchmark.run import run_benchmark
 
 from shapiq.approximator import (
     KernelSHAPIQ,

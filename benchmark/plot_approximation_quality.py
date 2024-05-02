@@ -226,7 +226,7 @@ def add_legend(
 
 if __name__ == "__main__":
 
-    data_path = "results_test.csv"
+    data_path = "results.csv"
     save_path = "plot.pdf"
 
     # parameters for the plot  ---------------------------------------------------------------------
@@ -242,14 +242,14 @@ if __name__ == "__main__":
     ]
     # a list of orders to plot (in that order)
     orders_to_plot = [2]  # can be "all" or 1, 2, 3, etc.
-    # the metric to plot
-    metric = "MSE"  # can be "MSE", "MAE", "Precision@10", "Precision@5"
+    # the metric to plot (can be "MSE", "MAE", "Precision@10"/"@5", "KendallTau", "KendallTau@10")
+    metric = "KendallTau@10"
     # denotes weather to plot the legend or not
     plot_legend = True
     # ylim of the plot
     ylim = None  # (0, 3.65e-3)  # can be None or a tuple of (min, max) or None
     # make y-axis log scale
-    log_scale = True
+    log_scale = False
     scientific_notation = False
     # matplotlib parameters
     params = {
@@ -273,7 +273,7 @@ if __name__ == "__main__":
 
     # add the legend
     if plot_legend:
-        add_legend(ax, approximators=approximators_to_plot, orders=[2])
+        add_legend(ax, approximators=approximators_to_plot)
 
     ax.set_xlabel("Budget")
     ax.set_ylabel(metric)
