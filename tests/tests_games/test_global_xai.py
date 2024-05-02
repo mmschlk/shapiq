@@ -37,7 +37,7 @@ def test_basic_function(background_reg_dataset, dt_reg_model, mae_loss):
 
     # test the value function
     values = game(test_coalitions)
-    empty_value = game.empty_prediction
+    empty_value = game.normalization_value
     assert values.shape == (2,)
     assert empty_value != 0.0  # empty value is not expected to be zero
 

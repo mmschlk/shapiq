@@ -4,6 +4,11 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 from scipy.stats import mode
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.svm import SVC, SVR
 
 from ....utils.types import Model
 from ...base import Game
@@ -17,7 +22,7 @@ class EnsembleSelection(Game):
     test set.
 
     Note:
-        Depending on the ensemble members, this game requires the `sklearn` and `xgboost` packages.
+        Depending on the ensemble members, this game requires the `scikit-learn` and `xgboost` packages.
 
     Args:
         x_train: The training data as a numpy array of shape (n_samples, n_features).
@@ -41,8 +46,9 @@ class EnsembleSelection(Game):
             `ensemble_members` is not None.
         verbose: Whether to print information about the game and the ensemble members. Defaults to
             True.
-        random_state: The random state to use for the ensemble members. Defaults to None.
         normalize: Whether to normalize the game values. Defaults to True.
+        random_state: The random state to use for the ensemble members. Defaults to 42.
+
     """
 
     def __init__(
@@ -56,8 +62,8 @@ class EnsembleSelection(Game):
         ensemble_members: Optional[Union[list[str], list[Model]]] = None,
         n_members: int = 10,
         verbose: bool = True,
-        random_state: Optional[int] = None,
         normalize: bool = True,
+        random_state: Optional[int] = 42,
     ) -> None:
 
         assert dataset_type in ["classification", "regression"], (
@@ -155,36 +161,26 @@ class EnsembleSelection(Game):
         ensemble_members: dict[int, Model] = {}
         for member_id, member in enumerate(self.player_names):
             if member == "regression":
-                from sklearn.linear_model import LinearRegression, LogisticRegression
-
                 if self.dataset_type == "classification":
                     model = LogisticRegression(random_state=self.random_state)
                 else:
                     model = LinearRegression()
             elif member == "decision_tree":
-                from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-
                 if self.dataset_type == "classification":
                     model = DecisionTreeClassifier(random_state=self.random_state)
                 else:
                     model = DecisionTreeRegressor()
             elif member == "random_forest":
-                from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-
                 if self.dataset_type == "classification":
                     model = RandomForestClassifier(n_estimators=10, random_state=self.random_state)
                 else:
                     model = RandomForestRegressor(n_estimators=10)
             elif member == "knn":
-                from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
-
                 if self.dataset_type == "classification":
                     model = KNeighborsClassifier(n_neighbors=3)
                 else:
                     model = KNeighborsRegressor()
             elif member == "svm":
-                from sklearn.svm import SVC, SVR
-
                 if self.dataset_type == "classification":
                     model = SVC(random_state=self.random_state)
                 else:
@@ -226,6 +222,7 @@ class RandomForestEnsembleSelection(EnsembleSelection):
         verbose: Whether to print information about the game and the ensemble members. Defaults to
             True.
         normalize: Whether to normalize the game values. Defaults to True.
+        random_state: The random state to use for the ensemble members. Defaults to 42.
     """
 
     def __init__(
@@ -239,17 +236,15 @@ class RandomForestEnsembleSelection(EnsembleSelection):
         dataset_type: str = "classification",
         verbose: bool = True,
         normalize: bool = True,
+        random_state: Optional[int] = 42,
     ) -> None:
-
-        from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-
-        # check if the random forest is a sklearn random forest
+        # check if the random forest is a scikit-learn random forest
         if not isinstance(random_forest, RandomForestClassifier) and not isinstance(
             random_forest, RandomForestRegressor
         ):
             raise ValueError(
                 "Invalid random forest provided. Expected a RandomForestClassifier or "
-                "RandomForestRegressor as provided by sklearn."
+                "RandomForestRegressor as provided by the scikit-learn package."
             )
 
         # get the ensemble members
@@ -267,4 +262,5 @@ class RandomForestEnsembleSelection(EnsembleSelection):
             n_members=len(ensemble_members),
             verbose=verbose,
             normalize=normalize,
+            random_state=random_state
         )

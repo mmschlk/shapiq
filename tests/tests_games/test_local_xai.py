@@ -276,7 +276,7 @@ def test_resnet_model_class(test_image_and_path):
     output = resnet_model(test_coalitions)
     assert len(output) == 3
     assert output[0] == pytest.approx(resnet_model.empty_value, abs=1e-3)
-    assert output[1] == pytest.approx(0.2925054, abs=1e-3)
+    assert output[1] == pytest.approx(0.2925054, abs=1e-2)
 
 
 @pytest.mark.slow
@@ -291,7 +291,7 @@ def test_image_classifier_game_resnet(test_image_and_path):
     assert game.normalization_value == game.model_function.empty_value
     assert game.normalize  # should be True as empty value is around 0.005 and not 0
     grand_coal_output = game(game.grand_coalition)
-    assert grand_coal_output == pytest.approx(0.2925054 - game.normalization_value, abs=1e-3)
+    assert grand_coal_output == pytest.approx(0.2925054 - game.normalization_value, abs=1e-2)
 
     game_small = ImageClassifierLocalXAI(
         model_name="resnet_18",

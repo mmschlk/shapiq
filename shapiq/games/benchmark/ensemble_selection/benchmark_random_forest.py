@@ -43,6 +43,7 @@ class AdultCensus(RandomForestEnsembleSelection):
             loss_function=setup.loss_function,
             dataset_type=setup.dataset_type,
             normalize=True,
+            random_state=random_state,
         )
 
 
@@ -83,6 +84,7 @@ class BikeSharing(RandomForestEnsembleSelection):
             loss_function=setup.loss_function,
             dataset_type=setup.dataset_type,
             normalize=True,
+            random_state=random_state,
         )
 
 
@@ -123,4 +125,5 @@ class CaliforniaHousing(RandomForestEnsembleSelection):
             loss_function=setup.loss_function,
             dataset_type=setup.dataset_type,
             normalize=True,
+            random_state=random_state,
         )

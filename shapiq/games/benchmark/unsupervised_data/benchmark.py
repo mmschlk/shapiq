@@ -5,7 +5,11 @@ from .base import UnsupervisedData
 
 
 class AdultCensus(UnsupervisedData):
-    """The Adult Census game as an unsupervised data game."""
+    """The Adult Census game as an unsupervised data game.
+    
+    Args:
+        normalize: Whether to normalize the data before analysis. Defaults to True.
+    """
 
     def __init__(self, normalize: bool = True) -> None:
 
@@ -19,7 +23,11 @@ class AdultCensus(UnsupervisedData):
 
 
 class BikeSharing(UnsupervisedData):
-    """The Bike Sharing game as an unsupervised data game."""
+    """The Bike Sharing game as an unsupervised data game.
+    
+    Args:
+        normalize: Whether to normalize the data before analysis. Defaults to True.
+    """
 
     def __init__(self, normalize: bool = True) -> None:
 
@@ -33,7 +41,11 @@ class BikeSharing(UnsupervisedData):
 
 
 class CaliforniaHousing(UnsupervisedData):
-    """The California Housing game as an unsupervised data game."""
+    """The California Housing game as an unsupervised data game.
+    
+    Args:
+        normalize: Whether to normalize the data before analysis. Defaults to True.
+    """
 
     def __init__(self, normalize: bool = True) -> None:
 
