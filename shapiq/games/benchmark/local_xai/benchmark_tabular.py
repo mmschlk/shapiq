@@ -4,8 +4,8 @@ from typing import Optional, Union
 
 import numpy as np
 
+from .._config import get_x_explain
 from .._setup import GameBenchmarkSetup
-from ..setup import get_x_explain
 from .base import LocalExplanation
 
 

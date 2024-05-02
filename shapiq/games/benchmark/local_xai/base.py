@@ -7,7 +7,7 @@ import numpy as np
 from shapiq.games.base import Game
 from shapiq.games.imputer import MarginalImputer
 
-from ..setup import get_x_explain
+from .._config import get_x_explain
 
 
 class LocalExplanation(Game):

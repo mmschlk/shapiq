@@ -5,8 +5,8 @@ import os
 
 import pandas as pd
 
-from precompute import pre_compute_and_store_from_list
 from shapiq.games.benchmark import SentimentAnalysisLocalXAI
+from shapiq.games.benchmark import pre_compute_and_store_from_list, get_game_files
 
 
 def pre_compute_imdb(n_games: int, n_players: int, n_jobs: int = 1) -> None:
@@ -28,14 +28,9 @@ def pre_compute_imdb(n_games: int, n_players: int, n_jobs: int = 1) -> None:
     )
 
     # read the games that have already been pre-computed
-    try:
-        all_files = os.listdir(
-            os.path.join("precomputed", "SentimentAnalysis(Game)", str(n_players))
-        )
-    except FileNotFoundError:
-        all_files = []
+    all_game_files = get_game_files(SentimentAnalysisLocalXAI, n_players=n_players)
     # get game_ids from the files
-    all_game_ids = set([file.split(".")[0] for file in all_files])
+    all_game_ids = set([file.split(".")[0] for file in all_game_files])
     print(f"Found {len(all_game_ids)} games precomputed.")
 
     # get the games that have not been pre-computed
@@ -52,6 +47,11 @@ def pre_compute_imdb(n_games: int, n_players: int, n_jobs: int = 1) -> None:
         game_ids.append(row["game_id"])
 
     # pre-compute the values for the games
-    save_dir = os.path.join("precomputed", "SentimentAnalysis(Game)")
+    # save_dir = os.path.join("precomputed", "SentimentAnalysis(Game)")
     print(f"Precomputing {n_games} games with {n_players} players.")
-    pre_compute_and_store_from_list(games, save_dir=save_dir, game_ids=game_ids, n_jobs=n_jobs)
+    pre_compute_and_store_from_list(games, game_ids=game_ids, n_jobs=n_jobs)
+
+
+if __name__ == "__main__":
+
+    pre_compute_imdb(n_games=1, n_players=10, n_jobs=1)

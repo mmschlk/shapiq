@@ -1,17 +1,17 @@
 """This module contains the main benchmark run setup for the shapiq package."""
 
 import copy
-from typing import Union, Optional
 import multiprocessing as mp
 import os
+from typing import Optional, Union
 
 import pandas as pd
 from tqdm.auto import tqdm
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.approximator._base import Approximator
-from shapiq.games import Game
-from metrics import get_all_metrics
+from ...approximator._base import Approximator
+from ...interaction_values import InteractionValues
+from ..base import Game
+from .metrics import get_all_metrics
 
 
 def save_results(results, save_path: str = "results.csv") -> None:
