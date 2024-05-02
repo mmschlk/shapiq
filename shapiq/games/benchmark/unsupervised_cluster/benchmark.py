@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from ..setup import BenchmarkSetup
+from ..setup import GameBenchmarkSetup
 from .base import ClusterExplanation
 
 
@@ -17,7 +17,7 @@ class AdultCensus(ClusterExplanation):
         normalize: bool = True,
     ) -> None:
 
-        setup = BenchmarkSetup("adult_census")
+        setup = GameBenchmarkSetup("adult_census")
         data = setup.x_data
 
         cluster_params = None
@@ -50,7 +50,7 @@ class BikeSharing(ClusterExplanation):
         normalize: bool = True,
     ) -> None:
 
-        setup = BenchmarkSetup("bike_sharing")
+        setup = GameBenchmarkSetup("bike_sharing")
         data = setup.x_data
 
         cluster_params = None
@@ -83,7 +83,7 @@ class CaliforniaHousing(ClusterExplanation):
         normalize: bool = True,
     ) -> None:
 
-        setup = BenchmarkSetup("california_housing")
+        setup = GameBenchmarkSetup("california_housing")
         data = setup.x_data
 
         cluster_params = None

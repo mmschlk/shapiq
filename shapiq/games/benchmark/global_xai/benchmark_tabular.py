@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from .._setup import BenchmarkSetup
+from .._setup import GameBenchmarkSetup
 from .base import GlobalExplanation
 
 
@@ -36,7 +36,7 @@ class AdultCensus(GlobalExplanation):
         verbose: bool = True,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
             loss_function=loss_function,
@@ -85,7 +85,7 @@ class BikeSharing(GlobalExplanation):
         verbose: bool = True,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
             loss_function=loss_function,
@@ -134,7 +134,7 @@ class CaliforniaHousing(GlobalExplanation):
         verbose: bool = True,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
             loss_function=loss_function,

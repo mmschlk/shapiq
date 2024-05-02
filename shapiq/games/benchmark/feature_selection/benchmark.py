@@ -1,6 +1,6 @@
 """This module contains all benchmark games for the feature selection setting."""
 
-from shapiq.games.benchmark._setup import BenchmarkSetup
+from shapiq.games.benchmark._setup import GameBenchmarkSetup
 
 from .base import FeatureSelection
 
@@ -10,7 +10,7 @@ class AdultCensus(FeatureSelection):
 
     def __init__(self, model_name: str, normalize: bool = True, verbose: bool = True) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
             verbose=verbose,
@@ -31,7 +31,7 @@ class BikeSharing(FeatureSelection):
     """The Bike Sharing dataset as a Feature Selection benchmark game."""
 
     def __init__(self, model_name: str, normalize: bool = True, verbose: bool = True) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
             verbose=verbose,
@@ -52,7 +52,7 @@ class CaliforniaHousing(FeatureSelection):
     """The California Housing dataset as a Feature Selection benchmark game."""
 
     def __init__(self, model_name: str, normalize: bool = True, verbose: bool = True) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
             verbose=verbose,
