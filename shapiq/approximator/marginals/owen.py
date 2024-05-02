@@ -19,7 +19,7 @@ class OwenSamplingSV(Approximator):
     Args:
         n: The number of players.
         random_state: The random state to use for the permutation sampling. Defaults to `None`.
-        M: Number of anchor points at which the integral is to be palpated.
+        interpolation_points: Number of anchor points at which the integral is to be palpated.
 
     Attributes:
         n: The number of players.
@@ -30,12 +30,12 @@ class OwenSamplingSV(Approximator):
     def __init__(
         self,
         n: int,
-        M: int,
+        interpolation_points: int = 10,
         random_state: Optional[int] = None,
     ) -> None:
         super().__init__(n, max_order=1, index="SV", top_order=False, random_state=random_state)
-        self.iteration_cost: int = 2 * n * M
-        self.M = M
+        self.iteration_cost: int = 2 * n * interpolation_points
+        self.interpolation_points = interpolation_points
 
     def approximate(
         self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: Optional[int] = 5
@@ -62,9 +62,9 @@ class OwenSamplingSV(Approximator):
             budget - used_budget, batch_size, self.iteration_cost
         )
 
-        anchors = self.get_anchor_points(self.M)
-        estimates = np.zeros((self.n, self.M), dtype=float)
-        counts = np.zeros((self.n, self.M), dtype=int)
+        anchors = self.get_anchor_points(self.interpolation_points)
+        estimates = np.zeros((self.n, self.interpolation_points), dtype=float)
+        counts = np.zeros((self.n, self.interpolation_points), dtype=int)
 
         # main sampling loop going through all anchor points of all players with each segment
         for iteration in range(1, n_iterations + 1):
@@ -100,7 +100,7 @@ class OwenSamplingSV(Approximator):
             # iterate through each segment
             for segment in range(n_segments):
                 for player in range(self.n):
-                    for m in range(self.M):
+                    for m in range(self.interpolation_points):
                         # calculate the marginal contribution and update the anchor estimate
                         marginal_con = (
                             game_values[coalition_index + 1] - game_values[coalition_index]

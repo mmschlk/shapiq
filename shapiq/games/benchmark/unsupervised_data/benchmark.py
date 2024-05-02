@@ -1,6 +1,6 @@
 """This module contains all base game classes for the unserpervised benchmark games."""
 
-from ..setup import BenchmarkSetup
+from ..setup import GameBenchmarkSetup
 from .base import UnsupervisedData
 
 
@@ -9,7 +9,7 @@ class AdultCensus(UnsupervisedData):
 
     def __init__(self, normalize: bool = True) -> None:
 
-        setup = BenchmarkSetup("adult_census")
+        setup = GameBenchmarkSetup("adult_census")
         data = setup.x_data
 
         super().__init__(
@@ -23,7 +23,7 @@ class BikeSharing(UnsupervisedData):
 
     def __init__(self, normalize: bool = True) -> None:
 
-        setup = BenchmarkSetup("bike_sharing")
+        setup = GameBenchmarkSetup("bike_sharing")
         data = setup.x_data
 
         super().__init__(
@@ -37,7 +37,7 @@ class CaliforniaHousing(UnsupervisedData):
 
     def __init__(self, normalize: bool = True) -> None:
 
-        setup = BenchmarkSetup("california_housing")
+        setup = GameBenchmarkSetup("california_housing")
         data = setup.x_data
 
         super().__init__(

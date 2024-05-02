@@ -11,7 +11,7 @@ from shapiq.utils.datasets import shuffle_data
 AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 
 
-class BenchmarkSetup:
+class GameBenchmarkSetup:
     """Class to load and prepare models and datasets for the benchmark games.
 
     Note:
@@ -72,8 +72,8 @@ class BenchmarkSetup:
         ValueError: If an invalid model name is provided for the dataset.
 
     Examples:
-        >>> from shapiq.games.benchmark.setup import BenchmarkSetup
-        >>> setup = BenchmarkSetup(dataset_name='adult_census', model_name='decision_tree')
+        >>> from shapiq.games.benchmark.setup import GameBenchmarkSetup
+        >>> setup = GameBenchmarkSetup(dataset_name='adult_census', model_name='decision_tree')
         >>> setup.n_features
         14
         >>> setup.fit_function # returns a callable

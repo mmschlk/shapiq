@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from ..setup import BenchmarkSetup
+from ..setup import GameBenchmarkSetup
 from .base import RandomForestEnsembleSelection
 
 
@@ -26,7 +26,7 @@ class AdultCensus(RandomForestEnsembleSelection):
         n_members: int = 10,
         random_state: Optional[int] = 42,
     ) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             loss_function=loss_function,
             model_name="random_forest",
@@ -66,7 +66,7 @@ class BikeSharing(RandomForestEnsembleSelection):
         n_members: int = 10,
         random_state: Optional[int] = 42,
     ) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             loss_function=loss_function,
             model_name="random_forest",
@@ -106,7 +106,7 @@ class CaliforniaHousing(RandomForestEnsembleSelection):
         n_members: int = 10,
         random_state: Optional[int] = 42,
     ) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             loss_function=loss_function,
             model_name="random_forest",

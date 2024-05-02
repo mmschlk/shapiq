@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from ..setup import BenchmarkSetup, get_x_explain
+from ..setup import GameBenchmarkSetup, get_x_explain
 from .base import TreeSHAPIQXAI
 
 
@@ -23,7 +23,7 @@ class AdultCensus(TreeSHAPIQXAI):
         verbose: bool = True,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
             verbose=verbose,
@@ -58,7 +58,7 @@ class BikeSharing(TreeSHAPIQXAI):
         verbose: bool = True,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
             verbose=verbose,
@@ -92,7 +92,7 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         verbose: bool = True,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
             verbose=verbose,

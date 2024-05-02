@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from ..setup import BenchmarkSetup
+from ..setup import GameBenchmarkSetup
 from .base import EnsembleSelection
 
 
@@ -32,7 +32,7 @@ class AdultCensus(EnsembleSelection):
         ensemble_members: Optional[list[str]] = None,
         n_members: int = 10,
     ) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             loss_function=loss_function,
             model_name=None,
@@ -78,7 +78,7 @@ class BikeSharing(EnsembleSelection):
         ensemble_members: Optional[list[str]] = None,
         n_members: int = 10,
     ) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             loss_function=loss_function,
             model_name=None,
@@ -124,7 +124,7 @@ class CaliforniaHousing(EnsembleSelection):
         ensemble_members: Optional[list[str]] = None,
         n_members: int = 10,
     ) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             loss_function=loss_function,
             model_name=None,

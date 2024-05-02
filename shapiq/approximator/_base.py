@@ -290,6 +290,11 @@ class Approximator(ABC):
         return hash((self.n, self.max_order, self.index, self.top_order, self._random_state))
 
     @property
+    def approximator_id(self) -> int:
+        """Returns the ID of the approximator."""
+        return hash(self)
+
+    @property
     def interaction_lookup(self):
         return self._interaction_lookup
 
