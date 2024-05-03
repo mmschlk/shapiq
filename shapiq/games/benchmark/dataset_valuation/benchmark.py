@@ -67,7 +67,7 @@ class CaliforniaHousing(DatasetValuation):
             n_players=n_players,
             player_sizes=player_sizes,
             random_state=random_state,
-            normalization_value=0.0,
+            empty_data_value=0.0,
         )
 
 
@@ -132,7 +132,7 @@ class BikeSharing(DatasetValuation):
             n_players=n_players,
             player_sizes=player_sizes,
             random_state=random_state,
-            normalization_value=0.0,
+            empty_data_value=0.0,
         )
 
 
@@ -197,5 +197,5 @@ class AdultCensus(DatasetValuation):
             n_players=n_players,
             player_sizes=player_sizes,
             random_state=random_state,
-            normalization_value=0.0,
+            empty_data_value=0.0,
         )

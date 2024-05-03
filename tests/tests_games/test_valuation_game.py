@@ -89,7 +89,7 @@ def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
         loss_function=accuracy_score,
         n_players=n_players,
         random_state=42,
-        normalization_value=0.1,
+        empty_data_value=0.1,
         normalize=False,
     )
     game_values = game(test_coalitions)

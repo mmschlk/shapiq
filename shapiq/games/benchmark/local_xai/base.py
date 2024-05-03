@@ -33,7 +33,8 @@ class LocalExplanation(Game):
 
     Attributes:
         x: The data point to explain.
-        normalization_value: The model's prediction on an empty data point (all features missing).
+        empty_prediction_value: The output of the model on an empty data point (all features
+            missing).
 
     Examples:
         >>> from sklearn.tree import DecisionTreeRegressor
@@ -86,13 +87,13 @@ class LocalExplanation(Game):
                 normalize=False,
             )
 
-        self.normalization_value: float = self._imputer.empty_prediction
+        self.empty_prediction_value: float = self._imputer.empty_prediction
 
         # init the base game
         super().__init__(
             data.shape[1],
             normalize=normalize,
-            normalization_value=self.normalization_value,
+            normalization_value=self.empty_prediction_value,
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:

@@ -24,7 +24,8 @@ class ClusterExplanation(Game):
             'calinski_harabasz_score'.
         random_state: The random state to use for the clustering algorithm. Defaults to 42.
         normalize: Whether to normalize the data before clustering. Defaults to True.
-        normalization_value: The value of an empty cluster. Defaults to 0.0.
+        empty_cluster_value: The worth of an empty cluster. Defaults to 0.0 (which automatically
+            results in a normalized game).
     """
 
     def __init__(
@@ -34,7 +35,7 @@ class ClusterExplanation(Game):
         score_method: str = "calinski_harabasz_score",
         cluster_params: Optional[dict] = None,
         normalize: bool = True,
-        normalization_value: float = 0.0,
+        empty_cluster_value: float = 0.0,
         random_state: Optional[int] = 42,
     ) -> None:
 
@@ -69,10 +70,10 @@ class ClusterExplanation(Game):
         self.data = data
 
         self.random_state = random_state
-        self.normalization_value = normalization_value
+        self.empty_cluster_value = empty_cluster_value
 
         super().__init__(
-            data.shape[1], normalize=normalize, normalization_value=self.normalization_value
+            data.shape[1], normalize=normalize, normalization_value=self.empty_cluster_value
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
@@ -88,7 +89,7 @@ class ClusterExplanation(Game):
         worth = np.zeros(n_coalitions, dtype=float)
         for i, coalition in enumerate(coalitions):
             if sum(coalition) == 0:
-                worth[i] = self.normalization_value
+                worth[i] = self.empty_cluster_value
                 continue
             data_selection = self.data[:, coalition]
             self.cluster.fit(data_selection)

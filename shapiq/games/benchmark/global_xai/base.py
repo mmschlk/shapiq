@@ -37,7 +37,7 @@ class GlobalExplanation(Game):
         random_state: The random state to use for the imputer. Defaults to 42.
 
     Attributes:
-        normalization_value: The model's prediction on an empty data point (all features missing).
+        empty_loss: The model's prediction on an empty data point (all features missing).
         model: The model to explain as a callable function.
         loss_function: The loss function to use for the game.
         predictions: The model's predictions on the data.
@@ -79,15 +79,14 @@ class GlobalExplanation(Game):
         n_empty_samples = min(n_samples_empty, self.data_shuffled.shape[0])
         idx = self._rng.choice(n_empty_samples, size=self.n_samples_eval, replace=False)
         empty_subset, predictions = self.data_shuffled[idx], self.predictions[idx]
-        empty_prediction = self.model(empty_subset)  # model call
-        empty_loss = self.loss_function(predictions, empty_prediction)
-        self.normalization_value: float = empty_loss
+        empty_predictions = self.model(empty_subset)  # model call
+        self.empty_loss: float = self.loss_function(predictions, empty_predictions)
 
         # init the base game
         super().__init__(
             data.shape[1],
             normalize=normalize,
-            normalization_value=self.normalization_value,
+            normalization_value=self.empty_loss,
         )
 
     def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray:
@@ -102,6 +101,9 @@ class GlobalExplanation(Game):
         """
         worth = np.zeros(coalitions.shape[0], dtype=float)
         for i, coalition in enumerate(coalitions):
+            if not any(coalition):
+                worth[i] = self.empty_loss
+                continue
             # get the subset of the data
             idx = self._rng.choice(self._n_samples, size=self.n_samples_eval, replace=False)
             subset = self.data[idx].copy()

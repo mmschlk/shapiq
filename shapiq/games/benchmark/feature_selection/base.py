@@ -1,4 +1,4 @@
-"""This module contains the meta class for all FeatureSelection benchmark games."""
+"""This module contains the metaclass for all FeatureSelection benchmark games."""
 
 from typing import Any, Callable, Optional
 
@@ -33,40 +33,10 @@ class FeatureSelection(Game):
             then `score_function` must be provided.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
-        normalization_value: The value to normalize and center the game values with such that the
-            value for the empty coalition is zero. Defaults to 0.
+        empty_features_value: The worth of an empty subset of features. Defaults to 0.0.
 
     Attributes:
-        normalization_value: The value to return when the subset of features is empty.
-
-    Examples:
-        >>> from sklearn.tree import DecisionTreeRegressor
-        >>> from sklearn.datasets import make_regression
-        >>> from sklearn.model_selection import train_test_split
-        >>> from shapiq.games import FeatureSelectionGame
-        >>> # create a regression dataset
-        >>> x_data, y_data = make_regression(n_samples=100, n_features=10, noise=0.1)
-        >>> x_train, x_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.2)
-        >>> # create a decision tree regressor
-        >>> model = DecisionTreeRegressor(max_depth=4)
-        >>> # create a FeatureSelection game
-        >>> game = FeatureSelectionGame(
-        ...     x_train=x_train,
-        ...     x_test=x_test,
-        ...     y_train=y_train,
-        ...     y_test=y_test,
-        ...     fit_function=model.fit,
-        ...     score_function=model.score,
-        ... )
-        >>> # evaluate the game on a specific coalition
-        >>> coalition = np.zeros(shape=(1, 10), dtype=bool)
-        >>> coalition[0][0, 1, 2] = True
-        >>> value = game(coalition)
-        >>> # precompute the game (if needed)
-        >>> game.precompute()
-        >>> # save and load the game
-        >>> game.save("game.pkl")
-        >>> new_game = FeatureSelectionGame.load("game.pkl")
+        empty_features_value: The value to return when the subset of features is empty.
     """
 
     def __init__(
@@ -80,11 +50,14 @@ class FeatureSelection(Game):
         score_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
         predict_function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         loss_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
-        normalization_value: float = 0.0,
+        empty_features_value: float = 0.0,
         normalize: bool = True,
     ) -> None:
 
-        super().__init__(x_train.shape[1], normalization_value=normalization_value, normalize=normalize)
+        self.empty_features_value = empty_features_value
+        super().__init__(
+            x_train.shape[1], normalization_value=self.empty_features_value, normalize=normalize
+        )
 
         # set datasets
         self._x_train = x_train
@@ -107,7 +80,7 @@ class FeatureSelection(Game):
         self._score_function = score_function
 
         # set empty value
-        self.normalization_value = normalization_value
+        self.normalization_value = empty_features_value
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Trains and evaluates the model on a coalition (subset) of features. The output of the
@@ -124,7 +97,7 @@ class FeatureSelection(Game):
         for i in range(len(coalitions)):
             coalition = coalitions[i]  # get coalition
             if sum(coalition) == 0:  # if empty subset then set to empty prediction
-                scores[i] = self.normalization_value
+                scores[i] = self.empty_features_value
                 continue
             x_train, x_test = self._x_train[:, coalition], self._x_test[:, coalition]
             self._fit_function(x_train, self._y_train)  # fit model

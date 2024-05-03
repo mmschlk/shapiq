@@ -33,43 +33,7 @@ class DatasetValuation(Game):
             Can be one of {'uniform', 'increasing', 'random'}. Defaults to uniform and interacts with `n_players`.
         random_state: The random state to use for all random operations. Defaults to 42.
         normalize: Whether the game values should be normalized. Defaults to `True`.
-        normalization_value: The value to normalize and center the game values with such that the
-            value for the empty coalition is zero. Defaults to 0. If `normalization` is set
-            to `False` this value is not required. Otherwise, the value is needed to normalize and
-            center the game. If no value is provided, the game raises a warning.
-
-    Examples:
-        >>> import numpy as np
-        >>> from sklearn.ensemble import RandomForestRegressor
-        >>> from sklearn.metrics import r2_score
-        >>> from sklearn.model_selection import train_test_split
-        >>> from shapiq.games.benchmark import DatasetValuation
-        >>> from shapiq.datasets import load_california_housing
-        >>> # load the data
-        >>> x_train, y_train = load_california_housing()
-        >>> x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.2)
-        >>> # define the fit, predict, and loss functions
-        >>> model = RandomForestRegressor()
-        >>> fit_function = model.fit
-        >>> predict_function = model.predict
-        >>> loss_function = r2_score
-        >>> # create the game
-        >>> game = DatasetValuation(
-        ...     x_train=x_train,
-        ...     y_train=y_train,
-        ...     x_test=x_test,
-        ...     y_test=y_test,
-        ...     fit_function=fit_function,
-        ...     predict_function=predict_function,
-        ...     loss_function=loss_function,
-        ...     player_sizes=[0.25, 0.25, 0.5],
-        ...     random_state=42,
-        ... )
-        >>> # get the worth of the coalitions
-        >>> coalitions = np.array([[1, 0, 0], [1, 1, 0], [1, 1, 1]], dtype=bool)
-        >>> worth = game(coalitions)
-        >>> worth
-        array([some_value, some_value, some_value])
+        empty_data_value: The worth of an empty subset of data. Defaults to 0.0.
     """
 
     def __init__(
@@ -86,7 +50,7 @@ class DatasetValuation(Game):
         player_sizes: Optional[Union[list[float], str]] = "uniform",
         random_state: Optional[int] = 42,
         normalize: bool = True,
-        normalization_value: float = 0.0,
+        empty_data_value: float = 0.0,
     ) -> None:
 
         # check if all required functions are given, otherwise
@@ -114,7 +78,7 @@ class DatasetValuation(Game):
                     "player_sizes must be 'uniform', 'increasing', 'random', or a list."
                 )
         elif player_sizes is None:
-                player_sizes = [1 / n_players for _ in range(n_players)]
+            player_sizes = [1 / n_players for _ in range(n_players)]
         player_sizes = np.array(player_sizes) / np.sum(player_sizes)
 
         if random_state is not None:
@@ -163,9 +127,11 @@ class DatasetValuation(Game):
         self._predict_function = predict_function
         self._loss_function = loss_function
 
-        self.normalization_value = normalization_value
+        self.empty_data_value = empty_data_value
 
-        super().__init__(n_players=n_players, normalize=normalize, normalization_value=normalization_value)
+        super().__init__(
+            n_players=n_players, normalize=normalize, normalization_value=self.empty_data_value
+        )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Trains the model on the data subsets denoted in the coalitions. The worth of the
@@ -180,7 +146,7 @@ class DatasetValuation(Game):
         worth = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
             if np.sum(coalition) == 0:
-                worth[i] = self.normalization_value
+                worth[i] = self.empty_data_value
                 continue
             # create the training data for the coalition
             x_train = np.concatenate([self.data_sets[j] for j in np.where(coalition)[0]])
