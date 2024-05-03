@@ -1,11 +1,12 @@
-from typing import Union, Optional, Callable
+"""This module contains the plotting utilities for the benchmark results."""
+
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 
-# from shapiq.approximator._base import Approximator
-
+# TODO: add the plot colors and styles for different approximators as well
 COLORS = {
     # permutation sampling
     "PermutationSamplingSII": "#7d53de",
@@ -20,7 +21,6 @@ COLORS = {
     # shapiq
     "SHAPIQ": "#ef27a6",
 }
-
 LINE_STYLES_ORDER = {0: "solid", 1: "dotted", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
 LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "s", 3: "X", 4: "d", "all": "o"}
 LINE_THICKNESS = 1
@@ -45,7 +45,8 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
 
 def plot_approximation_quality(
-    metric_values: pd.DataFrame,
+    data: pd.DataFrame,
+    metric: str = "MSE",
     orders: list[Union[int, str]] = None,
     approximators: list[str] = None,
     aggregation: str = "mean",
@@ -54,7 +55,8 @@ def plot_approximation_quality(
     """Plot the approximation quality curves.
 
     Args:
-        metric_values: The metric values to plot.
+        data: The data to plot the values from.
+        metric: The metric to plot. Defaults to "MSE".
         orders: The orders to plot. If `None`, all orders are plotted. Defaults to `None`.
             Can be a list of integers or a single integer.
         approximators: The approximators to plot. Defaults to `None`. When `None`, all approximators
@@ -66,6 +68,9 @@ def plot_approximation_quality(
     Returns:
         The figure and axes of the plot.
     """
+    # get the metric data
+    metric_data = get_metric_data(data, metric)
+
     # make sure orders is a list
     if orders is None:
         orders = "all"
@@ -74,7 +79,7 @@ def plot_approximation_quality(
 
     # make sure approximators is a list
     if approximators is None:
-        approximators = list(metric_values["approximator"].unique())
+        approximators = list(metric_data["approximator"].unique())
 
     # set the confidence metrics
     confidence_metric_low, confidence_metric_high = confidence_metric, confidence_metric
@@ -85,11 +90,11 @@ def plot_approximation_quality(
     # create the plot
     fig, ax = plt.subplots()
     for approximator in approximators:
-        for order in metric_values["order"].unique():
+        for order in metric_data["order"].unique():
             if orders is not None and order not in orders:
                 continue
-            data_order = metric_values[
-                (metric_values["approximator"] == approximator) & (metric_values["order"] == order)
+            data_order = metric_data[
+                (metric_data["approximator"] == approximator) & (metric_data["order"] == order)
             ]
             # get the plot colors and styles
             line_style, line_marker = LINE_STYLES_ORDER[order], LINE_MARKERS_ORDER[order]
@@ -135,7 +140,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
     metric_dfs = []
     for metric_col in metric_columns:
         data_order = (
-            data.groupby(["approximator", "budget", "iteration"])
+            results_df.groupby(["approximator", "budget", "iteration"])
             .agg(
                 {
                     metric_col: [
@@ -222,73 +227,3 @@ def add_legend(
 
     handles, labels = axis.get_legend_handles_labels()
     axis.legend(handles, labels, loc=loc)
-
-
-if __name__ == "__main__":
-
-    data_path = "results.csv"
-    save_path = "plot.pdf"
-
-    # parameters for the plot  ---------------------------------------------------------------------
-    # title of the plot
-    title = "Language Model"
-    # a list of approximators to plot (in that order)
-    approximators_to_plot = [
-        "KernelSHAPIQ",
-        "InconsistentKernelSHAPIQ",
-        "SVARMIQ",
-        "SHAPIQ",
-        "PermutationSamplingSII",
-    ]
-    # a list of orders to plot (in that order)
-    orders_to_plot = [2]  # can be "all" or 1, 2, 3, etc.
-    # the metric to plot (can be "MSE", "MAE", "Precision@10"/"@5", "KendallTau", "KendallTau@10")
-    metric = "KendallTau@10"
-    # denotes weather to plot the legend or not
-    plot_legend = True
-    # ylim of the plot
-    ylim = None  # (0, 3.65e-3)  # can be None or a tuple of (min, max) or None
-    # make y-axis log scale
-    log_scale = False
-    scientific_notation = False
-    # matplotlib parameters
-    params = {
-        "legend.fontsize": "x-large",
-        "figure.figsize": (6, 7),
-        "axes.labelsize": "x-large",
-        "axes.titlesize": "x-large",
-        "xtick.labelsize": "x-large",
-        "ytick.labelsize": "x-large",
-    }
-    plt.rcParams.update(params)
-
-    # make the plot --------------------------------------------------------------------------------
-
-    data = pd.read_csv(data_path)
-    metric_data = get_metric_data(data, metric)  # get the metric data from the results file
-
-    fig, ax = plot_approximation_quality(
-        metric_data, approximators=approximators_to_plot, orders=orders_to_plot
-    )
-
-    # add the legend
-    if plot_legend:
-        add_legend(ax, approximators=approximators_to_plot)
-
-    ax.set_xlabel("Budget")
-    ax.set_ylabel(metric)
-
-    ax.set_title(title)
-    if log_scale:
-        ax.set_yscale("log")
-        ax.set_ylabel(metric + " (log scale)")
-    elif scientific_notation:
-        ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-    else:
-        ax.set_ylim(ylim)
-    plt.tight_layout()
-
-    if save_path is not None:
-        plt.savefig(save_path)
-
-    plt.show()
