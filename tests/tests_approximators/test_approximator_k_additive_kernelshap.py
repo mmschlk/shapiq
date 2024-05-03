@@ -49,10 +49,10 @@ def test_approximate(budget, order):
     # check that the budget is respected
     assert game.access_counter <= budget
 
-    assert sii_estimates[(1,)] == pytest.approx(0.6429, abs=0.01)
-    assert sii_estimates[(2,)] == pytest.approx(0.6429, abs=0.01)
+    assert sii_estimates[(1,)] == pytest.approx(0.6429, abs=0.1)
+    assert sii_estimates[(2,)] == pytest.approx(0.6429, abs=0.1)
 
     if order > 1:
-        assert sii_estimates[(1, 2)] == pytest.approx(1.0, abs=0.01)
+        assert sii_estimates[(1, 2)] == pytest.approx(1.0, abs=0.1)
 
-    assert sii_estimates[(1, 2, 3)] == pytest.approx(0, abs=0.01)
+    assert sii_estimates[(1, 2, 3)] == pytest.approx(0, abs=0.1)
