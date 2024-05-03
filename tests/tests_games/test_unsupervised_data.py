@@ -21,10 +21,7 @@ def test_base_class():
     data = np.random.rand(200, n_players)
 
     # setup game
-    game = UnsupervisedData(
-        data=data,
-        normalize=True,
-    )
+    game = UnsupervisedData(data=data)
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
@@ -49,7 +46,7 @@ def test_adult():
     """This function tests the adult census unsupervised data game."""
     n_players = 14
     # setup game
-    game = AdultCensusUnsupervisedData(normalize=True)
+    game = AdultCensusUnsupervisedData()
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
@@ -71,7 +68,7 @@ def test_bike_sharing():
     """This function tests the bike sharing unsupervised data game."""
     n_players = 12
     # setup game
-    game = BikeSharingUnsupervisedData(normalize=True)
+    game = BikeSharingUnsupervisedData()
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
@@ -93,7 +90,7 @@ def test_california_housing():
     """This function tests the california housing unsupervised data game."""
     n_players = 8
     # setup game
-    game = CaliforniaHousingUnsupervisedData(normalize=True)
+    game = CaliforniaHousingUnsupervisedData()
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
