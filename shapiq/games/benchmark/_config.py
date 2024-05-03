@@ -4,9 +4,25 @@ import copy
 from typing import Optional, Union
 
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    log_loss,
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
+    roc_auc_score,
+)
 
+# data needs to be normalized for the neural network
+from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+
+from ...datasets import load_adult_census, load_bike_sharing, load_california_housing
 from ...utils import Model
 from ...utils.datasets import shuffle_data
+from ._setup._california_torch_setup import CaliforniaHousingTorchModel
 
 AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 
@@ -15,20 +31,21 @@ class GameBenchmarkSetup:
     """Class to load and prepare models and datasets for the benchmark games.
 
     Note:
-        Depending on the models, this game requires the `sklearn` or `torch` packages to be
+        Depending on the models, this game requires the `scikit-learn` or `torch` packages to be
         installed.
 
     Args:
         dataset_name: The dataset to load the models for. Available datasets are 'adult_census',
             'bike_sharing', and 'california_housing'.
-        model_name: If specified, the name of the model to load. Defaults to `None` Available
-            models for the datasets are the following:
+        model_name: If specified, the name of the model to load. Defaults to `None`, which means that
+            no model will be loaded. Available models for the datasets are the following:
             - 'adult_census': 'decision_tree', 'random_forest', 'gradient_boosting'
             - 'bike_sharing': 'decision_tree', 'random_forest', 'gradient_boosting'
             - 'california_housing': 'decision_tree', 'random_forest', 'gradient_boosting',
                 'neural_network'
-        loss_function: If specified, the loss function to use for the game as a string. Defaults to
-            `None`. Available loss functions are:
+        loss_function: If specified, the loss function to use for the game (as a string). Defaults to
+            `None`, which means 'r2_score' for regression and 'accuracy_score' for classification.
+            Available loss functions are:
             - 'mean_squared_error'
             - 'mean_absolute_error'
             - 'log_loss'
@@ -37,7 +54,7 @@ class GameBenchmarkSetup:
             - 'roc_auc_score'
             - 'f1_score'
         verbose: Whether to print the predicted class and score. Defaults to True.
-        train_size: The size of the training set. Defaults to 0.8.
+        test_size: The size of the validation set. Defaults to 0.2.
         random_state: The random state to use for all random operations. Defaults to 42.
         random_forest_n_estimators: The number of estimators to use for the random forest model if
             the model is a random forest. Defaults to 10.
@@ -85,28 +102,22 @@ class GameBenchmarkSetup:
         model_name: Optional[str] = None,
         loss_function: Optional[str] = None,
         verbose: bool = True,
-        train_size: float = 0.7,
+        test_size: float = 0.2,
         random_state: Optional[int] = 42,
         random_forest_n_estimators: int = 10,
     ) -> None:
-        self.random_state: Optional[int] = random_state
+        self.random_state = random_state
 
         # load the dataset
         self.dataset_type = "regression"
         if dataset_name == "adult_census":
-            from shapiq.datasets import load_adult_census
-
             x_data, y_data = load_adult_census()
             self.feature_names: list = list(x_data.columns)
             self.dataset_type = "classification"
         elif dataset_name == "bike_sharing":
-            from shapiq.datasets import load_bike_sharing
-
             x_data, y_data = load_bike_sharing()
             self.feature_names: list = list(x_data.columns)
         elif dataset_name == "california_housing":
-            from shapiq.datasets import load_california_housing
-
             x_data, y_data = load_california_housing()
             self.feature_names: list = list(x_data.columns)
         else:
@@ -124,8 +135,8 @@ class GameBenchmarkSetup:
         self.y_data: np.ndarray = y_data
         self.n_data: int = self.x_data.shape[0]
         self.n_features: int = len(self.feature_names)
-        self.n_train = int(train_size * self.n_data)
-        self.n_test = self.n_data - self.n_train
+        self.n_test = int(test_size * self.n_data)
+        self.n_train = self.n_data - self.n_test
         self.x_train: np.ndarray = copy.deepcopy(x_data[: self.n_train])
         self.y_train: np.ndarray = copy.deepcopy(y_data[: self.n_train])
         self.x_test: np.ndarray = copy.deepcopy(x_data[self.n_train :])
@@ -170,15 +181,6 @@ class GameBenchmarkSetup:
         if self.model is None and model_name is not None:
             raise ValueError(f"Invalid model name {model_name} for the {dataset_name} dataset.")
 
-        from sklearn.metrics import (
-            f1_score,
-            log_loss,
-            mean_absolute_error,
-            mean_squared_error,
-            r2_score,
-            roc_auc_score,
-        )
-
         # set up the functions
         if self.dataset_type == "classification" and model_name is not None:
             self.loss_function = _accuracy  # custom accuracy function
@@ -219,15 +221,11 @@ class GameBenchmarkSetup:
 
     def init_decision_tree_classifier(self):
         """Initializes and trains a decision tree model for a classification dataset."""
-        from sklearn.tree import DecisionTreeClassifier
-
         self.model = DecisionTreeClassifier(random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
     def init_random_forest_classifier(self):
         """Initializes and trains a random forest model for a classification dataset."""
-        from sklearn.ensemble import RandomForestClassifier
-
         self.model = RandomForestClassifier(
             n_estimators=self._random_forest_n_estimators, random_state=self.random_state
         )
@@ -242,15 +240,11 @@ class GameBenchmarkSetup:
 
     def init_decision_tree_regressor(self):
         """Initializes and trains a decision tree model for a regression dataset."""
-        from sklearn.tree import DecisionTreeRegressor
-
         self.model = DecisionTreeRegressor(random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
     def init_random_forest_regressor(self):
         """Initializes and trains a random forest model for a regression dataset."""
-        from sklearn.ensemble import RandomForestRegressor
-
         self.model = RandomForestRegressor(n_estimators=10, random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
@@ -263,13 +257,7 @@ class GameBenchmarkSetup:
 
     def init_california_neural_network(self):
         """Initializes a neural network model for the California Housing dataset."""
-
-        from ._setup._california_torch_setup import CaliforniaHousingTorchModel
-
         self.model = CaliforniaHousingTorchModel()
-
-        # data needs to be normalized for the neural network
-        from sklearn.preprocessing import StandardScaler
 
         scaler = StandardScaler()
         self.x_train = scaler.fit_transform(self.x_train)
@@ -282,9 +270,8 @@ class GameBenchmarkSetup:
         self.y_data = np.log10(self.y_data)
 
 
-def _accuracy(y_true: np.ndarray, y_pred: np.ndarray, threshold: float = 0.5) -> float:
+def _accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Returns the accuracy score of the model."""
-    from sklearn.metrics import accuracy_score
 
     if y_true.ndim > 1:
         y_true = np.argmax(y_true, axis=1)

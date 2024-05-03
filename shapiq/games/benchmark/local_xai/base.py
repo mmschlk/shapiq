@@ -27,13 +27,14 @@ class LocalExplanation(Game):
         model: The model to explain as a callable function expecting data points as input and
             returning the model's predictions. The input should be a 2d matrix of shape
             (n_samples, n_features) and the output a 1d matrix of shape (n_samples).
-        random_state: The random state to use for the imputer. Defaults to `None`.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
+        random_state: The random state to use for the imputer. Defaults to 42.
 
     Attributes:
         x: The data point to explain.
-        empty_prediction: The model's prediction on an empty data point (all features missing).
+        empty_prediction_value: The output of the model on an empty data point (all features
+            missing).
 
     Examples:
         >>> from sklearn.tree import DecisionTreeRegressor
@@ -68,8 +69,8 @@ class LocalExplanation(Game):
         model: Callable[[np.ndarray], np.ndarray],
         x: Union[np.ndarray, int] = None,
         imputer: Optional[MarginalImputer] = None,
-        random_state: Optional[int] = None,
         normalize: bool = True,
+        random_state: Optional[int] = 42,
     ) -> None:
 
         # get x_explain
@@ -86,13 +87,13 @@ class LocalExplanation(Game):
                 normalize=False,
             )
 
-        self.empty_prediction: float = self._imputer.empty_prediction
+        self.empty_prediction_value: float = self._imputer.empty_prediction
 
         # init the base game
         super().__init__(
             data.shape[1],
             normalize=normalize,
-            normalization_value=self._imputer.empty_prediction,
+            normalization_value=self.empty_prediction_value,
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:

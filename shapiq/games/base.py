@@ -53,7 +53,8 @@ class Game(ABC):
         `value_function` methods. Only use this class directly for dealing with precomputed games.
 
     Examples:
-        >>> from shapiq.games import DummyGame, Game
+        >>> from shapiq.games import Game
+        >>> from shapiq.games.benchmark.synthetic import DummyGame
         >>> game = DummyGame(4, interaction=(1, 2))
         >>> game.precomputed, game.n_values_stored
         False, 0

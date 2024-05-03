@@ -45,7 +45,7 @@ def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
     game_values = game(test_coalitions)
     assert game.n_players == n_players
     assert len(game.data_sets) == n_players and len(game.target_sets) == n_players
-    assert game.empty_value == 0.0  # default value
+    assert game.normalization_value == 0.0  # default value
     assert len(game.data_sets[0]) == pytest.approx(len(x_train) * player_sizes[0], abs=1)
     assert len(game.data_sets[1]) == pytest.approx(len(x_train) * player_sizes[1], abs=1)
     assert len(game.data_sets[2]) == pytest.approx(len(x_train) * player_sizes[2], abs=1)
@@ -89,7 +89,7 @@ def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
         loss_function=accuracy_score,
         n_players=n_players,
         random_state=42,
-        empty_value=0.1,
+        empty_data_value=0.1,
         normalize=False,
     )
     game_values = game(test_coalitions)
@@ -193,7 +193,7 @@ def test_california():
 
     game = CaliforniaHousingDatasetValuation()
     assert game.n_players == 10  # Default Value
-    assert game.empty_value == 0.0  # Default Value
+    assert game.normalization_value == 0.0  # Default Value
     assert game.game_name == "CaliforniaHousing_DatasetValuation_Game"
 
     test_coalitions = np.zeros((2, 10), dtype=bool)
@@ -220,7 +220,7 @@ def test_bike():
 
     game = BikeSharingDatasetValuation()
     assert game.n_players == 10  # Default Value
-    assert game.empty_value == 0.0  # Default Value
+    assert game.normalization_value == 0.0  # Default Value
     assert game.game_name == "BikeSharing_DatasetValuation_Game"
 
     test_coalitions = np.zeros((2, 10), dtype=bool)
@@ -247,7 +247,7 @@ def test_adult_census():
 
     game = AdultCensusDatasetValuation()
     assert game.n_players == 10  # Default Value
-    assert game.empty_value == 0.0  # Default Value
+    assert game.normalization_value == 0.0  # Default Value
     assert game.game_name == "AdultCensus_DatasetValuation_Game"
 
     test_coalitions = np.zeros((2, 10), dtype=bool)

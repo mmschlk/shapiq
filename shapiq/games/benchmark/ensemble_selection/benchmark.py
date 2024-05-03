@@ -24,6 +24,9 @@ class AdultCensus(EnsembleSelection):
             - 'svm'
         n_members: The number of ensemble members to use. Defaults to 10. Ignored if
             `ensemble_members` is not None.
+        random_state: The random state to use for the ensemble selection game. Defaults to 42, which
+            is the same random state used in the other benchmark games with this model type for this
+            dataset.
     """
 
     def __init__(
@@ -31,6 +34,7 @@ class AdultCensus(EnsembleSelection):
         loss_function: str = "accuracy_score",
         ensemble_members: Optional[list[str]] = None,
         n_members: int = 10,
+        random_state: Optional[int] = 42,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
@@ -47,7 +51,7 @@ class AdultCensus(EnsembleSelection):
             dataset_type=setup.dataset_type,
             ensemble_members=ensemble_members,
             n_members=n_members,
-            random_state=42,
+            random_state=random_state,
             normalize=True,
         )
 
@@ -70,6 +74,9 @@ class BikeSharing(EnsembleSelection):
             - 'svm'
         n_members: The number of ensemble members to use. Defaults to 10. Ignored if
             `ensemble_members` is not None.
+        random_state: The random state to use for the ensemble selection game. Defaults to 42, which
+            is the same random state used in the other benchmark games with this model type for this
+            dataset.
     """
 
     def __init__(
@@ -77,6 +84,7 @@ class BikeSharing(EnsembleSelection):
         loss_function: str = "r2_score",
         ensemble_members: Optional[list[str]] = None,
         n_members: int = 10,
+        random_state: Optional[int] = 42,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
@@ -93,7 +101,7 @@ class BikeSharing(EnsembleSelection):
             dataset_type=setup.dataset_type,
             ensemble_members=ensemble_members,
             n_members=n_members,
-            random_state=42,
+            random_state=random_state,
             normalize=True,
         )
 
@@ -116,6 +124,9 @@ class CaliforniaHousing(EnsembleSelection):
             - 'svm'
         n_members: The number of ensemble members to use. Defaults to 10. Ignored if
             `ensemble_members` is not None.
+        random_state: The random state to use for the ensemble selection game. Defaults to 42, which
+            is the same random state used in the other benchmark games with this model type for this
+            dataset.
     """
 
     def __init__(
@@ -123,6 +134,7 @@ class CaliforniaHousing(EnsembleSelection):
         loss_function: str = "r2_score",
         ensemble_members: Optional[list[str]] = None,
         n_members: int = 10,
+        random_state: Optional[int] = 42,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
@@ -139,6 +151,6 @@ class CaliforniaHousing(EnsembleSelection):
             dataset_type=setup.dataset_type,
             ensemble_members=ensemble_members,
             n_members=n_members,
-            random_state=42,
+            random_state=random_state,
             normalize=True,
         )

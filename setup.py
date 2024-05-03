@@ -33,7 +33,7 @@ with open(os.path.join(work_directory, "README.md"), encoding="utf-8") as f:
 with open(os.path.join(work_directory, "CHANGELOG.md"), encoding="utf-8") as f:
     changelog = f.read()
 
-base_packages = ["numpy", "scipy", "pandas", "tqdm"]
+base_packages = ["numpy", "scipy", "pandas", "scikit-learn", "tqdm"]
 
 plotting_packages = ["matplotlib", "colour", "networkx"]
 
@@ -55,7 +55,6 @@ dev_packages = [
     "black",
     "pytest",
     "coverage",
-    "scikit-learn",
 ]
 
 setuptools.setup(

@@ -15,27 +15,14 @@ class UnsupervisedData(Game):
 
     For more information we refer to the following paper: https://arxiv.org/pdf/2205.09060.pdf
 
-    Note:
-        This game requires the sklearn package to be installed. You can install it via pip:
-        ```
-        pip install scikit-learn
-        ```
-
     Args:
         data: The data to analyze as a numpy array of shape (n_samples, n_features).
-        normalize: Whether to normalize the data before analysis. Defaults to False.
-        empty_coalition_value: The value of an empty coalition. Defaults to 0.0.
     """
 
-    def __init__(
-        self,
-        data: np.ndarray,
-        normalize: bool = False,
-        empty_coalition_value: float = 0.0,
-    ) -> None:
+    def __init__(self, data: np.ndarray) -> None:
         self.data = data
         self._n_features = data.shape[1]
-        self.empty_coalition_value = empty_coalition_value
+        self.empty_coalition_value = 0.0
 
         # discretize the data
         from sklearn.preprocessing import KBinsDiscretizer
@@ -48,8 +35,8 @@ class UnsupervisedData(Game):
 
         super().__init__(
             n_players=self._n_features,
-            normalization_value=empty_coalition_value,
-            normalize=normalize,
+            normalize=True,
+            normalization_value=0.0,
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
@@ -65,7 +52,7 @@ class UnsupervisedData(Game):
         values = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
             if sum(coalition) == 0:
-                values[i] = self.empty_coalition_value
+                values[i] = 0.0  # total correlation of the empty set is always 0 (not defined)
                 continue
             data_subset = self.data_discrete[:, np.where(coalition)[0]]
             values[i] = total_correlation(data_subset)  # compute total correlation of the subset

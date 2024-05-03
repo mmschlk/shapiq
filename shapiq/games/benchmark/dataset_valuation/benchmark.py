@@ -16,7 +16,7 @@ class CaliforniaHousing(DatasetValuation):
         player_sizes: The sizes of the players. If 'uniform', the players have equal sizes. If
             'increasing', the players have increasing sizes. If 'random', the players have random
             sizes. If a list of floats, the players have the given sizes. Defaults to 'increasing'.
-        random_state: The random state to use for shuffling the data. Defaults to `None`.
+        random_state: The random state to use for shuffling the data. Defaults to 42.
 
     Note:
         This game uses models from the `sklearn` library. Install the library to use this game.
@@ -47,7 +47,7 @@ class CaliforniaHousing(DatasetValuation):
         n_players: int = 10,
         model_name: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
-        random_state: Optional[int] = None,
+        random_state: Optional[int] = 42,
     ) -> None:
 
         setup = GameBenchmarkSetup(
@@ -67,7 +67,7 @@ class CaliforniaHousing(DatasetValuation):
             n_players=n_players,
             player_sizes=player_sizes,
             random_state=random_state,
-            empty_value=0.0,
+            empty_data_value=0.0,
         )
 
 
@@ -81,7 +81,7 @@ class BikeSharing(DatasetValuation):
         player_sizes: The sizes of the players. If 'uniform', the players have equal sizes. If
             'increasing', the players have increasing sizes. If 'random', the players have random
             sizes. If a list of floats, the players have the given sizes. Defaults to 'increasing'.
-        random_state: The random state to use for shuffling the data. Defaults to `None`.
+        random_state: The random state to use for shuffling the data. Defaults to 42.
 
     Note:
         This game uses models from the `sklearn` library. Install the library to use this game.
@@ -112,7 +112,7 @@ class BikeSharing(DatasetValuation):
         n_players: int = 10,
         model_name: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
-        random_state: Optional[int] = None,
+        random_state: Optional[int] = 42,
     ) -> None:
 
         setup = GameBenchmarkSetup(
@@ -132,7 +132,7 @@ class BikeSharing(DatasetValuation):
             n_players=n_players,
             player_sizes=player_sizes,
             random_state=random_state,
-            empty_value=0.0,
+            empty_data_value=0.0,
         )
 
 
@@ -146,7 +146,7 @@ class AdultCensus(DatasetValuation):
         player_sizes: The sizes of the players. If 'uniform', the players have equal sizes. If
             'increasing', the players have increasing sizes. If 'random', the players have random
             sizes. If a list of floats, the players have the given sizes. Defaults to 'increasing'.
-        random_state: The random state to use for shuffling the data. Defaults to `None`.
+        random_state: The random state to use for shuffling the data. Defaults to 42.
 
     Note:
         This game uses models from the `sklearn` library. Install the library to use this game.
@@ -177,7 +177,7 @@ class AdultCensus(DatasetValuation):
         n_players: int = 10,
         model_name: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
-        random_state: Optional[int] = None,
+        random_state: Optional[int] = 42,
     ) -> None:
 
         setup = GameBenchmarkSetup(
@@ -197,5 +197,5 @@ class AdultCensus(DatasetValuation):
             n_players=n_players,
             player_sizes=player_sizes,
             random_state=random_state,
-            empty_value=0.0,
+            empty_data_value=0.0,
         )
