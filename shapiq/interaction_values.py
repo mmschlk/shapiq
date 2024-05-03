@@ -9,7 +9,7 @@ from warnings import warn
 import numpy as np
 
 from .indices import ALL_AVAILABLE_INDICES, index_generalizes_bv, index_generalizes_sv
-from .utils.sets import generate_interaction_lookup, powerset
+from .utils.sets import count_interactions, generate_interaction_lookup, powerset
 
 
 @dataclass
@@ -106,6 +106,22 @@ class InteractionValues:
 
         Returns:
             The top k interactions.
+
+        Examples:
+            >>> interaction_values = InteractionValues(
+            ...     values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+            ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+            ...     index="SII",
+            ...     max_order=2,
+            ...     n_players=3,
+            ...     min_order=1,
+            ...     baseline_value=0.0,
+            ... )
+            >>> top_k_interactions, sorted_top_k_interactions = interaction_values.get_top_k_interactions(2)
+            >>> top_k_interactions
+            {(0, 2): 0.5, (1, 0): 0.6}
+            >>> sorted_top_k_interactions
+            [((1, 0), 0.6), ((0, 2), 0.5)]
         """
         top_k_indices = np.argsort(np.abs(self.values))[::-1][:k]
         top_k_interactions = {}
@@ -367,3 +383,34 @@ class InteractionValues:
                 values[perm] = self[interaction]
 
         return values
+
+    def get_n_order(self, order: int) -> "InteractionValues":
+        """Returns the interaction values of a specific order.
+
+        Args:
+            order: The order of the interactions to return.
+
+        Returns:
+            The interaction values of the specified order.
+        """
+        new_values = np.zeros(
+            count_interactions(n=self.n_players, max_order=order, min_order=order), dtype=float
+        )
+        new_interaction_lookup = {}
+        for i, interaction in enumerate(
+            powerset(range(self.n_players), min_size=order, max_size=order)
+        ):
+            new_values[i] = self[interaction]
+            new_interaction_lookup[interaction] = len(new_interaction_lookup)
+
+        return InteractionValues(
+            values=new_values,
+            index=self.index,
+            max_order=order,
+            n_players=self.n_players,
+            min_order=order,
+            interaction_lookup=new_interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )

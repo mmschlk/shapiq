@@ -112,7 +112,7 @@ class CoalitionSampler:
         # set variables for sampling and exclude coalition sizes with zero weight
         self._coalitions_to_exclude: list[int] = []
         for size, weight in enumerate(self._sampling_weights):
-            if weight == 0 and size > 0 and size < self.n:
+            if weight == 0 and 0 < size < self.n:
                 self.n_max_coalitions -= int(binom(self.n, size))
                 self._coalitions_to_exclude.extend([size])
         self.adjusted_sampling_weights: Optional[np.ndarray[float]] = None
@@ -212,7 +212,9 @@ class CoalitionSampler:
             An array containing the probabilities of shappe (n+1,)
         """
         size_probs = np.zeros(self.n + 1)
-        size_probs[self._coalitions_to_sample] = self.adjusted_sampling_weights
+        size_probs[self._coalitions_to_sample] = self.adjusted_sampling_weights / np.sum(
+            self.adjusted_sampling_weights
+        )
         return size_probs
 
     @property
@@ -237,7 +239,7 @@ class CoalitionSampler:
             self._sampled_coalitions_size_prob is not None
             and self._sampled_coalitions_in_size_prob is not None
         ):
-            return self._sampled_coalitions_size_prob
+            return self._sampled_coalitions_size_prob * self._sampled_coalitions_in_size_prob
 
     @property
     def coalitions_size_probability(self) -> np.ndarray:
@@ -321,27 +323,24 @@ class CoalitionSampler:
             )
         return sampling_budget
 
-    def execute_pairing_trick(self, sampling_budget: int, coalition_size: int, permutation) -> int:
+    def execute_pairing_trick(self, sampling_budget: int, coalition_tuple: tuple[int, ...]) -> int:
         """Executes the pairing-trick for a sampling budget and coalition sizes.
 
         The pairing-trick is based on the idea of
         [Covert and Lee 2021](https://proceedings.mlr.press/v130/covert21a.html) and pairs each
         coalition with its complement.
 
-        Works similar as the initial coalition, but throws a warning, if the subset is not allowed
-            for sampling.
-
         Args:
             sampling_budget: The currently remaining sampling budget.
-            coalition_size: The coalition size of the coalition that should be paired.
-            permutation: The permutation from which the coalition was drawn.
+            coalition_tuple: The coalition to pair with its complement.
 
         Returns:
             The remaining sampling budget after the pairing-trick.
         """
+        coalition_size = len(coalition_tuple)
         paired_coalition_size = self.n - coalition_size
         if paired_coalition_size in self._coalitions_to_sample:
-            paired_coalition_indices = permutation[coalition_size:]
+            paired_coalition_indices = list(set(range(self.n)) - set(coalition_tuple))
             paired_coalition_tuple = tuple(sorted(paired_coalition_indices))
             self.coalitions_per_size[paired_coalition_size] += 1
             # adjust coalitions counter using the paired coalition
@@ -456,21 +455,15 @@ class CoalitionSampler:
         # sample coalitions
         if len(self._coalitions_to_sample) > 0:
             iteration_counter = 0  # stores the number of samples drawn (duplicates included)
-            coalition_sizes, permutations = self._draw_coalition_sizes(n_draws=sampling_budget * 2)
-            coalition_counter = 0  # stores the index of the coalition size
-
             while sampling_budget > 0:
                 iteration_counter += 1
 
-                # draw new coalition sizes and permutations if all are used
-                if iteration_counter % len(coalition_sizes) == 0:
-                    coalition_sizes, permutations = self._draw_coalition_sizes(sampling_budget)
-                    coalition_counter = 0
-
-                # extract coalition by size from permutation
-                coalition_size = int(coalition_sizes[coalition_counter])  # get coalition size
-                permutation = permutations[coalition_counter]  # get permutation for coalition
-                coalition_tuple = tuple(sorted(permutation[:coalition_size]))  # get coalition
+                # draw coalition
+                coalition_size = self._rng.choice(
+                    self._coalitions_to_sample, size=1, p=self.adjusted_sampling_weights
+                )[0]
+                ids = self._rng.choice(self.n, size=coalition_size, replace=False)
+                coalition_tuple = tuple(sorted(ids))  # get coalition
                 self.coalitions_per_size[coalition_size] += 1
 
                 # add coalition
@@ -482,9 +475,7 @@ class CoalitionSampler:
 
                 # execute pairing-trick by including the complement
                 if self.pairing_trick and sampling_budget > 0:
-                    sampling_budget = self.execute_pairing_trick(
-                        sampling_budget, coalition_size, permutation
-                    )
+                    sampling_budget = self.execute_pairing_trick(sampling_budget, coalition_tuple)
 
         # convert coalition counts to the output format
         coalition_index = 0
@@ -518,24 +509,6 @@ class CoalitionSampler:
             self._is_coalition_size_sampled[coalition_size] = True
 
         self.sampled = True
-
-    def _draw_coalition_sizes(self, n_draws: int) -> tuple[np.ndarray, np.ndarray]:
-        """Draws coalition sizes for the sampling process.
-
-        Args:
-            n_draws: The number of coalition sizes to draw.
-
-        Returns:
-            The coalition sizes and permutations for the sampling process.
-        """
-        coalition_sizes = self._rng.choice(
-            self._coalitions_to_sample,
-            p=self.adjusted_sampling_weights,
-            size=n_draws,
-        )
-        permutations = np.tile(np.arange(self.n, dtype=int), (n_draws, 1))
-        self._rng.permuted(permutations, axis=1, out=permutations)
-        return coalition_sizes, permutations
 
     def _sort_coalitions(self, value):
         """Used to sort coalition sizes by distance to center, i.e. grand coalition and emptyset first

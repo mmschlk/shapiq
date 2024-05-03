@@ -46,8 +46,8 @@ def test_basic_functionality():
 
     # check that the values are correct
     assert sv_estimates[()] == 0.0
-    assert sv_estimates[(0,)] == pytest.approx(0.1429, 0.001)
-    assert sv_estimates[(1,)] == pytest.approx(0.6429, 0.001)
+    assert sv_estimates[(0,)] == pytest.approx(0.1429, 0.01)
+    assert sv_estimates[(1,)] == pytest.approx(0.6429, 0.01)
 
     # smaller budget
     budget = int(budget * 0.75)

@@ -8,7 +8,7 @@ from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.games.base import Game
 from shapiq.games.benchmark import (
-    FeatureSelectionGame,
+    FeatureSelection,
     AdultCensusFeatureSelection,
     BikeSharingFeatureSelection,
     CaliforniaHousingFeatureSelection,
@@ -27,7 +27,7 @@ def test_basic_function(background_reg_dataset):
     model = DecisionTreeRegressor(max_depth=4)
 
     # init game with score function
-    game = FeatureSelectionGame(
+    game = FeatureSelection(
         x_train=x_data,
         x_test=x_data,
         y_train=y_data,
@@ -41,7 +41,7 @@ def test_basic_function(background_reg_dataset):
 
     # init game with predict and loss function
 
-    game = FeatureSelectionGame(
+    game = FeatureSelection(
         x_train=x_data,
         x_test=x_data,
         y_train=y_data,
@@ -57,7 +57,7 @@ def test_basic_function(background_reg_dataset):
 
     # init with no score and or predict function
     with pytest.raises(ValueError):
-        _ = FeatureSelectionGame(
+        _ = FeatureSelection(
             x_train=x_data, x_test=x_data, y_train=y_data, y_test=y_data, fit_function=model.fit
         )
 
@@ -66,7 +66,7 @@ def test_basic_function(background_reg_dataset):
     assert os.path.exists("test_game.pkl")
 
     # load new game
-    new_game = FeatureSelectionGame.load("test_game.pkl")
+    new_game = FeatureSelection.load("test_game.pkl")
     assert new_game.n_values_stored == game.n_values_stored
     assert new_game.n_players == game.n_players
     assert new_game.normalize == game.normalize
@@ -97,6 +97,7 @@ def test_california(model_name):
     value = game(test_coalition)
     assert game.n_players == n_players
     assert len(value) == 1
+    assert game.game_name == "CaliforniaHousing_FeatureSelection_Game"
 
 
 @pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
@@ -110,6 +111,7 @@ def test_adult_census(model_name):
     value = game(test_coalition)
     assert game.n_players == n_players
     assert len(value) == 1
+    assert game.game_name == "AdultCensus_FeatureSelection_Game"
 
 
 @pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
@@ -123,3 +125,4 @@ def test_bike_sharing(model_name):
     value = game(test_coalition)
     assert game.n_players == n_players
     assert len(value) == 1
+    assert game.game_name == "BikeSharing_FeatureSelection_Game"

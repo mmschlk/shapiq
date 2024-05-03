@@ -2,14 +2,14 @@
 
 from typing import Optional
 
-from shapiq.games.benchmark._setup import BenchmarkSetup
+from shapiq.games.benchmark._setup import GameBenchmarkSetup
 
-from .base import FeatureSelectionGame
+from .base import FeatureSelection
 
 
-class AdultCensus(FeatureSelectionGame):
+class AdultCensus(FeatureSelection):
     """The Adult Census dataset as a Feature Selection benchmark game.
-    
+
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree', 'random_forest', and 'gradient_boosting'.
         normalize: A flag to normalize the game values. If `True`, then the game values are
@@ -18,16 +18,16 @@ class AdultCensus(FeatureSelectionGame):
         random_state: The random state to use for the imputer. Defaults to 42.
     """
 
-    
+
     def __init__(
-            self, 
+            self,
             model_name: str = "decision_tree",
-            normalize: bool = True, 
+            normalize: bool = True,
             verbose: bool = True,
             random_state: Optional[int] = 42,
         ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
             verbose=verbose,
@@ -45,7 +45,7 @@ class AdultCensus(FeatureSelectionGame):
         )
 
 
-class BikeSharing(FeatureSelectionGame):
+class BikeSharing(FeatureSelection):
     """The Bike Sharing dataset as a Feature Selection benchmark game.
 
     Args:
@@ -58,13 +58,13 @@ class BikeSharing(FeatureSelectionGame):
     """
 
     def __init__(
-            self, 
+            self,
             model_name: str = "decision_tree",
-            normalize: bool = True, 
+            normalize: bool = True,
             verbose: bool = True,
             random_state: Optional[int] = 42,
         ) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
             verbose=verbose,
@@ -82,9 +82,9 @@ class BikeSharing(FeatureSelectionGame):
         )
 
 
-class CaliforniaHousing(FeatureSelectionGame):
+class CaliforniaHousing(FeatureSelection):
     """The California Housing dataset as a Feature Selection benchmark game.
-    
+
     Args:
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree', 'random_forest', and 'gradient_boosting'.
@@ -95,13 +95,13 @@ class CaliforniaHousing(FeatureSelectionGame):
     """
 
     def __init__(
-            self, 
+            self,
             model_name: str = "decision_tree",
-            normalize: bool = True, 
+            normalize: bool = True,
             verbose: bool = True,
             random_state: Optional[int] = 42,
         ) -> None:
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
             verbose=verbose,

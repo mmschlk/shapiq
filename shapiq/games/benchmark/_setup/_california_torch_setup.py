@@ -30,7 +30,7 @@ class CaliforniaHousingTorchModel:
     def __init__(self, n_epochs: int = 100):
 
         # instantiate the model
-        self.model = SmallNeuralNetwork()
+        self.torch_model = SmallNeuralNetwork()
         try:
             self._load_torch_model_weights()
         except FileNotFoundError:
@@ -41,7 +41,6 @@ class CaliforniaHousingTorchModel:
                 "found at tests/models/california_nn_0.812511_0.076331.weights."
             )
             warnings.warn(msg)
-            self.torch_model = None
 
         self.n_epochs = n_epochs
 
@@ -84,6 +83,9 @@ class CaliforniaHousingTorchModel:
 
     def _load_torch_model_weights(self) -> None:
         """Loads a pre-trained neural network model for the CaliforniaHousing dataset."""
-        model_path = os.path.join("models", "california_nn_0.812511_0.076331.weights")
-        self.torch_model.load_state_dict(torch.load(model_path))
+        # the file is located in the tests/data/models directory
+        module_dir = os.path.abspath(__file__).split("shapiq")[0]
+        path = os.path.join("tests", "data", "models", "california_nn_0.812511_0.076331.weights")
+        test_model_path = os.path.join(module_dir, "shapiq", path)
+        self.torch_model.load_state_dict(torch.load(test_model_path))
         self.torch_model.eval()

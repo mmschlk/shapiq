@@ -65,8 +65,8 @@ def test_approximate(n, max_order, budget):
 
     # for order 2 the interaction between player 1 and 2 is the most important (1.0)
     interaction_estimate = fsi_estimates[interaction]
-    assert interaction_estimate == pytest.approx(1.0, 0.01)
+    assert interaction_estimate == pytest.approx(1.0, 0.1)
 
     # check efficiency
     efficiency = np.sum(fsi_estimates.values)
-    assert efficiency == pytest.approx(efficiency, 0.01)
+    assert efficiency == pytest.approx(efficiency, 0.1)

@@ -4,13 +4,13 @@ from typing import Optional, Union
 
 import numpy as np
 
-from ..setup import BenchmarkSetup, get_x_explain
+from .._config import GameBenchmarkSetup, get_x_explain
 from .base import TreeSHAPIQXAI
 
 
 class AdultCensus(TreeSHAPIQXAI):
     """The Adult Census dataset as a TreeSHAP-IQ explanation game.
-    
+
     Args:
         x: The feature vector to be explained.
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
@@ -37,7 +37,7 @@ class AdultCensus(TreeSHAPIQXAI):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
             verbose=verbose,
@@ -61,7 +61,7 @@ class AdultCensus(TreeSHAPIQXAI):
 
 class BikeSharing(TreeSHAPIQXAI):
     """The Bike Sharing dataset as a TreeSHAP-IQ explanation game.
-    
+
     Args:
         x: The feature vector to be explained.
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
@@ -86,7 +86,7 @@ class BikeSharing(TreeSHAPIQXAI):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
             verbose=verbose,
@@ -109,7 +109,7 @@ class BikeSharing(TreeSHAPIQXAI):
 
 class CaliforniaHousing(TreeSHAPIQXAI):
     """The California Housing dataset as a TreeSHAP-IQ explanation game.
-    
+
     Args:
         x: The feature vector to be explained.
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
@@ -134,7 +134,7 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
             verbose=verbose,

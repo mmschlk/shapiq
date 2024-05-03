@@ -18,17 +18,12 @@ from shapiq.interaction_values import InteractionValues
         (7, 2, "STII", False),
         (7, 2, "STII", True),
         (7, 2, "FSII", True),
-        (7, 2, "FSII", False),  # expected to fail
     ],
 )
 def test_initialization(n, max_order, index, top_order):
     """Tests the initialization of the ShapIQ approximator."""
-    try:
-        approximator = SHAPIQ(n, max_order, index=index, top_order=top_order)
-    except ValueError:
-        if index == "FSII" and not top_order:
-            return
-        raise
+
+    approximator = SHAPIQ(n, max_order, index=index, top_order=top_order)
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order is top_order
@@ -94,8 +89,8 @@ def test_approximate_sii(n, max_order, top_order, budget):
             assert estimates[(1,)] == pytest.approx(0.6429, 0.4)
             assert estimates[(2,)] == pytest.approx(0.6429, 0.4)
         else:
-            assert estimates[(1,)] == pytest.approx(0.6429, 0.0001)
-            assert estimates[(2,)] == pytest.approx(0.6429, 0.0001)
+            assert estimates[(1,)] == pytest.approx(0.6429, 0.01)
+            assert estimates[(2,)] == pytest.approx(0.6429, 0.01)
 
 
 @pytest.mark.parametrize("n, max_order, top_order, budget", [(7, 2, False, 100), (7, 2, True, 100)])

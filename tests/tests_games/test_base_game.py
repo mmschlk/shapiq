@@ -7,6 +7,7 @@ import pytest
 
 
 from shapiq.games.benchmark import DummyGame  # used to test the base class
+from shapiq.utils.sets import powerset, transform_coalitions_to_array
 
 
 def test_precompute():
@@ -55,6 +56,7 @@ def test_core_functions():
     assert isinstance(repr(dummy_game), str)
     assert isinstance(str(dummy_game), str)
     assert repr(dummy_game) == string_game
+    assert dummy_game.game_name == "DummyGame_Game"
 
     dummy_game.normalization_value = 1.0
     assert dummy_game.normalize  # should be true if normalization_value is not 0.0
@@ -157,3 +159,17 @@ def test_load_and_save():
     # clean up
     os.remove(path)
     assert not os.path.exists(path)
+
+
+def test_progress_bar():
+    """Tests the progress bar of the game class."""
+
+    dummy_game = DummyGame(n=5, interaction=(0, 1))
+
+    test_coalitions = list(powerset(range(dummy_game.n_players)))
+    test_coalitions = transform_coalitions_to_array(test_coalitions, dummy_game.n_players)
+
+    # check if the progress bar is displayed
+
+    values = dummy_game(test_coalitions, verbose=True)
+    assert len(values) == len(test_coalitions)

@@ -4,8 +4,8 @@ from typing import Optional, Union
 
 import numpy as np
 
-from .._setup import BenchmarkSetup
-from ..setup import get_x_explain
+from .._config import get_x_explain
+from .._setup import GameBenchmarkSetup
 from .base import LocalExplanation
 
 
@@ -40,7 +40,7 @@ class AdultCensus(LocalExplanation):
                 f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}."
             )
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
             verbose=verbose,
@@ -87,7 +87,7 @@ class BikeSharing(LocalExplanation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
             verbose=verbose,
@@ -133,7 +133,7 @@ class CaliforniaHousing(LocalExplanation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
             verbose=verbose,

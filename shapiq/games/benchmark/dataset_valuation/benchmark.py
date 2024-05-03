@@ -2,7 +2,7 @@
 
 from typing import Optional, Union
 
-from .._setup import BenchmarkSetup
+from .._setup import GameBenchmarkSetup
 from .base import DatasetValuation
 
 
@@ -50,7 +50,7 @@ class CaliforniaHousing(DatasetValuation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
             random_state=random_state,
@@ -115,7 +115,7 @@ class BikeSharing(DatasetValuation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
             random_state=random_state,
@@ -180,7 +180,7 @@ class AdultCensus(DatasetValuation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup(
+        setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
             random_state=random_state,

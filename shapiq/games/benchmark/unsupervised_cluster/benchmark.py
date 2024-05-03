@@ -2,13 +2,13 @@
 
 from typing import Optional
 
-from ..setup import BenchmarkSetup
+from .._config import GameBenchmarkSetup
 from .base import ClusterExplanation
 
 
 class AdultCensus(ClusterExplanation):
     """The Adult Census game as a clustering explanation game.
-    
+
     Args:
         cluster_method: The clustering algorithm to use as a string. Defaults to 'dbscan'. Alternative
             available clustering algorithms are 'kmeans' and 'agglomerative' with 3 clusters.
@@ -27,7 +27,7 @@ class AdultCensus(ClusterExplanation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup("adult_census")
+        setup = GameBenchmarkSetup("adult_census")
         data = setup.x_data
 
         cluster_params = None
@@ -51,7 +51,7 @@ class AdultCensus(ClusterExplanation):
 
 class BikeSharing(ClusterExplanation):
     """The Bike Sharing game as a clustering explanation game.
-    
+
     Args:
         cluster_method: The clustering algorithm to use as a string. Defaults to 'kmeans'. Alternative
             available clustering algorithms are 'dbscan' and 'agglomerative' with 3 clusters.
@@ -70,7 +70,7 @@ class BikeSharing(ClusterExplanation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup("bike_sharing")
+        setup = GameBenchmarkSetup("bike_sharing")
         data = setup.x_data
 
         cluster_params = None
@@ -113,7 +113,7 @@ class CaliforniaHousing(ClusterExplanation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = BenchmarkSetup("california_housing")
+        setup = GameBenchmarkSetup("california_housing")
         data = setup.x_data
 
         cluster_params = None

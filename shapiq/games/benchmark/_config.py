@@ -4,6 +4,7 @@ import copy
 from typing import Optional, Union
 
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -13,21 +14,20 @@ from sklearn.metrics import (
     r2_score,
     roc_auc_score,
 )
+
 # data needs to be normalized for the neural network
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
-from shapiq.utils import Model
-from shapiq.utils.datasets import shuffle_data
-from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing
+from ...datasets import load_adult_census, load_bike_sharing, load_california_housing
+from ...utils import Model
+from ...utils.datasets import shuffle_data
 from ._setup._california_torch_setup import CaliforniaHousingTorchModel
-
 
 AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 
 
-class BenchmarkSetup:
+class GameBenchmarkSetup:
     """Class to load and prepare models and datasets for the benchmark games.
 
     Note:
@@ -37,14 +37,14 @@ class BenchmarkSetup:
     Args:
         dataset_name: The dataset to load the models for. Available datasets are 'adult_census',
             'bike_sharing', and 'california_housing'.
-        model_name: If specified, the name of the model to load. Defaults to `None`, which means that 
+        model_name: If specified, the name of the model to load. Defaults to `None`, which means that
             no model will be loaded. Available models for the datasets are the following:
             - 'adult_census': 'decision_tree', 'random_forest', 'gradient_boosting'
             - 'bike_sharing': 'decision_tree', 'random_forest', 'gradient_boosting'
             - 'california_housing': 'decision_tree', 'random_forest', 'gradient_boosting',
                 'neural_network'
         loss_function: If specified, the loss function to use for the game (as a string). Defaults to
-            `None`, which means 'r2_score' for regression and 'accuracy_score' for classification. 
+            `None`, which means 'r2_score' for regression and 'accuracy_score' for classification.
             Available loss functions are:
             - 'mean_squared_error'
             - 'mean_absolute_error'
@@ -89,8 +89,8 @@ class BenchmarkSetup:
         ValueError: If an invalid model name is provided for the dataset.
 
     Examples:
-        >>> from shapiq.games.benchmark.setup import BenchmarkSetup
-        >>> setup = BenchmarkSetup(dataset_name='adult_census', model_name='decision_tree')
+        >>> from shapiq.games.benchmark.setup import GameBenchmarkSetup
+        >>> setup = GameBenchmarkSetup(dataset_name='adult_census', model_name='decision_tree')
         >>> setup.n_features
         14
         >>> setup.fit_function # returns a callable

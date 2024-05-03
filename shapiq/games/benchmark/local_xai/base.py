@@ -7,7 +7,7 @@ import numpy as np
 from shapiq.games.base import Game
 from shapiq.games.imputer import MarginalImputer
 
-from ..setup import get_x_explain
+from .._config import get_x_explain
 
 
 class LocalExplanation(Game):
@@ -73,7 +73,7 @@ class LocalExplanation(Game):
     ) -> None:
 
         # get x_explain
-        self.x = x if x is not None else get_x_explain(x, data)
+        self.x = get_x_explain(x, data)
 
         # init the imputer which serves as the workhorse of this Game
         self._imputer = imputer
