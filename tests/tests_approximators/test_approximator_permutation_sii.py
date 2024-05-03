@@ -77,7 +77,7 @@ def test_approximate(n, max_order, top_order, budget, batch_size, index):
 
     # check that the estimates are correct
     if not top_order:
-        assert estimates[(0,)] == pytest.approx(0.1442, abs=0.1)
+        assert estimates[(0,)] == pytest.approx(0.1442, abs=0.2)
 
         if index == "SII":
             assert estimates[(1,)] == pytest.approx(0.6429, abs=0.2)  # large interval

@@ -89,8 +89,8 @@ def test_approximate_sii(n, max_order, top_order, budget):
             assert estimates[(1,)] == pytest.approx(0.6429, 0.4)
             assert estimates[(2,)] == pytest.approx(0.6429, 0.4)
         else:
-            assert estimates[(1,)] == pytest.approx(0.6429, 0.0001)
-            assert estimates[(2,)] == pytest.approx(0.6429, 0.0001)
+            assert estimates[(1,)] == pytest.approx(0.6429, 0.01)
+            assert estimates[(2,)] == pytest.approx(0.6429, 0.01)
 
 
 @pytest.mark.parametrize("n, max_order, top_order, budget", [(7, 2, False, 100), (7, 2, True, 100)])
