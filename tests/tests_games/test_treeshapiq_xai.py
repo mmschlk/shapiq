@@ -103,7 +103,7 @@ def test_adult():
     )
     gt_interaction_values = game.gt_interaction_values
     assert game.n_players == 14
-    assert game.game_name == "AdultCensus(TreeSHAPIQXAI)"
+    assert game.get_game_name == "AdultCensus(TreeSHAPIQXAI)"
 
     # test against the exact computation
     exact = ExactComputer(n_players=game.n_players, game_fun=game)
@@ -130,7 +130,7 @@ def test_california():
     )
     gt_interaction_values = game.gt_interaction_values
     assert game.n_players == 8
-    assert game.game_name == "CaliforniaHousing(TreeSHAPIQXAI)"
+    assert game.get_game_name == "CaliforniaHousing(TreeSHAPIQXAI)"
 
     # test against the exact computation
     exact = ExactComputer(n_players=game.n_players, game_fun=game)
@@ -157,7 +157,7 @@ def test_bike():
     )
     gt_interaction_values = game.gt_interaction_values
     assert game.n_players == 12
-    assert game.game_name == "BikeSharing(TreeSHAPIQXAI)"
+    assert game.get_game_name == "BikeSharing(TreeSHAPIQXAI)"
 
     # test against the exact computation
     exact = ExactComputer(n_players=game.n_players, game_fun=game)

@@ -2,7 +2,7 @@
 
 import multiprocessing as mp
 import os
-from typing import Optional
+from typing import Optional, Union
 
 from tqdm.auto import tqdm
 
@@ -19,22 +19,20 @@ __all__ = [
 SHAPIQ_DATA_DIR = os.path.join(os.path.dirname(__file__), "precomputed")
 
 
-def get_game_files(game: Game.__class__, n_players: int) -> list[str]:
+def get_game_files(game: Union[Game, Game.__class__, str], n_players: int) -> list[str]:
     """Get the files for the given game and number of players.
 
     Args:
-        game: The game to get the files for.
-        n_players: The number of players in the game.
+        game: The game to get the files for or the game name (as provided by `game.game_name` or
+            `GameClass.get_game_name()`).
+        n_players: The number of players in the game. If not provided, all files are returned.
 
     Returns:
         The list of files for the given game and number of players.
     """
-    game_name = game.__name__
-    try:
-        game_name = game_name + "(" + game.__mro__.__name__ + ")"
-        # TODO: fix tomorrow that
-    except AttributeError:
-        pass
+    game_name = game
+    if not isinstance(game, str):
+        game_name = game.get_game_name()
     save_dir = os.path.join(SHAPIQ_DATA_DIR, game_name, str(n_players))
     try:
         return os.listdir(save_dir)
@@ -51,7 +49,7 @@ def pre_compute_and_store(
         game: The game to pre-compute the values for.
         save_dir: The path to the directory where the values are stored. If not provided, the
             directory is determined at random.
-        game_id: The ID of the game. If not provided, the ID is determined at random.
+        game_id: A identifier of the game. If not provided, the ID is determined at random.
 
     Returns:
         The path to the file where the values are stored.

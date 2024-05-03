@@ -134,7 +134,7 @@ def _run_benchmark(
     estimates = copy.deepcopy(approximator.approximate(budget=budget, game=game))
     result = {
         "iteration": iteration,
-        "game_name": game.game_name,
+        "game_name": game.get_game_name,
         "game_id": game.game_id,
         "n_players": game.n_players,
         "budget": budget,

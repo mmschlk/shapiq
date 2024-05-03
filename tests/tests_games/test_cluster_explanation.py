@@ -121,7 +121,7 @@ def test_california(cluster_method, score_method):
         cluster_method=cluster_method, score_method=score_method
     )
     assert game.n_players == n_players
-    assert game.game_name == "CaliforniaHousing(ClusterExplanation)"
+    assert game.get_game_name == "CaliforniaHousing(ClusterExplanation)"
     # no run tests here since it takes too long
 
 
@@ -138,7 +138,7 @@ def test_bike(cluster_method, score_method):
     # setup game
     game = BikeSharingClusterExplanation(cluster_method=cluster_method, score_method=score_method)
     assert game.n_players == n_players
-    assert game.game_name == "BikeSharing(ClusterExplanation)"
+    assert game.get_game_name == "BikeSharing(ClusterExplanation)"
     # no run tests here since it takes too long
 
 
@@ -155,5 +155,5 @@ def test_adult_census(cluster_method, score_method):
     # setup game
     game = AdultCensusClusterExplanation(cluster_method=cluster_method, score_method=score_method)
     assert game.n_players == n_players
-    assert game.game_name == "AdultCensus(ClusterExplanation)"
+    assert game.get_game_name == "AdultCensus(ClusterExplanation)"
     # no run tests here since it takes too long

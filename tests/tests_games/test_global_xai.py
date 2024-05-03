@@ -75,7 +75,7 @@ def test_california(model_name):
     worth = game(test_coalitions)
     assert game.n_players == 8
     assert worth.shape == (2,)
-    assert game.game_name == "CaliforniaHousing(GlobalExplanation)"
+    assert game.get_game_name == "CaliforniaHousing(GlobalExplanation)"
 
 
 @pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
@@ -89,7 +89,7 @@ def test_adult_census(model_name):
     worth = game(test_coalitions)
     assert game.n_players == 14
     assert worth.shape == (2,)
-    assert game.game_name == "AdultCensus(GlobalExplanation)"
+    assert game.get_game_name == "AdultCensus(GlobalExplanation)"
 
 
 @pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])
@@ -103,4 +103,4 @@ def test_bike_sharing(model_name):
     worth = game(test_coalitions)
     assert game.n_players == 12
     assert worth.shape == (2,)
-    assert game.game_name == "BikeSharing(GlobalExplanation)"
+    assert game.get_game_name == "BikeSharing(GlobalExplanation)"

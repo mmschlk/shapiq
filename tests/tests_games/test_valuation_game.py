@@ -194,7 +194,7 @@ def test_california():
     game = CaliforniaHousingDatasetValuation()
     assert game.n_players == 10  # Default Value
     assert game.empty_value == 0.0  # Default Value
-    assert game.game_name == "CaliforniaHousing(DatasetValuation)"
+    assert game.get_game_name == "CaliforniaHousing(DatasetValuation)"
 
     test_coalitions = np.zeros((2, 10), dtype=bool)
     test_coalitions[1, 0] = True
@@ -221,7 +221,7 @@ def test_bike():
     game = BikeSharingDatasetValuation()
     assert game.n_players == 10  # Default Value
     assert game.empty_value == 0.0  # Default Value
-    assert game.game_name == "BikeSharing(DatasetValuation)"
+    assert game.get_game_name == "BikeSharing(DatasetValuation)"
 
     test_coalitions = np.zeros((2, 10), dtype=bool)
     test_coalitions[1, 0] = True
@@ -248,7 +248,7 @@ def test_adult_census():
     game = AdultCensusDatasetValuation()
     assert game.n_players == 10  # Default Value
     assert game.empty_value == 0.0  # Default Value
-    assert game.game_name == "AdultCensus(DatasetValuation)"
+    assert game.get_game_name == "AdultCensus(DatasetValuation)"
 
     test_coalitions = np.zeros((2, 10), dtype=bool)
     test_coalitions[1, 0] = True
