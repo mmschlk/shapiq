@@ -146,15 +146,6 @@ class Game(ABC):
         """Indication whether the game values are normalized."""
         return self.normalization_value != 0
 
-    @property
-    def game_name(self) -> str:
-        """The name of the game."""
-        # get name of first two classes in the inheritance hierarchy
-        name = self.__class__.__name__
-        if self.__class__.__bases__:
-            name += f"({self.__class__.__bases__[0].__name__})"
-        return name
-
     def __call__(self, coalitions: np.ndarray, verbose: bool = False) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
         value function.
@@ -379,8 +370,26 @@ class Game(ABC):
         if not self.precomputed and self.n_players > 16:
             warnings.warn(
                 "The game is not precomputed and the number of players is greater than 16. "
-                "Computing the exact interaction values via brute force might take a long time."
+                "Computing the exact interaction values via brute force may take a long time."
             )
 
         exact_computer = ExactComputer(self.n_players, game_fun=self)
         return exact_computer(index=index, order=order)
+
+    @property
+    def game_name(self) -> str:
+        """Return the name of the game and the first class in the inheritance hierarchy."""
+        return self.get_game_name()
+
+    @classmethod
+    def get_game_name(cls) -> str:
+        """Return the name of the game and the first class in the inheritance hierarchy."""
+        class_names = [cls.__name__]
+        parent = cls.__base__
+        while parent:
+            parent_name = parent.__name__
+            class_names.append(parent_name)
+            if parent_name == Game.__name__:
+                break
+            parent = parent.__base__
+        return "_".join(class_names)

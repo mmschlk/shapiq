@@ -17,7 +17,7 @@ def test_soum_interations():
 
         # Unanimity Test
         u_game = UnanimityGame(interaction)
-        assert u_game.game_name == "UnanimityGame(Game)"
+        assert u_game.get_game_name == "UnanimityGame(Game)"
         coalition_matrix = np.random.randint(2, size=(M, n))
         u_game_values = u_game(coalition_matrix)
         assert len(u_game_values) == M
@@ -29,7 +29,7 @@ def test_soum_interations():
         n_interactions = np.random.randint(low=1, high=200)
 
         soum = SOUM(n, n_interactions)
-        assert soum.game_name == "SOUM(Game)"
+        assert soum.get_game_name == "SOUM(Game)"
         soum_values = soum(coalition_matrix)
         assert len(soum_values) == M
         assert len(soum.linear_coefficients) == n_interactions
@@ -128,7 +128,7 @@ def test_dummy_game(n, interaction, expected):
 
     string_game = str(game)
     assert repr(game) == string_game
-    assert game.game_name == "DummyGame(Game)"
+    assert game.get_game_name == "DummyGame(Game)"
 
 
 def test_dummy_game_access_counts():

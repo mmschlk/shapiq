@@ -56,7 +56,7 @@ def test_core_functions():
     assert isinstance(repr(dummy_game), str)
     assert isinstance(str(dummy_game), str)
     assert repr(dummy_game) == string_game
-    assert dummy_game.game_name == "DummyGame(Game)"
+    assert dummy_game.get_game_name == "DummyGame(Game)"
 
     dummy_game.normalization_value = 1.0
     assert dummy_game.normalize  # should be true if normalization_value is not 0.0

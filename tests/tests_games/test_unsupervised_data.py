@@ -53,7 +53,7 @@ def test_adult():
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
-    assert game.game_name == "AdultCensus(UnsupervisedData)"
+    assert game.get_game_name == "AdultCensus(UnsupervisedData)"
 
     test_coalitions = np.array(
         [game.empty_coalition, game.empty_coalition, game.grand_coalition]
@@ -75,7 +75,7 @@ def test_bike_sharing():
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
-    assert game.game_name == "BikeSharing(UnsupervisedData)"
+    assert game.get_game_name == "BikeSharing(UnsupervisedData)"
 
     test_coalitions = np.array(
         [game.empty_coalition, game.empty_coalition, game.grand_coalition]
@@ -97,7 +97,7 @@ def test_california_housing():
     assert isinstance(game, Game)
     assert isinstance(game, UnsupervisedData)
     assert game.n_players == n_players
-    assert game.game_name == "CaliforniaHousing(UnsupervisedData)"
+    assert game.get_game_name == "CaliforniaHousing(UnsupervisedData)"
 
     test_coalitions = np.array(
         [game.empty_coalition, game.empty_coalition, game.grand_coalition]
