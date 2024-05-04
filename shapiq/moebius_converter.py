@@ -106,9 +106,7 @@ class MoebiusConverter:
         """
         from .aggregation import aggregate_interaction_values
 
-        aggregated_interactions = aggregate_interaction_values(
-            base_interactions, order, player_set=self.N
-        )
+        aggregated_interactions = aggregate_interaction_values(base_interactions, order)
         return copy.copy(aggregated_interactions)
 
     def get_moebius_distribution_weight(
@@ -187,10 +185,10 @@ class MoebiusConverter:
         distribution_weights = np.zeros((self.n + 1, order + 1))
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
-                distribution_weights[
-                    moebius_size, interaction_size
-                ] = self.get_moebius_distribution_weight(
-                    moebius_size, interaction_size, order, index
+                distribution_weights[moebius_size, interaction_size] = (
+                    self.get_moebius_distribution_weight(
+                        moebius_size, interaction_size, order, index
+                    )
                 )
 
         for moebius_set, moebius_val in zip(
@@ -246,10 +244,10 @@ class MoebiusConverter:
 
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
-                distribution_weights[
-                    moebius_size, interaction_size
-                ] = self.get_moebius_distribution_weight(
-                    moebius_size, interaction_size, order, index
+                distribution_weights[moebius_size, interaction_size] = (
+                    self.get_moebius_distribution_weight(
+                        moebius_size, interaction_size, order, index
+                    )
                 )
 
         for moebius_set, moebius_val in zip(
@@ -311,10 +309,10 @@ class MoebiusConverter:
         distribution_weights = np.zeros((self.n + 1, order + 1))
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
-                distribution_weights[
-                    moebius_size, interaction_size
-                ] = self.get_moebius_distribution_weight(
-                    moebius_size, interaction_size, order, index
+                distribution_weights[moebius_size, interaction_size] = (
+                    self.get_moebius_distribution_weight(
+                        moebius_size, interaction_size, order, index
+                    )
                 )
 
         for moebius_set, moebius_val in zip(
