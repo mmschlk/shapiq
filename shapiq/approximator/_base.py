@@ -318,7 +318,7 @@ class Approximator(ABC):
         """
         from ..aggregation import aggregate_interaction_values
 
-        return aggregate_interaction_values(base_interactions, order=order, player_set=player_set)
+        return aggregate_interaction_values(base_interactions, order=order)
 
     @staticmethod
     def aggregate_to_one_dimension(

@@ -1,13 +1,14 @@
 """This module contains the aggregation functions for summarizing base interaction indices into
 efficient indices useful for explanations"""
 
+import warnings
 from typing import Optional
 
 import numpy as np
 import scipy as sp
 
 from .interaction_values import InteractionValues
-from .utils.sets import count_interactions, powerset
+from .utils.sets import powerset
 
 
 def _change_index(index: str) -> str:
@@ -26,9 +27,7 @@ def _change_index(index: str) -> str:
 
 
 def aggregate_interaction_values(
-    base_interactions: InteractionValues,
-    order: Optional[int] = None,
-    player_set: Optional[set[int]] = None,
+    base_interactions: InteractionValues, order: Optional[int] = None
 ) -> InteractionValues:
     """Aggregates the basis interaction values into an efficient interaction index.
 
@@ -38,8 +37,6 @@ def aggregate_interaction_values(
         base_interactions: The basis interaction values to aggregate.
         order: The order of the aggregation. For example, the order of the k-SII aggregation. If
             `None`, the maximum order of the base interactions is used. Defaults to `None`.
-        player_set: The set of players to consider for the aggregation. If `None`, all players are
-            considered. Defaults to `None`.
 
     Returns:
         The aggregated interaction values.
@@ -71,41 +68,46 @@ def aggregate_interaction_values(
     """
     # sanitize input parameters
     order = order or base_interactions.max_order
-    player_set = player_set or set(range(base_interactions.n_players))
+
+    if base_interactions.min_order > 1:
+        warnings.warn(
+            UserWarning(
+                "The base interaction values have a minimum order greater than 1. Aggregation may "
+                "not be meaningful."
+            )
+        )
+
     bernoulli_numbers = sp.special.bernoulli(order)  # used for aggregation
-    n_interactions = count_interactions(n=len(player_set), min_order=0, max_order=order)
-    aggregated_values = np.zeros(n_interactions, dtype=float)  # for the aggregated values
-    lookup: dict[tuple[int], int] = {}  # maps interactions to their index in the values vector
-    # compute aggregated values over all subsets S with 0 <= |S| <= order
-    for pos, interaction in enumerate(powerset(player_set, min_size=0, max_size=order)):
-        interaction_size = len(interaction)
+    baseline_value = base_interactions.baseline_value
+    transformed_dict: dict[tuple, float] = {tuple(): baseline_value}  # storage
+    # iterate over all interactions in base_interactions and project them onto all interactions T
+    # where 1 <= |T| <= order
+    for base_interaction, pos in base_interactions.interaction_lookup.items():
+        base_interaction_value = float(base_interactions.values[pos])
+        for interaction in powerset(base_interaction, min_size=1, max_size=order):
+            scaling = float(bernoulli_numbers[len(base_interaction) - len(interaction)])
+            update_interaction = scaling * base_interaction_value
+            try:
+                transformed_dict[interaction] += update_interaction
+            except KeyError:
+                transformed_dict[interaction] = update_interaction
+
+    lookup: dict[tuple[int, ...], int] = {}  # maps interactions to their index in the values vector
+    aggregated_values = np.zeros(len(transformed_dict), dtype=float)
+    for pos, (interaction, interaction_value) in enumerate(transformed_dict.items()):
         lookup[interaction] = pos
-        if interaction_size == 0:  # initialize emptyset baseline value
-            agg_value = base_interactions.baseline_value
-        else:
-            agg_value = base_interactions[interaction]
-            # go over all subsets T of length |S| + 1, ..., n that contain S
-            for interaction_higher_order in powerset(
-                player_set, min_size=interaction_size + 1, max_size=order
-            ):
-                if not set(interaction).issubset(interaction_higher_order):
-                    continue
-                value_higher_order = base_interactions[interaction_higher_order]  # effect of T
-                # normalization with bernoulli numbers
-                scaling = bernoulli_numbers[len(interaction_higher_order) - interaction_size]
-                agg_value += scaling * value_higher_order
-        aggregated_values[pos] = agg_value
+        aggregated_values[pos] = interaction_value
 
     # update the index name after the aggregation (e.g., SII -> k-SII)
     new_index = _change_index(base_interactions.index)
 
     return InteractionValues(
-        n_players=len(player_set),
+        n_players=base_interactions.n_players,
         values=aggregated_values,
         index=new_index,
         interaction_lookup=lookup,
-        baseline_value=base_interactions.baseline_value,
-        min_order=base_interactions.min_order,
+        baseline_value=baseline_value,
+        min_order=0,  # always order 0 for this aggregation
         max_order=order,
         estimated=base_interactions.estimated,
         estimation_budget=base_interactions.estimation_budget,

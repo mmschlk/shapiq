@@ -67,7 +67,7 @@ def test_approximate(n, max_order, top_order, budget, batch_size, index):
     estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == max_order
-    assert estimates.min_order == (max_order if top_order else 0)
+    assert estimates.min_order == (max_order if (top_order and index is not "k-SII") else 0)
     assert estimates.index == index
     assert estimates.estimated is True  # always estimated
     assert estimates.estimation_budget <= budget

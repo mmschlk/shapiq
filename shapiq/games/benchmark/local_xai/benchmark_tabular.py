@@ -40,23 +40,23 @@ class AdultCensus(LocalExplanation):
                 f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}."
             )
 
-        setup = GameBenchmarkSetup(
+        self.setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
             verbose=verbose,
-            random_state=random_state
+            random_state=random_state,
         )
 
         # get x_explain
-        x = get_x_explain(x, setup.x_test)
+        x = get_x_explain(x, self.setup.x_test)
 
         def predict_function(x):
-            return setup.predict_function(x)[:, class_to_explain]
+            return self.setup.predict_function(x)[:, class_to_explain]
 
         # call the super constructor
         super().__init__(
             x=x,
-            data=setup.x_train,
+            data=self.setup.x_train,
             model=predict_function,
             random_state=random_state,
             normalize=normalize,
@@ -87,22 +87,22 @@ class BikeSharing(LocalExplanation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = GameBenchmarkSetup(
+        self.setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
             verbose=verbose,
-            random_state=random_state
+            random_state=random_state,
         )
 
         # get x_explain
-        x = get_x_explain(x, setup.x_test)
+        x = get_x_explain(x, self.setup.x_test)
 
-        predict_function = setup.predict_function
+        predict_function = self.setup.predict_function
 
         # call the super constructor
         super().__init__(
             x=x,
-            data=setup.x_test,
+            data=self.setup.x_test,
             model=predict_function,
             random_state=random_state,
             normalize=normalize,
@@ -133,21 +133,23 @@ class CaliforniaHousing(LocalExplanation):
         random_state: Optional[int] = 42,
     ) -> None:
 
-        setup = GameBenchmarkSetup(
+        self.setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
             verbose=verbose,
-            random_state=random_state
+            random_state=random_state,
         )
 
         # get x_explain
-        x = get_x_explain(x, setup.x_test)
+        x = get_x_explain(x, self.setup.x_test)
+
+        predict_function = self.setup.predict_function
 
         # call the super constructor
         super().__init__(
             x=x,
-            data=setup.x_test,
-            model=setup.predict_function,
+            data=self.setup.x_test,
+            model=predict_function,
             random_state=random_state,
             normalize=normalize,
         )
