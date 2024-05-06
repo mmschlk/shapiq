@@ -57,11 +57,13 @@ if __name__ == "__main__":
     print("Converted values.")
     print(example_values)
 
+    print("Sum of values:", np.sum(example_values.values))
+
     fig, ax = explanation_graph(
         example_values,
         edges=[(0, 1), (2, 3), (0, 3), (0, 2), (1, 3), (4, 8), (7, 8), (7, 9), (3, 4), (5, 10)],
         random_seed=2,
-        size_factor=5,
+        size_factor=1,
         plot_explanation=True,
         weight_factor=5,
         draw_threshold=0.03,
