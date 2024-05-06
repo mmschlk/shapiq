@@ -153,7 +153,7 @@ class InteractionValues:
         representation += "    Top 10 interactions:\n"
         for interaction, value in sorted_top_10_interactions:
             representation += f"        {interaction}: {value}\n"
-        representation += "\n)"
+        representation += ")"
         return representation
 
     def __len__(self) -> int:
