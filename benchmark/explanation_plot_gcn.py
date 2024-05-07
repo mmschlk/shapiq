@@ -11,7 +11,6 @@ from shapiq.moebius_converter import MoebiusConverter
 if __name__ == "__main__":
 
     df = pd.read_csv("data/gtmoebius_GCN_MUTAG_3_True_True_4_11_11.csv")
-    # df = pd.read_csv("data/gtmoebius_GCN_MUTAG_4_True_True_4_11_11.csv")
     # rename first col from "" to "set"
     df = df.rename(columns={df.columns[0]: "set"})
 
