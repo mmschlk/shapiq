@@ -2,6 +2,8 @@
 scores."""
 
 import copy
+import os
+import pickle
 from dataclasses import dataclass
 from typing import Optional, Union
 from warnings import warn
@@ -96,16 +98,47 @@ class InteractionValues:
         self.values = new_values
         self.interaction_lookup = new_interaction_lookup
 
-    def get_top_k_interactions(
-        self, k: int
-    ) -> tuple[dict[tuple[int, ...], float], list[tuple[int, ...], float]]:
+    def get_top_k_interactions(self, k: int) -> "InteractionValues":
         """Returns the top k interactions.
 
         Args:
             k: The number of top interactions to return.
 
         Returns:
-            The top k interactions.
+            The top k interactions as an InteractionValues object.
+        """
+        top_k_indices = np.argsort(np.abs(self.values))[::-1][:k]
+        new_values = np.zeros(k, dtype=float)
+        new_interaction_lookup = {}
+        for interaction_pos, interaction in enumerate(self.interaction_lookup):
+            if interaction_pos in top_k_indices:
+                new_position = len(new_interaction_lookup)
+                new_values[new_position] = self[interaction_pos]
+                new_interaction_lookup[interaction] = new_position
+        return InteractionValues(
+            values=new_values,
+            index=self.index,
+            max_order=self.max_order,
+            n_players=self.n_players,
+            min_order=self.min_order,
+            interaction_lookup=new_interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )
+
+    def get_top_k(
+        self, k: int, as_interaction_values: bool = True
+    ) -> Union["InteractionValues", tuple[dict, list[tuple]]]:
+        """Returns the top k interactions.
+
+        Args:
+            k: The number of top interactions to return.
+            as_interaction_values: Whether to return the top k interactions as an InteractionValues
+                object. Defaults to `False`.
+
+        Returns:
+            The top k interactions as a dictionary and a sorted list of tuples.
 
         Examples:
             >>> interaction_values = InteractionValues(
@@ -117,12 +150,14 @@ class InteractionValues:
             ...     min_order=1,
             ...     baseline_value=0.0,
             ... )
-            >>> top_k_interactions, sorted_top_k_interactions = interaction_values.get_top_k_interactions(2)
+            >>> top_k_interactions, sorted_top_k_interactions = interaction_values.get_top_k(2, False)
             >>> top_k_interactions
             {(0, 2): 0.5, (1, 0): 0.6}
             >>> sorted_top_k_interactions
             [((1, 0), 0.6), ((0, 2), 0.5)]
         """
+        if as_interaction_values:
+            return self.get_top_k_interactions(k)
         top_k_indices = np.argsort(np.abs(self.values))[::-1][:k]
         top_k_interactions = {}
         for interaction, index in self.interaction_lookup.items():
@@ -139,21 +174,20 @@ class InteractionValues:
         representation += (
             f"    index={self.index}, max_order={self.max_order}, min_order={self.min_order}"
             f", estimated={self.estimated}, estimation_budget={self.estimation_budget},\n"
-            f"    n_players={self.n_players}, baseline_value={self.baseline_value},\n"
-            ")"
+            f"    n_players={self.n_players}, baseline_value={self.baseline_value}\n)"
         )
         return representation
 
     def __str__(self) -> str:
         """Returns the string representation of the InteractionValues object."""
         representation = self.__repr__()
-        representation = representation[:-1]  # remove the last ")" and add values
-        _, sorted_top_10_interactions = self.get_top_k_interactions(10)  # get top 10 interactions
+        representation = representation[:-2]  # remove the last "\n)" and add values
+        _, sorted_top_10_interactions = self.get_top_k(10, False)  # get top 10 interactions
         # add values to string representation
-        representation += "    Top 10 interactions:\n"
+        representation += ",\n    Top 10 interactions:\n"
         for interaction, value in sorted_top_10_interactions:
             representation += f"        {interaction}: {value}\n"
-        representation += "\n)"
+        representation += ")"
         return representation
 
     def __len__(self) -> int:
@@ -414,3 +448,89 @@ class InteractionValues:
             estimation_budget=self.estimation_budget,
             baseline_value=self.baseline_value,
         )
+
+    def save(self, path: str) -> None:
+        """Save the InteractionValues object to a file.
+
+        Args:
+            path: The path to save the InteractionValues object to.
+        """
+        # check if the directory exists
+        directory = os.path.dirname(path)
+        if not os.path.exists(directory):
+            try:
+                os.makedirs(directory)
+            except FileNotFoundError:  # no directory
+                pass
+
+        with open(path, "wb") as file:
+            pickle.dump(self, file)
+
+    @staticmethod
+    def load_interaction_values(path: str) -> "InteractionValues":
+        """Load an InteractionValues object from a file.
+
+        Args:
+            path: The path to load the InteractionValues object from.
+
+        Returns:
+            The loaded InteractionValues object.
+        """
+        with open(path, "rb") as file:
+            return pickle.load(file)
+
+    @classmethod
+    def load(cls, path: str) -> "InteractionValues":
+        """Load an InteractionValues object from a file.
+
+        Args:
+            path: The path to load the InteractionValues object from.
+
+        Returns:
+            The loaded InteractionValues object.
+        """
+        with open(path, "rb") as file:
+            return pickle.load(file)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "InteractionValues":
+        """Create an InteractionValues object from a dictionary.
+
+        Args:
+            data: The dictionary containing the data to create the InteractionValues object from.
+
+        Returns:
+            The InteractionValues object created from the dictionary.
+        """
+        return cls(
+            values=data["values"],
+            index=data["index"],
+            max_order=data["max_order"],
+            n_players=data["n_players"],
+            min_order=data["min_order"],
+            interaction_lookup=data["interaction_lookup"],
+            estimated=data["estimated"],
+            estimation_budget=data["estimation_budget"],
+            baseline_value=data["baseline_value"],
+        )
+
+    def to_dict(self) -> dict:
+        """Convert the InteractionValues object to a dictionary.
+
+        Returns:
+            The InteractionValues object as a dictionary.
+        """
+        return {
+            "values": self.values,
+            "index": self.index,
+            "max_order": self.max_order,
+            "n_players": self.n_players,
+            "min_order": self.min_order,
+            "interaction_lookup": self.interaction_lookup,
+            "estimated": self.estimated,
+            "estimation_budget": self.estimation_budget,
+            "baseline_value": self.baseline_value,
+        }
+
+
+# Path: shapiq/interaction_values.py
