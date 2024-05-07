@@ -1,12 +1,18 @@
+"""Module for plotting the explanation graph of interaction values."""
+
+import math
+from typing import Optional, Union
+
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
-from shapiq import InteractionValues
-
+from ..interaction_values import InteractionValues
 from .network import _get_color
+
+NORMAL_NODE_SIZE = 0.125
 
 
 def draw_fancy_hyper_edges(
@@ -15,21 +21,39 @@ def draw_fancy_hyper_edges(
     graph: nx.Graph,
     hyper_edges: list[tuple],
 ) -> None:
-    """Draws a collection of hyper-edges as a fancy hyper-edge."""
+    """Draws a collection of hyper-edges as a fancy hyper-edge on the graph.
+
+    Note:
+        This is also used to draw normal 2-way edges in a fancy way.
+
+    Args:
+        axis: The axis to draw the hyper-edges on.
+        pos: The positions of the nodes.
+        graph: The graph to draw the hyper-edges on.
+        hyper_edges: The hyper-edges to draw.
+    """
     for hyper_edge in hyper_edges:
 
-        node_size = graph.nodes.get(hyper_edge)["size"]
-
+        # store all paths for the hyper-edge to combine them later
         all_paths = []
 
-        # get the position of the center of the hyper-edge (i.e. where the dummy node is placed)
-        color = graph.nodes.get(hyper_edge)["color"]
+        # make also normal (2-way) edges plottable -> one node becomes the "center" node
+        is_hyper_edge = True
+        if len(hyper_edge) == 2:
+            u, v = hyper_edge
+            center_pos = pos[v]
+            node_size = graph[u][v]["size"]
+            color = graph[u][v]["color"]
+            is_hyper_edge = False
+        else:  # a hyper-edge encodes its information in an artificial "center" node
+            center_pos = pos[hyper_edge]
+            node_size = graph.nodes.get(hyper_edge)["size"]
+            color = graph.nodes.get(hyper_edge)["color"]
 
         # draw the connection point of the hyper-edge
-        center_pos = pos[hyper_edge]
         circle = mpath.Path.circle(center_pos, radius=node_size / 2)
         all_paths.append(circle)
-        axis.scatter(center_pos[0], center_pos[1], s=0, c="none", lw=0)  # add empty for axis limits
+        axis.scatter(center_pos[0], center_pos[1], s=0, c="none", lw=0)  # add empty point for limit
 
         # draw the fancy connections from the other nodes to the center node
         for player in hyper_edge:
@@ -78,7 +102,13 @@ def draw_fancy_hyper_edges(
                     mpath.Path.LINETO,
                 ],
             )
+
+            # add the connection to the list of all paths
             all_paths.append(connection)
+
+            # break after the first hyper-edge if there are only two players
+            if not is_hyper_edge:
+                break
 
         # combine all paths into one patch
         combined_path = mpath.Path.make_compound_path(*all_paths)
@@ -87,46 +117,90 @@ def draw_fancy_hyper_edges(
         axis.add_patch(patch)
 
 
-def draw_nodes(
+def draw_graph_nodes(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
-    nodes: list,
-    alpha: float = 1.0,
-    line_width: int = 0,
-    plot_explanation: bool = True,
+    nodes: Optional[list] = None,
 ) -> None:
-    for node in nodes:
-        if plot_explanation:
-            color = graph.nodes.get(node)["color"]
-            size = graph.nodes.get(node)["size"]
-            edge_color = "white"
-        else:
-            color = "none"
-            size = 0.125
-            edge_color = "black"
+    """Draws the nodes of the graph as circles with a fixed size.
+
+    Args:
+        ax: The axis to draw the nodes on.
+        pos: The positions of the nodes.
+        graph: The graph to draw the nodes on.
+        nodes: The nodes to draw. If `None`, all nodes are drawn. Defaults to `None`.
+    """
+    for node in graph.nodes:
+        if nodes is not None and node not in nodes:
+            continue
+
         position = pos[node]
-        circle = mpath.Path.circle(position, radius=size / 2)
-        patch = mpatches.PathPatch(
-            circle, facecolor=color, lw=line_width, alpha=alpha, edgecolor=edge_color
-        )
+        circle = mpath.Path.circle(position, radius=NORMAL_NODE_SIZE / 2)
+        patch = mpatches.PathPatch(circle, facecolor="white", lw=1, alpha=1, edgecolor="black")
         ax.add_patch(patch)
 
         # add empty scatter for the axis to adjust the limits later
         ax.scatter(position[0], position[1], s=0, c="none", lw=0)
 
 
-def draw_normal_edges(ax: plt.axis, pos: dict, edges: list[tuple]) -> None:
-    """Draws black lines between the nodes."""
-    for u, v in edges:
+def draw_explanation_nodes(
+    ax: plt.axis,
+    pos: dict,
+    graph: nx.Graph,
+    nodes: Optional[list] = None,
+) -> None:
+    """Adds the node level explanations to the graph as circles with varying sizes.
+
+    Args:
+        ax: The axis to draw the nodes on.
+        pos: The positions of the nodes.
+        graph: The graph to draw the nodes on.
+        nodes: The nodes to draw. If `None`, all nodes are drawn. Defaults to `None`.
+    """
+    for node in graph.nodes:
+        if nodes is not None and node not in nodes:
+            continue
+        position = pos[node]
+        color = graph.nodes.get(node)["color"]
+        normal_node_area = math.pi * (NORMAL_NODE_SIZE / 2) ** 2
+        this_node_area = math.pi * (graph.nodes.get(node)["size"] / 2) ** 2
+        combined_area = normal_node_area + this_node_area
+
+        # get the radius of a circle with the same area as the combined area
+        radius = math.sqrt(combined_area / math.pi)
+
+        circle = mpath.Path.circle(position, radius=radius)
+        patch = mpatches.PathPatch(circle, facecolor=color, lw=1, edgecolor=color)
+        ax.add_patch(patch)
+
+        ax.scatter(position[0], position[1], s=0, c="none", lw=0)  # add empty point for limits
+
+
+def draw_graph_edges(
+    ax: plt.axis, pos: dict, graph: nx.Graph, edges: Optional[list[tuple]] = None
+) -> None:
+    """Draws black lines between the nodes.
+
+    Args:
+        ax: The axis to draw the edges on.
+        pos: The positions of the nodes.
+        graph: The graph to draw the edges on.
+        edges: The edges to draw. If `None`, all edges are drawn. Defaults to `None`.
+    """
+    for u, v in graph.edges:
+
+        if edges is not None and (u, v) not in edges and (v, u) not in edges:
+            continue
+
         u_pos = pos[u]
         v_pos = pos[v]
 
         direction = v_pos - u_pos
         direction = direction / np.linalg.norm(direction)
 
-        start_point = u_pos + direction * 0.125 / 2
-        end_point = v_pos - direction * 0.125 / 2
+        start_point = u_pos + direction * NORMAL_NODE_SIZE / 2
+        end_point = v_pos - direction * NORMAL_NODE_SIZE / 2
 
         connection = mpath.Path(
             [start_point, end_point],
@@ -137,44 +211,20 @@ def draw_normal_edges(ax: plt.axis, pos: dict, edges: list[tuple]) -> None:
         ax.add_patch(patch)
 
 
-def draw_edges(ax: plt.axis, pos: dict, graph: nx.Graph, edges: list[tuple]) -> None:
-    """Draws the edges of the graph as lines."""
-    for u, v in edges:
-        color = graph[u][v]["color"]
-        size = graph[u][v]["size"]
+def draw_graph_labels(
+    ax: plt.axis, pos: dict, graph: nx.Graph, nodes: Optional[list] = None
+) -> None:
+    """Adds labels to the nodes of the graph.
 
-        u_pos = pos[u]
-        v_pos = pos[v]
-
-        direction = v_pos - u_pos
-        direction = direction / np.linalg.norm(direction)
-        direction_90 = np.array([-direction[1], direction[0]])
-
-        # draw a rectangle between the two nodes
-        connection = mpath.Path(
-            [
-                u_pos + direction_90 * size / 2,
-                u_pos - direction_90 * size / 2,
-                v_pos - direction_90 * size / 2,
-                v_pos + direction_90 * size / 2,
-                u_pos + direction_90 * size / 2,
-            ],
-            [
-                mpath.Path.MOVETO,
-                mpath.Path.LINETO,
-                mpath.Path.LINETO,
-                mpath.Path.LINETO,
-                mpath.Path.CLOSEPOLY,
-            ],
-        )
-
-        patch = mpatches.PathPatch(connection, facecolor=color, alpha=0.5, edgecolor="none")
-        ax.add_patch(patch)
-
-
-def draw_labels(ax: plt.axis, pos: dict, graph: nx.Graph, nodes: list) -> None:
-    """Adds labels to the nodes of the graph."""
-    for node in nodes:
+    Args:
+        ax: The axis to draw the labels on.
+        pos: The positions of the nodes.
+        graph: The graph to draw the labels on.
+        nodes: The nodes to draw the labels on. If `None`, all nodes are drawn. Defaults to `None`.
+    """
+    for node in graph.nodes:
+        if nodes is not None and node not in nodes:
+            continue
         label = graph.nodes.get(node)["label"]
         position = pos[node]
         ax.text(
@@ -188,117 +238,141 @@ def draw_labels(ax: plt.axis, pos: dict, graph: nx.Graph, nodes: list) -> None:
         )
 
 
-def explanation_graph(
+def plot_explanation_graph(
     interaction_values: InteractionValues,
-    edges: list[tuple],
+    edges: Union[list[tuple], nx.Graph],
+    n_interactions: Optional[int] = None,
     draw_threshold: float = 0.0,
     random_seed: int = 42,
-    size_factor: float = 0.75,
-    plot_explanation: bool = False,
-    weight_factor: float = 1,
+    size_factor: float = 1.0,
+    plot_explanation: bool = True,
+    compactness: float = 1.0,
 ) -> tuple[plt.figure, plt.axis]:
     """Plots the interaction values as an explanation graph.
 
-    An explanation graph is an undirected (spring_layout) graph where the nodes represent players
-    and the edges represent interactions between the players. The value of the interaction is used
-    as the weight of the edge. For interactions between more than two players, a hyper-edge is
-    created via a dummy node (which is not displayed). The color of the edge indicates the sign of
-    the interaction value (the alpha value indicates the strength of the interaction in relation to
-    the maximum interaction value).
+    An explanation graph is an undirected graph where the nodes represent players and the edges
+    represent interactions between the players. The size of the nodes and edges represent the
+    strength of the interaction values. The color of the edges represents the sign of the
+    interaction values.
 
     Args:
         interaction_values: The interaction values to plot.
-        edges: The edges in the graph.
-        draw_threshold: The threshold to draw an edge (i.e. only draw edges with a value above the
-            threshold).
-        random_seed: The random seed to use for the spring_layout algorithm.
+        edges: The edges in the graph as a list of tuples or a networkx graph. If a networkx graph
+            is provided, the nodes are used as the players and the edges are used as the connections
+            between the players.
+        n_interactions: The number of interactions to plot. If `None`, all interactions are plotted
+            according to the draw_threshold.
+        draw_threshold: The threshold to draw an edge (i.e. only draw explanations with an
+            interaction value higher than this threshold).
+        random_seed: The random seed to use for layout of the graph.
+        size_factor: The factor to scale the explanations by (a higher value will make the
+            interactions and main effects larger). Defaults to 1.0.
+        plot_explanation: Whether to plot the explanation or only the original graph. Defaults to
+            `True`.
+        compactness: A scaling factor for the underlying spring layout. A higher compactness value
+            will move the interactions closer to the graph nodes. If your graph looks weird, try
+            adjusting this value (e.g. 0.1, 1.0, 10.0, 100.0, 1000.0). Defaults to 1.0.
 
     Returns:
         The figure and axis of the plot.
     """
-    G = nx.Graph()
 
-    normal_nodes, normal_edges, hyper_edges = [], [], []
+    # fill the original graph with the edges and nodes
+    if isinstance(edges, nx.Graph):
+        original_graph = edges
+        graph_nodes = list(original_graph.nodes)
+        # check if graph has labels
+        if "label" not in original_graph.nodes[graph_nodes[0]]:
+            for node in graph_nodes:
+                original_graph.nodes[node]["label"] = node
+    else:
+        original_graph, graph_nodes = nx.Graph(), []
+        for edge in edges:
+            original_graph.add_edge(*edge)
+            original_graph.add_node(edge[0], label=edge[0])
+            original_graph.add_node(edge[1], label=edge[1])
+            graph_nodes.extend([edge[0], edge[1]])
+
+    if n_interactions is not None:
+        # get the top n interactions
+        interaction_values = interaction_values.get_top_k(n_interactions)
+
+    # get the interactions to plot (sufficiently large)
+    interactions_to_plot = {}
     for interaction, interaction_pos in interaction_values.interaction_lookup.items():
-        interaction_value = interaction_values.values[interaction_pos]
-        interaction_strength = abs(interaction_value)
-        interaction_size = len(interaction)
-        interaction_color = _get_color(interaction_value)
-        normal_weight = 0
-        if interaction in edges:
-            normal_weight = 1
-        if interaction_size == 0:
+        if len(interaction) == 0:
             continue
+        interaction_value = interaction_values.values[interaction_pos]
+        if abs(interaction_value) > draw_threshold:
+            interactions_to_plot[interaction] = interaction_value
+
+    # create explanation graph
+    explanation_graph, explanation_nodes, explanation_edges = nx.Graph(), [], []
+    for interaction, interaction_value in interactions_to_plot.items():
+        interaction_size = len(interaction)
+        interaction_strength = abs(interaction_value)
+        interaction_color = _get_color(interaction_value)
+
+        # add main effect explanations as nodes
         if interaction_size == 1:
             player = interaction[0]
-            G.add_node(
+            explanation_graph.add_node(
                 player,
                 weight=interaction_strength,
-                normal_weight=normal_weight,
                 size=interaction_strength * size_factor,
-                normal_size=0.125,
-                interaction_value=interaction_value,
                 color=interaction_color,
                 label=player,
             )
-            normal_nodes.append(player)
-        if interaction_size == 2 and interaction_strength > draw_threshold:
-            player1, player2 = interaction
-            G.add_edge(
-                player1,
-                player2,
-                weight=interaction_strength,
-                normal_weight=normal_weight,
-                size=interaction_strength * size_factor,
-                normal_size=0.125,
-                interaction_value=interaction_value,
-                color=interaction_color,
-                label=interaction,
-            )
-            normal_edges.append(interaction)
-        if interaction_size > 2 and interaction_strength > draw_threshold:
-            dummy_node = tuple(interaction)
-            G.add_node(
-                dummy_node,
-                weight=interaction_strength,
-                normal_weight=0,  # not used for first layout
-                size=interaction_strength * size_factor,
-                normal_size=0.125,
-                interaction_value=interaction_value,
-                color=interaction_color,
-                label=interaction,
-            )
-            for player in interaction:
-                G.add_edge(
+            explanation_nodes.append(player)
+
+        # add 2-way interaction explanations as edges
+        if interaction_size >= 2:
+
+            explanation_edges.append(interaction)
+
+            player_last = interaction[-1]
+            if interaction_size > 2:
+                dummy_node = tuple(interaction)
+                explanation_graph.add_node(
                     dummy_node,
-                    player,
-                    weight=interaction_strength * weight_factor,
-                    normal_weight=0,  # not used for first layout
+                    weight=interaction_strength,
                     size=interaction_strength * size_factor,
-                    normal_size=0.125,
-                    interaction_value=interaction_value,
                     color=interaction_color,
                     label=interaction,
                 )
-            hyper_edges.append(interaction)
+                player_last = dummy_node
 
-    # position first the normal nodes
-    pos = nx.spring_layout(normal_nodes, seed=random_seed, weight="normal_weight")
+            # add the edges between the players
+            for player in interaction[:-1]:
+                explanation_graph.add_edge(
+                    player,
+                    player_last,
+                    weight=interaction_strength * compactness,
+                    size=interaction_strength * size_factor,
+                    color=interaction_color,
+                    label=interaction,
+                )
 
-    if plot_explanation:
-        # position now again the hyper-edges onto the normal nodes weight param is weight
-        pos = nx.spring_layout(G, weight="weight", seed=random_seed, pos=pos, fixed=normal_nodes)
+    # position first the original graph structure
+    pos = nx.spring_layout(original_graph, seed=random_seed)
 
+    # create the plot
     fig, ax = plt.subplots(figsize=(7, 7))
     if plot_explanation:
-        draw_fancy_hyper_edges(ax, pos, G, hyper_edges)
-        draw_edges(ax, pos, G, normal_edges)
-        draw_edges(ax, pos, G, normal_edges)
-        draw_nodes(ax, pos, G, normal_nodes, line_width=1, plot_explanation=True)
-    draw_nodes(ax, pos, G, normal_nodes, line_width=1, plot_explanation=False)
-    draw_normal_edges(ax, pos, edges)
-    draw_labels(ax, pos, G, normal_nodes)
+        # position now again the hyper-edges onto the normal nodes weight param is weight
+        pos_explain = nx.spring_layout(
+            explanation_graph, weight="weight", seed=random_seed, pos=pos, fixed=graph_nodes
+        )
+        pos.update(pos_explain)
+        draw_fancy_hyper_edges(ax, pos, explanation_graph, hyper_edges=explanation_edges)
+        draw_explanation_nodes(ax, pos, explanation_graph, nodes=explanation_nodes)
 
+    # add the original graph structure on top
+    draw_graph_nodes(ax, pos, original_graph)
+    draw_graph_edges(ax, pos, original_graph)
+    draw_graph_labels(ax, pos, original_graph)
+
+    # tidy up the plot
     ax.set_aspect("equal", adjustable="datalim")  # make y- and x-axis scales equal
     ax.axis("off")  # remove axis
 

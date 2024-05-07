@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from plot.explanation_graph import explanation_graph
+from plot.explanation_graph import plot_explanation_graph
 from shapiq.interaction_values import InteractionValues
 
 if __name__ == "__main__":
@@ -55,7 +55,13 @@ if __name__ == "__main__":
         max_order=4,
     )
 
-    fig, ax = explanation_graph(
-        example_values, random_seed=1, size_factor=0.7, plot_explanation=False, weight_factor=1.1
+    fig, ax = plot_explanation_graph(
+        example_values,
+        random_seed=1,
+        size_factor=0.7,
+        draw_threshold=0.0,
+        plot_explanation=False,
+        compactness=1.1,
+        edges=[(1, 2), (2, 3)],
     )
     plt.show()

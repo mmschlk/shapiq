@@ -4,13 +4,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from plot.explanation_graph import explanation_graph
+from plot.explanation_graph import plot_explanation_graph
 from shapiq.interaction_values import InteractionValues
 from shapiq.moebius_converter import MoebiusConverter
 
 if __name__ == "__main__":
 
     df = pd.read_csv("data/gtmoebius_GCN_MUTAG_3_True_True_4_11_11.csv")
+    # df = pd.read_csv("data/gtmoebius_GCN_MUTAG_4_True_True_4_11_11.csv")
     # rename first col from "" to "set"
     df = df.rename(columns={df.columns[0]: "set"})
 
@@ -59,13 +60,26 @@ if __name__ == "__main__":
 
     print("Sum of values:", np.sum(example_values.values))
 
-    fig, ax = explanation_graph(
+    fig, ax = plot_explanation_graph(
         example_values,
-        edges=[(0, 1), (2, 3), (0, 3), (0, 2), (1, 3), (4, 8), (7, 8), (7, 9), (3, 4), (5, 10)],
+        edges=[
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 4),
+            (4, 5),
+            (5, 0),
+            (3, 8),
+            (8, 9),
+            (8, 10),
+            (7, 9),
+            (6, 10),
+        ],
         random_seed=2,
-        size_factor=1,
+        size_factor=2.5,
         plot_explanation=True,
-        weight_factor=5,
-        draw_threshold=0.03,
+        compactness=100,
+        n_interactions=10,
+        draw_threshold=0.028,
     )
     plt.show()
