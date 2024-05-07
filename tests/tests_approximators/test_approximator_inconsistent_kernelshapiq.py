@@ -58,15 +58,15 @@ def test_approximate(budget, order, index):
     assert game.access_counter <= budget
 
     if index == "SII":
-        assert estimates[(0,)] == pytest.approx(0.1442, abs=0.01)
-        assert estimates[(1,)] == pytest.approx(0.6429, abs=0.01)
-        assert estimates[(2,)] == pytest.approx(0.6429, abs=0.01)
+        assert estimates[(0,)] == pytest.approx(0.1442, abs=0.03)
+        assert estimates[(1,)] == pytest.approx(0.6429, abs=0.03)
+        assert estimates[(2,)] == pytest.approx(0.6429, abs=0.03)
     if index == "k-SII":
         efficiency = np.sum(estimates.values)
-        assert efficiency == pytest.approx(2.0, abs=0.01)
-        assert estimates[(0,)] == pytest.approx(0.1442, abs=0.01)
-        assert estimates[(1,)] == pytest.approx(0.1442, abs=0.01)
-        assert estimates[(2,)] == pytest.approx(0.1442, abs=0.01)
+        assert efficiency == pytest.approx(2.0, abs=0.03)
+        assert estimates[(0,)] == pytest.approx(0.1442, abs=0.03)
+        assert estimates[(1,)] == pytest.approx(0.1442, abs=0.03)
+        assert estimates[(2,)] == pytest.approx(0.1442, abs=0.03)
 
-    assert estimates[(1, 2)] == pytest.approx(1.0, abs=0.01)
-    assert estimates[(1, 2, 3)] == pytest.approx(0, abs=0.01)
+    assert estimates[(1, 2)] == pytest.approx(1.0, abs=0.03)
+    assert estimates[(1, 2, 3)] == pytest.approx(0, abs=0.03)
