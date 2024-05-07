@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from plot.explanation_graph import plot_explanation_graph
+from plot.explanation_graph import explanation_graph_plot
 from shapiq.interaction_values import InteractionValues
 from shapiq.moebius_converter import MoebiusConverter
 
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     print("Sum of values:", np.sum(example_values.values))
 
-    fig, ax = plot_explanation_graph(
+    fig, ax = explanation_graph_plot(
         example_values,
         edges=[
             (0, 1),

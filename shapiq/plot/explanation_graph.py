@@ -238,7 +238,7 @@ def draw_graph_labels(
         )
 
 
-def plot_explanation_graph(
+def explanation_graph_plot(
     interaction_values: InteractionValues,
     edges: Union[list[tuple], nx.Graph],
     n_interactions: Optional[int] = None,
