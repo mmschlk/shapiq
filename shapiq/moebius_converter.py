@@ -34,10 +34,9 @@ class MoebiusConverter:
         n_interactions: A pre-computed array containing the number of interactions up to the size of the index, e.g. n_interactions[4] is the number of interactions up to size 4.
     """
 
-    def __init__(self, N: set, moebius_coefficients: InteractionValues):
-        self.N = N
-        self.n = len(N)
+    def __init__(self, moebius_coefficients: InteractionValues):
         self.moebius_coefficients: InteractionValues = moebius_coefficients
+        self.n = self.moebius_coefficients.n_players
         self.n_interactions = self._get_n_interactions()
         self._computed: dict = {}
         # setup callable mapping from index to computation

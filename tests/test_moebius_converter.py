@@ -19,7 +19,7 @@ def test_soum_moebius_conversion():
         emptyset_prediction = soum(np.zeros(n))[0]
 
         player_set: set = set(range(soum.n_players))
-        moebius_converter = MoebiusConverter(player_set, soum.moebius_coefficients)
+        moebius_converter = MoebiusConverter(soum.moebius_coefficients)
 
         shapley_interactions = {}
         for index in ["STII", "k-SII", "FSII"]:

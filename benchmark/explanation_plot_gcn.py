@@ -52,7 +52,7 @@ if __name__ == "__main__":
     )
 
     print("Loaded values.")
-    converter = MoebiusConverter(N=set(range(n_players)), moebius_coefficients=example_values)
+    converter = MoebiusConverter(moebius_coefficients=example_values)
     example_values = converter(index="k-SII", order=n_players)
     print("Converted values.")
     print(example_values)
