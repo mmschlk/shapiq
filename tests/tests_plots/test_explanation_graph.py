@@ -107,6 +107,12 @@ def test_explanation_graph_plot(
         plot_explanation=True,
         n_interactions=n_interactions,
         compactness=compactness,
+        label_mapping={
+            0: "A",
+            1: "B",
+            2: "C",
+            3: "D",
+        },
     )
 
     assert isinstance(fig, plt.Figure)
