@@ -15,7 +15,7 @@ from .network import _get_color
 NORMAL_NODE_SIZE = 0.125
 
 
-def draw_fancy_hyper_edges(
+def _draw_fancy_hyper_edges(
     axis: plt.axis,
     pos: dict,
     graph: nx.Graph,
@@ -117,7 +117,7 @@ def draw_fancy_hyper_edges(
         axis.add_patch(patch)
 
 
-def draw_graph_nodes(
+def _draw_graph_nodes(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
@@ -144,7 +144,7 @@ def draw_graph_nodes(
         ax.scatter(position[0], position[1], s=0, c="none", lw=0)
 
 
-def draw_explanation_nodes(
+def _draw_explanation_nodes(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
@@ -171,13 +171,13 @@ def draw_explanation_nodes(
         radius = math.sqrt(combined_area / math.pi)
 
         circle = mpath.Path.circle(position, radius=radius)
-        patch = mpatches.PathPatch(circle, facecolor=color, lw=1, edgecolor=color)
+        patch = mpatches.PathPatch(circle, facecolor=color, lw=0.75, edgecolor="white")
         ax.add_patch(patch)
 
         ax.scatter(position[0], position[1], s=0, c="none", lw=0)  # add empty point for limits
 
 
-def draw_graph_edges(
+def _draw_graph_edges(
     ax: plt.axis, pos: dict, graph: nx.Graph, edges: Optional[list[tuple]] = None
 ) -> None:
     """Draws black lines between the nodes.
@@ -211,7 +211,7 @@ def draw_graph_edges(
         ax.add_patch(patch)
 
 
-def draw_graph_labels(
+def _draw_graph_labels(
     ax: plt.axis, pos: dict, graph: nx.Graph, nodes: Optional[list] = None
 ) -> None:
     """Adds labels to the nodes of the graph.
@@ -371,13 +371,13 @@ def explanation_graph_plot(
             explanation_graph, weight="weight", seed=random_seed, pos=pos, fixed=graph_nodes
         )
         pos.update(pos_explain)
-        draw_fancy_hyper_edges(ax, pos, explanation_graph, hyper_edges=explanation_edges)
-        draw_explanation_nodes(ax, pos, explanation_graph, nodes=explanation_nodes)
+        _draw_fancy_hyper_edges(ax, pos, explanation_graph, hyper_edges=explanation_edges)
+        _draw_explanation_nodes(ax, pos, explanation_graph, nodes=explanation_nodes)
 
     # add the original graph structure on top
-    draw_graph_nodes(ax, pos, original_graph)
-    draw_graph_edges(ax, pos, original_graph)
-    draw_graph_labels(ax, pos, original_graph)
+    _draw_graph_nodes(ax, pos, original_graph)
+    _draw_graph_edges(ax, pos, original_graph)
+    _draw_graph_labels(ax, pos, original_graph)
 
     # tidy up the plot
     ax.set_aspect("equal", adjustable="datalim")  # make y- and x-axis scales equal
