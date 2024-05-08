@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from plot.explanation_graph import explanation_graph_plot
+from shapiq.plot.explanation_graph import explanation_graph_plot
 from shapiq.interaction_values import InteractionValues
 from shapiq.moebius_converter import MoebiusConverter
 
@@ -78,7 +78,6 @@ if __name__ == "__main__":
         size_factor=2.5,
         plot_explanation=True,
         compactness=100,
-        n_interactions=10,
-        draw_threshold=0.028,
+        n_interactions=6,
     )
     plt.show()
