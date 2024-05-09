@@ -164,10 +164,11 @@ class MarginalImputer(Imputer):
             The empty prediction.
         """
         if self._sample_replacements:
-            shuffled_background = self._rng.permutation(self.data) # TODO: this doesn't do anything?
+            # TODO: this doesn't do anything?
+            shuffled_background = self._rng.permutation(self.data) 
             empty_predictions = self.predict(shuffled_background)
             empty_prediction = float(np.mean(empty_predictions))
-            return empty_prediction
-        empty_prediction = self.predict(self.replacement_data)
-        empty_prediction = float(empty_prediction)
+        else:
+            empty_prediction = self.predict(self.replacement_data)
+            empty_prediction = float(empty_prediction)
         return empty_prediction

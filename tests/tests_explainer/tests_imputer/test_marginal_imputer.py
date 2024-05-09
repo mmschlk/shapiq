@@ -53,7 +53,7 @@ def test_marginal_imputer_init():
     assert imputer._cat_features == [0]
 
 
-def test_sample_replacements():
+def test_marginal_imputer_value_function():
     def model(x: np.ndarray) -> np.ndarray:
         return np.asarray([0.0])
 
