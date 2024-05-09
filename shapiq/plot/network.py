@@ -12,7 +12,7 @@ from PIL import Image
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
-from ._config import BLUE, LINES, NEUTRAL, RED
+from ._config import BLUE, LINES, NEUTRAL, RED, get_color
 
 __all__ = ["network_plot"]
 
@@ -178,20 +178,6 @@ def network_plot(
     return fig, axis
 
 
-def _get_color(value: float) -> str:
-    """Returns blue color for negative values and red color for positive values.
-
-    Args:
-        value (float): The value to determine the color for.
-
-    Returns:
-        str: The color as a hex string.
-    """
-    if value >= 0:
-        return RED.hex
-    return BLUE.hex
-
-
 def _add_weight_to_edges_in_graph(
     graph: nx.Graph,
     first_order_values: np.ndarray,
@@ -225,7 +211,7 @@ def _add_weight_to_edges_in_graph(
     for i, node_id in enumerate(nodes_visit_order):
         weight: float = first_order_values[i]
         size = abs(weight) / all_range
-        color = _get_color(weight)
+        color = get_color(weight)
         graph.nodes[node_id]["node_color"] = color
         graph.nodes[node_id]["node_size"] = size * 250
         graph.nodes[node_id]["label"] = feature_names[node_id]
@@ -238,7 +224,7 @@ def _add_weight_to_edges_in_graph(
         edge[0] = nodes_visit_order.index(interaction[0])
         edge[1] = nodes_visit_order.index(interaction[1])
         edge = tuple(edge)
-        color = _get_color(weight)
+        color = get_color(weight)
         # scale weight between min and max edge value
         size = abs(weight) / all_range
         graph_edge = graph.get_edge_data(*edge)

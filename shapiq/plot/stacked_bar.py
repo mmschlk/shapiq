@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Patch
 
-from ._config import COLORS_N_SII
+from ._config import COLORS_K_SII
 
 __all__ = ["stacked_bar_plot"]
 
@@ -94,8 +94,8 @@ def stacked_bar_plot(
 
     # plot the bar segments
     for order in range(len(values_pos)):
-        axis.bar(x, height=values_pos[order], bottom=reference_pos, color=COLORS_N_SII[order])
-        axis.bar(x, height=abs(values_neg[order]), bottom=reference_neg, color=COLORS_N_SII[order])
+        axis.bar(x, height=values_pos[order], bottom=reference_pos, color=COLORS_K_SII[order])
+        axis.bar(x, height=abs(values_neg[order]), bottom=reference_neg, color=COLORS_K_SII[order])
         axis.axhline(y=0, color="black", linestyle="solid", linewidth=0.5)
         reference_pos += values_pos[order]
         try:
@@ -109,7 +109,7 @@ def stacked_bar_plot(
     legend_elements = []
     for order in range(n_sii_max_order):
         legend_elements.append(
-            Patch(facecolor=COLORS_N_SII[order], edgecolor="black", label=f"Order {order + 1}")
+            Patch(facecolor=COLORS_K_SII[order], edgecolor="black", label=f"Order {order + 1}")
         )
     axis.legend(handles=legend_elements, loc="upper center", ncol=min(n_sii_max_order, 4))
 

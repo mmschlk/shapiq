@@ -10,9 +10,33 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from ..interaction_values import InteractionValues
-from .network import _get_color
+from ._config import get_color
 
 NORMAL_NODE_SIZE = 0.125
+BASE_ALPHA_VALUE = 0.5  # the transparency level for the highest interaction
+BASE_SIZE = 0.05  # the size of the highest interaction edge (with scale factor 1)
+
+
+def _get_alpha_value(interaction_value: float, max_interaction: float) -> float:
+    """Gets the alpha (transparency) value for an interaction, depending on its size.
+
+    Args:
+        interaction_value: The size of the interaction.
+        max_interaction: The maximum (absolute) interaction value to relate the alpha to.
+
+    Returns:
+        The alpha/transparency value for an interaction.
+    """
+    alpha = (abs(interaction_value) / abs(max_interaction)) * BASE_ALPHA_VALUE
+    return alpha
+
+
+def _get_size_value(
+    interaction_value: float, max_interaction: float, size_factor: float = 1.0
+) -> float:
+    """Gets the size value for an interaction edge depending on its value and the max."""
+    size = (abs(interaction_value) / abs(max_interaction)) * (BASE_SIZE * size_factor)
+    return size
 
 
 def _draw_fancy_hyper_edges(
@@ -44,11 +68,13 @@ def _draw_fancy_hyper_edges(
             center_pos = pos[v]
             node_size = graph[u][v]["size"]
             color = graph[u][v]["color"]
+            alpha = graph[u][v]["alpha"]
             is_hyper_edge = False
         else:  # a hyper-edge encodes its information in an artificial "center" node
             center_pos = pos[hyper_edge]
             node_size = graph.nodes.get(hyper_edge)["size"]
             color = graph.nodes.get(hyper_edge)["color"]
+            alpha = graph.nodes.get(hyper_edge)["alpha"]
 
         # draw the connection point of the hyper-edge
         circle = mpath.Path.circle(center_pos, radius=node_size / 2)
@@ -112,7 +138,7 @@ def _draw_fancy_hyper_edges(
 
         # combine all paths into one patch
         combined_path = mpath.Path.make_compound_path(*all_paths)
-        patch = mpatches.PathPatch(combined_path, facecolor=color, lw=0, alpha=0.5)
+        patch = mpatches.PathPatch(combined_path, facecolor=color, lw=0, alpha=alpha)
 
         axis.add_patch(patch)
 
@@ -306,10 +332,13 @@ def explanation_graph_plot(
 
     # get the interactions to plot (sufficiently large)
     interactions_to_plot = {}
+    min_interaction, max_interaction = 1e10, 0.0
     for interaction, interaction_pos in interaction_values.interaction_lookup.items():
         if len(interaction) == 0:
             continue
         interaction_value = interaction_values.values[interaction_pos]
+        min_interaction = min(interaction_value, min_interaction)
+        max_interaction = max(interaction_value, max_interaction)
         if abs(interaction_value) > draw_threshold:
             interactions_to_plot[interaction] = interaction_value
 
@@ -318,47 +347,32 @@ def explanation_graph_plot(
     for interaction, interaction_value in interactions_to_plot.items():
         interaction_size = len(interaction)
         interaction_strength = abs(interaction_value)
-        interaction_color = _get_color(interaction_value)
+
+        attributes = {
+            "color": get_color(interaction_value),
+            "alpha": _get_alpha_value(interaction_value, max_interaction),
+            "interaction": interaction,
+            "weight": interaction_strength * compactness,
+            "size": _get_size_value(interaction_value, max_interaction, size_factor),
+        }
 
         # add main effect explanations as nodes
         if interaction_size == 1:
             player = interaction[0]
-            explanation_graph.add_node(
-                player,
-                weight=interaction_strength,
-                size=interaction_strength * size_factor,
-                color=interaction_color,
-                interaction=interaction,
-            )
+            explanation_graph.add_node(player, **attributes)
             explanation_nodes.append(player)
 
         # add 2-way interaction explanations as edges
         if interaction_size >= 2:
-
             explanation_edges.append(interaction)
-
             player_last = interaction[-1]
             if interaction_size > 2:
                 dummy_node = tuple(interaction)
-                explanation_graph.add_node(
-                    dummy_node,
-                    weight=interaction_strength,
-                    size=interaction_strength * size_factor,
-                    color=interaction_color,
-                    interaction=interaction,
-                )
+                explanation_graph.add_node(dummy_node, **attributes)
                 player_last = dummy_node
-
             # add the edges between the players
             for player in interaction[:-1]:
-                explanation_graph.add_edge(
-                    player,
-                    player_last,
-                    weight=interaction_strength * compactness,
-                    size=interaction_strength * size_factor,
-                    color=interaction_color,
-                    interaction=interaction,
-                )
+                explanation_graph.add_edge(player, player_last, **attributes)
 
     # position first the original graph structure
     pos = nx.spring_layout(original_graph, seed=random_seed)
