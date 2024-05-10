@@ -17,26 +17,27 @@ BASE_ALPHA_VALUE = 0.5  # the transparency level for the highest interaction
 BASE_SIZE = 0.05  # the size of the highest interaction edge (with scale factor 1)
 
 
-def _get_alpha_value(interaction_value: float, max_interaction: float) -> float:
-    """Gets the alpha (transparency) value for an interaction, depending on its size.
+def _normalize_value(
+    value: float, max_value: float, base_value: float, cubic_scaling: bool = False
+) -> float:
+    """Scale a value between 0 and 1 based on the maximum value and a base value.
 
     Args:
-        interaction_value: The size of the interaction.
-        max_interaction: The maximum (absolute) interaction value to relate the alpha to.
+        value: The value to normalize/scale.
+        max_value: The maximum value to normalize/scale the value by.
+        base_value: The base value to scale the value by. For example, the alpha value for the
+            highest interaction (as defined in `BASE_ALPHA_VALUE`) or the size of the highest
+            interaction edge (as defined in `BASE_SIZE`).
+        cubic_scaling: Whether to scale cubically (`True`) or linearly (`False`) between 0 and 1.
 
     Returns:
-        The alpha/transparency value for an interaction.
+        The normalized/scaled value.
     """
-    alpha = (abs(interaction_value) / abs(max_interaction)) * BASE_ALPHA_VALUE
+    ratio = abs(value) / abs(max_value)  # ratio is always positive in [0, 1]
+    if cubic_scaling:
+        ratio = ratio**3
+    alpha = ratio * base_value
     return alpha
-
-
-def _get_size_value(
-    interaction_value: float, max_interaction: float, size_factor: float = 1.0
-) -> float:
-    """Gets the size value for an interaction edge depending on its value and the max."""
-    size = (abs(interaction_value) / abs(max_interaction)) * (BASE_SIZE * size_factor)
-    return size
 
 
 def _draw_fancy_hyper_edges(
@@ -274,6 +275,7 @@ def explanation_graph_plot(
     plot_explanation: bool = True,
     compactness: float = 1.0,
     label_mapping: Optional[dict] = None,
+    cubic_scaling: bool = False,
 ) -> tuple[plt.figure, plt.axis]:
     """Plots the interaction values as an explanation graph.
 
@@ -301,6 +303,9 @@ def explanation_graph_plot(
             adjusting this value (e.g. 0.1, 1.0, 10.0, 100.0, 1000.0). Defaults to 1.0.
         label_mapping: A mapping from the player/node indices to the player label. If `None`, the
             player indices are used as labels. Defaults to `None`.
+        cubic_scaling: Whether to scale the size of explanations cubically (`True`) or linearly
+            (`False`). Cubic scaling puts more emphasis on larger interactions in the plot.
+            Defaults to `False`.
 
     Returns:
         The figure and axis of the plot.
@@ -350,10 +355,14 @@ def explanation_graph_plot(
 
         attributes = {
             "color": get_color(interaction_value),
-            "alpha": _get_alpha_value(interaction_value, max_interaction),
+            "alpha": _normalize_value(
+                interaction_value, max_interaction, BASE_ALPHA_VALUE, cubic_scaling
+            ),
             "interaction": interaction,
             "weight": interaction_strength * compactness,
-            "size": _get_size_value(interaction_value, max_interaction, size_factor),
+            "size": _normalize_value(
+                interaction_value, max_interaction, BASE_SIZE * size_factor, cubic_scaling
+            ),
         }
 
         # add main effect explanations as nodes

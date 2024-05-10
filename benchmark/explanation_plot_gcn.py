@@ -92,5 +92,6 @@ if __name__ == "__main__":
             9: "O",
             10: "o",
         },
+        cubic_scaling=True,
     )
     plt.show()
