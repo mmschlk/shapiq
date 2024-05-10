@@ -186,6 +186,8 @@ def _draw_explanation_nodes(
         nodes: The nodes to draw. If `None`, all nodes are drawn. Defaults to `None`.
     """
     for node in graph.nodes:
+        if isinstance(node, tuple):
+            continue
         if nodes is not None and node not in nodes:
             continue
         position = pos[node]
