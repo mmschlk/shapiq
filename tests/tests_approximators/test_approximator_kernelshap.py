@@ -55,9 +55,9 @@ def test_approximate(n, budget):
     # check that the values are in the correct range
     # check that the estimates are correct
     # for order 1 player 1 and 2 are the most important with 0.6429
-    assert sv_estimates[(1,)] == pytest.approx(0.6429, 0.1)
-    assert sv_estimates[(2,)] == pytest.approx(0.6429, 0.1)
+    assert sv_estimates[(1,)] == pytest.approx(0.6429, abs=0.1)
+    assert sv_estimates[(2,)] == pytest.approx(0.6429, abs=0.1)
 
     # check efficiency
     efficiency = np.sum(sv_estimates.values)
-    assert efficiency == pytest.approx(2.0, 0.1)
+    assert efficiency == pytest.approx(2.0, abs=0.1)

@@ -37,7 +37,6 @@ class MoebiusConverter:
     def __init__(self, moebius_coefficients: InteractionValues):
         self.moebius_coefficients: InteractionValues = moebius_coefficients
         self.n = self.moebius_coefficients.n_players
-        self.n_interactions = self._get_n_interactions()
         self._computed: dict = {}
         # setup callable mapping from index to computation
         self._index_mapping: dict[str, Callable[[], InteractionValues]] = {
@@ -77,21 +76,6 @@ class MoebiusConverter:
             return copy.deepcopy(computed_index)
         else:
             raise ValueError(f"Index {index} not supported.")
-
-    def _get_n_interactions(self):
-        """Pre-computes an array that contains the number of interactions up to the size of the index.
-
-        Args:
-
-        Returns:
-            A numpy array containing the number of interactions up to the size of the index, e.g. n_interactions[4] is the number of interactions up to size 4.
-        """
-        n_interactions = np.zeros(self.n + 1, dtype=int)
-        n_interaction = 0
-        for i in range(self.n + 1):
-            n_interaction += int(binom(self.n, i))
-            n_interactions[i] = n_interaction
-        return n_interactions
 
     def base_aggregation(self, base_interactions: InteractionValues, order: int):
         """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII
