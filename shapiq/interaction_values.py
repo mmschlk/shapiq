@@ -449,11 +449,13 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
-    def save(self, path: str) -> None:
+    def save(self, path: str, as_pickle: bool = True) -> None:
         """Save the InteractionValues object to a file.
 
         Args:
             path: The path to save the InteractionValues object to.
+            as_pickle: Whether to save the InteractionValues object as a pickle file (`True`) or
+                as a npz file (`False`). Defaults to `False`.
         """
         # check if the directory exists
         directory = os.path.dirname(path)
@@ -462,9 +464,23 @@ class InteractionValues:
                 os.makedirs(directory)
             except FileNotFoundError:  # no directory
                 pass
-
-        with open(path, "wb") as file:
-            pickle.dump(self, file)
+        if as_pickle:
+            with open(path, "wb") as file:
+                pickle.dump(self, file)
+        else:
+            # save object as npz file
+            np.savez(
+                path,
+                values=self.values,
+                index=self.index,
+                max_order=self.max_order,
+                n_players=self.n_players,
+                min_order=self.min_order,
+                interaction_lookup=self.interaction_lookup,
+                estimated=self.estimated,
+                estimation_budget=self.estimation_budget,
+                baseline_value=self.baseline_value,
+            )
 
     @staticmethod
     def load_interaction_values(path: str) -> "InteractionValues":
@@ -476,8 +492,7 @@ class InteractionValues:
         Returns:
             The loaded InteractionValues object.
         """
-        with open(path, "rb") as file:
-            return pickle.load(file)
+        return InteractionValues.load(path)
 
     @classmethod
     def load(cls, path: str) -> "InteractionValues":
@@ -489,7 +504,24 @@ class InteractionValues:
         Returns:
             The loaded InteractionValues object.
         """
+        # try loading as npz file
+        try:
+            with np.load(path, allow_pickle=True) as data:
+                return InteractionValues(
+                    values=data["values"],
+                    index=str(data["index"]),
+                    max_order=int(data["max_order"]),
+                    n_players=int(data["n_players"]),
+                    min_order=int(data["min_order"]),
+                    interaction_lookup=data["interaction_lookup"].item(),
+                    estimated=bool(data["estimated"]),
+                    estimation_budget=data["estimation_budget"].item(),
+                    baseline_value=float(data["baseline_value"]),
+                )
+        except AttributeError:  # not a npz file
+            pass
         with open(path, "rb") as file:
+            # this is unsafe, but for the purpose of this library it is fine
             return pickle.load(file)
 
     @classmethod

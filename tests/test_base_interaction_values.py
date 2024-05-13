@@ -470,7 +470,8 @@ def test_from_dict():
     assert interaction_values_from_dict == interaction_values
 
 
-def test_save_and_load():
+@pytest.mark.parametrize("as_pickle", [True, False])
+def test_save_and_load(as_pickle):
     """Tests the save and load functions of the InteractionValues dataclass."""
 
     # parameters
@@ -491,8 +492,10 @@ def test_save_and_load():
     )
 
     # save and load
-    path = "test_interaction_values.pkl"
-    interaction_values.save(path)
+    path = "test_interaction_values"
+    if not as_pickle:
+        path += ".npz"
+    interaction_values.save(path, as_pickle=as_pickle)
 
     # see if file exists
     assert os.path.exists(path)
