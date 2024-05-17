@@ -113,8 +113,8 @@ def compute_precision_at_k(
     """
     ground_truth_values = _remove_empty_value(ground_truth)
     estimated_values = _remove_empty_value(estimated)
-    top_k, _ = ground_truth_values.get_top_k_interactions(k=k)
-    top_k_estimated, _ = estimated_values.get_top_k_interactions(k=k)
+    top_k, _ = ground_truth_values.get_top_k(k=k, as_interaction_values=False)
+    top_k_estimated, _ = estimated_values.get_top_k(k=k, as_interaction_values=False)
     precision_at_k = len(set(top_k.keys()).intersection(set(top_k_estimated.keys()))) / k
     return precision_at_k
 

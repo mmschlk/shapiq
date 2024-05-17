@@ -2,20 +2,14 @@
 
 from colour import Color
 
-__all__ = [
-    "RED",
-    "BLUE",
-    "NEUTRAL",
-    "LINES",
-    "COLORS_N_SII",
-]
+__all__ = ["RED", "BLUE", "NEUTRAL", "LINES", "COLORS_K_SII", "get_color"]
 
 RED = Color("#ff0d57")
 BLUE = Color("#1e88e5")
 NEUTRAL = Color("#ffffff")
 LINES = Color("#cccccc")
 
-COLORS_N_SII = [
+COLORS_K_SII = [
     "#D81B60",
     "#FFB000",
     "#1E88E5",
@@ -27,4 +21,18 @@ COLORS_N_SII = [
     "#CCCCCC",
     "#800080",
 ]
-COLORS_N_SII = COLORS_N_SII * (100 + (len(COLORS_N_SII)))  # repeat the colors list
+COLORS_K_SII = COLORS_K_SII * (100 + (len(COLORS_K_SII)))  # repeat the colors list
+
+
+def get_color(value: float) -> str:
+    """Returns blue color for negative values and red color for positive values.
+
+    Args:
+        value (float): The value to determine the color for.
+
+    Returns:
+        str: The color as a hex string.
+    """
+    if value >= 0:
+        return RED.hex
+    return BLUE.hex

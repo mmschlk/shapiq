@@ -20,10 +20,14 @@ from shapiq.games import Game
 if __name__ == "__main__":
 
     N_PLAYERS = 8  # number of players to load from
-    N_GAMES = 20  # leave on 1 for debugging
+    N_GAMES = 5  # leave on 1 for debugging
     MAX_ORDER = 2
     INDEX = "SII"  # only SII or k-SII
-    GAME_NAME = "CaliforniaHousing_LocalExplanation_Game"  # or SentimentAnalysis_Game
+    # games:
+    # "SentimentAnalysis_Game",
+    # "CaliforniaHousing_GlobalExplanation_Game",
+    # "CaliforniaHousing_LocalExplanation_Game"
+    GAME_NAME = "CaliforniaHousing_GlobalExplanation_Game"
 
     # define the budget steps
     MAX_BUDGET = min(2**N_PLAYERS, 10_000)

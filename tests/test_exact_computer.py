@@ -22,7 +22,7 @@ def test_exact_computer_on_soum():
         exact_computer = ExactComputer(n_players=n, game_fun=soum)
 
         # Compute via sparse Möbius representation
-        moebius_converter = MoebiusConverter(N, soum.moebius_coefficients)
+        moebius_converter = MoebiusConverter(soum.moebius_coefficients)
 
         moebius_transform = exact_computer.moebius_transform()
         # Assert equality with ground truth Möbius coefficients from SOUM
