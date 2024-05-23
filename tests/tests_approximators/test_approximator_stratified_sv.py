@@ -1,6 +1,5 @@
 """This test module contains all tests regarding the SV stratified sampling approximator."""
 
-import numpy as np
 import pytest
 
 from shapiq.approximator.marginals import StratifiedSamplingSV

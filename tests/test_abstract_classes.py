@@ -5,8 +5,8 @@ import pytest
 
 from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
-from shapiq.games.imputer.base import Imputer
 from shapiq.games.base import Game
+from shapiq.games.imputer.base import Imputer
 
 
 def concreter(abclass):
@@ -36,7 +36,9 @@ def test_approximator():
 
 
 def test_imputer():
-    model = lambda x: x
+    def model(x):
+        return x
+
     data = np.asarray([[1, 2, 3], [4, 5, 6]])
     imputer = concreter(Imputer)(model, data)
     assert imputer.model == model

@@ -20,17 +20,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
-        
+
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
-        
+
     - name: Test with pytest
       run: |
         pytest

@@ -4,19 +4,20 @@ import numpy as np
 import pytest
 from sklearn.metrics import (
     accuracy_score,
-    r2_score,
+    f1_score,
     mean_absolute_error,
     mean_squared_error,
-    f1_score,
+    r2_score,
 )
 
-from shapiq.games.benchmark import RandomForestEnsembleSelection, EnsembleSelection
+from shapiq.games import Game
 from shapiq.games.benchmark import (
     AdultCensusRandomForestEnsembleSelection,
     BikeSharingRandomForestEnsembleSelection,
     CaliforniaHousingRandomForestEnsembleSelection,
+    EnsembleSelection,
+    RandomForestEnsembleSelection,
 )
-from shapiq.games import Game
 
 
 @pytest.mark.parametrize(

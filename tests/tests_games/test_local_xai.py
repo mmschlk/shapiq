@@ -6,15 +6,15 @@ import numpy as np
 import pytest
 
 from shapiq.games.benchmark import (
-    LocalExplanation,
     AdultCensusLocalXAI,
-    CaliforniaHousingLocalXAI,
     BikeSharingLocalXAI,
-    SentimentAnalysisLocalXAI,
+    CaliforniaHousingLocalXAI,
     ImageClassifierLocalXAI,
+    LocalExplanation,
+    SentimentAnalysisLocalXAI,
 )
-from shapiq.games.benchmark._setup._vit_setup import ViTModel
 from shapiq.games.benchmark._setup._resnet_setup import ResNetModel
+from shapiq.games.benchmark._setup._vit_setup import ViTModel
 
 
 def test_basic_function(background_reg_dataset, dt_reg_model):

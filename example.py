@@ -28,8 +28,8 @@ if __name__ == "__main__":
     else:
         model = RandomForestRegressor(n_estimators=10, random_state=42)
     model.fit(data, target)
-    print("Train R2: {:.4f}".format(model.score(X_train, y_train)))
-    print("Val R2: {:.4f}".format(model.score(X_test, y_test)))
+    print(f"Train R2: {model.score(X_train, y_train):.4f}")
+    print(f"Val R2: {model.score(X_test, y_test):.4f}")
 
     # select a data point to explain
     x = X_test[0]

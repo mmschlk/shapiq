@@ -4,14 +4,14 @@ import numpy as np
 import pytest
 
 from shapiq.utils import (
+    count_interactions,
     generate_interaction_lookup,
     get_explicit_subsets,
     pair_subset_sizes,
     powerset,
     split_subsets_budget,
-    transform_coalitions_to_array,
     transform_array_to_coalitions,
-    count_interactions,
+    transform_coalitions_to_array,
 )
 
 

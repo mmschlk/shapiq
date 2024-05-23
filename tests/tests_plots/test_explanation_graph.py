@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from shapiq.plot import si_graph_plot
 from shapiq.interaction_values import InteractionValues
+from shapiq.plot import si_graph_plot
 
 
 @pytest.mark.parametrize("draw_threshold", [0.0, 0.5])

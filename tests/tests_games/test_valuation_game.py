@@ -4,16 +4,15 @@ import os
 
 import numpy as np
 import pytest
-
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from sklearn.metrics import mean_squared_error, accuracy_score
+from sklearn.metrics import accuracy_score, mean_squared_error
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq.games.base import Game
 from shapiq.games.benchmark import (
-    DatasetValuation,
     AdultCensusDatasetValuation,
     BikeSharingDatasetValuation,
     CaliforniaHousingDatasetValuation,
+    DatasetValuation,
 )
 
 

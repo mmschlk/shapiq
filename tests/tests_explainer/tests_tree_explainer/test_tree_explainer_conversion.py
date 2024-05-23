@@ -114,12 +114,12 @@ def test_skleanr_rf_conversion(rf_clf_model, rf_reg_model):
 
     # test the regression model
     tree_model = convert_sklearn_forest(rf_reg_model)
-    assert type(tree_model) is list
+    assert isinstance(tree_model, list)
     assert safe_isinstance(tree_model[0], tree_model_class_path_str)
     assert tree_model[0].empty_prediction is not None
 
     # test the classification model
     tree_model = convert_sklearn_forest(rf_clf_model)
-    assert type(tree_model) is list
+    assert isinstance(tree_model, list)
     assert safe_isinstance(tree_model[0], tree_model_class_path_str)
     assert tree_model[0].empty_prediction is not None

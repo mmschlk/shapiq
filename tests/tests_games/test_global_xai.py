@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 
 from shapiq.games import Game
-from shapiq.games.benchmark import GlobalExplanation
 from shapiq.games.benchmark import (
     AdultCensusGlobalXAI,
     BikeSharingGlobalXAI,
     CaliforniaHousingGlobalXAI,
+    GlobalExplanation,
 )
 
 

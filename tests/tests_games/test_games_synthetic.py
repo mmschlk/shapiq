@@ -1,9 +1,9 @@
 """This test module tests the SOUM Game class"""
 
-import pytest
 import numpy as np
+import pytest
 
-from shapiq.games.benchmark import DummyGame, SOUM, UnanimityGame
+from shapiq.games.benchmark import SOUM, DummyGame, UnanimityGame
 
 
 def test_soum_interations():

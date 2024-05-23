@@ -18,7 +18,6 @@ def test_soum_moebius_conversion():
         predicted_value = soum(np.ones(n))[0]
         emptyset_prediction = soum(np.zeros(n))[0]
 
-        player_set: set = set(range(soum.n_players))
         moebius_converter = MoebiusConverter(soum.moebius_coefficients)
 
         shapley_interactions = {}

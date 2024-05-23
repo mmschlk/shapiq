@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from shapiq.explainer.tree import TreeSHAPIQ, TreeModel
+from shapiq.explainer.tree import TreeModel, TreeSHAPIQ
 
 
 def test_bike_bug():

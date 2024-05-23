@@ -1,21 +1,19 @@
 """This module contains a setup and run configuration to run benchmarks on different games."""
 
-import os
 import glob
+import os
 
 import numpy as np
 
-from shapiq.games.benchmark import SHAPIQ_DATA_DIR, run_benchmark
-
 from shapiq.approximator import (
-    KernelSHAPIQ,
     SHAPIQ,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
+    KernelSHAPIQ,
     PermutationSamplingSII,
 )
-
 from shapiq.games import Game
+from shapiq.games.benchmark import SHAPIQ_DATA_DIR, run_benchmark
 
 if __name__ == "__main__":
 

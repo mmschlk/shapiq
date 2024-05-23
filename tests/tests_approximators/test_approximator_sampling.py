@@ -1,7 +1,7 @@
 """This test module contains all tests for the CoalitionSampler class."""
 
-import pytest
 import numpy as np
+import pytest
 
 from shapiq.approximator.sampling import CoalitionSampler
 

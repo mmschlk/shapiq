@@ -4,20 +4,19 @@ import numpy as np
 import pytest
 from sklearn.metrics import (
     accuracy_score,
-    r2_score,
+    f1_score,
     mean_absolute_error,
     mean_squared_error,
-    f1_score,
+    r2_score,
 )
 
-from shapiq.games.benchmark import EnsembleSelection
+from shapiq.games import Game
 from shapiq.games.benchmark import (
     AdultCensusEnsembleSelection,
     BikeSharingEnsembleSelection,
     CaliforniaHousingEnsembleSelection,
+    EnsembleSelection,
 )
-from shapiq.games import Game
-
 
 # with this set tests take around 1s
 ENSEMBLE_MEMBERS_FAST = ["regression", "decision_tree", "random_forest", "gradient_boosting", "knn"]

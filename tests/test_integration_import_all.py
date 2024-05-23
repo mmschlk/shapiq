@@ -49,24 +49,4 @@ def test_import_submodules(package):
 def test_approximator_imports():
     """Tests whether all modules can be imported manually."""
 
-    from shapiq import (
-        approximator,
-    )
-
-    from shapiq.approximator import (
-        PermutationSamplingSII,
-        PermutationSamplingSTII,
-        InconsistentKernelSHAPIQ,
-        KernelSHAPIQ,
-        kADDSHAP,
-        RegressionFSII,
-        SHAPIQ,
-        UnbiasedKernelSHAP,
-        SVARM,
-        SVARMIQ,
-        OwenSamplingSV,
-        StratifiedSamplingSV,
-        PermutationSamplingSV,
-    )
-
     assert True

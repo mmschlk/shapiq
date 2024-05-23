@@ -3,15 +3,14 @@
 import numpy as np
 import pytest
 
+from shapiq.exact import ExactComputer
 from shapiq.games.benchmark.synthetic.soum import SOUM
 from shapiq.moebius_converter import MoebiusConverter
-from shapiq.exact import ExactComputer
 
 
 def test_exact_computer_on_soum():
     for i in range(20):
         n = np.random.randint(low=2, high=10)
-        N = set(range(n))
         order = np.random.randint(low=1, high=min(n, 5))
         n_basis_games = np.random.randint(low=1, high=100)
         soum = SOUM(n, n_basis_games=n_basis_games)

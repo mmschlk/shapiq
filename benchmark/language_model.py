@@ -1,21 +1,19 @@
 """This module contains the benchmark conducted on the language model game."""
 
-import os
 import glob
+import os
 
 import numpy as np
 
-from shapiq.games.benchmark.run import run_benchmark
-
 from shapiq.approximator import (
-    KernelSHAPIQ,
     SHAPIQ,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
+    KernelSHAPIQ,
     PermutationSamplingSII,
 )
-
 from shapiq.games import Game
+from shapiq.games.benchmark.run import run_benchmark
 
 if __name__ == "__main__":
 

@@ -2,7 +2,6 @@
 
 import pytest
 from sklearn.datasets import make_regression
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.approximator import RegressionFSII

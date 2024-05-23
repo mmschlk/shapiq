@@ -8,10 +8,10 @@ from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.games.base import Game
 from shapiq.games.benchmark import (
-    FeatureSelection,
     AdultCensusFeatureSelection,
     BikeSharingFeatureSelection,
     CaliforniaHousingFeatureSelection,
+    FeatureSelection,
 )
 
 

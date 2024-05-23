@@ -5,18 +5,18 @@ to understand the process for applying changes to the project and how to interac
 For the code of conduct, please refer to the [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 
 ## 🗺️ What to Work On
-First, we welcome contributions from everyone in every form. If you feel that something is missing 
-or could be improved, feel free to change it. However, to streamline the process of contributing 
-higher-tier changes or features to the project, we maintain an open 
+First, we welcome contributions from everyone in every form. If you feel that something is missing
+or could be improved, feel free to change it. However, to streamline the process of contributing
+higher-tier changes or features to the project, we maintain an open
 [roadmap](https://github.com/users/mmschlk/projects/4/views/4). There, we collect ideas and features
 that we want to add to the project. If you want to work on something, please check the roadmap first
-to see if the feature is already planned or if there is a similar feature that you could contribute 
+to see if the feature is already planned or if there is a similar feature that you could contribute
 to.
 
 ### 🙏 Discussions
 If you have an idea for a new feature or a change, we encourage everyone to open a discussion in the
-[Discussions](https://github.com/mmschlk/shapiq/discussions/new/choose) section. 
-We encourage you to open a discussion so that we can align on the work to be done. It's generally a 
+[Discussions](https://github.com/mmschlk/shapiq/discussions/new/choose) section.
+We encourage you to open a discussion so that we can align on the work to be done. It's generally a
 good idea to have a quick discussion before opening a pull request that is potentially out-of-scope.
 
 
@@ -39,7 +39,7 @@ git clone https://github.com/mmschlk/shapiq/
 ```
 
 Next you need a python environment with a supported version of python. We recommend using
-[pyenv](https://github.com/pyenv/pyenv-installer). Once you have pyenv, you can install the latest 
+[pyenv](https://github.com/pyenv/pyenv-installer). Once you have pyenv, you can install the latest
 Python version `shapiq` supports:
 
 ```sh
@@ -55,7 +55,7 @@ source .venv/bin/activate
 pip install -e .[dev]
 ```
 
-Finally, install the [pre-commit](https://pre-commit.com/) push hooks. This will run some code 
+Finally, install the [pre-commit](https://pre-commit.com/) push hooks. This will run some code
 quality checks every time you push to GitHub.
 
 ```sh
@@ -71,7 +71,7 @@ pre-commit run --all-files
 ## 📝 Commit Messages
 
 We do not enforce a strict commit message format, but we encourage you to follow good practices.
-We recommend to use action-words to automatically close issues or pull requests (example: `closes #123`). 
+We recommend to use action-words to automatically close issues or pull requests (example: `closes #123`).
 For example, start the commit message with a verb in the imperative mood, and keep the message short
 and concise. For example:
 
@@ -86,11 +86,11 @@ code for inspiration before getting started. How you make changes is, of course,
 we can give you some tips on how to document and test your changes.
 
 ### 📖 Documenting Changes
-If you are adding a new class of function, you will need to add a docstring to the class or 
+If you are adding a new class of function, you will need to add a docstring to the class or
 function. With `shapiq`, we use the [Google Style Convention](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
 Please add a docstring in the same style.
 
-To build the documentation on your end and to check if your changes are documented correctly, you 
+To build the documentation on your end and to check if your changes are documented correctly, you
 need to install the documentation dependencies:
 
 ```sh
@@ -108,8 +108,8 @@ in your browser to see the rendered documentation.
 
 ### 🎯 Testing Changes
 
-We use `pytest` for running unit tests and coverage. In the near future we will add `mypy` to the 
-static type checking. 
+We use `pytest` for running unit tests and coverage. In the near future we will add `mypy` to the
+static type checking.
 
 #### Unit Tests
 
@@ -127,7 +127,7 @@ pytest
 With `shapiq`, we aim to have a high test coverage (95% -100%). We aim that every pull request does
 not decrease the test coverage.
 We use `pytest-cov` to measure the test coverage. To run the tests with coverage, you can use the
-following command: 
+following command:
 
 ```sh
 pytest --cov=shapiq

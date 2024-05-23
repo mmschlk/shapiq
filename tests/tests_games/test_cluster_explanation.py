@@ -7,10 +7,10 @@ import pytest
 
 from shapiq.games.base import Game
 from shapiq.games.benchmark import (
-    ClusterExplanation,
     AdultCensusClusterExplanation,
     BikeSharingClusterExplanation,
     CaliforniaHousingClusterExplanation,
+    ClusterExplanation,
 )
 
 

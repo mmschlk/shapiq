@@ -1,12 +1,12 @@
 """Tests the new explanation_plot function."""
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-from shapiq.plot.explanation_graph import si_graph_plot
 from shapiq.interaction_values import InteractionValues
 from shapiq.moebius_converter import MoebiusConverter
+from shapiq.plot.explanation_graph import si_graph_plot
 
 if __name__ == "__main__":
 

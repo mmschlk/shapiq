@@ -1,7 +1,8 @@
 """This example demonstrates the use of a custom game and the exact computer class to compute exact Shapley values and interactions."""
 
-from shapiq.exact import ExactComputer
 import numpy as np
+
+from shapiq.exact import ExactComputer
 from shapiq.games import Game
 
 

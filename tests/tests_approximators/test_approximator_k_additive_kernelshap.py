@@ -4,8 +4,8 @@ import copy
 
 import pytest
 
-from shapiq.games.benchmark import DummyGame
 from shapiq.approximator import kADDSHAP
+from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
 
 
