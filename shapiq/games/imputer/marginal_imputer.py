@@ -18,6 +18,7 @@ class MarginalImputer(Imputer):
             returning the model's predictions.
         data: The background data to use for the explainer as a two-dimensional array
             with shape (n_samples, n_features).
+        x: The explanation point to use the imputer to.
         sample_replacements: Whether to sample replacements from the background data or to use the
             mean (for numerical features) or the median (for categorical features) of the background
             data. Defaults to `False`.
@@ -27,6 +28,8 @@ class MarginalImputer(Imputer):
         categorical_features: A list of indices of the categorical features in the background data.
             If no categorical features are given, all features are assumed to be numerical or in
             string format (where `np.mean` fails) features. Defaults to `None`.
+        normalize: A flag to normalize the game values. If `True`, then the game values are
+            normalized and centered to be zero for the empty set of features. Defaults to `True`.
 
     Attributes:
         replacement_data: The data to use for imputation. Either samples from the background data
@@ -161,10 +164,11 @@ class MarginalImputer(Imputer):
             The empty prediction.
         """
         if self._sample_replacements:
-            shuffled_background = self._rng.permutation(self.data)
+            # TODO: this doesn't do anything?
+            shuffled_background = self._rng.permutation(self.data) 
             empty_predictions = self.predict(shuffled_background)
             empty_prediction = float(np.mean(empty_predictions))
-            return empty_prediction
-        empty_prediction = self.predict(self.replacement_data)
-        empty_prediction = float(empty_prediction)
+        else:
+            empty_prediction = self.predict(self.replacement_data)
+            empty_prediction = float(empty_prediction)
         return empty_prediction
