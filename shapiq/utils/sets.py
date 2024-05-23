@@ -21,7 +21,7 @@ __all__ = [
 
 
 def powerset(
-    iterable: Iterable[Any], min_size: Optional[int] = 0, max_size: Optional[int] = None
+    iterable: Iterable[Any], min_size: int = 0, max_size: Optional[int] = None
 ) -> Iterable[tuple]:
     """Return a powerset of an iterable as tuples with optional size limits.
 
@@ -113,7 +113,7 @@ def split_subsets_budget(
         ([], [1, 2, 3, 4, 5], 100)
     """
     # determine paired and unpaired subsets
-    complete_subsets = []
+    complete_subsets: list[int] = []
     paired_subsets, unpaired_subset = pair_subset_sizes(order, n)
     incomplete_subsets = list(range(order, n - order + 1))
 
@@ -186,7 +186,7 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
 
 
 def generate_interaction_lookup(
-    players: Union[Iterable[Any], int], min_order: Optional[int], max_order: Optional[int]
+    players: Union[Iterable[Any], int], min_order: int, max_order: Optional[int] = None
 ) -> dict[tuple[Any], int]:
     """Generates a lookup dictionary for interactions.
 

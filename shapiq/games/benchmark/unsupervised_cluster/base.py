@@ -43,7 +43,7 @@ class ClusterExplanation(Game):
             cluster_params = {}
 
         # get a clustering algorithm
-        self.cluster: Optional[KMeans, AgglomerativeClustering] = None
+        self.cluster: Optional[Union[KMeans, AgglomerativeClustering]] = None
         if cluster_method == "kmeans":
             cluster_params["random_state"] = random_state
             self.cluster = KMeans(**cluster_params)

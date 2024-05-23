@@ -76,9 +76,9 @@ class ResNetModel:
             print(f"Predicted class: {self.class_label} with score: {self.class_score}")
 
         # get background tensor for gray image
-        self._background_image = np.zeros(self._image_shape, dtype=np.uint8)
-        self._background_image[:, :] = [127, 127, 127]
-        self._background_image: Image.Image = Image.fromarray(self._background_image)
+        _background_image = np.zeros(self._image_shape, dtype=np.uint8)
+        _background_image[:, :] = [127, 127, 127]
+        self._background_image: Image.Image = Image.fromarray(_background_image)
         self._background_image_tensor: torch.Tensor = self._tensor_transform(self._background_image)
         self._background_input_tensor: torch.Tensor = self._preprocess(
             self._background_image_tensor

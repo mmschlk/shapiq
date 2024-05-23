@@ -39,7 +39,7 @@ class MoebiusConverter:
         self.n = self.moebius_coefficients.n_players
         self._computed: dict = {}
         # setup callable mapping from index to computation
-        self._index_mapping: dict[str, Callable[[], InteractionValues]] = {
+        self._index_mapping: dict[str, Callable[[str, int], InteractionValues]] = {
             # shapley_interaction
             "k-SII": self.moebius_to_shapley_interaction,
             "STII": self.moebius_to_shapley_interaction,
@@ -153,7 +153,7 @@ class MoebiusConverter:
                     )
                 return rslt
 
-    def moebius_to_base_interaction(self, order: int, index: str):
+    def moebius_to_base_interaction(self, index: str, order: int):
         """Computes a base interaction index, e.g. SII or BII
 
         Args:

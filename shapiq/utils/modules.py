@@ -22,7 +22,7 @@ def safe_isinstance(obj: Any, class_path_str: Union[str, list[str], tuple[str]])
     if isinstance(class_path_str, str):
         class_path_strs = [class_path_str]
     elif isinstance(class_path_str, list) or isinstance(class_path_str, tuple):
-        class_path_strs = class_path_str
+        class_path_strs = list(class_path_str)
     else:
         class_path_strs = [""]
 

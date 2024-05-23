@@ -47,8 +47,8 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 def plot_approximation_quality(
     data: pd.DataFrame,
     metric: str = "MSE",
-    orders: list[Union[int, str]] = None,
-    approximators: list[str] = None,
+    orders: Optional[list[Union[int, str]]] = None,
+    approximators: Optional[list[str]] = None,
     aggregation: str = "mean",
     confidence_metric: Optional[str] = "sem",
 ) -> tuple[plt.Figure, plt.Axes]:
@@ -73,7 +73,7 @@ def plot_approximation_quality(
 
     # make sure orders is a list
     if orders is None:
-        orders = "all"
+        orders = ["all"]
     if isinstance(orders, int) or isinstance(orders, str):
         orders = [orders]
 
@@ -178,7 +178,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 def add_legend(
     axis: plt.Axes,
     approximators: list[str],
-    orders: list[Union[int, str]] = None,
+    orders: Optional[list[Union[int, str]]] = None,
     legend_subtitle: bool = True,
     loc: str = "best",
 ) -> None:

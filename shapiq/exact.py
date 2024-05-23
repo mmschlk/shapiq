@@ -59,7 +59,7 @@ class ExactComputer:
         self.coalition_lookup: dict[tuple[int], int] = computed_game[2]
 
         # setup callable mapping from index to computation
-        self._index_mapping: dict[str, Callable[[], InteractionValues]] = {
+        self._index_mapping: dict[str, Callable[[str, int], InteractionValues]] = {
             "Moebius": self.moebius_transform,
             # shapley_interaction
             "k-SII": self.shapley_interaction,
