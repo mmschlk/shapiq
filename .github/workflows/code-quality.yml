@@ -37,4 +37,4 @@ jobs:
         pre-commit install
 
     - name: Run code-quality checks
-      run: SKIP=black pre-commit run --all-files
+      run: pre-commit run --all-files
