@@ -165,7 +165,7 @@ class MarginalImputer(Imputer):
         """
         if self._sample_replacements:
             # TODO: this doesn't do anything?
-            shuffled_background = self._rng.permutation(self.data) 
+            shuffled_background = self._rng.permutation(self.data)
             empty_predictions = self.predict(shuffled_background)
             empty_prediction = float(np.mean(empty_predictions))
         else:

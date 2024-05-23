@@ -32,13 +32,12 @@ class ConditionalImputer(Imputer):
         empty_prediction: The model's prediction on an empty data point (all features missing).
     """
 
-
     def __init__(
         self,
         model,
         data: np.ndarray,
         x: np.ndarray,
-        method = "generative",
+        method="generative",
         sample_size: int = 10,
         conditional_budget: int = 1000,
         conditional_threshold: float = 0.05,
@@ -68,15 +67,17 @@ class ConditionalImputer(Imputer):
             The initialized imputer.
         """
         import xgboost
+
         X_tiled = np.tile(data, (self.conditional_budget, 1))
-        mask = self._rng.choice([True, False], size=(data.shape[0]*self.conditional_budget, data.shape[1]))
-        X_masked = X_tiled.copy() 
+        mask = self._rng.choice(
+            [True, False], size=(data.shape[0] * self.conditional_budget, data.shape[1])
+        )
+        X_masked = X_tiled.copy()
         X_masked[mask] = np.NaN
         tree_embedder = xgboost.XGBRegressor(random_state=self._random_state)
         tree_embedder.fit(X_masked, X_tiled)
         self._data_embedded = tree_embedder.apply(data)
         self._tree_embedder = tree_embedder
-
 
     def fit(self, x: np.ndarray[float]) -> "ConditionalImputer":
         """Fits the imputer to the explanation point.
@@ -89,7 +90,6 @@ class ConditionalImputer(Imputer):
         """
         self._x = x
         return self
-    
 
     def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
         """Computes the value function for all coalitions.
@@ -112,7 +112,6 @@ class ConditionalImputer(Imputer):
         predictions = self.predict(x_tiled)
         avg_predictions = predictions.reshape(n_coalitions, -1).mean(axis=1)
         return avg_predictions
-    
 
     def _sample_background_data(self) -> np.ndarray:
         """Samples background data.
@@ -123,14 +122,15 @@ class ConditionalImputer(Imputer):
         """
         x_embedded = self._tree_embedder.apply(self._x)
         distances = hamming_distance(self._data_embedded, x_embedded)
-        conditional_data = self.data[distances <= np.quantile(distances, self.conditional_threshold)]
+        conditional_data = self.data[
+            distances <= np.quantile(distances, self.conditional_threshold)
+        ]
         if self.sample_size < conditional_data.shape[0]:
             idc = self._rng.choice(conditional_data.shape[0], size=self.sample_size, replace=False)
             background_data = conditional_data[idc, :]
         else:
             background_data = conditional_data
         return background_data
-
 
     def _calc_empty_prediction(self) -> float:
         """Runs the model on empty data points (all features missing) to get the empty prediction.
