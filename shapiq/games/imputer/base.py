@@ -31,7 +31,7 @@ class Imputer(Game):
     ) -> None:
         if callable(model):
             self._predict_function = utils.predict_callable
-        else: # shapiq.Explainer
+        else:  # shapiq.Explainer
             self._predict_function = model._predict_function
         self.model = model
         self.data = data

@@ -10,22 +10,21 @@ from .base import FeatureSelection
 class AdultCensus(FeatureSelection):
     """The Adult Census dataset as a Feature Selection benchmark game.
 
-        model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`.
-        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
+    model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
+        are 'decision_tree', 'random_forest', and 'gradient_boosting'.
+    normalize: A flag to normalize the game values. If `True`, then the game values are
+        normalized and centered to be zero for the empty set of features. Defaults to `True`.
+    verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
+    random_state: The random state to use for the imputer. Defaults to 42.
     """
 
-
     def __init__(
-            self,
-            model_name: str = "decision_tree",
-            normalize: bool = True,
-            verbose: bool = True,
-            random_state: Optional[int] = 42,
-        ) -> None:
+        self,
+        model_name: str = "decision_tree",
+        normalize: bool = True,
+        verbose: bool = True,
+        random_state: Optional[int] = 42,
+    ) -> None:
 
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
@@ -58,12 +57,12 @@ class BikeSharing(FeatureSelection):
     """
 
     def __init__(
-            self,
-            model_name: str = "decision_tree",
-            normalize: bool = True,
-            verbose: bool = True,
-            random_state: Optional[int] = 42,
-        ) -> None:
+        self,
+        model_name: str = "decision_tree",
+        normalize: bool = True,
+        verbose: bool = True,
+        random_state: Optional[int] = 42,
+    ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
@@ -95,12 +94,12 @@ class CaliforniaHousing(FeatureSelection):
     """
 
     def __init__(
-            self,
-            model_name: str = "decision_tree",
-            normalize: bool = True,
-            verbose: bool = True,
-            random_state: Optional[int] = 42,
-        ) -> None:
+        self,
+        model_name: str = "decision_tree",
+        normalize: bool = True,
+        verbose: bool = True,
+        random_state: Optional[int] = 42,
+    ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,

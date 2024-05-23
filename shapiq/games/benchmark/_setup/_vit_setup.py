@@ -4,6 +4,7 @@ Note to developers:
     This file should not be imported directly as it requires a lot of dependencies to be installed
     (e.g. `torch`, `transformers`, `PIL`).
 """
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -15,7 +16,6 @@ __all__ = ["ViTModel"]
 
 
 class ViTModel:
-
     """Sets up the Vision Transformer model from huggingface as a callable function.
 
     Args:

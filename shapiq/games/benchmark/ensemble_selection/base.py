@@ -262,5 +262,5 @@ class RandomForestEnsembleSelection(EnsembleSelection):
             n_members=len(ensemble_members),
             verbose=verbose,
             normalize=normalize,
-            random_state=random_state
+            random_state=random_state,
         )

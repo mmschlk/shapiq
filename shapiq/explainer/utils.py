@@ -5,15 +5,12 @@ from .. import explainer
 
 
 def get_explainers():
-    return {
-        'tabular': explainer.TabularExplainer,
-        'tree': explainer.TreeExplainer
-    }
+    return {"tabular": explainer.TabularExplainer, "tree": explainer.TreeExplainer}
 
 
 def get_predict_function_and_model_type(model, model_class):
     _predict_function = None
-    _model_type = "tabular" # default
+    _model_type = "tabular"  # default
 
     if callable(model):
         _predict_function = predict_callable
@@ -50,7 +47,7 @@ def get_predict_function_and_model_type(model, model_class):
         "keras.engine.sequential.Sequential",
         "keras.engine.training.Model",
         "keras.engine.functional.Functional",
-        "keras.src.models.sequential.Sequential"
+        "keras.src.models.sequential.Sequential",
     ]:
         _model_type = "tabular"
         if model.output_shape[1] == 1:
@@ -59,21 +56,25 @@ def get_predict_function_and_model_type(model, model_class):
             _predict_function = predict_tf_binary
         else:
             _predict_function = predict_tf_first
-            warnings.warn("Tensorflow: Output shape of the model greater than 2. Explaining the 1st '0' class.")
+            warnings.warn(
+                "Tensorflow: Output shape of the model greater than 2. Explaining the 1st '0' class."
+            )
 
     # default extraction (sklearn api)
-    if _predict_function is None and hasattr(model, 'predict_proba'):
+    if _predict_function is None and hasattr(model, "predict_proba"):
         _predict_function = predict_proba_default
-    elif _predict_function is None and hasattr(model, 'predict'):
+    elif _predict_function is None and hasattr(model, "predict"):
         _predict_function = predict_default
-    elif isinstance(model, explainer.tree.TreeModel): # test scenario
+    elif isinstance(model, explainer.tree.TreeModel):  # test scenario
         _predict_function = model.compute_empty_prediction
         _model_type = "tree"
     elif _predict_function is None:
-        raise TypeError(f'`model` is of unsupported type: {model_class}.\n'
-                'Please, raise a new issue at https://github.com/mmschlk/shapiq/issues if you want this model type\n'
-                'to be handled automatically by shapiq.Explainer. Otherwise, use one of the supported explainers:\n'
-                f'{", ".join(print_classes_nicely(get_explainers()))}')
+        raise TypeError(
+            f"`model` is of unsupported type: {model_class}.\n"
+            "Please, raise a new issue at https://github.com/mmschlk/shapiq/issues if you want this model type\n"
+            "to be handled automatically by shapiq.Explainer. Otherwise, use one of the supported explainers:\n"
+            f'{", ".join(print_classes_nicely(get_explainers()))}'
+        )
 
     return _predict_function, _model_type
 
@@ -92,11 +93,14 @@ def predict_proba_default(m, d):
 
 def predict_xgboost(m, d):
     from xgboost import DMatrix
+
     return m.predict(DMatrix(d))
 
 
 def predict_tf_single(m, d):
-    return m.predict(d, verbose=0).reshape(-1, )
+    return m.predict(d, verbose=0).reshape(
+        -1,
+    )
 
 
 def predict_tf_binary(m, d):

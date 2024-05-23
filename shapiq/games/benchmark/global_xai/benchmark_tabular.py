@@ -41,7 +41,7 @@ class AdultCensus(GlobalExplanation):
             model_name=model_name,
             loss_function=loss_function,
             verbose=verbose,
-            random_state=random_state
+            random_state=random_state,
         )
 
         # call the super constructor
@@ -91,7 +91,7 @@ class BikeSharing(GlobalExplanation):
             model_name=model_name,
             loss_function=loss_function,
             verbose=verbose,
-            random_state=random_state
+            random_state=random_state,
         )
 
         # call the super constructor
@@ -141,7 +141,7 @@ class CaliforniaHousing(GlobalExplanation):
             model_name=model_name,
             loss_function=loss_function,
             verbose=verbose,
-            random_state=random_state
+            random_state=random_state,
         )
 
         # call the super constructor

@@ -41,7 +41,7 @@ class AdultCensus(TreeSHAPIQXAI):
             dataset_name="adult_census",
             model_name=model_name,
             verbose=verbose,
-            random_state=random_state
+            random_state=random_state,
         )
 
         # get x_explain
@@ -90,7 +90,7 @@ class BikeSharing(TreeSHAPIQXAI):
             dataset_name="bike_sharing",
             model_name=model_name,
             verbose=verbose,
-            random_state=random_state
+            random_state=random_state,
         )
 
         # get x_explain
@@ -138,7 +138,7 @@ class CaliforniaHousing(TreeSHAPIQXAI):
             dataset_name="california_housing",
             model_name=model_name,
             verbose=verbose,
-            random_state=random_state
+            random_state=random_state,
         )
 
         # get x_explain

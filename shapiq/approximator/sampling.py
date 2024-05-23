@@ -128,15 +128,15 @@ class CoalitionSampler:
         # variables accessible through properties
         self._sampled_coalitions_matrix: Optional[np.ndarray[bool]] = None  # coalitions
         self._sampled_coalitions_counter: Optional[np.ndarray[int]] = None  # coalitions_counter
-        self._sampled_coalitions_size_prob: Optional[
-            np.ndarray[float]
-        ] = None  # coalitions_size_probability
-        self._sampled_coalitions_in_size_prob: Optional[
-            np.ndarray[float]
-        ] = None  # coalitions_in_size_probability
-        self._is_coalition_size_sampled: Optional[
-            np.ndarray[bool]
-        ] = None  # is_coalition_size_sampled
+        self._sampled_coalitions_size_prob: Optional[np.ndarray[float]] = (
+            None  # coalitions_size_probability
+        )
+        self._sampled_coalitions_in_size_prob: Optional[np.ndarray[float]] = (
+            None  # coalitions_in_size_probability
+        )
+        self._is_coalition_size_sampled: Optional[np.ndarray[bool]] = (
+            None  # is_coalition_size_sampled
+        )
 
         self.sampled = False
 

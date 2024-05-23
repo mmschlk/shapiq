@@ -4,6 +4,7 @@ Note to developers:
     This file should not be imported directly as it requires a lot of dependencies to be installed
     (e.g. `torch`, `torchvision`, `PIL`, and `skimage`).
 """
+
 import copy
 
 import numpy as np
@@ -18,7 +19,6 @@ __all__ = ["ResNetModel"]
 
 
 class ResNetModel:
-
     """Sets up the ResNetModel model from torchvision as a callable function.
 
     Note:
@@ -136,9 +136,9 @@ class ResNetModel:
         for i, coalition in enumerate(coalitions):
             for superpixel, is_present in enumerate(coalition, start=1):
                 if not is_present:
-                    masked_images[
-                        i, :, self._superpixel_masks[superpixel - 1]
-                    ] = self._background_image_tensor[:, self._superpixel_masks[superpixel - 1]]
+                    masked_images[i, :, self._superpixel_masks[superpixel - 1]] = (
+                        self._background_image_tensor[:, self._superpixel_masks[superpixel - 1]]
+                    )
         # apply the model
         output = self.model_call(self._preprocess(masked_images))[..., self.class_id]
         return output.detach().numpy()
