@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from shapiq.plot import explanation_graph_plot
+from shapiq.plot import si_graph_plot
 from shapiq.interaction_values import InteractionValues
 
 
@@ -65,7 +65,7 @@ def test_explanation_graph_plot(
         max_order=4,
     )
 
-    fig, ax = explanation_graph_plot(
+    fig, ax = si_graph_plot(
         example_values,
         [(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)],
         random_seed=1,
@@ -79,7 +79,7 @@ def test_explanation_graph_plot(
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
 
-    fig, ax = explanation_graph_plot(
+    fig, ax = si_graph_plot(
         example_values,
         [(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)],
         random_seed=1,
@@ -98,7 +98,7 @@ def test_explanation_graph_plot(
     edges = nx.Graph()
     edges.add_edges_from([(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)])
 
-    fig, ax = explanation_graph_plot(
+    fig, ax = si_graph_plot(
         example_values,
         edges,
         random_seed=1,
@@ -117,3 +117,4 @@ def test_explanation_graph_plot(
 
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+    plt.close(fig)

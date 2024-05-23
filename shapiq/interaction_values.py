@@ -36,7 +36,7 @@ class InteractionValues:
             Defaults to `None`.
     """
 
-    values: np.ndarray[float]
+    values: np.ndarray
     index: str
     max_order: int
     n_players: int
@@ -76,7 +76,7 @@ class InteractionValues:
     def dict_values(self) -> dict[tuple[int, ...], float]:
         """Getter for the dict directly mapping from all interactions to scores."""
         return {
-            interaction: self.values[self.interaction_lookup[interaction]]
+            interaction: float(self.values[self.interaction_lookup[interaction]])
             for interaction in self.interaction_lookup
         }
 
