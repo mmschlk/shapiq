@@ -20,8 +20,8 @@ class InteractionValues:
 
     Attributes:
         values: The interaction values of the model in vectorized form.
-        index: The interaction index estimated. Available indices are 'SII', 'kSII', 'STII', and
-            'FSII'.
+        index: The interaction index estimated. All available indices are defined in
+            `ALL_AVAILABLE_INDICES`.
         max_order: The order of the approximation.
         n_players: The number of players.
         min_order: The minimum order of the approximation. Defaults to 0.
@@ -34,6 +34,10 @@ class InteractionValues:
             'empty value' since it denotes the value of the empty coalition (empty set). If not
             provided it is searched for in the values vector (raising an Error if not found).
             Defaults to `None`.
+
+    Raises:
+        UserWarning: If the index is not a valid index as defined in `ALL_AVAILABLE_INDICES`.
+        TypeError: If the baseline value is not a number.
     """
 
     values: np.ndarray

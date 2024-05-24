@@ -1,24 +1,19 @@
 """Metrics for evaluating the performance of interaction values."""
 
+import copy
 from typing import Optional
 
 import numpy as np
 from scipy.stats import kendalltau
 
 from ...interaction_values import InteractionValues
-from ...utils.sets import powerset
+from ...utils.sets import count_interactions, powerset
 
-__all__ = [
-    "compute_mse",
-    "compute_mae",
-    "compute_kendall_tau",
-    "compute_precision_at_k",
-    "get_all_metrics",
-]
+__all__ = ["get_all_metrics"]
 
 
 def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
-    """Manually sets the empty value to zero.
+    """Manually sets the empty value (e.g. baseline value) to zero in the values array.
 
     Args:
         interaction: The interaction values to remove the empty value from.
@@ -27,41 +22,44 @@ def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
         The interaction values without the empty value.
     """
     try:
-        empty_index = interaction.interaction_lookup[()]
-        interaction.values[empty_index] = 0
-        return interaction
+        _ = interaction.interaction_lookup[()]
+        new_interaction = copy.deepcopy(interaction)
+        empty_index = new_interaction.interaction_lookup[()]
+        new_interaction.values[empty_index] = 0
+        return new_interaction
     except KeyError:
         return interaction
 
 
-def compute_mse(ground_truth: InteractionValues, estimated: InteractionValues) -> float:
-    """Compute the mean squared error between two interaction values.
+def compute_diff_metrics(ground_truth: InteractionValues, estimated: InteractionValues) -> dict:
+    """Computes metrics via the difference between the ground truth and estimated interaction
+    values.
+
+    Computes the following metrics:
+        - Mean Squared Error (MSE)
+        - Mean Absolute Error (MAE)
+        - Sum of Squared Errors (SSE)
+        - Sum of Absolute Errors (SAE)
 
     Args:
         ground_truth: The ground truth interaction values.
         estimated: The estimated interaction values.
 
     Returns:
-        The mean squared error between the ground truth and estimated interaction values.
+        The metrics between the ground truth and estimated interaction values.
     """
     difference = ground_truth - estimated
     diff_values = _remove_empty_value(difference).values
-    return float(np.mean(diff_values**2))
-
-
-def compute_mae(ground_truth: InteractionValues, estimated: InteractionValues) -> float:
-    """Compute the mean absolute error between two interaction values.
-
-    Args:
-        ground_truth: The ground truth interaction values.
-        estimated: The estimated interaction values.
-
-    Returns:
-        The mean absolute error between the ground truth and estimated interaction values.
-    """
-    difference = ground_truth - estimated
-    diff_values = _remove_empty_value(difference).values
-    return float(np.mean(np.abs(diff_values)))
+    n_values = count_interactions(
+        ground_truth.n_players, ground_truth.max_order, ground_truth.min_order
+    )
+    metrics = {
+        "MSE": np.sum(diff_values**2) / n_values,
+        "MAE": np.sum(np.abs(diff_values)) / n_values,
+        "SSE": np.sum(diff_values**2),
+        "SAE": np.sum(np.abs(diff_values)),
+    }
+    return metrics
 
 
 def compute_kendall_tau(
@@ -129,7 +127,7 @@ def get_all_metrics(
     Args:
         ground_truth: The ground truth interaction values.
         estimated: The estimated interaction values.
-        order_indicator: The order indicator for the metrics. Defaults to None.
+        order_indicator: An optional order indicator to prepend to the metrics. Defaults to `None`.
 
     Returns:
         The metrics as a dictionary.
@@ -140,12 +138,17 @@ def get_all_metrics(
         order_indicator += "_"
 
     metrics = {
-        order_indicator + "MSE": compute_mse(ground_truth, estimated),
-        order_indicator + "MAE": compute_mae(ground_truth, estimated),
         order_indicator + "Precision@10": compute_precision_at_k(ground_truth, estimated, k=10),
         order_indicator + "Precision@5": compute_precision_at_k(ground_truth, estimated, k=5),
         order_indicator + "KendallTau": compute_kendall_tau(ground_truth, estimated),
         order_indicator + "KendallTau@10": compute_kendall_tau(ground_truth, estimated, k=10),
         order_indicator + "KendallTau@50": compute_kendall_tau(ground_truth, estimated, k=50),
     }
+
+    # get diff metrics
+    metrics_diff = compute_diff_metrics(ground_truth, estimated)
+    if order_indicator != "":  # add the order indicator to the diff metrics
+        metrics_diff = {order_indicator + key: value for key, value in metrics_diff.items()}
+
+    metrics.update(metrics_diff)
     return metrics

@@ -43,10 +43,6 @@ from .local_xai.benchmark_tabular import CaliforniaHousing as CaliforniaHousingL
 
 # metrics
 from .metrics import (
-    compute_kendall_tau,
-    compute_mae,
-    compute_mse,
-    compute_precision_at_k,
     get_all_metrics,
 )
 
@@ -93,10 +89,6 @@ __all__ = [
     "get_game_files",
     # all metrics
     "get_all_metrics",
-    "compute_mae",
-    "compute_mse",
-    "compute_kendall_tau",
-    "compute_precision_at_k",
     # local_xai games
     "LocalExplanation",
     "AdultCensusLocalXAI",

@@ -16,7 +16,7 @@ work_directory = os.path.abspath(os.path.dirname(__file__))
 
 # https://packaging.python.org/guides/single-sourcing-package-version/
 def read(rel_path):
-    with codecs.open(os.path.join(work_directory, rel_path), "r") as fp:
+    with codecs.open(str(os.path.join(work_directory, rel_path)), "r") as fp:
         return fp.read()
 
 
