@@ -50,6 +50,8 @@ class MonteCarlo(Approximator):
                 f"Index {index} not available for Regression Approximator. Choose from "
                 f"{AVAILABLE_INDICES_MONTE_CARLO}."
             )
+        if index == "FSII":
+            top_order = True
         super().__init__(
             n,
             min_order=0,
@@ -106,7 +108,7 @@ class MonteCarlo(Approximator):
         game_values: np.ndarray,
         coalitions_matrix: np.ndarray,
         index_approximation: str,
-    ) -> np.ndarray[float]:
+    ) -> np.ndarray:
         """Approximates the Shapley interaction values using Monte Carlo sampling.
 
         Args:
@@ -364,7 +366,10 @@ class MonteCarlo(Approximator):
         Returns:
             The weight for the interaction type.
         """
-        return interaction_size / coalition_size
+        try:
+            return interaction_size / coalition_size
+        except ZeroDivisionError:
+            return 0.0  # TODO: check if this is correct (if coalition_size == 0, return 0)
 
     def _stii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Returns the STII discrete derivative weight given the coalition size and interaction

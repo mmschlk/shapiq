@@ -85,16 +85,24 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
 
 ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 
-AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = {
-    "SII",
-    "BII",
-    "k-SII",
-    "STII",
-    "FSII",
-    "SV",
-    "BV",
-    "kADD-SHAP",
-}
+AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII"}
+AVAILABLE_INDICES_MONTE_CARLO = {"k-SII", "SII", "STII", "FSII", "SV", "CHII", "BII"}
+
+AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = (
+    {
+        "SII",
+        "BII",
+        "k-SII",
+        "STII",
+        "FSII",
+        "SV",
+        "BV",
+        "kADD-SHAP",
+        "CHII",
+    }
+    .union(AVAILABLE_INDICES_REGRESSION)
+    .union(AVAILABLE_INDICES_MONTE_CARLO)
+)
 
 
 def index_generalizes_sv(index: str) -> bool:
@@ -230,7 +238,3 @@ def is_empty_value_the_baseline(index: str) -> bool:
         True
     """
     return index != "SII"
-
-
-AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII"}
-AVAILABLE_INDICES_MONTE_CARLO = {"k-SII", "SII", "STII", "FSII", "SV", "CHII", "BII"}
