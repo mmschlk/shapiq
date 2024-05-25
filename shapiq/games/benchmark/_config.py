@@ -22,7 +22,6 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from ...datasets import load_adult_census, load_bike_sharing, load_california_housing
 from ...utils import Model
 from ...utils.datasets import shuffle_data
-from ._setup._california_torch_setup import CaliforniaHousingTorchModel
 
 AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 
@@ -257,6 +256,8 @@ class GameBenchmarkSetup:
 
     def init_california_neural_network(self):
         """Initializes a neural network model for the California Housing dataset."""
+        from ._setup._california_torch_setup import CaliforniaHousingTorchModel
+
         self.model = CaliforniaHousingTorchModel()
 
         scaler = StandardScaler()
