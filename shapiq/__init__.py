@@ -2,17 +2,24 @@
 the well established Shapley value and its generalization to interaction.
 """
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 
 # approximator classes
 from .approximator import (
-    SHAPIQ,
-    InconsistentKernelSHAPIQ,
-    KernelSHAPIQ,
+    OwenSamplingSV, 
+    StratifiedSamplingSV,
+    SHAPIQ, 
+    SVARM, 
+    SVARMIQ, 
+    UnbiasedKernelSHAP,
     PermutationSamplingSII,
     PermutationSamplingSTII,
-    RegressionFSII,
-    kADDSHAP,
+    PermutationSamplingSV,
+    InconsistentKernelSHAPIQ, 
+    KernelSHAP, 
+    KernelSHAPIQ, 
+    RegressionFSII, 
+    kADDSHAP
 )
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 from .exact import ExactComputer
@@ -41,13 +48,20 @@ __all__ = [
     "InteractionValues",
     "ExactComputer",
     # approximators
-    "SHAPIQ",
     "PermutationSamplingSII",
     "PermutationSamplingSTII",
-    "InconsistentKernelSHAPIQ",
-    "KernelSHAPIQ",
-    "kADDSHAP",
+    "PermutationSamplingSV",
+    "StratifiedSamplingSV",
+    "OwenSamplingSV",
+    "KernelSHAP",
     "RegressionFSII",
+    "KernelSHAPIQ",
+    "InconsistentKernelSHAPIQ",
+    "SHAPIQ",
+    "SVARM",
+    "SVARMIQ",
+    "kADDSHAP",
+    "UnbiasedKernelSHAP",
     # explainers
     "Explainer",
     "TabularExplainer",
