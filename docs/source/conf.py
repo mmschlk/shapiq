@@ -32,7 +32,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    "sphinx.ext.autodoc",
+    "autodoc2",
     "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
     "sphinx_copybutton",
@@ -40,6 +40,10 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
+]
+
+autodoc2_packages = [
+    "shapiq",
 ]
 
 templates_path = ["_templates"]
