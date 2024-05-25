@@ -1,5 +1,5 @@
-``shapiq``
-==================================
+The ``shapiq`` Python package
+================================
 
 .. note::
    The first formal version |version| of ``shapiq`` is still an alpha release.

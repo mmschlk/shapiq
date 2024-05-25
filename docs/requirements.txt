@@ -111,3 +111,4 @@ alabaster==0.7.13
 scikit-learn
 torch
 commonmark
+sphinx-autodoc2
