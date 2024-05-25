@@ -1,7 +1,6 @@
 """This module contains the shapiq estimators. Namely, the SHAPIQ and UnbiasedKernelSHAP estimators.
 The Unbiased KernelSHAP method is a variant of KernelSHAP. However, it was shown that Unbiased
-KernelSHAP is a more specific variant of the ShapIQ interaction method (cf.
-https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html)."""
+KernelSHAP is a more specific variant of the ShapIQ interaction method."""
 
 from typing import Optional
 
@@ -10,8 +9,8 @@ from ._base import MonteCarlo
 
 class SHAPIQ(MonteCarlo):
     """SHAP-IQ approximator uses standard form of Shapley interactions.
-    Algorithm described in https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html.
     This is the default method from MonteCarlo approximator with no stratification.
+    For details, refer to `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
 
     Args:
         n: The number of players.
@@ -59,12 +58,9 @@ class UnbiasedKernelSHAP(SHAPIQ):
     """The Unbiased KernelSHAP approximator for estimating the Shapley value (SV).
 
     The Unbiased KernelSHAP estimator is a variant of the KernelSHAP estimator (though deeply
-    different). Unbiased KernelSHAP was proposed in Covert and Lee's
-    [original paper](http://proceedings.mlr.press/v130/covert21a/covert21a.pdf) as an unbiased
-    version of KernelSHAP. Recently, in Fumagalli et al.'s
-    [paper](https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html),
-    it was shown that Unbiased KernelSHAP is a more specific variant of the ShapIQ approximation
-    method (Theorem 4.5).
+    different). Unbiased KernelSHAP was proposed by `Covert and Lee (2021) <https://doi.org/10.48550/arXiv.2012.01536>`_ 
+    as an unbiased version of KernelSHAP. `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_,
+    shown that Unbiased KernelSHAP is a more specific variant of the ShapIQ approximation method (Theorem 4.5).
 
     Args:
         n: The number of players.

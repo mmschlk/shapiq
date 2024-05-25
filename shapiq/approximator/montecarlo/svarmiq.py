@@ -7,9 +7,8 @@ from ._base import MonteCarlo
 
 class SVARMIQ(MonteCarlo):
     """SVARM-IQ approximator uses standard form of Shapley interactions.
-
-    The SVARM-IQ algorithm described in https://arxiv.org/abs/2401.13371 TODO: change to AISTATS version
     SVARM-IQ utilizes MonteCarlo approximation with both stratification strategies.
+    For details, refer to `Kolpaczki et al. (2024) <https://doi.org/10.48550/arXiv.2401.13371>`_.
 
     Args:
         n: The number of players.
@@ -58,7 +57,7 @@ class SVARMIQ(MonteCarlo):
 class SVARM(SVARMIQ):
     """The SVARM approximator for estimating the Shapley value (SV).
 
-    TODO: Add description.
+    For details, refer to `Kolpaczki et al. (2024) <https://doi.org/10.48550/arXiv.2302.00736>`_.
 
     Args:
         n: The number of players.

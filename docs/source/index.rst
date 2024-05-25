@@ -25,4 +25,4 @@ Contents
    :maxdepth: 2
    :caption: API REFERENCE
 
-   apidocs/index
+   api

@@ -100,8 +100,8 @@ class Regression(Approximator):
         weighted least-square (WLSQ) problem. The regression approximator first approximates the
         objective of the WLSQ problem by Monte Carlo sampling and then computes an exact WLSQ
         solution based on the approximated objective. This approximation is an extension of
-        KernelSHAP with different variants of kernel weights and regression settings
-        https://papers.nips.cc/paper_files/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html.
+        KernelSHAP with different variants of kernel weights and regression settings.
+        For details on KernelSHAP, refer to `Lundberg and Lee (2017) <https://doi.org/10.48550/arXiv.1705.07874>`_.
 
         Args:
             budget: The budget of the approximation.
@@ -148,11 +148,10 @@ class Regression(Approximator):
     ) -> np.ndarray[float]:
         """The main regression routine for the KernelSHAP-IQ approximator.
 
-        TODO: add citation
-        KernelSHAP-IQ is implemented according to this paper: ...
         This method solves for each interaction_size up to self.max_order separate regression
         problems iteratively. The following regression is thereby fit on the residuals of the
         previous regression problem.
+        For details, refer to `Fumagalli et al. (2024) <https://doi.org/10.48550/arXiv.2405.10852>`_.
 
         Args:
             kernel_weights_dict: The weights of the regression problem as a dictionary per

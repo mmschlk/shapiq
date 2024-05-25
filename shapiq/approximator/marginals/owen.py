@@ -1,4 +1,4 @@
-"""This module contains the Owen Sampling approximation method for the Shapley value (SV) by Okhrati and Lipani (2020).
+"""This module contains the Owen Sampling approximation method for the Shapley value (SV).
 It estimates the Shapley values in its integral representation by sampling random marginal contributions."""
 
 from typing import Callable, Optional
@@ -12,9 +12,9 @@ from shapiq.interaction_values import InteractionValues
 class OwenSamplingSV(Approximator):
     """The Owen Sampling algorithm estimates the Shapley values (SV) by sampling random marginal contributions
     for each player and each coalition size. The marginal contributions are used to update an integral representation of the SV.
-    For more information, see [Okhrati and Lipani (2020)](https://www.computer.org/csdl/proceedings-article/icpr/2021/09412511/1tmicWxYo2Q).
     The number of anchor points M at which the integral is to be palpated share the avilable budget for each player equally.
     A higher M increases the resolution of the integral reducing bias while reducing the accuracy of the estimation at each point.
+    For details, refer to `Okhrati and Lipani (2020) <https://doi.org/10.48550/arXiv.2010.12082>`_.
 
     Args:
         n: The number of players.

@@ -1,4 +1,4 @@
-"""This module contains the permutation sampling approximation method for the Shapley value (SV): ApproShapley (Castro et al., 2009).
+"""This module contains the permutation sampling approximation method for the Shapley value (SV).
 It estimates the Shapley values by sampling random permutations of the player set
 and extracting all marginal contributions from each permutation."""
 
@@ -13,7 +13,7 @@ from shapiq.interaction_values import InteractionValues
 class PermutationSamplingSV(Approximator):
     """The  Permutation Sampling algorithm ApproShapley estimates the Shapley values (SV) by sampling random permutations
     of the player set and extracting all marginal contributions from each permutation.
-    For more information, see [Castro et al. (2009)](https://doi.org/10.1016/j.cor.2008.04.004).
+    For details, refer to `Castro et al. (2009) <https://doi.org/10.1016/j.cor.2008.04.004>`_.
 
     Args:
         n: The number of players.

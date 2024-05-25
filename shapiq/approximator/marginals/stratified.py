@@ -1,4 +1,4 @@
-"""This module contains the Stratified Sampling approximation method for the Shapley value (SV) by Maleki et al. (2013).
+"""This module contains the Stratified Sampling approximation method for the Shapley value (SV).
 It estimates the Shapley values by sampling random marginal contributions grouped by size."""
 
 from typing import Callable, Optional
@@ -13,7 +13,7 @@ class StratifiedSamplingSV(Approximator):
     """The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random marginal contributions
     for each player and each coalition size. The marginal contributions are grouped into strata by size.
     The strata are aggregated for each player after sampling to obtain the final estimate.
-    For more information, see [Maleki et al. (2009)](http://arxiv.org/abs/1306.4265).
+    For details, refer to `Maleki et al. (2009) <https://doi.org/10.48550/arXiv.1306.4265>`_.
 
     Args:
         n: The number of players.

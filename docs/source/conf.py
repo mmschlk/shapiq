@@ -19,6 +19,7 @@ master_doc = "index"
 # -- Project information ---------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 project = "shapiq"
+copyright = "2023, "
 author = "Muschalik et al."
 release = shapiq.__version__
 version = shapiq.__version__
@@ -32,7 +33,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    "autodoc2",
+    "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
     "sphinx_copybutton",
@@ -40,10 +41,6 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
-]
-
-autodoc2_packages = [
-    "shapiq",
 ]
 
 templates_path = ["_templates"]
@@ -109,7 +106,6 @@ StandaloneHTMLBuilder.supported_image_types = [
 # Ignore >>> when copying code
 copybutton_prompt_text = r">>> |\.\.\. "
 copybutton_prompt_is_regexp = True
-
 
 # -- Markdown in docstring -----------------------------------------------------------------------------
 # https://gist.github.com/dmwyatt/0f555c8f9c129c0ac6fed6fabe49078b#file-docstrings-py

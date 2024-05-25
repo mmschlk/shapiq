@@ -17,8 +17,8 @@ class MonteCarlo(Approximator):
     MonteCarlo approximators are based on a representation of the interaction index as a weighted
     sum over discrete derivatives. The sum is re-written and approximated using Monte Carlo
     sampling. The sum may be stratified by coalition size or by the intersection size of the
-    coalition and the interaction. The standard form for approximation is based on Theorem 1 in
-    (Fumagalli et al. 2023)[https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html].
+    coalition and the interaction. The standard form for approximation is based on Theorem 1 by
+    `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
 
     Args:
         n: The number of players.
@@ -258,8 +258,8 @@ class MonteCarlo(Approximator):
 
     def _svarmiq_routine(self, interaction: tuple[int, ...]) -> np.ndarray:
         """Computes the adjusted sampling weights for the SVARM-IQ monte carlo routine.
-        Method according to https://arxiv.org/abs/2401.13371.
         The method deploys both, intersection and coalition size stratification.
+        For details, refer to `Kolpaczki et al. (2024) <https://doi.org/10.48550/arXiv.2401.13371>`_.
 
         Args:
             interaction: The interaction for the intersection stratification.
@@ -310,9 +310,9 @@ class MonteCarlo(Approximator):
 
     def _shapiq_routine(self) -> np.ndarray:
         """Computes the adjusted sampling weights for the SHAP-IQ monte carlo routine.
-        Method according to https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html
         The method deploys no stratification and returns the relative counts divided by the
-        probabilities.
+        probabilities. 
+        For details, refer to `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
 
         Returns:
             The sampling adjustment weights for the SHAP-IQ routine.
@@ -375,7 +375,7 @@ class MonteCarlo(Approximator):
         """Returns the STII discrete derivative weight given the coalition size and interaction
         size.
 
-        Representation according to https://proceedings.mlr.press/v119/sundararajan20a.html
+        For details, refer to `Dhamdhere et al. (2020) <https://doi.org/10.48550/arXiv.1902.05622>`_.
 
         Args:
             coalition_size: The size of the subset.
@@ -393,8 +393,8 @@ class MonteCarlo(Approximator):
         """Returns the FSII discrete derivative weight given the coalition size and interaction
         size.
 
-        The representation is based on the FSII representation according to Theorem 19 in this
-            [paper](https://www.jmlr.org/papers/volume24/22-0202/22-0202.pdf).
+        The representation is based on the FSII representation according to Theorem 19 by
+        `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
 
         Args:
             coalition_size: The size of the subset.
@@ -440,7 +440,8 @@ class MonteCarlo(Approximator):
 
     def _get_standard_form_weights(self, index: str) -> np.ndarray:
         """Initializes the weights for the interaction index re-written from discrete derivatives to
-        standard form. Standard form according to Theorem 1 in [Fumagalli et al 2023](https://proceedings.neurips.cc/paper_files/paper/2023/hash/264f2e10479c9370972847e96107db7f-Abstract-Conference.html).
+        standard form. Standard form according to Theorem 1 by 
+        `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
 
         Args:
             index: The interaction index

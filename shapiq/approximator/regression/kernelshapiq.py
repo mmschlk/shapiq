@@ -11,7 +11,8 @@ AVAILABLE_INDICES_KERNELSHAPIQ = {"k-SII", "SII"}
 
 class KernelSHAPIQ(Regression):
     """Estimates the SII values using KernelSHAP-IQ.
-    Algorithm described in TODO: add citation
+
+    Algorithm described in `Fumagalli et al. (2024) <https://doi.org/10.48550/arXiv.2405.10852>`_.
 
     Args:
         n: The number of players.
@@ -53,7 +54,8 @@ class KernelSHAPIQ(Regression):
 
 class InconsistentKernelSHAPIQ(Regression):
     """Estimates the SII values using Inconsistent KernelSHAP-IQ.
-    Algorithm similar to kADD-SHAP, described in TODO: add citation
+    Algorithm similar to kADD-SHAP.
+    For details, refer to `Fumagalli et al. (2024) <https://doi.org/10.48550/arXiv.2405.10852>`_.
 
     Args:
         n: The number of players.
