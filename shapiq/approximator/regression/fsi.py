@@ -8,9 +8,8 @@ from ._base import Regression
 
 
 class RegressionFSII(Regression):
-    """Estimates the FSII values using KernelSHAP.
-
-    The Algorithm is described in `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
+    """Estimates the FSII values using KernelSHAP. The Algorithm is described 
+    in `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
 
     Args:
         n: The number of players.
@@ -20,7 +19,7 @@ class RegressionFSII(Regression):
             to `False`.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
             be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
-             of a certain size. Defaults to `None`.
+            of a certain size. Defaults to `None`.
 
     Attributes:
         n: The number of players.

@@ -1,4 +1,4 @@
-"""This module contains the approximators to estimate the Shapley interaction values."""
+"""Approximators to estimate the Shapley interaction values."""
 
 from .marginals import OwenSamplingSV, StratifiedSamplingSV
 from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP

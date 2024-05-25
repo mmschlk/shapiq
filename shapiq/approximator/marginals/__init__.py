@@ -1,4 +1,4 @@
-"""This module contains all marginal contribution-based sampling algorithms to estimate the SV."""
+"""Marginal contribution-based sampling algorithms to estimate the SV."""
 
 from .owen import OwenSamplingSV
 from .stratified import StratifiedSamplingSV

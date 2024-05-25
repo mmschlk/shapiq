@@ -1,4 +1,4 @@
-"""This module contains the imputer for the shapiq package."""
+"""The imputer objects for the shapiq package."""
 
 from .conditional_imputer import ConditionalImputer
 from .marginal_imputer import MarginalImputer

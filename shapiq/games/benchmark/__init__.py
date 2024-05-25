@@ -1,4 +1,4 @@
-"""This module contains all benchmark games."""
+"""Benchmark games."""
 
 # dataset valuation games
 from .dataset_valuation.base import DatasetValuation

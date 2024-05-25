@@ -1,4 +1,4 @@
-"""This module contains the explainer for the shapiq package."""
+"""The explainer object for the shapiq package."""
 
 from ._base import Explainer
 from .tabular import TabularExplainer

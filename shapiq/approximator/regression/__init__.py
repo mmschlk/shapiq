@@ -1,4 +1,4 @@
-"""This module contains the regression-based approximators to estimate Shapley interaction values."""
+"""Regression-based approximators to estimate Shapley interaction values."""
 
 from .fsi import RegressionFSII
 from .kadd_shap import kADDSHAP

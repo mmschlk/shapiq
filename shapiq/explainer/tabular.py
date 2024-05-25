@@ -1,5 +1,4 @@
-"""This module contains the interaction explainer for the shapiq package. This is the main interface
-for users of the shapiq package."""
+"""The Tabular Explainer class for the shapiq package."""
 
 import warnings
 from typing import Optional, Union

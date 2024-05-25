@@ -12,6 +12,7 @@ Contents
    :caption: OVERVIEW
 
    installation
+   start
 
 
 .. toctree::

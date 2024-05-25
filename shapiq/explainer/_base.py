@@ -1,4 +1,4 @@
-"""This module contains the base explainer classes for the shapiq package."""
+"""The base Explainer classes for the shapiq package."""
 
 import numpy as np
 

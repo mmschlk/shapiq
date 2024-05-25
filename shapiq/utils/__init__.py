@@ -1,4 +1,4 @@
-"""This module contains utility functions for the shapiq package."""
+"""Utility functions for the shapiq package."""
 
 from .datasets import shuffle_data
 from .modules import safe_isinstance

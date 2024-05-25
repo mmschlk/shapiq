@@ -1,4 +1,4 @@
-"""This module contains the tree explainer implementation."""
+"""The Tree Explainer implementation."""
 
 from .base import TreeModel
 from .explainer import TreeExplainer

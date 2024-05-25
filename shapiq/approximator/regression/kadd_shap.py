@@ -8,9 +8,8 @@ from ._base import Regression
 
 
 class kADDSHAP(Regression):
-    """Estimates the kADD-SHAP values using the kADD-SHAP algorithm.
-    
-    The Algorithm is described in `Pelegrina et al. (2023) <https://doi.org/10.48550/arXiv.2211.02166>`_.
+    """Estimates the kADD-SHAP values using the kADD-SHAP algorithm. The Algorithm is described 
+    in `Pelegrina et al. (2023) <https://doi.org/10.48550/arXiv.2211.02166>`_.
 
     Args:
         n: The number of players.

@@ -1,4 +1,4 @@
-"""This module contains all game objects for the shapiq package."""
+"""Game objects for the shapiq package."""
 
 from . import benchmark, imputer
 from .base import Game

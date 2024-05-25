@@ -1,4 +1,4 @@
-"""This module contains all plotting functions for the shapiq package."""
+"""Plotting functions for the shapiq package."""
 
 from .explanation_graph import si_graph_plot
 from .network import network_plot

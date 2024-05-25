@@ -6,20 +6,20 @@ __version__ = "0.0.8"
 
 # approximator classes
 from .approximator import (
-    OwenSamplingSV, 
-    StratifiedSamplingSV,
-    SHAPIQ, 
-    SVARM, 
-    SVARMIQ, 
-    UnbiasedKernelSHAP,
+    SHAPIQ,
+    SVARM,
+    SVARMIQ,
+    InconsistentKernelSHAPIQ,
+    KernelSHAP,
+    KernelSHAPIQ,
+    OwenSamplingSV,
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
-    InconsistentKernelSHAPIQ, 
-    KernelSHAP, 
-    KernelSHAPIQ, 
-    RegressionFSII, 
-    kADDSHAP
+    RegressionFSII,
+    StratifiedSamplingSV,
+    UnbiasedKernelSHAP,
+    kADDSHAP,
 )
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 from .exact import ExactComputer
