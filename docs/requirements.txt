@@ -109,3 +109,4 @@ webencodings==0.5.1
 zipp==3.17.0
 alabaster==0.7.13
 scikit-learn
+torch
