@@ -19,8 +19,7 @@ master_doc = "index"
 # -- Project information ---------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 project = "shapiq"
-copyright = "2023, the shapiq developers"
-author = "Maximilian Muschalik and Fabian Fumagalli"
+author = "Muschalik et al."
 release = shapiq.__version__
 version = shapiq.__version__
 
@@ -106,3 +105,22 @@ StandaloneHTMLBuilder.supported_image_types = [
 # Ignore >>> when copying code
 copybutton_prompt_text = r">>> |\.\.\. "
 copybutton_prompt_is_regexp = True
+
+
+# -- Markdown in docstring -----------------------------------------------------------------------------
+# https://gist.github.com/dmwyatt/0f555c8f9c129c0ac6fed6fabe49078b#file-docstrings-py
+# based on https://stackoverflow.com/a/56428123/23972
+import commonmark
+
+
+def docstring(app, what, name, obj, options, lines):
+    if len(lines) > 1 and lines[0] == "@&ismd":
+        md = "\n".join(lines[1:])
+        ast = commonmark.Parser().parse(md)
+        rst = commonmark.ReStructuredTextRenderer().render(ast)
+        lines.clear()
+        lines += rst.splitlines()
+
+
+def setup(app):
+    app.connect("autodoc-process-docstring", docstring)
