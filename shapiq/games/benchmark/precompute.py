@@ -144,6 +144,7 @@ def pre_compute_from_configuration(
             save_path = pre_compute_and_store(game, save_dir, game_id)
             created_files.append(save_path)
     else:
+        print(f"Pre-computing game data for {len(parameter_space)} configurations in parallel.")
         with mp.Pool(n_jobs) as pool:
             results = list(
                 tqdm(
