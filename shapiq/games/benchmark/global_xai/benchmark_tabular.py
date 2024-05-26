@@ -32,7 +32,7 @@ class AdultCensus(GlobalExplanation):
         n_samples_eval: int = 10,
         n_samples_empty: int = 200,
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
 
@@ -53,6 +53,7 @@ class AdultCensus(GlobalExplanation):
             n_samples_empty=n_samples_empty,
             random_state=random_state,
             normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -82,7 +83,7 @@ class BikeSharing(GlobalExplanation):
         n_samples_eval: int = 10,
         n_samples_empty: int = 200,
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
 
@@ -103,6 +104,7 @@ class BikeSharing(GlobalExplanation):
             n_samples_empty=n_samples_empty,
             random_state=random_state,
             normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -132,7 +134,7 @@ class CaliforniaHousing(GlobalExplanation):
         n_samples_eval: int = 10,
         n_samples_empty: int = 200,
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
 
@@ -153,4 +155,5 @@ class CaliforniaHousing(GlobalExplanation):
             loss_function=setup.loss_function,
             random_state=random_state,
             normalize=normalize,
+            verbose=verbose,
         )

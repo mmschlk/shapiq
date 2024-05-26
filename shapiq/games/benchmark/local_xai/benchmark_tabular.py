@@ -31,7 +31,7 @@ class AdultCensus(LocalExplanation):
         x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
         # validate the inputs
@@ -60,6 +60,7 @@ class AdultCensus(LocalExplanation):
             model=predict_function,
             random_state=random_state,
             normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -83,14 +84,14 @@ class BikeSharing(LocalExplanation):
         x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
 
         self.setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
-            verbose=verbose,
+            verbose=False,
             random_state=random_state,
         )
 
@@ -106,6 +107,7 @@ class BikeSharing(LocalExplanation):
             model=predict_function,
             random_state=random_state,
             normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -129,14 +131,14 @@ class CaliforniaHousing(LocalExplanation):
         x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
 
         self.setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
-            verbose=verbose,
+            verbose=False,
             random_state=random_state,
         )
 
@@ -152,4 +154,5 @@ class CaliforniaHousing(LocalExplanation):
             model=predict_function,
             random_state=random_state,
             normalize=normalize,
+            verbose=verbose,
         )

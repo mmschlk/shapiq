@@ -1,3 +1,6 @@
+"""Note this should not be directly imported in the module as it depends on torch which is not
+installed by default."""
+
 import os
 import warnings
 

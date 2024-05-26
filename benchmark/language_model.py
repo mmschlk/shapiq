@@ -1,5 +1,11 @@
 """This module contains the benchmark conducted on the language model game."""
 
+import sys
+from pathlib import Path
+
+# add shapiq to the path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import glob
 import os
 

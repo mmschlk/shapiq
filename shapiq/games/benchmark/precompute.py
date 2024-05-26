@@ -2,13 +2,14 @@
 
 import multiprocessing as mp
 import os
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from tqdm.auto import tqdm
 
 from ..base import Game
 
 __all__ = [
+    "pre_compute_from_configuration",
     "pre_compute_and_store",
     "pre_compute_and_store_from_list",
     "SHAPIQ_DATA_DIR",
@@ -17,6 +18,7 @@ __all__ = [
 
 
 SHAPIQ_DATA_DIR = os.path.join(os.path.dirname(__file__), "precomputed")
+os.makedirs(SHAPIQ_DATA_DIR, exist_ok=True)
 
 
 def get_game_files(game: Union[Game, Game.__class__, str], n_players: int) -> list[str]:
@@ -74,6 +76,90 @@ def pre_compute_and_store(
     game.precompute()
     game.save_values(path=save_path)
     return save_path
+
+
+def pre_compute_from_configuration(
+    game_class: Game.__class__,
+    configuration: Optional[dict[str, Any]] = None,
+    n_iterations: Optional[int] = None,
+    n_jobs: int = 1,
+) -> list[str]:
+    """Pre-compute the game data for the given game class and configuration if it is not already
+    pre-computed.
+
+    This function will pre-compute the game data for the given game class and configuration. The
+    game data will be stored in the `SHAPIQ_DATA_DIR` directory in a subdirectory with the game name
+    and player size. The file name will be generated based on the configuration and iteration.
+    """
+    from .benchmark_config import (
+        BENCHMARK_CONFIGURATIONS,
+        BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
+        get_game_file_name_from_config,
+    )
+
+    game_class_config = BENCHMARK_CONFIGURATIONS[game_class]
+    n_players = game_class_config["n_players"]
+    iteration_parameter = game_class_config["iteration_parameter"]
+    configurations = [configuration]
+    if configuration is None:
+        configurations = game_class_config["configurations"]
+
+    iterations = game_class_config.get(
+        "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
+    )
+    iteration_names = game_class_config.get("iteration_parameter_names", iterations)
+    if n_iterations is not None:
+        iterations = iterations[:n_iterations]
+        iteration_names = iteration_names[:n_iterations]
+
+    parameter_space = []
+    for config in configurations:
+        print(
+            f"Pre-computing game data for {game_class.get_game_name()}, "
+            f"configuration: {config}, n_players: {n_players}, iterations: {iterations}, "
+            f"iteration names: {iteration_names}"
+        )
+
+        for iteration, iteration_name in zip(iterations, iteration_names):
+            save_dir = os.path.join(SHAPIQ_DATA_DIR, game_class.get_game_name(), str(n_players))
+            game_id = get_game_file_name_from_config(config, iteration)
+            save_path = os.path.join(save_dir, game_id)
+
+            if (
+                os.path.exists(save_path)
+                or os.path.exists(save_path + ".npz")
+                or os.path.exists(save_path + ".csv")
+            ):
+                print(f"Game data for {game_class.get_game_name()} already pre-computed.")
+                continue
+
+            params = config.copy()
+            params[iteration_parameter] = iteration_name
+            parameter_space.append((params, save_dir, game_id))
+
+    created_files = []
+    if n_jobs == 1:
+        for params, save_dir, game_id in tqdm(parameter_space):
+            game = game_class(**params)
+            save_path = pre_compute_and_store(game, save_dir, game_id)
+            created_files.append(save_path)
+    else:
+        with mp.Pool(n_jobs) as pool:
+            results = list(
+                tqdm(
+                    pool.starmap(
+                        pre_compute_and_store,
+                        [
+                            (game_class(**params), save_dir, game_id)
+                            for params, save_dir, game_id in parameter_space
+                        ],
+                    ),
+                    total=len(parameter_space),
+                )
+            )
+            created_files.extend(results)
+
+    return created_files
 
 
 def pre_compute_and_store_from_list(

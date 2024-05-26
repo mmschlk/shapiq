@@ -44,16 +44,20 @@ class CaliforniaHousing(DatasetValuation):
 
     def __init__(
         self,
+        *,
         n_players: int = 10,
         model_name: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = 42,
+        normalize: bool = True,
+        verbose: bool = False,
     ) -> None:
 
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
             random_state=random_state,
+            verbose=verbose,
         )
 
         super().__init__(
@@ -68,6 +72,8 @@ class CaliforniaHousing(DatasetValuation):
             player_sizes=player_sizes,
             random_state=random_state,
             empty_data_value=0.0,
+            normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -109,16 +115,20 @@ class BikeSharing(DatasetValuation):
 
     def __init__(
         self,
+        *,
         n_players: int = 10,
         model_name: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = 42,
+        normalize: bool = True,
+        verbose: bool = False,
     ) -> None:
 
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
             random_state=random_state,
+            verbose=verbose,
         )
 
         super().__init__(
@@ -133,6 +143,8 @@ class BikeSharing(DatasetValuation):
             player_sizes=player_sizes,
             random_state=random_state,
             empty_data_value=0.0,
+            normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -174,16 +186,20 @@ class AdultCensus(DatasetValuation):
 
     def __init__(
         self,
+        *,
         n_players: int = 10,
         model_name: str = "decision_tree",
         player_sizes: Optional[Union[list[float], str]] = "increasing",
         random_state: Optional[int] = 42,
+        normalize: bool = True,
+        verbose: bool = False,
     ) -> None:
 
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
             random_state=random_state,
+            verbose=verbose,
         )
 
         super().__init__(
@@ -198,4 +214,6 @@ class AdultCensus(DatasetValuation):
             player_sizes=player_sizes,
             random_state=random_state,
             empty_data_value=0.0,
+            normalize=normalize,
+            verbose=verbose,
         )

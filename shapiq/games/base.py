@@ -29,6 +29,7 @@ class Game(ABC):
         verbose: Whether to show a progress bar for the evaluation. Defaults to `False`. Note
             that this only has an effect if the game is not precomputed and may slow down the
             evaluation.
+        args, kwargs: Additional arguments are not used.
 
     Properties:
         n_values_stored: The number of values stored in the game.
@@ -92,6 +93,8 @@ class Game(ABC):
         normalization_value: Optional[float] = None,
         path_to_values: Optional[str] = None,
         verbose: bool = False,
+        *args,
+        **kwargs,
     ) -> None:
         # manual flag for choosing precomputed values even if not all values might be stored
         self.precompute_flag: bool = False  # flag to manually override the precomputed check
@@ -121,6 +124,8 @@ class Game(ABC):
                     )
                 )
 
+        game_id: str = str(hash(self))[:8]
+        self.game_id = "_".join([self.get_game_name(), game_id])
         if path_to_values is not None:
             self.load_values(path_to_values, precomputed=True)
             self.game_id = path_to_values.split(os.path.sep)[-1].split(".")[0]
@@ -128,7 +133,6 @@ class Game(ABC):
         # define some handy coalition variables
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)
         self.grand_coalition = np.ones(self.n_players, dtype=bool)
-        self.game_id: str = str(hash(self))[:8]
 
         self.verbose = verbose
 

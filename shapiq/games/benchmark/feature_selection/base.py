@@ -52,11 +52,15 @@ class FeatureSelection(Game):
         loss_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
         empty_features_value: float = 0.0,
         normalize: bool = True,
+        verbose: bool = False,
     ) -> None:
 
         self.empty_features_value = empty_features_value
         super().__init__(
-            x_train.shape[1], normalization_value=self.empty_features_value, normalize=normalize
+            x_train.shape[1],
+            normalization_value=self.empty_features_value,
+            normalize=normalize,
+            verbose=verbose,
         )
 
         # set datasets

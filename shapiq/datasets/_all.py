@@ -11,7 +11,12 @@ def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
     Returns:
         The California housing dataset as a pandas DataFrame.
     """
-    dataset = pd.read_csv(GITHUB_DATA_URL + "california_housing.csv")
+    try:
+        dataset = pd.read_csv(
+            "C:\\1_Workspaces\\1_Phd_Projects\\shapiq\\data\\california_housing.csv"
+        )
+    except Exception:
+        dataset = pd.read_csv(GITHUB_DATA_URL + "california_housing.csv")
     class_label = "MedHouseVal"
     y_data = dataset[class_label]
     x_data = dataset.drop(columns=[class_label])
@@ -32,7 +37,10 @@ def load_bike_sharing() -> tuple[pd.DataFrame, pd.Series]:
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder, RobustScaler
 
-    dataset = pd.read_csv(GITHUB_DATA_URL + "bike.csv")
+    try:
+        dataset = pd.read_csv("C:\\1_Workspaces\\1_Phd_Projects\\shapiq\\data\\bike.csv")
+    except Exception:
+        dataset = pd.read_csv(GITHUB_DATA_URL + "bike.csv")
     class_label = "count"
 
     num_feature_names = ["hour", "temp", "feel_temp", "humidity", "windspeed"]
@@ -86,7 +94,10 @@ def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 
-    dataset = pd.read_csv(GITHUB_DATA_URL + "adult_census.csv")
+    try:
+        dataset = pd.read_csv("C:\\1_Workspaces\\1_Phd_Projects\\shapiq\\data\\adult_census.csv")
+    except Exception:
+        dataset = pd.read_csv(GITHUB_DATA_URL + "adult_census.csv")
     class_label = "class"
 
     num_feature_names = ["age", "capital-gain", "capital-loss", "hours-per-week", "fnlwgt"]

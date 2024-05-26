@@ -38,6 +38,7 @@ class DatasetValuation(Game):
 
     def __init__(
         self,
+        *,
         x_train: Union[np.ndarray, list[np.ndarray]],
         y_train: Union[np.ndarray, list[np.ndarray]],
         x_test: Optional[np.ndarray] = None,
@@ -50,6 +51,7 @@ class DatasetValuation(Game):
         player_sizes: Optional[Union[list[float], str]] = "uniform",
         random_state: Optional[int] = 42,
         normalize: bool = True,
+        verbose: bool = False,
         empty_data_value: float = 0.0,
     ) -> None:
 
@@ -130,7 +132,10 @@ class DatasetValuation(Game):
         self.empty_data_value = empty_data_value
 
         super().__init__(
-            n_players=n_players, normalize=normalize, normalization_value=self.empty_data_value
+            n_players=n_players,
+            normalize=normalize,
+            normalization_value=self.empty_data_value,
+            verbose=verbose,
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:

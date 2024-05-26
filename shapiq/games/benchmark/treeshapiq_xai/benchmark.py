@@ -14,7 +14,7 @@ class AdultCensus(TreeSHAPIQXAI):
     Args:
         x: The feature vector to be explained.
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
+            are 'decision_tree' and 'random_forest'.
         index: The type of interaction index to be computed. The default value is "k-SII".
         class_label: The class label to be explained. The default value is None.
         max_order: The maximum order of interactions to be computed. The default value is 2.
@@ -36,6 +36,12 @@ class AdultCensus(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: Optional[int] = 42,
     ) -> None:
+
+        # TODO: add xgb to TreeSHAQ-IQ, yet
+        assert model_name in [
+            "decision_tree",
+            "random_forest",
+        ], "Model name must be either decision_tree' or 'random_forest'."
 
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
@@ -65,7 +71,7 @@ class BikeSharing(TreeSHAPIQXAI):
     Args:
         x: The feature vector to be explained.
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
+            are 'decision_tree' and 'random_forest'.
         index: The type of interaction index to be computed. The default value is "k-SII".
         max_order: The maximum order of interactions to be computed. The default value is 2.
         min_order: The minimum order of interactions to be computed. The default value is 1.
@@ -85,6 +91,12 @@ class BikeSharing(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: Optional[int] = 42,
     ) -> None:
+
+        # TODO: add xgb to TreeSHAQ-IQ, yet
+        assert model_name in [
+            "decision_tree",
+            "random_forest",
+        ], "Model name must be either decision_tree' or 'random_forest'."
 
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
@@ -113,7 +125,7 @@ class CaliforniaHousing(TreeSHAPIQXAI):
     Args:
         x: The feature vector to be explained.
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
+            are 'decision_tree' and 'random_forest'.
         index: The type of interaction index to be computed. The default value is "k-SII".
         max_order: The maximum order of interactions to be computed. The default value is 2.
         min_order: The minimum order of interactions to be computed. The default value is 1.
@@ -133,6 +145,12 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: Optional[int] = 42,
     ) -> None:
+
+        # TODO: add xgb to TreeSHAQ-IQ, yet
+        assert model_name in [
+            "decision_tree",
+            "random_forest",
+        ], "Model name must be either decision_tree' or 'random_forest'."
 
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",

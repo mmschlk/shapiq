@@ -31,16 +31,19 @@ class AdultCensus(EnsembleSelection):
 
     def __init__(
         self,
+        *,
         loss_function: str = "accuracy_score",
         ensemble_members: Optional[list[str]] = None,
         n_members: int = 10,
         random_state: Optional[int] = 42,
+        normalize: bool = True,
+        verbose: bool = False,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             loss_function=loss_function,
             model_name=None,
-            verbose=False,
+            verbose=verbose,
         )
         super().__init__(
             x_train=setup.x_train,
@@ -52,7 +55,8 @@ class AdultCensus(EnsembleSelection):
             ensemble_members=ensemble_members,
             n_members=n_members,
             random_state=random_state,
-            normalize=True,
+            normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -81,16 +85,19 @@ class BikeSharing(EnsembleSelection):
 
     def __init__(
         self,
+        *,
         loss_function: str = "r2_score",
         ensemble_members: Optional[list[str]] = None,
         n_members: int = 10,
         random_state: Optional[int] = 42,
+        verbose: bool = False,
+        normalize: bool = True,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             loss_function=loss_function,
             model_name=None,
-            verbose=False,
+            verbose=verbose,
         )
         super().__init__(
             x_train=setup.x_train,
@@ -102,7 +109,8 @@ class BikeSharing(EnsembleSelection):
             ensemble_members=ensemble_members,
             n_members=n_members,
             random_state=random_state,
-            normalize=True,
+            normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -131,16 +139,19 @@ class CaliforniaHousing(EnsembleSelection):
 
     def __init__(
         self,
+        *,
         loss_function: str = "r2_score",
         ensemble_members: Optional[list[str]] = None,
         n_members: int = 10,
         random_state: Optional[int] = 42,
+        normalize: bool = True,
+        verbose: bool = False,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             loss_function=loss_function,
             model_name=None,
-            verbose=False,
+            verbose=verbose,
         )
         super().__init__(
             x_train=setup.x_train,
@@ -152,5 +163,6 @@ class CaliforniaHousing(EnsembleSelection):
             ensemble_members=ensemble_members,
             n_members=n_members,
             random_state=random_state,
-            normalize=True,
+            normalize=normalize,
+            verbose=verbose,
         )

@@ -37,6 +37,7 @@ class ClusterExplanation(Game):
         normalize: bool = True,
         empty_cluster_value: float = 0.0,
         random_state: Optional[int] = 42,
+        verbose: bool = False,
     ) -> None:
 
         if cluster_params is None:
@@ -73,7 +74,10 @@ class ClusterExplanation(Game):
         self.empty_cluster_value = empty_cluster_value
 
         super().__init__(
-            data.shape[1], normalize=normalize, normalization_value=self.empty_cluster_value
+            data.shape[1],
+            normalize=normalize,
+            normalization_value=self.empty_cluster_value,
+            verbose=verbose,
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:

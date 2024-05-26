@@ -57,6 +57,7 @@ class GlobalExplanation(Game):
         n_samples_empty: int = 200,
         normalize: bool = True,
         random_state: Optional[int] = 42,
+        verbose: bool = False,
     ) -> None:
 
         self._random_state = random_state
@@ -87,6 +88,7 @@ class GlobalExplanation(Game):
             data.shape[1],
             normalize=normalize,
             normalization_value=self.empty_loss,
+            verbose=verbose,
         )
 
     def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray:

@@ -71,6 +71,7 @@ class LocalExplanation(Game):
         imputer: Optional[MarginalImputer] = None,
         normalize: bool = True,
         random_state: Optional[int] = 42,
+        verbose: bool = False,
     ) -> None:
 
         # get x_explain
@@ -94,6 +95,7 @@ class LocalExplanation(Game):
             data.shape[1],
             normalize=normalize,
             normalization_value=self.empty_prediction_value,
+            verbose=verbose,
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:

@@ -17,9 +17,10 @@ class UnsupervisedData(Game):
 
     Args:
         data: The data to analyze as a numpy array of shape (n_samples, n_features).
+        verbose: Whether to print additional information. Defaults to False.
     """
 
-    def __init__(self, data: np.ndarray) -> None:
+    def __init__(self, data: np.ndarray, verbose: bool = False, *args, **kwargs) -> None:
         self.data = data
         self._n_features = data.shape[1]
         self.empty_coalition_value = 0.0
@@ -37,6 +38,7 @@ class UnsupervisedData(Game):
             n_players=self._n_features,
             normalize=True,
             normalization_value=0.0,
+            verbose=verbose,
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:

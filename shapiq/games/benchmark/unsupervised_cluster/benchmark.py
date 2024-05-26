@@ -10,7 +10,7 @@ class AdultCensus(ClusterExplanation):
     """The Adult Census game as a clustering explanation game.
 
     Args:
-        cluster_method: The clustering algorithm to use as a string. Defaults to 'dbscan'. Alternative
+        cluster_method: The clustering algorithm to use as a string. Defaults to 'kmeans'. Alternative
             available clustering algorithms are 'kmeans' and 'agglomerative' with 3 clusters.
         score_method: The score method to use for the clustering algorithm. Available score methods
             are 'calinski_harabasz_score' and 'silhouette_score'. Defaults to
@@ -21,13 +21,15 @@ class AdultCensus(ClusterExplanation):
 
     def __init__(
         self,
-        cluster_method: str = "dbscan",
+        *,
+        cluster_method: str = "kmeans",
         score_method: str = "calinski_harabasz_score",
         normalize: bool = True,
         random_state: Optional[int] = 42,
+        verbose: bool = False,
     ) -> None:
 
-        setup = GameBenchmarkSetup("adult_census")
+        setup = GameBenchmarkSetup("adult_census", verbose=False)
         data = setup.x_data
 
         cluster_params = None
@@ -46,6 +48,7 @@ class AdultCensus(ClusterExplanation):
             cluster_params=cluster_params,
             normalize=normalize,
             random_state=random_state,
+            verbose=verbose,
         )
 
 
@@ -68,9 +71,10 @@ class BikeSharing(ClusterExplanation):
         score_method: str = "calinski_harabasz_score",
         normalize: bool = True,
         random_state: Optional[int] = 42,
+        verbose: bool = False,
     ) -> None:
 
-        setup = GameBenchmarkSetup("bike_sharing")
+        setup = GameBenchmarkSetup("bike_sharing", verbose=False)
         data = setup.x_data
 
         cluster_params = None
@@ -89,6 +93,7 @@ class BikeSharing(ClusterExplanation):
             cluster_params=cluster_params,
             normalize=normalize,
             random_state=random_state,
+            verbose=verbose,
         )
 
 
@@ -111,9 +116,10 @@ class CaliforniaHousing(ClusterExplanation):
         score_method: str = "calinski_harabasz_score",
         normalize: bool = True,
         random_state: Optional[int] = 42,
+        verbose: bool = False,
     ) -> None:
 
-        setup = GameBenchmarkSetup("california_housing")
+        setup = GameBenchmarkSetup("california_housing", verbose=False)
         data = setup.x_data
 
         cluster_params = None
@@ -132,4 +138,5 @@ class CaliforniaHousing(ClusterExplanation):
             cluster_params=cluster_params,
             normalize=normalize,
             random_state=random_state,
+            verbose=verbose,
         )

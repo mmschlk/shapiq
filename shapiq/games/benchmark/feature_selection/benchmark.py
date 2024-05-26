@@ -22,7 +22,7 @@ class AdultCensus(FeatureSelection):
         self,
         model_name: str = "decision_tree",
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
 
@@ -41,6 +41,7 @@ class AdultCensus(FeatureSelection):
             fit_function=setup.fit_function,
             score_function=setup.score_function,
             normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -60,7 +61,7 @@ class BikeSharing(FeatureSelection):
         self,
         model_name: str = "decision_tree",
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
         setup = GameBenchmarkSetup(
@@ -78,6 +79,7 @@ class BikeSharing(FeatureSelection):
             fit_function=setup.fit_function,
             score_function=setup.score_function,
             normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -97,7 +99,7 @@ class CaliforniaHousing(FeatureSelection):
         self,
         model_name: str = "decision_tree",
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
         setup = GameBenchmarkSetup(
@@ -115,6 +117,7 @@ class CaliforniaHousing(FeatureSelection):
             fit_function=setup.fit_function,
             score_function=setup.score_function,
             normalize=normalize,
+            verbose=verbose,
         )
 
 

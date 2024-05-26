@@ -22,15 +22,18 @@ class AdultCensus(RandomForestEnsembleSelection):
 
     def __init__(
         self,
+        *,
         loss_function: str = "accuracy_score",
         n_members: int = 10,
         random_state: Optional[int] = 42,
+        normalize: bool = True,
+        verbose: bool = False,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             loss_function=loss_function,
             model_name="random_forest",
-            verbose=False,
+            verbose=verbose,
             random_forest_n_estimators=n_members,
             random_state=random_state,
         )
@@ -42,8 +45,9 @@ class AdultCensus(RandomForestEnsembleSelection):
             y_test=setup.y_test,
             loss_function=setup.loss_function,
             dataset_type=setup.dataset_type,
-            normalize=True,
             random_state=random_state,
+            normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -63,15 +67,18 @@ class BikeSharing(RandomForestEnsembleSelection):
 
     def __init__(
         self,
+        *,
         loss_function: str = "r2_score",
         n_members: int = 10,
         random_state: Optional[int] = 42,
+        normalize: bool = True,
+        verbose: bool = False,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             loss_function=loss_function,
             model_name="random_forest",
-            verbose=False,
+            verbose=verbose,
             random_forest_n_estimators=n_members,
             random_state=random_state,
         )
@@ -83,8 +90,9 @@ class BikeSharing(RandomForestEnsembleSelection):
             y_test=setup.y_test,
             loss_function=setup.loss_function,
             dataset_type=setup.dataset_type,
-            normalize=True,
             random_state=random_state,
+            normalize=normalize,
+            verbose=verbose,
         )
 
 
@@ -104,15 +112,18 @@ class CaliforniaHousing(RandomForestEnsembleSelection):
 
     def __init__(
         self,
+        *,
         loss_function: str = "r2_score",
         n_members: int = 10,
         random_state: Optional[int] = 42,
+        normalize: bool = True,
+        verbose: bool = False,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             loss_function=loss_function,
             model_name="random_forest",
-            verbose=False,
+            verbose=verbose,
             random_forest_n_estimators=n_members,
             random_state=random_state,
         )
@@ -124,6 +135,7 @@ class CaliforniaHousing(RandomForestEnsembleSelection):
             y_test=setup.y_test,
             loss_function=setup.loss_function,
             dataset_type=setup.dataset_type,
-            normalize=True,
             random_state=random_state,
+            normalize=normalize,
+            verbose=verbose,
         )

@@ -59,6 +59,7 @@ class EnsembleSelection(Game):
         y_test: np.ndarray,
         loss_function: Callable[[np.ndarray, np.ndarray], float],
         dataset_type: str = "classification",
+        available_ensemble_members: Optional[list[str]] = None,
         ensemble_members: Optional[Union[list[str], list[Model]]] = None,
         n_members: int = 10,
         verbose: bool = True,
@@ -72,6 +73,7 @@ class EnsembleSelection(Game):
         )
         self.dataset_type: str = dataset_type
         self.random_state: Optional[int] = random_state
+        self._rng = np.random.default_rng(seed=random_state)
 
         # set the loss function
         self.loss_function: Callable[[np.ndarray, np.ndarray], float] = loss_function
@@ -83,18 +85,22 @@ class EnsembleSelection(Game):
         self.ensemble_members: dict[int, Model] = {}
 
         # create the sanitized ensemble members list
-        self.available_members: list[str] = [
-            "regression",
-            "decision_tree",
-            "random_forest",
-            "knn",
-            "svm",
-            "gradient_boosting",
-        ]
+        self.available_members: list[str] = available_ensemble_members
+        if available_ensemble_members is None:
+            self.available_members: list[str] = [
+                "regression",
+                "decision_tree",
+                "random_forest",
+                "svm",
+                "knn",
+                "gradient_boosting",
+            ]
         if ensemble_members is None:
             ensemble_members = []
             for i in range(n_members):
-                ensemble_members.append(self.available_members[i % len(self.available_members)])
+                # sample a random ensemble member
+                ensemble_member = str(self._rng.choice(self.available_members, size=1)[0])
+                ensemble_members.append(ensemble_member)
 
         # get the ensemble member models
         if any(isinstance(member, str) for member in ensemble_members):
@@ -121,6 +127,7 @@ class EnsembleSelection(Game):
             n_players=n_players,
             normalize=normalize,
             normalization_value=self._empty_coalition_value,  # is set to 0 for all games
+            verbose=verbose,
         )
 
         # compute the predictions of the ensemble members
@@ -162,36 +169,44 @@ class EnsembleSelection(Game):
         for member_id, member in enumerate(self.player_names):
             if member == "regression":
                 if self.dataset_type == "classification":
-                    model = LogisticRegression(random_state=self.random_state)
+                    model = LogisticRegression(random_state=self.random_state + member_id)
                 else:
                     model = LinearRegression()
             elif member == "decision_tree":
                 if self.dataset_type == "classification":
-                    model = DecisionTreeClassifier(random_state=self.random_state)
+                    model = DecisionTreeClassifier(random_state=self.random_state + member_id)
                 else:
-                    model = DecisionTreeRegressor()
+                    model = DecisionTreeRegressor(random_state=self.random_state + member_id)
             elif member == "random_forest":
                 if self.dataset_type == "classification":
-                    model = RandomForestClassifier(n_estimators=10, random_state=self.random_state)
+                    model = RandomForestClassifier(
+                        n_estimators=10, random_state=self.random_state + member_id
+                    )
                 else:
-                    model = RandomForestRegressor(n_estimators=10)
+                    model = RandomForestRegressor(
+                        n_estimators=10, random_state=self.random_state + member_id
+                    )
             elif member == "knn":
                 if self.dataset_type == "classification":
                     model = KNeighborsClassifier(n_neighbors=3)
                 else:
-                    model = KNeighborsRegressor()
+                    model = KNeighborsRegressor(n_neighbors=3)
             elif member == "svm":
                 if self.dataset_type == "classification":
-                    model = SVC(random_state=self.random_state)
+                    model = SVC(random_state=self.random_state + member_id)
                 else:
                     model = SVR()
             elif member == "gradient_boosting":
                 from xgboost import XGBClassifier, XGBRegressor
 
                 if self.dataset_type == "classification":
-                    model = XGBClassifier(random_state=self.random_state)
+                    model = XGBClassifier(
+                        n_estimators=25, random_state=self.random_state + member_id
+                    )
                 else:
-                    model = XGBRegressor()
+                    model = XGBRegressor(
+                        n_estimators=25, random_state=self.random_state + member_id
+                    )
             else:
                 raise ValueError(
                     f"Invalid ensemble member provided. Got {member} but expected one of "
