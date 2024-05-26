@@ -1,4 +1,6 @@
 # a script to run the precomputation as slurm jobs on the cluster
+# on the cluster, run this script with the following command:
+# source slurm_run.sh <game_name> <config_id>
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <game_name> <config_id>"
     exit 1
@@ -6,6 +8,7 @@ fi
 
 # name of the python file to run
 PYTHON_FILE="pre_compute.py"
+PROJECT_NAME="shapiq"
 
 # command line arguments
 game_name=$1
@@ -16,23 +19,24 @@ NAME=${game_name}_${config_id}
 MEMORY=4096
 
 # Paths and directories
-PROJECT_DIR=$(pwd)
-SCRIPT_DIR=${PROJECT_DIR}/benchmark
+# get the project directory
+PROJECT_DIR=$(git rev-parse --show-toplevel)
 echo "Project directory: ${PROJECT_DIR}"
+SCRIPT_DIR=${PROJECT_DIR}/benchmark
 echo "Script directory: ${SCRIPT_DIR}"
-LOG_DIR=${PROJECT_DIR}/logs
+LOG_DIR=${SCRIPT_DIR}/logs
 mkdir -p ${LOG_DIR}
 echo "Log directory: ${LOG_DIR}"
-ERROR_DIR=${PROJECT_DIR}/errors
+ERROR_DIR=${SCRIPT_DIR}/errors
 mkdir -p ${ERROR_DIR}
 echo "Error directory: ${ERROR_DIR}"
 
 # create the slurm command file
-FILE="run_${NAME}.cmd"
+FILE="${SCRIPT_DIR}/${NAME}.cmd"
 echo "${FILE}"
 
 # fill the slurm command file with slurm settings
-echo "#!/bin/bash" > "${FILE}"
+echo "#!/bin/bash" >> "${FILE}"
 echo "#SBATCH -J ${NAME}" >> "${FILE}"
 echo "#SBATCH -o ${LOG_DIR}/${NAME}.log" >> "${FILE}"
 echo "#SBATCH -e ${ERROR_DIR}/${NAME}.err" >> "${FILE}"
