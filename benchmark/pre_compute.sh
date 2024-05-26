@@ -11,16 +11,16 @@ PYTHON_FILE="pre_compute.py"
 # script settings: PYTHON_FILE <game_name> <config_id>
 
 # run the python file
-python $PYTHON_FILE AdultCensusUnsupervisedData 1 &
-python $PYTHON_FILE AdultCensusClusterExplanation 1 &
-python $PYTHON_FILE AdultCensusClusterExplanation 2 &
-python $PYTHON_FILE BikeSharingClusterExplanation 1 &
-python $PYTHON_FILE BikeSharingClusterExplanation 2 &
-python $PYTHON_FILE CaliforniaHousingClusterExplanation 1 &
-python $PYTHON_FILE CaliforniaHousingClusterExplanation 2 &
-python $PYTHON_FILE AdultCensusEnsembleSelection 1 &
-python $PYTHON_FILE BikeSharingEnsembleSelection 1 &
-python $PYTHON_FILE CaliforniaHousingEnsembleSelection 1 &
-python $PYTHON_FILE AdultCensusRandomForestEnsembleSelection 1 &
-python $PYTHON_FILE BikeSharingRandomForestEnsembleSelection 1 &
-python $PYTHON_FILE CaliforniaHousingRandomForestEnsembleSelection 1 &
+python $PYTHON_FILE --game AdultCensusUnsupervisedData --config_id 1 &
+python $PYTHON_FILE --game AdultCensusClusterExplanation --config_id 1 &
+python $PYTHON_FILE --game AdultCensusClusterExplanation --config_id 2 &
+python $PYTHON_FILE --game BikeSharingClusterExplanation --config_id 1 &
+python $PYTHON_FILE --game BikeSharingClusterExplanation --config_id 2 &
+python $PYTHON_FILE --game CaliforniaHousingClusterExplanation --config_id 1 &
+python $PYTHON_FILE --game CaliforniaHousingClusterExplanation --config_id 2 &
+python $PYTHON_FILE --game AdultCensusEnsembleSelection --config_id 1 &
+python $PYTHON_FILE --game BikeSharingEnsembleSelection --config_id 1 &
+python $PYTHON_FILE --game CaliforniaHousingEnsembleSelection --config_id 1 &
+python $PYTHON_FILE --game AdultCensusRandomForestEnsembleSelection --config_id 1 &
+python $PYTHON_FILE --game BikeSharingRandomForestEnsembleSelection --config_id 1 &
+python $PYTHON_FILE --game CaliforniaHousingRandomForestEnsembleSelection --config_id 1 &
