@@ -1,6 +1,7 @@
 # a script to run the precomputation as slurm jobs on the cluster
 # on the cluster, run this script with the following command:
-# source slurm_run.sh <game_name> <config_id>
+# chmod +x slurm_run.sh
+# ./slurm_run.sh <game_name> <config_id>
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <game_name> <config_id>"
     exit 1
@@ -8,7 +9,6 @@ fi
 
 # name of the python file to run
 PYTHON_FILE="pre_compute.py"
-PROJECT_NAME="shapiq"
 
 # command line arguments
 game_name=$1
@@ -46,6 +46,7 @@ echo "#SBATCH --time 23:50:00" >> "${FILE}"
 echo "#SBATCH --mail-user=Maximilian.Muschalik@ifi.lmu.de" >> "${FILE}"
 echo "#SBATCH --mail-type=NONE" >> "${FILE}"
 echo "#SBATCH --cpus-per-task=1" >> "${FILE}"
+echo "#SBATCH --partition=normal" >> "${FILE}"
 
 # source the virtual environment
 echo "source ${PROJECT_DIR}/venv/bin/activate" >> "${FILE}"
