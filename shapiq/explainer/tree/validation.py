@@ -1,4 +1,4 @@
-"""This module contains conversion functions for the tree explainer implementation."""
+"""Conversion functions for the tree explainer implementation."""
 
 from typing import Any, Optional, Union
 

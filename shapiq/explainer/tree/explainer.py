@@ -1,4 +1,4 @@
-"""This module contains the TreeExplainer class making use of the TreeSHAPIQ algorithm for
+"""The TreeExplainer class using the TreeSHAPIQ algorithm for
 computing any-order Shapley Interactions for tree ensembles."""
 
 import copy
@@ -14,6 +14,30 @@ from .validation import validate_tree_model
 
 
 class TreeExplainer(Explainer):
+    """
+    The explainer for tree-based models using the TreeSHAP-IQ algorithm. 
+    For details, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
+
+    TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.
+    It is based on the Linear TreeSHAP algorithm by `Yu et al. (2022) <https://doi.org/10.48550/arXiv.2209.08192>`_,
+    but extended to compute Shapley Interaction values up to a given order. TreeSHAP-IQ needs to
+    visit each node only once and makes use of polynomial arithmetic to compute the Shapley
+    Interaction values efficiently.
+
+    Args:
+        model: A single tree-based model to explain. Note unlike the TreeExplainer class,
+            TreeSHAP-IQ only supports a single tree model. The tree model can be a dictionary
+            representation of the tree, a `TreeModel` object, or any other tree model supported by
+            the `shapiq.explainer.tree.validation.validate_tree_model` function.
+        max_order: The maximum interaction order to be computed. An interaction order of 1
+            corresponds to the Shapley value. Any value higher than 1 computes the Shapley
+            interaction values up to that order. Defaults to 2.
+        min_order: The minimum interaction order to be computed. Defaults to 1.
+        interaction_type: The type of interaction to be computed. The interaction type can be
+            "k-SII" (default), "SII", "STII", "FSII", or "BZF". All indices apart from "BZF" will
+            reduce to the "SV" (Shapley value) for order 1.
+    """
+
     def __init__(
         self,
         model: Union[dict, TreeModel, Any],

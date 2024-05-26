@@ -1,4 +1,4 @@
-"""This module contains functions for converting scikit-learn decision trees to the format used by
+"""Functions for converting scikit-learn decision trees to the format used by
 shapiq."""
 
 from typing import Optional

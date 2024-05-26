@@ -1,4 +1,4 @@
-"""This module contains utility functions for dealing with trees or tree structures."""
+"""Utility functions for dealing with trees or tree structures."""
 
 import numpy as np
 
