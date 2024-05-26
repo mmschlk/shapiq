@@ -82,6 +82,7 @@ def pre_compute_from_configuration(
     game_class: Game.__class__,
     configuration: Optional[dict[str, Any]] = None,
     n_iterations: Optional[int] = None,
+    n_player_id: int = 0,
     n_jobs: int = 1,
 ) -> list[str]:
     """Pre-compute the game data for the given game class and configuration if it is not already
@@ -94,20 +95,26 @@ def pre_compute_from_configuration(
     from .benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
         BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
+        BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS,
         get_game_file_name_from_config,
     )
 
-    game_class_config = BENCHMARK_CONFIGURATIONS[game_class]
+    show_tqdm = True
+
+    game_class_config = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]
     n_players = game_class_config["n_players"]
     iteration_parameter = game_class_config["iteration_parameter"]
     configurations = [configuration]
+    default_params = BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS
+    if default_params["verbose"] is True:
+        show_tqdm = False
     if configuration is None:
         configurations = game_class_config["configurations"]
 
     iterations = game_class_config.get(
         "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
     )
-    iteration_names = game_class_config.get("iteration_parameter_names", iterations)
+    iteration_names = game_class_config.get("iteration_parameter_values_names", iterations)
     if n_iterations is not None:
         iterations = iterations[:n_iterations]
         iteration_names = iteration_names[:n_iterations]
@@ -133,13 +140,16 @@ def pre_compute_from_configuration(
                 print(f"Game data for {game_class.get_game_name()} already pre-computed.")
                 continue
 
-            params = config.copy()
+            params = default_params.copy()
+            params.update(config)
             params[iteration_parameter] = iteration_name
             parameter_space.append((params, save_dir, game_id))
 
     created_files = []
     if n_jobs == 1:
-        for params, save_dir, game_id in tqdm(parameter_space):
+        print(f"Pre-computing game data for {len(parameter_space)} configurations in sequence.")
+        parameter_generator = tqdm(parameter_space) if show_tqdm else parameter_space
+        for params, save_dir, game_id in parameter_generator:
             game = game_class(**params)
             save_path = pre_compute_and_store(game, save_dir, game_id)
             created_files.append(save_path)
@@ -147,16 +157,13 @@ def pre_compute_from_configuration(
         print(f"Pre-computing game data for {len(parameter_space)} configurations in parallel.")
         with mp.Pool(n_jobs) as pool:
             results = list(
-                tqdm(
-                    pool.starmap(
-                        pre_compute_and_store,
-                        [
-                            (game_class(**params), save_dir, game_id)
-                            for params, save_dir, game_id in parameter_space
-                        ],
-                    ),
-                    total=len(parameter_space),
-                )
+                pool.starmap(
+                    pre_compute_and_store,
+                    [
+                        (game_class(**params), save_dir, game_id)
+                        for params, save_dir, game_id in parameter_space
+                    ],
+                ),
             )
             created_files.extend(results)
 

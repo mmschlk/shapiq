@@ -26,7 +26,7 @@ information:
 
 import os
 from collections.abc import Generator
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from .. import Game
 from . import (
@@ -54,6 +54,7 @@ from . import (
     CaliforniaHousingLocalXAI,
     CaliforniaHousingRandomForestEnsembleSelection,
     CaliforniaHousingUnsupervisedData,
+    ImageClassifierLocalXAI,
     SentimentAnalysisLocalXAI,
 )
 from .precompute import SHAPIQ_DATA_DIR
@@ -103,211 +104,319 @@ SENTIMENT_ANALYSIS_TEXTS = [
     "This movie is more Lupin then most especially coming from Funimation",
 ]
 
+IMAGENET_EXAMPLE_FILES = [
+    "ILSVRC2012_val_00000014.JPEG",
+    "ILSVRC2012_val_00000048.JPEG",
+    "ILSVRC2012_val_00000115.JPEG",
+    "ILSVRC2012_val_00000138.JPEG",
+    "ILSVRC2012_val_00000150.JPEG",
+    "ILSVRC2012_val_00000154.JPEG",
+    "ILSVRC2012_val_00000178.JPEG",
+    "ILSVRC2012_val_00000204.JPEG",
+    "ILSVRC2012_val_00000206.JPEG",
+    "ILSVRC2012_val_00000212.JPEG",
+    "ILSVRC2012_val_00000220.JPEG",
+    "ILSVRC2012_val_00000232.JPEG",
+    "ILSVRC2012_val_00000242.JPEG",
+    "ILSVRC2012_val_00000253.JPEG",
+    "ILSVRC2012_val_00000270.JPEG",
+    "ILSVRC2012_val_00000286.JPEG",
+    "ILSVRC2012_val_00000294.JPEG",
+    "ILSVRC2012_val_00000299.JPEG",
+    "ILSVRC2012_val_00000325.JPEG",
+    "ILSVRC2012_val_00000330.JPEG",
+    "ILSVRC2012_val_00000343.JPEG",
+    "ILSVRC2012_val_00000356.JPEG",
+    "ILSVRC2012_val_00000367.JPEG",
+    "ILSVRC2012_val_00001143.JPEG",
+    "ILSVRC2012_val_00001915.JPEG",
+    "ILSVRC2012_val_00002541.JPEG",
+    "ILSVRC2012_val_00005815.JPEG",
+    "ILSVRC2012_val_00010860.JPEG",
+    "ILSVRC2012_val_00010863.JPEG",
+    "ILSVRC2012_val_00028489.JPEG",
+]
+IMAGE_FOLDER = os.path.join(os.path.dirname(__file__), "imagenet_examples")
+IMAGENET_EXAMPLE_FILES = [os.path.join(IMAGE_FOLDER, file) for file in IMAGENET_EXAMPLE_FILES]
 
 # stores the configurations of all the benchmark games and how they are set up
-BENCHMARK_CONFIGURATIONS: dict[Game.__class__, dict[str, Union[str, list[dict]]]] = {
+BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
     # local xai configurations ---------------------------------------------------------------------
-    AdultCensusLocalXAI: {
-        "configurations": [
-            {"model_name": "decision_tree", "class_to_explain": 1},
-            {"model_name": "random_forest", "class_to_explain": 1},
-            {"model_name": "gradient_boosting", "class_to_explain": 1},
-        ],
-        "iteration_parameter": "x",
-        "n_players": 14,
-    },
-    BikeSharingLocalXAI: {
-        "configurations": [
-            {"model_name": "decision_tree"},
-            {"model_name": "random_forest"},
-            {"model_name": "gradient_boosting"},
-        ],
-        "iteration_parameter": "x",
-        "n_players": 12,
-    },
-    CaliforniaHousingLocalXAI: {
-        "configurations": [
-            {"model_name": "decision_tree"},
-            {"model_name": "random_forest"},
-            {"model_name": "gradient_boosting"},
-            {"model_name": "neural_network"},
-        ],
-        "iteration_parameter": "x",
-        "n_players": 8,
-    },
-    SentimentAnalysisLocalXAI: {
-        "configurations": [{"mask_strategy": "mask"}],
-        "iteration_parameter": "input_text",
-        "iteration_parameter_values": list(range(1, len(SENTIMENT_ANALYSIS_TEXTS) + 1)),
-        "iteration_parameter_values_names": SENTIMENT_ANALYSIS_TEXTS,
-        "n_players": 14,
-    },
-    # TODO add image local xai config
+    AdultCensusLocalXAI: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "class_to_explain": 1},
+                {"model_name": "random_forest", "class_to_explain": 1},
+                {"model_name": "gradient_boosting", "class_to_explain": 1},
+            ],
+            "iteration_parameter": "x",
+            "n_players": 14,
+        },
+    ],
+    BikeSharingLocalXAI: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree"},
+                {"model_name": "random_forest"},
+                {"model_name": "gradient_boosting"},
+            ],
+            "iteration_parameter": "x",
+            "n_players": 12,
+        },
+    ],
+    CaliforniaHousingLocalXAI: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree"},
+                {"model_name": "random_forest"},
+                {"model_name": "gradient_boosting"},
+                {"model_name": "neural_network"},
+            ],
+            "iteration_parameter": "x",
+            "n_players": 8,
+        },
+    ],
+    # Local XAI with Sentiment Analysis configurations ---------------------------------------------
+    SentimentAnalysisLocalXAI: [
+        {
+            "configurations": [{"mask_strategy": "mask"}],
+            "iteration_parameter": "input_text",
+            "iteration_parameter_values": list(range(1, len(SENTIMENT_ANALYSIS_TEXTS) + 1)),
+            "iteration_parameter_values_names": SENTIMENT_ANALYSIS_TEXTS,
+            "n_players": 14,
+        },
+    ],
+    # Local XAI with Image Classifier configurations -----------------------------------------------
+    ImageClassifierLocalXAI: [
+        {
+            "configurations": [{"model_name": "resnet_18", "n_superpixel_resnet": 14}],
+            "iteration_parameter": "x_explain_path",
+            "iteration_parameter_values": list(range(1, len(IMAGENET_EXAMPLE_FILES) + 1)),
+            "iteration_parameter_values_names": IMAGENET_EXAMPLE_FILES,
+            "n_players": 14,
+        },
+        {
+            "configurations": [{"model_name": "vit_9_patches"}],
+            "iteration_parameter": "x_explain_path",
+            "iteration_parameter_values": list(range(1, len(IMAGENET_EXAMPLE_FILES) + 1)),
+            "iteration_parameter_values_names": IMAGENET_EXAMPLE_FILES,
+            "n_players": 9,
+        },
+        {
+            "configurations": [{"model_name": "vit_16_patches"}],
+            "iteration_parameter": "x_explain_path",
+            "iteration_parameter_values": list(range(1, len(IMAGENET_EXAMPLE_FILES) + 1)),
+            "iteration_parameter_values_names": IMAGENET_EXAMPLE_FILES,
+            "n_players": 16,
+        },
+    ],
     # global xai configurations --------------------------------------------------------------------
-    AdultCensusGlobalXAI: {
-        "configurations": [
-            {"model_name": "decision_tree", "loss_function": "accuracy_score"},
-            {"model_name": "random_forest", "loss_function": "accuracy_score"},
-            {"model_name": "gradient_boosting", "loss_function": "accuracy_score"},
-        ],
-        "iteration_parameter": "random_state",
-        "n_players": 14,
-    },
-    BikeSharingGlobalXAI: {
-        "configurations": [
-            {"model_name": "decision_tree", "loss_function": "r2_score"},
-            {"model_name": "random_forest", "loss_function": "r2_score"},
-            {"model_name": "gradient_boosting", "loss_function": "r2_score"},
-        ],
-        "iteration_parameter": "random_state",
-        "n_players": 12,
-    },
-    CaliforniaHousingGlobalXAI: {
-        "configurations": [
-            {"model_name": "decision_tree", "loss_function": "r2_score"},
-            {"model_name": "random_forest", "loss_function": "r2_score"},
-            {"model_name": "gradient_boosting", "loss_function": "r2_score"},
-            {"model_name": "neural_network", "loss_function": "r2_score"},
-        ],
-        "iteration_parameter": "random_state",
-        "n_players": 8,
-    },
+    AdultCensusGlobalXAI: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "loss_function": "accuracy_score"},
+                {"model_name": "random_forest", "loss_function": "accuracy_score"},
+                {"model_name": "gradient_boosting", "loss_function": "accuracy_score"},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 14,
+        },
+    ],
+    BikeSharingGlobalXAI: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "loss_function": "r2_score"},
+                {"model_name": "random_forest", "loss_function": "r2_score"},
+                {"model_name": "gradient_boosting", "loss_function": "r2_score"},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 12,
+        },
+    ],
+    CaliforniaHousingGlobalXAI: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "loss_function": "r2_score"},
+                {"model_name": "random_forest", "loss_function": "r2_score"},
+                {"model_name": "gradient_boosting", "loss_function": "r2_score"},
+                {"model_name": "neural_network", "loss_function": "r2_score"},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 8,
+        },
+    ],
     # feature selection configurations -------------------------------------------------------------
-    AdultCensusFeatureSelection: {
-        "configurations": [
-            {"model_name": "decision_tree"},
-            {"model_name": "random_forest"},
-            {"model_name": "gradient_boosting"},
-        ],
-        "iteration_parameter": "random_state",
-        "n_players": 14,
-    },
-    BikeSharingFeatureSelection: {
-        "configurations": [
-            {"model_name": "decision_tree"},
-            {"model_name": "random_forest"},
-            {"model_name": "gradient_boosting"},
-        ],
-        "iteration_parameter": "random_state",
-        "n_players": 12,
-    },
-    CaliforniaHousingFeatureSelection: {
-        "configurations": [
-            {"model_name": "decision_tree"},
-            {"model_name": "random_forest"},
-            {"model_name": "gradient_boosting"},
-            # TODO: think of adding neural network to the feature selection
-        ],
-        "iteration_parameter": "random_state",
-        "n_players": 8,
-    },
+    AdultCensusFeatureSelection: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree"},
+                {"model_name": "random_forest"},
+                {"model_name": "gradient_boosting"},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 14,
+        },
+    ],
+    BikeSharingFeatureSelection: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree"},
+                {"model_name": "random_forest"},
+                {"model_name": "gradient_boosting"},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 12,
+        },
+    ],
+    CaliforniaHousingFeatureSelection: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree"},
+                {"model_name": "random_forest"},
+                {"model_name": "gradient_boosting"},
+                # TODO: think of adding neural network to the feature selection
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 8,
+        },
+    ],
     # ensemble selection configurations ------------------------------------------------------------
-    AdultCensusEnsembleSelection: {
-        "configurations": [{"loss_function": "accuracy_score", "n_members": 10}],
-        "iteration_parameter": "random_state",
-        "n_players": 10,
-    },
-    BikeSharingEnsembleSelection: {
-        "configurations": [{"loss_function": "r2_score", "n_members": 10}],
-        "iteration_parameter": "random_state",
-        "n_players": 10,
-    },
-    CaliforniaHousingEnsembleSelection: {
-        "configurations": [{"loss_function": "r2_score", "n_members": 10}],
-        "iteration_parameter": "random_state",
-        "n_players": 10,
-    },
+    AdultCensusEnsembleSelection: [
+        {
+            "configurations": [{"loss_function": "accuracy_score", "n_members": 10}],
+            "iteration_parameter": "random_state",
+            "n_players": 10,
+        },
+    ],
+    BikeSharingEnsembleSelection: [
+        {
+            "configurations": [{"loss_function": "r2_score", "n_members": 10}],
+            "iteration_parameter": "random_state",
+            "n_players": 10,
+        },
+    ],
+    CaliforniaHousingEnsembleSelection: [
+        {
+            "configurations": [{"loss_function": "r2_score", "n_members": 10}],
+            "iteration_parameter": "random_state",
+            "n_players": 10,
+        },
+    ],
     # ensemble selection with random forest configurations -----------------------------------------
-    AdultCensusRandomForestEnsembleSelection: {
-        "configurations": [{"loss_function": "accuracy_score", "n_members": 10}],
-        "iteration_parameter": "random_state",
-        "n_players": 10,
-    },
-    BikeSharingRandomForestEnsembleSelection: {
-        "configurations": [{"loss_function": "r2_score", "n_members": 10}],
-        "iteration_parameter": "random_state",
-        "n_players": 10,
-    },
-    CaliforniaHousingRandomForestEnsembleSelection: {
-        "configurations": [{"loss_function": "r2_score", "n_members": 10}],
-        "iteration_parameter": "random_state",
-        "n_players": 10,
-    },
+    AdultCensusRandomForestEnsembleSelection: [
+        {
+            "configurations": [{"loss_function": "accuracy_score", "n_members": 10}],
+            "iteration_parameter": "random_state",
+            "n_players": 10,
+        },
+    ],
+    BikeSharingRandomForestEnsembleSelection: [
+        {
+            "configurations": [{"loss_function": "r2_score", "n_members": 10}],
+            "iteration_parameter": "random_state",
+            "n_players": 10,
+        },
+    ],
+    CaliforniaHousingRandomForestEnsembleSelection: [
+        {
+            "configurations": [{"loss_function": "r2_score", "n_members": 10}],
+            "iteration_parameter": "random_state",
+            "n_players": 10,
+        },
+    ],
     # dataset valuation configurations -------------------------------------------------------------
-    AdultCensusDatasetValuation: {
-        "configurations": [
-            {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 10},
-            {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 10},
-            {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
-        ],
-        "iteration_parameter": "random_state",
-        "n_players": 10,
-    },
-    BikeSharingDatasetValuation: {
-        "configurations": [
-            {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 10},
-            {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 10},
-            {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
-        ],
-        "iteration_parameter": "random_state",
-        "n_players": 10,
-    },
-    CaliforniaHousingDatasetValuation: {
-        "configurations": [
-            {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 10},
-            {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 10},
-            {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
-        ],
-        "iteration_parameter": "random_state",
-        "n_players": 10,
-    },
+    AdultCensusDatasetValuation: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 10},
+                {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 10},
+                {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 10,
+        },
+    ],
+    BikeSharingDatasetValuation: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 10},
+                {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 10},
+                {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 10,
+        },
+    ],
+    CaliforniaHousingDatasetValuation: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 10},
+                {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 10},
+                {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 10,
+        },
+    ],
     # cluster explanation configurations -----------------------------------------------------------
-    AdultCensusClusterExplanation: {
-        "configurations": [
-            {"cluster_method": "kmeans", "score_method": "silhouette_score"},
-            {"cluster_method": "agglomerative", "score_method": "calinski_harabasz_score"},
-        ],
-        "iteration_parameter": "random_state",  # for agglomerative this does not change the game
-        "iteration_parameter_values": [1],  # for agglomerative this does not change the game
-        "n_players": 14,
-    },
-    BikeSharingClusterExplanation: {
-        "configurations": [
-            {"cluster_method": "kmeans", "score_method": "silhouette_score"},
-            {"cluster_method": "agglomerative", "score_method": "calinski_harabasz_score"},
-        ],
-        "iteration_parameter": "random_state",  # for agglomerative this does not change the game
-        "iteration_parameter_values": [1],  # for agglomerative this does not change the game
-        "n_players": 12,
-    },
-    CaliforniaHousingClusterExplanation: {
-        "configurations": [
-            {"cluster_method": "kmeans", "score_method": "silhouette_score"},
-            {"cluster_method": "agglomerative", "score_method": "calinski_harabasz_score"},
-        ],
-        "iteration_parameter": "random_state",  # for agglomerative this does not change the game
-        "iteration_parameter_values": [1],  # for agglomerative this does not change the game
-        "n_players": 8,
-    },
+    AdultCensusClusterExplanation: [
+        {
+            "configurations": [
+                {"cluster_method": "kmeans", "score_method": "silhouette_score"},
+                {"cluster_method": "agglomerative", "score_method": "calinski_harabasz_score"},
+            ],
+            "iteration_parameter": "random_state",  # for agglomerative this does not change the game
+            "iteration_parameter_values": [1],  # for agglomerative this does not change the game
+            "n_players": 14,
+        },
+    ],
+    BikeSharingClusterExplanation: [
+        {
+            "configurations": [
+                {"cluster_method": "kmeans", "score_method": "silhouette_score"},
+                {"cluster_method": "agglomerative", "score_method": "calinski_harabasz_score"},
+            ],
+            "iteration_parameter": "random_state",  # for agglomerative this does not change the game
+            "iteration_parameter_values": [1],  # for agglomerative this does not change the game
+            "n_players": 12,
+        },
+    ],
+    CaliforniaHousingClusterExplanation: [
+        {
+            "configurations": [
+                {"cluster_method": "kmeans", "score_method": "silhouette_score"},
+                {"cluster_method": "agglomerative", "score_method": "calinski_harabasz_score"},
+            ],
+            "iteration_parameter": "random_state",  # for agglomerative this does not change the game
+            "iteration_parameter_values": [1],  # for agglomerative this does not change the game
+            "n_players": 8,
+        },
+    ],
     # unsupervised data configurations -------------------------------------------------------------
-    AdultCensusUnsupervisedData: {
-        "configurations": [{}],
-        "iteration_parameter": "random_state",  # this does not change the game
-        "iteration_parameter_values": [1],  # this does not change the game
-        "n_players": 14,
-    },
-    BikeSharingUnsupervisedData: {
-        "configurations": [{}],
-        "iteration_parameter": "random_state",  # this does not change the game
-        "iteration_parameter_values": [1],  # this does not change the game
-        "n_players": 12,
-    },
-    CaliforniaHousingUnsupervisedData: {
-        "configurations": [{}],
-        "iteration_parameter": "random_state",  # this does not change the game
-        "iteration_parameter_values": [1],  # this does not change the game
-        "n_players": 8,
-    },
+    AdultCensusUnsupervisedData: [
+        {
+            "configurations": [{}],
+            "iteration_parameter": "random_state",  # this does not change the game
+            "iteration_parameter_values": [1],  # this does not change the game
+            "n_players": 14,
+        },
+    ],
+    BikeSharingUnsupervisedData: [
+        {
+            "configurations": [{}],
+            "iteration_parameter": "random_state",  # this does not change the game
+            "iteration_parameter_values": [1],  # this does not change the game
+            "n_players": 12,
+        },
+    ],
+    CaliforniaHousingUnsupervisedData: [
+        {
+            "configurations": [{}],
+            "iteration_parameter": "random_state",  # this does not change the game
+            "iteration_parameter_values": [1],  # this does not change the game
+            "n_players": 8,
+        },
+    ],
 }
 
 
