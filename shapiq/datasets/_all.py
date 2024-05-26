@@ -8,6 +8,7 @@ GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
 # csv files are located next to this file in a folder called "data"
 SHAPIQ_DATASETS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+os.makedirs(SHAPIQ_DATASETS_FOLDER, exist_ok=True)
 
 
 def _try_load(csv_file_name: str) -> pd.DataFrame:
