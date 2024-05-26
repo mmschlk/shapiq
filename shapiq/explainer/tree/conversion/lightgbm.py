@@ -33,10 +33,12 @@ def convert_lightgbm_booster(
         booster_df['value'] = _sigmoid(booster_df['value'])
     if tree_booster.params['objective'] == "multiclass":
         # choose only trees for the selected class (lightgbm grows n_estimators*n_class trees)
+        n_class = tree_booster.num_model_per_iteration()
         if class_label is None:
             class_label = 0
-        idc = booster_df['tree_index'] % tree_booster.num_model_per_iteration() == class_label
+        idc = booster_df['tree_index'] % n_class == class_label
         booster_df = booster_df[idc]
+        scaling = scaling / n_class
     convert_feature_str_to_int = {k: v for v, k in enumerate(tree_booster.feature_name())}
     # pandas can't chill https://stackoverflow.com/q/77900971
     with pd.option_context('future.no_silent_downcasting', True):
