@@ -88,8 +88,8 @@ def load_bike_sharing() -> tuple[pd.DataFrame, pd.Series]:
     dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
     dataset.dropna(inplace=True)
 
-    x_data = dataset
     y_data = dataset.pop(class_label)
+    x_data = dataset
 
     return x_data, y_data
 
@@ -146,8 +146,8 @@ def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
     dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
     dataset.dropna(inplace=True)
 
-    x_data = dataset
     y_data = dataset.pop(class_label)
+    x_data = dataset.astype(float)
 
     # transform '>50K' to 1 and '<=50K' to 0
     y_data = y_data.apply(lambda x: 1 if x == ">50K" else 0)
