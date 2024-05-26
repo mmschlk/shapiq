@@ -169,7 +169,7 @@ class EnsembleSelection(Game):
         for member_id, member in enumerate(self.player_names):
             if member == "regression":
                 if self.dataset_type == "classification":
-                    model = LogisticRegression(random_state=self.random_state + member_id)
+                    model = LogisticRegression(random_state=self.random_state + member_id, n_jobs=1)
                 else:
                     model = LinearRegression()
             elif member == "decision_tree":
@@ -200,13 +200,9 @@ class EnsembleSelection(Game):
                 from xgboost import XGBClassifier, XGBRegressor
 
                 if self.dataset_type == "classification":
-                    model = XGBClassifier(
-                        n_estimators=25, random_state=self.random_state + member_id
-                    )
+                    model = XGBClassifier(random_state=self.random_state + member_id, n_jobs=1)
                 else:
-                    model = XGBRegressor(
-                        n_estimators=25, random_state=self.random_state + member_id
-                    )
+                    model = XGBRegressor(random_state=self.random_state + member_id, n_jobs=1)
             else:
                 raise ValueError(
                     f"Invalid ensemble member provided. Got {member} but expected one of "

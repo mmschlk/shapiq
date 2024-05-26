@@ -71,8 +71,7 @@ if __name__ == "__main__":
     # python pre_compute.py --game AdultCensusClusterExplanation --config_id 1
     # python pre_compute.py --game AdultCensusClusterExplanation --config_id 2
     # python pre_compute.py --game CaliforniaHousingDatasetValuation --config_id 1
-    # python pre_compute.py --game CaliforniaHousingDatasetValuation --config_id 2
-    # python pre_compute.py --game CaliforniaHousingDatasetValuation --config_id 3
+    # python pre_compute.py --game CaliforniaHousingDatasetValuation --config_id 2 & python pre_compute.py --game CaliforniaHousingDatasetValuation --config_id 3
 
     # parse arguments
     parser = argparse.ArgumentParser()
