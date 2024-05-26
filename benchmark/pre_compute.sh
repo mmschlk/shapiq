@@ -14,9 +14,10 @@ PYTHON_FILE="pre_compute.py"
 nohup python $PYTHON_FILE --game AdultCensusRandomForestEnsembleSelection --config_id 1 &
 nohup python $PYTHON_FILE --game BikeSharingRandomForestEnsembleSelection --config_id 1 &
 nohup python $PYTHON_FILE --game CaliforniaHousingRandomForestEnsembleSelection --config_id 1 &
+nohup python $PYTHON_FILE --game ImageClassifierLocalXAI --config_id 1 --n_player_id 0 &
+nohup python $PYTHON_FILE --game ImageClassifierLocalXAI --config_id 1 --n_player_id 1 &
 nohup python $PYTHON_FILE --game ImageClassifierLocalXAI --config_id 1 --n_player_id 2 &
-nohup python $PYTHON_FILE --game ImageClassifierLocalXAI --config_id 1 --n_player_id 3 &
-nohup python $PYTHON_FILE --game SentimentAnalysisLocalXAI --config_id 1 --n_player_id 1 &
+nohup python $PYTHON_FILE --game SentimentAnalysisLocalXAI --config_id 1 --n_player_id 0 &
 nohup python $PYTHON_FILE --game AdultCensusFeatureSelection --config_id 1 &
 nohup python $PYTHON_FILE --game AdultCensusFeatureSelection --config_id 2 &
 nohup python $PYTHON_FILE --game AdultCensusFeatureSelection --config_id 3 &
