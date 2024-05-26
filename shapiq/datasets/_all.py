@@ -1,8 +1,31 @@
 """This module contains functions to load datasets."""
 
+import os
+
 import pandas as pd
 
 GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
+
+# csv files are located next to this file in a folder called "data"
+SHAPIQ_DATASETS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+
+def _try_load(csv_file_name: str) -> pd.DataFrame:
+    """Try to load a dataset from the local folder. If it does not exist, load it from GitHub and
+    save it to the local folder.
+
+    Args:
+        csv_file_name: The name of the csv file to load.
+
+    Returns:
+        The dataset as a pandas DataFrame.
+    """
+    try:
+        return pd.read_csv(os.path.join(SHAPIQ_DATASETS_FOLDER, csv_file_name))
+    except FileNotFoundError:
+        data = pd.read_csv(GITHUB_DATA_URL + csv_file_name)
+        data.to_csv(os.path.join(SHAPIQ_DATASETS_FOLDER, csv_file_name), index=False)
+        return data
 
 
 def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
@@ -11,12 +34,7 @@ def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
     Returns:
         The California housing dataset as a pandas DataFrame.
     """
-    try:
-        dataset = pd.read_csv(
-            "C:\\1_Workspaces\\1_Phd_Projects\\shapiq\\data\\california_housing.csv"
-        )
-    except Exception:
-        dataset = pd.read_csv(GITHUB_DATA_URL + "california_housing.csv")
+    dataset = _try_load("california_housing.csv")
     class_label = "MedHouseVal"
     y_data = dataset[class_label]
     x_data = dataset.drop(columns=[class_label])
@@ -37,10 +55,7 @@ def load_bike_sharing() -> tuple[pd.DataFrame, pd.Series]:
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder, RobustScaler
 
-    try:
-        dataset = pd.read_csv("C:\\1_Workspaces\\1_Phd_Projects\\shapiq\\data\\bike.csv")
-    except Exception:
-        dataset = pd.read_csv(GITHUB_DATA_URL + "bike.csv")
+    dataset = _try_load("bike.csv")
     class_label = "count"
 
     num_feature_names = ["hour", "temp", "feel_temp", "humidity", "windspeed"]
@@ -94,10 +109,7 @@ def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 
-    try:
-        dataset = pd.read_csv("C:\\1_Workspaces\\1_Phd_Projects\\shapiq\\data\\adult_census.csv")
-    except Exception:
-        dataset = pd.read_csv(GITHUB_DATA_URL + "adult_census.csv")
+    dataset = _try_load("adult_census.csv")
     class_label = "class"
 
     num_feature_names = ["age", "capital-gain", "capital-loss", "hours-per-week", "fnlwgt"]
