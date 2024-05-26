@@ -8,7 +8,7 @@ from ._base import Regression
 
 
 class RegressionFSII(Regression):
-    """Estimates the FSII values using KernelSHAP. The Algorithm is described 
+    """Estimates the FSII values using KernelSHAP. The Algorithm is described
     in `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
 
     Args:

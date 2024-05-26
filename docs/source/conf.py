@@ -6,6 +6,7 @@
 import os
 import sys
 
+import commonmark
 from sphinx.builders.html import StandaloneHTMLBuilder
 
 sys.path.insert(0, os.path.abspath("../.."))
@@ -110,7 +111,6 @@ copybutton_prompt_is_regexp = True
 # -- Markdown in docstring -----------------------------------------------------------------------------
 # https://gist.github.com/dmwyatt/0f555c8f9c129c0ac6fed6fabe49078b#file-docstrings-py
 # based on https://stackoverflow.com/a/56428123/23972
-import commonmark
 
 
 def docstring(app, what, name, obj, options, lines):

@@ -58,7 +58,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
     """The Unbiased KernelSHAP approximator for estimating the Shapley value (SV).
 
     The Unbiased KernelSHAP estimator is a variant of the KernelSHAP estimator (though deeply
-    different). Unbiased KernelSHAP was proposed by `Covert and Lee (2021) <https://doi.org/10.48550/arXiv.2012.01536>`_ 
+    different). Unbiased KernelSHAP was proposed by `Covert and Lee (2021) <https://doi.org/10.48550/arXiv.2012.01536>`_
     as an unbiased version of KernelSHAP. `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_,
     shown that Unbiased KernelSHAP is a more specific variant of the ShapIQ approximation method (Theorem 4.5).
 

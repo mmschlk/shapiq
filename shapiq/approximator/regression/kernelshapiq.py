@@ -53,7 +53,7 @@ class KernelSHAPIQ(Regression):
 
 
 class InconsistentKernelSHAPIQ(Regression):
-    """Estimates the SII values using Inconsistent KernelSHAP-IQ. Algorithm similar to kADD-SHAP. 
+    """Estimates the SII values using Inconsistent KernelSHAP-IQ. Algorithm similar to kADD-SHAP.
     For details, refer to `Fumagalli et al. (2024) <https://doi.org/10.48550/arXiv.2405.10852>`_.
 
     Args:
@@ -63,7 +63,7 @@ class InconsistentKernelSHAPIQ(Regression):
         pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
             to `False`.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition 
+            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
             of a certain size. Defaults to `None`.
     """
 

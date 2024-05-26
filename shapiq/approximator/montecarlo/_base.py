@@ -311,7 +311,7 @@ class MonteCarlo(Approximator):
     def _shapiq_routine(self) -> np.ndarray:
         """Computes the adjusted sampling weights for the SHAP-IQ monte carlo routine.
         The method deploys no stratification and returns the relative counts divided by the
-        probabilities. 
+        probabilities.
         For details, refer to `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
 
         Returns:
@@ -440,7 +440,7 @@ class MonteCarlo(Approximator):
 
     def _get_standard_form_weights(self, index: str) -> np.ndarray:
         """Initializes the weights for the interaction index re-written from discrete derivatives to
-        standard form. Standard form according to Theorem 1 by 
+        standard form. Standard form according to Theorem 1 by
         `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
 
         Args:

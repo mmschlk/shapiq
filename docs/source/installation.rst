@@ -9,7 +9,7 @@ The latest release version of ``shapiq`` can be installed from
    pip install shapiq
 
 
-The development version can be installed from 
+The development version can be installed from
 `GitHub <https://github.com/mmschlk/shapiq>`_:
 
 .. code::
