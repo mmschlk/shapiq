@@ -18,7 +18,7 @@ The development version can be installed from
 
 
 Development
------------
+~~~~~~~~~~~
 
 Additional packages required for the development of `shapiq` (documentation, tests) can be installed with:
 

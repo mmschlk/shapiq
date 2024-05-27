@@ -1,7 +1,10 @@
 ⭐ Getting Started
 ==================
 
+Explain a model with Shapley interaction values, e.g. the k-SII values.
+
 ..  code-block:: python
+
     import shapiq
     # load data
     X, y = shapiq.load_california_housing(to_numpy=True)
