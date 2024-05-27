@@ -10,9 +10,13 @@ from .conversion.lightgbm import convert_lightgbm_booster
 
 SUPPORTED_MODELS = {
     "sklearn.tree.DecisionTreeRegressor",
+    "sklearn.tree._classes.DecisionTreeRegressor",
     "sklearn.tree.DecisionTreeClassifier",
+    "sklearn.tree._classes.DecisionTreeClassifier",
     "sklearn.ensemble.RandomForestClassifier",
+    "sklearn.ensemble._forest.RandomForestClassifier",
     "sklearn.ensemble.RandomForestRegressor",
+    "sklearn.ensemble._forest.RandomForestRegressor",
     "lightgbm.sklearn.LGBMRegressor",
     "lightgbm.sklearn.LGBMClassifier",
     "lightgbm.basic.Booster"
@@ -40,18 +44,19 @@ def validate_tree_model(
         tree_model = TreeModel(**model)
     # transformation of common machine learning libraries to TreeModel
     # sklearn decision trees
-    elif safe_isinstance(model, "sklearn.tree.DecisionTreeRegressor") or safe_isinstance(
-        model, "sklearn.tree.DecisionTreeClassifier"
-    ):
+    elif safe_isinstance(model, "sklearn.tree.DecisionTreeRegressor") or\
+        safe_isinstance(model, "sklearn.tree._classes.DecisionTreeRegressor") or\
+        safe_isinstance(model, "sklearn.tree.DecisionTreeClassifier") or\
+        safe_isinstance(model, "sklearn.tree._classes.DecisionTreeClassifier"):
         tree_model = convert_sklearn_tree(model, class_label=class_label)
     # sklearn random forests
-    elif safe_isinstance(model, "sklearn.ensemble.RandomForestRegressor") or safe_isinstance(
-        model, "sklearn.ensemble.RandomForestClassifier"
-    ):
+    elif safe_isinstance(model, "sklearn.ensemble.RandomForestRegressor") or\
+        safe_isinstance(model, "sklearn.ensemble._forest.RandomForestRegressor") or\
+        safe_isinstance(model, "sklearn.ensemble.RandomForestClassifier") or\
+        safe_isinstance(model, "sklearn.ensemble._forest.RandomForestClassifier"):
         tree_model = convert_sklearn_forest(model, class_label=class_label)
-    elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or safe_isinstance(
-        model, "lightgbm.sklearn.LGBMClassifier"
-    ):
+    elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or\
+        safe_isinstance(model, "lightgbm.sklearn.LGBMClassifier"):
         booster = model.booster_
         tree_model = convert_lightgbm_booster(booster, class_label=class_label)
     elif safe_isinstance(model, "lightgbm.basic.Booster"):
