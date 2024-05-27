@@ -15,7 +15,7 @@ class Explainer:
 
     Args:
         model: The model object to be explained.
-        data: A background dataset to be used in TabularExplainer.
+        data: A background dataset to be used for imputation in TabularExplainer.
         **kwargs: Additional keyword-only arguments passed to TabularExplainer or TreeExplainer.
 
     Attributes:

@@ -1,7 +1,7 @@
-API Reference
-=============
+📖 API Reference
+================
 
-Documentation of the API reference for public objects and functions in ``shapiq``.
+Documentation of the API for public objects and functions in ``shapiq``.
 
 
 .. autosummary::

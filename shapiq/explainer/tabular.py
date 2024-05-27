@@ -41,9 +41,9 @@ class TabularExplainer(Explainer):
     to explain the predictions of a model by estimating the Shapley interaction values.
 
     Args:
-        model: The model to explain as a callable function expecting a data points as input and
-            returning the model's predictions.
-        data: A background dataset to use for the explainer.
+        model: The model to be explained as a callable function expecting data points as input and 
+            returning 1-dimensional predictions.
+        data: A background dataset to be used for imputation.
         imputer: Either an object of class Imputer or a string from ``["marginal", "conditional"]``. 
             Defaults to ``"marginal"``, which innitializes the default MarginalImputer.
         approximator: An approximator to use for the explainer. Defaults to `"auto"`, which will
@@ -53,6 +53,7 @@ class TabularExplainer(Explainer):
             `"k-SII"` (k-Shapley Interaction Index), `"STII"` (Shapley-Taylor Interaction Index), or
             `"FSII"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
         max_order: The maximum interaction order to be computed. Defaults to `2`.
+        **kwargs: Additional keyword-only arguments passed to the imputer.
 
     Attributes:
         index: Type of Shapley interaction index to use.
@@ -80,9 +81,9 @@ class TabularExplainer(Explainer):
 
         self._random_state = random_state
         if imputer == "marginal":
-            self._imputer = MarginalImputer(self.predict, self.data)
+            self._imputer = MarginalImputer(self.predict, self.data, **kwargs)
         elif imputer == "conditional":
-            self._imputer = ConditionalImputer(self.predict, self.data)
+            self._imputer = ConditionalImputer(self.predict, self.data, **kwargs)
         elif isinstance(imputer, MarginalImputer) or isinstance(imputer, ConditionalImputer):
             self._imputer = imputer
         else:

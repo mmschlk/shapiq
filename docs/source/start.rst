@@ -1,5 +1,5 @@
-Getting Started
-===============
+⭐ Getting Started
+==================
 
 ..  code-block:: python
     # train a model
