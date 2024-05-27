@@ -23,9 +23,7 @@
 # SHAP-IQ: SHAP Interaction Quantification
 > An interaction may speak more than a thousand main effects.
 
-SHAP Interaction Quantification (short SHAP-IQ) is an **XAI framework** extending on the well-known [`shap`](https://github.com/shap/shap) explanations by introducing interactions to the equation.
-Shapley interactions extend on indivdual Shapley values by quantifying the **synergy** effect between machine learning entities such as features, data points, or weak learners in ensemble models.
-Synergies between these entities (also called players in game theory jargon) allows for a more intricate evaluation of your **black-box** models!
+Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approximating any-order Shapley interactions, (2) benchmarking game-theoretical algorithms for machine learning, (3) explaining feature interactions of model predictions. `shapiq` extends the well-known [shap](https://github.com/shap/shap) package for both researchers working on game theory in machine learning, as well as the end-users explaining models. SHAP-IQ extends indivdual Shapley values by quantifying the **synergy** effect between entities (aka **players** in the jargon of game theory) like explanatory features, data points, or weak learners in ensemble models. Synergies between players give a more comprehensive view of machine learning models.
 
 # 🛠️ Install
 `shapiq` is intended to work with **Python 3.9 and above**. Installation can be done via `pip`:
@@ -44,37 +42,38 @@ You can also plot and visualize your interaction scores with `shapiq.plot`.
 Explain your models with Shapley interaction values like the k-SII values:
 
 ```python
+import shapiq
+# load data
+X, y = shapiq.load_california_housing(to_numpy=True)
 # train a model
 from sklearn.ensemble import RandomForestRegressor
-
 model = RandomForestRegressor(n_estimators=50, random_state=42)
-model.fit(x_train, y_train)
-
+model.fit(X, y)
 # explain with k-SII interaction scores
-from shapiq import TabularExplainer
-
-explainer = TabularExplainer(
-    model=model.predict,
-    data=x_train,
+explainer = shapiq.TabularExplainer(
+    model=model,
+    data=X,
     index="k-SII",
     max_order=2
 )
-interaction_values = explainer.explain(x, budget=2000)
-print(interaction_values)
+interaction_values = explainer.explain(X[0], budget=256)
 
->> > InteractionValues(
-     >> > index = k - SII, max_order = 2, min_order = 1, estimated = True, estimation_budget = 2000,
->> > values = {
-              >> > (0,): -91.0403,  # main effect for feature 0
->> > (1,): 4.1264,  # main effect for feature 1
->> > (2,): -0.4724,  # main effect for feature 2
->> > ...
-     >> > (0, 1): -0.8073,  # 2-way interaction for feature 0 and 1
->> > (0, 2): 2.469,  # 2-way interaction for feature 0 and 2
->> > ...
-     >> > (10, 11): 0.4057  # 2-way interaction for feature 10 and 11
-                    >> >}
->> > )
+print(interaction_values)
+>> InteractionValues(
+>>    index=k-SII, max_order=2, min_order=0, estimated=False, 
+>>    estimation_budget=256, n_players=8, baseline_value=0.86628,
+>>    Top 10 interactions:
+>>        (0,): 3.5894835404761913  # main effect for feature 0
+>>        (7,): 1.6117512314285711
+>>        (0, 1): 0.20849640380952  # interaction for features 0 & 1
+>>        (5,): 0.2006931133333336
+>>        (2,): 0.1753635657142866
+>>        (0, 5): -0.0974019461904
+>>        (0, 3): -0.1267195495238
+>>        (0, 6): -0.2124500961904
+>>        (6, 7): -0.3429407528571
+>>        (0, 7): -1.1588948528571
+>> )
 ```
 
 ## 📊 Visualize your Interactions
@@ -86,11 +85,9 @@ The strength and size of the nodes and edges are proportional to the absolute va
 attribution scores and interaction scores, respectively.
 
 ```python
-from shapiq.plot import network_plot
-
-network_plot(
-    first_order_values=k_sii_first_order,  # first order k-SII values
-    second_order_values=k_sii_second_order # second order k-SII values
+shapiq.network_plot(
+    first_order_values=interaction_values.get_n_order_values(1),
+    second_order_values=interaction_values.get_n_order_values(2)
 )
 ```
 
