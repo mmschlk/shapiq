@@ -29,6 +29,7 @@ from .explainer import Explainer, TabularExplainer, TreeExplainer
 
 # game classes
 from .interaction_values import InteractionValues
+from .games import Game
 
 # plotting functions
 from .plot import network_plot, stacked_bar_plot
@@ -47,6 +48,7 @@ __all__ = [
     # base
     "InteractionValues",
     "ExactComputer",
+    "Game",
     # approximators
     "PermutationSamplingSII",
     "PermutationSamplingSTII",

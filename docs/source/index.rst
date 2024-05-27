@@ -14,13 +14,13 @@ Contents
    installation
    start
 
-
 .. toctree::
    :maxdepth: 1
    :caption: TUTORIALS
 
-   notebooks/bike
-
+   notebooks/scikit_learn_bike_sharing
+   notebooks/lightgbm_treeshapiq
+   notebooks/language_sentiment_analysis_game
 
 .. toctree::
    :maxdepth: 2
