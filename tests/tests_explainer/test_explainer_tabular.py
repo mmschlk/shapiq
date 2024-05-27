@@ -26,11 +26,13 @@ def data():
 
 INDICES = ["SII", "k-SII", "STII", "FSII"]
 MAX_ORDERS = [2, 3]
+IMPUTER = ["marginal", "conditional"]
 
 
 @pytest.mark.parametrize("index", INDICES)
 @pytest.mark.parametrize("max_order", MAX_ORDERS)
-def test_init_params(dt_model, data, index, max_order):
+@pytest.mark.parametrize("imputer", IMPUTER)
+def test_init_params(dt_model, data, index, max_order, imputer):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
     explainer = TabularExplainer(
@@ -40,6 +42,7 @@ def test_init_params(dt_model, data, index, max_order):
         index=index,
         max_order=max_order,
         approximator="auto",
+        imputer=imputer
     )
     assert explainer.index == index
     assert explainer._approximator.index == index
@@ -117,7 +120,8 @@ BUDGETS = [2**5, 2**8, None]
 @pytest.mark.parametrize("budget", BUDGETS)
 @pytest.mark.parametrize("index", INDICES)
 @pytest.mark.parametrize("max_order", MAX_ORDERS)
-def test_explain(dt_model, data, index, budget, max_order):
+@pytest.mark.parametrize("imputer", IMPUTER)
+def test_explain(dt_model, data, index, budget, max_order, imputer):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
     explainer = TabularExplainer(
@@ -127,6 +131,7 @@ def test_explain(dt_model, data, index, budget, max_order):
         index=index,
         max_order=max_order,
         approximator="auto",
+        imputer=imputer
     )
     x = data[0].reshape(1, -1)
     interaction_values = explainer.explain(x, budget=budget)

@@ -26,7 +26,7 @@ class Explainer:
     def __init__(
             self, 
             model, 
-            data=None, 
+            data: np.ndarray = None, 
             **kwargs
         ) -> None:
 
