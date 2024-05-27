@@ -21,7 +21,7 @@ Contents
    :caption: TUTORIALS
 
    notebooks/shapiq_scikit_learn
-   notebooks/lightgbm_treeshapiq
+   notebooks/treeshapiq_lightgbm
    notebooks/language_model_game
 
 .. toctree::
