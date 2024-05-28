@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 if __name__ == "__main__":
 
     from shapiq.games.benchmark import (
-        ImageClassifierLocalXAI,  # 1 config
+        ImageClassifierLocalXAI,  # 1 config for 3 player ids
     )
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # get the game class
     game_class = ImageClassifierLocalXAI
     config_id = 1
-    n_player_id = 1
+    n_player_id = 2
     n_jobs = 1
 
     # get the configuration
