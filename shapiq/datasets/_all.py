@@ -68,14 +68,20 @@ def load_bike_sharing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     dataset = _try_load("bike.csv")
     class_label = "count"
 
-    num_feature_names = ["hour", "temp", "feel_temp", "humidity", "windspeed"]
-    cat_feature_names = [
-        "season",
+    num_feature_names = [
+        "hour", 
+        "temp", 
+        "feel_temp", 
+        "humidity", 
+        "windspeed", 
         "year",
         "month",
         "holiday",
         "weekday",
-        "workingday",
+        "workingday"
+    ]
+    cat_feature_names = [
+        "season",
         "weather",
     ]
     dataset[num_feature_names] = dataset[num_feature_names].apply(pd.to_numeric)
