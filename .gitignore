@@ -169,9 +169,5 @@ cython_debug/
 
 illustration_sources/
 
-# romves all files in the precomputed folder
-shapiq/games/benchmark/precomputed/
-shapiq/games/benchmark/precomputed_old/
-
 # remove the files that will be downloaded
 shapiq/datasets/data
