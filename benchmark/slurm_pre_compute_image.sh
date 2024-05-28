@@ -2,19 +2,11 @@
 # on the cluster, run this script with the following command:
 # chmod +x slurm_run.sh
 # ./slurm_run.sh <game_name> <config_id>
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <game_name> <config_id> <n_player_id>"
-    exit 1
-fi
 
 # name of the python file to run
-PYTHON_FILE="pre_compute.py"
+PYTHON_FILE="pre_compute_image.py"
 
-# command line arguments
-game_name=$1
-config_id=$2
-n_player_id=$3
-NAME=${game_name}_${config_id}-${n_player_id}
+NAME="pre_compute_image_games"
 
 # slurm settings
 MEMORY=4096
@@ -54,7 +46,7 @@ echo "#SBATCH --nodeslist=cmp01-kiml" >> "${FILE}"
 echo "source ${PROJECT_DIR}/venv/bin/activate" >> "${FILE}"
 
 # add the command to run the python file
-echo "python ${SCRIPT_DIR}/${PYTHON_FILE} ${game_name} ${config_id}" >> "${FILE}"
+echo "python ${SCRIPT_DIR}/${PYTHON_FILE}" >> "${FILE}"
 echo "deactivate" >> "${FILE}"
 
 # submit the job

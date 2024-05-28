@@ -5,6 +5,7 @@ import multiprocessing as mp
 import os
 from typing import Optional, Union
 
+import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
@@ -35,7 +36,8 @@ def run_benchmark(
     approximators: list[Approximator],
     games: list[Game],
     gt_values: list[InteractionValues],
-    budget_steps: list[Union[int, float]],
+    budget_steps: Optional[list[Union[int]]] = None,
+    budget_step: float = 0.05,
     n_iterations: int = 1,
     n_jobs: int = 1,
     save_path: Optional[str] = "results.csv",
@@ -74,10 +76,12 @@ def run_benchmark(
         )
 
     # transform the budget steps to integers if float is provided
-    budget_steps = [
-        int(budget_step * 2**n_players) if isinstance(budget_step, float) else budget_step
-        for budget_step in budget_steps
-    ]
+    if budget_steps is None:
+        budget_steps = [
+            int(round(budget_step, 2) * (2**n_players))
+            for budget_step in np.arange(budget_step, 1.0 + budget_step + budget_step, budget_step)
+        ]
+        print("Created budget steps: ", budget_steps)
 
     # create the parameter space for the benchmark
     parameter_space = [

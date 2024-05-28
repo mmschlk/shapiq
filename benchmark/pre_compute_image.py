@@ -1,4 +1,4 @@
-"""This script pre-computes the language model after the configuration."""
+"""This script pre-computes the language model after the configurations."""
 
 import sys
 from pathlib import Path

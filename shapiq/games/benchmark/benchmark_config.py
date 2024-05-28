@@ -352,7 +352,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 10},
                 {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 10},
-                {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
+                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
             ],
             "iteration_parameter": "random_state",
             "n_players": 10,
@@ -436,7 +436,10 @@ def get_game_file_name_from_config(configuration: dict[str, Any], iteration: int
 
 
 def load_game_data(
-    game_class: Game.__class__, configuration: dict[str, Any], iteration: int = 1
+    game_class: Game.__class__,
+    configuration: dict[str, Any],
+    iteration: int = 1,
+    n_player_id: int = 0,
 ) -> Game:
     """Loads the precomputed game data for the given game class and configuration.
 
@@ -444,6 +447,7 @@ def load_game_data(
         game_class: The class of the game
         configuration: The configuration to use to load the game
         iteration: The iteration of the game to load
+        n_player_id: The player ID to use. Defaults to 0. Not all games have multiple player IDs.
 
     Returns:
         An initialized game object with the given configuration
@@ -451,7 +455,7 @@ def load_game_data(
     Raises:
         FileNotFoundError: If the file with the precomputed values does not exist
     """
-    n_players = BENCHMARK_CONFIGURATIONS[game_class]["n_players"]
+    n_players = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["n_players"]
     file_name = get_game_file_name_from_config(configuration, iteration)
 
     path_to_values = str(
@@ -486,26 +490,34 @@ def print_benchmark_configurations() -> None:
     print()
 
     # print configurations of the benchmark games
-    for game_class, config in BENCHMARK_CONFIGURATIONS.items():
-        param_values = config.get(
-            "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
-        )
-        print(f"Game: {game_class.get_game_name()}")
-        print(f"Configurations: {config['configurations']}")
-        print(f"Iteration Parameter: {config['iteration_parameter']}")
-        print(f"Iteration Parameter Values: {param_values}")
-        print()
+    for game_class, config_per_player_id in BENCHMARK_CONFIGURATIONS.items():
+        for config in config_per_player_id:
+            param_values = config.get(
+                "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
+            )
+            print(f"Game: {game_class.get_game_name()}")
+            print(f"Configurations: {config['configurations']}")
+            print(f"Iteration Parameter: {config['iteration_parameter']}")
+            print(f"Iteration Parameter Values: {param_values}")
+            print()
 
 
 def load_games(
-    game_class: Game.__class__, configuration: dict[str, Any], n_games: Optional[int] = None
+    game_class: Game.__class__,
+    configuration: dict[str, Any],
+    n_games: Optional[int] = None,
+    n_player_id: int = 0,
+    check_pre_computed: bool = True,
 ) -> Generator[Game, None, None]:
-    """Load the game with the given configuration.
+    """Load the game with the given configuration from disk or create it if it does not exist.
 
     Args:
         game_class: The class of the game to load with the configuration.
         configuration: The configuration to use to load the game.
         n_games: The number of games to load. Defaults to None.
+        n_player_id: The player ID to use. Defaults to 0. Not all games have multiple player IDs.
+        check_pre_computed: A flag to check if the game is pre-computed (load from disk). Defaults
+            to True.
 
     Returns:
         An initialized game object with the given configuration.
@@ -515,21 +527,34 @@ def load_games(
     # get the default parameters
     default_params = BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS.copy()
     params.update(default_params)
+    params.update(configuration)
 
-    # get the class-specific configurations
-    config_of_class = BENCHMARK_CONFIGURATIONS[game_class]
+    # get the class-specific configurations of how the iterations are set up
+    config_of_class = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]
     iteration_param = config_of_class["iteration_parameter"]
     iteration_param_values = config_of_class.get(
         "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
     )
-    # if names exist take these, otherwise use the values
-    iteration_param_values = config_of_class.get(
+    iteration_param_values_names = config_of_class.get(
         "iteration_parameter_values_names", iteration_param_values
     )
-    params.update(configuration)
 
     # create the generator of games
-    n_games = len(iteration_param_values) if n_games is None else n_games
+    n_games = (
+        len(iteration_param_values)
+        if n_games is None
+        else min(n_games, len(iteration_param_values))
+    )
     for i in range(n_games):
-        params[iteration_param] = iteration_param_values[i]
-        yield game_class(**params)
+        game_iteration = iteration_param_values[i]  # from 1 to 30
+        game_iteration_value = iteration_param_values_names[i]  # i.e. the sentence or random state
+        params[iteration_param] = game_iteration_value  # set the iteration parameter
+        if not check_pre_computed:  # create the game if pre-computed should not be checked
+            yield game_class(**params)
+        else:
+            try:  # try to load the game from disk
+                yield load_game_data(
+                    game_class, configuration, iteration=game_iteration, n_player_id=n_player_id
+                )
+            except FileNotFoundError:  # fallback to creating the game
+                yield game_class(**params)
