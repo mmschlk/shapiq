@@ -5,7 +5,7 @@ from shapiq.games.benchmark.benchmark_config import (
     BENCHMARK_CONFIGURATIONS,
     BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS,
     get_game_file_name_from_config,
-    load_games,
+    load_games_from_configuration,
     print_benchmark_configurations,
 )
 
@@ -18,7 +18,7 @@ def test_print_config():
 def test_load_games_with_configuration():
     for game_class, configuration in BENCHMARK_CONFIGURATIONS.items():
         for config in configuration["configurations"]:
-            game = next(load_games(game_class, configuration=config, n_games=1))
+            game = next(load_games_from_configuration(game_class, configuration=config, n_games=1))
             assert game.game_name == game_class.get_game_name()
             print(game.game_name)
             assert game.verbose == BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["verbose"]

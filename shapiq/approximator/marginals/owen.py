@@ -80,7 +80,7 @@ class OwenSamplingSV(Approximator):
                     # iterate through each anchor point
                     for q in anchors:
                         # draw a subset of players without player: all are inserted independently with probability q
-                        coalition = np.random.choice(
+                        coalition = self._rng.choice(
                             [True, False], self.n - 1, replace=True, p=[q, 1 - q]
                         )
                         # add information that player is absent

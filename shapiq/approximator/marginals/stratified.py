@@ -80,7 +80,7 @@ class StratifiedSamplingSV(Approximator):
                     for stratum in range(self.n):
                         # draw a subset of the player set without player of size stratum uniformly at random
                         coalition = list(
-                            np.random.choice(available_players, stratum, replace=False)
+                            self._rng.choice(available_players, stratum, replace=False)
                         )
                         # add the coalition and coalition with the player, both form a marginal contribution
                         coalitions[coalition_index, tuple(coalition)] = True

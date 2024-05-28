@@ -151,6 +151,11 @@ class Game(ABC):
         """Indication whether the game values are normalized."""
         return self.normalization_value != 0
 
+    @property
+    def is_normalized(self) -> bool:
+        """Checks if the game is normalized/centered."""
+        return self(self.empty_coalition) == 0
+
     def __call__(self, coalitions: np.ndarray, verbose: bool = False) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
         value function.
@@ -321,7 +326,7 @@ class Game(ABC):
                 f"The number of players in the game ({self.n_players}) does not match the number "
                 f"of players in the saved game ({n_players})."
             )
-        self.n_players = n_players
+        self.n_players = int(n_players)
         self.value_storage = data["values"]
         coalition_lookup: list[tuple] = transform_array_to_coalitions(data["coalitions"])
         self.coalition_lookup = {coal: i for i, coal in enumerate(coalition_lookup)}

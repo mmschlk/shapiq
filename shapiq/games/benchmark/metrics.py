@@ -48,7 +48,21 @@ def compute_diff_metrics(ground_truth: InteractionValues, estimated: Interaction
     Returns:
         The metrics between the ground truth and estimated interaction values.
     """
-    difference = ground_truth - estimated
+    try:
+        difference = ground_truth - estimated
+    except ValueError as error:  # maybe indices don't want to match
+        if ground_truth.index != estimated.index:
+            if {ground_truth.index, estimated.index} == {"SV", "kADD-SHAP"}:
+                sv_values = ground_truth if ground_truth.index == "SV" else estimated
+                kadd_values = ground_truth if ground_truth.index == "kADD-SHAP" else estimated
+                kadd_values = kadd_values.get_n_order(order=1)  # make kADD-SHAP same order as SV
+                difference = sv_values - kadd_values
+            else:
+                raise ValueError(
+                    f"Indices {ground_truth.index} and {estimated.index} do not match."
+                ) from error
+        else:
+            raise error
     diff_values = _remove_empty_value(difference).values
     n_values = count_interactions(
         ground_truth.n_players, ground_truth.max_order, ground_truth.min_order

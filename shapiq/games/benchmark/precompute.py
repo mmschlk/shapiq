@@ -79,7 +79,7 @@ def pre_compute_and_store(
 
 
 def pre_compute_from_configuration(
-    game_class: Game.__class__,
+    game_class: Union[Game.__class__, str],
     configuration: Optional[dict[str, Any]] = None,
     n_iterations: Optional[int] = None,
     n_player_id: int = 0,
@@ -96,8 +96,11 @@ def pre_compute_from_configuration(
         BENCHMARK_CONFIGURATIONS,
         BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
         BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS,
+        get_game_class_from_name,
         get_game_file_name_from_config,
     )
+
+    game_class = get_game_class_from_name(game_class) if isinstance(game_class, str) else game_class
 
     show_tqdm = True
 

@@ -26,6 +26,7 @@ echo "Error directory: ${ERROR_DIR}"
 
 # create the slurm command file
 FILE="${SCRIPT_DIR}/${NAME}.cmd"
+rm -f "${FILE}"
 echo "${FILE}"
 
 # fill the slurm command file with slurm settings

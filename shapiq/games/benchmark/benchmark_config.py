@@ -26,8 +26,16 @@ information:
 
 import os
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
+from ...approximator import (
+    FSII_APPROXIMATORS,
+    SI_APPROXIMATORS,
+    SII_APPROXIMATORS,
+    STII_APPROXIMATORS,
+    SV_APPROXIMATORS,
+    Approximator,
+)
 from .. import Game
 from . import (
     AdultCensusClusterExplanation,
@@ -274,7 +282,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
                 {"model_name": "decision_tree"},
                 {"model_name": "random_forest"},
                 {"model_name": "gradient_boosting"},
-                # TODO: think of adding neural network to the feature selection
             ],
             "iteration_parameter": "random_state",
             "n_players": 8,
@@ -420,18 +427,79 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
 }
 
 
-def get_game_file_name_from_config(configuration: dict[str, Any], iteration: int) -> str:
+GAME_TO_CLASS_MAPPING = {
+    "AdultCensusClusterExplanation": AdultCensusClusterExplanation,
+    "AdultCensusDatasetValuation": AdultCensusDatasetValuation,
+    "AdultCensusEnsembleSelection": AdultCensusEnsembleSelection,
+    "AdultCensusFeatureSelection": AdultCensusFeatureSelection,
+    "AdultCensusGlobalXAI": AdultCensusGlobalXAI,
+    "AdultCensusLocalXAI": AdultCensusLocalXAI,
+    "AdultCensusRandomForestEnsembleSelection": AdultCensusRandomForestEnsembleSelection,
+    "AdultCensusUnsupervisedData": AdultCensusUnsupervisedData,
+    "BikeSharingClusterExplanation": BikeSharingClusterExplanation,
+    "BikeSharingDatasetValuation": BikeSharingDatasetValuation,
+    "BikeSharingEnsembleSelection": BikeSharingEnsembleSelection,
+    "BikeSharingFeatureSelection": BikeSharingFeatureSelection,
+    "BikeSharingGlobalXAI": BikeSharingGlobalXAI,
+    "BikeSharingLocalXAI": BikeSharingLocalXAI,
+    "BikeSharingRandomForestEnsembleSelection": BikeSharingRandomForestEnsembleSelection,
+    "BikeSharingUnsupervisedData": BikeSharingUnsupervisedData,
+    "CaliforniaHousingClusterExplanation": CaliforniaHousingClusterExplanation,
+    "CaliforniaHousingDatasetValuation": CaliforniaHousingDatasetValuation,
+    "CaliforniaHousingEnsembleSelection": CaliforniaHousingEnsembleSelection,
+    "CaliforniaHousingFeatureSelection": CaliforniaHousingFeatureSelection,
+    "CaliforniaHousingGlobalXAI": CaliforniaHousingGlobalXAI,
+    "CaliforniaHousingLocalXAI": CaliforniaHousingLocalXAI,
+    "CaliforniaHousingRandomForestEnsembleSelection": CaliforniaHousingRandomForestEnsembleSelection,
+    "CaliforniaHousingUnsupervisedData": CaliforniaHousingUnsupervisedData,
+    "SentimentAnalysisLocalXAI": SentimentAnalysisLocalXAI,
+    "ImageClassifierLocalXAI": ImageClassifierLocalXAI,
+}
+
+
+APPROXIMATION_CONFIGURATIONS: dict[str, Approximator.__class__] = {
+    "SV": SV_APPROXIMATORS,
+    "SI": SI_APPROXIMATORS,
+    "SII": SII_APPROXIMATORS,
+    "k-SII": SII_APPROXIMATORS,  # "k-SII" is the same as "SII"
+    "STII": STII_APPROXIMATORS,
+    "FSII": FSII_APPROXIMATORS,
+}
+
+APPROXIMATION_NAME_TO_CLASS_MAPPING = {
+    approx.__name__: approx
+    for approx_list in APPROXIMATION_CONFIGURATIONS.values()
+    for approx in approx_list
+}
+
+# contains all parameters that will be passed to the approximators at initialization
+APPROXIMATION_BENCHMARK_PARAMS: dict[Approximator.__class__, tuple[str]] = {}
+APPROXIMATION_BENCHMARK_PARAMS.update(
+    {approx: ("n", "random_state") for approx in SV_APPROXIMATORS}
+)
+APPROXIMATION_BENCHMARK_PARAMS.update(
+    {
+        approx: ("n", "random_state", "index", "max_order")
+        for approx in SI_APPROXIMATORS + SII_APPROXIMATORS + STII_APPROXIMATORS + FSII_APPROXIMATORS
+    }
+)
+
+
+def get_game_file_name_from_config(
+    configuration: dict[str, Any], iteration: Optional[int] = None
+) -> str:
     """Get the file name for the game data with the given configuration and iteration.
 
     Args:
         configuration: A configuration of the game class.
-        iteration: The iteration of the game.
+        iteration: The iteration of the game. Defaults to None.
 
     Returns:
         The file name of the game data
     """
     file_name = "_".join(f"{key}={value}" for key, value in configuration.items())
-    file_name = "_".join([file_name, str(iteration)])
+    if iteration is not None:
+        file_name = "_".join([file_name, str(iteration)])
     return file_name
 
 
@@ -467,12 +535,43 @@ def load_game_data(
         )
     )
     try:
-        return Game(path_to_values=path_to_values)
+        return Game(
+            path_to_values=path_to_values,
+            verbose=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["verbose"],
+            normalize=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["normalize"],
+        )
     except FileNotFoundError as error:
         raise FileNotFoundError(
             f"File {path_to_values} does not exist. Are you sure it was created/pre-computed? "
             f"Consider pre-computing the game or fetching the data from the repository."
         ) from error
+
+
+def get_game_class_from_name(game_name: str) -> Game.__class__:
+    """Get the game class from the name of the game.
+
+    Args:
+        game_name: The name of the game.
+
+    Returns:
+        The class of the game
+    """
+    return GAME_TO_CLASS_MAPPING[game_name]
+
+
+def get_name_from_game_class(game_class: Game.__class__) -> str:
+    """Get the name of the game from the class of the game
+
+    Args:
+        game_class: The class of the game.
+
+    Returns:
+        The name of the game.
+    """
+    for name, game_cls in GAME_TO_CLASS_MAPPING.items():
+        if game_cls == game_class:
+            return name
+    raise ValueError(f"Game class {game_class} not found in the mapping.")
 
 
 def print_benchmark_configurations() -> None:
@@ -502,9 +601,10 @@ def print_benchmark_configurations() -> None:
             print()
 
 
-def load_games(
-    game_class: Game.__class__,
+def load_games_from_configuration(
+    game_class: Union[Game.__class__, str],
     configuration: dict[str, Any],
+    *,
     n_games: Optional[int] = None,
     n_player_id: int = 0,
     check_pre_computed: bool = True,
@@ -522,6 +622,8 @@ def load_games(
     Returns:
         An initialized game object with the given configuration.
     """
+    game_class = GAME_TO_CLASS_MAPPING[game_class] if isinstance(game_class, str) else game_class
+
     params = {}
 
     # get the default parameters
