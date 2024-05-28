@@ -36,7 +36,7 @@ class ConditionalImputer(Imputer):
         self,
         model,
         data: np.ndarray,
-        x: np.ndarray,
+        x: np.ndarray = None,
         method="generative",
         sample_size: int = 10,
         conditional_budget: int = 1000,
@@ -51,7 +51,8 @@ class ConditionalImputer(Imputer):
         self.conditional_budget = conditional_budget
         self.conditional_threshold = conditional_threshold
         self.init_background(data=data)
-        self.fit(x)
+        if x is not None:
+            self.fit(x)
         # set empty value and normalization
         self.empty_prediction: float = self._calc_empty_prediction()
         if normalize:

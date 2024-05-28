@@ -14,7 +14,7 @@ from shapiq.approximator import (
 )
 from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
-from shapiq.games.imputer import MarginalImputer
+from shapiq.games.imputer import MarginalImputer, ConditionalImputer
 from shapiq.interaction_values import InteractionValues
 
 APPROXIMATOR_CONFIGURATIONS = {
@@ -41,15 +41,19 @@ class TabularExplainer(Explainer):
     to explain the predictions of a model by estimating the Shapley interaction values.
 
     Args:
-        model: The model to explain as a callable function expecting a data points as input and
-            returning the model's predictions.
-        data: A background dataset to use for the explainer.
+        model: The model to be explained as a callable function expecting data points as input and 
+            returning 1-dimensional predictions.
+        data: A background dataset to be used for imputation.
+        imputer: Either an object of class Imputer or a string from ``["marginal", "conditional"]``. 
+            Defaults to ``"marginal"``, which innitializes the default MarginalImputer.
         approximator: An approximator to use for the explainer. Defaults to `"auto"`, which will
             automatically choose the approximator based on the number of features and the number of
             samples in the background data.
         index: Type of Shapley interaction index to use. Must be one of `"SII"` (Shapley Interaction Index),
             `"k-SII"` (k-Shapley Interaction Index), `"STII"` (Shapley-Taylor Interaction Index), or
             `"FSII"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
+        max_order: The maximum interaction order to be computed. Defaults to `2`.
+        **kwargs: Additional keyword-only arguments passed to the imputer.
 
     Attributes:
         index: Type of Shapley interaction index to use.
@@ -61,6 +65,7 @@ class TabularExplainer(Explainer):
         self,
         model,
         data: np.ndarray,
+        imputer = "marginal",
         approximator: Union[str, Approximator] = "auto",
         index: str = "k-SII",
         max_order: int = 2,
@@ -75,7 +80,15 @@ class TabularExplainer(Explainer):
         super().__init__(model, data)
 
         self._random_state = random_state
-        self._imputer = MarginalImputer(self.predict, self.data)
+        if imputer == "marginal":
+            self._imputer = MarginalImputer(self.predict, self.data, **kwargs)
+        elif imputer == "conditional":
+            self._imputer = ConditionalImputer(self.predict, self.data, **kwargs)
+        elif isinstance(imputer, MarginalImputer) or isinstance(imputer, ConditionalImputer):
+            self._imputer = imputer
+        else:
+            raise ValueError(f'Invalid imputer {imputer}. ' 
+                             f'Must be one of ["marginal", "conditional"], or a valid Imputer object.')
         self._n_features: int = self.data.shape[1]
 
         self.index = index

@@ -1,4 +1,4 @@
-"""This module contains the tree explainer implementation."""
+"""Implementation of the tree explainer."""
 
 import copy
 from math import factorial
@@ -19,10 +19,10 @@ from .validation import validate_tree_model
 class TreeSHAPIQ:
     """
     The explainer for tree-based models using the TreeSHAP-IQ algorithm. For a detailed presentation
-    of the algorithm, see the original paper: https://arxiv.org/abs/2401.12069.
+    of the algorithm, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
 
     TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.
-    It is heavily based on the Linear TreeSHAP algorithm (outlined in https://proceedings.neurips.cc/paper_files/paper/2022/hash/a5a3b1ef79520b7cd122d888673a3ebc-Abstract-Conference.html)
+    It is based on the Linear TreeSHAP algorithm by `Yu et al. (2022) <https://doi.org/10.48550/arXiv.2209.08192>`_,
     but extended to compute Shapley Interaction values up to a given order. TreeSHAP-IQ needs to
     visit each node only once and makes use of polynomial arithmetic to compute the Shapley
     Interaction values efficiently.
@@ -379,7 +379,7 @@ class TreeSHAPIQ:
         """Computes the psi function for the TreeSHAP-IQ algorithm.
 
         It scales the interaction polynomials with the summary polynomial and the quotient
-        polynomial. For more information: https://ojs.aaai.org/index.php/AAAI/article/view/29352
+        polynomial. For details, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
 
         Args:
             E: The summary polynomial.

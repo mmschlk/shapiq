@@ -1,4 +1,4 @@
-"""This module contains functions for converting scikit-learn decision trees to the format used by
+"""Functions for converting scikit-learn decision trees to the format used by
 shapiq."""
 
 from typing import Optional
@@ -20,7 +20,7 @@ def convert_sklearn_forest(
     Args:
         tree_model: The scikit-learn random forest model to convert.
         class_label: The class label of the model to explain. Only used for classification models.
-            Defaults to 0.
+            Defaults to 1.
 
     Returns:
         The converted random forest model.
@@ -40,7 +40,7 @@ def convert_sklearn_tree(
     Args:
         tree_model: The scikit-learn decision tree model to convert.
         class_label: The class label of the model to explain. Only used for classification models.
-            Defaults to 0.
+            Defaults to 1.
         scaling: The scaling factor for the tree values.
 
     Returns:
@@ -49,7 +49,9 @@ def convert_sklearn_tree(
     output_type = "raw"
     tree_values = tree_model.tree_.value.copy() * scaling
     # set class label if not given and model is a classifier
-    if safe_isinstance(tree_model, "sklearn.tree.DecisionTreeClassifier") and class_label is None:
+    if (safe_isinstance(tree_model, "sklearn.tree.DecisionTreeClassifier") or\
+        safe_isinstance(tree_model, "sklearn.tree._classes.DecisionTreeClassifier")) and\
+        class_label is None:
         class_label = 1
 
     if class_label is not None:

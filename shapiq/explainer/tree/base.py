@@ -1,4 +1,4 @@
-"""This module contains the base class for tree model conversion."""
+"""The base class for tree model conversion."""
 
 from dataclasses import dataclass
 from typing import Any, Optional

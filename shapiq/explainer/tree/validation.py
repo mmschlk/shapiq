@@ -1,4 +1,4 @@
-"""This module contains conversion functions for the tree explainer implementation."""
+"""Conversion functions for the tree explainer implementation."""
 
 from typing import Any, Optional, Union
 
@@ -6,12 +6,23 @@ from shapiq.utils import safe_isinstance
 
 from .base import TreeModel
 from .conversion.sklearn import convert_sklearn_forest, convert_sklearn_tree
+from .conversion.lightgbm import convert_lightgbm_booster
+from .conversion.xgboost import convert_xgboost_booster
 
 SUPPORTED_MODELS = {
     "sklearn.tree.DecisionTreeRegressor",
+    "sklearn.tree._classes.DecisionTreeRegressor",
     "sklearn.tree.DecisionTreeClassifier",
+    "sklearn.tree._classes.DecisionTreeClassifier",
     "sklearn.ensemble.RandomForestClassifier",
+    "sklearn.ensemble._forest.RandomForestClassifier",
+    "sklearn.ensemble.ExtraTreesClassifier",
+    "sklearn.ensemble._forest.ExtraTreesClassifier",
     "sklearn.ensemble.RandomForestRegressor",
+    "sklearn.ensemble._forest.RandomForestRegressor",
+    "lightgbm.sklearn.LGBMRegressor",
+    "lightgbm.sklearn.LGBMClassifier",
+    "lightgbm.basic.Booster"
 }
 
 
@@ -36,15 +47,29 @@ def validate_tree_model(
         tree_model = TreeModel(**model)
     # transformation of common machine learning libraries to TreeModel
     # sklearn decision trees
-    elif safe_isinstance(model, "sklearn.tree.DecisionTreeRegressor") or safe_isinstance(
-        model, "sklearn.tree.DecisionTreeClassifier"
-    ):
+    elif safe_isinstance(model, "sklearn.tree.DecisionTreeRegressor") or\
+        safe_isinstance(model, "sklearn.tree._classes.DecisionTreeRegressor") or\
+        safe_isinstance(model, "sklearn.tree.DecisionTreeClassifier") or\
+        safe_isinstance(model, "sklearn.tree._classes.DecisionTreeClassifier"):
         tree_model = convert_sklearn_tree(model, class_label=class_label)
     # sklearn random forests
-    elif safe_isinstance(model, "sklearn.ensemble.RandomForestRegressor") or safe_isinstance(
-        model, "sklearn.ensemble.RandomForestClassifier"
-    ):
+    elif safe_isinstance(model, "sklearn.ensemble.RandomForestRegressor") or\
+        safe_isinstance(model, "sklearn.ensemble._forest.RandomForestRegressor") or\
+        safe_isinstance(model, "sklearn.ensemble.RandomForestClassifier") or\
+        safe_isinstance(model, "sklearn.ensemble._forest.RandomForestClassifier") or\
+        safe_isinstance(model, "sklearn.ensemble.ExtraTreesClassifier") or\
+        safe_isinstance(model, "sklearn.ensemble._forest.ExtraTreesClassifier"):
         tree_model = convert_sklearn_forest(model, class_label=class_label)
+    elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or\
+        safe_isinstance(model, "lightgbm.sklearn.LGBMClassifier"):
+        tree_model = convert_lightgbm_booster(model.booster_, class_label=class_label)
+    elif safe_isinstance(model, "lightgbm.basic.Booster"):
+        tree_model = convert_lightgbm_booster(model, class_label=class_label)
+    elif safe_isinstance(model, "xgboost.sklearn.XGBRegressor") or\
+        safe_isinstance(model, "xgboost.sklearn.XGBClassifier"):
+        tree_model = convert_xgboost_booster(model.get_booster(), class_label=class_label)
+    elif safe_isinstance(model, "xgboost.core.Booster"):
+        tree_model = convert_xgboost_booster(model, class_label=class_label)
     # unsupported model
     else:
         raise TypeError("Unsupported model type." f"Supported models are: {SUPPORTED_MODELS}")

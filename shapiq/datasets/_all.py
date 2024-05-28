@@ -29,8 +29,11 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
         return data
 
 
-def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
+def load_california_housing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     """Load the California housing dataset.
+
+    Args:
+        to_numpy: Return numpy objects instead of pandas. Default is False.
 
     Returns:
         The California housing dataset as a pandas DataFrame.
@@ -40,11 +43,17 @@ def load_california_housing() -> tuple[pd.DataFrame, pd.Series]:
     y_data = dataset[class_label]
     x_data = dataset.drop(columns=[class_label])
 
-    return x_data, y_data
+    if to_numpy:
+        return x_data.to_numpy(), y_data.to_numpy()
+    else:
+        return x_data, y_data
 
 
-def load_bike_sharing() -> tuple[pd.DataFrame, pd.Series]:
+def load_bike_sharing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     """Load the bike-sharing dataset from openml.
+
+    Args:
+        to_numpy: Return numpy objects instead of pandas. Default is False.
 
     Note:
         The function requires the `sklearn` package to be installed.
@@ -88,17 +97,23 @@ def load_bike_sharing() -> tuple[pd.DataFrame, pd.Series]:
     dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
     dataset.dropna(inplace=True)
 
-    x_data = dataset
     y_data = dataset.pop(class_label)
+    x_data = dataset
 
-    return x_data, y_data
+    if to_numpy:
+        return x_data.to_numpy(), y_data.to_numpy()
+    else:
+        return x_data, y_data
 
 
-def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
+def load_adult_census(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     """Load the adult census dataset from the UCI Machine Learning Repository.
 
     Original source: https://archive.ics.uci.edu/ml/datasets/adult
 
+    Args:
+        to_numpy: Return numpy objects instead of pandas. Default is False.
+        
     Note:
         The function requires the `sklearn` package to be installed.
 
@@ -146,10 +161,13 @@ def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
     dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
     dataset.dropna(inplace=True)
 
-    x_data = dataset
     y_data = dataset.pop(class_label)
+    x_data = dataset.astype(float)
 
     # transform '>50K' to 1 and '<=50K' to 0
     y_data = y_data.apply(lambda x: 1 if x == ">50K" else 0)
 
-    return x_data, y_data
+    if to_numpy:
+        return x_data.to_numpy(), y_data.to_numpy()
+    else:
+        return x_data, y_data

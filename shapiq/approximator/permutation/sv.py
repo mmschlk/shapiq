@@ -55,8 +55,8 @@ class PermutationSamplingSV(Approximator):
 
         # store the values of the empty and full coalition
         # this saves 2 evaluations per permutation
-        empty_val = float(game(np.zeros(self.n, dtype=bool)))
-        full_val = float(game(np.ones(self.n, dtype=bool)))
+        empty_val = float(game(np.zeros(self.n, dtype=bool))[0])
+        full_val = float(game(np.ones(self.n, dtype=bool))[0])
         used_budget = 2
 
         # catch special case of single player game, otherwise iteration through permutations fails

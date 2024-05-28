@@ -1,6 +1,5 @@
-"""This module contains the conversion functions to parse a tree model into the edge representation.
-The edge representation is used by the TreeSHAP-IQ algorithm to compute the interaction values of a
-tree-based model."""
+"""Conversion functions to parse a tree model into the edge representation used by the
+TreeSHAP-IQ algorithm to compute the interaction values of a tree-based model."""
 
 import numpy as np
 from scipy.special import binom
@@ -22,8 +21,8 @@ def create_edge_tree(
     """Extracts edge information recursively from the tree information.
 
     Parses the tree recursively to create an edge-based representation of the tree. It
-    precalculates the p_e and p_e_ancestors of the interaction subsets up to order
-    'max_interaction'.
+    precalculates the `p_e` and `p_e_ancestors` of the interaction subsets up to order
+    `max_interaction`.
 
     Args:
         children_left (np.ndarray[int]): The left children of each node. Leaf nodes are denoted

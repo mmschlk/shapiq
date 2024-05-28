@@ -23,18 +23,29 @@ def get_predict_function_and_model_type(model, model_class):
         "sklearn.tree._classes.DecisionTreeClassifier",
         "sklearn.ensemble.RandomForestClassifier",
         "sklearn.ensemble._forest.RandomForestClassifier",
+        "sklearn.ensemble.ExtraTreesClassifier",
+        "sklearn.ensemble._forest.ExtraTreesClassifier",
         "sklearn.ensemble.RandomForestRegressor",
         "sklearn.ensemble._forest.RandomForestRegressor",
+    ]:
+        _model_type = "tree"
+
+    # lightgbm
+    if model_class in [
+        "lightgbm.basic.Booster",
+        "lightgbm.sklearn.LGBMRegressor",
+        "lightgbm.sklearn.LGBMClassifier",
     ]:
         _model_type = "tree"
 
     # xgboost
     if model_class == "xgboost.core.Booster":
         _predict_function = predict_xgboost
-        _model_type = "tree"
-
-    # lightgbm
-    if model_class == "lightgbm.basic.Booster":
+    if model_class in [
+        "xgboost.core.Booster",
+        "xgboost.sklearn.XGBRegressor",
+        "xgboost.sklearn.XGBClassifier"
+    ]:
         _model_type = "tree"
 
     # TODO: torch.Sequential
@@ -93,14 +104,11 @@ def predict_proba_default(m, d):
 
 def predict_xgboost(m, d):
     from xgboost import DMatrix
-
     return m.predict(DMatrix(d))
 
 
 def predict_tf_single(m, d):
-    return m.predict(d, verbose=0).reshape(
-        -1,
-    )
+    return m.predict(d, verbose=0).reshape(-1,)
 
 
 def predict_tf_binary(m, d):

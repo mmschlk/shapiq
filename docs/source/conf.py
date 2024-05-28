@@ -20,7 +20,7 @@ master_doc = "index"
 # -- Project information ---------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 project = "shapiq"
-copyright = "2023, "
+copyright = "2024, Muschalik et al."
 author = "Muschalik et al."
 release = shapiq.__version__
 version = shapiq.__version__

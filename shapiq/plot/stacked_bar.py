@@ -81,10 +81,10 @@ def stacked_bar_plot(
     n_features = len(feature_names)
     x = np.arange(n_features)
     values_pos = np.array(
-        [values for order, values in n_shapley_values_pos.items() if order >= n_sii_max_order]
+        [values for order, values in n_shapley_values_pos.items() if order <= n_sii_max_order]
     )
     values_neg = np.array(
-        [values for order, values in n_shapley_values_neg.items() if order >= n_sii_max_order]
+        [values for order, values in n_shapley_values_neg.items() if order <= n_sii_max_order]
     )
 
     # get helper variables for plotting the bars
