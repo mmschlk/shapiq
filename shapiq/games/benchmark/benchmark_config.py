@@ -153,9 +153,12 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
     AdultCensusLocalXAI: [
         {
             "configurations": [
-                {"model_name": "decision_tree", "class_to_explain": 1},
-                {"model_name": "random_forest", "class_to_explain": 1},
-                {"model_name": "gradient_boosting", "class_to_explain": 1},
+                {"model_name": "decision_tree", "imputer": "marginal"},
+                {"model_name": "random_forest", "imputer": "marginal"},
+                {"model_name": "gradient_boosting", "imputer": "marginal"},
+                # {"model_name": "decision_tree", "imputer": "conditional"},
+                # {"model_name": "random_forest", "imputer": "conditional"},
+                # {"model_name": "gradient_boosting", "imputer": "conditional"},
             ],
             "iteration_parameter": "x",
             "n_players": 14,
@@ -164,9 +167,12 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
     BikeSharingLocalXAI: [
         {
             "configurations": [
-                {"model_name": "decision_tree"},
-                {"model_name": "random_forest"},
-                {"model_name": "gradient_boosting"},
+                {"model_name": "decision_tree", "imputer": "marginal"},
+                {"model_name": "random_forest", "imputer": "marginal"},
+                {"model_name": "gradient_boosting", "imputer": "marginal"},
+                # {"model_name": "decision_tree", "imputer": "conditional"},
+                # {"model_name": "random_forest", "imputer": "conditional"},
+                # {"model_name": "gradient_boosting", "imputer": "conditional"},
             ],
             "iteration_parameter": "x",
             "n_players": 12,
@@ -175,10 +181,14 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
     CaliforniaHousingLocalXAI: [
         {
             "configurations": [
-                {"model_name": "decision_tree"},
-                {"model_name": "random_forest"},
-                {"model_name": "gradient_boosting"},
-                {"model_name": "neural_network"},
+                {"model_name": "decision_tree", "imputer": "marginal"},
+                {"model_name": "random_forest", "imputer": "marginal"},
+                {"model_name": "gradient_boosting", "imputer": "marginal"},
+                # {"model_name": "neural_network", "imputer": "marginal"},
+                # {"model_name": "decision_tree", "imputer": "conditional"},
+                # {"model_name": "random_forest", "imputer": "conditional"},
+                # {"model_name": "gradient_boosting", "imputer": "conditional"},
+                # {"model_name": "neural_network", "imputer": "conditional"},
             ],
             "iteration_parameter": "x",
             "n_players": 8,
@@ -282,6 +292,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
                 {"model_name": "decision_tree"},
                 {"model_name": "random_forest"},
                 {"model_name": "gradient_boosting"},
+                # {"model_name": "neural_network"}  # not possible atm. needs dynamic input size
             ],
             "iteration_parameter": "random_state",
             "n_players": 8,
@@ -359,7 +370,8 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 10},
                 {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 10},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
+                {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
+                # {"model_name": "neural_network", "player_sizes": "increasing", "n_players": 10},  # does not work atm. too slow
             ],
             "iteration_parameter": "random_state",
             "n_players": 10,

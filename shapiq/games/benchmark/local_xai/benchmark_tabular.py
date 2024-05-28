@@ -18,6 +18,8 @@ class AdultCensus(LocalExplanation):
             of shape (n_features).
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree', 'random_forest', and 'gradient_boosting'.
+        imputer: The imputer to use. Defaults to 'marginal'. Available imputers are 'marginal'
+            and 'conditional'.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
@@ -27,15 +29,16 @@ class AdultCensus(LocalExplanation):
     def __init__(
         self,
         *,
-        class_to_explain: int = 1,
+        class_to_explain: Optional[int] = None,
         x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
+        imputer: str = "marginal",
         normalize: bool = True,
         verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
         # validate the inputs
-        if class_to_explain not in [0, 1]:
+        if isinstance(class_to_explain, int) and class_to_explain not in [0, 1]:
             raise ValueError(
                 f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}."
             )
@@ -50,6 +53,10 @@ class AdultCensus(LocalExplanation):
         # get x_explain
         x = get_x_explain(x, self.setup.x_test)
 
+        # get class_to_explain
+        if class_to_explain is None:
+            class_to_explain = int(np.argmax(self.setup.predict_function(x.reshape(1, -1))))
+
         def predict_function(x):
             return self.setup.predict_function(x)[:, class_to_explain]
 
@@ -58,6 +65,7 @@ class AdultCensus(LocalExplanation):
             x=x,
             data=self.setup.x_train,
             model=predict_function,
+            imputer=imputer,
             random_state=random_state,
             normalize=normalize,
             verbose=verbose,
@@ -72,6 +80,8 @@ class BikeSharing(LocalExplanation):
             of shape (n_features).
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree', 'random_forest', and 'gradient_boosting'.
+        imputer: The imputer to use. Defaults to 'marginal'. Available imputers are 'marginal'
+            and 'conditional'.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
@@ -83,6 +93,7 @@ class BikeSharing(LocalExplanation):
         *,
         x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
+        imputer: str = "marginal",
         normalize: bool = True,
         verbose: bool = False,
         random_state: Optional[int] = 42,
@@ -105,6 +116,7 @@ class BikeSharing(LocalExplanation):
             x=x,
             data=self.setup.x_test,
             model=predict_function,
+            imputer=imputer,
             random_state=random_state,
             normalize=normalize,
             verbose=verbose,
@@ -119,6 +131,8 @@ class CaliforniaHousing(LocalExplanation):
             of shape (n_features).
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree', 'random_forest', 'gradient_boosting', and 'neural_network'.
+        imputer: The imputer to use. Defaults to 'marginal'. Available imputers are 'marginal'
+            and 'conditional'.
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
@@ -130,6 +144,7 @@ class CaliforniaHousing(LocalExplanation):
         *,
         x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
+        imputer: str = "marginal",
         normalize: bool = True,
         verbose: bool = False,
         random_state: Optional[int] = 42,
@@ -152,6 +167,7 @@ class CaliforniaHousing(LocalExplanation):
             x=x,
             data=self.setup.x_test,
             model=predict_function,
+            imputer=imputer,
             random_state=random_state,
             normalize=normalize,
             verbose=verbose,

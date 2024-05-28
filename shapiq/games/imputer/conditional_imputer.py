@@ -79,6 +79,7 @@ class ConditionalImputer(Imputer):
         tree_embedder.fit(X_masked, X_tiled)
         self._data_embedded = tree_embedder.apply(data)
         self._tree_embedder = tree_embedder
+        return self
 
     def fit(self, x: np.ndarray[float]) -> "ConditionalImputer":
         """Fits the imputer to the explanation point.
