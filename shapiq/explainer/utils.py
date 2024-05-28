@@ -23,6 +23,8 @@ def get_predict_function_and_model_type(model, model_class):
         "sklearn.tree._classes.DecisionTreeClassifier",
         "sklearn.ensemble.RandomForestClassifier",
         "sklearn.ensemble._forest.RandomForestClassifier",
+        "sklearn.ensemble.ExtraTreesClassifier",
+        "sklearn.ensemble._forest.ExtraTreesClassifier",
         "sklearn.ensemble.RandomForestRegressor",
         "sklearn.ensemble._forest.RandomForestRegressor",
     ]:

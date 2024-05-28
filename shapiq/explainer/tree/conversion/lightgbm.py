@@ -27,9 +27,15 @@ def convert_lightgbm_booster(
     """
     scaling = 1.0 / tree_booster.num_trees()
     booster_df = tree_booster.trees_to_dataframe()
-    if tree_booster.params['objective'] in ['binary', 'multiclass']:
-        # convert raw to probabilities
-        booster_df['value'] = _sigmoid(booster_df['value'])
+    # probabilities are hard and not implemented in shap/lightgbm, see
+    # https://stackoverflow.com/q/63490533
+    # https://stackoverflow.com/q/41433209
+    # if tree_booster.params['objective'] in ['binary', 'multiclass']:
+    #     # convert raw to probabilities
+    #     booster_df['value'] = _sigmoid(booster_df['value'])
+    #     output_type = "probability"
+    # else:
+    output_type = "raw"
     if tree_booster.params['objective'] == "multiclass":
         # choose only trees for the selected class (lightgbm grows n_estimators*n_class trees)
         n_class = tree_booster.num_model_per_iteration()
@@ -44,24 +50,24 @@ def convert_lightgbm_booster(
         booster_df['split_feature'] = booster_df['split_feature']\
             .replace(convert_feature_str_to_int).infer_objects(copy=False)
     return [
-        _convert_lightgbm_tree_as_df(tree_df, scaling=scaling)
-        for i, tree_df in booster_df.groupby("tree_index")
+        _convert_lightgbm_tree_as_df(tree_df=tree_df, output_type=output_type, scaling=scaling)
+        for _, tree_df in booster_df.groupby("tree_index")
     ]
 
 
 def _convert_lightgbm_tree_as_df(
-    tree_df: Model, scaling: float = 1.0
+    tree_df: Model, output_type: str, scaling: float = 1.0,
 ) -> TreeModel:
     """Convert a lightgbm decision tree to the format used by shapiq.
 
     Args:
         tree_df: The lightgbm decision tree model formatted as a data frame.
+        output_type: Either "raw" or "probability". Currently unused.
         scaling: The scaling factor for the tree values.
 
     Returns:
         The converted decision tree model.
     """
-    output_type = "raw"
     convert_node_str_to_int = {k: v for v, k in enumerate(tree_df.node_index)}
 
     # pandas can't chill https://stackoverflow.com/q/77900971

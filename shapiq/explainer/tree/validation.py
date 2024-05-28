@@ -15,6 +15,8 @@ SUPPORTED_MODELS = {
     "sklearn.tree._classes.DecisionTreeClassifier",
     "sklearn.ensemble.RandomForestClassifier",
     "sklearn.ensemble._forest.RandomForestClassifier",
+    "sklearn.ensemble.ExtraTreesClassifier",
+    "sklearn.ensemble._forest.ExtraTreesClassifier",
     "sklearn.ensemble.RandomForestRegressor",
     "sklearn.ensemble._forest.RandomForestRegressor",
     "lightgbm.sklearn.LGBMRegressor",
@@ -53,12 +55,13 @@ def validate_tree_model(
     elif safe_isinstance(model, "sklearn.ensemble.RandomForestRegressor") or\
         safe_isinstance(model, "sklearn.ensemble._forest.RandomForestRegressor") or\
         safe_isinstance(model, "sklearn.ensemble.RandomForestClassifier") or\
-        safe_isinstance(model, "sklearn.ensemble._forest.RandomForestClassifier"):
+        safe_isinstance(model, "sklearn.ensemble._forest.RandomForestClassifier") or\
+        safe_isinstance(model, "sklearn.ensemble.ExtraTreesClassifier") or\
+        safe_isinstance(model, "sklearn.ensemble._forest.ExtraTreesClassifier"):
         tree_model = convert_sklearn_forest(model, class_label=class_label)
     elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or\
         safe_isinstance(model, "lightgbm.sklearn.LGBMClassifier"):
-        booster = model.booster_
-        tree_model = convert_lightgbm_booster(booster, class_label=class_label)
+        tree_model = convert_lightgbm_booster(model.booster_, class_label=class_label)
     elif safe_isinstance(model, "lightgbm.basic.Booster"):
         tree_model = convert_lightgbm_booster(model, class_label=class_label)
     # unsupported model
