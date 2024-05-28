@@ -22,9 +22,11 @@ if __name__ == "__main__":
     # nohup nice -n 19 python pre_compute_all.py --datasets CaliforniaHousing
 
     datasets_to_precompute = [
-        # "AdultCensus",
-        "BikeSharing",
+        "AdultCensus",
+        # "BikeSharing",
         # "CaliforniaHousing",
+        "Sentiment",
+        "Image",
     ]
     max_n_players = 14
 
@@ -43,7 +45,6 @@ if __name__ == "__main__":
 
     omit_games = [
         "AdultCensusClusterExplanation",
-        "AdultCensusFeatureSelection",
         "BikeSharingClusterExplanation",
         "CaliforniaHousingClusterExplanation",
         "CaliforniaHousingDatasetValuation",
