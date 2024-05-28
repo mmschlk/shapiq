@@ -41,7 +41,12 @@ def get_predict_function_and_model_type(model, model_class):
     # xgboost
     if model_class == "xgboost.core.Booster":
         _predict_function = predict_xgboost
-        _model_type = "tabular"
+    if model_class in [
+        "xgboost.core.Booster",
+        "xgboost.sklearn.XGBRegressor",
+        "xgboost.sklearn.XGBClassifier"
+    ]:
+        _model_type = "tree"
 
     # TODO: torch.Sequential
 

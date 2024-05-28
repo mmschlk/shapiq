@@ -7,6 +7,7 @@ from shapiq.utils import safe_isinstance
 from .base import TreeModel
 from .conversion.sklearn import convert_sklearn_forest, convert_sklearn_tree
 from .conversion.lightgbm import convert_lightgbm_booster
+from .conversion.xgboost import convert_xgboost_booster
 
 SUPPORTED_MODELS = {
     "sklearn.tree.DecisionTreeRegressor",
@@ -64,6 +65,11 @@ def validate_tree_model(
         tree_model = convert_lightgbm_booster(model.booster_, class_label=class_label)
     elif safe_isinstance(model, "lightgbm.basic.Booster"):
         tree_model = convert_lightgbm_booster(model, class_label=class_label)
+    elif safe_isinstance(model, "xgboost.sklearn.XGBRegressor") or\
+        safe_isinstance(model, "xgboost.sklearn.XGBClassifier"):
+        tree_model = convert_xgboost_booster(model.get_booster(), class_label=class_label)
+    elif safe_isinstance(model, "xgboost.core.Booster"):
+        tree_model = convert_xgboost_booster(model, class_label=class_label)
     # unsupported model
     else:
         raise TypeError("Unsupported model type." f"Supported models are: {SUPPORTED_MODELS}")

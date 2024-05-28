@@ -25,9 +25,10 @@ def convert_lightgbm_booster(
     Returns:
         The converted lightgbm booster.
     """
-    scaling = 1.0 / tree_booster.num_trees()
+    # https://github.com/shap/shap/blob/77e92c3c110e816b768a0ec2acfbf4cc08ee13db/shap/explainers/_tree.py#L1079
+    scaling = 1.0
     booster_df = tree_booster.trees_to_dataframe()
-    # probabilities are hard and not implemented in shap/lightgbm, see
+    # probabilities are hard and not implemented in shap / lightgbm, see
     # https://stackoverflow.com/q/63490533
     # https://stackoverflow.com/q/41433209
     # if tree_booster.params['objective'] in ['binary', 'multiclass']:
@@ -43,7 +44,6 @@ def convert_lightgbm_booster(
             class_label = 0
         idc = booster_df['tree_index'] % n_class == class_label
         booster_df = booster_df[idc]
-        scaling = scaling / n_class
     convert_feature_str_to_int = {k: v for v, k in enumerate(tree_booster.feature_name())}
     # pandas can't chill https://stackoverflow.com/q/77900971
     with pd.option_context('future.no_silent_downcasting', True):
