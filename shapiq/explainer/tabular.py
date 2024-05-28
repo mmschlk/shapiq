@@ -14,7 +14,7 @@ from shapiq.approximator import (
 )
 from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
-from shapiq.games.imputer import MarginalImputer, ConditionalImputer
+from shapiq.games.imputer import ConditionalImputer, MarginalImputer
 from shapiq.interaction_values import InteractionValues
 
 APPROXIMATOR_CONFIGURATIONS = {
@@ -41,10 +41,10 @@ class TabularExplainer(Explainer):
     to explain the predictions of a model by estimating the Shapley interaction values.
 
     Args:
-        model: The model to be explained as a callable function expecting data points as input and 
+        model: The model to be explained as a callable function expecting data points as input and
             returning 1-dimensional predictions.
         data: A background dataset to be used for imputation.
-        imputer: Either an object of class Imputer or a string from ``["marginal", "conditional"]``. 
+        imputer: Either an object of class Imputer or a string from ``["marginal", "conditional"]``.
             Defaults to ``"marginal"``, which innitializes the default MarginalImputer.
         approximator: An approximator to use for the explainer. Defaults to `"auto"`, which will
             automatically choose the approximator based on the number of features and the number of
@@ -65,7 +65,7 @@ class TabularExplainer(Explainer):
         self,
         model,
         data: np.ndarray,
-        imputer = "marginal",
+        imputer="marginal",
         approximator: Union[str, Approximator] = "auto",
         index: str = "k-SII",
         max_order: int = 2,
@@ -87,8 +87,10 @@ class TabularExplainer(Explainer):
         elif isinstance(imputer, MarginalImputer) or isinstance(imputer, ConditionalImputer):
             self._imputer = imputer
         else:
-            raise ValueError(f'Invalid imputer {imputer}. ' 
-                             f'Must be one of ["marginal", "conditional"], or a valid Imputer object.')
+            raise ValueError(
+                f"Invalid imputer {imputer}. "
+                f'Must be one of ["marginal", "conditional"], or a valid Imputer object.'
+            )
         self._n_features: int = self.data.shape[1]
 
         self.index = index

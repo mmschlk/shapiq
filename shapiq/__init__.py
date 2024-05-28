@@ -26,10 +26,10 @@ from .exact import ExactComputer
 
 # explainer classes
 from .explainer import Explainer, TabularExplainer, TreeExplainer
+from .games import Game
 
 # game classes
 from .interaction_values import InteractionValues
-from .games import Game
 
 # plotting functions
 from .plot import network_plot, stacked_bar_plot

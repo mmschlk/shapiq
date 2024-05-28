@@ -113,7 +113,7 @@ def load_adult_census(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
 
     Args:
         to_numpy: Return numpy objects instead of pandas. Default is False.
-        
+
     Note:
         The function requires the `sklearn` package to be installed.
 

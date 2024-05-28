@@ -9,7 +9,7 @@ from . import utils
 
 class Explainer:
     """The main Explainer class for a simpler user interface.
-    
+
     shapiq.Explainer is a simplified interface for the `shapiq` package. It detects between
     TabularExplainer and TreeExplainer based on the model class.
 
@@ -23,12 +23,7 @@ class Explainer:
         data: A background data to use for the explainer.
     """
 
-    def __init__(
-            self, 
-            model, 
-            data: np.ndarray = None, 
-            **kwargs
-        ) -> None:
+    def __init__(self, model, data: np.ndarray = None, **kwargs) -> None:
 
         self._model_class = utils.print_class(model)
         self._predict_function, self._model_type = utils.get_predict_function_and_model_type(
@@ -60,7 +55,7 @@ class Explainer:
 
     def explain(self, x: np.ndarray) -> InteractionValues:
         """Explain the model's prediction in terms of interaction values.
-        
+
         Args:
             x: An instance/point/sample/observation to be explained.
         """

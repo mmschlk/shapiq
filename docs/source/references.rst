@@ -15,5 +15,5 @@ Related software
 ~~~~~~~~~~~~~~~~
 
 - Jiang et al. `OpenDataVal: A unified benchmark for data valuation <https://doi.org/10.48550/arXiv.2306.10577>`_. NeurIPS 2023
-- Agarwal et al. `OpenXAI: Towards a transparent evaluation of model explanations <https://doi.org/10.48550/arXiv.2206.11104>`_. NeurIPS 2022   
+- Agarwal et al. `OpenXAI: Towards a transparent evaluation of model explanations <https://doi.org/10.48550/arXiv.2206.11104>`_. NeurIPS 2022
 - TODO
