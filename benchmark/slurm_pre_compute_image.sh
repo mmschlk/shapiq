@@ -40,7 +40,7 @@ echo "#SBATCH --mail-user=Maximilian.Muschalik@ifi.lmu.de" >> "${FILE}"
 echo "#SBATCH --mail-type=NONE" >> "${FILE}"
 echo "#SBATCH --cpus-per-task=1" >> "${FILE}"
 echo "#SBATCH --qos=bg_maximilian" >> "${FILE}"
-echo "#SBATCH --nodeslist=cmp01-kiml" >> "${FILE}"
+echo "#SBATCH --nodelist=cmp01-kiml" >> "${FILE}"
 
 # source the virtual environment
 echo "source ${PROJECT_DIR}/venv/bin/activate" >> "${FILE}"
