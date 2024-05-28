@@ -234,7 +234,7 @@ class GameBenchmarkSetup:
         """Initializes and trains a gradient boosting model for a classification dataset."""
         from xgboost import XGBClassifier
 
-        self.model = XGBClassifier(random_state=self.random_state)
+        self.model = XGBClassifier(random_state=self.random_state, n_jobs=1)
         self.model.fit(self.x_train, self.y_train)
 
     def init_decision_tree_regressor(self):
@@ -251,7 +251,7 @@ class GameBenchmarkSetup:
         """Initializes and trains a gradient boosting model for a regression dataset."""
         from xgboost import XGBRegressor
 
-        self.model = XGBRegressor(random_state=self.random_state)
+        self.model = XGBRegressor(random_state=self.random_state, n_jobs=1)
         self.model.fit(self.x_train, self.y_train)
 
     def init_california_neural_network(self):

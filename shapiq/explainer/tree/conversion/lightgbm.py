@@ -19,7 +19,7 @@ def convert_lightgbm_booster(
 
     Args:
         tree_booster: The lightgbm booster to convert.
-        class_label: The class label of the model to explain. Only used for multiclass 
+        class_label: The class label of the model to explain. Only used for multiclass
             classification models. Defaults to 0.
 
     Returns:
@@ -37,18 +37,21 @@ def convert_lightgbm_booster(
     #     output_type = "probability"
     # else:
     output_type = "raw"
-    if tree_booster.params['objective'] == "multiclass":
+    if tree_booster.params["objective"] == "multiclass":
         # choose only trees for the selected class (lightgbm grows n_estimators*n_class trees)
         n_class = tree_booster.num_model_per_iteration()
         if class_label is None:
             class_label = 0
-        idc = booster_df['tree_index'] % n_class == class_label
+        idc = booster_df["tree_index"] % n_class == class_label
         booster_df = booster_df[idc]
     convert_feature_str_to_int = {k: v for v, k in enumerate(tree_booster.feature_name())}
     # pandas can't chill https://stackoverflow.com/q/77900971
-    with pd.option_context('future.no_silent_downcasting', True):
-        booster_df['split_feature'] = booster_df['split_feature']\
-            .replace(convert_feature_str_to_int).infer_objects(copy=False)
+    with pd.option_context("future.no_silent_downcasting", True):
+        booster_df["split_feature"] = (
+            booster_df["split_feature"]
+            .replace(convert_feature_str_to_int)
+            .infer_objects(copy=False)
+        )
     return [
         _convert_lightgbm_tree_as_df(tree_df=tree_df, output_type=output_type, scaling=scaling)
         for _, tree_df in booster_df.groupby("tree_index")
@@ -56,7 +59,9 @@ def convert_lightgbm_booster(
 
 
 def _convert_lightgbm_tree_as_df(
-    tree_df: Model, output_type: str, scaling: float = 1.0,
+    tree_df: Model,
+    output_type: str,
+    scaling: float = 1.0,
 ) -> TreeModel:
     """Convert a lightgbm decision tree to the format used by shapiq.
 
@@ -71,20 +76,28 @@ def _convert_lightgbm_tree_as_df(
     convert_node_str_to_int = {k: v for v, k in enumerate(tree_df.node_index)}
 
     # pandas can't chill https://stackoverflow.com/q/77900971
-    with pd.option_context('future.no_silent_downcasting', True):
+    with pd.option_context("future.no_silent_downcasting", True):
         return TreeModel(
-            children_left=tree_df['left_child']\
-                .replace(convert_node_str_to_int).infer_objects(copy=False).fillna(-1).astype(int).values,
-            children_right=tree_df['right_child']\
-                .replace(convert_node_str_to_int).infer_objects(copy=False).fillna(-1).astype(int).values,
-            features=tree_df['split_feature'].fillna(-2).astype(int).values,
-            thresholds=tree_df['threshold'].values,
-            values=tree_df['value'].values * scaling,
-            node_sample_weight=tree_df['count'].values,
+            children_left=tree_df["left_child"]
+            .replace(convert_node_str_to_int)
+            .infer_objects(copy=False)
+            .fillna(-1)
+            .astype(int)
+            .values,
+            children_right=tree_df["right_child"]
+            .replace(convert_node_str_to_int)
+            .infer_objects(copy=False)
+            .fillna(-1)
+            .astype(int)
+            .values,
+            features=tree_df["split_feature"].fillna(-2).astype(int).values,
+            thresholds=tree_df["threshold"].values,
+            values=tree_df["value"].values * scaling,
+            node_sample_weight=tree_df["count"].values,
             empty_prediction=None,  # compute empty prediction later
-            original_output_type=output_type, # not used
+            original_output_type=output_type,  # not used
         )
-    
+
 
 def _sigmoid(x):
-    return 1/(1+np.exp(-x)) 
+    return 1 / (1 + np.exp(-x))

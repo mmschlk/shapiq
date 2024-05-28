@@ -36,6 +36,8 @@ if __name__ == "__main__":
         CaliforniaHousingLocalXAI,  # 4 configs  (neural network not in the others)
         CaliforniaHousingRandomForestEnsembleSelection,  # 1 config
         CaliforniaHousingUnsupervisedData,  # 1 config
+        ImageClassifierLocalXAI,  # 1 config for 3 player ids
+        SentimentAnalysisLocalXAI,  # 1 config for 2 player ids
     )
     from shapiq.games.benchmark.benchmark_config import BENCHMARK_CONFIGURATIONS
     from shapiq.games.benchmark.precompute import pre_compute_from_configuration
@@ -65,36 +67,57 @@ if __name__ == "__main__":
         "CaliforniaHousingLocalXAI": CaliforniaHousingLocalXAI,
         "CaliforniaHousingRandomForestEnsembleSelection": CaliforniaHousingRandomForestEnsembleSelection,
         "CaliforniaHousingUnsupervisedData": CaliforniaHousingUnsupervisedData,
+        "SentimentAnalysisLocalXAI": SentimentAnalysisLocalXAI,
+        "ImageClassifierLocalXAI": ImageClassifierLocalXAI,
     }
 
-    # example python run commands for the different games
-    # python pre_compute.py --game AdultCensusClusterExplanation --config_id 1
-    # python pre_compute.py --game AdultCensusClusterExplanation --config_id 2
-    # python pre_compute.py --game CaliforniaHousingDatasetValuation --config_id 1
-    # python pre_compute.py --game CaliforniaHousingDatasetValuation --config_id 2
-    # python pre_compute.py --game CaliforniaHousingDatasetValuation --config_id 3
+    # example python run commands for the SentimentAnalysisLocalXAI game
+    # python pre_compute.py --game SentimentAnalysisLocalXAI --config_id 1 --n_jobs 1
 
-    # parse arguments
+    default_game = "SentimentAnalysisLocalXAI"
+    default_config_id = 1
+
     parser = argparse.ArgumentParser()
     game_choices = list(game_name_to_class.keys())
-    parser.add_argument("--game", type=str, required=True, choices=game_choices)
-    parser.add_argument("--config_id", type=int, required=True, help="The configuration ID to use.")
+    parser.add_argument(
+        "--game", type=str, required=True, choices=game_choices, default=default_game
+    )
+    parser.add_argument(
+        "--config_id",
+        type=int,
+        required=True,
+        default=default_config_id,
+        help="The configuration ID to use.",
+    )
+    parser.add_argument(
+        "--n_player_id",
+        type=int,
+        required=False,
+        default=0,
+        help="The player ID to use. Defaults to 0. Not all games have multiple player IDs",
+    )
     parser.add_argument("--n_jobs", type=int, required=False, default=1)
     args = parser.parse_args()
+    game = args.game
+    config_id = args.config_id
+    n_player_id = args.n_player_id
+    n_jobs = args.n_jobs
 
     # get the game class
-    game_class = game_name_to_class[args.game]
+    game_class = game_name_to_class[game]
 
     # get the configuration
-    all_game_configs = BENCHMARK_CONFIGURATIONS[game_class]["configurations"]
+    all_game_configs = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"]
     n_configs = len(all_game_configs)
-    if args.config_id < 1 or args.config_id > n_configs:
+    if config_id < 1 or config_id > n_configs:
         raise ValueError(
-            f"Invalid configuration ID. Must be in [1, {n_configs}] for game {args.game} which has "
+            f"Invalid configuration ID. Must be in [1, {n_configs}] for game {game} which has "
             f"{all_game_configs} configurations."
         )
 
-    game_config = all_game_configs[args.config_id - 1]
+    game_config = all_game_configs[config_id - 1]
 
     # run the pre-computation
-    pre_compute_from_configuration(game_class, configuration=game_config, n_jobs=args.n_jobs)
+    pre_compute_from_configuration(
+        game_class, configuration=game_config, n_player_id=n_player_id, n_jobs=n_jobs
+    )

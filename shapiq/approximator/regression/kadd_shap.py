@@ -33,7 +33,7 @@ class kADDSHAP(Regression):
     def __init__(
         self,
         n: int,
-        max_order: int = 1,
+        max_order: int = 2,
         random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,

@@ -67,7 +67,9 @@ class ImageClassifier(Game):
         n_superpixel_resnet: int = 14,
         x_explain_path: Optional[str] = None,
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
+        *args,
+        **kwargs,
     ) -> None:
 
         if x_explain_path is None:
@@ -113,7 +115,10 @@ class ImageClassifier(Game):
             self.model_function = resnet_model
 
         super().__init__(
-            n_players=n_players, normalize=normalize, normalization_value=normalization_value
+            n_players=n_players,
+            normalize=normalize,
+            normalization_value=normalization_value,
+            verbose=verbose,
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:

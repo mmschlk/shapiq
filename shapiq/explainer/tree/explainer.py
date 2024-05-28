@@ -15,7 +15,7 @@ from .validation import validate_tree_model
 
 class TreeExplainer(Explainer):
     """
-    The explainer for tree-based models using the TreeSHAP-IQ algorithm. 
+    The explainer for tree-based models using the TreeSHAP-IQ algorithm.
     For details, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
 
     TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.

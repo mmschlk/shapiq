@@ -53,7 +53,9 @@ class SentimentAnalysis(Game):
         0.6615
     """
 
-    def __init__(self, input_text: str, mask_strategy: str = "mask", *args, **kwargs):
+    def __init__(
+        self, input_text: str, mask_strategy: str = "mask", verbose: bool = False, *args, **kwargs
+    ):
         # import the required modules locally (to avoid having to install them for all)
         from transformers import pipeline
 
@@ -85,7 +87,9 @@ class SentimentAnalysis(Game):
         self._empty_output = float(self.value_function(np.zeros((1, n_players), dtype=bool)))
 
         # setup game object
-        super().__init__(n_players, normalization_value=self._empty_output, *args, **kwargs)
+        super().__init__(
+            n_players, normalization_value=self._empty_output, verbose=verbose, *args, **kwargs
+        )
 
     def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
         """Returns the sentiment of the coalition's text.

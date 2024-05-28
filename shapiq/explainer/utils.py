@@ -44,7 +44,7 @@ def get_predict_function_and_model_type(model, model_class):
     if model_class in [
         "xgboost.core.Booster",
         "xgboost.sklearn.XGBRegressor",
-        "xgboost.sklearn.XGBClassifier"
+        "xgboost.sklearn.XGBClassifier",
     ]:
         _model_type = "tree"
 
@@ -104,11 +104,14 @@ def predict_proba_default(m, d):
 
 def predict_xgboost(m, d):
     from xgboost import DMatrix
+
     return m.predict(DMatrix(d))
 
 
 def predict_tf_single(m, d):
-    return m.predict(d, verbose=0).reshape(-1,)
+    return m.predict(d, verbose=0).reshape(
+        -1,
+    )
 
 
 def predict_tf_binary(m, d):

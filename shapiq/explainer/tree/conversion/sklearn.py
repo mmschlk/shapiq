@@ -49,9 +49,10 @@ def convert_sklearn_tree(
     output_type = "raw"
     tree_values = tree_model.tree_.value.copy() * scaling
     # set class label if not given and model is a classifier
-    if (safe_isinstance(tree_model, "sklearn.tree.DecisionTreeClassifier") or\
-        safe_isinstance(tree_model, "sklearn.tree._classes.DecisionTreeClassifier")) and\
-        class_label is None:
+    if (
+        safe_isinstance(tree_model, "sklearn.tree.DecisionTreeClassifier")
+        or safe_isinstance(tree_model, "sklearn.tree._classes.DecisionTreeClassifier")
+    ) and class_label is None:
         class_label = 1
 
     if class_label is not None:

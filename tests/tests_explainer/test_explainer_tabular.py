@@ -42,7 +42,7 @@ def test_init_params(dt_model, data, index, max_order, imputer):
         index=index,
         max_order=max_order,
         approximator="auto",
-        imputer=imputer
+        imputer=imputer,
     )
     assert explainer.index == index
     assert explainer._approximator.index == index
@@ -131,7 +131,7 @@ def test_explain(dt_model, data, index, budget, max_order, imputer):
         index=index,
         max_order=max_order,
         approximator="auto",
-        imputer=imputer
+        imputer=imputer,
     )
     x = data[0].reshape(1, -1)
     interaction_values = explainer.explain(x, budget=budget)
