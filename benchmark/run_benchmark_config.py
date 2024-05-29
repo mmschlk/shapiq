@@ -1,10 +1,15 @@
 """This script runs the benchmark from a specified configuration."""
 
 import argparse
+import sys
+from pathlib import Path
 
-from shapiq.games.benchmark.run import run_benchmark_from_configuration
+# add shapiq to the path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 if __name__ == "__main__":
+
+    from shapiq.games.benchmark.run import run_benchmark_from_configuration
 
     # default values
     game = "SentimentAnalysisLocalXAI"
