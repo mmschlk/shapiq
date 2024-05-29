@@ -12,7 +12,7 @@ if __name__ == "__main__":
     n_player_id = 0
     index = "k-SII"
     order = 2
-    n_games = 2
+    n_games = -1
     n_jobs = 1
 
     # parse arguments if provided
@@ -45,5 +45,5 @@ if __name__ == "__main__":
         game_n_player_id=n_player_id,
         game_n_games=n_games,
         n_jobs=n_jobs,
-        max_budget=2_000,
+        max_budget=None,
     )
