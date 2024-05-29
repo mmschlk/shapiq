@@ -102,7 +102,7 @@ The documentation for ``shapiq`` can be found [here](https://shapiq.readthedocs.
 
 ## 💬 Citation
 
-If you **ejnoy** `shapiq` consider starring ⭐ the repository. If you **really enjoy** the package or it has been useful to you, and you would like to cite it in a scientific publication, please refer to the [paper](https://openreview.net/forum?id=IEMLNF4gK4) accepted at NeurIPS'23:
+If you **enjoy** `shapiq` consider starring ⭐ the repository. If you **really enjoy** the package or it has been useful to you, and you would like to cite it in a scientific publication, please refer to the [paper](https://openreview.net/forum?id=IEMLNF4gK4) accepted at NeurIPS'23:
 
 ```bibtex
 @article{shapiq,
