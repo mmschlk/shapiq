@@ -22,8 +22,8 @@ if __name__ == "__main__":
     # example python run commands for the SentimentAnalysisLocalXAI game
     # nohup nice -n 19 python pre_compute.py --game SentimentAnalysisLocalXAI --config_id 1 --n_player_id 0 --n_jobs 1 > SentimentAnalysisLocalXAI_1_1.log 2>&1 &
 
-    default_game = "CaliforniaHousingDatasetValuation"
-    default_config_id = 3
+    default_game = "BikeSharingClusterExplanation"
+    default_config_id = 2
     default_n_player_id = 0
     default_n_jobs = 1
     default_verbose = True

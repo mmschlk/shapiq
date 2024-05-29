@@ -22,9 +22,9 @@ if __name__ == "__main__":
     # nohup nice -n 19 python pre_compute_all.py --datasets CaliforniaHousing
 
     datasets_to_precompute = [
-        # "AdultCensus",
+        "AdultCensus",
         "BikeSharing",
-        # "CaliforniaHousing",
+        "CaliforniaHousing",
         # "Sentiment",
         # "Image",
     ]
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         "AdultCensusClusterExplanation",
         "BikeSharingClusterExplanation",
         "CaliforniaHousingClusterExplanation",
-        "BikeSharingClusterDatasetValuation",
+        "BikeSharingDatasetValuation",
         "CaliforniaHousingDatasetValuation",
         "SentimentAnalysisLocalXAI",
         "ImageClassifierLocalXAI",

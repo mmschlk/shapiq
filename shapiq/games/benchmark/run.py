@@ -317,7 +317,15 @@ def run_benchmark_from_configuration(
     gt_values = [game.exact_values(index=index, order=order) for game in tqdm(games, unit=" games")]
 
     # get the benchmark name for saving the results
-    benchmark_name = f"{game_class.get_game_name()}_{config_id}_{index}_{order}"
+    benchmark_name = "_".join(
+        [
+            game_class.get_game_name(),
+            str(config_id),
+            str(index),
+            str(order),
+            f"n_games={len(games)}",
+        ]
+    )
 
     # run the benchmark
     run_benchmark(
