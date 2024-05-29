@@ -206,6 +206,8 @@ def _run_benchmark(args) -> dict[str, Union[str, int, float, InteractionValues]]
         "budget_relative": round(budget / (2**game.n_players), 6),
         "approximator": approximator.__class__.__name__,
         "estimates_values": estimates.dict_values,
+        "used_budget": estimates.estimation_budget,
+        "estimated": estimates.estimated,
     }
     # compute the metrics
     metrics_all_orders = get_all_metrics(gt_value, estimates)
