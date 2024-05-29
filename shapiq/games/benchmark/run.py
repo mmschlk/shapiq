@@ -173,6 +173,8 @@ def run_benchmark(
                 "budget_relative": 1.0,
                 "approximator": "Exact",
                 "estimates_values": gt_value.dict_values,
+                "used_budget": 2**game.n_players,
+                "estimated": False,
             }
         )
 
