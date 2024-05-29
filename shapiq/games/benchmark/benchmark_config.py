@@ -620,6 +620,7 @@ def load_games_from_configuration(
     n_games: Optional[int] = None,
     n_player_id: int = 0,
     check_pre_computed: bool = True,
+    only_pre_computed: bool = True,
 ) -> Generator[Game, None, None]:
     """Load the game with the given configuration from disk or create it if it does not exist.
 
@@ -630,6 +631,7 @@ def load_games_from_configuration(
         n_player_id: The player ID to use. Defaults to 0. Not all games have multiple player IDs.
         check_pre_computed: A flag to check if the game is pre-computed (load from disk). Defaults
             to True.
+        only_pre_computed: A flag to only load the pre-computed games. Defaults to False.
 
     Returns:
         An initialized game object with the given configuration.
@@ -663,7 +665,7 @@ def load_games_from_configuration(
         game_iteration = iteration_param_values[i]  # from 1 to 30
         game_iteration_value = iteration_param_values_names[i]  # i.e. the sentence or random state
         params[iteration_param] = game_iteration_value  # set the iteration parameter
-        if not check_pre_computed:  # create the game if pre-computed should not be checked
+        if not check_pre_computed and not only_pre_computed:
             yield game_class(**params)
         else:
             try:  # try to load the game from disk
@@ -671,4 +673,8 @@ def load_games_from_configuration(
                     game_class, configuration, iteration=game_iteration, n_player_id=n_player_id
                 )
             except FileNotFoundError:  # fallback to creating the game
-                yield game_class(**params)
+                if not only_pre_computed:
+                    yield game_class(**params)
+                else:
+                    # if only pre-computed games are requested, skip the game
+                    continue

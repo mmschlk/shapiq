@@ -297,12 +297,14 @@ def run_benchmark_from_configuration(
     if isinstance(game_configuration, int):
         game_configuration = BENCHMARK_CONFIGURATIONS[game_class][game_n_player_id][
             "configurations"
-        ][game_configuration]
+        ][game_configuration - 1]
 
     # load the games
     config_id = get_game_file_name_from_config(game_configuration)
     games: list[Game] = list(
-        load_games_from_configuration(game_class, game_configuration, n_player_id=game_n_player_id)
+        load_games_from_configuration(
+            game_class, game_configuration, n_player_id=game_n_player_id, only_pre_computed=True
+        )
     )
     if game_n_games is not None:
         games = games[:game_n_games]
