@@ -171,3 +171,5 @@ illustration_sources/
 
 # remove the files that will be downloaded
 shapiq/datasets/data
+
+shapiq/games/precomputed_copy/
