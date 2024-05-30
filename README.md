@@ -20,7 +20,7 @@
 [![PePy](https://static.pepy.tech/badge/shapiq?style=flat-square)](https://pepy.tech/project/shapiq)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-# SHAP-IQ: SHAP Interaction Quantification
+# shapiq: Shapley Interactions for Machine Learning
 > An interaction may speak more than a thousand main effects.
 
 Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approximating any-order Shapley interactions, (2) benchmarking game-theoretical algorithms for machine learning, (3) explaining feature interactions of model predictions. `shapiq` extends the well-known [shap](https://github.com/shap/shap) package for both researchers working on game theory in machine learning, as well as the end-users explaining models. SHAP-IQ extends indivdual Shapley values by quantifying the **synergy** effect between entities (aka **players** in the jargon of game theory) like explanatory features, data points, or weak learners in ensemble models. Synergies between players give a more comprehensive view of machine learning models.
@@ -63,16 +63,16 @@ print(interaction_values)
 >>    index=k-SII, max_order=2, min_order=0, estimated=False,
 >>    estimation_budget=256, n_players=8, baseline_value=0.86628,
 >>    Top 10 interactions:
->>        (0,): 3.5894835404761913  # main effect for feature 0
->>        (7,): 1.6117512314285711
->>        (0, 1): 0.20849640380952  # interaction for features 0 & 1
->>        (5,): 0.2006931133333336
->>        (2,): 0.1753635657142866
->>        (0, 5): -0.0974019461904
->>        (0, 3): -0.1267195495238
->>        (0, 6): -0.2124500961904
->>        (6, 7): -0.3429407528571
->>        (0, 7): -1.1588948528571
+>>        (0,): 3.58948354047   # main effect for feature 0
+>>        (7,): 1.61175123142
+>>        (0, 1): 0.208496403   # interaction for features 0 & 1
+>>        (5,): 0.20069311333
+>>        (2,): 0.17536356571
+>>        (0, 5): -0.09740194
+>>        (0, 3): -0.12671954
+>>        (0, 6): -0.21245009
+>>        (6, 7): -0.34294075
+>>        (0, 7): -1.15889485
 >> )
 ```
 
@@ -102,20 +102,18 @@ The documentation for ``shapiq`` can be found [here](https://shapiq.readthedocs.
 
 ## 💬 Citation
 
-If you **enjoy** `shapiq` consider starring ⭐ the repository. If you **really enjoy** the package or it has been useful to you, and you would like to cite it in a scientific publication, please refer to the [paper](https://openreview.net/forum?id=IEMLNF4gK4) accepted at NeurIPS'23:
+If you **enjoy** `shapiq` consider starring ⭐ the repository. If you **really enjoy** the package or it has been useful to you, and you would like to cite it in a scientific publication, please refer to our [paper](https://openreview.net/forum?id=IEMLNF4gK4):
+
 
 ```bibtex
-@article{shapiq,
+@inproceedings{shapiq,
+  title        = {{SHAP-IQ}: Unified approximation of any-order Shapley interactions},
   author       = {Fabian Fumagalli and
                   Maximilian Muschalik and
                   Patrick Kolpaczki and
                   Eyke H{\"{u}}llermeier and
                   Barbara Hammer},
-  title        = {{SHAP-IQ:} Unified Approximation of any-order Shapley Interactions},
-  journal      = {CoRR},
-  volume       = {abs/2303.01179},
-  year         = {2023},
-  doi          = {10.48550/ARXIV.2303.01179},
-  eprinttype    = {arXiv}
+  booktitle    = {NeurIPS},
+  year         = {2023}
 }
 ```
