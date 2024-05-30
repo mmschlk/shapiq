@@ -26,16 +26,16 @@ Explain a model with Shapley interaction values, e.g. the k-SII values.
     >>    index=k-SII, max_order=2, min_order=0, estimated=False,
     >>    estimation_budget=256, n_players=8, baseline_value=0.86628,
     >>    Top 10 interactions:
-    >>        (0,): 3.5894835404761913  # main effect for feature 0
-    >>        (7,): 1.6117512314285711
-    >>        (0, 1): 0.20849640380952  # interaction for features 0 & 1
-    >>        (5,): 0.2006931133333336
-    >>        (2,): 0.1753635657142866
-    >>        (0, 5): -0.0974019461904
-    >>        (0, 3): -0.1267195495238
-    >>        (0, 6): -0.2124500961904
-    >>        (6, 7): -0.3429407528571
-    >>        (0, 7): -1.1588948528571
+    >>        (0,): 3.58948354047   # main effect for feature 0
+    >>        (7,): 1.61175123142
+    >>        (0, 1): 0.208496403   # interaction for features 0 & 1
+    >>        (5,): 0.20069311333
+    >>        (2,): 0.17536356571
+    >>        (0, 5): -0.09740194
+    >>        (0, 3): -0.12671954
+    >>        (0, 6): -0.21245009
+    >>        (6, 7): -0.34294075
+    >>        (0, 7): -1.15889485
     >> )
 
     shapiq.network_plot(
