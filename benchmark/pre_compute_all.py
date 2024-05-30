@@ -19,7 +19,7 @@ if __name__ == "__main__":
     from shapiq.games.benchmark.precompute import pre_compute_from_configuration
 
     # example python run command
-    # nohup nice -n 19 python pre_compute_all.py --datasets CaliforniaHousing
+    # nohup nice -n 19 python pre_compute_all.py --datasets CaliforniaHousing &
 
     datasets_to_precompute = [
         "AdultCensus",
@@ -47,8 +47,6 @@ if __name__ == "__main__":
         "AdultCensusClusterExplanation",
         "BikeSharingClusterExplanation",
         "CaliforniaHousingClusterExplanation",
-        "BikeSharingDatasetValuation",
-        "CaliforniaHousingDatasetValuation",
         "SentimentAnalysisLocalXAI",
         "ImageClassifierLocalXAI",
     ]

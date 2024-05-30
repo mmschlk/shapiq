@@ -93,7 +93,8 @@ class LocalExplanation(Game):
             elif imputer == "conditional":
                 self._imputer = ConditionalImputer(
                     model=model,
-                    data=data,
+                    # give only first 2_000 samples to the conditional imputer
+                    data=data[:2_000],
                     x=self.x,
                     random_state=random_state,
                     normalize=False,
