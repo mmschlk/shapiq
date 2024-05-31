@@ -28,9 +28,10 @@ def _normalize_value(
         value: The value to normalize/scale.
         max_value: The maximum value to normalize/scale the value by.
         base_value: The base value to scale the value by. For example, the alpha value for the
-            highest interaction (as defined in `BASE_ALPHA_VALUE`) or the size of the highest
-            interaction edge (as defined in `BASE_SIZE`).
-        cubic_scaling: Whether to scale cubically (`True`) or linearly (`False`) between 0 and 1.
+            highest interaction (as defined in ``BASE_ALPHA_VALUE``) or the size of the highest
+            interaction edge (as defined in ``BASE_SIZE``).
+        cubic_scaling: Whether to scale cubically (``True``) or linearly (``False``. default) 
+            between 0 and 1.
 
     Returns:
         The normalized/scaled value.
@@ -161,8 +162,8 @@ def _draw_graph_nodes(
         ax: The axis to draw the nodes on.
         pos: The positions of the nodes.
         graph: The graph to draw the nodes on.
-        nodes: The nodes to draw. If `None`, all nodes are drawn. Defaults to `None`.
-        normal_node_size: The size of the nodes. Defaults to `NORMAL_NODE_SIZE`.
+        nodes: The nodes to draw. If ``None``, all nodes are drawn. Defaults to ``None``.
+        normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
     """
     for node in graph.nodes:
         if nodes is not None and node not in nodes:
@@ -190,8 +191,8 @@ def _draw_explanation_nodes(
         ax: The axis to draw the nodes on.
         pos: The positions of the nodes.
         graph: The graph to draw the nodes on.
-        nodes: The nodes to draw. If `None`, all nodes are drawn. Defaults to `None`.
-        normal_node_size: The size of the nodes. Defaults to `NORMAL_NODE_SIZE`.
+        nodes: The nodes to draw. If ``None``, all nodes are drawn. Defaults to ``None``.
+        normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
     """
     for node in graph.nodes:
         if isinstance(node, tuple):
@@ -235,8 +236,8 @@ def _draw_graph_edges(
         ax: The axis to draw the edges on.
         pos: The positions of the nodes.
         graph: The graph to draw the edges on.
-        edges: The edges to draw. If `None`, all edges are drawn. Defaults to `None`.
-        normal_node_size: The size of the nodes. Defaults to `NORMAL_NODE_SIZE`.
+        edges: The edges to draw. If ``None`` (default), all edges are drawn.
+        normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
     """
     for u, v in graph.edges:
 
@@ -270,7 +271,7 @@ def _draw_graph_labels(
         ax: The axis to draw the labels on.
         pos: The positions of the nodes.
         graph: The graph to draw the labels on.
-        nodes: The nodes to draw the labels on. If `None`, all nodes are drawn. Defaults to `None`.
+        nodes: The nodes to draw the labels on. If ``None`` (default), all nodes are drawn.
     """
     for node in graph.nodes:
         if nodes is not None and node not in nodes:
@@ -337,38 +338,38 @@ def si_graph_plot(
         graph: The underlying graph structure as a list of edge tuples or a networkx graph. If a
             networkx graph is provided, the nodes are used as the players and the edges are used as
             the connections between the players.
-        n_interactions: The number of interactions to plot. If `None`, all interactions are plotted
+        n_interactions: The number of interactions to plot. If ``None``, all interactions are plotted
             according to the draw_threshold.
         draw_threshold: The threshold to draw an edge (i.e. only draw explanations with an
             interaction value higher than this threshold).
         random_seed: The random seed to use for layout of the graph.
         size_factor: The factor to scale the explanations by (a higher value will make the
-            interactions and main effects larger). Defaults to 1.0.
+            interactions and main effects larger). Defaults to ``1.0``.
         plot_explanation: Whether to plot the explanation or only the original graph. Defaults to
-            `True`.
+            ``True``.
         compactness: A scaling factor for the underlying spring layout. A higher compactness value
             will move the interactions closer to the graph nodes. If your graph looks weird, try
-            adjusting this value (e.g. 0.1, 1.0, 10.0, 100.0, 1000.0). Defaults to 1.0.
-        label_mapping: A mapping from the player/node indices to the player label. If `None`, the
-            player indices are used as labels. Defaults to `None`.
-        cubic_scaling: Whether to scale the size of explanations cubically (`True`) or linearly
-            (`False`). Cubic scaling puts more emphasis on larger interactions in the plot.
-            Defaults to `False`.
-        pos: The positions of the nodes in the graph. If `None`, the spring layout is used to
-            position the nodes. Defaults to `None`.
+            adjusting this value, e.g. ``[0.1, 1.0, 10.0, 100.0, 1000.0]``. Defaults to ``1.0``.
+        label_mapping: A mapping from the player/node indices to the player label. If ``None``, the
+            player indices are used as labels. Defaults to ``None``.
+        cubic_scaling: Whether to scale the size of explanations cubically (``True``) or linearly
+            (``False``, default). Cubic scaling puts more emphasis on larger interactions in the plot.
+            Defaults to ``False``.
+        pos: The positions of the nodes in the graph. If ``None``, the spring layout is used to
+            position the nodes. Defaults to ``None``.
         node_size_scaling: The scaling factor for the node sizes. This can be used to make the nodes
-            larger or smaller depending on how the graph looks. Defaults to 1.0 (no scaling).
+            larger or smaller depending on how the graph looks. Defaults to ``1.0`` (no scaling).
             Negative values will make the nodes smaller, positive values will make the nodes larger.
         min_max_interactions: The minimum and maximum interaction values to use for scaling the
-            interactions as a tuple (min, max). If `None`, the minimum and maximum interaction
-            values are used. Defaults to `None`.
+            interactions as a tuple ``(min, max)``. If ``None``, the minimum and maximum interaction
+            values are used. Defaults to ``None``.
         adjust_node_pos: Whether to adjust the node positions such that the nodes are at least
-            `NORMAL_NODE_SIZE` apart. Defaults to `False`.
+            ``NORMAL_NODE_SIZE`` apart. Defaults to ``False``.
         spring_k: The spring constant for the spring layout. If `None`, the spring constant is
-            calculated based on the number of nodes in the graph. Defaults to `None`.
-        interaction_direction: The sign of the interaction values to plot. If `None`, all
-            interactions are plotted. Defaults to `None`. Possible values are "positive" and
-            "negative".
+            calculated based on the number of nodes in the graph. Defaults to ``None``.
+        interaction_direction: The sign of the interaction values to plot. If ``None``, all
+            interactions are plotted. Possible values are ``"positive"`` and
+            ``"negative"``. Defaults to ``None``.
 
     Returns:
         The figure and axis of the plot.

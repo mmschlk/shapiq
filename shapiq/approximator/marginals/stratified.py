@@ -10,14 +10,14 @@ from shapiq.interaction_values import InteractionValues
 
 
 class StratifiedSamplingSV(Approximator):
-    """The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random marginal contributions
+    """The Stratified Sampling algorithm estimates the Shapley values by sampling random marginal contributions
     for each player and each coalition size. The marginal contributions are grouped into strata by size.
     The strata are aggregated for each player after sampling to obtain the final estimate.
     For details, refer to `Maleki et al. (2009) <https://doi.org/10.48550/arXiv.1306.4265>`_.
 
     Args:
         n: The number of players.
-        random_state: The random state to use for the permutation sampling. Defaults to `None`.
+        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
     Attributes:
         n: The number of players.
@@ -42,7 +42,8 @@ class StratifiedSamplingSV(Approximator):
         Args:
             budget: The number of game evaluations for approximation
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If None, the batch size is set to 1. Defaults to 5.
+            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. 
+                Defaults to ``5``.
 
         Returns:
             The estimated interaction values.

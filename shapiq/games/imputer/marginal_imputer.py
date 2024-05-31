@@ -21,10 +21,10 @@ class MarginalImputer(Imputer):
         x: The explanation point to use the imputer to.
         sample_replacements: Whether to sample replacements from the background data or to use the
             mean (for numerical features) or the median (for categorical features) of the background
-            data. Defaults to `False`.
+            data. Defaults to `True`.
         sample_size: The number of samples to draw from the background data. Only used if
             `sample_replacements` is `True`. Increasing this value will linearly increase the
-            runtime of the explainer. Defaults to `1`.
+            runtime of the explainer. Defaults to `100`.
         categorical_features: A list of indices of the categorical features in the background data.
             If no categorical features are given, all features are assumed to be numerical or in
             string format (where `np.mean` fails) features. Defaults to `None`.
@@ -42,8 +42,8 @@ class MarginalImputer(Imputer):
         model,
         data: np.ndarray,
         x: Optional[np.ndarray] = None,
-        sample_replacements: bool = False,
-        sample_size: int = 1,
+        sample_replacements: bool = True,
+        sample_size: int = 100,
         categorical_features: list[int] = None,
         random_state: Optional[int] = None,
         normalize: bool = True,

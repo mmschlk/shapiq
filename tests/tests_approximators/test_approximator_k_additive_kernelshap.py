@@ -14,7 +14,7 @@ def test_initialization(n):
     """Tests the initialization of the kADDSHAP approximator."""
     approximator = kADDSHAP(n)
     assert approximator.n == n
-    assert approximator.max_order == 1
+    assert approximator.max_order == 2
     assert approximator.index == "kADD-SHAP"
     assert approximator.top_order is False
     assert approximator.min_order == 0

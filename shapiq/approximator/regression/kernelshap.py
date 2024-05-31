@@ -13,12 +13,12 @@ class KernelSHAP(Regression):
 
     Args:
         n: The number of players.
-        random_state: The random state of the estimator. Defaults to `None`.
-        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
-            to `False`.
+        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
+            to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to `None`.
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
+            of a certain size. Defaults to ``None``.
+        random_state: The random state of the estimator. Defaults to ``None``.
 
     Attributes:
         n: The number of players.
@@ -48,9 +48,9 @@ class KernelSHAP(Regression):
     def __init__(
         self,
         n: int,
-        random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,
+        random_state: Optional[int] = None,
     ):
         super().__init__(
             n,

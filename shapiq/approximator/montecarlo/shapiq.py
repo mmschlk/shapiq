@@ -14,13 +14,15 @@ class SHAPIQ(MonteCarlo):
 
     Args:
         n: The number of players.
-        max_order: The interaction order of the approximation.
-        index: The interaction index
-        random_state: The random state of the estimator. Defaults to `None`.
-        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
-            to `False`.
+        max_order: The interaction order of the approximation. Defaults to ``2``.
+        index: The interaction index to compute.
+        top_order: If ``True``, then only highest order interaction values are computed, e.g. required
+            for ``'FSII'``. Defaults to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition.
+        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
+            to ``False``.
+        random_state: The random state of the estimator. Defaults to ``None``.
 
     Attributes:
         n: The number of players.
@@ -64,12 +66,12 @@ class UnbiasedKernelSHAP(SHAPIQ):
 
     Args:
         n: The number of players.
-        random_state: The random state of the estimator. Defaults to `None`.
-        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
-            to `False`.
+        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
+            to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to `None`.
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
+            of a certain size. Defaults to ``None``.
+        random_state: The random state of the estimator. Defaults to ``None``.
 
     Example:
         >>> from shapiq.games.benchmark import DummyGame
@@ -92,9 +94,9 @@ class UnbiasedKernelSHAP(SHAPIQ):
     def __init__(
         self,
         n: int,
-        random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[float] = None,
+        random_state: Optional[int] = None,
     ):
         super().__init__(
             n,

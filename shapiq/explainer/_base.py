@@ -60,6 +60,23 @@ class Explainer:
             x: An instance/point/sample/observation to be explained.
         """
         return {}
+    
+    def explain_X(self, X: np.ndarray, n_jobs=None, **kwargs) -> list[InteractionValues]:
+        """Explain multiple predictions in terms of interaction values.
+
+        Args:
+            X: A 2-dimensional matrix of inputs to be explained.
+        """
+        assert len(X.shape) == 2
+        if n_jobs:
+            import joblib
+            parallel = joblib.Parallel(n_jobs=n_jobs)
+            ivs = parallel(joblib.delayed(self.explain)(X[i, :], **kwargs) for i in range(X.shape[0]))
+        else:
+            ivs = []
+            for i in range(X.shape[0]):
+                ivs.append(self.explain(X[i, :], **kwargs))
+        return ivs 
 
     def predict(self, x: np.ndarray) -> np.ndarray:
         """Provides a unified prediction interface.

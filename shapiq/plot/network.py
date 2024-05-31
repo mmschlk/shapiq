@@ -44,21 +44,21 @@ def network_plot(
 
     Args:
         interaction_values: The interaction values as an interaction object.
-        first_order_values: The first order n-SII values of shape (n_features,).
-        second_order_values: The second order n-SII values of shape (n_features, n_features). The
+        first_order_values: The first order n-SII values of shape ``(n_features,)``.
+        second_order_values: The second order n-SII values of shape ``(n_features, n_features)``. The
             diagonal values are ignored. Only the upper triangular values are used.
         feature_names: The feature names used for plotting. If no feature names are provided, the
-            feature indices are used instead. Defaults to None.
+            feature indices are used instead. Defaults to ``None``.
         feature_image_patches: A dictionary containing the image patches to be displayed instead of
             the feature labels in the network. The keys are the feature indices and the values are
-            the feature images. Defaults to None.
+            the feature images. Defaults to ``None``.
         feature_image_patches_size: The size of the feature image patches. If a dictionary is
             provided, the keys are the feature indices and the values are the feature image patch.
-            Defaults to 0.2.
-        center_image: The image to be displayed in the center of the network. Defaults to None.
-        center_image_size: The size of the center image. Defaults to 0.6.
-        draw_legend: Whether to draw the legend. Defaults to True.
-        center_text: The text to be displayed in the center of the network. Defaults to None.
+            Defaults to ``0.2``.
+        center_image: The image to be displayed in the center of the network. Defaults to ``None``.
+        center_image_size: The size of the center image. Defaults to ``0.6``.
+        draw_legend: Whether to draw the legend. Defaults to ``True``.
+        center_text: The text to be displayed in the center of the network. Defaults to ``None``.
 
     Returns:
         The figure and the axis containing the plot.
