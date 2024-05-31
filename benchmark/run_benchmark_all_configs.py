@@ -61,6 +61,7 @@ if __name__ == "__main__":
                             game_n_games=None,
                             n_jobs=n_jobs,
                             max_budget=None,
+                            rerun_if_exists=False,
                         )
                         n_runs_done += 1
                         print(f"Ran {n_runs_done} out of {n_configs_tried} configurations.")

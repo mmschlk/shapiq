@@ -47,7 +47,8 @@ def run_benchmark(
     benchmark_name: str = "benchmark",
     save: bool = True,
     save_path: Optional[str] = None,
-) -> list[dict[str, Union[str, int, float, InteractionValues]]]:
+    rerun_if_exists: bool = False,
+) -> Optional[list[dict[str, Union[str, int, float, InteractionValues]]]]:
     """Run the benchmark for the given approximators and games.
 
     Args:
@@ -71,6 +72,8 @@ def run_benchmark(
         save: If `True`, the results are saved as a JSON file. Defaults to `True`.
         save_path: The path to save the results as a JSON file. Defaults to
             `f"results/{benchmark_name}.json`.
+        rerun_if_exists: If `True`, the benchmark is rerun even if the results already exist.
+            Defaults to `False`.
 
     Returns:
         The results of the benchmark.
@@ -80,6 +83,13 @@ def run_benchmark(
         ValueError: If the number of ground truth values is not the same as the number of games.
     """
     from .benchmark_config import APPROXIMATION_CONFIGURATIONS, APPROXIMATION_NAME_TO_CLASS_MAPPING
+
+    if save_path is None:
+        save_path = os.path.join("results", f"{benchmark_name}.json")
+
+    if not rerun_if_exists and os.path.exists(save_path):
+        print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
+        return
 
     # check that all games have the same number of players
     n_players = games[0].n_players
@@ -180,8 +190,6 @@ def run_benchmark(
 
     # save the results as a json file
     if save:
-        if save_path is None:
-            save_path = os.path.join("results", f"{benchmark_name}.json")
         save_results(results, save_path=save_path)
 
     return results
@@ -264,6 +272,7 @@ def run_benchmark_from_configuration(
     max_budget: Optional[int] = None,
     n_iterations: int = 1,
     n_jobs: int = 1,
+    rerun_if_exists: bool = False,
 ) -> None:
     """Runs a benchmark on a specified configuration.
 
@@ -284,6 +293,8 @@ def run_benchmark_from_configuration(
         n_iterations: The number of iterations to run the benchmark for. Each iteration runs all
             approximators on all games for all budget steps. Defaults to 1.
         n_jobs: The number of parallel jobs to run. Defaults to 1.
+        rerun_if_exists: If `True`, the benchmark is rerun even if the results already exist.
+            Defaults to `False`.
     """
     from .benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
@@ -345,6 +356,7 @@ def run_benchmark_from_configuration(
         max_budget=max_budget,
         n_iterations=n_iterations,
         save=True,
+        rerun_if_exists=rerun_if_exists,
     )
 
 
