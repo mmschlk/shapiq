@@ -13,7 +13,7 @@ class kADDSHAP(Regression):
 
     Args:
         n: The number of players.
-        max_order: The interaction order of the approximation. Defaults to ``1``.
+        max_order: The interaction order of the approximation. Defaults to ``2``.
         pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
             to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must

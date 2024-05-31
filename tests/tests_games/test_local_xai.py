@@ -239,7 +239,7 @@ def test_image_classifier_game_resnet(test_image_and_path):
         n_superpixel_resnet=5,
     )
     assert game_small.n_players == 5
-    assert game_small(game_small.grand_coalition) == grand_coal_output
+    assert np.isclose(game_small(game_small.grand_coalition), grand_coal_output)
 
 
 @pytest.mark.slow
