@@ -14,16 +14,17 @@ class PermutationSamplingSII(Approximator):
 
     Args:
         n: The number of players.
-        max_order: The interaction order of the approximation.
-        top_order: Whether to approximate only the top order interactions (`True`) or all orders up
-            to the specified order (`False`).
-        random_state: The random state to use for the permutation sampling. Defaults to `None`.
+        max_order: The interaction order of the approximation. Defaults to ``2``.
+        index: The interaction index to compute.
+        top_order: Whether to approximate only the top order interactions (``True``) or all orders up
+            to the specified order (``False``, default).
+        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
     Attributes:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        top_order: Whether to approximate only the top order interactions (`True`) or all orders up
-            to the specified order (`False`).
+        top_order: Whether to approximate only the top order interactions (``True``) or all orders up
+            to the specified order (``False``).
         min_order: The minimum order to approximate.
         iteration_cost: The cost of a single iteration of the permutation sampling.
     """
@@ -76,7 +77,7 @@ class PermutationSamplingSII(Approximator):
         Args:
             budget: The budget for the approximation.
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If None, the batch size is set to 1. Defaults to 5.
+            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``5``.
 
         Returns:
             InteractionValues: The estimated interaction values.

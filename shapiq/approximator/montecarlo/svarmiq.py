@@ -19,7 +19,7 @@ class SVARMIQ(MonteCarlo):
             to `False`.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
             be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
-             of a certain size. Defaults to `None`.
+            of a certain size. Defaults to `None`.
 
 
     Attributes:

@@ -23,14 +23,14 @@ class MonteCarlo(Approximator):
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        index: The interaction index to be estimated. Available indices are 'SII', 'kSII', 'STII',
-            and 'FSII'.
-        stratify_coalition_size: If True, then each coalition size is estimated separately
-        stratify_intersection: If True, then each coalition is stratified by the intersection with
-            the interaction
-        top_order: If True, then only highest order interaction values are computed, e.g. required
-            for FSII
-        random_state: The random state to use for the approximation. Defaults to None.
+        index: The interaction index to be estimated. Available indices are ``['SII', 'kSII', 'STII',
+            'FSII']``.
+        stratify_coalition_size: If ``True`` (default), then each coalition size is estimated separately.
+        stratify_intersection: If ``True`` (default), then each coalition is stratified by the intersection 
+            with the interaction.
+        top_order: If ``True``, then only highest order interaction values are computed, e.g. required
+            for ``'FSII'``. Defaults to ``False``.
+        random_state: The random state to use for the approximation. Defaults to ``None``.
     """
 
     def __init__(
@@ -113,9 +113,9 @@ class MonteCarlo(Approximator):
 
         Args:
             game_values: The game values for the coalitions. The values are of shape
-                `(n_coalitions,)`.
+                ``(n_coalitions,)``.
             coalitions_matrix: The coalitions matrix used to evaluate the game. The matrix is of
-                shape `(n_coalitions, n)`.
+                shape ``(n_coalitions, n)``.
             index_approximation: The index to approximate.
 
         Returns:

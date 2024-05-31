@@ -17,7 +17,8 @@ class PermutationSamplingSTII(Approximator):
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        random_state: The random state to use for the permutation sampling. Defaults to `None`.
+        random_state: The random state to use for the permutation sampling. 
+            Defaults to ```None```.
 
     Attributes:
         n: The number of players.
@@ -67,7 +68,7 @@ class PermutationSamplingSTII(Approximator):
         Args:
             budget: The budget for the approximation.
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If None, the batch size is set to 1. Defaults to 1.
+            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``1``.
 
         Returns:
             InteractionValues: The estimated interaction values.
@@ -185,7 +186,7 @@ class PermutationSamplingSTII(Approximator):
     def _compute_lower_order_sti(
         self, game: Callable[[np.ndarray], np.ndarray], result: np.ndarray[float]
     ) -> np.ndarray[float]:
-        """Computes all lower order interactions for the STII index up to order max_order - 1.
+        """Computes all lower order interactions for the STII index up to order ``max_order - 1``.
 
         Args:
             game: The game function as a callable that takes a set of players and returns the value.

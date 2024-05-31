@@ -16,15 +16,15 @@ class KernelSHAPIQ(Regression):
 
     Args:
         n: The number of players.
-        max_order: The interaction order of the approximation. Defaults to `2`.
-        index: The interaction index to be used. Choose from `{"k-SII", "SII"}`. Defaults to
-            `"k-SII"`.
-        random_state: The random state of the estimator. Defaults to `None`.
-        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
-            to `False`.
+        max_order: The interaction order of the approximation. Defaults to ``2``.
+        index: The interaction index to be used. Choose from ``['k-SII', 'SII']``. Defaults to
+            ``'k-SII'``.
+        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
+            to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
-             of a certain size. Defaults to `None`.
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
+            of a certain size. Defaults to ``None``.
+        random_state: The random state of the estimator. Defaults to ``None``.
     """
 
     def __init__(
@@ -32,9 +32,9 @@ class KernelSHAPIQ(Regression):
         n: int,
         max_order: int = 2,
         index: str = "k-SII",
-        random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,
+        random_state: Optional[int] = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
             raise ValueError(
@@ -58,13 +58,13 @@ class InconsistentKernelSHAPIQ(Regression):
 
     Args:
         n: The number of players.
-        max_order: The interaction order of the approximation. Defaults to `2`.
-        random_state: The random state of the estimator. Defaults to `None`.
-        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
-            to `False`.
+        max_order: The interaction order of the approximation. Defaults to ``2``.
+        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
+            to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to `None`.
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
+            of a certain size. Defaults to ``None``.
+        random_state: The random state of the estimator. Defaults to `None`.
     """
 
     def __init__(
@@ -72,9 +72,9 @@ class InconsistentKernelSHAPIQ(Regression):
         n: int,
         max_order: int = 2,
         index: str = "k-SII",
-        random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,
+        random_state: Optional[int] = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
             raise ValueError(

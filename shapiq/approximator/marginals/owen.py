@@ -10,16 +10,16 @@ from shapiq.interaction_values import InteractionValues
 
 
 class OwenSamplingSV(Approximator):
-    """The Owen Sampling algorithm estimates the Shapley values (SV) by sampling random marginal contributions
-    for each player and each coalition size. The marginal contributions are used to update an integral representation of the SV.
-    The number of anchor points M at which the integral is to be palpated share the avilable budget for each player equally.
-    A higher M increases the resolution of the integral reducing bias while reducing the accuracy of the estimation at each point.
-    For details, refer to `Okhrati and Lipani (2020) <https://doi.org/10.48550/arXiv.2010.12082>`_.
+    """The Owen Sampling algorithm estimates the Shapley values by sampling random marginal contributions
+    for each player and each coalition size. The marginal contributions are used to update an integral representation of the 
+    Shapley value. The number of anchor points ``M`` at which the integral is to be palpated share the avilable budget for each 
+    player equally. A higher ``M`` increases the resolution of the integral reducing bias while reducing the accuracy of the 
+    estimation at each point. For details, refer to `Okhrati and Lipani (2020) <https://doi.org/10.48550/arXiv.2010.12082>`_.
 
     Args:
         n: The number of players.
-        random_state: The random state to use for the permutation sampling. Defaults to `None`.
-        interpolation_points: Number of anchor points at which the integral is to be palpated.
+        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
+        interpolation_points: Number of anchor points at which the integral is to be palpated. Defaults to ``10``.
 
     Attributes:
         n: The number of players.
@@ -45,7 +45,8 @@ class OwenSamplingSV(Approximator):
         Args:
             budget: The number of game evaluations for approximation
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If None, the batch size is set to 1. Defaults to 5.
+            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. 
+                Defaults to ``5``.
 
         Returns:
             The estimated interaction values.

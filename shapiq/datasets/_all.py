@@ -33,7 +33,7 @@ def load_california_housing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     """Load the California housing dataset.
 
     Args:
-        to_numpy: Return numpy objects instead of pandas. Default is False.
+        to_numpy: Return numpy objects instead of pandas. Default is ``False``.
 
     Returns:
         The California housing dataset as a pandas DataFrame.
@@ -53,7 +53,7 @@ def load_bike_sharing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     """Load the bike-sharing dataset from openml.
 
     Args:
-        to_numpy: Return numpy objects instead of pandas. Default is False.
+        to_numpy: Return numpy objects instead of pandas. ``Default is False.``
 
     Note:
         The function requires the `sklearn` package to be installed.
@@ -118,7 +118,7 @@ def load_adult_census(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     Original source: https://archive.ics.uci.edu/ml/datasets/adult
 
     Args:
-        to_numpy: Return numpy objects instead of pandas. Default is False.
+        to_numpy: Return numpy objects instead of pandas. Default is ``False``.
 
     Note:
         The function requires the `sklearn` package to be installed.

@@ -15,51 +15,51 @@ class CoalitionSampler:
     methods.
 
     Sampling is based on a more general variant of `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
-    The empty and grand coalition are always prioritized, and sampling budget is required >= 2.
+    The empty and grand coalition are always prioritized, and sampling budget is required ``>=2``.
     All variables are stored in the sampler, no objects are returned. The following variables
     are computed:
-        - sampled_coalitions_matrix: A binary matrix that consists of one row for each sampled
+        - ``sampled_coalitions_matrix``: A binary matrix that consists of one row for each sampled
             coalition. Each row is a binary vector that indicates the players in the coalition.
-            The matrix is of shape (n_coalitions, n_players).
-        - sampled_coalitions_counter: An array with the number of occurrences of the coalitions
-            in the sampling process. The array is of shape (n_coalitions,).
-        - sampled_coalitions_probability: An array with the coalition probabilities according to the
-            sampling procedure (i.e., the sampling weights). The array is of shape (n_coalitions,).
-        - coalitions_per_size: An array with the number of sampled coalitions per size (including
-            the empty and full set). The array is of shape (n_players + 1,).
-        - is_coalition_size_sampled: An array that contains True, if the coalition size was
-            sampled and False (computed exactly) otherwise. The array is of shape (n_players + 1,).
-        - sampled_coalitions_dict: A dictionary containing all sampled coalitions mapping to their
-            number of occurrences. The dictionary is of type dict[tuple[int, ...], int].
+            The matrix is of shape ``(n_coalitions, n_players)``.
+        - ``sampled_coalitions_counter``: An array with the number of occurrences of the coalitions
+            in the sampling process. The array is of shape ``(n_coalitions,)``.
+        - ``sampled_coalitions_probability``: An array with the coalition probabilities according to the
+            sampling procedure (i.e., the sampling weights). The array is of shape ``(n_coalitions,)``.
+        - ``coalitions_per_size``: An array with the number of sampled coalitions per size (including
+            the empty and full set). The array is of shape ``(n_players + 1,)``.
+        - ``is_coalition_size_sampled``: An array that contains True, if the coalition size was
+            sampled and False (computed exactly) otherwise. The array is of shape ``(n_players + 1,)``.
+        - ``sampled_coalitions_dict``:`` A dictionary containing all sampled coalitions mapping to their
+            number of occurrences. The dictionary is of type ``dict[tuple[int, ...], int]``.
 
     Args:
         n_players: The number of players in the game.
         sampling_weights: Sampling for weights for coalition sizes, must be non-negative and at
-            least one >0. The sampling weights for size 0 and n are ignored, as these are always
-            sampled.
-        pairing_trick: Samples each coalition jointly with its complement, default is False
-        random_state: The random state to use for the sampling process. Defaults to `None`.
+            least one ``>0``. The sampling weights for size ``0`` and ``n`` are ignored, as these are 
+            always sampled.
+        pairing_trick: Samples each coalition jointly with its complement. Defaults to ``False``.
+        random_state: The random state to use for the sampling process. Defaults to ``None``.
 
-    Attributes and Properties:
+    Attributes:
         n: The number of players in the game.
         n_max_coalitions: The maximum number of possible coalitions.
-        adjusted_sampling_weights: The adjusted sampling weights without zero-weighted coalition
-            sizes. The array is of shape (n_sizes_to_sample,).
+        adjusted_sampling_weights: The adjusted sampling weights without zero-weighted coalition sizes. 
+            The array is of shape ``(n_sizes_to_sample,)``.
         sampled: A flag indicating whether the sampling process has been executed.
-        coalitions_matrix: The binary matrix of sampled coalitions of shape (n_coalitions,
-            n_players).
+        coalitions_matrix: The binary matrix of sampled coalitions of shape ``(n_coalitions,
+            n_players)``.
         coalitions_counter: The number of occurrences of the coalitions. The array is of shape
-            (n_coalitions,).
+            ``(n_coalitions,)``.
         coalitions_probability: The coalition probabilities according to the sampling procedure. The
-             array is of shape (n_coalitions,).
+             array is of shape ``(n_coalitions,)``.
         coalitions_size_probability: The coalitions size probabilities according to the sampling
-            procedure. The array is of shape (n_coalitions,).
+            procedure. The array is of shape ``(n_coalitions,)``.
         coalitions_size_probability: The coalitions probabilities in their size according to the
-            sampling procedure. The array is of shape (n_coalitions,).
+            sampling procedure. The array is of shape ``(n_coalitions,)``.
         n_coalitions: The number of coalitions that have been sampled.
-        sampling_adjustment_weights: The weights that account for the sampling procedure
-            (importance sampling)
+        sampling_adjustment_weights: The weights that account for the sampling procedure (importance sampling)
         sampling_size_probabilities: The probabilities of each coalition size to be sampled.
+
     Examples:
         >>> sampler = CoalitionSampler(n_players=3, sampling_weights=np.array([1, 0.5, 0.5, 1]))
         >>> sampler.sample(5)
@@ -209,7 +209,7 @@ class CoalitionSampler:
         """Returns the probabilities of sampling a coalition size.
 
         Returns:
-            An array containing the probabilities of shappe (n+1,)
+            An array containing the probabilities of shappe ``(n+1,)``
         """
         size_probs = np.zeros(self.n + 1)
         size_probs[self._coalitions_to_sample] = self.adjusted_sampling_weights / np.sum(
@@ -222,18 +222,18 @@ class CoalitionSampler:
         """Returns the number of occurrences of the coalitions
 
         Returns:
-            A copy of the sampled coalitions counter of shape (n_coalitions,).
+            A copy of the sampled coalitions counter of shape ``(n_coalitions,)``.
         """
         return copy.deepcopy(self._sampled_coalitions_counter)
 
     @property
     def coalitions_probability(self) -> np.ndarray:
         """Returns the coalition probabilities according to the sampling procedure. The coalitions probability is
-        calculated as the product of the probability of the size of the coalition times the probability of the coalition
-        in that size.
+        calculated as the product of the probability of the size of the coalition times the probability of the 
+        coalition in that size.
 
         Returns:
-            A copy of the sampled coalitions probabilities of shape (n_coalitions,).
+            A copy of the sampled coalitions probabilities of shape ``(n_coalitions,)``.
         """
         if (
             self._sampled_coalitions_size_prob is not None
@@ -257,10 +257,10 @@ class CoalitionSampler:
         to the sampling.
 
         Note:
-            Due to uniform sampling, this is always 1/binom(n,coalition_size).
+            Due to uniform sampling, this is always ``1/binom(n,coalition_size)``.
 
         Returns:
-            A copy of the sampled probabilities of shape (n_coalitions,).
+            A copy of the sampled probabilities of shape ``(n_coalitions,)``.
         """
         return copy.deepcopy(self._sampled_coalitions_in_size_prob)
 
@@ -278,7 +278,7 @@ class CoalitionSampler:
         """Returns the index of the empty coalition.
 
         Returns:
-            The index of the empty coalition or `None` if the empty coalition was not sampled.
+            The index of the empty coalition or ``None`` if the empty coalition was not sampled.
         """
         if self.coalitions_per_size[0] >= 1:
             return int(np.where(self.coalitions_size == 0)[0][0])
@@ -291,10 +291,10 @@ class CoalitionSampler:
         The border trick is based on a more general version of `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
 
         Args:
-            sampling_budget: The number of coalitions to sample
+            sampling_budget: The number of coalitions to sample.
 
         Returns:
-            The sampling budget reduced by the number of coalitions in coalitions_to_compute
+            The sampling budget reduced by the number of coalitions in ``coalitions_to_compute``.
         """
         coalitions_per_size = np.array([binom(self.n, k) for k in range(self.n + 1)])
         expected_number_of_coalitions = sampling_budget * self.adjusted_sampling_weights
@@ -385,7 +385,7 @@ class CoalitionSampler:
                 coalitions to sample/evaluate).
 
         Returns:
-            The remaining sampling budget, i.e. reduced by 2.
+            The remaining sampling budget, i.e. reduced by ``2``.
         """
         empty_grand_coalition_indicator = np.zeros_like(self.adjusted_sampling_weights, dtype=bool)
         empty_grand_coalition_size = [0, self.n]
@@ -412,7 +412,7 @@ class CoalitionSampler:
 
     def sample(self, sampling_budget: int) -> None:
         """Samples distinct coalitions according to the specified budget.
-        The empty and grand coalition are always prioritized, and sampling budget is required >= 2.
+        The empty and grand coalition are always prioritized, and sampling budget is required ``>=2``.
 
         Args:
             sampling_budget: The budget for the approximation (i.e., the number of distinct

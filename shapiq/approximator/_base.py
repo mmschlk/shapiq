@@ -32,17 +32,17 @@ class Approximator(ABC):
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        min_order: The minimum interaction order, default is 0.
-        index: The interaction index to be estimated. Available indices are 'SII', 'kSII', 'STII',
-            and 'FSII'.
-        top_order: If True, the approximation is performed only for the top order interactions. If
-            False, the approximation is performed for all orders up to the specified order.
-        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
-            to `False`.
+        min_order: The minimum interaction order, default is ``0``.
+        index: The interaction index to be estimated. Available indices are ``['SII', 'kSII', 'STII',
+            'FSII']``.
+        top_order: If ``True``, the approximation is performed only for the top order interactions. If
+            ``False``, the approximation is performed for all orders up to the specified order.
+        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
+            to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
-             of a certain size. Defaults to `None`.
-        random_state: The random state to use for the approximation. Defaults to None.
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
+             of a certain size. Defaults to ``None``.
+        random_state: The random state to use for the approximation. Defaults to ``None``.
 
     Attributes:
         n: The number of players.
@@ -66,9 +66,9 @@ class Approximator(ABC):
         index: str,
         top_order: bool,
         min_order: int = 0,
-        random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray[float]] = None,
+        random_state: Optional[int] = None,
     ) -> None:
         # check if index can be approximated
         self.index: str = index
@@ -135,8 +135,8 @@ class Approximator(ABC):
     def _init_sampling_weights(self) -> np.ndarray:
         """Initializes the weights for sampling subsets.
 
-        The sampling weights are of size n + 1 and indexed by the size of the subset. The edges
-        All weights are set to _big_M, if size < order or size > n - order to ensure efficiency.
+        The sampling weights are of size ``n + 1`` and indexed by the size of the subset. The edges
+        All weights are set to ``_big_M``, if ``size < order`` or ``size > n - order`` to ensure efficiency.
 
         Returns:
             The weights for sampling subsets of size s in shape (n + 1,).
@@ -185,7 +185,10 @@ class Approximator(ABC):
         """Finalizes the result dictionary.
 
         Args:
-            # TODO: add args
+            result: Interaction values.
+            baseline_value: Baseline value.
+            estimated: Whether interaction values were estimated.
+            budget: The budget for the approximation.
 
         Returns:
             The interaction values.
@@ -308,10 +311,10 @@ class Approximator(ABC):
 
         Args:
             base_interactions: The base interaction values to aggregate.
-            order: The order of the aggregation. For example, the order of the k-SII aggregation. If
-                `None`, the maximum order of the base interactions is used. Defaults to `None`.
-            player_set: The set of players to consider for the aggregation. If `None`, all players
-                are considered. Defaults to `None`.
+            order: The order of the aggregation. For example, the order of the k-SII aggregation. 
+                If ``None`` (default), the maximum order of the base interactions is used.
+            player_set: The set of players to consider for the aggregation. If ``None`` (default), 
+                all players are considered.
 
         Returns:
             The aggregated interaction values.

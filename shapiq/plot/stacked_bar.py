@@ -26,7 +26,7 @@ def stacked_bar_plot(
     This stacked bar plot can be used to visualize the amount of interaction between the features
     for a given instance. The n-SII values are plotted as stacked bars with positive and negative
     parts stacked on top of each other. The colors represent the order of the n-SII values. For a
-    detailed explanation of this plot, see this `research paper <https://proceedings.mlr.press/v206/bordt23a/bordt23a.pdf>`_.
+    detailed explanation of this plot, refer to `Bordt and von Luxburg (2023) <https://doi.org/10.48550/arXiv.2209.0401>`_.
 
     An example of the plot is shown below.
 

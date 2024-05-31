@@ -18,21 +18,21 @@ class Regression(Approximator):
 
     Regression approximators are based on a representation of the interaction index as a solution
     to a weighted least square problem. The objective of this optimization problem is approximated
-    and then solved exactly. For the SV this method is known as KernelSHAP.
+    and then solved exactly. For the Shapley value this method is known as KernelSHAP.
 
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        index: The interaction index to be estimated. Available indices are 'SII', 'kSII', 'STII',
-            and 'FSII'.
-        sii_consistent: If `True`, the KernelSHAP-IQ method is used for SII, else Inconsistent
-            KernelSHAP-IQ. Defaults to `True`.
+        index: The interaction index to be estimated. Available indices are ``['SII', 'kSII', 'STII',
+            'FSII']``.
+        sii_consistent: If ``True``, the KernelSHAP-IQ method is used for SII, else Inconsistent
+            KernelSHAP-IQ. Defaults to ``True``.
         pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
-            to `False`.
+            to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape `(n + 1,)` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to `None`.
-        random_state: The random state to use for the approximation. Defaults to `None`.
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
+            of a certain size. Defaults to ``None``.
+        random_state: The random state to use for the approximation. Defaults to ``None``.
     """
 
     def __init__(
@@ -314,7 +314,7 @@ class Regression(Approximator):
         approximated interactions.
 
         Args:
-            regression_matrix: The regression matrix of shape [n_coalitions, n_interactions].
+            regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
                 Depends on the index.
             regression_response: The response vector for each coalition.
             regression_weights: The weights for the regression problem for each coalition.
