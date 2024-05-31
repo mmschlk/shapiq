@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     datasets_to_precompute = [
         "AdultCensus",
-        "BikeSharing",
-        "CaliforniaHousing",
+        # "BikeSharing",
+        # "CaliforniaHousing",
         # "Sentiment",
         # "Image",
     ]
@@ -45,10 +45,6 @@ if __name__ == "__main__":
 
     omit_games = [
         "AdultCensusClusterExplanation",
-        "BikeSharingClusterExplanation",
-        "CaliforniaHousingClusterExplanation",
-        "SentimentAnalysisLocalXAI",
-        "ImageClassifierLocalXAI",
     ]
 
     n_jobs = 1

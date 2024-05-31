@@ -371,7 +371,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 10},
                 {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 10},
                 {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 10},
-                # {"model_name": "neural_network", "player_sizes": "increasing", "n_players": 10},  # does not work atm. too slow
             ],
             "iteration_parameter": "random_state",
             "n_players": 10,

@@ -42,7 +42,7 @@ class StratifiedSamplingSV(Approximator):
         Args:
             budget: The number of game evaluations for approximation
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. 
+            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``.
                 Defaults to ``5``.
 
         Returns:

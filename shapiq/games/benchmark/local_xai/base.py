@@ -92,10 +92,15 @@ class LocalExplanation(Game):
                     normalize=False,
                 )
             elif imputer == "conditional":
+                # use only a random subset of the data for the conditional imputer
+                random_indices = np.random.default_rng(random_state).choice(
+                    data.shape[0], size=2_000, replace=False
+                )
+                data_background = data[random_indices]
                 self._imputer = ConditionalImputer(
                     model=model,
                     # give only first 2_000 samples to the conditional imputer
-                    data=data[:2_000],
+                    data=data_background,
                     x=self.x,
                     random_state=random_state,
                     normalize=False,

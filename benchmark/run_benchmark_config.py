@@ -12,8 +12,8 @@ if __name__ == "__main__":
     from shapiq.games.benchmark.run import run_benchmark_from_configuration
 
     # default values
-    game = "AdultCensusFeatureSelection"
-    config_id = 3
+    game = "CaliforniaHousingLocalXAI"
+    config_id = 4
     n_player_id = 0
     index = "k-SII"
     order = 2

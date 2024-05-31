@@ -19,7 +19,9 @@ def test_load_games_with_configuration():
     for game_class, configurations in BENCHMARK_CONFIGURATIONS.items():
         for configuration in configurations:
             for config in configuration["configurations"]:
-                game = next(load_games_from_configuration(game_class, configuration=config, n_games=1))
+                game = next(
+                    load_games_from_configuration(game_class, configuration=config, n_games=1)
+                )
                 # assert game.game_name == game_class.get_game_name() # TODO
                 assert game.verbose == BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["verbose"]
 

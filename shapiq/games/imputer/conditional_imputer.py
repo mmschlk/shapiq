@@ -122,7 +122,10 @@ class ConditionalImputer(Imputer):
             The sampled replacement values. The shape of the array is (sample_size, n_subsets,
                 n_features).
         """
-        x_embedded = self._tree_embedder.apply(self._x)
+        try:
+            x_embedded = self._tree_embedder.apply(self._x)
+        except ValueError:  # not correct shape
+            x_embedded = self._tree_embedder.apply(self._x.reshape(1, -1))
         distances = hamming_distance(self._data_embedded, x_embedded)
         conditional_data = self.data[
             distances <= np.quantile(distances, self.conditional_threshold)

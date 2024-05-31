@@ -311,9 +311,9 @@ class Approximator(ABC):
 
         Args:
             base_interactions: The base interaction values to aggregate.
-            order: The order of the aggregation. For example, the order of the k-SII aggregation. 
+            order: The order of the aggregation. For example, the order of the k-SII aggregation.
                 If ``None`` (default), the maximum order of the base interactions is used.
-            player_set: The set of players to consider for the aggregation. If ``None`` (default), 
+            player_set: The set of players to consider for the aggregation. If ``None`` (default),
                 all players are considered.
 
         Returns:
