@@ -36,7 +36,7 @@ class MoebiusConverter:
     def __init__(self, moebius_coefficients: InteractionValues):
         self.moebius_coefficients: InteractionValues = moebius_coefficients
         self.n = self.moebius_coefficients.n_players
-        self._computed: dict = {}
+        self._computed: dict[tuple[str, int], InteractionValues] = {}  # will store all computations
         # setup callable mapping from index to computation
         self._index_mapping: dict[str, Callable[[str, int], InteractionValues]] = {
             # shapley_interaction
@@ -67,12 +67,12 @@ class MoebiusConverter:
         if order is None:
             order = self.n
 
-        if index in self._computed:  # if index is already computed, return it
-            return copy.deepcopy(self._computed[index])
+        if (index, order) in self._computed:  # if index is already computed, return it
+            return copy.deepcopy(self._computed[(index, order)])
         elif index in self.available_indices:  # if index is supported, compute it
             computation_function = self._index_mapping[index]
             computed_index: InteractionValues = computation_function(index, order)
-            self._computed[index] = computed_index
+            self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
             raise ValueError(f"Index {index} not supported.")

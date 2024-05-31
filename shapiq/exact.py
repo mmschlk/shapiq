@@ -50,7 +50,7 @@ class ExactComputer:
         self._grand_coalition_set: set[int] = set(self._grand_coalition_tuple)
         self._big_M: float = 10e7
         self._n_interactions: np.ndarray = self.get_n_interactions(self.n)
-        self._computed = {}  # will store all computed indices
+        self._computed: dict[tuple[str, int], InteractionValues] = {}  # will store all computations
 
         # evaluate the game on the powerset
         computed_game = self.compute_game_values(game_fun)
@@ -106,12 +106,12 @@ class ExactComputer:
         if order is None:
             order = self.n
 
-        if index in self._computed:
-            return copy.deepcopy(self._computed[index])
+        if (index, order) in self._computed:
+            return copy.deepcopy(self._computed[(index, order)])
         elif index in self.available_indices:
             computation_function = self._index_mapping[index]
             computed_index: InteractionValues = computation_function(index=index, order=order)
-            self._computed[index] = computed_index
+            self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
             raise ValueError(f"Index {index} not supported.")
