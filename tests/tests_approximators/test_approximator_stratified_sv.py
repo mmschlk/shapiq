@@ -7,10 +7,10 @@ from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
-    "n, budget, batch_size",
-    [(5, 102, 1), (5, 102, 2), (5, 102, 5), (5, 100, 8), (5, 1000, 10)],
+    "n, budget",
+    [(5, 100), (5, 1000)],
 )
-def test_approximate(n, budget, batch_size):
+def test_approximate(n, budget):
     """Tests the approximation of the StratifiedSamplingSV approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
@@ -22,11 +22,10 @@ def test_approximate(n, budget, batch_size):
     # test for init parameter
     assert approximator.index == "SV"
     assert approximator.n == n
-    assert approximator.iteration_cost == 2 * n * n
     assert approximator.max_order == 1
     assert approximator.top_order is False
 
-    sv_estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    sv_estimates = approximator.approximate(budget, game)
 
     # check that the budget is respected
     assert game.access_counter <= budget
@@ -38,9 +37,9 @@ def test_approximate(n, budget, batch_size):
 
     # check Shapley values for all players that have only marginal contributions of size 0.2
     # their estimates must be exactly 0.2
-    assert sv_estimates[(0,)] == pytest.approx(0.2, 0.01)
-    assert sv_estimates[(3,)] == pytest.approx(0.2, 0.01)
-    assert sv_estimates[(4,)] == pytest.approx(0.2, 0.01)
+    assert sv_estimates[(0,)] == pytest.approx(0.2, 0.001)
+    assert sv_estimates[(3,)] == pytest.approx(0.2, 0.001)
+    assert sv_estimates[(4,)] == pytest.approx(0.2, 0.001)
 
     # check Shapley values for interaction players
     if budget >= 1000:
