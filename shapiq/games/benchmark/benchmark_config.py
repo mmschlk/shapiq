@@ -353,6 +353,16 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",
             "n_players": 10,
         },
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
+                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
+                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 14,
+            "iteration_parameter_values": list(range(1, 5 + 1)),
+        },
     ],
     BikeSharingDatasetValuation: [
         {
@@ -364,6 +374,16 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",
             "n_players": 10,
         },
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
+                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
+                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 14,
+            "iteration_parameter_values": list(range(1, 5 + 1)),
+        },
     ],
     CaliforniaHousingDatasetValuation: [
         {
@@ -374,6 +394,16 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 10,
+        },
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
+                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
+                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 14,
+            "iteration_parameter_values": list(range(1, 5 + 1)),
         },
     ],
     # cluster explanation configurations -----------------------------------------------------------

@@ -9,6 +9,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 if __name__ == "__main__":
 
+    # example python run commands for the CaliforniaHousingLocalXAI game
+    # nohup nice -n 19 python run_benchmark_config.py --game CaliforniaHousingLocalXAI --config_id 4 --n_player_id 0 --n_games -1 --index k-SII --order 2 --n_jobs 1 > CaliforniaHousingLocalXAI_4_1.log 2>&1 &
+
     from shapiq.games.benchmark.run import run_benchmark_from_configuration
 
     # default values
@@ -29,6 +32,7 @@ if __name__ == "__main__":
     parser.add_argument("--index", type=str, default=index)
     parser.add_argument("--order", type=int, default=order)
     parser.add_argument("--n_jobs", type=int, default=n_jobs)
+    parser.add_argument("--rerun_if_exists", type=bool, default=False)
     args = parser.parse_args()
 
     # parse arguments
@@ -41,6 +45,7 @@ if __name__ == "__main__":
     index = args.index
     order = args.order
     n_jobs = args.n_jobs
+    rerun_if_exists = args.rerun_if_exists
 
     run_benchmark_from_configuration(
         index=index,
@@ -51,4 +56,5 @@ if __name__ == "__main__":
         game_n_games=n_games,
         n_jobs=n_jobs,
         max_budget=None,
+        rerun_if_exists=rerun_if_exists,
     )

@@ -24,11 +24,11 @@ if __name__ == "__main__":
     # nohup nice -n 19 python pre_compute_all.py --datasets BikeSharing > compute_BikeSharing.log &
 
     datasets_to_precompute = [
-        "AdultCensus",
-        "BikeSharing",
+        # "AdultCensus",
+        # "BikeSharing",
         "CaliforniaHousing",
-        "Sentiment",
-        "Image",
+        # "Sentiment",
+        # "Image",
     ]
     max_n_players = 14
 

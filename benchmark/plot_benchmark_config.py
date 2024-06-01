@@ -22,8 +22,8 @@ if __name__ == "__main__":
     save_fig = True
 
     # benchmark to plot parameters
-    game = "AdultCensusDatasetValuation"
-    config_id = 1
+    game = "BikeSharingLocalXAI"
+    config_id = 5
     n_player_id = 0
     index = "k-SII"
     order = 2
@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     # plot parameters
     log_scale_y = True
-    log_scale_min = 1e-9
+    log_scale_min = 8e-2
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
     increase_font_size: int = 2
