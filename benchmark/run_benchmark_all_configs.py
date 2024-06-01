@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 if __name__ == "__main__":
 
     # example python run command with nohup and nice
-    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 60 > all_configs.log &
+    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 70 --rerun_if_exists True > all_configs.log &
 
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
@@ -20,7 +20,6 @@ if __name__ == "__main__":
     from shapiq.games.benchmark.run import run_benchmark_from_configuration
 
     indices_order = [("k-SII", 2), ("SV", 1)]
-    max_n_players = 16
 
     # add arguments to the parser
     parser = argparse.ArgumentParser()
@@ -29,6 +28,12 @@ if __name__ == "__main__":
         type=int,
         required=False,
         default=2,
+    )
+    parser.add_argument(
+        "--rerun_if_exists",
+        type=bool,
+        required=False,
+        default=False,
     )
     args = parser.parse_args()
     n_jobs = args.n_jobs
@@ -44,8 +49,6 @@ if __name__ == "__main__":
             for n_player_id, config_per_player_id in enumerate(all_game_class_configs):
                 player_id_configs = config_per_player_id["configurations"]
                 n_players = config_per_player_id["n_players"]
-                if n_players > max_n_players:
-                    continue
                 for i, config in enumerate(player_id_configs):
                     config_id = i + 1
                     print()

@@ -65,6 +65,9 @@ from . import (
     ImageClassifierLocalXAI,
     SentimentAnalysisLocalXAI,
 )
+
+# TODO: add TreeSHAPIQXAI
+# TODO: add SOUM
 from .precompute import SHAPIQ_DATA_DIR
 
 # default params that will be passed to any game
@@ -455,6 +458,10 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "n_players": 8,
         },
     ],
+    # TreeSHAPIQXAI configurations -----------------------------------------------------------------
+    # TODO: add configurations for TreeSHAPIQXAI
+    # SOUM configurations --------------------------------------------------------------------------
+    # TODO: add configurations for SOUM
 }
 
 
@@ -485,6 +492,7 @@ GAME_TO_CLASS_MAPPING = {
     "CaliforniaHousingUnsupervisedData": CaliforniaHousingUnsupervisedData,
     "SentimentAnalysisLocalXAI": SentimentAnalysisLocalXAI,
     "ImageClassifierLocalXAI": ImageClassifierLocalXAI,
+    # TODO: add SOUM and TreeSHAPIQXAI
 }
 
 
@@ -639,6 +647,7 @@ def load_games_from_configuration(
     n_player_id: int = 0,
     check_pre_computed: bool = True,
     only_pre_computed: bool = True,
+    # TODO: add loading of synth never to be pre-computed games
 ) -> Generator[Game, None, None]:
     """Load the game with the given configuration from disk or create it if it does not exist.
 

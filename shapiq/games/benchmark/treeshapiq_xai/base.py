@@ -37,6 +37,7 @@ class TreeSHAPIQXAI(Game):
         max_order: int = 2,
         min_order: int = 1,
         normalize: bool = True,
+        verbose: bool = True,
     ) -> None:
         n_players = x.shape[-1]
 
@@ -59,7 +60,10 @@ class TreeSHAPIQXAI(Game):
         self.x_explain = x
 
         super().__init__(
-            n_players=n_players, normalize=normalize, normalization_value=self.empty_value
+            n_players=n_players,
+            normalize=normalize,
+            normalization_value=self.empty_value,
+            verbose=verbose,
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
