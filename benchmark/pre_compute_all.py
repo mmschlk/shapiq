@@ -45,9 +45,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     datasets_to_precompute = args.datasets
 
-    omit_games = [
-        "AdultCensusClusterExplanation",
-    ]
+    # for games to be omitted
+    omit_games = []
 
     n_jobs = 1
     verbose = True

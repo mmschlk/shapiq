@@ -1,5 +1,6 @@
 """This module contains the plotting utilities for the benchmark results."""
 
+from collections import defaultdict
 from typing import Callable, Optional, Union
 
 import numpy as np
@@ -7,30 +8,34 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # TODO: add the plot colors and styles for different approximators as well
-COLORS = {
+STYLE_DICT: dict[str, dict[str, str]] = {
     # permutation sampling
-    "PermutationSamplingSII": "#7d53de",
-    "PermutationSamplingSTII": "#7d53de",
-    "PermutationSamplingSV": "#7d53de",
+    "PermutationSamplingSII": {"color": "#7d53de", "marker": "o"},
+    "PermutationSamplingSTII": {"color": "#7d53de", "marker": "o"},
+    "PermutationSamplingSV": {"color": "#7d53de", "marker": "o"},
     # KernelSHAP-IQ
-    "KernelSHAP": "#ff6f00",
-    "KernelSHAPIQ": "#ff6f00",
+    "KernelSHAP": {"color": "#ff6f00", "marker": "o"},
+    "KernelSHAPIQ": {"color": "#ff6f00", "marker": "o"},
     # inconsistent KernelSHAP-IQ
-    "InconsistentKernelSHAPIQ": "#ffba08",
-    "kADDSHAP": "#ffba08",
+    "InconsistentKernelSHAPIQ": {"color": "#ffba08", "marker": "o"},
+    "kADDSHAP": {"color": "#ffba08", "marker": "o"},
     # SVARM-based
-    "SVARMIQ": "#00b4d8",
-    "SVARM": "#00b4d8",
+    "SVARMIQ": {"color": "#00b4d8", "marker": "o"},
+    "SVARM": {"color": "#00b4d8", "marker": "o"},
     # shapiq
-    "SHAPIQ": "#ef27a6",
-    "UnbiasedKernelSHAP": "#ef27a6",
+    "SHAPIQ": {"color": "#ef27a6", "marker": "o"},
+    "UnbiasedKernelSHAP": {"color": "#ef27a6", "marker": "o"},
     # misc SV
-    "OwenSamplingSV": "red",
-    "StratifiedSamplingSV": "blue",
+    "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
+    "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
 }
+STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
+MARKERS = []
+LIGHT_GRAY = "#d3d3d3"
 LINE_STYLES_ORDER = {0: "solid", 1: "dotted", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
 LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "s", 3: "X", 4: "d", "all": "o"}
-LINE_THICKNESS = 1
+LINE_THICKNESS = 1.5
+MARKER_SIZE = 7
 
 
 LOG_SCALE_MIN = 1e-7
@@ -135,41 +140,73 @@ def plot_approximation_quality(
                 continue
             data_order = metric_data[
                 (metric_data["approximator"] == approximator) & (metric_data["order"] == order)
-            ]
+            ].copy()
+
+            if log_scale_y:
+                # manually set all below log_scale_min to log_scale_min without a lambda function
+                data_order[aggregation] = data_order[aggregation].apply(
+                    lambda x: log_scale_min if x < log_scale_min else x
+                )
 
             # get the plot colors and styles
             line_style, line_marker = LINE_STYLES_ORDER[order], LINE_MARKERS_ORDER[order]
-            color = COLORS.get(approximator, "black")
+            color = STYLE_DICT[approximator]["color"]
 
             # plot the mean values
             ax.plot(
-                data_order["budget"],
+                data_order["used_budget"],
                 data_order[aggregation],
                 color=color,
                 linestyle=line_style,
                 marker=line_marker,
                 linewidth=LINE_THICKNESS,
                 mec="white",
+                markersize=MARKER_SIZE,
             )
             # plot the error bars if the confidence metric is not None
             if confidence_metric is not None:
                 ax.fill_between(
-                    data_order["budget"],
+                    data_order["used_budget"],
                     data_order[aggregation] - data_order[confidence_metric_low],
                     data_order[aggregation] + data_order[confidence_metric_high],
                     alpha=0.1,
                     color=color,
                 )
 
+    # add %model calls to the x-axis as a secondary axis
+    _set_x_axis_ticks(ax, n_players=int(data["n_players"].unique().max()))
+
     # add x/y labels
     ax.set_ylabel(metric)
-    ax.set_xlabel("Budget")
+    ax.set_xlabel(r"Model Evaluations (relative to $2^n$)")
+
+    # add grid to x-axis
+    ax.grid(axis="x", color=LIGHT_GRAY, linestyle="dashed")
 
     if log_scale_y:
-        # adjust the
         _set_y_axis_log_scale(ax, log_scale_min)
 
     return fig, ax
+
+
+def _set_x_axis_ticks(ax: plt.Axes, n_players: int) -> None:
+    """Sets the x-axis ticks in 25% intervals."""
+    if n_players <= 16:  # only for small number of players set the ticks as 25% intervals
+        budgets_relative = np.arange(0, 1.25, 0.25)
+        budgets = budgets_relative * (2**n_players)
+    else:
+        budgets = ax.get_xticks()
+        budgets_relative = budgets / (2**n_players)
+
+    xtick_labels = []
+    for bdgt, bdgt_rel in zip(budgets, budgets_relative):
+        bdgt_rel_str = f"{bdgt_rel:.0%}"
+        if bdgt_rel <= 0.01 and bdgt_rel != 0:
+            bdgt_rel_str = "<1%"
+        xtick_labels.append(f"{int(bdgt)}\n({bdgt_rel_str})")
+
+    ax.set_xticks(budgets)
+    ax.set_xticklabels(xtick_labels)
 
 
 def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float) -> None:
@@ -204,7 +241,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
     metric_dfs = []
     for metric_col in metric_columns:
         data_order = (
-            results_df.groupby(["approximator", "budget", "iteration"])
+            results_df.groupby(["approximator", "used_budget", "iteration"])
             .agg(
                 {
                     metric_col: [
@@ -285,7 +322,7 @@ def add_legend(
             [],
             [],
             label=approximator,
-            color=COLORS.get(approximator, "black"),
+            color=STYLE_DICT[approximator]["color"],
             linewidth=LINE_THICKNESS,
         )
 

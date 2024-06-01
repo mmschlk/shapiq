@@ -377,17 +377,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         },
     ],
     # cluster explanation configurations -----------------------------------------------------------
-    AdultCensusClusterExplanation: [
-        {
-            "configurations": [
-                {"cluster_method": "kmeans", "score_method": "silhouette_score"},
-                {"cluster_method": "agglomerative", "score_method": "calinski_harabasz_score"},
-            ],
-            "iteration_parameter": "random_state",  # for agglomerative this does not change the game
-            "iteration_parameter_values": [1],  # for agglomerative this does not change the game
-            "n_players": 14,
-        },
-    ],
+    AdultCensusClusterExplanation: [],  # no configuration because the game is too slow
     BikeSharingClusterExplanation: [
         {
             "configurations": [
