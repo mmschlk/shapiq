@@ -19,14 +19,16 @@ if __name__ == "__main__":
     from shapiq.games.benchmark.precompute import pre_compute_from_configuration
 
     # example python run command
-    # nohup nice -n 19 python pre_compute_all.py --datasets CaliforniaHousing &
+    # nohup nice -n 19 python pre_compute_all.py --datasets CaliforniaHousing > compute_CaliforniaHousing.log &
+    # nohup nice -n 19 python pre_compute_all.py --datasets AdultCensus > compute_AdultCensus.log &
+    # nohup nice -n 19 python pre_compute_all.py --datasets BikeSharing > compute_BikeSharing.log &
 
     datasets_to_precompute = [
         "AdultCensus",
-        # "BikeSharing",
-        # "CaliforniaHousing",
-        # "Sentiment",
-        # "Image",
+        "BikeSharing",
+        "CaliforniaHousing",
+        "Sentiment",
+        "Image",
     ]
     max_n_players = 14
 

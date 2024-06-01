@@ -35,7 +35,7 @@ class StratifiedSamplingSV(Approximator):
         self.iteration_cost: int = 2 * n * n
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: Optional[int] = 5
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray]
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
@@ -50,44 +50,36 @@ class StratifiedSamplingSV(Approximator):
         """
 
         used_budget = 0
-        batch_size = 1 if batch_size is None else batch_size
 
         # get empty value
         empty_value = float(game(np.zeros(self.n, dtype=bool)))
         used_budget += 1
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
-        n_iterations, last_batch_size = self._calc_iteration_count(
-            budget - used_budget, batch_size, self.iteration_cost
-        )
 
         strata = np.zeros((self.n, self.n), dtype=float)
         counts = np.zeros((self.n, self.n), dtype=int)
 
         # main sampling loop going through all strata of all players with each segment
-        for iteration in range(1, n_iterations + 1):
-            batch_size = batch_size if iteration != n_iterations else last_batch_size
-            n_segments = batch_size
-            n_coalitions = n_segments * self.iteration_cost
-            coalitions = np.zeros(shape=(n_coalitions, self.n), dtype=bool)
-            coalition_index = 0
-            # iterate through each segment
-            for segment in range(n_segments):
-                # iterate through each player
-                for player in range(self.n):
-                    available_players = list(self._grand_coalition_set)
-                    available_players.remove(player)
-                    # iterate through each stratum
-                    for stratum in range(self.n):
-                        # draw a subset of the player set without player of size stratum uniformly at random
-                        coalition = list(
-                            self._rng.choice(available_players, stratum, replace=False)
-                        )
-                        # add the coalition and coalition with the player, both form a marginal contribution
-                        coalitions[coalition_index, tuple(coalition)] = True
-                        coalition.append(player)
-                        coalitions[coalition_index + 1, tuple(coalition)] = True
-                        coalition_index += 2
+        n_segments = budget
+        n_coalitions = n_segments * self.iteration_cost
+        coalitions = np.zeros(shape=(n_coalitions, self.n), dtype=bool)
+        coalition_index = 0
+        # iterate through each segment
+        for segment in range(n_segments):
+            # iterate through each player
+            for player in range(self.n):
+                available_players = list(self._grand_coalition_set)
+                available_players.remove(player)
+                # iterate through each stratum
+                for stratum in range(self.n):
+                    # draw a subset of the player set without player of size stratum uniformly at random
+                    coalition = list(self._rng.choice(available_players, stratum, replace=False))
+                    # add the coalition and coalition with the player, both form a marginal contribution
+                    coalitions[coalition_index, tuple(coalition)] = True
+                    coalition.append(player)
+                    coalitions[coalition_index + 1, tuple(coalition)] = True
+                    coalition_index += 2
 
             # evaluate the collected coalitions
             game_values: np.ndarray[float] = game(coalitions)

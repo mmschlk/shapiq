@@ -258,6 +258,67 @@ def _init_approximator_from_class(
     return approximator_class(**init_param)
 
 
+def load_benchmark_results(
+    save_path: Optional[str] = None,
+    index: Optional[str] = None,
+    order: Optional[int] = None,
+    game_class: Optional[Union[Game.__class__, str]] = None,
+    game_configuration: Optional[Union[dict[str, Any], int]] = None,
+    game_n_player_id: Optional[int] = None,
+    game_n_games: Optional[int] = None,
+) -> tuple[pd.DataFrame, str]:
+    """Loads the benchmark results from a JSON file which either specified by the save path or
+    the benchmark configuration.
+
+    Args:
+        save_path: The path to the JSON file to load the results from. Defaults to None.
+        index: The index to load the results for. Defaults to None.
+        order: The order to load the results for. Defaults to None.
+        game_class: The game class to load the results for. Defaults to None.
+        game_configuration: The configuration to load the results for. Defaults to None.
+        game_n_player_id: The player ID to load the results for. Defaults to None.
+        game_n_games: The number of games to load the results for. Defaults to None.
+
+    Returns:
+        The loaded benchmark results as a pandas DataFrame.
+
+    Raises:
+        ValueError: If save path is None and the game configuration is not provided.
+    """
+    if save_path is None:
+        from .benchmark_config import (
+            BENCHMARK_CONFIGURATIONS,
+            get_game_class_from_name,
+            get_game_file_name_from_config,
+        )
+
+        if game_class is None or game_configuration is None or game_n_player_id is None:
+            raise ValueError("The game configuration must be provided if the save path is not.")
+
+        if isinstance(game_class, str):
+            game_class = get_game_class_from_name(game_class)
+
+        if isinstance(game_configuration, int):
+            game_configuration = BENCHMARK_CONFIGURATIONS[game_class][game_n_player_id][
+                "configurations"
+            ][game_configuration - 1]
+
+        save_path = os.path.join(
+            "results",
+            _make_benchmark_name(
+                config_id=get_game_file_name_from_config(game_configuration),
+                game_class=game_class,
+                n_games=game_n_games,
+                index=index,
+                order=order,
+            )
+            + ".json",
+        )
+
+    df = pd.read_json(save_path)
+    return df, save_path
+
+
 def run_benchmark_from_configuration(
     index: str,
     order: int,
@@ -329,20 +390,16 @@ def run_benchmark_from_configuration(
     if not all(game.is_normalized for game in games):
         warnings.warn("Not all games are normalized. The benchmark might not be accurate.")
 
+    # get the benchmark name for saving the results
+    benchmark_name = _make_benchmark_name(config_id, game_class, len(games), index, order)
+    save_path = os.path.join("results", f"{benchmark_name}.json")
+    if not rerun_if_exists and os.path.exists(save_path):
+        print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
+        return
+
     # get the exact values
     print("Computing the exact values for the games.")
     gt_values = [game.exact_values(index=index, order=order) for game in tqdm(games, unit=" games")]
-
-    # get the benchmark name for saving the results
-    benchmark_name = "_".join(
-        [
-            game_class.get_game_name(),
-            str(config_id),
-            str(index),
-            str(order),
-            f"n_games={len(games)}",
-        ]
-    )
 
     # run the benchmark
     run_benchmark(
@@ -357,6 +414,26 @@ def run_benchmark_from_configuration(
         n_iterations=n_iterations,
         save=True,
         rerun_if_exists=rerun_if_exists,
+        save_path=save_path,
+    )
+
+
+def _make_benchmark_name(
+    config_id: str, game_class: Union[Game.__class__, str], n_games: int, index: str, order: int
+) -> str:
+    """Make the benchmark name for the given configuration."""
+    try:
+        game_name = game_class.get_game_name()
+    except AttributeError:  # game_class is a string
+        game_name = game_class
+    return "_".join(
+        [
+            game_name,
+            str(config_id),
+            str(index),
+            str(order),
+            f"n_games={n_games}",
+        ]
     )
 
 

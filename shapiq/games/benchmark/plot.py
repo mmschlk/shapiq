@@ -13,17 +13,52 @@ COLORS = {
     "PermutationSamplingSTII": "#7d53de",
     "PermutationSamplingSV": "#7d53de",
     # KernelSHAP-IQ
+    "KernelSHAP": "#ff6f00",
     "KernelSHAPIQ": "#ff6f00",
+    # inconsistent KernelSHAP-IQ
     "InconsistentKernelSHAPIQ": "#ffba08",
+    "kADDSHAP": "#ffba08",
     # SVARM-based
     "SVARMIQ": "#00b4d8",
     "SVARM": "#00b4d8",
     # shapiq
     "SHAPIQ": "#ef27a6",
+    "UnbiasedKernelSHAP": "#ef27a6",
+    # misc SV
+    "OwenSamplingSV": "red",
+    "StratifiedSamplingSV": "blue",
 }
 LINE_STYLES_ORDER = {0: "solid", 1: "dotted", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
 LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "s", 3: "X", 4: "d", "all": "o"}
 LINE_THICKNESS = 1
+
+
+LOG_SCALE_MIN = 1e-7
+
+
+def get_game_title_name(game_name: str) -> str:
+    """Changes the game name to a more readable title.
+
+    Args:
+        game_name: The game name to change.
+
+    Returns:
+        The game title name.
+
+    Example:
+        >>> get_game_title_name("ImageClassifierLocalXAI")
+        "Image Classifier Local XAI"
+        >>> get_game_title_name("AdultCensusClusterExplanation")
+        "Adult Census Cluster Explanation"
+    """
+    # split words by capital letters
+    words = ""
+    for char in game_name:
+        if char.isupper():
+            words += " "
+        words += char
+    words = words.replace("X A I", "XAI")
+    return words.strip()
 
 
 def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
@@ -51,6 +86,8 @@ def plot_approximation_quality(
     approximators: Optional[list[str]] = None,
     aggregation: str = "mean",
     confidence_metric: Optional[str] = "sem",
+    log_scale_y: bool = False,
+    log_scale_min: float = LOG_SCALE_MIN,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the approximation quality curves.
 
@@ -64,6 +101,8 @@ def plot_approximation_quality(
         aggregation: The aggregation function to plot for the metric values. Defaults to "mean".
             Available options are "mean", "median", "quantile_95", "quantile_5".
         confidence_metric: The metric to use for the confidence interval. Defaults to "sem".
+            Available options are "sem", "std", "var", "quantile_95", "quantile_5".
+        log_scale_y: Whether to use a log scale for the y-axis. Defaults to `False`.
 
     Returns:
         The figure and axes of the plot.
@@ -80,6 +119,7 @@ def plot_approximation_quality(
     # make sure approximators is a list
     if approximators is None:
         approximators = list(metric_data["approximator"].unique())
+        print("Approximators:", approximators)
 
     # set the confidence metrics
     confidence_metric_low, confidence_metric_high = confidence_metric, confidence_metric
@@ -96,6 +136,7 @@ def plot_approximation_quality(
             data_order = metric_data[
                 (metric_data["approximator"] == approximator) & (metric_data["order"] == order)
             ]
+
             # get the plot colors and styles
             line_style, line_marker = LINE_STYLES_ORDER[order], LINE_MARKERS_ORDER[order]
             color = COLORS.get(approximator, "black")
@@ -120,7 +161,30 @@ def plot_approximation_quality(
                     color=color,
                 )
 
+    # add x/y labels
+    ax.set_ylabel(metric)
+    ax.set_xlabel("Budget")
+
+    if log_scale_y:
+        # adjust the
+        _set_y_axis_log_scale(ax, log_scale_min)
+
     return fig, ax
+
+
+def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float) -> None:
+    """Sets the y-axis to a log scale and adjusts the limits."""
+    # adjust the top limit to be one order of magnitude higher than the current top limit
+    top_lim = ax.get_ylim()[1]
+    top_lim = f"{top_lim:.2e}"  # get the top limi in scientific notation
+    top_lim = top_lim.split("e")[1]  # get the exponent
+    top_lim = int(top_lim) + 1  # get the top limit as the exponent + 1
+    top_lim = 10**top_lim  # get the top limit in scientific notation
+
+    # set the y-axis limits
+    ax.set_ylim(top=top_lim)
+    ax.set_ylim(bottom=log_scale_min)
+    ax.set_yscale("log")
 
 
 def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFrame:
