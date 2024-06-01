@@ -33,7 +33,7 @@ class OwenSamplingSV(Approximator):
     def __init__(
         self,
         n: int,
-        n_anchor_points: int,
+        n_anchor_points: int = 10,
         random_state: Optional[int] = None,
     ) -> None:
         super().__init__(n, max_order=1, index="SV", top_order=False, random_state=random_state)
