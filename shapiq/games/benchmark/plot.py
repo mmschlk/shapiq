@@ -203,7 +203,10 @@ def _set_x_axis_ticks(ax: plt.Axes, n_players: int) -> None:
         bdgt_rel_str = f"{bdgt_rel:.0%}"
         if bdgt_rel <= 0.01 and bdgt_rel != 0:
             bdgt_rel_str = "<1%"
-        xtick_labels.append(f"{int(bdgt)}\n({bdgt_rel_str})")
+        if bdgt_rel == 0:
+            xtick_labels.append("0")
+        else:
+            xtick_labels.append(f"{int(bdgt)}\n({bdgt_rel_str})")
 
     ax.set_xticks(budgets)
     ax.set_xticklabels(xtick_labels)

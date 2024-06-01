@@ -22,10 +22,10 @@ if __name__ == "__main__":
     save_fig = True
 
     # benchmark to plot parameters
-    game = "AdultCensusEnsembleSelection"
+    game = "AdultCensusDatasetValuation"
     config_id = 1
     n_player_id = 0
-    index = "SV"
+    index = "k-SII"
     order = 2
     n_games = 30
 
@@ -34,10 +34,10 @@ if __name__ == "__main__":
 
     # plot parameters
     log_scale_y = True
-    log_scale_min = 1e-8
+    log_scale_min = 1e-9
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
-    increase_font_size: int = 1
+    increase_font_size: int = 2
     fig_size = (6, 5)
 
     # create the title -----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     index_title = index if index != "k-SII" else rf"{order}" + r"\text{-}SII"
     index_title = r"$\bf{" + index_title + "}$:"  # makes index title bold
     n_games_str = "game" if n_games == 1 else "games"
-    title = f"{index_title} {game_title} (config. {config_id}, {n_games} {n_games_str})"
+    title = f"{index_title} {game_title}\n(config. {config_id}, {n_games} {n_games_str})"
 
     # load the benchmark results -------------------------------------------------------------------
     results_df, save_path = load_benchmark_results(
