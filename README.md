@@ -1,4 +1,4 @@
-# shapiq: Shapley Interactions for Machine Learning <img height="250px" src="docs/source/_static/logo_shapiq_light.svg" alt="shapiq_logo"/>
+# shapiq: Shapley Interactions for Machine Learning <img src="docs/source/_static/logo_shapiq_light.svg" alt="shapiq_logo" align="right" height="250px"/>
 
 [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 [![Coverage Status](https://coveralls.io/repos/github/mmschlk/shapiq/badge.svg?branch=main)](https://coveralls.io/github/mmschlk/shapiq?branch=main)
