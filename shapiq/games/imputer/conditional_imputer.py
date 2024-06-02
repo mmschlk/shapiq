@@ -1,6 +1,7 @@
 """Implementation of the conditional imputer."""
 
 from typing import Optional
+import warnings
 
 import numpy as np
 
@@ -27,6 +28,7 @@ class ConditionalImputer(Imputer):
             TODO: not implemented
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`
+        random_state: The random state to use for sampling. Defaults to ``None``.
 
     Attributes:
         replacement_data: The data to use for imputation. Either samples from the background data
@@ -44,8 +46,8 @@ class ConditionalImputer(Imputer):
         conditional_budget: int = 1000,
         conditional_threshold: float = 0.05,
         categorical_features: list[int] = None,
-        random_state: Optional[int] = None,
         normalize: bool = True,
+        random_state: Optional[int] = None,
     ) -> None:
         super().__init__(model, data, categorical_features, random_state)
         self.method = method
@@ -70,7 +72,9 @@ class ConditionalImputer(Imputer):
             The initialized imputer.
         """
         import xgboost
-
+        if self.conditional_budget > 2**data.shape[1]:
+            warnings.warn(f'`conditional_budget` is higher than `2**n_features`; setting `conditional_budget = 2**n_features`')
+            self.conditional_budget = 2**data.shape[1]
         X_tiled = np.tile(data, (self.conditional_budget, 1))
         mask = self._rng.choice(
             [True, False], size=(data.shape[0] * self.conditional_budget, data.shape[1])
@@ -123,7 +127,10 @@ class ConditionalImputer(Imputer):
             The sampled replacement values. The shape of the array is (sample_size, n_subsets,
                 n_features).
         """
-        x_embedded = self._tree_embedder.apply(self._x)
+        try:
+            x_embedded = self._tree_embedder.apply(self._x)
+        except:
+            x_embedded = self._tree_embedder.apply(self._x.reshape(1, -1))
         distances = hamming_distance(self._data_embedded, x_embedded)
         conditional_data = self.data[
             distances <= np.quantile(distances, self.conditional_threshold)

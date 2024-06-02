@@ -138,8 +138,6 @@ class CoalitionSampler:
             None  # is_coalition_size_sampled
         )
 
-        self.sampled = False
-
     @property
     def n_coalitions(self) -> int:
         """Returns the number of coalitions that have been sampled.
@@ -507,7 +505,6 @@ class CoalitionSampler:
         for coalition_size in self._coalitions_to_sample:
             self._is_coalition_size_sampled[coalition_size] = True
 
-        self.sampled = True
 
     def _sort_coalitions(self, value):
         """Used to sort coalition sizes by distance to center, i.e. grand coalition and emptyset first

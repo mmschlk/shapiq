@@ -30,10 +30,11 @@ class MarginalImputer(Imputer):
             string format (where ``np.mean`` fails) features. Defaults to ``None``.
         normalize: A flag to normalize the game values. If ``True``, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to ``True``.
+        random_state: The random state to use for sampling. Defaults to ``None``.
 
     Attributes:
         replacement_data: The data to use for imputation. Either samples from the background data
-            or the mean/median of the background data.
+            or the mean / median of the background data.
         empty_prediction: The model's prediction on an empty data point (all features missing).
     """
 
@@ -45,8 +46,8 @@ class MarginalImputer(Imputer):
         sample_replacements: bool = True,
         sample_size: int = 100,
         categorical_features: list[int] = None,
-        random_state: Optional[int] = None,
         normalize: bool = True,
+        random_state: Optional[int] = None,
     ) -> None:
         super().__init__(model, data, categorical_features, random_state)
 
@@ -77,11 +78,7 @@ class MarginalImputer(Imputer):
         """
         n_coalitions = coalitions.shape[0]
         data = np.tile(np.copy(self._x), (n_coalitions, 1))
-        if not self._sample_replacements:
-            replacement_data = np.tile(self.replacement_data, (n_coalitions, 1))
-            data[~coalitions] = replacement_data[~coalitions]
-            outputs = self.predict(data)
-        else:
+        if self._sample_replacements:
             # sampling from background returning array of shape (sample_size, n_subsets, n_features)
             replacement_data = self._sample_replacement_values(coalitions)
             outputs = np.zeros((self._sample_size, n_coalitions))
@@ -90,6 +87,10 @@ class MarginalImputer(Imputer):
                 data[~coalitions] = replacements[~coalitions]
                 outputs[i] = self.predict(data)
             outputs = np.mean(outputs, axis=0)  # average over the samples
+        else:
+            replacement_data = np.tile(self.replacement_data, (n_coalitions, 1))
+            data[~coalitions] = replacement_data[~coalitions]
+            outputs = self.predict(data)
         return outputs
 
     def init_background(self, data: np.ndarray) -> "MarginalImputer":
@@ -163,12 +164,9 @@ class MarginalImputer(Imputer):
         Returns:
             The empty prediction.
         """
+        empty_predictions = self.predict(self.replacement_data)
         if self._sample_replacements:
-            # TODO: this doesn't do anything?
-            shuffled_background = self._rng.permutation(self.data)
-            empty_predictions = self.predict(shuffled_background)
             empty_prediction = float(np.mean(empty_predictions))
         else:
-            empty_prediction = self.predict(self.replacement_data)
-            empty_prediction = float(empty_prediction)
+            empty_prediction = float(empty_predictions)
         return empty_prediction

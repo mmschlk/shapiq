@@ -61,13 +61,21 @@ class Explainer:
         """
         return {}
     
-    def explain_X(self, X: np.ndarray, n_jobs=None, **kwargs) -> list[InteractionValues]:
+    def explain_X(
+            self, X: np.ndarray, n_jobs=None, random_state=None, **kwargs
+        ) -> list[InteractionValues]:
         """Explain multiple predictions in terms of interaction values.
 
         Args:
             X: A 2-dimensional matrix of inputs to be explained.
+            n_jobs: Number of jobs for ``joblib.Parallel``.
+            random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
         """
         assert len(X.shape) == 2
+        if random_state is not None:
+            self._imputer._rng = np.random.default_rng(random_state)
+            self._approximator._rng = np.random.default_rng(random_state)
+            self._approximator._sampler._rng = np.random.default_rng(random_state)
         if n_jobs:
             import joblib
             parallel = joblib.Parallel(n_jobs=n_jobs)
