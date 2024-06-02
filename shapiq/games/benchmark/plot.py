@@ -32,14 +32,24 @@ STYLE_DICT: dict[str, dict[str, str]] = {
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
 LIGHT_GRAY = "#d3d3d3"
-LINE_STYLES_ORDER = {0: "solid", 1: "dotted", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
-LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "s", 3: "X", 4: "d", "all": "o"}
+LINE_STYLES_ORDER = {0: "solid", 1: "solid", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
+LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "o", 3: "X", 4: "d", "all": "o"}
 LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
 
 LOG_SCALE_MAX = 1e2
 LOG_SCALE_MIN = 1e-7
+
+METRICS_LIMITS = {
+    "Precision@10": (0, 1),
+    "Precision@5": (0, 1),
+    "KendallTau": (-1, 1),
+    "KendallTau@5": (-1, 1),
+    "KendallTau@10": (-1, 1),
+    "KendallTau@50": (-1, 1),
+}
+METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
 
 
 def get_game_title_name(game_name: str) -> str:
@@ -138,6 +148,7 @@ def plot_approximation_quality(
 
     # create the plot
     fig, ax = plt.subplots()
+    approx_max_budget = 0
     for approximator in approximators:
         for order in metric_data["order"].unique():
             if orders is not None and order not in orders:
@@ -176,9 +187,12 @@ def plot_approximation_quality(
                     alpha=0.1,
                     color=color,
                 )
+            approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
 
     # add %model calls to the x-axis as a secondary axis
-    _set_x_axis_ticks(ax, n_players=int(data["n_players"].unique().max()))
+    _set_x_axis_ticks(
+        ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
+    )
 
     # add x/y labels
     ax.set_ylabel(metric)
@@ -187,19 +201,26 @@ def plot_approximation_quality(
     # add grid to x-axis
     ax.grid(axis="x", color=LIGHT_GRAY, linestyle="dashed")
 
-    if log_scale_y:
+    if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE:
         _set_y_axis_log_scale(ax, log_scale_min, log_scale_max)
+
+    if metric in METRICS_LIMITS:
+        ax.set_ylim(METRICS_LIMITS[metric])
 
     return fig, ax
 
 
-def _set_x_axis_ticks(ax: plt.Axes, n_players: int) -> None:
+def _set_x_axis_ticks(ax: plt.Axes, n_players: int, max_budget: int) -> None:
     """Sets the x-axis ticks in 25% intervals."""
     if n_players <= 16:  # only for small number of players set the ticks as 25% intervals
         budgets_relative = np.arange(0, 1.25, 0.25)
         budgets = budgets_relative * (2**n_players)
     else:
         budgets = ax.get_xticks()
+        # remove negative values
+        budgets = budgets[budgets >= 0]
+        # remove all values less than max_budget * 1.05
+        budgets = budgets[budgets <= max_budget * 1.05]
         budgets_relative = budgets / (2**n_players)
 
     xtick_labels = []

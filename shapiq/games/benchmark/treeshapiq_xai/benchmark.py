@@ -177,6 +177,7 @@ class SynthData(TreeSHAPIQXAI):
                 n_clusters_per_class=3,
                 random_state=random_state,
             )
+            class_label = 0
         else:
             x_data, y_data = make_regression(
                 n_samples=n_samples,
@@ -185,6 +186,7 @@ class SynthData(TreeSHAPIQXAI):
                 n_targets=1,
                 random_state=random_state,
             )
+            class_label = None
 
         if model_name == "decision_tree":
             if classification:
@@ -209,6 +211,7 @@ class SynthData(TreeSHAPIQXAI):
         # call the super constructor
         super().__init__(
             x=x,
+            class_label=class_label,
             tree_model=model,
             normalize=normalize,
             verbose=verbose,

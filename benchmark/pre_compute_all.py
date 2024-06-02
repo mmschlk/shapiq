@@ -25,12 +25,12 @@ if __name__ == "__main__":
 
     datasets_to_precompute = [
         "AdultCensus",
-        "BikeSharing",
-        "CaliforniaHousing",
-        "Sentiment",
-        "Image",
-        "SynthData",
-        "SOUM",
+        # "BikeSharing",
+        # "CaliforniaHousing",
+        # "Sentiment",
+        # "Image",
+        # "SynthData",
+        # "SOUM",
     ]
     max_n_players = 16
 

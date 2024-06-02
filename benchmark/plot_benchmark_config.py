@@ -20,22 +20,23 @@ if __name__ == "__main__":
 
     # run parameters
     save_fig = True
+    metric = "Precision@5"  # MSE Precision@10
 
     # benchmark to plot parameters
-    game = "CaliforniaHousingLocalXAI"
+    game = "SynthDataTreeSHAPIQXAI"
     config_id = 4
     n_player_id = 0
     index = "k-SII"
     order = 2
-    n_games = 30
+    n_games = 10
 
     if index == "SV":
         order = 1
 
     # plot parameters
     log_scale_y = True
-    log_scale_max = 1e0
-    log_scale_min = 1e-6
+    log_scale_max = 1e10
+    log_scale_min = 1e-1
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
     increase_font_size: int = 2
@@ -74,6 +75,7 @@ if __name__ == "__main__":
         log_scale_min=log_scale_min,
         log_scale_max=log_scale_max,
         orders=[order],
+        metric=metric,
     )
 
     # finalize the plot

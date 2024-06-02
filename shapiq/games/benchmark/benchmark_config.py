@@ -49,6 +49,7 @@ from .. import Game
 from . import (
     SOUM,
     AdultCensusDatasetValuation,
+    AdultCensusDataValuation,
     AdultCensusEnsembleSelection,
     AdultCensusFeatureSelection,
     AdultCensusGlobalXAI,
@@ -57,6 +58,7 @@ from . import (
     AdultCensusUnsupervisedData,
     BikeSharingClusterExplanation,
     BikeSharingDatasetValuation,
+    BikeSharingDataValuation,
     BikeSharingEnsembleSelection,
     BikeSharingFeatureSelection,
     BikeSharingGlobalXAI,
@@ -65,6 +67,7 @@ from . import (
     BikeSharingUnsupervisedData,
     CaliforniaHousingClusterExplanation,
     CaliforniaHousingDatasetValuation,
+    CaliforniaHousingDataValuation,
     CaliforniaHousingEnsembleSelection,
     CaliforniaHousingFeatureSelection,
     CaliforniaHousingGlobalXAI,
@@ -76,9 +79,6 @@ from . import (
     # not to be precomputed
     SynthDataTreeSHAPIQXAI,
 )
-
-# TODO: add TreeSHAPIQXAI
-# TODO: add SOUM
 from .precompute import SHAPIQ_DATA_DIR
 
 # default params that will be passed to any game
@@ -445,6 +445,43 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "precompute": True,
         },
     ],
+    # data valuation configurations ----------------------------------------------------------------
+    AdultCensusDataValuation: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "n_data_points": 15},
+                {"model_name": "random_forest", "n_data_points": 15},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 15,
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "precompute": True,
+        }
+    ],
+    BikeSharingDataValuation: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "n_data_points": 15},
+                {"model_name": "random_forest", "n_data_points": 15},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 15,
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "precompute": True,
+        }
+    ],
+    CaliforniaHousingDataValuation: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "n_data_points": 15},
+                {"model_name": "random_forest", "n_data_points": 15},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 15,
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "precompute": True,
+        }
+    ],
     # cluster explanation configurations -----------------------------------------------------------
     BikeSharingClusterExplanation: [
         {
@@ -641,6 +678,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
 
 GAME_TO_CLASS_MAPPING = {
     "AdultCensusDatasetValuation": AdultCensusDatasetValuation,
+    "AdultCensusDataValuation": AdultCensusDataValuation,
     "AdultCensusEnsembleSelection": AdultCensusEnsembleSelection,
     "AdultCensusFeatureSelection": AdultCensusFeatureSelection,
     "AdultCensusGlobalXAI": AdultCensusGlobalXAI,
@@ -648,6 +686,7 @@ GAME_TO_CLASS_MAPPING = {
     "AdultCensusRandomForestEnsembleSelection": AdultCensusRandomForestEnsembleSelection,
     "AdultCensusUnsupervisedData": AdultCensusUnsupervisedData,
     "BikeSharingClusterExplanation": BikeSharingClusterExplanation,
+    "BikeSharingDataValuation": BikeSharingDataValuation,
     "BikeSharingDatasetValuation": BikeSharingDatasetValuation,
     "BikeSharingEnsembleSelection": BikeSharingEnsembleSelection,
     "BikeSharingFeatureSelection": BikeSharingFeatureSelection,
@@ -657,6 +696,7 @@ GAME_TO_CLASS_MAPPING = {
     "BikeSharingUnsupervisedData": BikeSharingUnsupervisedData,
     "CaliforniaHousingClusterExplanation": CaliforniaHousingClusterExplanation,
     "CaliforniaHousingDatasetValuation": CaliforniaHousingDatasetValuation,
+    "CaliforniaHousingDataValuation": CaliforniaHousingDataValuation,
     "CaliforniaHousingEnsembleSelection": CaliforniaHousingEnsembleSelection,
     "CaliforniaHousingFeatureSelection": CaliforniaHousingFeatureSelection,
     "CaliforniaHousingGlobalXAI": CaliforniaHousingGlobalXAI,
