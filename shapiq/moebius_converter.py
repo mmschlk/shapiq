@@ -45,6 +45,7 @@ class MoebiusConverter:
             "FSII": self.moebius_to_shapley_interaction,
             # shapley_base_interaction
             "SII": self.moebius_to_base_interaction,
+            "SV": self.moebius_to_base_interaction,
         }
         self.available_indices: set[str] = set(self._index_mapping.keys())
         self.available_concepts: dict[str, str] = ALL_AVAILABLE_CONCEPTS

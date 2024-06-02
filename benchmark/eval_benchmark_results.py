@@ -38,6 +38,9 @@ def _create_application_name(setup: str) -> str:
     application_name = application_name.replace("ImageClassifier", "LocalExplanation")
     application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
     application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
+    application_name = application_name.replace(
+        "RandomForestEnsembleSelection", "EnsembleSelection"
+    )
     return application_name
 
 
@@ -150,6 +153,8 @@ def _abbreviate_application_name(application_name: str) -> str:
         >>> _abbreviate_application_name("LocalExplanation")
         "Loc. Exp."
     """
+    if application_name == "DatasetValuation":
+        return "Dset. Val."
     abbreviations = []
     count_char = 0
     for char in application_name:
@@ -168,7 +173,7 @@ def _abbreviate_application_name(application_name: str) -> str:
     return abbreviation.strip()
 
 
-def plot_stacked_bar(df: pd.DataFrame, budget_setting: str = "high") -> None:
+def plot_stacked_bar(df: pd.DataFrame, setting: str = "high") -> None:
     """Summarizes the benchmark results by plotting a collection of stacked bar plots.
 
     For each metric, this function plots a stacked bar plot showing the percentage of the best
@@ -190,14 +195,13 @@ def plot_stacked_bar(df: pd.DataFrame, budget_setting: str = "high") -> None:
             - budget
             - n_player
             - full_budget
-        budget_setting: The budget setting to use. Can be 'high', 'medium' or 'low'.
+        setting: The budget setting to use. Can be 'all', 'high', or 'low'.
     """
-    assert budget_setting in [
+    assert setting in [
         "all",
         "high",
-        "medium",
         "low",
-    ], "Budget setting must be 'all', 'high', 'medium' or 'low'."
+    ], "Budget setting must be 'all', 'high', or 'low'."
 
     import matplotlib.pyplot as plt
 
@@ -217,14 +221,11 @@ def plot_stacked_bar(df: pd.DataFrame, budget_setting: str = "high") -> None:
     # iterate over all metrics
     for metric in all_metrics:
         metric_df = df[(df["metric"] == metric) & (~df["full_budget"])]
-        if budget_setting != "all":
-            if budget_setting == "medium":
+        if setting != "all":
+            if setting == "low":
                 max_budget_values_run_id = metric_df.groupby("run_id")["budget"].median()
-            elif budget_setting == "high":
+            else:  # budget_setting == "high":
                 max_budget_values_run_id = metric_df.groupby("run_id")["budget"].max()
-            else:  # low setting use quantile 0.25
-                raise NotImplementedError("Low budget setting not implemented yet.")
-                # todo: implement low budget setting correctly
             high_budget_dfs = []
             for run_id, max_budget in max_budget_values_run_id.items():
                 high_budget_dfs.append(
@@ -234,8 +235,9 @@ def plot_stacked_bar(df: pd.DataFrame, budget_setting: str = "high") -> None:
                 )
             metric_df = pd.concat(high_budget_dfs)
         fig, ax = plt.subplots()
-        width = 0.3
+        width = 0.4
         padding = 0.1
+        sep = 0.5
         x = list(range(len(all_applications)))
         x_ticks_index, x_tick_labels_index, x_ticks_app, x_ticks_labels_app = [], [], [], []
         for app_i, application in enumerate(all_applications):
@@ -250,7 +252,7 @@ def plot_stacked_bar(df: pd.DataFrame, budget_setting: str = "high") -> None:
                 )
                 approximators = index_approximators[index]
                 start, height = 0, 0
-                pos = position + index_i * (width + padding)
+                pos = position + index_i * (width + padding) + (sep * position)
                 all_pos.append(pos)
                 for approximator in approximators:
                     color = STYLE_DICT[approximator]["color"]
@@ -266,7 +268,10 @@ def plot_stacked_bar(df: pd.DataFrame, budget_setting: str = "high") -> None:
                     ax.bar(pos, height, width, bottom=start, color=color)
                     start += height
                 x_ticks_index.append(pos)
-                x_tick_labels_index.append(f"{index}")
+                index_title = f"{index}"
+                if index == "k-SII":
+                    index_title = r"SI"
+                x_tick_labels_index.append(index_title)
             pos_mean = sum(all_pos) / len(all_pos)
             x_ticks_app.append(pos_mean)
             x_ticks_labels_app.append(_abbreviate_application_name(application))
@@ -277,12 +282,14 @@ def plot_stacked_bar(df: pd.DataFrame, budget_setting: str = "high") -> None:
         # add the x-ticks for the indices
         ax.set_xticks(x_ticks_index)
         ax.set_xticklabels(x_tick_labels_index)
+        # rotate the x-ticks
+        # plt.xticks(rotation=90)
 
-        # add an additional x-axis with the application names
+        # add a second x-axis for the application names with the same limits
         ax2 = ax.twiny()
         ax2.set_xticks(x_ticks_app)
         ax2.set_xticklabels(x_ticks_labels_app)
-        ax2.set_xlabel("Application")
+        ax2.set_xlim(ax.get_xlim())
 
         plt.tight_layout()
         plt.show()
@@ -291,7 +298,7 @@ def plot_stacked_bar(df: pd.DataFrame, budget_setting: str = "high") -> None:
 if __name__ == "__main__":
 
     create_eval = False
-    budget_setting = "low"  # can be 'all', 'high', 'medium' or 'low'
+    budget_setting = "high"  # can be 'all', 'high', 'low'
 
     eval_path = EVAL_DIR / "benchmark_results_summary.csv"
     if create_eval or not os.path.exists(eval_path):
@@ -316,4 +323,4 @@ if __name__ == "__main__":
         print()
 
     # plot the results
-    plot_stacked_bar(eval_df, budget_setting=budget_setting)
+    plot_stacked_bar(eval_df, setting=budget_setting)

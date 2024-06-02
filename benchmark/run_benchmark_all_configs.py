@@ -21,13 +21,13 @@ if __name__ == "__main__":
 
     indices_order = [("k-SII", 2), ("SV", 1)]
 
-    # add arguments to the parser
+    # add arguments to the parser ------------------------------------------------------------------
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--n_jobs",
         type=int,
         required=False,
-        default=2,
+        default=1,
     )
     parser.add_argument(
         "--rerun_if_exists",
@@ -35,14 +35,33 @@ if __name__ == "__main__":
         required=False,
         default=False,
     )
+    parser.add_argument(
+        "--omit_regex",
+        type=str,
+        required=False,
+        nargs="+",
+        default=[],
+    )
+
+    # parse the arguments --------------------------------------------------------------------------
     args = parser.parse_args()
     n_jobs = args.n_jobs
+    omit_regex = args.omit_regex
+    rerun_if_exists = args.rerun_if_exists
 
+    # get all configurations that are not omitted by the name --------------------------------------
+    all_game_names = []
+    for game_name in GAME_TO_CLASS_MAPPING.keys():
+        omit = False
+        for omit_regex_str in omit_regex:
+            if omit_regex_str in game_name:
+                omit = True
+        if not omit:
+            all_game_names.append(game_name)
+
+    # run all configurations -----------------------------------------------------------------------
     n_runs_done, n_configs_tried = 0, 0
-
     for index, order in indices_order:
-        # get all configurations that include the dataset in the name
-        all_game_names = [game_name for game_name in GAME_TO_CLASS_MAPPING.keys()]
         for game_name in all_game_names:
             game_class = get_game_class_from_name(game_name)
             all_game_class_configs = BENCHMARK_CONFIGURATIONS[game_class]
@@ -64,7 +83,7 @@ if __name__ == "__main__":
                             game_n_games=None,
                             n_jobs=n_jobs,
                             max_budget=None,
-                            rerun_if_exists=False,
+                            rerun_if_exists=rerun_if_exists,
                         )
                         n_runs_done += 1
                         print(f"Ran {n_runs_done} out of {n_configs_tried} configurations.")
