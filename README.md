@@ -87,10 +87,10 @@ The pseudo-code above can produce the following plot (here also an image is adde
   <img width="400px" src="docs/source/_static/network_example.png" alt="network_plot_example">
 </p>
 
-### 📖 Documentation
+## 📖 Documentation with tutorials
 The documentation for ``shapiq`` can be found [here](https://shapiq.readthedocs.io/en/latest/).
 
-### 💬 Citation
+## 💬 Citation
 
 If you **enjoy** `shapiq` consider starring ⭐ the repository. If you **really enjoy** the package or it has been useful to you, and you would like to cite it in a scientific publication, please refer to our [paper](https://openreview.net/forum?id=IEMLNF4gK4):
 

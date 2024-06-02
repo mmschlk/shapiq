@@ -47,7 +47,7 @@ class TreeSHAPIQXAI(Game):
             model=tree_model,
             min_order=min_order,
             max_order=max_order,
-            interaction_type=index,
+            index=index,
             class_label=class_label,
         )
         # compute ground truth values

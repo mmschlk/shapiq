@@ -103,7 +103,7 @@ def test_against_shap_implementation():
         values=values,
     )
 
-    explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1, interaction_type="SII")
+    explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1, index="SII")
     explanation = explainer.explain(x_explain)
 
     assert explanation[(0,)] == pytest.approx(-0.09263158, abs=1e-4)
@@ -111,8 +111,8 @@ def test_against_shap_implementation():
     assert explanation[(2,)] == pytest.approx(0.02727273, abs=1e-4)
     assert explanation[(3,)] == pytest.approx(0.0, abs=1e-4)
 
-    explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1, interaction_type="SII")
+    explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1, index="SII")
     explanation = explainer.explain(x_explain)
 
-    explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1, interaction_type="SII")
+    explainer = TreeExplainer(model=tree_model, max_order=1, min_order=1, index="SII")
     explanation = explainer.explain(x_explain)

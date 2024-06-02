@@ -36,7 +36,7 @@ class TreeSHAPIQ:
             corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
             interaction values up to that order. Defaults to ``2``.
         min_order: The minimum interaction order to be computed. Defaults to ``1``.
-        interaction_type: The type of interaction to be computed. The interaction type can be one of
+        index: The type of interaction to be computed. It can be one of
             ``["k-SII", "SII", "STII", "FSII", "BZF"]``. All indices apart from ``"BZF"`` will
             reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
         verbose: Whether to print information about the tree during initialization. Defaults to
@@ -52,7 +52,7 @@ class TreeSHAPIQ:
         model: Union[dict, TreeModel, Any],
         max_order: int = 2,
         min_order: int = 1,
-        interaction_type: str = "k-SII",
+        index: str = "k-SII",
         verbose: bool = False,
     ) -> None:
         # set parameters
@@ -65,8 +65,8 @@ class TreeSHAPIQ:
             )
         self._max_order: int = max_order
         self._min_order: int = min_order
-        self._interaction_type: str = interaction_type
-        self._base_interaction_type: str = get_computation_index(self._interaction_type)
+        self._index: str = index
+        self._base_index: str = get_computation_index(self._index)
 
         # validate and parse model
         validated_model = validate_tree_model(model)  # the parsed and validated model
@@ -113,7 +113,7 @@ class TreeSHAPIQ:
         self.Ns_id_store: dict = {}
         self.Ns_store: dict = {}
         self.n_interpolation_size = self._n_features_in_tree
-        if self._interaction_type in ("SII", "k-SII"):  # SP is of order at most d_max
+        if self._index in ("SII", "k-SII"):  # SP is of order at most d_max
             self.n_interpolation_size = min(self._edge_tree.max_depth, self._n_features_in_tree)
         self._init_summary_polynomials()
 
@@ -150,7 +150,7 @@ class TreeSHAPIQ:
 
         shapley_interaction_values = InteractionValues(
             values=interactions,
-            index=self._base_interaction_type,
+            index=self._base_index,
             min_order=self._min_order,
             max_order=self._max_order,
             n_players=n_players,
@@ -159,7 +159,7 @@ class TreeSHAPIQ:
             baseline_value=self.empty_prediction,
         )
 
-        if self._base_interaction_type != self._interaction_type:
+        if self._base_index != self._index:
             shapley_interaction_values = aggregate_interaction_values(shapley_interaction_values)
 
         return shapley_interaction_values
@@ -308,7 +308,7 @@ class TreeSHAPIQ:
                 self._int_height[node_id][interaction_sets] == order
             ]
             if len(interactions_seen) > 0:
-                if self._interaction_type not in ("SII", "k-SII"):  # for CII
+                if self._index not in ("SII", "k-SII"):  # for CII
                     D_power = self.D_powers[self._n_features_in_tree - current_height]
                     index_quotient = self._n_features_in_tree - order
                 else:  # for SII and k-SII
@@ -343,7 +343,7 @@ class TreeSHAPIQ:
                     ancestor_heights = self._edge_tree.edge_heights[
                         interactions_ancestors[cond_interaction_seen]
                     ]
-                    if self._interaction_type not in ("SII", "k-SII"):  # for CII
+                    if self._index not in ("SII", "k-SII"):  # for CII
                         D_power = self.D_powers[self._n_features_in_tree - current_height]
                         index_quotient = self._n_features_in_tree - order
                     else:  # for SII and k-SII
@@ -405,7 +405,7 @@ class TreeSHAPIQ:
             self.subset_ancestors_store[order] = subset_ancestors
             self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
             self.D_powers_store[order] = self._cache(self.D_store[order])
-            if self._interaction_type in ("SII", "k-SII"):
+            if self._index in ("SII", "k-SII"):
                 self.Ns_store[order] = self._get_N(self.D_store[order])
             else:
                 self.Ns_store[order] = self._get_N_cii(self.D_store[order], order)
@@ -597,11 +597,11 @@ class TreeSHAPIQ:
 
     def _get_subset_weight_cii(self, t, order) -> Optional[float]:
         # TODO: add docstring
-        if self._interaction_type == "STII":
+        if self._index == "STII":
             return self._max_order / (
                 self._n_features_in_tree * sp.special.binom(self._n_features_in_tree - 1, t)
             )
-        if self._interaction_type == "FSII":
+        if self._index == "FSII":
             return (
                 factorial(2 * self._max_order - 1)
                 / factorial(self._max_order - 1) ** 2
@@ -609,7 +609,7 @@ class TreeSHAPIQ:
                 * factorial(self._n_features_in_tree - t - 1)
                 / factorial(self._n_features_in_tree + self._max_order - 1)
             )
-        if self._interaction_type == "BZF":
+        if self._index == "BZF":
             return 1 / (2 ** (self._n_features_in_tree - order))
 
     @staticmethod
@@ -644,7 +644,7 @@ class TreeSHAPIQ:
         information += f"\nNumber of nodes: {self._n_nodes}"
         information += f"\nNumber of features: {self._n_features_in_tree}"
         information += f"\nMaximum interaction order: {self._max_order}"
-        information += f"\nInteraction type: {self._interaction_type}"
+        information += f"\nInteraction index: {self._index}"
         # add empty prediction from _tree and self to information TODO: remove one in final
         information += f"\nEmpty prediction (from _tree): {self._tree.empty_prediction}"
         information += f"\nEmpty prediction (from self): {self.empty_prediction}"

@@ -30,7 +30,7 @@ class TreeExplainer(Explainer):
             corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
             interaction values up to that order. Defaults to ``2``.
         min_order: The minimum interaction order to be computed. Defaults to ``1``.
-        interaction_type: The type of interaction to be computed. The interaction type can be one of
+        index: The type of interaction to be computed. It can be one of
             ``["k-SII", "SII", "STII", "FSII", "BZF"]``. All indices apart from ``"BZF"`` will
             reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
         class_label: The class label of the model to explain.
@@ -41,7 +41,7 @@ class TreeExplainer(Explainer):
         model: Union[dict, TreeModel, Any],
         max_order: int = 2,
         min_order: int = 1,
-        interaction_type: str = "k-SII",
+        index: str = "k-SII",
         class_label: Optional[int] = None,
         **kwargs,
     ) -> None:
@@ -61,7 +61,7 @@ class TreeExplainer(Explainer):
 
         # setup explainers for all trees
         self._treeshapiq_explainers: list[TreeSHAPIQ] = [
-            TreeSHAPIQ(model=_tree, max_order=self._max_order, interaction_type=interaction_type)
+            TreeSHAPIQ(model=_tree, max_order=self._max_order, index=index)
             for _tree in self._trees
         ]
 

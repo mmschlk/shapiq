@@ -235,7 +235,7 @@ def test_bike_bug():
         ]
     )
 
-    tree_explainer = TreeSHAPIQ(model=tree_model, interaction_type="SII", max_order=2, min_order=1)
+    tree_explainer = TreeSHAPIQ(model=tree_model, index="SII", max_order=2, min_order=1)
     tree_explainer.explain(x_explain)  # bug appears for node 22
 
     # if this test runs without an error, the bug is fixed
