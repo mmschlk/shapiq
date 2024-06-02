@@ -1,3 +1,6 @@
+"""MoebiusConverter class for computing exact Shapley Interactions 
+using the (sparse) Möbius representation.."""
+
 import copy
 from typing import Callable, Optional
 

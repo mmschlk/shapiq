@@ -1,4 +1,4 @@
-"""This module contains the InteractionValues Dataclass, which is used to store the interaction
+"""InteractionValues data-class, which is used to store the interaction
 scores."""
 
 import copy

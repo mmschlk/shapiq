@@ -1,4 +1,4 @@
-"""This module contains the aggregation functions for summarizing base interaction indices into
+"""Aggregation functions for summarizing base interaction indices into
 efficient indices useful for explanations"""
 
 import warnings

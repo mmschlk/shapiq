@@ -1,4 +1,4 @@
-"""This module contains a summary of all interaction indices and game theoretic concepts available
+"""Summary of all interaction indices and game theoretic concepts available
 in the `shapiq` package."""
 
 ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {

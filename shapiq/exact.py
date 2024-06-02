@@ -1,4 +1,4 @@
-"""This module contains the exact computation mechanisms for a plethora of game theoretic concepts
+"""ExactComputer class for a plethora of game theoretic concepts
 like interaction indices or generalized values."""
 
 import copy
