@@ -22,8 +22,8 @@ if __name__ == "__main__":
     save_fig = True
 
     # benchmark to plot parameters
-    game = "CaliforniaHousingLocalXAI"
-    config_id = 4
+    game = "CaliforniaHousingDatasetValuation"
+    config_id = 1
     n_player_id = 0
     index = "SV"
     order = 1
@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     # plot parameters
     log_scale_y = True
-    log_scale_min = 1e-7
+    log_scale_min = 1e-8
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
     increase_font_size: int = 2

@@ -62,7 +62,9 @@ def get_game_title_name(game_name: str) -> str:
         if char.isupper():
             words += " "
         words += char
-    words = words.replace("X A I", "XAI")
+    words = words.replace("Tree S H A P I Q", "TreeSHAPIQ")  # TreeSHAPIQ
+    words = words.replace("X A I", "XAI")  # XAI
+    words = words.replace("S O U M", "SOUM")  # SOUM
     return words.strip()
 
 

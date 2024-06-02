@@ -15,10 +15,7 @@ class AdultCensus(TreeSHAPIQXAI):
         x: The feature vector to be explained.
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree' and 'random_forest'.
-        index: The type of interaction index to be computed. The default value is "k-SII".
         class_label: The class label to be explained. The default value is None.
-        max_order: The maximum order of interactions to be computed. The default value is 2.
-        min_order: The minimum order of interactions to be computed. The default value is 1.
         normalize: A boolean flag to normalize/center the game values. The default value is True.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
@@ -28,10 +25,7 @@ class AdultCensus(TreeSHAPIQXAI):
         self,
         x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
-        index: str = "k-SII",
         class_label: Optional[int] = None,
-        max_order: int = 2,
-        min_order: int = 1,
         normalize: bool = True,
         verbose: bool = True,
         random_state: Optional[int] = 42,
@@ -58,10 +52,7 @@ class AdultCensus(TreeSHAPIQXAI):
             x=x,
             tree_model=setup.model,
             normalize=normalize,
-            index=index,
             class_label=class_label,
-            max_order=max_order,
-            min_order=min_order,
             verbose=verbose,
         )
 
@@ -73,9 +64,6 @@ class BikeSharing(TreeSHAPIQXAI):
         x: The feature vector to be explained.
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree' and 'random_forest'.
-        index: The type of interaction index to be computed. The default value is "k-SII".
-        max_order: The maximum order of interactions to be computed. The default value is 2.
-        min_order: The minimum order of interactions to be computed. The default value is 1.
         normalize: A boolean flag to normalize/center the game values. The default value is True.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
@@ -85,9 +73,6 @@ class BikeSharing(TreeSHAPIQXAI):
         self,
         x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
-        index: str = "k-SII",
-        max_order: int = 2,
-        min_order: int = 1,
         normalize: bool = True,
         verbose: bool = True,
         random_state: Optional[int] = 42,
@@ -114,9 +99,6 @@ class BikeSharing(TreeSHAPIQXAI):
             x=x,
             tree_model=setup.model,
             normalize=normalize,
-            index=index,
-            max_order=max_order,
-            min_order=min_order,
             verbose=verbose,
         )
 
@@ -128,9 +110,6 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         x: The feature vector to be explained.
         model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
             are 'decision_tree' and 'random_forest'.
-        index: The type of interaction index to be computed. The default value is "k-SII".
-        max_order: The maximum order of interactions to be computed. The default value is 2.
-        min_order: The minimum order of interactions to be computed. The default value is 1.
         normalize: A boolean flag to normalize/center the game values. The default value is True.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
@@ -140,9 +119,6 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         self,
         x: Optional[Union[np.ndarray, int]] = None,
         model_name: str = "decision_tree",
-        index: str = "k-SII",
-        max_order: int = 2,
-        min_order: int = 1,
         normalize: bool = True,
         verbose: bool = True,
         random_state: Optional[int] = 42,
@@ -169,9 +145,6 @@ class CaliforniaHousing(TreeSHAPIQXAI):
             x=x,
             tree_model=setup.model,
             normalize=normalize,
-            index=index,
-            max_order=max_order,
-            min_order=min_order,
             verbose=verbose,
         )
 
@@ -181,12 +154,9 @@ class SynthData(TreeSHAPIQXAI):
     def __init__(
         self,
         x: int = 0,
-        n_features: int = 20,
+        n_features: int = 30,
         classification: bool = True,
         model_name: str = "decision_tree",
-        index: str = "k-SII",
-        max_order: int = 2,
-        min_order: int = 1,
         normalize: bool = True,
         verbose: bool = True,
         random_state: Optional[int] = 42,
@@ -199,7 +169,7 @@ class SynthData(TreeSHAPIQXAI):
         n_informative = int(n_features * 2 / 3)
         n_redundant = 0
         if classification:
-            x_data, y = make_classification(
+            x_data, y_data = make_classification(
                 n_samples=n_samples,
                 n_features=n_features,
                 n_informative=n_informative,
@@ -208,7 +178,7 @@ class SynthData(TreeSHAPIQXAI):
                 random_state=random_state,
             )
         else:
-            x_data, y = make_regression(
+            x_data, y_data = make_regression(
                 n_samples=n_samples,
                 n_features=n_features,
                 n_informative=n_informative,
@@ -230,6 +200,8 @@ class SynthData(TreeSHAPIQXAI):
                 model = RandomForestRegressor(
                     random_state=random_state, n_estimators=10, max_depth=15
                 )
+        # fit the model
+        model.fit(x_data, y_data)
 
         # get x_explain
         x = get_x_explain(x, x_data)
@@ -239,8 +211,5 @@ class SynthData(TreeSHAPIQXAI):
             x=x,
             tree_model=model,
             normalize=normalize,
-            index=index,
-            max_order=max_order,
-            min_order=min_order,
             verbose=verbose,
         )

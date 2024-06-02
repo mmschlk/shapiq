@@ -29,6 +29,8 @@ if __name__ == "__main__":
         "CaliforniaHousing",
         "Sentiment",
         "Image",
+        "SynthData",
+        "SOUM",
     ]
     max_n_players = 16
 
@@ -66,6 +68,13 @@ if __name__ == "__main__":
             for n_player_id, config_per_player_id in enumerate(all_game_class_configs):
                 player_id_configs = config_per_player_id["configurations"]
                 n_players = config_per_player_id["n_players"]
+                precompute = config_per_player_id["precompute"]
+                if not precompute:
+                    print(
+                        f"Skipping pre-computation for game: {game_name} as it should not be "
+                        f"pre-computed."
+                    )
+                    continue
                 if n_players > max_n_players:
                     continue
                 for i, config in enumerate(player_id_configs):

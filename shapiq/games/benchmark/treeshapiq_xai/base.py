@@ -21,10 +21,7 @@ class TreeSHAPIQXAI(Game):
     Args:
         x: The feature vector to be explained.
         tree_model: The tree model to be explained.
-        index: The type of interaction index to be computed. The default value is "k-SII".
         class_label: The class label to be explained. The default value is None.
-        max_order: The maximum order of interactions to be computed. The default value is 2.
-        min_order: The minimum order of interactions to be computed. The default value is 1.
         normalize: A boolean flag to normalize/center the game values. The default value is True.
     """
 
@@ -32,27 +29,25 @@ class TreeSHAPIQXAI(Game):
         self,
         x: np.ndarray,
         tree_model: Model,
-        index: str,
         class_label: Optional[int] = None,
-        max_order: int = 2,
-        min_order: int = 1,
         normalize: bool = True,
         verbose: bool = True,
     ) -> None:
         n_players = x.shape[-1]
 
         self.model = copy.deepcopy(tree_model)
+        self.class_label = class_label
 
-        # set up explainer for ground truth explanation
+        # set up explainer for model transformation (we don't need the explainer here for the gt)
         self._tree_explainer = TreeExplainer(
             model=tree_model,
-            min_order=min_order,
-            max_order=max_order,
-            interaction_type=index,
+            min_order=1,
+            max_order=1,
+            interaction_type="SII",
             class_label=class_label,
         )
         # compute ground truth values
-        self.gt_interaction_values: InteractionValues = self._tree_explainer.explain(x=x)
+        # self.gt_interaction_values: InteractionValues = self._tree_explainer.explain(x=x)
         self.empty_value = float(self._tree_explainer.baseline_value)
 
         # get attributes for manual tree traversal and evaluation
@@ -102,6 +97,25 @@ class TreeSHAPIQXAI(Game):
             )
             output += tree_prediction
         return output
+
+    def exact_values(self, index: str, order: int) -> InteractionValues:
+        """Computes the exact interaction values for the game.
+
+        Args:
+            index: The type of interaction index to be computed.
+            order: The order of interactions to be computed.
+
+        Returns:
+            The exact interaction values for the game.
+        """
+        tree_explainer = TreeExplainer(
+            model=self.model,
+            min_order=1,
+            max_order=order,
+            interaction_type=index,
+            class_label=self.class_label,
+        )
+        return tree_explainer.explain(x=self.x_explain)
 
 
 def _get_tree_prediction(

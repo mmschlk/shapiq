@@ -66,6 +66,7 @@ from .treeshapiq_xai.base import TreeSHAPIQXAI
 from .treeshapiq_xai.benchmark import AdultCensus as AdultCensusTreeSHAPIQXAI
 from .treeshapiq_xai.benchmark import BikeSharing as BikeSharingTreeSHAPIQXAI
 from .treeshapiq_xai.benchmark import CaliforniaHousing as CaliforniaHousingTreeSHAPIQXAI
+from .treeshapiq_xai.benchmark import SynthData as SynthDataTreeSHAPIQXAI
 
 # cluster explanation games
 from .unsupervised_cluster.base import ClusterExplanation
@@ -136,6 +137,7 @@ __all__ = [
     "AdultCensusTreeSHAPIQXAI",
     "BikeSharingTreeSHAPIQXAI",
     "CaliforniaHousingTreeSHAPIQXAI",
+    "SynthDataTreeSHAPIQXAI",
     # synthetic games
     "DummyGame",
     "SOUM",
