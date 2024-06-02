@@ -10,13 +10,13 @@ from . import utils
 class Explainer:
     """The main Explainer class for a simpler user interface.
 
-    shapiq.Explainer is a simplified interface for the `shapiq` package. It detects between
+    shapiq.Explainer is a simplified interface for the ``shapiq`` package. It detects between
     TabularExplainer and TreeExplainer based on the model class.
 
     Args:
         model: The model object to be explained.
-        data: A background dataset to be used for imputation in TabularExplainer.
-        **kwargs: Additional keyword-only arguments passed to TabularExplainer or TreeExplainer.
+        data: A background dataset to be used for imputation in ``TabularExplainer``.
+        **kwargs: Additional keyword-only arguments passed to ``TabularExplainer`` or ``TreeExplainer``.
 
     Attributes:
         model: The model object to be explained.

@@ -1,4 +1,4 @@
-"""This module contains the base class for all games in the shapiq package."""
+"""Base Game class for games and benchmarks."""
 
 import os
 import pickle
@@ -13,20 +13,20 @@ from shapiq.utils import powerset, transform_array_to_coalitions, transform_coal
 
 
 class Game(ABC):
-    """Base class for all games in the shapiq package.
+    """Base class for games/benchmarks in the ``shapiq`` package.
 
     This class implements some common methods and attributes that all games should have.
 
     Args:
         n_players: The number of players in the game.
-        normalize: Whether the game values should be normalized. Defaults to `True`.
+        normalize: Whether the game values should be normalized. Defaults to ``True``.
         normalization_value: The value to normalize and center the game values with such that the
-            value for the empty coalition is zero. Defaults to `None`.  If `normalization` is set
-            to `False` this value is not required. Otherwise, the value is needed to normalize and
+            value for the empty coalition is zero. Defaults to ``None``.  If ``normalization`` is set
+            to ``False`` this value is not required. Otherwise, the value is needed to normalize and
             center the game. If no value is provided, the game raises a warning.
         path_to_values: The path to load the game values from. If the path is provided, the game
-            values are loaded from the given path. Defaults to `None`.
-        verbose: Whether to show a progress bar for the evaluation. Defaults to `False`. Note
+            values are loaded from the given path. Defaults to ``None``.
+        verbose: Whether to show a progress bar for the evaluation. Defaults to ``False``. Note
             that this only has an effect if the game is not precomputed and may slow down the
             evaluation.
         args, kwargs: Additional arguments are not used.
@@ -38,11 +38,11 @@ class Game(ABC):
         game_name: The name of the game.
 
     Attributes:
-        precompute_flag: A flag to manually override the precomputed check. If set to `True`, the
+        precompute_flag: A flag to manually override the precomputed check. If set to ``True``, the
             game is considered precomputed and only uses the lookup.
         value_storage: The storage for the game values without normalization applied.
         coalition_lookup: A lookup dictionary mapping from coalitions to indices in the
-            `value_storage`.
+            ``value_storage``.
         n_players: The number of players in the game.
         normalization_value: The value to normalize and center the game values with.
         empty_coalition: The empty coalition of the game.
@@ -162,7 +162,7 @@ class Game(ABC):
 
         Args:
             coalitions: The coalitions to evaluate.
-            verbose: Whether to show a progress bar for the evaluation. Defaults to `False`.
+            verbose: Whether to show a progress bar for the evaluation. Defaults to ``False``.
 
         Returns:
             The values of the coalitions.
@@ -313,7 +313,7 @@ class Game(ABC):
             path: The path to load the game values from.
             precomputed: Whether the game should be set to precomputed after loading the values no
                 matter how many values are loaded. This can be useful if a game is loaded for a
-                subset of all coalitions and only this subset will be used. Defaults to `False`.
+                subset of all coalitions and only this subset will be used. Defaults to ``False``.
         """
         # check if path ends with .npz
         if not path.endswith(".npz"):
@@ -368,7 +368,7 @@ class Game(ABC):
         """Uses the ExactComputer to compute the exact interaction values.
 
         Args:
-            index: The index to compute the interaction values for. Choose from `{"SII", "k-SII"}`.
+            index: The index to compute the interaction values for. Choose from ``{"SII", "k-SII"}``.
             order: The maximum order of the interaction values.
 
         Returns:

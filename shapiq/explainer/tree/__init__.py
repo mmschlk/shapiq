@@ -1,4 +1,4 @@
-"""The Tree Explainer implementation."""
+"""Implementation of TreeSHAPIQ and the TreeExplainer."""
 
 from .base import TreeModel
 from .explainer import TreeExplainer

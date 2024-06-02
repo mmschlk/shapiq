@@ -1,4 +1,4 @@
-"""The Tabular Explainer class for the shapiq package."""
+"""Tabular Explainer class for the shapiq package."""
 
 import warnings
 from typing import Optional, Union
@@ -37,7 +37,7 @@ AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII"}
 class TabularExplainer(Explainer):
     """The tabular explainer as the main interface for the shapiq package.
 
-    The `TabularExplainer` class is the main interface for the `shapiq` package. It can be used
+    The ``TabularExplainer`` class is the main interface for the ``shapiq`` package. It can be used
     to explain the predictions of a model by estimating the Shapley interaction values.
 
     Args:
@@ -46,13 +46,13 @@ class TabularExplainer(Explainer):
         data: A background dataset to be used for imputation.
         imputer: Either an object of class Imputer or a string from ``["marginal", "conditional"]``.
             Defaults to ``"marginal"``, which innitializes the default MarginalImputer.
-        approximator: An approximator to use for the explainer. Defaults to `"auto"`, which will
+        approximator: An approximator to use for the explainer. Defaults to ``"auto"``, which will
             automatically choose the approximator based on the number of features and the number of
             samples in the background data.
-        index: Type of Shapley interaction index to use. Must be one of `"SII"` (Shapley Interaction Index),
-            `"k-SII"` (k-Shapley Interaction Index), `"STII"` (Shapley-Taylor Interaction Index), or
-            `"FSII"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
-        max_order: The maximum interaction order to be computed. Defaults to `2`.
+        index: Type of Shapley interaction index to use. Must be one of ``"SII"`` (Shapley Interaction Index),
+            ``"k-SII"`` (k-Shapley Interaction Index), ``"STII"`` (Shapley-Taylor Interaction Index), or
+            ``"FSII"`` (Faithful Shapley Interaction Index). Defaults to ``"k-SII"``.
+        max_order: The maximum interaction order to be computed. Defaults to ``2``.
         **kwargs: Additional keyword-only arguments passed to the imputer.
 
     Attributes:

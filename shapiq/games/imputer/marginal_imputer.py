@@ -1,4 +1,4 @@
-"""This module contains the marginal imputer for the shapiq package."""
+"""Implementation of the marginal imputer."""
 
 from typing import Optional
 
@@ -17,19 +17,19 @@ class MarginalImputer(Imputer):
         model: The model to explain as a callable function expecting a data points as input and
             returning the model's predictions.
         data: The background data to use for the explainer as a two-dimensional array
-            with shape (n_samples, n_features).
+            with shape ``(n_samples, n_features)``.
         x: The explanation point to use the imputer to.
         sample_replacements: Whether to sample replacements from the background data or to use the
             mean (for numerical features) or the median (for categorical features) of the background
-            data. Defaults to `True`.
+            data. Defaults to ``True``.
         sample_size: The number of samples to draw from the background data. Only used if
-            `sample_replacements` is `True`. Increasing this value will linearly increase the
-            runtime of the explainer. Defaults to `100`.
+            ``sample_replacements`` is ``True``. Increasing this value will linearly increase the
+            runtime of the explainer. Defaults to ``100``.
         categorical_features: A list of indices of the categorical features in the background data.
             If no categorical features are given, all features are assumed to be numerical or in
-            string format (where `np.mean` fails) features. Defaults to `None`.
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`.
+            string format (where ``np.mean`` fails) features. Defaults to ``None``.
+        normalize: A flag to normalize the game values. If ``True``, then the game values are
+            normalized and centered to be zero for the empty set of features. Defaults to ``True``.
 
     Attributes:
         replacement_data: The data to use for imputation. Either samples from the background data
@@ -68,12 +68,12 @@ class MarginalImputer(Imputer):
         """Imputes the missing values of a data point and calls the model.
 
         Args:
-            coalitions: A boolean array indicating which features are present (`True`) and which are
-                missing (`False`). The shape of the array must be (n_subsets, n_features).
+            coalitions: A boolean array indicating which features are present (``True``) and which are
+                missing (``False``). The shape of the array must be ``(n_subsets, n_features)``.
 
         Returns:
             The model's predictions on the imputed data points. The shape of the array is
-               (n_subsets, n_outputs).
+               ``(n_subsets, n_outputs)``.
         """
         n_coalitions = coalitions.shape[0]
         data = np.tile(np.copy(self._x), (n_coalitions, 1))
@@ -97,7 +97,7 @@ class MarginalImputer(Imputer):
 
         Args:
             data: The background data to use for the imputer. The shape of the array must
-                be (n_samples, n_features).
+                be ``(n_samples, n_features)``.
 
         Returns:
             The initialized imputer.
@@ -137,12 +137,12 @@ class MarginalImputer(Imputer):
         """Samples replacement values from the background data.
 
         Args:
-            coalitions: A boolean array indicating which features are present (`True`) and which are
-                missing (`False`). The shape of the array must be (n_subsets, n_features).
+            coalitions: A boolean array indicating which features are present (``True``) and which are
+                missing (``False``). The shape of the array must be ``(n_subsets, n_features)``.
 
         Returns:
-            The sampled replacement values. The shape of the array is (sample_size, n_subsets,
-                n_features).
+            The sampled replacement values. The shape of the array is ``(sample_size, n_subsets,
+                n_features)``.
         """
         n_coalitions = coalitions.shape[0]
         replacement_data = np.zeros(

@@ -16,7 +16,7 @@ __all__ = ["ExactComputer", "get_bernoulli_weights"]
 
 class ExactComputer:
     """Computes exact Shapley Interactions for specified game by evaluating the powerset of all
-        $2^n$ coalitions.
+        :math:`2^n` coalitions.
 
     The ExactComputer class computes a variety of game theoretic concepts like interaction indices
     or generalized values. Currently, the following indices and values are supported:
@@ -25,15 +25,15 @@ class ExactComputer:
 
     Args:
         n_players: The number of players in the game.
-        game_fun: A callable game that takes a binary matrix of shape (n_coalitions, n_players)
-            and returns a numpy array of shape (n_coalitions,) containing the game values.
+        game_fun: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
+            and returns a numpy array of shape ``(n_coalitions,)`` containing the game values.
 
     Attributes:
         n: The number of players.
         game_fun: The callable game
         baseline_value: The baseline value, i.e. the emptyset prediction
         game_values: A numpy array containing the game evaluations of all subsets
-        coalition_lookup: A dictionary containing the index of every coalition in game_values
+        coalition_lookup: A dictionary containing the index of every coalition in ``game_values``
     """
 
     def __init__(
@@ -95,7 +95,7 @@ class ExactComputer:
         Args:
             index: The index or value to compute
             order: The order of the interaction index. If not specified the maximum order
-                (i.e. n_players) is used. Defaults to None.
+                (i.e. ``n_players``) is used. Defaults to ``None``.
 
         Returns:
             The desired interaction values or generalized values.
@@ -138,7 +138,7 @@ class ExactComputer:
         return baseline_value, game_values, coalition_lookup
 
     def moebius_transform(self, *args, **kwargs) -> InteractionValues:
-        """Computes the Moebius transform for all 2^n coalitions of the game.
+        """Computes the Moebius transform for all :math:`2^n` coalitions of the game.
 
         Args:
             args and kwargs: Additional arguments and keyword arguments (not used)
@@ -178,8 +178,8 @@ class ExactComputer:
             contribution of S given T in SGV.
 
         Args:
-            coalition_size: The size of the coalition from 0,...,n-interaction_size
-            interaction_size: The size of the interaction from 0,...,order
+            coalition_size: The size of the coalition from ``0,...,n-interaction_size``
+            interaction_size: The size of the interaction from ``0,...,order``
             index: The computed index
 
         Returns:
@@ -208,7 +208,7 @@ class ExactComputer:
 
         Args:
             coalition_size: Size of the Discrete Derivative
-            interaction_size: Interaction size with s <= k
+            interaction_size: Interaction size with ``s <= k``
             order: Interaction order
 
         Returns:
@@ -227,7 +227,7 @@ class ExactComputer:
         """Pre-computes the kernel weight for the least square representation of FSII
 
         Returns:
-            An array of the kernel weights for 0,...,n with "infinite weight" on 0 and n.
+            An array of the kernel weights for ``0,...,n with "infinite weight"`` on ``0`` and ``n``.
         """
         fsii_weights = np.zeros(self.n + 1, dtype=float)
         fsii_weights[0] = self._big_M
@@ -245,7 +245,7 @@ class ExactComputer:
             order: The interaction order
 
         Returns:
-            An array with pre-computed weights for t=0,...,n-k
+            An array with pre-computed weights for ``t=0,...,n-k``
         """
 
         stii_weights = np.zeros(self.n - order + 1, dtype=float)
@@ -281,7 +281,7 @@ class ExactComputer:
     @staticmethod
     def get_n_interactions(n_players: int) -> np.ndarray:
         """Pre-computes an array that contains the number of interactions up to the size of the
-            index (e.g. n_interactions[4] is the number of interactions up to size 4).
+            index (e.g. ``n_interactions[4]`` is the number of interactions up to size ``4``).
 
         Args:
             n_players: The number of players
@@ -301,8 +301,8 @@ class ExactComputer:
         return n_interactions
 
     def _get_base_weights(self, index: str, order: int) -> np.ndarray:
-        """Pre-computes all base weights for all coalition sizes (i.e. 0, ..., n-s) and all
-            interaction sizes (i.e. 1, ..., order).
+        """Pre-computes all base weights for all coalition sizes (i.e. ``0, ..., n-s``) and all
+            interaction sizes (i.e. ``1, ..., order``).
 
         Args:
             index: The interaction index
@@ -368,10 +368,10 @@ class ExactComputer:
             depend on the order.
 
         According to the underlying representation using marginal contributions from
-        [this work](https://doi.org/10.1016/j.dam.2006.05.002), the following indices are supported:
-            - SGV: Shapley Generalized Value https://doi.org/10.1016/S0166-218X(00)00264-X
-            - BGV: Banzhaf Generalized Value https://doi.org/10.1016/S0166-218X(00)00264-X
-            - CHGV: Chaining Generalized Value https://doi.org/10.1016/j.dam.2006.05.002
+        `Marichal et al. (2007) <https://doi.org/10.1016/j.dam.2006.05.002>`_, the following indices are supported:
+            - SGV: Shapley Generalized Value `Jean-Luc Marichal (2000) <https://doi.org/10.1016/S0166-218X(00)00264-X>`_
+            - BGV: Banzhaf Generalized Value `Jean-Luc Marichal (2000) <https://doi.org/10.1016/S0166-218X(00)00264-X>`_
+            - CHGV: Chaining Generalized Value `Marichal et al. (2007) <https://doi.org/10.1016/j.dam.2006.05.002>`_
 
         Args:
             order: The highest order of interactions
@@ -423,7 +423,7 @@ class ExactComputer:
         """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII
 
         Args:
-            base_interactions: InteractionValues object containing interactions up to order "order"
+            base_interactions: InteractionValues object containing interactions up to order ``order``
             order: The highest order of interactions considered
 
         Returns:
@@ -435,7 +435,7 @@ class ExactComputer:
         return copy.deepcopy(transformed_interactions)
 
     def compute_stii(self, order: int) -> InteractionValues:
-        """Computes the STII index up to order "order".
+        """Computes the STII index up to order ``order``.
 
         Args:
             order: The highest order of interactions
@@ -489,8 +489,8 @@ class ExactComputer:
         return copy.deepcopy(stii)
 
     def compute_fsii(self, order: int) -> InteractionValues:
-        """Computes the FSII index up to order "order" after
-            [Tsai et al. 2023](https://jmlr.org/papers/v24/22-0202.html).
+        """Computes the FSII index up to order ``order`` after
+            `Tsai et al. (2023) <https://jmlr.org/papers/v24/22-0202.html>`_.
 
         Args:
             order: The highest order of interactions
@@ -542,7 +542,7 @@ class ExactComputer:
         return copy.deepcopy(fsii)
 
     def get_jointsv_weights(self, order: int) -> np.ndarray:
-        """Pre-compute JointSV weights for all coalition sizes (0, ... , n - order).
+        """Pre-compute JointSV weights for all coalition sizes ``(0, ..., n - order)``.
 
         Args:
             order: The highest order of interactions
@@ -570,7 +570,7 @@ class ExactComputer:
             coalition matrix contains the Bernoulli weights.
 
         The implementation is according to
-        [Pelegrina et al. 2023](https://doi.org/10.1016/j.artint.2023.104014).
+        `Pelegrina et al. (2023) <https://doi.org/10.1016/j.artint.2023.104014>`_.
 
         Args:
             order: The highest order of interactions
@@ -627,7 +627,7 @@ class ExactComputer:
     def compute_joint_sv(self, order: int):
         """
         Computes the JointSV index up to order "order" according to
-        https://openreview.net/forum?id=vcUmUvQCloe.
+        `Harris et al. (2022) <https://openreview.net/forum?id=vcUmUvQCloe>`_.
 
         Args:
             order: The highest order of interactions
@@ -674,10 +674,10 @@ class ExactComputer:
     def shapley_generalized_value(self, order: int, index: str) -> InteractionValues:
         """
         Computes Shapley Generalized Values (i.e. Generalized Values that satisfy efficiency) after
-            the underlying representation in https://doi.org/10.1016/j.dam.2006.05.002.
+            the underlying representation in `Marichal et al. (2007) <https://doi.org/10.1016/j.dam.2006.05.002>`_.
 
         Currently, the following indices are supported:
-            - JointSV: https://openreview.net/forum?id=vcUmUvQCloe
+            - JointSV `Harris et al. (2022) <https://openreview.net/forum?id=vcUmUvQCloe>`_
 
         Args:
             order: The highest order of interactions
@@ -701,11 +701,11 @@ class ExactComputer:
             depend on the order k.
 
         According to the underlying representation using discrete derivatives from
-        https://doi.org/10.1016/j.geb.2005.03.002, the following indices are supported:
-            - k-SII: k-Shapley Values https://proceedings.mlr.press/v206/bordt23a.html
-            - STII:  Shapley-Taylor Interaction Index https://proceedings.mlr.press/v119/sundararajan20a.html
-            - FSII: Faithful Shapley Interaction Index https://jmlr.org/papers/v24/22-0202.html
-            - kADD-SHAP: k-additive Shapley Values https://doi.org/10.1016/j.artint.2023.104014
+        `Fujimoto et al. (2006) <https://doi.org/10.1016/j.geb.2005.03.002>`_, the following indices are supported:
+            - k-SII: k-Shapley Values `Bordt & von Luxburg (2023) <https://proceedings.mlr.press/v206/bordt23a.html>`_
+            - STII:  Shapley-Taylor Interaction Index `Sundararajan et al. (2020) <https://proceedings.mlr.press/v119/sundararajan20a.html>`_
+            - FSII: Faithful Shapley Interaction Index `Tsai et al. (2023) <https://jmlr.org/papers/v24/22-0202.html>`_
+            - kADD-SHAP: k-additive Shapley Values `Pelegrina et al. (2023) <https://doi.org/10.1016/j.artint.2023.104014>`_
 
         Args:
             order: The highest order of interactions
@@ -738,10 +738,10 @@ class ExactComputer:
             depend on the order.
 
         According to the underlying representation using discrete derivatives from
-        https://doi.org/10.1016/j.geb.2005.03.002, the following indices are supported:
-            - SII: Shapley Interaction Index https://link.springer.com/article/10.1007/s001820050125
-            - BII: Banzhaf Interaction Index https://link.springer.com/article/10.1007/s001820050125
-            - CHII: Chaining Interaction Index https://link.springer.com/chapter/10.1007/978-94-017-0647-6_5
+        `Fujimoto et al. (2006) <https://doi.org/10.1016/j.geb.2005.03.002>`_, the following indices are supported:
+            - SII: Shapley Interaction Index `Grabisch & Roubens (1999) <https://link.springer.com/article/10.1007/s001820050125>`_
+            - BII: Banzhaf Interaction Index `Grabisch & Roubens (1999) <https://link.springer.com/article/10.1007/s001820050125>`_
+            - CHII: Chaining Interaction Index `Marichal & Roubens (1999) <https://link.springer.com/chapter/10.1007/978-94-017-0647-6_5>`_
 
         Args:
             order: The highest order of interactions
@@ -760,12 +760,12 @@ class ExactComputer:
         efficiency axiom.
 
         These semi-values are special forms of interaction indices and generalized values for
-        order = 1. According to the underlying representation using marginal contributions (cf.
-        [semi-values](https://doi.org/10.1287/moor.6.1.122) or
-        [probabilistic values](https://doi.org/10.1017/CBO9780511528446.008) the following indices
+        ``order = 1``. According to the underlying representation using marginal contributions; cf.
+        semi-values `Dubey et al. (1981) <https://doi.org/10.1287/moor.6.1.122>`_, or
+        probabilistic values `Robert J. Weber (2009) <https://doi.org/10.1017/CBO9780511528446.008>`_ for the following indices
         are currently supported:
-            - SV: Shapley value: https://doi.org/10.1515/9781400881970-018
-            - BV: Banzhaf value: Banzhaf III, J. F. (1964). Weighted voting doesn't work: A mathematical analysis. Rutgers L. Rev., 19, 317.
+            - SV: Shapley value: Shapley, L. S. (1953) "17. A Value for n-Person Games" Princeton University Press, pp. 307-318
+            - BV: Banzhaf value: Banzhaf III, J. F. (1964). "Weighted voting doesn't work: A mathematical analysis" Rutgers L. Rev., 19, 317.
 
         Args:
             index: The interaction index

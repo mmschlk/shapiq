@@ -21,22 +21,22 @@ class InteractionValues:
     Attributes:
         values: The interaction values of the model in vectorized form.
         index: The interaction index estimated. All available indices are defined in
-            `ALL_AVAILABLE_INDICES`.
+            ``ALL_AVAILABLE_INDICES``.
         max_order: The order of the approximation.
         n_players: The number of players.
-        min_order: The minimum order of the approximation. Defaults to 0.
+        min_order: The minimum order of the approximation. Defaults to ``0``.
         interaction_lookup: A dictionary that maps interactions to their index in the values
-            vector. If `interaction_lookup` is not provided, it is computed from the `n_players`,
-            `min_order`, and `max_order` parameters. Defaults to `None`.
-        estimated: Whether the interaction values are estimated or not. Defaults to `True`.
-        estimation_budget: The budget used for the estimation. Defaults to `None`.
+            vector. If ``interaction_lookup`` is not provided, it is computed from the ``n_players``,
+            ``min_order``, and `max_order` parameters. Defaults to ``None``.
+        estimated: Whether the interaction values are estimated or not. Defaults to ``True``.
+        estimation_budget: The budget used for the estimation. Defaults to ``None``.
         baseline_value: The value of the baseline interaction also known as 'empty prediction' or
-            'empty value' since it denotes the value of the empty coalition (empty set). If not
+            ``'empty value'`` since it denotes the value of the empty coalition (empty set). If not
             provided it is searched for in the values vector (raising an Error if not found).
-            Defaults to `None`.
+            Defaults to ``None``.
 
     Raises:
-        UserWarning: If the index is not a valid index as defined in `ALL_AVAILABLE_INDICES`.
+        UserWarning: If the index is not a valid index as defined in ``ALL_AVAILABLE_INDICES``.
         TypeError: If the baseline value is not a number.
     """
 
@@ -138,8 +138,8 @@ class InteractionValues:
 
         Args:
             k: The number of top interactions to return.
-            as_interaction_values: Whether to return the top k interactions as an InteractionValues
-                object. Defaults to `False`.
+            as_interaction_values: Whether to return the top `k` interactions as an InteractionValues
+                object. Defaults to ``False``.
 
         Returns:
             The top k interactions as a dictionary and a sorted list of tuples.
@@ -206,7 +206,7 @@ class InteractionValues:
         """Returns the score for the given interaction.
 
         Args:
-            item: The interaction as a tuple of integers for which to return the score. If `item` is
+            item: The interaction as a tuple of integers for which to return the score. If ``item`` is
                 an integer it serves as the index to the values vector.
 
         Returns:
@@ -403,11 +403,11 @@ class InteractionValues:
             order: The order of the interactions to return.
 
         Returns:
-            The interaction values of the specified order as a numpy array of shape `(n_players,)`
-            for order 1 and `(n_players, n_players)` for order 2, etc.
+            The interaction values of the specified order as a numpy array of shape ``(n_players,)``
+            for order ``1`` and ``(n_players, n_players)`` for order ``2``, etc.
 
         Raises:
-            ValueError: If the order is less than 1.
+            ValueError: If the order is less than ``1``.
         """
         from itertools import permutations
 
@@ -458,8 +458,8 @@ class InteractionValues:
 
         Args:
             path: The path to save the InteractionValues object to.
-            as_pickle: Whether to save the InteractionValues object as a pickle file (`True`) or
-                as a npz file (`False`). Defaults to `False`.
+            as_pickle: Whether to save the InteractionValues object as a pickle file (``True``) or
+                as a ``npz`` file (``False``). Defaults to ``False``.
         """
         # check if the directory exists
         directory = os.path.dirname(path)

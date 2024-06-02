@@ -58,7 +58,7 @@ class MoebiusConverter:
         Args:
             index: The index or value to compute
             order: The order of the interaction index. If not specified the maximum order
-                (i.e. n_players) is used. Defaults to None.
+                (i.e. ``n_players``) is used. Defaults to ``None``.
 
         Returns:
             The desired interaction values or generalized values.
@@ -81,10 +81,10 @@ class MoebiusConverter:
             raise ValueError(f"Index {index} not supported.")
 
     def base_aggregation(self, base_interactions: InteractionValues, order: int):
-        """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII
+        """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII.
 
         Args:
-            base_interactions: InteractionValues object containing interactions up to order "order"
+            base_interactions: InteractionValues object containing interactions up to order ``order``.
             order: The highest order of interactions considered
 
         Returns:
@@ -223,8 +223,8 @@ class MoebiusConverter:
     def fsii_routine(self, order: int):
         """Computes STII. Routine to distribute the Moebius coefficients onto all FSII interactions.
 
-        The higher-order interactions (size > order) are distributed onto all FSII interactions
-        (size <= order).
+        The higher-order interactions (``size > order``) are distributed onto all FSII interactions
+        (``size <= order``).
 
         Args:
             order: The order of the explanation

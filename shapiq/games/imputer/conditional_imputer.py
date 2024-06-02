@@ -1,3 +1,5 @@
+"""Implementation of the conditional imputer."""
+
 from typing import Optional
 
 import numpy as np
