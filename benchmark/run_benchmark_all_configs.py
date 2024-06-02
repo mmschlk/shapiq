@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 if __name__ == "__main__":
 
     # example python run command with nohup and nice
-    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 70 --rerun_if_exists True > all_configs.log &
+    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 70 --rerun_if_exists False > all_configs_synth.log &
 
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,

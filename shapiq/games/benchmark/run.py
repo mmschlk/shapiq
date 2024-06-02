@@ -103,7 +103,9 @@ def run_benchmark(
         )
 
     # transform the budget steps to integers if float is provided
-    max_budget = max_budget or 2**n_players
+    if n_players > 16:  # sets the budget to 10k for synthetic games with more than 16 players
+        max_budget = 10_000
+    max_budget = max_budget or 2**n_players  # set budget to 2**n_players if not provided
     if budget_steps is None:
         budget_steps = [
             int(round(budget_step, 2) * max_budget)
