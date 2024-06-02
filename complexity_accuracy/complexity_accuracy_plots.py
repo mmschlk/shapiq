@@ -32,8 +32,8 @@ def plot_interaction_sizes_r2(results, weighting_scheme):
         for index in INDICES:
             plt.subplot(3, 3, interaction_size - 1)
             plt.plot(
-                results.loc[:, game_id, weighting_scheme, index].index,
-                results.loc[:, game_id, weighting_scheme, index]["r2"],
+                results.loc["SOUM", game_id, weighting_scheme, index].index,
+                results.loc["SOUM", game_id, weighting_scheme, index]["r2"],
                 label=index,
                 color=INDEX_COLORS[index],
             )
@@ -171,8 +171,8 @@ if __name__ == "__main__":
     PLOT_L2 = False
     PLOT_R2 = True
 
-    PLOT_SYNTHETIC_INTERACTION_EXPERIMENT = False
-    PLOT_BENCHMARK_GAMES_EXPERIMENT = True
+    PLOT_SYNTHETIC_INTERACTION_EXPERIMENT = True
+    PLOT_BENCHMARK_GAMES_EXPERIMENT = False
 
     directory_path = "results/"
 

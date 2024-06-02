@@ -286,12 +286,11 @@ if __name__ == "__main__":
             game_title = get_game_title_name(game_names[i])
             print(game_title)
             for game in game_iterator:
+                game_id = game_names[i] + "_" + game.game_id
                 n_players = game.n_players
                 if n_players <= 10:
                     approximations, game_values = get_approximations_for_game(game)
-                    errors[game.game_id], weighted_r2[game.game_id] = get_errors_for_game(
+                    errors[game_id], weighted_r2[game_id] = get_errors_for_game(
                         approximations, game_values, game.n_players
                     )
-                    save_results(
-                        errors[game.game_id], weighted_r2[game.game_id], game.game_id, game_title
-                    )
+                    save_results(errors[game_id], weighted_r2[game_id], game_id, game_title)
