@@ -104,7 +104,9 @@ class SOUM(Game):
         self.linear_coefficients = np.random.random(size=self.n_basis_games) * 2 - 1
         # Compute interaction sizes (exclude size 0)
         interaction_sizes = np.random.randint(
-            low=self.min_interaction_size, high=self.max_interaction_size, size=self.n_basis_games
+            low=self.min_interaction_size,
+            high=self.max_interaction_size + 1,
+            size=self.n_basis_games,
         )
         for i, size in enumerate(interaction_sizes):
             interaction = np.random.choice(tuple(range(self.n_players)), size, replace=False)
