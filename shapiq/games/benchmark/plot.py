@@ -34,10 +34,11 @@ MARKERS = []
 LIGHT_GRAY = "#d3d3d3"
 LINE_STYLES_ORDER = {0: "solid", 1: "dotted", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
 LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "s", 3: "X", 4: "d", "all": "o"}
-LINE_THICKNESS = 1.5
+LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
 
+LOG_SCALE_MAX = 1e2
 LOG_SCALE_MIN = 1e-7
 
 
@@ -95,6 +96,7 @@ def plot_approximation_quality(
     confidence_metric: Optional[str] = "sem",
     log_scale_y: bool = False,
     log_scale_min: float = LOG_SCALE_MIN,
+    log_scale_max: float = LOG_SCALE_MAX,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the approximation quality curves.
 
@@ -186,7 +188,7 @@ def plot_approximation_quality(
     ax.grid(axis="x", color=LIGHT_GRAY, linestyle="dashed")
 
     if log_scale_y:
-        _set_y_axis_log_scale(ax, log_scale_min)
+        _set_y_axis_log_scale(ax, log_scale_min, log_scale_max)
 
     return fig, ax
 
@@ -214,7 +216,7 @@ def _set_x_axis_ticks(ax: plt.Axes, n_players: int) -> None:
     ax.set_xticklabels(xtick_labels)
 
 
-def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float) -> None:
+def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float, log_scale_max: float) -> None:
     """Sets the y-axis to a log scale and adjusts the limits."""
     # adjust the top limit to be one order of magnitude higher than the current top limit
     top_lim = ax.get_ylim()[1]
@@ -222,6 +224,9 @@ def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float) -> None:
     top_lim = top_lim.split("e")[1]  # get the exponent
     top_lim = int(top_lim) + 1  # get the top limit as the exponent + 1
     top_lim = 10**top_lim  # get the top limit in scientific notation
+
+    if top_lim > log_scale_max:
+        top_lim = log_scale_max
 
     # set the y-axis limits
     ax.set_ylim(top=top_lim)

@@ -22,11 +22,11 @@ if __name__ == "__main__":
     save_fig = True
 
     # benchmark to plot parameters
-    game = "CaliforniaHousingDatasetValuation"
-    config_id = 1
+    game = "CaliforniaHousingLocalXAI"
+    config_id = 4
     n_player_id = 0
-    index = "SV"
-    order = 1
+    index = "k-SII"
+    order = 2
     n_games = 30
 
     if index == "SV":
@@ -34,11 +34,12 @@ if __name__ == "__main__":
 
     # plot parameters
     log_scale_y = True
-    log_scale_min = 1e-8
+    log_scale_max = 1e0
+    log_scale_min = 1e-6
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
     increase_font_size: int = 2
-    fig_size = (6, 5)
+    fig_size = (5, 5)
 
     # create the title -----------------------------------------------------------------------------
     game_title = get_game_title_name(game)
@@ -68,7 +69,11 @@ if __name__ == "__main__":
 
     # get the plot
     fig, ax = plot_approximation_quality(
-        data=results_df, log_scale_y=log_scale_y, log_scale_min=log_scale_min
+        data=results_df,
+        log_scale_y=log_scale_y,
+        log_scale_min=log_scale_min,
+        log_scale_max=log_scale_max,
+        orders=[order],
     )
 
     # finalize the plot
