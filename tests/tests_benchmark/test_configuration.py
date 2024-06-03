@@ -18,7 +18,7 @@ def test_load_games_with_configuration():
     #             game = next(
     #                 load_games_from_configuration(game_class, configuration=config, n_games=1)
     #             )
-    #             # assert game.game_name == game_class.get_game_name() # TODO
+    #             # assert game.game_name == game_class.get_game_name()
     #             assert game.verbose == BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["verbose"]
 
 
