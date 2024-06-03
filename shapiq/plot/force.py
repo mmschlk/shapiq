@@ -1,8 +1,7 @@
-"""Wrapper for the force plot from the shap package."""
+"""Wrapper for the force plot from the ``shap`` package."""
 
 from typing import Optional
 import numpy as np
-import warnings
 
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset

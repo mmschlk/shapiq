@@ -650,4 +650,9 @@ class InteractionValues:
             **kwargs: Keyword arguments passed to ``shap.plots.force()``.
         """
         from shapiq import force_plot
-        return force_plot(self, feature_values, feature_names, **kwargs)
+        return force_plot(
+            self, 
+            feature_values=feature_values, 
+            feature_names=feature_names, 
+            **kwargs
+        )
