@@ -11,8 +11,8 @@ from shapiq.interaction_values import InteractionValues
 
 
 class PermutationSamplingSV(Approximator):
-    """The  Permutation Sampling algorithm ApproShapley estimates the Shapley values by 
-    sampling random permutations of the player set and extracting all marginal contributions 
+    """The  Permutation Sampling algorithm ApproShapley estimates the Shapley values by
+    sampling random permutations of the player set and extracting all marginal contributions
     from each permutation. For details, refer to `Castro et al. (2009) <https://doi.org/10.1016/j.cor.2008.04.004>`_.
 
     Args:

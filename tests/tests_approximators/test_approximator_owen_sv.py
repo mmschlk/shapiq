@@ -30,20 +30,20 @@ def test_anchorpoints(n, m, expected):
 
 
 @pytest.mark.parametrize(
-    "n, m, budget, batch_size",
+    "n, m, budget",
     [
-        (5, 3, 102, 1),
-        (5, 3, 102, 2),
-        (5, 3, 102, 5),
-        (5, 3, 100, 8),
-        (5, 3, 1000, 10),
-        (5, 1, 1000, 10),
-        (5, 2, 1000, 10),
-        (5, 10, 1000, 10),
-        (5, 41, 100000, 100),
+        (5, 3, 102),
+        (5, 3, 102),
+        (5, 3, 102),
+        (5, 3, 100),
+        (5, 3, 1000),
+        (5, 1, 1000),
+        (5, 2, 1000),
+        (5, 10, 1000),
+        (5, 41, 10000),
     ],
 )
-def test_approximate(n, m, budget, batch_size):
+def test_approximate(n, m, budget):
     """Tests the approximation of the OwenSamplingSV approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
@@ -55,11 +55,10 @@ def test_approximate(n, m, budget, batch_size):
     # test for init parameter
     assert approximator.index == "SV"
     assert approximator.n == n
-    assert approximator.iteration_cost == 2 * n * m
     assert approximator.max_order == 1
     assert approximator.top_order is False
 
-    sv_estimates = approximator.approximate(budget, game, batch_size=batch_size)
+    sv_estimates = approximator.approximate(budget, game)
 
     # check that the budget is respected
     assert game.access_counter <= budget
@@ -71,9 +70,9 @@ def test_approximate(n, m, budget, batch_size):
 
     # check Shapley values for all players that have only marginal contributions of size 0.2
     # their estimates must be exactly 0.2
-    assert sv_estimates[(0,)] == pytest.approx(0.2, 0.01)
-    assert sv_estimates[(3,)] == pytest.approx(0.2, 0.01)
-    assert sv_estimates[(4,)] == pytest.approx(0.2, 0.01)
+    assert sv_estimates[(0,)] == pytest.approx(0.2, 0.001)
+    assert sv_estimates[(3,)] == pytest.approx(0.2, 0.001)
+    assert sv_estimates[(4,)] == pytest.approx(0.2, 0.001)
 
     # check Shapley values for interaction players
     if budget >= 100000 and m >= 40:

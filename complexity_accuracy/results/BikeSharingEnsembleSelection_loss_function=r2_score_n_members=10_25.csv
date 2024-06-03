@@ -1,0 +1,81 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.1361118582105934,-2.6283004397852436,1,k-SII,uniform,Bike Sharing Ensemble Selection
+2,0.16357029275070162,-1.9667304695376155,2,k-SII,uniform,Bike Sharing Ensemble Selection
+3,0.1946377272839738,-2.0372775033138897,3,k-SII,uniform,Bike Sharing Ensemble Selection
+4,0.2506152836103809,-2.677810505376428,4,k-SII,uniform,Bike Sharing Ensemble Selection
+5,0.24708736711918125,-1.985705628722648,5,k-SII,uniform,Bike Sharing Ensemble Selection
+6,0.11381817005417275,-0.5092369098843752,6,k-SII,uniform,Bike Sharing Ensemble Selection
+7,0.07901346556595913,-1.5320340633430476,7,k-SII,uniform,Bike Sharing Ensemble Selection
+8,0.006243313157370692,0.6742585250447957,8,k-SII,uniform,Bike Sharing Ensemble Selection
+9,0.0013840551054729487,0.9154037092753617,9,k-SII,uniform,Bike Sharing Ensemble Selection
+10,4.720400172443617e-25,1.0,10,k-SII,uniform,Bike Sharing Ensemble Selection
+1,0.1361118582105934,-2.6283004397852436,1,STII,uniform,Bike Sharing Ensemble Selection
+2,0.892041141901512,-9.293429616300415,2,STII,uniform,Bike Sharing Ensemble Selection
+3,1.8451413343111533,-4.000111555817709,3,STII,uniform,Bike Sharing Ensemble Selection
+4,1.627540970321466,-1.0984505579005517,4,STII,uniform,Bike Sharing Ensemble Selection
+5,0.6836373723139532,-0.5400605978949171,5,STII,uniform,Bike Sharing Ensemble Selection
+6,0.13965246194704994,-0.01806867645181165,6,STII,uniform,Bike Sharing Ensemble Selection
+7,0.013236046499445502,0.5094628834933208,7,STII,uniform,Bike Sharing Ensemble Selection
+8,0.0005049705707901779,0.9704934731929475,8,STII,uniform,Bike Sharing Ensemble Selection
+9,5.105420203055961e-06,0.999689344585168,9,STII,uniform,Bike Sharing Ensemble Selection
+10,1.5497065112472377e-28,1.0,10,STII,uniform,Bike Sharing Ensemble Selection
+1,0.13611186008236453,-2.6283005109511075,1,FSII,uniform,Bike Sharing Ensemble Selection
+2,0.018768676846453013,0.5840049237364355,2,FSII,uniform,Bike Sharing Ensemble Selection
+3,0.008292037922624763,0.6220348591772583,3,FSII,uniform,Bike Sharing Ensemble Selection
+4,0.002056890164690609,0.8778111468977835,4,FSII,uniform,Bike Sharing Ensemble Selection
+5,0.0004878623519870425,0.9707908430971453,5,FSII,uniform,Bike Sharing Ensemble Selection
+6,9.026439676330212e-05,0.9945626978774486,6,FSII,uniform,Bike Sharing Ensemble Selection
+7,1.2627062503588425e-05,0.9992328359294641,7,FSII,uniform,Bike Sharing Ensemble Selection
+8,1.1992222757922298e-06,0.9999270535536942,8,FSII,uniform,Bike Sharing Ensemble Selection
+9,5.93034529861917e-08,0.9999963925754504,9,FSII,uniform,Bike Sharing Ensemble Selection
+10,1.7709363720875807e-18,0.9999999999999999,10,FSII,uniform,Bike Sharing Ensemble Selection
+1,0.0031234589334296864,0.7654319528046282,1,FBII,uniform,Bike Sharing Ensemble Selection
+2,0.0010541789068233812,0.9314803973773093,2,FBII,uniform,Bike Sharing Ensemble Selection
+3,0.00044495162293292157,0.972180608797619,3,FBII,uniform,Bike Sharing Ensemble Selection
+4,0.0001924187898411132,0.9881565336567308,4,FBII,uniform,Bike Sharing Ensemble Selection
+5,7.433173591743309e-05,0.9954578606452144,5,FBII,uniform,Bike Sharing Ensemble Selection
+6,2.308276798789159e-05,0.9985939002262714,6,FBII,uniform,Bike Sharing Ensemble Selection
+7,5.207536436394413e-06,0.999683125032512,7,FBII,uniform,Bike Sharing Ensemble Selection
+8,7.435694404544017e-07,0.9999547666038193,8,FBII,uniform,Bike Sharing Ensemble Selection
+9,4.985761917039438e-08,0.9999969671504095,9,FBII,uniform,Bike Sharing Ensemble Selection
+10,2.1987810798888756e-28,1.0,10,FBII,uniform,Bike Sharing Ensemble Selection
+1,0.744558998699922,-0.19890801548522608,1,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+2,0.5063417299296293,0.598842228145425,2,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+3,0.5890592192361982,0.5128919495825812,3,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+4,0.6528101106632642,0.1866516163369386,4,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+5,0.5925824999342453,0.3253147185776377,5,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+6,0.32871238914046164,0.6925199314899266,6,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+7,0.16207968716311652,0.8014788694544186,7,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+8,0.024749424500275355,0.9566736691683532,8,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+9,0.0025948593392267688,0.9954594203317351,9,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+10,2.3840036222420136e-24,1.0,10,k-SII,Shapley kernel,Bike Sharing Ensemble Selection
+1,0.744558998699922,-0.19890801548522608,1,STII,Shapley kernel,Bike Sharing Ensemble Selection
+2,2.4017166326738844,0.053186443203392164,2,STII,Shapley kernel,Bike Sharing Ensemble Selection
+3,7.432076290667991,-1.0607295894616438,3,STII,Shapley kernel,Bike Sharing Ensemble Selection
+4,12.372922330276849,-0.2337919989324886,4,STII,Shapley kernel,Bike Sharing Ensemble Selection
+5,10.263242522473181,-0.6012840378583169,5,STII,Shapley kernel,Bike Sharing Ensemble Selection
+6,4.045521053894233,0.06720000762063916,6,STII,Shapley kernel,Bike Sharing Ensemble Selection
+7,0.6914327069675557,0.18190652540715813,7,STII,Shapley kernel,Bike Sharing Ensemble Selection
+8,0.041894413658245935,0.9389006981092838,8,STII,Shapley kernel,Bike Sharing Ensemble Selection
+9,0.0005227950287929304,0.9991013094107657,9,STII,Shapley kernel,Bike Sharing Ensemble Selection
+10,1.1596597078535e-25,1.0,10,STII,Shapley kernel,Bike Sharing Ensemble Selection
+1,0.744559005276621,-0.19890804243064553,1,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+2,0.21346411585927805,0.7474895172589638,2,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+3,0.05884603075102146,0.9080934694283497,3,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+4,0.014057276790147205,0.9771424454941069,4,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+5,0.0027542453359467997,0.9953449348153349,5,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+6,0.000419223379000308,0.9992881048192122,6,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+7,4.607468072195752e-05,0.999921605837555,7,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+8,3.228623746595342e-06,0.9999945058480396,8,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+9,1.075267438936651e-07,0.9999998170172282,9,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+10,7.40134816358118e-18,1.0,10,FSII,Shapley kernel,Bike Sharing Ensemble Selection
+1,0.509177514228125,-7.376653533270064,1,FBII,Shapley kernel,Bike Sharing Ensemble Selection
+2,0.3561572980115894,-3.0456757121055142,2,FBII,Shapley kernel,Bike Sharing Ensemble Selection
+3,0.20929422905682063,-0.028016816871094585,3,FBII,Shapley kernel,Bike Sharing Ensemble Selection
+4,0.09356830860539861,0.6698476948074708,4,FBII,Shapley kernel,Bike Sharing Ensemble Selection
+5,0.02887728254966597,0.9342423188026128,5,FBII,Shapley kernel,Bike Sharing Ensemble Selection
+6,0.00553600257717908,0.9892372420176203,6,FBII,Shapley kernel,Bike Sharing Ensemble Selection
+7,0.0005753598079470175,0.9989913772653929,7,FBII,Shapley kernel,Bike Sharing Ensemble Selection
+8,2.6278923669552765e-05,0.9999550100072608,8,FBII,Shapley kernel,Bike Sharing Ensemble Selection
+9,3.535973576401815e-07,0.9999993980320142,9,FBII,Shapley kernel,Bike Sharing Ensemble Selection
+10,3.849799823568958e-26,1.0,10,FBII,Shapley kernel,Bike Sharing Ensemble Selection

@@ -1,5 +1,6 @@
 """This test module contains all tests regarding the interaciton explainer for the shapiq package."""
 
+import numpy as np
 import pytest
 from sklearn.datasets import make_regression
 from sklearn.tree import DecisionTreeRegressor
@@ -7,7 +8,6 @@ from sklearn.tree import DecisionTreeRegressor
 from shapiq.approximator import RegressionFSII
 from shapiq.explainer import TabularExplainer
 
-import numpy as np
 
 @pytest.fixture
 def dt_model():
@@ -146,10 +146,8 @@ def test_explain(dt_model, data, index, budget, max_order, imputer):
     interaction_values0 = explainer.explain(x, budget=budget, random_state=0)
     interaction_values2 = explainer.explain(x, budget=budget, random_state=0)
     assert np.allclose(
-        interaction_values0.get_n_order_values(1),
-        interaction_values2.get_n_order_values(1)
+        interaction_values0.get_n_order_values(1), interaction_values2.get_n_order_values(1)
     )
     assert np.allclose(
-        interaction_values0.get_n_order_values(2),
-        interaction_values2.get_n_order_values(2)
+        interaction_values0.get_n_order_values(2), interaction_values2.get_n_order_values(2)
     )

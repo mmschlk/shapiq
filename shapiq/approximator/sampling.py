@@ -35,7 +35,7 @@ class CoalitionSampler:
     Args:
         n_players: The number of players in the game.
         sampling_weights: Sampling for weights for coalition sizes, must be non-negative and at
-            least one ``>0``. The sampling weights for size ``0`` and ``n`` are ignored, as these are 
+            least one ``>0``. The sampling weights for size ``0`` and ``n`` are ignored, as these are
             always sampled.
         pairing_trick: Samples each coalition jointly with its complement. Defaults to ``False``.
         random_state: The random state to use for the sampling process. Defaults to ``None``.
@@ -43,7 +43,7 @@ class CoalitionSampler:
     Attributes:
         n: The number of players in the game.
         n_max_coalitions: The maximum number of possible coalitions.
-        adjusted_sampling_weights: The adjusted sampling weights without zero-weighted coalition sizes. 
+        adjusted_sampling_weights: The adjusted sampling weights without zero-weighted coalition sizes.
             The array is of shape ``(n_sizes_to_sample,)``.
         sampled: A flag indicating whether the sampling process has been executed.
         coalitions_matrix: The binary matrix of sampled coalitions of shape ``(n_coalitions,
@@ -227,7 +227,7 @@ class CoalitionSampler:
     @property
     def coalitions_probability(self) -> np.ndarray:
         """Returns the coalition probabilities according to the sampling procedure. The coalitions probability is
-        calculated as the product of the probability of the size of the coalition times the probability of the 
+        calculated as the product of the probability of the size of the coalition times the probability of the
         coalition in that size.
 
         Returns:
@@ -504,7 +504,6 @@ class CoalitionSampler:
         # set the flag to indicate that these sizes are sampled
         for coalition_size in self._coalitions_to_sample:
             self._is_coalition_size_sampled[coalition_size] = True
-
 
     def _sort_coalitions(self, value):
         """Used to sort coalition sizes by distance to center, i.e. grand coalition and emptyset first

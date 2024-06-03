@@ -1,0 +1,81 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.18743135542720463,-7.973773534362007,1,k-SII,uniform,Bike Sharing Dataset Valuation
+2,0.236673857553784,-5.0863236312216005,2,k-SII,uniform,Bike Sharing Dataset Valuation
+3,0.284028795609093,-2.8959699812350426,3,k-SII,uniform,Bike Sharing Dataset Valuation
+4,0.37443778680722944,-3.324989642314674,4,k-SII,uniform,Bike Sharing Dataset Valuation
+5,0.3700676781254093,-2.7621159816251484,5,k-SII,uniform,Bike Sharing Dataset Valuation
+6,0.17789600732323924,-1.0749443387671391,6,k-SII,uniform,Bike Sharing Dataset Valuation
+7,0.12713925644838442,-4.1481783954374025,7,k-SII,uniform,Bike Sharing Dataset Valuation
+8,0.008892858321389533,-0.4353399834659728,8,k-SII,uniform,Bike Sharing Dataset Valuation
+9,0.0016862046611462182,-0.044624400109578355,9,k-SII,uniform,Bike Sharing Dataset Valuation
+10,4.944742509007112e-25,1.0,10,k-SII,uniform,Bike Sharing Dataset Valuation
+1,0.18743135542720463,-7.973773534362007,1,STII,uniform,Bike Sharing Dataset Valuation
+2,1.2887608585639847,-15.991597735333258,2,STII,uniform,Bike Sharing Dataset Valuation
+3,2.702504949232112,-4.0078744095711665,3,STII,uniform,Bike Sharing Dataset Valuation
+4,2.4094951747696136,-1.1882582310269925,4,STII,uniform,Bike Sharing Dataset Valuation
+5,1.0297976508690398,-0.5753068675366555,5,STII,uniform,Bike Sharing Dataset Valuation
+6,0.21375979854603375,-0.16033326379917234,6,STII,uniform,Bike Sharing Dataset Valuation
+7,0.02005911055134699,-0.11567408783846433,7,STII,uniform,Bike Sharing Dataset Valuation
+8,0.0007022371943960299,0.7345556559642179,8,STII,uniform,Bike Sharing Dataset Valuation
+9,6.2199715238567974e-06,0.9963390656826113,9,STII,uniform,Bike Sharing Dataset Valuation
+10,1.3147271691099538e-28,1.0,10,STII,uniform,Bike Sharing Dataset Valuation
+1,0.18743135809325817,-7.973773797208606,1,FSII,uniform,Bike Sharing Dataset Valuation
+2,0.024229315649799504,0.09279709000207237,2,FSII,uniform,Bike Sharing Dataset Valuation
+3,0.011584334175952433,-0.4099267523631771,3,FSII,uniform,Bike Sharing Dataset Valuation
+4,0.0029299028289696888,0.12624750182249034,4,FSII,uniform,Bike Sharing Dataset Valuation
+5,0.0007171782629985101,0.6751622401627924,5,FSII,uniform,Bike Sharing Dataset Valuation
+6,0.00014058829715546427,0.9262764518110427,6,FSII,uniform,Bike Sharing Dataset Valuation
+7,2.1546632405327202e-05,0.9875620065644938,7,FSII,uniform,Bike Sharing Dataset Valuation
+8,1.8989721383986303e-06,0.9988882090833091,8,FSII,uniform,Bike Sharing Dataset Valuation
+9,7.224983944523808e-08,0.9999576810721188,9,FSII,uniform,Bike Sharing Dataset Valuation
+10,1.823957635021682e-18,0.9999999999999989,10,FSII,uniform,Bike Sharing Dataset Valuation
+1,0.001092109690428987,-0.7755925351489164,1,FBII,uniform,Bike Sharing Dataset Valuation
+2,0.0007628759508735778,0.19212670299310697,2,FBII,uniform,Bike Sharing Dataset Valuation
+3,0.00048652825957293776,0.601418433249314,3,FBII,uniform,Bike Sharing Dataset Valuation
+4,0.00026612975418045885,0.8153220339002556,4,FBII,uniform,Bike Sharing Dataset Valuation
+5,0.00011524888857720661,0.9276042325781095,5,FBII,uniform,Bike Sharing Dataset Valuation
+6,4.0214419809340155e-05,0.9758756376015423,6,FBII,uniform,Bike Sharing Dataset Valuation
+7,9.375211041087577e-06,0.9944780311123915,7,FBII,uniform,Bike Sharing Dataset Valuation
+8,1.209905003863781e-06,0.9992907807535821,8,FBII,uniform,Bike Sharing Dataset Valuation
+9,6.074190941240932e-08,0.9999644184198027,9,FBII,uniform,Bike Sharing Dataset Valuation
+10,1.8123944944840574e-28,1.0,10,FBII,uniform,Bike Sharing Dataset Valuation
+1,0.9971583175735688,-0.29967473919289556,1,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+2,0.7205948861989275,0.5547239700923609,2,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+3,0.8562659531512299,0.4391328966092265,3,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+4,0.9684414178490698,0.01199472524797407,4,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+5,0.8832441765825398,0.19665343919353773,5,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+6,0.5019889733879643,0.6347831216065125,6,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+7,0.25907926362454775,0.7424406146907276,7,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+8,0.035975980421351625,0.9430840977399697,8,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+9,0.0031613364926925806,0.9949968381733562,9,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+10,2.084317664399742e-24,1.0,10,k-SII,Shapley kernel,Bike Sharing Dataset Valuation
+1,0.9971583175735688,-0.29967473919289556,1,STII,Shapley kernel,Bike Sharing Dataset Valuation
+2,3.4398113176770835,-0.020913406577684812,2,STII,Shapley kernel,Bike Sharing Dataset Valuation
+3,10.870793608427862,-1.1296374343309301,3,STII,Shapley kernel,Bike Sharing Dataset Valuation
+4,18.29552876757698,-0.25871423104793156,4,STII,Shapley kernel,Bike Sharing Dataset Valuation
+5,15.439917837074512,-0.6308490949172674,5,STII,Shapley kernel,Bike Sharing Dataset Valuation
+6,6.187644846244486,0.024663216972490964,6,STII,Shapley kernel,Bike Sharing Dataset Valuation
+7,1.0520688756901455,0.006761212900763924,7,STII,Shapley kernel,Bike Sharing Dataset Valuation
+8,0.05818199541725178,0.9263902558113237,8,STII,Shapley kernel,Bike Sharing Dataset Valuation
+9,0.000636925084042936,0.9990127562874658,9,STII,Shapley kernel,Bike Sharing Dataset Valuation
+10,1.2346269276143096e-26,1.0,10,STII,Shapley kernel,Bike Sharing Dataset Valuation
+1,0.9971583269733569,-0.2996747719790258,1,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+2,0.291428328622962,0.7189751904514141,2,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+3,0.08285315227112157,0.8866925438344369,3,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+4,0.02016725304468268,0.9708795253108243,4,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+5,0.004054083274434116,0.9938463955498247,5,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+6,0.0006337078753405322,0.9990321949528871,6,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+7,7.639650187952887e-05,0.9998830334353074,7,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+8,4.998358880127291e-06,0.9999923458517203,8,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+9,1.3100063432131456e-07,0.9999997993882835,9,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+10,8.055996748163102e-18,1.0,10,FSII,Shapley kernel,Bike Sharing Dataset Valuation
+1,0.6503176477101614,-31.398849864905173,1,FBII,Shapley kernel,Bike Sharing Dataset Valuation
+2,0.4876319582691865,-13.83149001453157,2,FBII,Shapley kernel,Bike Sharing Dataset Valuation
+3,0.2982953308997857,-1.0007570370532957,3,FBII,Shapley kernel,Bike Sharing Dataset Valuation
+4,0.13504724702693863,0.43836878574555804,4,FBII,Shapley kernel,Bike Sharing Dataset Valuation
+5,0.042034133643395116,0.9058679158890229,5,FBII,Shapley kernel,Bike Sharing Dataset Valuation
+6,0.008195723328689895,0.985054249518621,6,FBII,Shapley kernel,Bike Sharing Dataset Valuation
+7,0.0009453126266913016,0.9984930423517347,7,FBII,Shapley kernel,Bike Sharing Dataset Valuation
+8,3.922307462932575e-05,0.99993946667596,8,FBII,Shapley kernel,Bike Sharing Dataset Valuation
+9,4.307902988718687e-07,0.9999993399867912,9,FBII,Shapley kernel,Bike Sharing Dataset Valuation
+10,4.0376815771308877e-26,1.0,10,FBII,Shapley kernel,Bike Sharing Dataset Valuation

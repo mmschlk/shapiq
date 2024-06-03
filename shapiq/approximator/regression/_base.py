@@ -300,7 +300,10 @@ class Regression(Approximator):
             regression_weights=regression_weights,
         )
 
-        shapley_interactions_values[0] = empty_coalition_value
+        if index_approximation == "kADD-SHAP":
+            shapley_interactions_values[0] += empty_coalition_value
+        else:
+            shapley_interactions_values[0] = empty_coalition_value
 
         return shapley_interactions_values
 
@@ -359,8 +362,10 @@ class Regression(Approximator):
            Returns:
                An array of the regression coefficient weights.
         """
-        if index in ["SII", "kADD-SHAP"]:
+        if index in ["SII"]:
             weights = self._get_bernoulli_weights(max_order=max_order)
+        elif index in ["kADD-SHAP"]:
+            weights = self._get_kadd_weights(max_order=max_order)
         elif index == "FSII":
             # Default weights for FSI
             weights = np.zeros((max_order + 1, max_order + 1))
@@ -389,6 +394,24 @@ class Regression(Approximator):
                 )
         return bernoulli_weights
 
+    def _get_kadd_weights(self, max_order: int) -> np.ndarray:
+        """Pre-computes and array of Bernoulli weights for a given max_order.
+
+        Args:
+            max_order: The highest interaction size considered
+
+        Returns:
+            An array of the (regression coefficient) Bernoulli weights for all interaction sizes up
+                to the max_order.
+        """
+        bernoulli_weights = np.zeros((max_order + 1, max_order + 1))
+        for interaction_size in range(max_order + 1):
+            for intersection_size in range(interaction_size + 1):
+                bernoulli_weights[interaction_size, intersection_size] = self._kadd_weights(
+                    intersection_size, interaction_size
+                )
+        return bernoulli_weights
+
     def _bernoulli_weights(self, intersection_size: int, interaction_size: int) -> float:
         """Computes the weights of SII in the k-additive approximation.
 
@@ -404,6 +427,28 @@ class Regression(Approximator):
         """
         weight = 0
         for sum_index in range(1, intersection_size + 1):
+            weight += (
+                binom(intersection_size, sum_index)
+                * self._bernoulli_numbers[interaction_size - sum_index]
+            )
+        return weight
+
+    def _kadd_weights(self, intersection_size: int, interaction_size: int) -> float:
+        """Computes the weights of SII in the k-additive approximation.
+        Similar to _bernoulli_weights but sum ranges from zero.
+
+        The weights are based on the size of the interaction and
+        the size of the intersection of the interaction and the coalition.
+
+        Args:
+            intersection_size: The size of the intersection
+            interaction_size: The size of the interaction
+
+        Returns:
+            The weight of SII in the k-additive approximation.
+        """
+        weight = 0
+        for sum_index in range(intersection_size + 1):
             weight += (
                 binom(intersection_size, sum_index)
                 * self._bernoulli_numbers[interaction_size - sum_index]

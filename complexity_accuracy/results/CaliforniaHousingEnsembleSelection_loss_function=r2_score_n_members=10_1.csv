@@ -1,0 +1,81 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.1256116298827244,-3.4552773824145566,1,k-SII,uniform,California Housing Ensemble Selection
+2,0.11754937304209134,-1.6440093879903905,2,k-SII,uniform,California Housing Ensemble Selection
+3,0.13406204162324817,-2.3365377762490023,3,k-SII,uniform,California Housing Ensemble Selection
+4,0.12709234879514958,-2.7011148359736006,4,k-SII,uniform,California Housing Ensemble Selection
+5,0.11480135752329192,-1.874195594259918,5,k-SII,uniform,California Housing Ensemble Selection
+6,0.03609758829119413,0.001831406744943087,6,k-SII,uniform,California Housing Ensemble Selection
+7,0.021216111436544956,-0.6281366362407348,7,k-SII,uniform,California Housing Ensemble Selection
+8,0.00097726599051176,0.8814250543078953,8,k-SII,uniform,California Housing Ensemble Selection
+9,0.00010720129698382393,0.9876999316577395,9,k-SII,uniform,California Housing Ensemble Selection
+10,2.7589706130734904e-25,1.0,10,k-SII,uniform,California Housing Ensemble Selection
+1,0.1256116298827244,-3.4552773824145566,1,STII,uniform,California Housing Ensemble Selection
+2,0.6536457720099216,-7.904731412399009,2,STII,uniform,California Housing Ensemble Selection
+3,1.1093188455869274,-3.796388644526001,3,STII,uniform,California Housing Ensemble Selection
+4,0.7993598927404254,-0.8901539107372225,4,STII,uniform,California Housing Ensemble Selection
+5,0.26831552031081635,-0.5649974712132755,5,STII,uniform,California Housing Ensemble Selection
+6,0.04218547707708186,0.15036883366855958,6,STII,uniform,California Housing Ensemble Selection
+7,0.0029002231862132275,0.7206284027010557,7,STII,uniform,California Housing Ensemble Selection
+8,7.242062342594581e-05,0.9919211199249346,8,STII,uniform,California Housing Ensemble Selection
+9,3.9543777216858244e-07,0.9999550064324843,9,STII,uniform,California Housing Ensemble Selection
+10,2.08675219661024e-28,1.0,10,STII,uniform,California Housing Ensemble Selection
+1,0.12561163148315285,-3.4552774694493715,1,FSII,uniform,California Housing Ensemble Selection
+2,0.0170537162986685,0.5174103793713294,2,FSII,uniform,California Housing Ensemble Selection
+3,0.006840010907215161,0.5091688424968834,3,FSII,uniform,California Housing Ensemble Selection
+4,0.0016076187339349238,0.8157796552876915,4,FSII,uniform,California Housing Ensemble Selection
+5,0.00033960546734505587,0.961850939810607,5,FSII,uniform,California Housing Ensemble Selection
+6,5.3665295538358565e-05,0.9939785407420024,6,FSII,uniform,California Housing Ensemble Selection
+7,5.873828013680922e-06,0.9993328521028344,7,FSII,uniform,California Housing Ensemble Selection
+8,3.583052878778778e-07,0.9999592457190489,8,FSII,uniform,California Housing Ensemble Selection
+9,4.59331935179504e-09,0.9999994775518967,9,FSII,uniform,California Housing Ensemble Selection
+10,4.298429641623106e-18,0.9999999999999996,10,FSII,uniform,California Housing Ensemble Selection
+1,0.0027156613948489737,0.5530702607986898,1,FBII,uniform,California Housing Ensemble Selection
+2,0.001141781045423974,0.8507503182116734,2,FBII,uniform,California Housing Ensemble Selection
+3,0.0005157398082711068,0.9376838474060394,3,FBII,uniform,California Housing Ensemble Selection
+4,0.00021429000381677037,0.975017579027943,4,FBII,uniform,California Housing Ensemble Selection
+5,7.326036843520526e-05,0.991597291559352,5,FBII,uniform,California Housing Ensemble Selection
+6,1.861228581275669e-05,0.9978785330463636,6,FBII,uniform,California Housing Ensemble Selection
+7,3.086122123492798e-06,0.9996488588133758,7,FBII,uniform,California Housing Ensemble Selection
+8,2.603156876290182e-07,0.9999703906146051,8,FBII,uniform,California Housing Ensemble Selection
+9,3.861696993701121e-09,0.9999995607673886,9,FBII,uniform,California Housing Ensemble Selection
+10,2.0072833961193891e-28,1.0,10,FBII,uniform,California Housing Ensemble Selection
+1,0.6591400143768451,-0.1573971805768295,1,k-SII,Shapley kernel,California Housing Ensemble Selection
+2,0.38234254653998645,0.6545552876972685,2,k-SII,Shapley kernel,California Housing Ensemble Selection
+3,0.3916791844854546,0.6067582332757622,3,k-SII,Shapley kernel,California Housing Ensemble Selection
+4,0.3456938569135948,0.4326472961285561,4,k-SII,Shapley kernel,California Housing Ensemble Selection
+5,0.26656741250154053,0.5785183633991338,5,k-SII,Shapley kernel,California Housing Ensemble Selection
+6,0.11073069426940438,0.85525019717939,6,k-SII,Shapley kernel,California Housing Ensemble Selection
+7,0.042479588259965236,0.9338985977497534,7,k-SII,Shapley kernel,California Housing Ensemble Selection
+8,0.00412135955883867,0.992351209305458,8,k-SII,Shapley kernel,California Housing Ensemble Selection
+9,0.0002009835342198213,0.9996318979045351,9,k-SII,Shapley kernel,California Housing Ensemble Selection
+10,1.721956703962539e-24,1.0,10,k-SII,Shapley kernel,California Housing Ensemble Selection
+1,0.6591400143768451,-0.1573971805768295,1,STII,Shapley kernel,California Housing Ensemble Selection
+2,1.7951071622090828,0.1610884047258737,2,STII,Shapley kernel,California Housing Ensemble Selection
+3,4.572387684458454,-1.0482500266691903,3,STII,Shapley kernel,California Housing Ensemble Selection
+4,6.175197502334727,-0.08226981948940248,4,STII,Shapley kernel,California Housing Ensemble Selection
+5,4.05050137676884,-0.5767257790164311,5,STII,Shapley kernel,California Housing Ensemble Selection
+6,1.2129767720804359,0.3577588957697163,6,STII,Shapley kernel,California Housing Ensemble Selection
+7,0.14814820263714987,0.7211192208483717,7,STII,Shapley kernel,California Housing Ensemble Selection
+8,0.005827921065515038,0.989961624237393,8,STII,Shapley kernel,California Housing Ensemble Selection
+9,4.0492827870062845e-05,0.9999262550131678,9,STII,Shapley kernel,California Housing Ensemble Selection
+10,1.1325358899456718e-25,1.0,10,STII,Shapley kernel,California Housing Ensemble Selection
+1,0.6591400199530495,-0.1573972053631949,1,FSII,Shapley kernel,California Housing Ensemble Selection
+2,0.17980940737676762,0.7679806663685967,2,FSII,Shapley kernel,California Housing Ensemble Selection
+3,0.046432730638518604,0.9214523665763824,3,FSII,Shapley kernel,California Housing Ensemble Selection
+4,0.010129295906512226,0.982285841259115,4,FSII,Shapley kernel,California Housing Ensemble Selection
+5,0.001749512691056406,0.9968397134025929,5,FSII,Shapley kernel,California Housing Ensemble Selection
+6,0.00022273009228402038,0.999596295791201,6,FSII,Shapley kernel,California Housing Ensemble Selection
+7,1.8724293554633746e-05,0.9999660162226404,7,FSII,Shapley kernel,California Housing Ensemble Selection
+8,8.29305193591056e-07,0.9999984947240399,8,FSII,Shapley kernel,California Housing Ensemble Selection
+9,8.3284302523313e-09,0.9999999848828528,9,FSII,Shapley kernel,California Housing Ensemble Selection
+10,1.9306438522417687e-17,1.0,10,FSII,Shapley kernel,California Housing Ensemble Selection
+1,0.4845440858627369,-10.509258613713873,1,FBII,Shapley kernel,California Housing Ensemble Selection
+2,0.3194220583850573,-3.7480424276618445,2,FBII,Shapley kernel,California Housing Ensemble Selection
+3,0.1693319773337362,0.14190980672348597,3,FBII,Shapley kernel,California Housing Ensemble Selection
+4,0.06548829223994107,0.769940061758773,4,FBII,Shapley kernel,California Housing Ensemble Selection
+5,0.01668017167993732,0.961915705868486,5,FBII,Shapley kernel,California Housing Ensemble Selection
+6,0.002480686759415053,0.9950585010752885,6,FBII,Shapley kernel,California Housing Ensemble Selection
+7,0.00018241532427400119,0.9996633441679226,7,FBII,Shapley kernel,California Housing Ensemble Selection
+8,5.04636964406057e-06,0.9999908162964795,8,FBII,Shapley kernel,California Housing Ensemble Selection
+9,2.7387706752903763e-08,0.9999999502827303,9,FBII,Shapley kernel,California Housing Ensemble Selection
+10,5.501716666879564e-26,1.0,10,FBII,Shapley kernel,California Housing Ensemble Selection

@@ -1,2 +1,5 @@
 *.csv
 *.json
+results/
+plots/
+results_old/

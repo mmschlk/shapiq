@@ -1,0 +1,81 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.18795667725618292,-9.517192098009863,1,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+2,0.3855821392076402,-8.57080236801287,2,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+3,0.49958527342418396,-2.3259513872484123,3,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+4,0.886640748630589,-3.2116309100917384,4,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+5,0.9305138389251144,-2.5715950281934488,5,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+6,0.40542660358850524,-0.930760865644878,6,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+7,0.25122964331964925,-3.8792097221484454,7,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+8,0.05039019350252462,-1.0820412100108077,8,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+9,0.03037869302420481,-4.76697463668592,9,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+10,2.0065424484565065e-23,1.0,10,k-SII,uniform,Adult Census Random Forest Ensemble Selection
+1,0.18795667725618292,-9.517192098009863,1,STII,uniform,Adult Census Random Forest Ensemble Selection
+2,2.011883229244185,-21.346146524531676,2,STII,uniform,Adult Census Random Forest Ensemble Selection
+3,5.567059197341277,-4.013598803216228,3,STII,uniform,Adult Census Random Forest Ensemble Selection
+4,5.936522554489728,-1.279700705189729,4,STII,uniform,Adult Census Random Forest Ensemble Selection
+5,2.692288183637519,-0.5346372450316594,5,STII,uniform,Adult Census Random Forest Ensemble Selection
+6,0.4815733768919605,-0.20938859367219242,6,STII,uniform,Adult Census Random Forest Ensemble Selection
+7,0.02167067865947936,-0.07524200887995214,7,STII,uniform,Adult Census Random Forest Ensemble Selection
+8,8.647077805944324e-05,0.8876680303489203,8,STII,uniform,Adult Census Random Forest Ensemble Selection
+9,0.00011205911707188609,0.8671509642839426,9,STII,uniform,Adult Census Random Forest Ensemble Selection
+10,7.996353999242647e-29,1.0,10,STII,uniform,Adult Census Random Forest Ensemble Selection
+1,0.18795668035018093,-9.517192477014465,1,FSII,uniform,Adult Census Random Forest Ensemble Selection
+2,0.02958576435603488,-0.256735100278513,2,FSII,uniform,Adult Census Random Forest Ensemble Selection
+3,0.01740933143143937,-0.769781452771217,3,FSII,uniform,Adult Census Random Forest Ensemble Selection
+4,0.0054925493046883,0.028082402848276344,4,FSII,uniform,Adult Census Random Forest Ensemble Selection
+5,0.001669317985836972,0.25067773416522565,5,FSII,uniform,Adult Census Random Forest Ensemble Selection
+6,0.0003902427912222304,0.6596520796192975,6,FSII,uniform,Adult Census Random Forest Ensemble Selection
+7,6.244064820724818e-05,0.9203723859782353,7,FSII,uniform,Adult Census Random Forest Ensemble Selection
+8,6.070511139777244e-06,0.9915919114846861,8,FSII,uniform,Adult Census Random Forest Ensemble Selection
+9,1.301654358703912e-06,0.9981814306348114,9,FSII,uniform,Adult Census Random Forest Ensemble Selection
+10,4.377342154965062e-18,0.9999999999999939,10,FSII,uniform,Adult Census Random Forest Ensemble Selection
+1,0.0006647579490006126,-11.49526175522388,1,FBII,uniform,Adult Census Random Forest Ensemble Selection
+2,0.0006122458876862743,-4.791593069831118,2,FBII,uniform,Adult Census Random Forest Ensemble Selection
+3,0.0005211320032484121,-1.647668615605276,3,FBII,uniform,Adult Census Random Forest Ensemble Selection
+4,0.0003816326484114641,-0.13471016746408826,4,FBII,uniform,Adult Census Random Forest Ensemble Selection
+5,0.00022399581419417757,0.5465331557982583,5,FBII,uniform,Adult Census Random Forest Ensemble Selection
+6,9.723024882248611e-05,0.8433610693710876,6,FBII,uniform,Adult Census Random Forest Ensemble Selection
+7,2.7650172592852053e-05,0.9599451992196284,7,FBII,uniform,Adult Census Random Forest Ensemble Selection
+8,4.016967742544101e-06,0.9943735360002032,8,FBII,uniform,Adult Census Random Forest Ensemble Selection
+9,1.0943273151551124e-06,0.9984734528891345,9,FBII,uniform,Adult Census Random Forest Ensemble Selection
+10,2.7681977776130452e-28,1.0,10,FBII,uniform,Adult Census Random Forest Ensemble Selection
+1,1.1529853117463216,-0.6750482280508179,1,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+2,1.1356343838620573,0.3704513490200434,2,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+3,1.6132458395381029,0.27161960226447157,3,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+4,2.2482217980876884,-0.19633758720201833,4,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+5,2.3025884910576355,-0.14860574615221234,5,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+6,1.266580676167562,0.3673092127652722,6,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+7,0.5262221661011225,0.5669669577171416,7,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+8,0.1481689853098349,0.8157176358814764,8,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+9,0.056954694214841034,0.9213581291943953,9,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+10,2.1329623505412185e-21,1.0,10,k-SII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+1,1.1529853117463216,-0.6750482280508179,1,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+2,5.338225858018271,-0.24736554684389023,2,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+3,21.963756328842525,-0.9834056360442265,3,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+4,44.547447892453036,-0.40755796287347335,4,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+5,40.45946215748704,-0.5422383404128526,5,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+6,14.333775955458346,-0.14311878320317506,6,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+7,1.233988073413985,-0.0028838092288361317,7,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+8,0.0035468630376546953,0.9939210194872276,8,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+9,0.011474853588161136,0.9819597926231379,9,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+10,3.2178938635592405e-26,1.0,10,STII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+1,1.1529853228321978,-0.6750482769509221,1,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+2,0.4045894425441569,0.5831130822009785,2,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+3,0.13774345222175932,0.7970461991419735,3,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+4,0.04089709239307278,0.9362766235838036,4,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+5,0.009756790564535154,0.9838880717033065,5,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+6,0.0017933435250598415,0.9970172997641159,6,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+7,0.00019797110203666128,0.9996696041949833,7,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+8,1.5343872057599627e-05,0.9999743859480899,8,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+9,2.3601097466472e-06,0.9999960600116977,9,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+10,2.0491984673367102e-17,1.0,10,FSII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+1,0.6631498962808274,-335.42177498379755,1,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+2,0.5883066550320759,-128.0828066987881,2,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+3,0.44650008804631763,-9.512870509114979,3,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+4,0.2594578906772158,-1.5989362623653638,4,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+5,0.10306962218145437,0.6318264716363935,5,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+6,0.024837327157365863,0.9409049423781227,6,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+7,0.00286317959044917,0.9947943281588921,7,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+8,0.00011471487774715697,0.9998062384601135,8,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+9,7.761125651759087e-06,0.999987076321595,9,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection
+10,3.968559907831821e-26,1.0,10,FBII,Shapley kernel,Adult Census Random Forest Ensemble Selection

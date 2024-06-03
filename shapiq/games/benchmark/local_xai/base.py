@@ -5,7 +5,7 @@ from typing import Callable, Optional, Union
 import numpy as np
 
 from shapiq.games.base import Game
-from shapiq.games.imputer import MarginalImputer
+from shapiq.games.imputer import ConditionalImputer, MarginalImputer
 
 from .._config import get_x_explain
 
@@ -24,6 +24,8 @@ class LocalExplanation(Game):
              background data.
         data: The background data used to fit the imputer. Should be a 2d matrix of shape
             (n_samples, n_features).
+        imputer: The imputer to use. Defaults to 'marginal'. Available imputers are 'marginal'
+            and 'conditional'.
         model: The model to explain as a callable function expecting data points as input and
             returning the model's predictions. The input should be a 2d matrix of shape
             (n_samples, n_features) and the output a 1d matrix of shape (n_samples).
@@ -68,7 +70,7 @@ class LocalExplanation(Game):
         data: np.ndarray,
         model: Callable[[np.ndarray], np.ndarray],
         x: Union[np.ndarray, int] = None,
-        imputer: Optional[MarginalImputer] = None,
+        imputer: Union[MarginalImputer, ConditionalImputer, str] = "marginal",
         normalize: bool = True,
         random_state: Optional[int] = 42,
         verbose: bool = False,
@@ -79,15 +81,34 @@ class LocalExplanation(Game):
 
         # init the imputer which serves as the workhorse of this Game
         self._imputer = imputer
-        if self._imputer is None:
-            self._imputer = MarginalImputer(
-                model=model,
-                data=data,
-                x=self.x,
-                sample_replacements=False,
-                random_state=random_state,
-                normalize=False,
-            )
+        if isinstance(imputer, str):
+            if imputer == "marginal":
+                self._imputer = MarginalImputer(
+                    model=model,
+                    data=data,
+                    x=self.x,
+                    sample_replacements=False,
+                    random_state=random_state,
+                    normalize=False,
+                )
+            elif imputer == "conditional":
+                # use only a random subset of the data for the conditional imputer
+                random_indices = np.random.default_rng(random_state).choice(
+                    data.shape[0], size=2_000, replace=False
+                )
+                data_background = data[random_indices]
+                self._imputer = ConditionalImputer(
+                    model=model,
+                    # give only first 2_000 samples to the conditional imputer
+                    data=data_background,
+                    x=self.x,
+                    random_state=random_state,
+                    normalize=False,
+                )
+            else:
+                raise ValueError(
+                    f"Imputer {imputer} not available. Choose from {'marginal', 'conditional'}."
+                )
 
         self.empty_prediction_value: float = self._imputer.empty_prediction
 

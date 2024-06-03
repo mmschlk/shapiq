@@ -18,6 +18,11 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
         "source": "https://link.springer.com/chapter/10.1007/978-94-017-0647-6_5",
         "generalizes": "SV",
     },
+    "Co-Moebius": {
+        "name": "External Interaction Index",
+        "source": "https://www.sciencedirect.com/science/article/abs/pii/S0899825605000278",
+        "generalizes": None,
+    },
     # Base Generalized Values
     "SGV": {
         "name": "Shapley Generalized Value",
@@ -33,6 +38,16 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
         "name": "Chaining Generalized Value",
         "source": "https://doi.org/10.1016/j.dam.2006.05.002",
         "generalizes": "SV",
+    },
+    "IGV": {
+        "name": "Internal Generalized Value",
+        "source": "https://doi.org/10.1016/j.dam.2006.05.002",
+        "generalizes": None,
+    },
+    "EGV": {
+        "name": "External Generalized Value",
+        "source": "https://doi.org/10.1016/j.dam.2006.05.002",
+        "generalizes": None,
     },
     # Shapley Interactions
     "k-SII": {
@@ -54,6 +69,12 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
         "name": "k-additive Shapley Values",
         "source": "https://doi.org/10.1016/j.artint.2023.104014",
         "generalizes": "SV",
+    },
+    # Banzhaf Interactions
+    "FBII": {
+        "name": "Faithful Banzhaf Interaction Index",
+        "source": "https://jmlr.org/papers/v24/22-0202.html",
+        "generalizes": "BII",
     },
     # Probabilistic Values
     "SV": {
@@ -99,6 +120,7 @@ AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = (
         "BV",
         "kADD-SHAP",
         "CHII",
+        "FBII",
     }
     .union(AVAILABLE_INDICES_REGRESSION)
     .union(AVAILABLE_INDICES_MONTE_CARLO)

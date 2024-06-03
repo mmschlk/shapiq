@@ -57,14 +57,14 @@ def test_exact_computer_on_soum():
             index=index, order=order
         )
 
-        base_interaction_indices = ["SII", "BII", "CHII"]
+        base_interaction_indices = ["SII", "BII", "CHII", "Co-Moebius"]
         base_interactions = {}
         for base_index in base_interaction_indices:
             base_interactions[base_index] = exact_computer.shapley_base_interaction(
                 order=order, index=base_index
             )
 
-        base_gv_indices = ["SGV", "BGV", "CHGV"]
+        base_gv_indices = ["SGV", "BGV", "CHGV", "IGV", "EGV"]
         base_gv = {}
         for base_gv_index in base_gv_indices:
             base_gv[base_gv_index] = exact_computer.base_generalized_value(
@@ -88,9 +88,12 @@ def test_exact_computer_on_soum():
         ("SII", 2),
         ("BII", 2),
         ("CHII", 2),
+        ("Co-Moebius", 2),
         ("SGV", 2),
         ("BGV", 2),
         ("CHGV", 2),
+        ("EGV", 2),
+        ("IGV", 2),
         ("STII", 2),
         ("k-SII", 2),
         ("FSII", 2),
