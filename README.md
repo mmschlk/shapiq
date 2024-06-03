@@ -79,6 +79,8 @@ shapiq.network_plot(
     first_order_values=interaction_values.get_n_order_values(1),
     second_order_values=interaction_values.get_n_order_values(2)
 )
+# or use
+interaction_values.plot_network()
 ```
 
 The pseudo-code above can produce the following plot (here also an image is added):

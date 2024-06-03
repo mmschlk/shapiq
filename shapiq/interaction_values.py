@@ -9,6 +9,7 @@ from typing import Optional, Union
 from warnings import warn
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from .indices import ALL_AVAILABLE_INDICES, index_generalizes_bv, index_generalizes_sv
 from .utils.sets import count_interactions, generate_interaction_lookup, powerset
@@ -569,4 +570,59 @@ class InteractionValues:
         }
 
 
-# Path: shapiq/interaction_values.py
+    def plot_network(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
+        """Visualize InteractionValues on a graph.
+
+        For arguments, see shapiq.network_plot().
+
+        Returns:
+            matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
+        """
+        from shapiq import network_plot
+        if self.max_order > 1:
+            return network_plot(
+                first_order_values=self.get_n_order_values(1),
+                second_order_values=self.get_n_order_values(2),
+                **kwargs
+            )
+        else:
+            raise ValueError("InteractionValues has only 1-order values,"
+                              "but also requires 2-order values.")
+
+
+    def plot_stacked_bar(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
+        """Visualize InteractionValues on a graph.
+
+        For arguments, see shapiq.stacked_bar().
+
+        Returns:
+            matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
+        """
+        from shapiq import stacked_bar_plot
+        if self.max_order >= 2:
+            first_order_values = self.get_n_order_values(1)
+            second_order_values = self.get_n_order_values(2)
+            ret = stacked_bar_plot(
+                n_shapley_values_pos={
+                    1: np.array([0 if x < 0 else x for x in first_order_values]),
+                    2: second_order_values.clip(min=0).sum(axis=0),
+                },
+                n_shapley_values_neg={
+                    1: np.array([0 if x > 0 else x for x in first_order_values]),
+                    2: second_order_values.clip(max=0).sum(axis=0),
+                },
+                **kwargs
+            )
+            return ret
+        else:
+            first_order_values = self.get_n_order_values(1)
+            ret = stacked_bar_plot(
+                n_shapley_values_pos={
+                    1: np.array([0 if x < 0 else x for x in first_order_values]),
+                },
+                n_shapley_values_neg={
+                    1: np.array([0 if x > 0 else x for x in first_order_values]),
+                },
+                **kwargs
+            )
+            return ret

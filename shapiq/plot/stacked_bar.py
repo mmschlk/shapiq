@@ -1,7 +1,7 @@
 """This module contains functions to plot the n_sii stacked bar charts."""
 
 from copy import deepcopy
-from typing import Optional, Union
+from typing import Optional, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,9 +13,9 @@ __all__ = ["stacked_bar_plot"]
 
 
 def stacked_bar_plot(
-    feature_names: Union[list, np.ndarray],
     n_shapley_values_pos: dict,
     n_shapley_values_neg: dict,
+    feature_names: Optional[list[Any]] = None,
     n_sii_max_order: Optional[int] = None,
     title: Optional[str] = None,
     xlabel: Optional[str] = None,
@@ -35,9 +35,10 @@ def stacked_bar_plot(
         :align: center
 
     Args:
-        feature_names (list): The names of the features.
         n_shapley_values_pos (dict): The positive n-SII values.
         n_shapley_values_neg (dict): The negative n-SII values.
+        feature_names: The feature names used for plotting. If no feature names are provided, the
+            feature indices are used instead. Defaults to ``None``.
         n_sii_max_order (int): The order of the n-SII values.
         title (str): The title of the plot.
         xlabel (str): The label of the x-axis.
@@ -78,14 +79,17 @@ def stacked_bar_plot(
     fig, axis = plt.subplots()
 
     # transform data to make plotting easier
-    n_features = len(feature_names)
-    x = np.arange(n_features)
     values_pos = np.array(
         [values for order, values in n_shapley_values_pos.items() if order <= n_sii_max_order]
     )
     values_neg = np.array(
         [values for order, values in n_shapley_values_neg.items() if order <= n_sii_max_order]
     )
+    # get the number of features and the feature names
+    n_features = len(values_pos[0])
+    if feature_names is None:
+        feature_names = [str(i + 1) for i in range(n_features)]
+    x = np.arange(n_features)
 
     # get helper variables for plotting the bars
     min_max_values = [0, 0]  # to set the y-axis limits after all bars are plotted

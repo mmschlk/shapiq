@@ -45,6 +45,8 @@ Explain a model with Shapley interaction values, e.g. the k-SII values.
         first_order_values=interaction_values.get_n_order_values(1),
         second_order_values=interaction_values.get_n_order_values(2)
     )
+    # or use
+    interaction_values.plot_network()
 
 .. image:: _static/network_example.png
   :width: 400

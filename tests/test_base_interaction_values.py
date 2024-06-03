@@ -519,3 +519,51 @@ def test_save_and_load(as_pickle):
 
     # test if file is removed
     assert not os.path.exists(path)
+
+
+def test_plot():
+    """Tests the plot methods in InteractionValues."""
+    n = 5
+    min_order = 1
+    max_order = 2
+    interaction_lookup = {
+        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    }
+    values = np.random.rand(len(interaction_lookup))
+    interaction_values = InteractionValues(
+        values=values,
+        index="SII",
+        n_players=n,
+        min_order=min_order,
+        max_order=max_order,
+        interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
+    )
+
+    _ = interaction_values.plot_network()
+    _ = interaction_values.plot_network(feature_names = ["a" for _ in range(n)])
+    _ = interaction_values.plot_stacked_bar()
+    _ = interaction_values.plot_stacked_bar(feature_names = ["a" for _ in range(n)])
+
+    n = 5
+    min_order = 1
+    max_order = 1
+    interaction_lookup = {
+        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    }
+    values = np.random.rand(len(interaction_lookup))
+    interaction_values = InteractionValues(
+        values=values,
+        index="SII",
+        n_players=n,
+        min_order=min_order,
+        max_order=max_order,
+        interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
+    )
+    with pytest.raises(ValueError):
+        _ = interaction_values.plot_network()
+    with pytest.raises(ValueError):
+        _ = interaction_values.plot_network(feature_names = ["a" for _ in range(n)])
+    _ = interaction_values.plot_stacked_bar()
+    _ = interaction_values.plot_stacked_bar(feature_names = ["a" for _ in range(n)])
