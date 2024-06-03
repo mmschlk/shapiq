@@ -37,9 +37,43 @@ def plot_interaction_sizes_r2(results, weighting_scheme):
                 label=index,
                 color=INDEX_COLORS[index],
             )
+        if interaction_size > 7:
+            plt.text(
+                2,
+                0.93,
+                "SHAP:\n "
+                + str(
+                    np.round(
+                        results.loc["SOUM", game_id, weighting_scheme, index, 1]["r2"].astype(
+                            float
+                        ),
+                        2,
+                    )
+                ),
+                fontsize=8,
+                color="black",
+                ha="center",
+            )
+        else:
+            plt.text(
+                9,
+                0.65,
+                "SHAP:\n "
+                + str(
+                    np.round(
+                        results.loc["SOUM", game_id, weighting_scheme, index, 1]["r2"].astype(
+                            float
+                        ),
+                        2,
+                    )
+                ),
+                fontsize=8,
+                color="black",
+                ha="center",
+            )
         plt.title("Size " + str(interaction_size))
         plt.xticks(range(1, 11))
-        plt.ylim(0.1, 1.05)
+        plt.ylim(0.6, 1.05)
     # plt.legend()
     plt.tight_layout()
     plt.savefig("plots/r2_" + weighting_scheme + "_single_interaction_by_size.png")
