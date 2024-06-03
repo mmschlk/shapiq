@@ -250,11 +250,11 @@ if __name__ == "__main__":
             "AdultCensusLocalXAI",
             "AdultCensusRandomForestEnsembleSelection",
             "AdultCensusUnsupervisedData",
-            "BikeSharingClusterExplanation",
-            "BikeSharingDatasetValuation",
-            "BikeSharingEnsembleSelection",
-            "BikeSharingFeatureSelection",
-            "BikeSharingGlobalXAI",
+            # "BikeSharingClusterExplanation",
+            # "BikeSharingDatasetValuation",
+            # "BikeSharingEnsembleSelection",
+            # "BikeSharingFeatureSelection",
+            # "BikeSharingGlobalXAI",
             "BikeSharingLocalXAI",
             "BikeSharingRandomForestEnsembleSelection",
             "BikeSharingUnsupervisedData",
@@ -288,7 +288,7 @@ if __name__ == "__main__":
             for game in game_iterator:
                 game_id = game_names[i] + "_" + game.game_id
                 n_players = game.n_players
-                if n_players <= 10:
+                if n_players > 10 and n_players <= 12:
                     approximations, game_values = get_approximations_for_game(game)
                     errors[game_id], weighted_r2[game_id] = get_errors_for_game(
                         approximations, game_values, game.n_players

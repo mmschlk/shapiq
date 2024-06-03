@@ -1,0 +1,97 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,501.71222222223076,0.6404247698957262,1,k-SII,uniform,Bike Sharing Local XAI
+2,256.4309722222262,0.8381343512947432,2,k-SII,uniform,Bike Sharing Local XAI
+3,30.608750000000438,0.9829732435442587,3,k-SII,uniform,Bike Sharing Local XAI
+4,1.9134374999998847,0.9989339240075683,4,k-SII,uniform,Bike Sharing Local XAI
+5,2.244337440472598e-23,1.0,5,k-SII,uniform,Bike Sharing Local XAI
+6,1.7517945118988283e-23,1.0,6,k-SII,uniform,Bike Sharing Local XAI
+7,1.906836794288129e-23,1.0,7,k-SII,uniform,Bike Sharing Local XAI
+8,2.4055220248363685e-23,1.0,8,k-SII,uniform,Bike Sharing Local XAI
+9,2.7807424683953335e-23,1.0,9,k-SII,uniform,Bike Sharing Local XAI
+10,2.776104817493361e-23,1.0,10,k-SII,uniform,Bike Sharing Local XAI
+11,2.776104817493361e-23,1.0,11,k-SII,uniform,Bike Sharing Local XAI
+12,2.776104817493361e-23,1.0,12,k-SII,uniform,Bike Sharing Local XAI
+1,501.71222222223076,0.6404247698957262,1,STII,uniform,Bike Sharing Local XAI
+2,1098.1930208333442,0.33806859349481455,2,STII,uniform,Bike Sharing Local XAI
+3,60.52078124999671,0.9677058149509937,3,STII,uniform,Bike Sharing Local XAI
+4,4.08937499999961,0.9976825498893298,4,STII,uniform,Bike Sharing Local XAI
+5,5.426196054599172e-24,1.0,5,STII,uniform,Bike Sharing Local XAI
+6,1.4798067095105806e-23,1.0,6,STII,uniform,Bike Sharing Local XAI
+7,1.9394216453304007e-23,1.0,7,STII,uniform,Bike Sharing Local XAI
+8,6.467993627776727e-24,1.0,8,STII,uniform,Bike Sharing Local XAI
+9,3.642487301368757e-22,1.0,9,STII,uniform,Bike Sharing Local XAI
+10,6.92394399155074e-24,1.0,10,STII,uniform,Bike Sharing Local XAI
+11,5.609595949068872e-24,1.0,11,STII,uniform,Bike Sharing Local XAI
+12,0.0,1.0,12,STII,uniform,Bike Sharing Local XAI
+1,501.71221839605954,0.6404247725411099,1,FSII,uniform,Bike Sharing Local XAI
+2,247.6622214058393,0.842690236276392,2,FSII,uniform,Bike Sharing Local XAI
+3,20.574757646728056,0.9884025127276336,3,FSII,uniform,Bike Sharing Local XAI
+4,0.6481951530849861,0.9996360677619464,4,FSII,uniform,Bike Sharing Local XAI
+5,4.1190983742155336e-16,1.0,5,FSII,uniform,Bike Sharing Local XAI
+6,7.714030193631956e-15,1.0,6,FSII,uniform,Bike Sharing Local XAI
+7,1.6537006590573912e-15,1.0,7,FSII,uniform,Bike Sharing Local XAI
+8,1.8022297568410158e-14,1.0,8,FSII,uniform,Bike Sharing Local XAI
+9,5.850431896681099e-15,1.0,9,FSII,uniform,Bike Sharing Local XAI
+10,1.1772445381591298e-14,1.0,10,FSII,uniform,Bike Sharing Local XAI
+11,5.71400396565799e-15,1.0,11,FSII,uniform,Bike Sharing Local XAI
+12,4.458247489626662e-15,1.0,12,FSII,uniform,Bike Sharing Local XAI
+1,285.7265625,0.8082864616368495,1,FBII,uniform,Bike Sharing Local XAI
+2,116.39257812500003,0.9298720249477802,2,FBII,uniform,Bike Sharing Local XAI
+3,17.261718749999986,0.9901857794854141,3,FBII,uniform,Bike Sharing Local XAI
+4,0.5097656249999992,0.9997129050815801,4,FBII,uniform,Bike Sharing Local XAI
+5,1.5001175150135346e-23,1.0,5,FBII,uniform,Bike Sharing Local XAI
+6,7.46239753968886e-24,1.0,6,FBII,uniform,Bike Sharing Local XAI
+7,1.462298448234697e-23,1.0,7,FBII,uniform,Bike Sharing Local XAI
+8,5.9360809751723315e-24,1.0,8,FBII,uniform,Bike Sharing Local XAI
+9,9.288732757182245e-24,1.0,9,FBII,uniform,Bike Sharing Local XAI
+10,5.191156594314287e-24,1.0,10,FBII,uniform,Bike Sharing Local XAI
+11,4.3019048393956054e-24,1.0,11,FBII,uniform,Bike Sharing Local XAI
+12,2.413689245966115e-24,1.0,12,FBII,uniform,Bike Sharing Local XAI
+1,2359.806574074108,0.5946279338222447,1,k-SII,Shapley kernel,Bike Sharing Local XAI
+2,1292.8638657407582,0.8096131412036297,2,k-SII,Shapley kernel,Bike Sharing Local XAI
+3,78.88145833333408,0.9891316328653571,3,k-SII,Shapley kernel,Bike Sharing Local XAI
+4,6.285277777777127,0.9991379953458501,4,k-SII,Shapley kernel,Bike Sharing Local XAI
+5,2.3344181655368512e-22,1.0,5,k-SII,Shapley kernel,Bike Sharing Local XAI
+6,2.3583946950041285e-22,1.0,6,k-SII,Shapley kernel,Bike Sharing Local XAI
+7,2.1918183702447845e-22,1.0,7,k-SII,Shapley kernel,Bike Sharing Local XAI
+8,2.333612518840492e-22,1.0,8,k-SII,Shapley kernel,Bike Sharing Local XAI
+9,2.311148362813951e-22,1.0,9,k-SII,Shapley kernel,Bike Sharing Local XAI
+10,2.111786728986334e-22,1.0,10,k-SII,Shapley kernel,Bike Sharing Local XAI
+11,2.111786728986334e-22,1.0,11,k-SII,Shapley kernel,Bike Sharing Local XAI
+12,2.111786728986334e-22,1.0,12,k-SII,Shapley kernel,Bike Sharing Local XAI
+1,2359.806574074108,0.5946279338222447,1,STII,Shapley kernel,Bike Sharing Local XAI
+2,4018.895154321038,0.46478843579462314,2,STII,Shapley kernel,Bike Sharing Local XAI
+3,258.46974999998184,0.9662317096660036,3,STII,Shapley kernel,Bike Sharing Local XAI
+4,32.70299999998719,0.9953812656938873,4,STII,Shapley kernel,Bike Sharing Local XAI
+5,1.0731076948916405e-21,1.0,5,STII,Shapley kernel,Bike Sharing Local XAI
+6,9.864689643463397e-22,1.0,6,STII,Shapley kernel,Bike Sharing Local XAI
+7,7.635156453315876e-21,1.0,7,STII,Shapley kernel,Bike Sharing Local XAI
+8,1.1687448377886904e-21,1.0,8,STII,Shapley kernel,Bike Sharing Local XAI
+9,7.312919051924281e-19,1.0,9,STII,Shapley kernel,Bike Sharing Local XAI
+10,1.1751396227807559e-20,1.0,10,STII,Shapley kernel,Bike Sharing Local XAI
+11,1.2756180073401403e-20,1.0,11,STII,Shapley kernel,Bike Sharing Local XAI
+12,0.0,1.0,12,STII,Shapley kernel,Bike Sharing Local XAI
+1,2359.8065530388644,0.5946279361210943,1,FSII,Shapley kernel,Bike Sharing Local XAI
+2,1277.3301752049665,0.8110266388538959,2,FSII,Shapley kernel,Bike Sharing Local XAI
+3,58.853928572973686,0.9917732471805787,3,FSII,Shapley kernel,Bike Sharing Local XAI
+4,1.7914285710081976,0.9997518435044822,4,FSII,Shapley kernel,Bike Sharing Local XAI
+5,9.084331696894366e-16,1.0,5,FSII,Shapley kernel,Bike Sharing Local XAI
+6,4.470858747124153e-14,1.0,6,FSII,Shapley kernel,Bike Sharing Local XAI
+7,7.011733442650221e-15,1.0,7,FSII,Shapley kernel,Bike Sharing Local XAI
+8,6.429969077493892e-14,1.0,8,FSII,Shapley kernel,Bike Sharing Local XAI
+9,1.4922094343712442e-14,1.0,9,FSII,Shapley kernel,Bike Sharing Local XAI
+10,4.116474344357324e-14,1.0,10,FSII,Shapley kernel,Bike Sharing Local XAI
+11,1.3523410597674915e-14,1.0,11,FSII,Shapley kernel,Bike Sharing Local XAI
+12,1.696077536703142e-14,1.0,12,FSII,Shapley kernel,Bike Sharing Local XAI
+1,3716.4603988405333,0.37415582011274695,1,FBII,Shapley kernel,Bike Sharing Local XAI
+2,2600.2350144159464,0.6216400164625389,2,FBII,Shapley kernel,Bike Sharing Local XAI
+3,88.95272274924741,0.9873777651785708,3,FBII,Shapley kernel,Bike Sharing Local XAI
+4,4.819138299881994,0.9993227926316149,4,FBII,Shapley kernel,Bike Sharing Local XAI
+5,1.717523625624495e-21,1.0,5,FBII,Shapley kernel,Bike Sharing Local XAI
+6,3.4026817158311975e-22,1.0,6,FBII,Shapley kernel,Bike Sharing Local XAI
+7,9.027445636148195e-21,1.0,7,FBII,Shapley kernel,Bike Sharing Local XAI
+8,1.773621614286564e-20,1.0,8,FBII,Shapley kernel,Bike Sharing Local XAI
+9,6.467943647725641e-21,1.0,9,FBII,Shapley kernel,Bike Sharing Local XAI
+10,5.107759723652196e-21,1.0,10,FBII,Shapley kernel,Bike Sharing Local XAI
+11,7.337162894318586e-21,1.0,11,FBII,Shapley kernel,Bike Sharing Local XAI
+12,3.0630764450266823e-21,1.0,12,FBII,Shapley kernel,Bike Sharing Local XAI

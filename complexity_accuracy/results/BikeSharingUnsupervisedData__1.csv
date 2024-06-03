@@ -1,0 +1,97 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,9.709326539218566,-1.6883306653435568,1,k-SII,uniform,Bike Sharing Unsupervised Data
+2,0.29794168302231794,0.9228537618583655,2,k-SII,uniform,Bike Sharing Unsupervised Data
+3,0.40438781132399004,0.923435547289592,3,k-SII,uniform,Bike Sharing Unsupervised Data
+4,6.6608882871089445,-0.26941773141236514,4,k-SII,uniform,Bike Sharing Unsupervised Data
+5,10.486339399252754,-5.992719855381165,5,k-SII,uniform,Bike Sharing Unsupervised Data
+6,41.78470510355171,-4.938743038403055,6,k-SII,uniform,Bike Sharing Unsupervised Data
+7,51.68918831355551,-0.45859736052625877,7,k-SII,uniform,Bike Sharing Unsupervised Data
+8,80.77898956604707,-1.3897942276849604,8,k-SII,uniform,Bike Sharing Unsupervised Data
+9,74.0312987298384,-10.233099479403567,9,k-SII,uniform,Bike Sharing Unsupervised Data
+10,12.622156436762637,-2.103114950319542,10,k-SII,uniform,Bike Sharing Unsupervised Data
+11,5.4794154258995,-0.005193097274134528,11,k-SII,uniform,Bike Sharing Unsupervised Data
+12,8.822943878131268e-24,1.0,12,k-SII,uniform,Bike Sharing Unsupervised Data
+1,9.709326539218566,-1.6883306653435568,1,STII,uniform,Bike Sharing Unsupervised Data
+2,0.14731766691998416,0.9629492140111855,2,STII,uniform,Bike Sharing Unsupervised Data
+3,4.425095484856607,0.33292990866663985,3,STII,uniform,Bike Sharing Unsupervised Data
+4,49.5825919356401,-4.980074056271649,4,STII,uniform,Bike Sharing Unsupervised Data
+5,91.27682114400865,-0.09726605971222435,5,STII,uniform,Bike Sharing Unsupervised Data
+6,79.07647893370499,-1.115365469034788,6,STII,uniform,Bike Sharing Unsupervised Data
+7,36.67440750418123,0.2988721963806462,7,STII,uniform,Bike Sharing Unsupervised Data
+8,8.46591903347514,-0.5880849904574077,8,STII,uniform,Bike Sharing Unsupervised Data
+9,0.8879844410699026,0.8706577210616631,9,STII,uniform,Bike Sharing Unsupervised Data
+10,0.03673992417242673,0.9909716538821001,10,STII,uniform,Bike Sharing Unsupervised Data
+11,0.00039536526160073907,0.9999079143537936,11,STII,uniform,Bike Sharing Unsupervised Data
+12,9.012421710939068e-27,1.0,12,STII,uniform,Bike Sharing Unsupervised Data
+1,9.709326545441652,-1.68833066633644,1,FSII,uniform,Bike Sharing Unsupervised Data
+2,0.1083007573445198,0.9721133452976465,2,FSII,uniform,Bike Sharing Unsupervised Data
+3,0.062002071200832086,0.9850240693567052,3,FSII,uniform,Bike Sharing Unsupervised Data
+4,0.01502920361715239,0.996450886366389,4,FSII,uniform,Bike Sharing Unsupervised Data
+5,0.009314391760499672,0.9977703899653728,5,FSII,uniform,Bike Sharing Unsupervised Data
+6,0.002695231524671607,0.9993645052231186,6,FSII,uniform,Bike Sharing Unsupervised Data
+7,0.0009346984533151455,0.9997823012002117,7,FSII,uniform,Bike Sharing Unsupervised Data
+8,0.0003650975357909269,0.9999147526481212,8,FSII,uniform,Bike Sharing Unsupervised Data
+9,0.00010319059536836245,0.9999758721629413,9,FSII,uniform,Bike Sharing Unsupervised Data
+10,1.6828811937005072e-05,0.9999960659859674,10,FSII,uniform,Bike Sharing Unsupervised Data
+11,1.3699446099559257e-06,0.9999996797641507,11,FSII,uniform,Bike Sharing Unsupervised Data
+12,1.1760257866630088e-16,1.0,12,FSII,uniform,Bike Sharing Unsupervised Data
+1,0.452197122633084,0.8818006485986757,1,FBII,uniform,Bike Sharing Unsupervised Data
+2,0.04411600498308463,0.9895800374566555,2,FBII,uniform,Bike Sharing Unsupervised Data
+3,0.015572585548248828,0.9963464706177518,3,FBII,uniform,Bike Sharing Unsupervised Data
+4,0.00509975478265123,0.9988064643553575,4,FBII,uniform,Bike Sharing Unsupervised Data
+5,0.002189697887663814,0.9994878766028468,5,FBII,uniform,Bike Sharing Unsupervised Data
+6,0.0006992553331575165,0.9998365161545599,6,FBII,uniform,Bike Sharing Unsupervised Data
+7,0.00027458900209777144,0.9999358082702132,7,FBII,uniform,Bike Sharing Unsupervised Data
+8,0.00012703088882867435,0.9999703045236622,8,FBII,uniform,Bike Sharing Unsupervised Data
+9,4.949425494682718e-05,0.9999884301460004,9,FBII,uniform,Bike Sharing Unsupervised Data
+10,1.1025885174480252e-05,0.9999974225951136,10,FBII,uniform,Bike Sharing Unsupervised Data
+11,1.1582966648471741e-06,0.9999997292378299,11,FBII,uniform,Bike Sharing Unsupervised Data
+12,9.51740315141264e-26,1.0,12,FBII,uniform,Bike Sharing Unsupervised Data
+1,25.80557918255358,0.8159672360584259,1,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+2,0.7080603008308293,0.9952414637155947,2,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+3,1.3867315815298533,0.9915182095672098,3,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+4,14.018132954435975,0.9109134263770988,4,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+5,34.78242095234365,0.6661360647302957,5,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+6,92.95289368237565,0.5401228978103094,6,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+7,144.6686601548254,0.6650772196530851,7,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+8,197.76543410993511,0.4696481668374879,8,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+9,161.9211625227503,-0.16808723049098662,9,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+10,47.712159924411566,0.6353383100988648,10,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+11,10.163981244708165,0.9423025734722855,11,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+12,1.1840497500829204e-21,1.0,12,k-SII,Shapley kernel,Bike Sharing Unsupervised Data
+1,25.80557918255358,0.8159672360584259,1,STII,Shapley kernel,Bike Sharing Unsupervised Data
+2,0.5807703693640672,0.9961524705783731,2,STII,Shapley kernel,Bike Sharing Unsupervised Data
+3,13.711282940086035,0.919656470899531,3,STII,Shapley kernel,Bike Sharing Unsupervised Data
+4,332.1950475879328,-0.5462074083018733,4,STII,Shapley kernel,Bike Sharing Unsupervised Data
+5,1268.1117773136687,0.08572700438307834,5,STII,Shapley kernel,Bike Sharing Unsupervised Data
+6,2231.5210641570234,-0.8859537325079354,6,STII,Shapley kernel,Bike Sharing Unsupervised Data
+7,2063.4797312902006,0.0810273527409503,7,STII,Shapley kernel,Bike Sharing Unsupervised Data
+8,903.9420377235472,-0.8417391320841132,8,STII,Shapley kernel,Bike Sharing Unsupervised Data
+9,165.32351807681718,0.6254113584744092,9,STII,Shapley kernel,Bike Sharing Unsupervised Data
+10,10.43106890290423,0.9170911800749817,10,STII,Shapley kernel,Bike Sharing Unsupervised Data
+11,0.13495134262638558,0.9991459834811838,11,STII,Shapley kernel,Bike Sharing Unsupervised Data
+12,1.3532184095212695e-23,1.0,12,STII,Shapley kernel,Bike Sharing Unsupervised Data
+1,25.805579203448517,0.815967235973922,1,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+2,0.43828473812794955,0.9970904725912358,2,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+3,0.26091009967772383,0.9982900553471131,3,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+4,0.10487972591037191,0.9993171303878267,4,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+5,0.06240991845264303,0.9995943512647567,5,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+6,0.017758033134035598,0.9998845254760913,6,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+7,0.005144315191897525,0.9999665845434735,7,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+8,0.0015628904853893855,0.9999898476214204,8,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+9,0.0003344951495143514,0.9999978273378394,9,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+10,4.024930946102336e-05,0.9999997385663683,10,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+11,2.295637441925831e-06,0.9999999850890419,11,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+12,3.5257793766885546e-16,1.0,12,FSII,Shapley kernel,Bike Sharing Unsupervised Data
+1,32.560463464808294,0.7782107879744997,1,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+2,2.3398905943852073,0.985846611684305,2,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+3,2.183850045370939,0.986033457472515,3,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+4,0.4527489851169787,0.9969360701062595,4,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+5,0.38235211668718155,0.9975423199429566,5,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+6,0.1500572422290648,0.9990407413087435,6,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+7,0.0709446611797183,0.9995415760338061,7,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+8,0.030903072942054802,0.9998008150523876,8,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+9,0.006149726905949892,0.9999600377727296,9,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+10,0.00043941044056616455,0.9999971478038056,10,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+11,8.729435395651841e-06,0.9999999432978511,11,FBII,Shapley kernel,Bike Sharing Unsupervised Data
+12,1.2196687950703073e-23,1.0,12,FBII,Shapley kernel,Bike Sharing Unsupervised Data
