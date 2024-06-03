@@ -61,8 +61,7 @@ class TreeExplainer(Explainer):
 
         # setup explainers for all trees
         self._treeshapiq_explainers: list[TreeSHAPIQ] = [
-            TreeSHAPIQ(model=_tree, max_order=self._max_order, index=index)
-            for _tree in self._trees
+            TreeSHAPIQ(model=_tree, max_order=self._max_order, index=index) for _tree in self._trees
         ]
 
         # TODO: for the current implementation this is correct for other trees this may vary

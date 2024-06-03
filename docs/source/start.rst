@@ -25,7 +25,7 @@ Explain a model with Shapley interaction values, e.g. the k-SII values.
     print(interaction_values)
 
     >> InteractionValues(
-    >>     index=k-SII, max_order=4, min_order=0, estimated=False, 
+    >>     index=k-SII, max_order=4, min_order=0, estimated=False,
     >>     estimation_budget=256, n_players=8, baseline_value=2.07282292,
     >>     Top 10 interactions:
     >>         (0,): 1.696969079  # attribution of feature 0
