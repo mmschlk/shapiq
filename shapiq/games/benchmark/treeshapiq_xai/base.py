@@ -43,7 +43,7 @@ class TreeSHAPIQXAI(Game):
             model=tree_model,
             min_order=1,
             max_order=1,
-            interaction_type="SII",
+            index="SII",
             class_label=class_label,
         )
         # compute ground truth values
@@ -110,9 +110,9 @@ class TreeSHAPIQXAI(Game):
         """
         tree_explainer = TreeExplainer(
             model=self.model,
-            min_order=1,
+            min_order=0,
             max_order=order,
-            interaction_type=index,
+            index=index,
             class_label=self.class_label,
         )
         return tree_explainer.explain(x=self.x_explain)

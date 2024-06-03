@@ -510,7 +510,7 @@ class ExactComputer:
         )
         return copy.deepcopy(stii)
 
-    def compute_fsii(self, index: str, order: int) -> InteractionValues:
+    def compute_fii(self, index: str, order: int) -> InteractionValues:
         """Computes the FSII index up to order ``order`` after
             `Tsai et al. (2023) <https://jmlr.org/papers/v24/22-0202.html>`_.
 
