@@ -1,7 +1,6 @@
 import sys
 from typing import Any, Union
 from importlib import import_module
-import pkg_resources
 
 
 def safe_isinstance(obj: Any, class_path_str: Union[str, list[str], tuple[str]]) -> bool:
