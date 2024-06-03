@@ -15,6 +15,8 @@ from ...interaction_values import InteractionValues
 from ..base import Game
 from .metrics import get_all_metrics
 
+BENCHMARK_RESULTS_DIR = "results"
+
 
 def save_results(results: list, save_path: str) -> None:
     """Save the results of the benchmark as a CSV file.
@@ -306,7 +308,7 @@ def load_benchmark_results(
             ][game_configuration - 1]
 
         save_path = os.path.join(
-            "results",
+            BENCHMARK_RESULTS_DIR,
             _make_benchmark_name(
                 config_id=get_game_file_name_from_config(game_configuration),
                 game_class=game_class,

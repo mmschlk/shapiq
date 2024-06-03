@@ -1,10 +1,9 @@
-"""This module contains all tabular machine learning games."""
+"""This module contains the base class for the uncertainty explanation game."""
 
 from typing import Optional, Union
 
 import numpy as np
 from scipy.stats import entropy
-from sklearn.ensemble import RandomForestClassifier
 
 from shapiq.games.base import Game
 from shapiq.games.imputer import ConditionalImputer, MarginalImputer
@@ -27,10 +26,13 @@ class UncertaintyExplanation(Game):
         verbose: bool = False,
         uncertainty_to_explain: str = "total",
     ) -> None:
+        from sklearn.ensemble import RandomForestClassifier
+
         # validate the inputs
         if uncertainty_to_explain not in ["total", "aleatoric", "epistemic"]:
             raise ValueError(
-                f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' but got {uncertainty_to_explain}."
+                f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' "
+                f"but got {uncertainty_to_explain}."
             )
 
         # get x_explain
@@ -64,7 +66,8 @@ class UncertaintyExplanation(Game):
             )
         else:
             raise ValueError(
-                f"Invalid imputer provided. Should be 'marginal' or 'conditional' but got {imputer}."
+                f"Invalid imputer provided. Should be 'marginal' or 'conditional' but got "
+                f"{imputer}."
             )
 
         self.empty_prediction_value: float = self._imputer.empty_prediction
@@ -76,7 +79,15 @@ class UncertaintyExplanation(Game):
             verbose=verbose,
         )
 
-    def _uncertainty(self, predictions):
+    def _uncertainty(self, predictions: np.ndarray) -> np.ndarray:
+        """Calculate the uncertainty of the predictions.
+
+        Args:
+            predictions: The predictions of the model.
+
+        Returns:
+            The uncertainty of the predictions.
+        """
         predictions_mean = predictions.mean(axis=0)
         if self._uncertainty_to_explain == "total":
             uncertainty = entropy(predictions_mean, axis=1, base=2)
@@ -86,6 +97,11 @@ class UncertaintyExplanation(Game):
             uncertainty = entropy(predictions_mean, axis=1, base=2) - entropy(
                 predictions, axis=2, base=2
             ).mean(axis=0)
+        else:
+            raise ValueError(
+                f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' "
+                f"but got {self._uncertainty_to_explain}."
+            )
         return uncertainty
 
     def _predict_rf(self, x: np.ndarray) -> np.ndarray:
@@ -95,5 +111,13 @@ class UncertaintyExplanation(Game):
         return self._uncertainty(predictions)
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+        """Calculate the value function of the game.
+
+        Args:
+            coalitions: The coalitions of the game.
+
+        Returns:
+            The value function of the game.
+        """
         uncertainty = self._imputer(coalitions)
         return uncertainty
