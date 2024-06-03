@@ -7,6 +7,7 @@ import numpy as np
 
 from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.games.imputer.base import Imputer
+from shapiq.utils.modules import check_import_module
 
 
 class ConditionalImputer(Imputer):
@@ -77,6 +78,7 @@ class ConditionalImputer(Imputer):
         Returns:
             The initialized imputer.
         """
+        check_import_module("xgboost")
         import xgboost
 
         n_features = data.shape[1]

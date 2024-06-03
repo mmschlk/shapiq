@@ -1,7 +1,7 @@
 """Utility functions for the shapiq package."""
 
 from .datasets import shuffle_data
-from .modules import safe_isinstance
+from .modules import safe_isinstance, check_import_module
 from .sets import (
     count_interactions,
     generate_interaction_lookup,
@@ -28,6 +28,7 @@ __all__ = [
     "count_interactions",
     # modules
     "safe_isinstance",
+    "check_import_module",
     # datasets
     "shuffle_data",
 ]

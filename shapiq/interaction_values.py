@@ -573,7 +573,7 @@ class InteractionValues:
     def plot_network(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
         """Visualize InteractionValues on a graph.
 
-        For arguments, see shapiq.network_plot().
+        For arguments, see shapiq.plots.network_plot().
 
         Returns:
             matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
@@ -586,14 +586,14 @@ class InteractionValues:
                 **kwargs
             )
         else:
-            raise ValueError("InteractionValues has only 1-order values,"
-                              "but also requires 2-order values.")
+            raise ValueError("InteractionValues contains only 1-order values,"
+                              "but requires also 2-order values for the network plot.")
 
 
     def plot_stacked_bar(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
         """Visualize InteractionValues on a graph.
 
-        For arguments, see shapiq.stacked_bar().
+        For arguments, see shapiq.plots.stacked_bar_plot().
 
         Returns:
             matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
@@ -626,3 +626,26 @@ class InteractionValues:
                 **kwargs
             )
             return ret
+
+
+    def plot_force(
+            self, 
+            feature_values: Optional[np.ndarray] = None,
+            feature_names: Optional[np.ndarray] = None,
+            **kwargs
+        ):
+        """Visualize InteractionValues on a force plot.
+
+        For arguments, see shapiq.plots.force_plot().
+
+        Requires the ``shap`` Python package to be installed.
+
+        Args:
+            interaction_values: The interaction values as an interaction object.
+            feature_names: The feature names used for plotting. If no feature names are provided, the
+                feature indices are used instead. Defaults to ``None``.
+            feature_values: The feature values used for plotting. Defaults to ``None``.
+            **kwargs: Keyword arguments passed to ``shap.plots.force()``.
+        """
+        from shapiq import force_plot
+        return force_plot(self, feature_values, feature_names)
