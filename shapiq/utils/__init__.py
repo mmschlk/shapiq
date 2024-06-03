@@ -1,7 +1,7 @@
 """Utility functions for the shapiq package."""
 
 from .datasets import shuffle_data
-from .modules import safe_isinstance, check_import_module
+from .modules import check_import_module, safe_isinstance
 from .sets import (
     count_interactions,
     generate_interaction_lookup,

@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from typing import Optional, Union
 from warnings import warn
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 from .indices import ALL_AVAILABLE_INDICES, index_generalizes_bv, index_generalizes_sv
 from .utils.sets import count_interactions, generate_interaction_lookup, powerset
@@ -569,7 +569,6 @@ class InteractionValues:
             "baseline_value": self.baseline_value,
         }
 
-
     def plot_network(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
         """Visualize InteractionValues on a graph.
 
@@ -579,16 +578,18 @@ class InteractionValues:
             matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
         """
         from shapiq import network_plot
+
         if self.max_order > 1:
             return network_plot(
                 first_order_values=self.get_n_order_values(1),
                 second_order_values=self.get_n_order_values(2),
-                **kwargs
+                **kwargs,
             )
         else:
-            raise ValueError("InteractionValues contains only 1-order values,"
-                              "but requires also 2-order values for the network plot.")
-
+            raise ValueError(
+                "InteractionValues contains only 1-order values,"
+                "but requires also 2-order values for the network plot."
+            )
 
     def plot_stacked_bar(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
         """Visualize InteractionValues on a graph.
@@ -599,6 +600,7 @@ class InteractionValues:
             matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
         """
         from shapiq import stacked_bar_plot
+
         if self.max_order >= 2:
             first_order_values = self.get_n_order_values(1)
             second_order_values = self.get_n_order_values(2)
@@ -611,7 +613,7 @@ class InteractionValues:
                     1: np.array([0 if x > 0 else x for x in first_order_values]),
                     2: second_order_values.clip(max=0).sum(axis=0),
                 },
-                **kwargs
+                **kwargs,
             )
             return ret
         else:
@@ -623,18 +625,17 @@ class InteractionValues:
                 n_shapley_values_neg={
                     1: np.array([0 if x > 0 else x for x in first_order_values]),
                 },
-                **kwargs
+                **kwargs,
             )
             return ret
 
-
     def plot_force(
-            self, 
-            feature_names: Optional[np.ndarray] = None,
-            feature_values: Optional[np.ndarray] = None,
-            matplotlib = True,
-            **kwargs
-        ):
+        self,
+        feature_names: Optional[np.ndarray] = None,
+        feature_values: Optional[np.ndarray] = None,
+        matplotlib=True,
+        **kwargs,
+    ):
         """Visualize InteractionValues on a force plot.
 
         For arguments, see shapiq.plots.force_plot().
@@ -650,4 +651,5 @@ class InteractionValues:
             **kwargs: Keyword arguments passed to ``shap.plots.force()``.
         """
         from shapiq import force_plot
+
         return force_plot(self, feature_values, feature_names, **kwargs)
