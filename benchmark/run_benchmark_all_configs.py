@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 if __name__ == "__main__":
 
     # example python run command with nohup and nice
-    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 80 --rerun_if_exists False > run_synth.log &
+    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 --rerun_if_exists True > cool.log &
 
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
@@ -19,7 +19,10 @@ if __name__ == "__main__":
     )
     from shapiq.games.benchmark.run import run_benchmark_from_configuration
 
-    indices_order = [("k-SII", 2), ("SV", 1)]
+    indices_order = [
+        # ("k-SII", 2),
+        ("SV", 1),
+    ]
 
     # add arguments to the parser ------------------------------------------------------------------
     parser = argparse.ArgumentParser()
