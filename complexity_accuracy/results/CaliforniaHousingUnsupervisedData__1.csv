@@ -1,0 +1,65 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.2796007377170382,0.4366193292738084,1,k-SII,uniform,California Housing Unsupervised Data
+2,0.0326898619691484,0.9401031031391993,2,k-SII,uniform,California Housing Unsupervised Data
+3,0.041068368048509274,0.9468742377238987,3,k-SII,uniform,California Housing Unsupervised Data
+4,0.11910346895092355,0.8415387596024625,4,k-SII,uniform,California Housing Unsupervised Data
+5,0.1271717790906173,0.7316668954255527,5,k-SII,uniform,California Housing Unsupervised Data
+6,0.054658116219366074,0.8899623232762318,6,k-SII,uniform,California Housing Unsupervised Data
+7,0.024901101584642614,0.959248339641236,7,k-SII,uniform,California Housing Unsupervised Data
+8,1.980372531956207e-25,1.0,8,k-SII,uniform,California Housing Unsupervised Data
+1,0.2796007377170382,0.4366193292738084,1,STII,uniform,California Housing Unsupervised Data
+2,0.07705667982043163,0.866526344188276,2,STII,uniform,California Housing Unsupervised Data
+3,0.46503300972098927,0.5872225970332714,3,STII,uniform,California Housing Unsupervised Data
+4,0.7626338505215526,-1.154148660950733,4,STII,uniform,California Housing Unsupervised Data
+5,0.38311439426802224,0.7196550980661998,5,STII,uniform,California Housing Unsupervised Data
+6,0.05992932378515098,0.8763762464261992,6,STII,uniform,California Housing Unsupervised Data
+7,0.0021572736521226245,0.9965029091895501,7,STII,uniform,California Housing Unsupervised Data
+8,1.5625972418475076e-30,1.0,8,STII,uniform,California Housing Unsupervised Data
+1,0.27960073804818536,0.43661932873982423,1,FSII,uniform,California Housing Unsupervised Data
+2,0.018522855850231702,0.9653542201177002,2,FSII,uniform,California Housing Unsupervised Data
+3,0.00850703353029408,0.9862497851638878,3,FSII,uniform,California Housing Unsupervised Data
+4,0.004871317996292321,0.9920371498238173,4,FSII,uniform,California Housing Unsupervised Data
+5,0.0020840014890012508,0.9964656145286187,5,FSII,uniform,California Housing Unsupervised Data
+6,0.000587986210138838,0.9990070704352851,6,FSII,uniform,California Housing Unsupervised Data
+7,8.092662664697225e-05,0.9998637934356752,7,FSII,uniform,California Housing Unsupervised Data
+8,3.4393836392659687e-18,1.0,8,FSII,uniform,California Housing Unsupervised Data
+1,0.04345372731289185,0.9210745227352343,1,FBII,uniform,California Housing Unsupervised Data
+2,0.013231281973194836,0.9772184352695218,2,FBII,uniform,California Housing Unsupervised Data
+3,0.00576977604899607,0.9901916341970225,3,FBII,uniform,California Housing Unsupervised Data
+4,0.0031818130065845596,0.9946147496703295,4,FBII,uniform,California Housing Unsupervised Data
+5,0.0013698287610409941,0.9976886396079678,5,FBII,uniform,California Housing Unsupervised Data
+6,0.00042051700482115506,0.9992915815729106,6,FBII,uniform,California Housing Unsupervised Data
+7,6.7414801628834e-05,0.999886498059903,7,FBII,uniform,California Housing Unsupervised Data
+8,1.4815623046995263e-28,1.0,8,FBII,uniform,California Housing Unsupervised Data
+1,1.011909219762789,0.8636241242058713,1,k-SII,Shapley kernel,California Housing Unsupervised Data
+2,0.11985233816148788,0.9851327880260771,2,k-SII,Shapley kernel,California Housing Unsupervised Data
+3,0.14905867814823404,0.9836895876971028,3,k-SII,Shapley kernel,California Housing Unsupervised Data
+4,0.28451306173272817,0.967706965613644,4,k-SII,Shapley kernel,California Housing Unsupervised Data
+5,0.30647690582917403,0.9573329192302744,5,k-SII,Shapley kernel,California Housing Unsupervised Data
+6,0.15987476075085677,0.9787257729705906,6,k-SII,Shapley kernel,California Housing Unsupervised Data
+7,0.0471468161723585,0.994313380596447,7,k-SII,Shapley kernel,California Housing Unsupervised Data
+8,1.3789301736760884e-23,1.0,8,k-SII,Shapley kernel,California Housing Unsupervised Data
+1,1.011909219762789,0.8636241242058713,1,STII,Shapley kernel,California Housing Unsupervised Data
+2,0.26562117487144654,0.9683897484761584,2,STII,Shapley kernel,California Housing Unsupervised Data
+3,1.7717800569365192,0.8363116269102078,3,STII,Shapley kernel,California Housing Unsupervised Data
+4,5.299513309790685,0.28362680819738184,4,STII,Shapley kernel,California Housing Unsupervised Data
+5,5.107948045201976,0.6965935439907632,5,STII,Shapley kernel,California Housing Unsupervised Data
+6,1.4127567068091285,0.7856437003813096,6,STII,Shapley kernel,California Housing Unsupervised Data
+7,0.06903275686792398,0.9920914674725205,7,STII,Shapley kernel,California Housing Unsupervised Data
+8,5.35281011927917e-29,1.0,8,STII,Shapley kernel,California Housing Unsupervised Data
+1,1.011909220936483,0.8636241241076572,1,FSII,Shapley kernel,California Housing Unsupervised Data
+2,0.08814790599401039,0.988823980437594,2,FSII,Shapley kernel,California Housing Unsupervised Data
+3,0.040146365682491705,0.995007817192825,3,FSII,Shapley kernel,California Housing Unsupervised Data
+4,0.01875327682769474,0.9976687813298966,4,FSII,Shapley kernel,California Housing Unsupervised Data
+5,0.006528636333924552,0.9991949957730273,5,FSII,Shapley kernel,California Housing Unsupervised Data
+6,0.0014924951879053544,0.9998159982118534,6,FSII,Shapley kernel,California Housing Unsupervised Data
+7,0.00016091551717466185,0.9999801752507278,7,FSII,Shapley kernel,California Housing Unsupervised Data
+8,9.506400540994554e-18,1.0,8,FSII,Shapley kernel,California Housing Unsupervised Data
+1,0.8380513323738596,0.889560146365698,1,FBII,Shapley kernel,California Housing Unsupervised Data
+2,0.11068249970064374,0.9860904162931349,2,FBII,Shapley kernel,California Housing Unsupervised Data
+3,0.06343978324466351,0.9923379332207722,3,FBII,Shapley kernel,California Housing Unsupervised Data
+4,0.04600809042425043,0.9944530062021933,4,FBII,Shapley kernel,California Housing Unsupervised Data
+5,0.02421595736320546,0.9970273001433717,5,FBII,Shapley kernel,California Housing Unsupervised Data
+6,0.006190351207215091,0.9992473863921689,6,FBII,Shapley kernel,California Housing Unsupervised Data
+7,0.00044072426564910664,0.9999456458087201,7,FBII,Shapley kernel,California Housing Unsupervised Data
+8,1.335349907474077e-27,1.0,8,FBII,Shapley kernel,California Housing Unsupervised Data

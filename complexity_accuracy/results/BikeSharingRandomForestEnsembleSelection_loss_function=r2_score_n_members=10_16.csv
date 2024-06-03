@@ -1,0 +1,81 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.22966790571400522,-9.492786623353654,1,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+2,0.4428605934655,-8.170566710951388,2,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+3,0.5691156669363178,-2.3761323928036973,3,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+4,1.046995168229178,-3.380440377427253,4,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+5,1.1099930715088817,-2.570636286907157,5,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+6,0.6895398937008902,-1.4652414500019408,6,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+7,0.519723833001563,-4.035820853707472,7,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+8,0.05345579163085122,-0.35617151090883925,8,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+9,0.014420489379729323,-5.07037166188375,9,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+10,1.72848410818137e-24,1.0,10,k-SII,uniform,Bike Sharing Random Forest Ensemble Selection
+1,0.22966790571400522,-9.492786623353654,1,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+2,2.3191411106433533,-20.83348771395262,2,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+3,6.331771080725845,-4.034376205510135,3,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+4,6.998457808978827,-1.2893693780908255,4,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+5,3.5860184612478028,-0.5470913246953888,5,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+6,0.8793985104739281,-0.22167125628643602,6,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+7,0.09904718063727892,-0.10467567857836846,7,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+8,0.004463102934483945,0.17761096258800746,8,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+9,5.319344405071113e-05,0.9435916718245708,9,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+10,2.1399455390798648e-28,1.0,10,STII,uniform,Bike Sharing Random Forest Ensemble Selection
+1,0.2296679094183002,-9.492786993219836,1,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+2,0.034891863037990745,-0.21349449634704487,2,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+3,0.01992095357030982,-0.7308013256671486,3,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+4,0.006093661717855549,0.02911837606400214,4,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+5,0.0018286433434218088,0.2710813306451335,5,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+6,0.0004311279878947324,0.6872189191540192,6,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+7,7.762495881131275e-05,0.9213718308317376,7,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+8,9.572051343825173e-06,0.9895091938554734,8,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+9,6.178834930353547e-07,0.999316569553378,9,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+10,4.836325653528471e-18,0.9999999999999947,10,FSII,uniform,Bike Sharing Random Forest Ensemble Selection
+1,0.0008143760873706361,-8.136102726285053,1,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+2,0.000723590992962458,-3.021662941033581,2,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+3,0.0005912233881723644,-0.8931813901793249,3,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+4,0.00041656218922605696,0.1445520834294184,4,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+5,0.00023757984510702684,0.6432384076655449,5,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+6,0.00010287233608699707,0.8715126890291278,6,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+7,3.129757374053749e-05,0.9641172062694767,7,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+8,5.912734352650797e-06,0.9934127407745806,8,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+9,5.19467227058608e-07,0.9994247284764478,9,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+10,3.3477562917634576e-28,1.0,10,FBII,uniform,Bike Sharing Random Forest Ensemble Selection
+1,1.3764059764531882,-0.6328062187362242,1,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+2,1.3075641543455636,0.3937678291984491,2,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+3,1.827786516537211,0.28721503978631946,3,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+4,2.626177341276947,-0.21411584625177293,4,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+5,2.7558336659943627,-0.14257726068340082,5,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+6,1.9070684176873827,0.31873641504661343,6,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+7,1.085016591805311,0.4268968963115699,7,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+8,0.2050705707206203,0.7542450612578586,8,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+9,0.027035875519216046,0.9603045850235743,9,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+10,7.149288753942003e-24,1.0,10,k-SII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+1,1.3764059764531882,-0.6328062187362242,1,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+2,6.155939675606293,-0.2215139337926586,2,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+3,24.994668115471548,-1.0006143444224551,3,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+4,52.256156843145845,-0.4016379209986438,4,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+5,53.06455119992279,-0.5469758638343343,5,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+6,25.20894737921652,-0.18099764195293422,6,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+7,5.141347360026901,-0.3034553428551472,7,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+8,0.36941781876863533,0.699845859708131,8,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+9,0.0054470086707928194,0.9923601664094303,9,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+10,1.4292633107449325e-25,1.0,10,STII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+1,1.3764059896949936,-0.6328062656722537,1,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+2,0.4704462569807518,0.6028504245435129,2,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+3,0.15672188696756878,0.8107121888462622,3,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+4,0.04568183776509595,0.9415604140069479,4,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+5,0.011020743924551529,0.9850606931951242,5,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+6,0.0020862514323197615,0.9971513860694652,6,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+7,0.00028860264973258723,0.9996045907595307,7,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+8,2.5836959440674086e-05,0.9999645925915454,8,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+9,1.120322639005157e-06,0.9999984646134132,9,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+10,2.2723189067719216e-17,1.0,10,FSII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+1,0.8046597271485739,-238.3234999803803,1,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+2,0.6958329161157851,-87.55225361216566,2,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+3,0.5105230605521909,-6.9078291306784845,3,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+4,0.28725418100429545,-1.0452493035698622,4,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+5,0.11205477519147139,0.6904015932636756,5,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+6,0.027247557026079297,0.9478930114800745,6,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+7,0.0036089757886407594,0.9945998229007265,7,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+8,0.00021143545645582127,0.9997045456833511,8,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+9,3.68413578373742e-06,0.9999949430926568,9,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection
+10,5.662357638653894e-26,1.0,10,FBII,Shapley kernel,Bike Sharing Random Forest Ensemble Selection

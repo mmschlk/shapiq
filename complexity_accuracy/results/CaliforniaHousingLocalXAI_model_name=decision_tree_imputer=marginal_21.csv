@@ -1,0 +1,65 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.011303451388888882,-0.502738993134398,1,k-SII,uniform,California Housing Local XAI
+2,0.00035839930555555495,0.9716360369812285,2,k-SII,uniform,California Housing Local XAI
+3,5.010416666666853e-06,0.9996392890018767,3,k-SII,uniform,California Housing Local XAI
+4,3.619797502148391e-32,1.0,4,k-SII,uniform,California Housing Local XAI
+5,4.959555697387537e-32,1.0,5,k-SII,uniform,California Housing Local XAI
+6,4.436258949421058e-32,1.0,6,k-SII,uniform,California Housing Local XAI
+7,6.007354646303731e-32,1.0,7,k-SII,uniform,California Housing Local XAI
+8,4.7355346745765886e-32,1.0,8,k-SII,uniform,California Housing Local XAI
+1,0.011303451388888882,-0.502738993134398,1,STII,uniform,California Housing Local XAI
+2,0.0004973645833333361,0.9594390255919722,2,STII,uniform,California Housing Local XAI
+3,7.515625000000105e-06,0.999446637315052,3,STII,uniform,California Housing Local XAI
+4,1.4183410805771673e-31,1.0,4,STII,uniform,California Housing Local XAI
+5,9.179308226469843e-31,1.0,5,STII,uniform,California Housing Local XAI
+6,3.9054116498160125e-31,1.0,6,STII,uniform,California Housing Local XAI
+7,3.066441583329052e-31,1.0,7,STII,uniform,California Housing Local XAI
+8,1.1752987485623107e-31,1.0,8,STII,uniform,California Housing Local XAI
+1,0.01130345137833981,-0.5027389912664315,1,FSII,uniform,California Housing Local XAI
+2,0.0003554376387550522,0.9718027731425094,2,FSII,uniform,California Housing Local XAI
+3,2.048749996134481e-06,0.9998521833331687,3,FSII,uniform,California Housing Local XAI
+4,7.555815837891388e-21,1.0,4,FSII,uniform,California Housing Local XAI
+5,1.3338769390340683e-21,1.0,5,FSII,uniform,California Housing Local XAI
+6,6.633803865433542e-21,1.0,6,FSII,uniform,California Housing Local XAI
+7,9.880272987701427e-22,1.0,7,FSII,uniform,California Housing Local XAI
+8,1.1801198896751854e-21,1.0,8,FSII,uniform,California Housing Local XAI
+1,0.005337695312499998,0.37049274278032696,1,FBII,uniform,California Housing Local XAI
+2,0.00029890624999999964,0.977888201916664,2,FBII,uniform,California Housing Local XAI
+3,1.5078124999999964e-06,0.9998908596358783,3,FBII,uniform,California Housing Local XAI
+4,8.925090488334094e-30,1.0,4,FBII,uniform,California Housing Local XAI
+5,6.437818022899069e-31,1.0,5,FBII,uniform,California Housing Local XAI
+6,4.0049917293755375e-30,1.0,6,FBII,uniform,California Housing Local XAI
+7,5.69667165779406e-30,1.0,7,FBII,uniform,California Housing Local XAI
+8,1.518656632279163e-29,1.0,8,FBII,uniform,California Housing Local XAI
+1,0.03984887326388886,0.5265825252984768,1,k-SII,Shapley kernel,California Housing Local XAI
+2,0.001097553819444443,0.9902127028438679,2,k-SII,Shapley kernel,California Housing Local XAI
+3,1.1690972222222694e-05,0.9998996368994907,3,k-SII,Shapley kernel,California Housing Local XAI
+4,2.8033810753701878e-31,1.0,4,k-SII,Shapley kernel,California Housing Local XAI
+5,7.927549647575227e-31,1.0,5,k-SII,Shapley kernel,California Housing Local XAI
+6,1.711084021928352e-31,1.0,6,k-SII,Shapley kernel,California Housing Local XAI
+7,9.606966139039393e-31,1.0,7,k-SII,Shapley kernel,California Housing Local XAI
+8,2.1177100845431498e-31,1.0,8,k-SII,Shapley kernel,California Housing Local XAI
+1,0.03984887326388886,0.5265825252984768,1,STII,Shapley kernel,California Housing Local XAI
+2,0.0016830949074074207,0.9844965197063216,2,STII,Shapley kernel,California Housing Local XAI
+3,3.680468750000014e-05,0.9996784812904967,3,STII,Shapley kernel,California Housing Local XAI
+4,7.689453556496724e-30,1.0,4,STII,Shapley kernel,California Housing Local XAI
+5,1.0019066934389393e-28,1.0,5,STII,Shapley kernel,California Housing Local XAI
+6,3.0243422995010565e-29,1.0,6,STII,Shapley kernel,California Housing Local XAI
+7,2.938016401789098e-29,1.0,7,STII,Shapley kernel,California Housing Local XAI
+8,4.271044960936835e-30,1.0,8,STII,Shapley kernel,California Housing Local XAI
+1,0.03984887322573453,0.5265825261159061,1,FSII,Shapley kernel,California Housing Local XAI
+2,0.001092184720533042,0.9902282086107063,2,FSII,Shapley kernel,California Housing Local XAI
+3,6.321874999998158e-06,0.9999455551717397,3,FSII,Shapley kernel,California Housing Local XAI
+4,1.3671980455384334e-20,1.0,4,FSII,Shapley kernel,California Housing Local XAI
+5,7.006959022048664e-21,1.0,5,FSII,Shapley kernel,California Housing Local XAI
+6,1.805367808965466e-20,1.0,6,FSII,Shapley kernel,California Housing Local XAI
+7,3.324566706778707e-21,1.0,7,FSII,Shapley kernel,California Housing Local XAI
+8,4.423828533645698e-21,1.0,8,FSII,Shapley kernel,California Housing Local XAI
+1,0.03711469882812485,0.6146846150702479,1,FBII,Shapley kernel,California Housing Local XAI
+2,0.0013661292317707532,0.9889267489346362,2,FBII,Shapley kernel,California Housing Local XAI
+3,1.2111718749981983e-05,0.9998951983450326,3,FBII,Shapley kernel,California Housing Local XAI
+4,5.8899276326222365e-28,1.0,4,FBII,Shapley kernel,California Housing Local XAI
+5,1.9385296364962775e-29,1.0,5,FBII,Shapley kernel,California Housing Local XAI
+6,2.977258499732567e-28,1.0,6,FBII,Shapley kernel,California Housing Local XAI
+7,4.764019924945565e-28,1.0,7,FBII,Shapley kernel,California Housing Local XAI
+8,1.7590335192953051e-28,1.0,8,FBII,Shapley kernel,California Housing Local XAI

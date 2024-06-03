@@ -1,0 +1,81 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.1445118058392837,-8.195330634629203,1,k-SII,uniform,California Housing Random Forest Ensemble Selection
+2,0.15022138712262692,-4.463671601022661,2,k-SII,uniform,California Housing Random Forest Ensemble Selection
+3,0.17531456816449356,-3.221392809040446,3,k-SII,uniform,California Housing Random Forest Ensemble Selection
+4,0.19284377638627054,-3.322898415551501,4,k-SII,uniform,California Housing Random Forest Ensemble Selection
+5,0.18385407844212873,-2.837861003841925,5,k-SII,uniform,California Housing Random Forest Ensemble Selection
+6,0.0703033777576469,-0.7157394596587989,6,k-SII,uniform,California Housing Random Forest Ensemble Selection
+7,0.04601737877878252,-3.8274720627322614,7,k-SII,uniform,California Housing Random Forest Ensemble Selection
+8,0.002909804601481035,-0.5272628585533512,8,k-SII,uniform,California Housing Random Forest Ensemble Selection
+9,0.0005190788412474132,0.5461273926842469,9,k-SII,uniform,California Housing Random Forest Ensemble Selection
+10,4.295218461140382e-25,1.0,10,k-SII,uniform,California Housing Random Forest Ensemble Selection
+1,0.1445118058392837,-8.195330634629203,1,STII,uniform,California Housing Random Forest Ensemble Selection
+2,0.8462290885877435,-15.518058928996819,2,STII,uniform,California Housing Random Forest Ensemble Selection
+3,1.562451847567027,-4.108217261244871,3,STII,uniform,California Housing Random Forest Ensemble Selection
+4,1.2333905333817103,-1.1509474498157672,4,STII,uniform,California Housing Random Forest Ensemble Selection
+5,0.46196757994087423,-0.5982326717488484,5,STII,uniform,California Housing Random Forest Ensemble Selection
+6,0.08346376551895565,-0.11736483231258488,6,STII,uniform,California Housing Random Forest Ensemble Selection
+7,0.006910373299441935,-0.0824681480047107,7,STII,uniform,California Housing Random Forest Ensemble Selection
+8,0.00022636780277000265,0.8616599257000512,8,STII,uniform,California Housing Random Forest Ensemble Selection
+9,1.9147471748919264e-06,0.9984877773516555,9,STII,uniform,California Housing Random Forest Ensemble Selection
+10,1.9277928001259444e-28,1.0,10,STII,uniform,California Housing Random Forest Ensemble Selection
+1,0.14451180780675524,-8.195330896551813,1,FSII,uniform,California Housing Random Forest Ensemble Selection
+2,0.016537064093511668,0.16252472864282153,2,FSII,uniform,California Housing Random Forest Ensemble Selection
+3,0.007316748547475299,-0.34921493032060336,3,FSII,uniform,California Housing Random Forest Ensemble Selection
+4,0.0016608616616773098,0.1378498581476314,4,FSII,uniform,California Housing Random Forest Ensemble Selection
+5,0.0003609005456796686,0.755299089581779,5,FSII,uniform,California Housing Random Forest Ensemble Selection
+6,5.9647111901277e-05,0.9568996009439316,6,FSII,uniform,California Housing Random Forest Ensemble Selection
+7,7.231774388553892e-06,0.9943725867412389,7,FSII,uniform,California Housing Random Forest Ensemble Selection
+8,5.713721127715943e-07,0.9995507945151317,8,FSII,uniform,California Housing Random Forest Ensemble Selection
+9,2.224128706746018e-08,0.9999825136258971,9,FSII,uniform,California Housing Random Forest Ensemble Selection
+10,7.631409359868812e-19,0.9999999999999994,10,FSII,uniform,California Housing Random Forest Ensemble Selection
+1,0.0006953058672903713,-0.2058370105522671,1,FBII,uniform,California Housing Random Forest Ensemble Selection
+2,0.00042594259863976933,0.4965098835774199,2,FBII,uniform,California Housing Random Forest Ensemble Selection
+3,0.0002457006566733774,0.760577480967434,3,FBII,uniform,California Housing Random Forest Ensemble Selection
+4,0.00012159736605554159,0.8942930604984498,4,FBII,uniform,California Housing Random Forest Ensemble Selection
+5,4.810671192432437e-05,0.960691219889892,5,FBII,uniform,California Housing Random Forest Ensemble Selection
+6,1.4207778146422553e-05,0.9887034984060179,6,FBII,uniform,California Housing Random Forest Ensemble Selection
+7,2.879019254392886e-06,0.9977313473183919,7,FBII,uniform,California Housing Random Forest Ensemble Selection
+8,3.4965655884354235e-07,0.9997250204601594,8,FBII,uniform,California Housing Random Forest Ensemble Selection
+9,1.8698702880011985e-08,0.999985298651882,9,FBII,uniform,California Housing Random Forest Ensemble Selection
+10,1.3844929825744638e-28,1.0,10,FBII,uniform,California Housing Random Forest Ensemble Selection
+1,0.7256730239246079,-0.20172684374420302,1,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+2,0.46275968987248056,0.6108543111057776,2,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+3,0.5155440602958529,0.5013683506414541,3,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+4,0.5119124436232285,0.15348359067208117,4,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+5,0.4322930590657634,0.3736812163256129,5,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+6,0.20945387384622685,0.7580877187088991,6,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+7,0.09319220705003481,0.8587399883736269,7,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+8,0.011876728806671741,0.9753887240928443,8,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+9,0.0009731813232550209,0.9980212013732872,9,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+10,2.3371294067774655e-24,1.0,10,k-SII,Shapley kernel,California Housing Random Forest Ensemble Selection
+1,0.7256730239246079,-0.20172684374420302,1,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+2,2.2544734760515555,0.04835359028426223,2,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+3,6.327186390934899,-1.2136510964949156,3,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+4,9.473126229265079,-0.18127564262146123,4,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+5,7.015504844789298,-0.6774781020629717,5,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+6,2.443860454854058,0.1743657381284589,6,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+7,0.36399271247002407,0.3499025228354624,7,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+8,0.018858199574343187,0.9666697498476068,8,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+9,0.0001960701107089333,0.9996069774858002,9,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+10,9.288074235836366e-26,1.0,10,STII,Shapley kernel,California Housing Random Forest Ensemble Selection
+1,0.7256730308036284,-0.20172687305073,1,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+2,0.19508387610851466,0.7573554173348955,2,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+3,0.05057100056454637,0.9102674520686127,3,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+4,0.011261530370712376,0.9788423776561355,4,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+5,0.002026416113430873,0.9960043803219628,5,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+6,0.0002773123065492241,0.9994500129390422,6,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+7,2.659098536800658e-05,0.9999471470030241,7,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+8,1.5553835037773975e-06,0.9999969080082827,8,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+9,4.032704869046399e-08,0.9999999198308859,9,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+10,3.334145278932243e-18,1.0,10,FSII,Shapley kernel,California Housing Random Forest Ensemble Selection
+1,0.48846825382852554,-21.515887794238274,1,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
+2,0.34129915062016497,-8.761749327286386,2,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
+3,0.19308309542490112,-0.34690077641190364,3,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
+4,0.08073534325768322,0.6271931123793124,4,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
+5,0.022707139525991106,0.9390062308613506,5,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
+6,0.0038592615317673247,0.991245564631449,6,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
+7,0.0003437733685464389,0.9992982634021322,7,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
+8,1.2858231209453653e-05,0.9999743107309695,8,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
+9,1.3261387202471418e-07,0.9999997362929213,9,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
+10,3.1862602534050445e-26,1.0,10,FBII,Shapley kernel,California Housing Random Forest Ensemble Selection
