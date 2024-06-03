@@ -656,7 +656,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
+            baseline_value=self.baseline_value,
         )
 
         return kADD_shap
