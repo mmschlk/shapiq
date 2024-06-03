@@ -630,8 +630,9 @@ class InteractionValues:
 
     def plot_force(
             self, 
-            feature_values: Optional[np.ndarray] = None,
             feature_names: Optional[np.ndarray] = None,
+            feature_values: Optional[np.ndarray] = None,
+            matplotlib = True,
             **kwargs
         ):
         """Visualize InteractionValues on a force plot.
@@ -645,7 +646,8 @@ class InteractionValues:
             feature_names: The feature names used for plotting. If no feature names are provided, the
                 feature indices are used instead. Defaults to ``None``.
             feature_values: The feature values used for plotting. Defaults to ``None``.
+            matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
             **kwargs: Keyword arguments passed to ``shap.plots.force()``.
         """
         from shapiq import force_plot
-        return force_plot(self, feature_values, feature_names)
+        return force_plot(self, feature_values, feature_names, **kwargs)

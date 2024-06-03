@@ -14,8 +14,9 @@ __all__ = ["force_plot"]
 
 def force_plot(
     interaction_values: InteractionValues,
-    feature_values: Optional[np.ndarray] = None,
     feature_names: Optional[np.ndarray] = None,
+    feature_values: Optional[np.ndarray] = None,
+    matplotlib = True,
     **kwargs
 ):
         """Draws interaction values on a force plot.
@@ -27,6 +28,7 @@ def force_plot(
             feature_names: The feature names used for plotting. If no feature names are provided, the
                 feature indices are used instead. Defaults to ``None``.
             feature_values: The feature values used for plotting. Defaults to ``None``.
+            matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
             **kwargs: Keyword arguments passed to ``shap.plots.force()``.
         """
         check_import_module("shap")
@@ -45,21 +47,25 @@ def force_plot(
                  _values_dict[i] = interaction_values.get_n_order_values(i)
             _n_features = len(_values_dict[1])
             _shap_values = []
-            _features = []
-            _feature_names = []
+            _labels = []
             for interaction in powerset(range(_n_features), min_size=1, max_size=interaction_values.max_order):
                 _order = len(interaction)
                 _values = _values_dict[_order]
                 _shap_values.append(_values[interaction])
-                if feature_values is not None:
-                    _features.append(' x '.join(f'{feature_values[i]:0.3}' for i in interaction))
-                if feature_names is not None:
-                    _feature_names.append(' x '.join(f'{feature_names[i]:0.5}' for i in interaction))
+                if feature_values is not None and feature_names is None:
+                    _labels.append(' x '.join(f'{feature_values[i]:0.3}' for i in interaction))
+                elif feature_names is not None and feature_values is None:
+                    _labels.append(' x '.join(f'{feature_names[i]:0.5}' for i in interaction))
+                elif feature_names is not None and feature_values is not None:
+                     _labels.append(
+                          ' x '.join(f'{feature_names[i]:0.5}.' for i in interaction) + "\n" +
+                          ' x '.join(f'{feature_values[i]:0.4}' for i in interaction)
+                        )
 
             return shap.plots.force(
                     base_value=interaction_values.baseline_value,
                     shap_values=np.array(_shap_values),
-                    features=np.array(_features) if feature_values is not None else None,
-                    feature_names=np.array(_feature_names) if feature_names is not None else None,
+                    feature_names=np.array(_labels),
+                    matplotlib=matplotlib,
                     **kwargs
                 )  
