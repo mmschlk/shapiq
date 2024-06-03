@@ -32,7 +32,7 @@ from .games import ConditionalImputer, Game, MarginalImputer
 from .interaction_values import InteractionValues
 
 # plotting functions
-from .plot import network_plot, stacked_bar_plot, force_plot
+from .plot import force_plot, network_plot, stacked_bar_plot
 
 # public utils functions
 from .utils import (  # sets.py  # tree.py

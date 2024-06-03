@@ -541,9 +541,9 @@ def test_plot():
     )
 
     _ = interaction_values.plot_network()
-    _ = interaction_values.plot_network(feature_names = ["a" for _ in range(n)])
+    _ = interaction_values.plot_network(feature_names=["a" for _ in range(n)])
     _ = interaction_values.plot_stacked_bar()
-    _ = interaction_values.plot_stacked_bar(feature_names = ["a" for _ in range(n)])
+    _ = interaction_values.plot_stacked_bar(feature_names=["a" for _ in range(n)])
 
     n = 5
     min_order = 1
@@ -564,6 +564,6 @@ def test_plot():
     with pytest.raises(ValueError):
         _ = interaction_values.plot_network()
     with pytest.raises(ValueError):
-        _ = interaction_values.plot_network(feature_names = ["a" for _ in range(n)])
+        _ = interaction_values.plot_network(feature_names=["a" for _ in range(n)])
     _ = interaction_values.plot_stacked_bar()
-    _ = interaction_values.plot_stacked_bar(feature_names = ["a" for _ in range(n)])
+    _ = interaction_values.plot_stacked_bar(feature_names=["a" for _ in range(n)])

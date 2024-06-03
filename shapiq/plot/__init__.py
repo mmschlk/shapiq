@@ -1,9 +1,9 @@
 """Plotting functions for the shapiq package."""
 
 from .explanation_graph import si_graph_plot
+from .force import force_plot
 from .network import network_plot
 from .stacked_bar import stacked_bar_plot
-from .force import force_plot
 from .bar import bar_plot
 
 __all__ = [

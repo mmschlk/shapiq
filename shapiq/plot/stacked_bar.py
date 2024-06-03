@@ -1,7 +1,7 @@
 """This module contains functions to plot the n_sii stacked bar charts."""
 
 from copy import deepcopy
-from typing import Optional, Any
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
