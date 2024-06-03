@@ -120,7 +120,7 @@ class SOUM(Game):
             self.unanimity_games[i] = UnanimityGame(interaction_binary)
 
         # will store the Möbius transform
-        self.moebius_coefficients: Optional[InteractionValues] = None
+        self._moebius_coefficients: Optional[InteractionValues] = None
         self.converter: Optional[MoebiusConverter] = None
 
         # init base game
@@ -128,6 +128,12 @@ class SOUM(Game):
         super().__init__(
             n_players=n, normalize=normalize, verbose=verbose, normalization_value=empty_value
         )
+
+    @property
+    def moebius_coefficients(self) -> InteractionValues:
+        if self._moebius_coefficients is None:
+            self._moebius_coefficients = self.moebius_transform()
+        return self._moebius_coefficients
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Computes the worth of the coalition for the SOUM, i.e. sums up all linear coefficients,
@@ -156,8 +162,6 @@ class SOUM(Game):
         """
         from ....moebius_converter import MoebiusConverter
 
-        if self.moebius_coefficients is None:
-            self.moebius_coefficients = self.moebius_transform()
         if self.converter is None:
             self.converter = MoebiusConverter(self.moebius_coefficients)
         values = self.converter(index, order)
