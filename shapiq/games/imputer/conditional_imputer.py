@@ -1,12 +1,13 @@
 """Implementation of the conditional imputer."""
 
-from typing import Optional
 import warnings
+from typing import Optional
 
 import numpy as np
 
-from shapiq.games.imputer.base import Imputer
 from shapiq.approximator.sampling import CoalitionSampler
+from shapiq.games.imputer.base import Imputer
+
 
 class ConditionalImputer(Imputer):
     """A conditional imputer for the shapiq package.
@@ -20,11 +21,11 @@ class ConditionalImputer(Imputer):
         data: The background data to use for the explainer as a two-dimensional array
             with shape ``(n_samples, n_features)``.
         x: The explanation point to use the imputer on.
-        sample_size: The number of samples to draw from the conditional background data for imputation. 
+        sample_size: The number of samples to draw from the conditional background data for imputation.
             Defaults to ``10``.
         conditional_budget: The number of coallitions to sample per each point in ``data`` for training
             the generative model. Defaults to ``16``.
-        conditional_threshold: A quantile threshold defining a neighbourhood of samples to draw 
+        conditional_threshold: A quantile threshold defining a neighbourhood of samples to draw
             ``sample_size`` from. A value between ``0.0`` and ``1.0``. Defaults to ``0.05``.
         normalize: A flag to normalize the game values. If ``True`` (default), then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to ``True``.
@@ -77,15 +78,18 @@ class ConditionalImputer(Imputer):
             The initialized imputer.
         """
         import xgboost
+
         n_features = data.shape[1]
         if self.conditional_budget > 2**n_features:
-            warnings.warn(f'`conditional_budget` is higher than `2**n_features`; setting `conditional_budget = 2**n_features`')
+            warnings.warn(
+                "`conditional_budget` is higher than `2**n_features`; setting `conditional_budget = 2**n_features`"
+            )
             self.conditional_budget = 2**n_features
         X_tiled = np.repeat(data, repeats=self.conditional_budget, axis=0)
         coalition_sampler = CoalitionSampler(
             n_players=n_features,
             sampling_weights=np.array([1e-7 for _ in range(n_features + 1)]),
-            random_state=self._random_state
+            random_state=self._random_state,
         )
         coalitions_matrix = []
         for _ in range(data.shape[0]):
@@ -100,6 +104,7 @@ class ConditionalImputer(Imputer):
         self._data_embedded = tree_embedder.apply(data)
         self._tree_embedder = tree_embedder
         self._coalition_sampler = coalition_sampler
+        return self
 
     def fit(self, x: np.ndarray[float]) -> "ConditionalImputer":
         """Fits the imputer to the explanation point.
@@ -144,7 +149,7 @@ class ConditionalImputer(Imputer):
         """
         try:
             x_embedded = self._tree_embedder.apply(self._x)
-        except:
+        except ValueError:  # not correct shape
             x_embedded = self._tree_embedder.apply(self._x.reshape(1, -1))
         distances = hamming_distance(self._data_embedded, x_embedded)
         conditional_data = self.data[

@@ -30,7 +30,7 @@ def _normalize_value(
         base_value: The base value to scale the value by. For example, the alpha value for the
             highest interaction (as defined in ``BASE_ALPHA_VALUE``) or the size of the highest
             interaction edge (as defined in ``BASE_SIZE``).
-        cubic_scaling: Whether to scale cubically (``True``) or linearly (``False``. default) 
+        cubic_scaling: Whether to scale cubically (``True``) or linearly (``False``. default)
             between 0 and 1.
 
     Returns:

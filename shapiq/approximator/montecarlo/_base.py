@@ -26,7 +26,7 @@ class MonteCarlo(Approximator):
         index: The interaction index to be estimated. Available indices are ``['SII', 'kSII', 'STII',
             'FSII']``.
         stratify_coalition_size: If ``True`` (default), then each coalition size is estimated separately.
-        stratify_intersection: If ``True`` (default), then each coalition is stratified by the intersection 
+        stratify_intersection: If ``True`` (default), then each coalition is stratified by the intersection
             with the interaction.
         top_order: If ``True``, then only highest order interaction values are computed, e.g. required
             for ``'FSII'``. Defaults to ``False``.

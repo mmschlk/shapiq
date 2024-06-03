@@ -1,8 +1,8 @@
 """Game objects for the shapiq package."""
 
 from . import benchmark
-from .imputer import MarginalImputer, ConditionalImputer
 from .base import Game
+from .imputer import ConditionalImputer, MarginalImputer
 
 __all__ = ["Game", "MarginalImputer", "ConditionalImputer"] + benchmark.__all__
 

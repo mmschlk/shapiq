@@ -29,8 +29,8 @@ class TreeSHAPIQ:
 
     Args:
         model: A single tree model to explain. Note that unlike the ``TreeExplainer`` class,
-            TreeSHAP-IQ only supports a single tree. It can be a dictionary representation of the tree, 
-            a ``TreeModel`` object, or any other single tree model supported by the 
+            TreeSHAP-IQ only supports a single tree. It can be a dictionary representation of the tree,
+            a ``TreeModel`` object, or any other single tree model supported by the
             ``shapiq.explainer.tree.validation.validate_tree_model`` function.
         max_order: The maximum interaction order to be computed. An interaction order of ``1``
             corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley

@@ -69,16 +69,16 @@ def load_bike_sharing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     class_label = "count"
 
     num_feature_names = [
-        "hour", 
-        "temp", 
-        "feel_temp", 
-        "humidity", 
-        "windspeed", 
+        "hour",
+        "temp",
+        "feel_temp",
+        "humidity",
+        "windspeed",
         "year",
         "month",
         "holiday",
         "weekday",
-        "workingday"
+        "workingday",
     ]
     cat_feature_names = [
         "season",

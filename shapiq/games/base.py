@@ -9,7 +9,8 @@ from typing import Optional
 import numpy as np
 from tqdm.auto import tqdm
 
-from shapiq.utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
+from ..interaction_values import InteractionValues
+from ..utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
 
 
 class Game(ABC):
@@ -222,7 +223,7 @@ class Game(ABC):
                 coalitions will be used.
 
         Examples:
-            >>> from shapiq.games import DummyGame
+            >>> from shapiq.games.benchmark import DummyGame
             >>> game = DummyGame(4, interaction=(1, 2))
             >>> game.precomputed, game.n_values_stored
             False, 0
@@ -364,7 +365,7 @@ class Game(ABC):
         """Return a string representation of the game."""
         return self.__repr__()
 
-    def exact_values(self, index: str, order: int):  # TODO add type hint
+    def exact_values(self, index: str, order: int) -> InteractionValues:
         """Uses the ExactComputer to compute the exact interaction values.
 
         Args:

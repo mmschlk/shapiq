@@ -90,9 +90,13 @@ class SOUM(Game):
         n_basis_games: int,
         min_interaction_size: Optional[int] = None,
         max_interaction_size: Optional[int] = None,
+        random_state: Optional[int] = None,
+        normalize: bool = False,
+        verbose: bool = False,
     ):
-        # init base game
-        super().__init__(n_players=n, normalize=False)
+        from ....moebius_converter import MoebiusConverter
+
+        self._rng = np.random.default_rng(random_state)
 
         # set min_interaction_size and max_interaction_size to 0 and n if not specified
         self.min_interaction_size = min_interaction_size if min_interaction_size is not None else 0
@@ -101,21 +105,37 @@ class SOUM(Game):
         # setup basis games
         self.n_basis_games: int = n_basis_games
         self.unanimity_games = {}
-        self.linear_coefficients = np.random.random(size=self.n_basis_games) * 2 - 1
+        self.linear_coefficients = self._rng.random(size=self.n_basis_games) * 2 - 1
         # Compute interaction sizes (exclude size 0)
-        interaction_sizes = np.random.randint(
-            low=self.min_interaction_size, high=self.max_interaction_size, size=self.n_basis_games
+        interaction_sizes = self._rng.integers(
+            low=self.min_interaction_size,
+            high=self.max_interaction_size,
+            size=self.n_basis_games,
+            endpoint=True,
         )
         for i, size in enumerate(interaction_sizes):
-            interaction = np.random.choice(tuple(range(self.n_players)), size, replace=False)
-            interaction_binary = np.zeros(self.n_players, dtype=int)
+            interaction = self._rng.choice(tuple(range(n)), size, replace=False)
+            interaction_binary = np.zeros(n, dtype=int)
             interaction_binary[interaction] = 1
             self.unanimity_games[i] = UnanimityGame(interaction_binary)
 
-        # Compute the Möbius transform
-        self.moebius_coefficients = self.moebius_transform()
+        # will store the Möbius transform
+        self._moebius_coefficients: Optional[InteractionValues] = None
+        self.converter: Optional[MoebiusConverter] = None
 
-    def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
+        # init base game
+        empty_value = float(self.value_function(np.zeros((1, n)))[0])
+        super().__init__(
+            n_players=n, normalize=normalize, verbose=verbose, normalization_value=empty_value
+        )
+
+    @property
+    def moebius_coefficients(self) -> InteractionValues:
+        if self._moebius_coefficients is None:
+            self._moebius_coefficients = self.moebius_transform()
+        return self._moebius_coefficients
+
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Computes the worth of the coalition for the SOUM, i.e. sums up all linear coefficients,
         if coalition contains the interaction of the corresponding unanimity game.
 
@@ -129,6 +149,23 @@ class SOUM(Game):
         for i, game in self.unanimity_games.items():
             worth += self.linear_coefficients[i] * game(coalitions)
         return worth
+
+    def exact_values(self, index: str, order: int) -> InteractionValues:
+        """Computes the exact values for the given index and order.
+
+        Args:
+            index: The index to compute the values for.
+            order: The order to compute the values for.
+
+        Returns:
+            The exact values for the given index and order.
+        """
+        from ....moebius_converter import MoebiusConverter
+
+        if self.converter is None:
+            self.converter = MoebiusConverter(self.moebius_coefficients)
+        values = self.converter(index, order)
+        return values
 
     def moebius_transform(self):
         """Computes the (sparse) Möbius transform of the SOUM from the UnanimityGames. Used for

@@ -7,8 +7,8 @@ import numpy as np
 
 from shapiq.approximator import (
     SHAPIQ,
-    KernelSHAPIQ,
     InconsistentKernelSHAPIQ,
+    KernelSHAPIQ,
     PermutationSamplingSII,
     PermutationSamplingSTII,
     RegressionFSII,
@@ -83,9 +83,13 @@ class TabularExplainer(Explainer):
 
         self._random_state = random_state
         if imputer == "marginal":
-            self._imputer = MarginalImputer(self.predict, self.data, random_state=random_state, **kwargs)
+            self._imputer = MarginalImputer(
+                self.predict, self.data, random_state=random_state, **kwargs
+            )
         elif imputer == "conditional":
-            self._imputer = ConditionalImputer(self.predict, self.data, random_state=random_state, **kwargs)
+            self._imputer = ConditionalImputer(
+                self.predict, self.data, random_state=random_state, **kwargs
+            )
         elif isinstance(imputer, MarginalImputer) or isinstance(imputer, ConditionalImputer):
             self._imputer = imputer
         else:
@@ -99,9 +103,9 @@ class TabularExplainer(Explainer):
         self._max_order: int = max_order
         self._approximator = self._init_approximator(approximator, self.index, self._max_order)
 
-
-    def explain(self, x: np.ndarray, budget: Optional[int] = None, 
-                random_state: Optional[int] = None) -> InteractionValues:
+    def explain(
+        self, x: np.ndarray, budget: Optional[int] = None, random_state: Optional[int] = None
+    ) -> InteractionValues:
         """Explains the model's predictions.
 
         Args:
@@ -154,7 +158,7 @@ class TabularExplainer(Explainer):
                     n=self._n_features,
                     max_order=max_order,
                     random_state=self._random_state,
-                    index=index
+                    index=index,
                 )
             else:
                 return SHAPIQ(

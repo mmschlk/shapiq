@@ -1,5 +1,6 @@
 """This module contains the plotting utilities for the benchmark results."""
 
+from collections import defaultdict
 from typing import Callable, Optional, Union
 
 import numpy as np
@@ -7,23 +8,75 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # TODO: add the plot colors and styles for different approximators as well
-COLORS = {
+STYLE_DICT: dict[str, dict[str, str]] = {
     # permutation sampling
-    "PermutationSamplingSII": "#7d53de",
-    "PermutationSamplingSTII": "#7d53de",
-    "PermutationSamplingSV": "#7d53de",
+    "PermutationSamplingSII": {"color": "#7d53de", "marker": "o"},
+    "PermutationSamplingSTII": {"color": "#7d53de", "marker": "o"},
+    "PermutationSamplingSV": {"color": "#7d53de", "marker": "o"},
     # KernelSHAP-IQ
-    "KernelSHAPIQ": "#ff6f00",
-    "InconsistentKernelSHAPIQ": "#ffba08",
+    "KernelSHAP": {"color": "#ff6f00", "marker": "o"},
+    "KernelSHAPIQ": {"color": "#ff6f00", "marker": "o"},
+    # inconsistent KernelSHAP-IQ
+    "InconsistentKernelSHAPIQ": {"color": "#ffba08", "marker": "o"},
+    "kADDSHAP": {"color": "#ffba08", "marker": "o"},
     # SVARM-based
-    "SVARMIQ": "#00b4d8",
-    "SVARM": "#00b4d8",
+    "SVARMIQ": {"color": "#00b4d8", "marker": "o"},
+    "SVARM": {"color": "#00b4d8", "marker": "o"},
     # shapiq
-    "SHAPIQ": "#ef27a6",
+    "SHAPIQ": {"color": "#ef27a6", "marker": "o"},
+    "UnbiasedKernelSHAP": {"color": "#ef27a6", "marker": "o"},
+    # misc SV
+    "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
+    "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
 }
-LINE_STYLES_ORDER = {0: "solid", 1: "dotted", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
-LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "s", 3: "X", 4: "d", "all": "o"}
-LINE_THICKNESS = 1
+STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
+MARKERS = []
+LIGHT_GRAY = "#d3d3d3"
+LINE_STYLES_ORDER = {0: "solid", 1: "solid", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
+LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "o", 3: "X", 4: "d", "all": "o"}
+LINE_THICKNESS = 2
+MARKER_SIZE = 7
+
+
+LOG_SCALE_MAX = 1e2
+LOG_SCALE_MIN = 1e-7
+
+METRICS_LIMITS = {
+    "Precision@10": (0, 1),
+    "Precision@5": (0, 1),
+    "KendallTau": (-1, 1),
+    "KendallTau@5": (-1, 1),
+    "KendallTau@10": (-1, 1),
+    "KendallTau@50": (-1, 1),
+}
+METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
+
+
+def get_game_title_name(game_name: str) -> str:
+    """Changes the game name to a more readable title.
+
+    Args:
+        game_name: The game name to change.
+
+    Returns:
+        The game title name.
+
+    Example:
+        >>> get_game_title_name("ImageClassifierLocalXAI")
+        "Image Classifier Local XAI"
+        >>> get_game_title_name("AdultCensusClusterExplanation")
+        "Adult Census Cluster Explanation"
+    """
+    # split words by capital letters
+    words = ""
+    for char in game_name:
+        if char.isupper():
+            words += " "
+        words += char
+    words = words.replace("Tree S H A P I Q", "TreeSHAPIQ")  # TreeSHAPIQ
+    words = words.replace("X A I", "XAI")  # XAI
+    words = words.replace("S O U M", "SOUM")  # SOUM
+    return words.strip()
 
 
 def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
@@ -51,6 +104,9 @@ def plot_approximation_quality(
     approximators: Optional[list[str]] = None,
     aggregation: str = "mean",
     confidence_metric: Optional[str] = "sem",
+    log_scale_y: bool = False,
+    log_scale_min: float = LOG_SCALE_MIN,
+    log_scale_max: float = LOG_SCALE_MAX,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the approximation quality curves.
 
@@ -64,6 +120,8 @@ def plot_approximation_quality(
         aggregation: The aggregation function to plot for the metric values. Defaults to "mean".
             Available options are "mean", "median", "quantile_95", "quantile_5".
         confidence_metric: The metric to use for the confidence interval. Defaults to "sem".
+            Available options are "sem", "std", "var", "quantile_95", "quantile_5".
+        log_scale_y: Whether to use a log scale for the y-axis. Defaults to `False`.
 
     Returns:
         The figure and axes of the plot.
@@ -80,6 +138,7 @@ def plot_approximation_quality(
     # make sure approximators is a list
     if approximators is None:
         approximators = list(metric_data["approximator"].unique())
+        print("Approximators:", approximators)
 
     # set the confidence metrics
     confidence_metric_low, confidence_metric_high = confidence_metric, confidence_metric
@@ -89,38 +148,111 @@ def plot_approximation_quality(
 
     # create the plot
     fig, ax = plt.subplots()
+    approx_max_budget = 0
     for approximator in approximators:
         for order in metric_data["order"].unique():
             if orders is not None and order not in orders:
                 continue
             data_order = metric_data[
                 (metric_data["approximator"] == approximator) & (metric_data["order"] == order)
-            ]
+            ].copy()
+
+            if log_scale_y:
+                # manually set all below log_scale_min to log_scale_min without a lambda function
+                data_order[aggregation] = data_order[aggregation].apply(
+                    lambda x: log_scale_min if x < log_scale_min else x
+                )
+
             # get the plot colors and styles
             line_style, line_marker = LINE_STYLES_ORDER[order], LINE_MARKERS_ORDER[order]
-            color = COLORS.get(approximator, "black")
+            color = STYLE_DICT[approximator]["color"]
 
             # plot the mean values
             ax.plot(
-                data_order["budget"],
+                data_order["used_budget"],
                 data_order[aggregation],
                 color=color,
                 linestyle=line_style,
                 marker=line_marker,
                 linewidth=LINE_THICKNESS,
                 mec="white",
+                markersize=MARKER_SIZE,
             )
             # plot the error bars if the confidence metric is not None
             if confidence_metric is not None:
                 ax.fill_between(
-                    data_order["budget"],
+                    data_order["used_budget"],
                     data_order[aggregation] - data_order[confidence_metric_low],
                     data_order[aggregation] + data_order[confidence_metric_high],
                     alpha=0.1,
                     color=color,
                 )
+            approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
+
+    # add %model calls to the x-axis as a secondary axis
+    _set_x_axis_ticks(
+        ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
+    )
+
+    # add x/y labels
+    ax.set_ylabel(metric)
+    ax.set_xlabel(r"Model Evaluations (relative to $2^n$)")
+
+    # add grid to x-axis
+    ax.grid(axis="x", color=LIGHT_GRAY, linestyle="dashed")
+
+    if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE:
+        _set_y_axis_log_scale(ax, log_scale_min, log_scale_max)
+
+    if metric in METRICS_LIMITS:
+        ax.set_ylim(METRICS_LIMITS[metric])
 
     return fig, ax
+
+
+def _set_x_axis_ticks(ax: plt.Axes, n_players: int, max_budget: int) -> None:
+    """Sets the x-axis ticks in 25% intervals."""
+    if n_players <= 16:  # only for small number of players set the ticks as 25% intervals
+        budgets_relative = np.arange(0, 1.25, 0.25)
+        budgets = budgets_relative * (2**n_players)
+    else:
+        budgets = ax.get_xticks()
+        # remove negative values
+        budgets = budgets[budgets >= 0]
+        # remove all values less than max_budget * 1.05
+        budgets = budgets[budgets <= max_budget * 1.05]
+        budgets_relative = budgets / (2**n_players)
+
+    xtick_labels = []
+    for bdgt, bdgt_rel in zip(budgets, budgets_relative):
+        bdgt_rel_str = f"{bdgt_rel:.0%}"
+        if bdgt_rel <= 0.01 and bdgt_rel != 0:
+            bdgt_rel_str = "<1%"
+        if bdgt_rel == 0:
+            xtick_labels.append("0")
+        else:
+            xtick_labels.append(f"{int(bdgt)}\n({bdgt_rel_str})")
+
+    ax.set_xticks(budgets)
+    ax.set_xticklabels(xtick_labels)
+
+
+def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float, log_scale_max: float) -> None:
+    """Sets the y-axis to a log scale and adjusts the limits."""
+    # adjust the top limit to be one order of magnitude higher than the current top limit
+    top_lim = ax.get_ylim()[1]
+    top_lim = f"{top_lim:.2e}"  # get the top limi in scientific notation
+    top_lim = top_lim.split("e")[1]  # get the exponent
+    top_lim = int(top_lim) + 1  # get the top limit as the exponent + 1
+    top_lim = 10**top_lim  # get the top limit in scientific notation
+
+    if top_lim > log_scale_max:
+        top_lim = log_scale_max
+
+    # set the y-axis limits
+    ax.set_ylim(top=top_lim)
+    ax.set_ylim(bottom=log_scale_min)
+    ax.set_yscale("log")
 
 
 def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFrame:
@@ -140,7 +272,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
     metric_dfs = []
     for metric_col in metric_columns:
         data_order = (
-            results_df.groupby(["approximator", "budget", "iteration"])
+            results_df.groupby(["approximator", "used_budget", "iteration"])
             .agg(
                 {
                     metric_col: [
@@ -221,7 +353,7 @@ def add_legend(
             [],
             [],
             label=approximator,
-            color=COLORS.get(approximator, "black"),
+            color=STYLE_DICT[approximator]["color"],
             linewidth=LINE_THICKNESS,
         )
 

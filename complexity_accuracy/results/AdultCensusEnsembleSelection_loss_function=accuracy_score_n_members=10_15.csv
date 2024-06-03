@@ -1,0 +1,81 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.19121733106218883,-9.544290349287937,1,k-SII,uniform,Adult Census Ensemble Selection
+2,0.4201654509312102,-9.014860001830632,2,k-SII,uniform,Adult Census Ensemble Selection
+3,0.5516231885979033,-2.2454609023855086,3,k-SII,uniform,Adult Census Ensemble Selection
+4,1.151939650034097,-3.518600017100752,4,k-SII,uniform,Adult Census Ensemble Selection
+5,1.2496272140930769,-2.4882008971201186,5,k-SII,uniform,Adult Census Ensemble Selection
+6,0.9730953746633118,-1.8115823389974768,6,k-SII,uniform,Adult Census Ensemble Selection
+7,0.7854516307378008,-4.105046169738554,7,k-SII,uniform,Adult Census Ensemble Selection
+8,0.15111689910946116,-1.1788219653764194,8,k-SII,uniform,Adult Census Ensemble Selection
+9,0.09282633996240452,-6.382626523693456,9,k-SII,uniform,Adult Census Ensemble Selection
+10,3.7373957568945565e-24,1.0,10,k-SII,uniform,Adult Census Ensemble Selection
+1,0.19121733106218883,-9.544290349287937,1,STII,uniform,Adult Census Ensemble Selection
+2,2.170770727933787,-21.839778920888207,2,STII,uniform,Adult Census Ensemble Selection
+3,6.457962130675832,-4.0632684856682175,3,STII,uniform,Adult Census Ensemble Selection
+4,7.759825524970211,-1.3092659704683447,4,STII,uniform,Adult Census Ensemble Selection
+5,4.407961216479695,-0.5498383052114992,5,STII,uniform,Adult Census Ensemble Selection
+6,1.2652478957986828,-0.23066972476374104,6,STII,uniform,Adult Census Ensemble Selection
+7,0.18639130312380148,-0.10390523817854369,7,STII,uniform,Adult Census Ensemble Selection
+8,0.013364219460222093,0.04113934714264755,8,STII,uniform,Adult Census Ensemble Selection
+9,0.00034241228512534385,0.6918548507633083,9,STII,uniform,Adult Census Ensemble Selection
+10,2.335093279589818e-28,1.0,10,STII,uniform,Adult Census Ensemble Selection
+1,0.19121733426009663,-9.54429073534487,1,FSII,uniform,Adult Census Ensemble Selection
+2,0.03077663037082634,-0.28431759874756857,2,FSII,uniform,Adult Census Ensemble Selection
+3,0.018495957544217574,-0.7735126461626669,3,FSII,uniform,Adult Census Ensemble Selection
+4,0.006034183303207761,0.03788854304255285,4,FSII,uniform,Adult Census Ensemble Selection
+5,0.001932493934690434,0.23711762812156334,5,FSII,uniform,Adult Census Ensemble Selection
+6,0.0004948527458363153,0.6226905249959271,6,FSII,uniform,Adult Census Ensemble Selection
+7,0.00010243906255818598,0.8851378238203895,7,FSII,uniform,Adult Census Ensemble Selection
+8,1.8201817298941826e-05,0.9774441678868012,8,FSII,uniform,Adult Census Ensemble Selection
+9,3.9773867282093115e-06,0.9950049897842442,9,FSII,uniform,Adult Census Ensemble Selection
+10,7.286760102126916e-18,0.9999999999999909,10,FSII,uniform,Adult Census Ensemble Selection
+1,0.0007022590938115684,-6.4834897663086775,1,FBII,uniform,Adult Census Ensemble Selection
+2,0.0006425698700300725,-3.185295466374603,2,FBII,uniform,Adult Census Ensemble Selection
+3,0.000554507638432129,-1.2952180030895395,3,FBII,uniform,Adult Census Ensemble Selection
+4,0.0004172806167587159,-0.10152857772348112,4,FBII,uniform,Adult Census Ensemble Selection
+5,0.0002551090076461967,0.5284414927958341,5,FBII,uniform,Adult Census Ensemble Selection
+6,0.000121360167483504,0.8201378925712801,6,FBII,uniform,Adult Census Ensemble Selection
+7,4.302495607798573e-05,0.9428676544780341,7,FBII,uniform,Adult Census Ensemble Selection
+8,1.2151843764518488e-05,0.9844991785668299,8,FBII,uniform,Adult Census Ensemble Selection
+9,3.3438699719287707e-06,0.9957819701103416,9,FBII,uniform,Adult Census Ensemble Selection
+10,3.5864946387823557e-28,1.0,10,FBII,uniform,Adult Census Ensemble Selection
+1,1.1958012381044427,-0.7193519556541852,1,k-SII,Shapley kernel,Adult Census Ensemble Selection
+2,1.232874468155365,0.34412684009505845,2,k-SII,Shapley kernel,Adult Census Ensemble Selection
+3,1.8081505526558646,0.2498088520686894,3,k-SII,Shapley kernel,Adult Census Ensemble Selection
+4,2.8490387638050314,-0.2528144705083788,4,k-SII,Shapley kernel,Adult Census Ensemble Selection
+5,3.137837280626216,-0.19884489506602132,5,k-SII,Shapley kernel,Adult Census Ensemble Selection
+6,2.552939794536302,0.19616824459858084,6,k-SII,Shapley kernel,Adult Census Ensemble Selection
+7,1.6391184562928962,0.26187747200921074,7,k-SII,Shapley kernel,Adult Census Ensemble Selection
+8,0.4396232803331557,0.4722450515114025,8,k-SII,Shapley kernel,Adult Census Ensemble Selection
+9,0.1740330238492831,0.7002791886559796,9,k-SII,Shapley kernel,Adult Census Ensemble Selection
+10,7.123656531562601e-22,1.0,10,k-SII,Shapley kernel,Adult Census Ensemble Selection
+1,1.1958012381044427,-0.7193519556541852,1,STII,Shapley kernel,Adult Census Ensemble Selection
+2,5.762316694319601,-0.2746941945596435,2,STII,Shapley kernel,Adult Census Ensemble Selection
+3,25.353916827241427,-0.9690785939785247,3,STII,Shapley kernel,Adult Census Ensemble Selection
+4,57.519862572652016,-0.4320260402413312,4,STII,Shapley kernel,Adult Census Ensemble Selection
+5,64.55481592143259,-0.5289216946441742,5,STII,Shapley kernel,Adult Census Ensemble Selection
+6,35.700842792033576,-0.23051319159937855,6,STII,Shapley kernel,Adult Census Ensemble Selection
+7,9.463191625685115,-0.34142904333103563,7,STII,Shapley kernel,Adult Census Ensemble Selection
+8,1.0829965659914498,0.3958179775391837,8,STII,Shapley kernel,Adult Census Ensemble Selection
+9,0.035063017996835213,0.940900090807136,9,STII,Shapley kernel,Adult Census Ensemble Selection
+10,8.055174687335236e-26,1.0,10,STII,Shapley kernel,Adult Census Ensemble Selection
+1,1.1958012495919816,-0.719352006518343,1,FSII,Shapley kernel,Adult Census Ensemble Selection
+2,0.42906434570883967,0.5642582916526324,2,FSII,Shapley kernel,Adult Census Ensemble Selection
+3,0.15028650280228026,0.782089116698205,3,FSII,Shapley kernel,Adult Census Ensemble Selection
+4,0.04639899659449592,0.9289633051855083,4,FSII,Shapley kernel,Adult Census Ensemble Selection
+5,0.011925961764690362,0.9806530873629566,5,FSII,Shapley kernel,Adult Census Ensemble Selection
+6,0.0024435059197514923,0.9960093855568035,6,FSII,Shapley kernel,Adult Census Ensemble Selection
+7,0.0003957986777406913,0.9993513759817657,7,FSII,Shapley kernel,Adult Census Ensemble Selection
+8,4.5615700466960276e-05,0.9999252317987695,8,FSII,Shapley kernel,Adult Census Ensemble Selection
+9,7.211645001414514e-06,0.9999881788937531,9,FSII,Shapley kernel,Adult Census Ensemble Selection
+10,3.3698018707828344e-17,1.0,10,FSII,Shapley kernel,Adult Census Ensemble Selection
+1,0.6774572398102076,-412.6690162547409,1,FBII,Shapley kernel,Adult Census Ensemble Selection
+2,0.6084970414654112,-155.16989019385093,2,FBII,Shapley kernel,Adult Census Ensemble Selection
+3,0.4703837135325092,-11.518167090875869,3,FBII,Shapley kernel,Adult Census Ensemble Selection
+4,0.28147121688381027,-2.064252569745414,4,FBII,Shapley kernel,Adult Census Ensemble Selection
+5,0.11685837400093836,0.563562785218699,5,FBII,Shapley kernel,Adult Census Ensemble Selection
+6,0.030541165690897834,0.9255007100215726,6,FBII,Shapley kernel,Adult Census Ensemble Selection
+7,0.0044805279821736035,0.9917882761966286,7,FBII,Shapley kernel,Adult Census Ensemble Selection
+8,0.00033609598796055187,0.9994328495823805,8,FBII,Shapley kernel,Adult Census Ensemble Selection
+9,2.3715203536521017e-05,0.9999609518041309,9,FBII,Shapley kernel,Adult Census Ensemble Selection
+10,6.190570299558728e-26,1.0,10,FBII,Shapley kernel,Adult Census Ensemble Selection

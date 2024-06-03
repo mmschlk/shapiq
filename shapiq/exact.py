@@ -50,7 +50,7 @@ class ExactComputer:
         self._grand_coalition_set: set[int] = set(self._grand_coalition_tuple)
         self._big_M: float = 10e7
         self._n_interactions: np.ndarray = self.get_n_interactions(self.n)
-        self._computed = {}  # will store all computed indices
+        self._computed: dict[tuple[str, int], InteractionValues] = {}  # will store all computations
 
         # evaluate the game on the powerset
         computed_game = self.compute_game_values(game_fun)
@@ -70,15 +70,19 @@ class ExactComputer:
             "SGV": self.base_generalized_value,
             "BGV": self.base_generalized_value,
             "CHGV": self.base_generalized_value,
+            "IGV": self.base_generalized_value,
+            "EGV": self.base_generalized_value,
             # shapley_base_interaction
             "SII": self.shapley_base_interaction,
             "BII": self.shapley_base_interaction,
             "CHII": self.shapley_base_interaction,
+            "Co-Moebius": self.shapley_base_interaction,
             # probabilistic_value
             "SV": self.probabilistic_value,
             "BV": self.probabilistic_value,
             # shapley_generalized_value
             "JointSV": self.shapley_generalized_value,
+            "FBII": self.compute_fii,
         }
         self.available_indices: set[str] = set(self._index_mapping.keys())
         self.available_concepts: dict[str, dict] = ALL_AVAILABLE_CONCEPTS
@@ -106,12 +110,12 @@ class ExactComputer:
         if order is None:
             order = self.n
 
-        if index in self._computed:
-            return copy.deepcopy(self._computed[index])
+        if (index, order) in self._computed:
+            return copy.deepcopy(self._computed[(index, order)])
         elif index in self.available_indices:
             computation_function = self._index_mapping[index]
             computed_index: InteractionValues = computation_function(index=index, order=order)
-            self._computed[index] = computed_index
+            self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
             raise ValueError(f"Index {index} not supported.")
@@ -146,6 +150,10 @@ class ExactComputer:
         Returns:
             The Moebius transform for all coalitions stored in an InteractionValues object
         """
+        try:
+            return self._computed[("Moebius", self.n)]
+        except KeyError:  # if not computed yet, just continue
+            pass
         # compute the Moebius transform
         moebius_transform = np.zeros(2**self.n)
         coalition_lookup = {}
@@ -169,7 +177,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
-        self._computed["Moebius"] = copy.deepcopy(interaction_values)
+        self._computed[("Moebius", self.n)] = copy.deepcopy(interaction_values)
         return copy.deepcopy(interaction_values)
 
     def _base_weights(self, coalition_size: int, interaction_size: int, index: str) -> float:
@@ -200,6 +208,16 @@ class ExactComputer:
                 (interaction_size + coalition_size)
                 * binom(self.n, interaction_size + coalition_size)
             )
+        elif index in ["Moebius", "IGV"]:
+            if coalition_size == 0:
+                return 1
+            else:
+                return 0
+        elif index in ["Co-Moebius", "EGV"]:
+            if coalition_size == self.n - interaction_size:
+                return 1
+            else:
+                return 0
         else:
             raise ValueError(f"Index {index} not supported")
 
@@ -223,20 +241,24 @@ class ExactComputer:
             else:
                 return 0.0
 
-    def _get_fsii_weights(self) -> np.ndarray:
-        """Pre-computes the kernel weight for the least square representation of FSII
+    def _get_fii_weights(self, index: str) -> np.ndarray:
+        """Pre-computes the kernel weight for the least square representation of FSII and FBII
 
         Returns:
             An array of the kernel weights for ``0,...,n with "infinite weight"`` on ``0`` and ``n``.
         """
-        fsii_weights = np.zeros(self.n + 1, dtype=float)
-        fsii_weights[0] = self._big_M
-        fsii_weights[-1] = self._big_M
-        for coalition_size in range(1, self.n):
-            fsii_weights[coalition_size] = 1 / (
-                (self.n - 1) * binom(self.n - 2, coalition_size - 1)
-            )
-        return fsii_weights
+        fii_weights = np.zeros(self.n + 1, dtype=float)
+
+        if index == "FSII":
+            fii_weights[0] = self._big_M
+            fii_weights[-1] = self._big_M
+            for coalition_size in range(1, self.n):
+                fii_weights[coalition_size] = 1 / (
+                    (self.n - 1) * binom(self.n - 2, coalition_size - 1)
+                )
+        elif index == "FBII":
+            fii_weights[:] = 2 ** (-self.n)
+        return fii_weights
 
     def _get_stii_weights(self, order: int) -> np.ndarray:
         """Pre-computes the STII weights for the CII representation (using discrete derivatives)
@@ -360,7 +382,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
-        self._computed[index] = copy.deepcopy(base_interaction)
+        self._computed[(index, order)] = copy.deepcopy(base_interaction)
         return copy.deepcopy(base_interaction)
 
     def base_generalized_value(self, index: str, order: int) -> InteractionValues:
@@ -414,7 +436,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
-        self._computed[index] = copy.deepcopy(base_generalized_values)
+        self._computed[(index, order)] = copy.deepcopy(base_generalized_values)
         return copy.deepcopy(base_generalized_values)
 
     def base_aggregation(
@@ -488,17 +510,18 @@ class ExactComputer:
         )
         return copy.deepcopy(stii)
 
-    def compute_fsii(self, order: int) -> InteractionValues:
+    def compute_fii(self, index: str, order: int) -> InteractionValues:
         """Computes the FSII index up to order ``order`` after
             `Tsai et al. (2023) <https://jmlr.org/papers/v24/22-0202.html>`_.
 
         Args:
             order: The highest order of interactions
+            index: FSII for Shapley or FBII for Banzhaf
 
         Returns:
-            InteractionValues object containing FSII
+            InteractionValues object containing FSII or FBII
         """
-        fsii_weights = self._get_fsii_weights()
+        fii_weights = self._get_fii_weights(index)
         least_squares_weights = np.zeros(2**self.n, dtype=float)
         coalition_matrix = np.zeros((2**self.n, self._n_interactions[order]), dtype=bool)
 
@@ -512,7 +535,7 @@ class ExactComputer:
         coalition_store = {}
         # Set least squares matrices
         for coalition_pos, coalition in enumerate(powerset(self._grand_coalition_set)):
-            least_squares_weights[coalition_pos] = fsii_weights[len(coalition)]
+            least_squares_weights[coalition_pos] = fii_weights[len(coalition)]
             for interaction in powerset(coalition, max_size=order):
                 pos = interaction_lookup[interaction]
                 coalition_matrix[coalition_pos, pos] = 1
@@ -520,26 +543,40 @@ class ExactComputer:
         weight_matrix_sqrt = np.sqrt(np.diag(least_squares_weights))
         coalition_matrix_weighted_sqrt = np.dot(weight_matrix_sqrt, coalition_matrix)
 
-        regression_response = self.game_values - self.baseline_value  # normalization
+        if index == "FSII":
+            regression_response = self.game_values - self.baseline_value  # normalization
+        elif index == "FBII":
+            regression_response = self.game_values  # no normalization
+        else:
+            raise ValueError(f"Index {index} not supported.")
+
         regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
         # solve the weighted least squares (WLSQ) problem
-        fsii_values, residuals, rank, singular_values = np.linalg.lstsq(
+        fii_values, residuals, rank, singular_values = np.linalg.lstsq(
             coalition_matrix_weighted_sqrt, regression_response_weighted_sqrt, rcond=None
         )
 
         # transform into InteractionValues object
-        fsii_values[0] = self.baseline_value  # set baseline value
-        fsii = InteractionValues(
-            values=fsii_values,
-            index="FSII",
+        if index == "FSII":
+            # For FSII ensure empty set is set to baseline
+            # TODO: could be removed in future, but requires testing
+            baseline_value = self.baseline_value
+            fii_values[0] = baseline_value  # set baseline value
+        if index == "FBII":
+            # For FBII the empty set is computed
+            baseline_value = fii_values[0]
+
+        fii = InteractionValues(
+            values=fii_values,
+            index=index,
             max_order=order,
             min_order=0,
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
+            baseline_value=baseline_value,
         )
-        return copy.deepcopy(fsii)
+        return copy.deepcopy(fii)
 
     def get_jointsv_weights(self, order: int) -> np.ndarray:
         """Pre-compute JointSV weights for all coalition sizes ``(0, ..., n - order)``.
@@ -579,7 +616,7 @@ class ExactComputer:
             An InteractionValues object containing kADD-SHAP values
         """
 
-        weights = self._get_fsii_weights()
+        weights = self._get_fii_weights(index="FSII")
         least_squares_weights = np.zeros(2**self.n)
         coalition_matrix = np.zeros((2**self.n, self._n_interactions[order]))
         bernoulli_weights = get_bernoulli_weights(order)
@@ -619,7 +656,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
+            baseline_value=self.baseline_value,
         )
 
         return kADD_shap
@@ -667,7 +704,7 @@ class ExactComputer:
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             estimated=False,
-            baseline_value=self.baseline_value,  # TODO (Fabi) is this correct?
+            baseline_value=self.baseline_value,
         )
         return jointSV
 
@@ -691,7 +728,7 @@ class ExactComputer:
         """
         if index == "JointSV":
             shapley_generalized_value = self.compute_joint_sv(order)
-            self._computed[index] = shapley_generalized_value
+            self._computed[(index, order)] = shapley_generalized_value
             return copy.copy(shapley_generalized_value)
         else:
             raise ValueError(f"Index {index} not supported")
@@ -719,18 +756,18 @@ class ExactComputer:
         """
         if index == "k-SII":
             sii = self.base_interaction("SII", order)
-            self._computed["SII"] = sii  # nice
+            self._computed[("SII", order)] = sii  # nice
             shapley_interaction = self.base_aggregation(sii, order)
         elif index == "STII":
             shapley_interaction = self.compute_stii(order)
-        elif index == "FSII":
-            shapley_interaction = self.compute_fsii(order)
+        elif index in ["FSII", "FBII"]:
+            shapley_interaction = self.compute_fii(index, order)
         elif index == "kADD-SHAP":
             shapley_interaction = self.compute_kadd_shap(order)
         else:
             raise ValueError(f"Index {index} not supported")
 
-        self._computed[index] = shapley_interaction
+        self._computed[(index, order)] = shapley_interaction
         return copy.copy(shapley_interaction)
 
     def shapley_base_interaction(self, index: str, order: int) -> InteractionValues:
@@ -752,7 +789,7 @@ class ExactComputer:
 
         """
         base_interaction = self.base_interaction(index, order)
-        self._computed[index] = base_interaction
+        self._computed[(index, order)] = base_interaction
         return copy.copy(base_interaction)
 
     def probabilistic_value(self, index: str, *args, **kwargs) -> InteractionValues:
@@ -765,7 +802,8 @@ class ExactComputer:
         probabilistic values `Robert J. Weber (2009) <https://doi.org/10.1017/CBO9780511528446.008>`_ for the following indices
         are currently supported:
             - SV: Shapley value: Shapley, L. S. (1953) "17. A Value for n-Person Games" Princeton University Press, pp. 307-318
-            - BV: Banzhaf value: Banzhaf III, J. F. (1964). "Weighted voting doesn't work: A mathematical analysis" Rutgers L. Rev., 19, 317.
+            - BV: Banzhaf value: Banzhaf III, J. F. (1964). "Weighted voting doesn't work: A
+                mathematical analysis" Rutgers L. Rev., 19, 317.
 
         Args:
             index: The interaction index
@@ -777,10 +815,11 @@ class ExactComputer:
         Raises:
             ValueError: If the index is not supported
         """
+        order = 1
         if index == "BV":
-            probabilistic_value = self.base_interaction(index="BII", order=1)
+            probabilistic_value = self.base_interaction(index="BII", order=order)
         elif index == "SV":
-            probabilistic_value = self.base_interaction(index="SII", order=1)
+            probabilistic_value = self.base_interaction(index="SII", order=order)
             # Change emptyset value of SII to baseline value
             probabilistic_value.baseline_value = self.baseline_value
             probabilistic_value.values[probabilistic_value.interaction_lookup[tuple()]] = (
@@ -788,7 +827,7 @@ class ExactComputer:
             )
         else:
             raise ValueError(f"Index {index} not supported")
-        self._computed[index] = probabilistic_value
+        self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
 
 

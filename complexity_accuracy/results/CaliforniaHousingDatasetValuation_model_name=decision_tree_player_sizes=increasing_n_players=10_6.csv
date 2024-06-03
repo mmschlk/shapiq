@@ -1,0 +1,81 @@
+,l2,r2,order,index,weighting_scheme,game_title
+1,0.07174905982885624,-5.765902902220897,1,k-SII,uniform,California Housing Dataset Valuation
+2,0.08225505864876717,-3.719393568641249,2,k-SII,uniform,California Housing Dataset Valuation
+3,0.10116113530595497,-3.0327837217259903,3,k-SII,uniform,California Housing Dataset Valuation
+4,0.1340341313734313,-3.522747509135419,4,k-SII,uniform,California Housing Dataset Valuation
+5,0.1336824942574792,-2.0462229305348663,5,k-SII,uniform,California Housing Dataset Valuation
+6,0.05444986297440464,-0.39709399552616653,6,k-SII,uniform,California Housing Dataset Valuation
+7,0.033927482687593394,-2.8658978409635796,7,k-SII,uniform,California Housing Dataset Valuation
+8,0.0037140641874713115,-0.3052898680368923,8,k-SII,uniform,California Housing Dataset Valuation
+9,2.4152450221735654e-05,0.9871017817316096,9,k-SII,uniform,California Housing Dataset Valuation
+10,1.9942642263945625e-24,1.0,10,k-SII,uniform,California Housing Dataset Valuation
+1,0.07174905982885624,-5.765902902220897,1,STII,uniform,California Housing Dataset Valuation
+2,0.4678029302851493,-13.950069166792598,2,STII,uniform,California Housing Dataset Valuation
+3,0.9946857751543239,-4.294054072116471,3,STII,uniform,California Housing Dataset Valuation
+4,0.899489923543094,-1.0740928488305217,4,STII,uniform,California Housing Dataset Valuation
+5,0.37257528941063595,-0.6217637556803333,5,STII,uniform,California Housing Dataset Valuation
+6,0.0736533954202813,-0.0526439975117301,6,STII,uniform,California Housing Dataset Valuation
+7,0.006641434892106025,-0.04216358566827649,7,STII,uniform,California Housing Dataset Valuation
+8,0.0001925088320983065,0.9119535601197655,8,STII,uniform,California Housing Dataset Valuation
+9,8.909212269223154e-08,0.9999516068896575,9,STII,uniform,California Housing Dataset Valuation
+10,1.1605745326549842e-28,1.0,10,STII,uniform,California Housing Dataset Valuation
+1,0.07174906083683237,-5.765903083204765,1,FSII,uniform,California Housing Dataset Valuation
+2,0.008958796063452432,0.3083889556157504,2,FSII,uniform,California Housing Dataset Valuation
+3,0.004326687262696241,-0.2409877706187291,3,FSII,uniform,California Housing Dataset Valuation
+4,0.001338396129939164,0.19071866520228797,4,FSII,uniform,California Housing Dataset Valuation
+5,0.00039507665708345683,0.7981930694118289,5,FSII,uniform,California Housing Dataset Valuation
+6,0.0001028733845802946,0.9471417703892298,6,FSII,uniform,California Housing Dataset Valuation
+7,2.4179115549347665e-05,0.9868615480684142,7,FSII,uniform,California Housing Dataset Valuation
+8,3.7307098633135034e-06,0.9979670470949537,8,FSII,uniform,California Housing Dataset Valuation
+9,1.0348746413877195e-09,0.9999994370716625,9,FSII,uniform,California Housing Dataset Valuation
+10,8.467649888983548e-18,0.9999999999999954,10,FSII,uniform,California Housing Dataset Valuation
+1,0.0008266527257407079,0.18292747709061663,1,FBII,uniform,California Housing Dataset Valuation
+2,0.000564986918687965,0.5563130339675881,2,FBII,uniform,California Housing Dataset Valuation
+3,0.0004168848428665565,0.706727456733367,3,FBII,uniform,California Housing Dataset Valuation
+4,0.00028192027570806316,0.8188705578775178,4,FBII,uniform,California Housing Dataset Valuation
+5,0.00014432121741917635,0.9148073196833164,5,FBII,uniform,California Housing Dataset Valuation
+6,5.544785415653245e-05,0.9689007100091008,6,FBII,uniform,California Housing Dataset Valuation
+7,1.719215605790022e-05,0.9905599099694316,7,FBII,uniform,California Housing Dataset Valuation
+8,3.0593099989463625e-06,0.9983330903691684,8,FBII,uniform,California Housing Dataset Valuation
+9,8.70040260637518e-10,0.9999995267345528,9,FBII,uniform,California Housing Dataset Valuation
+10,6.558425061357324e-29,1.0,10,FBII,uniform,California Housing Dataset Valuation
+1,0.3743175019299815,0.00960219773854265,1,k-SII,Shapley kernel,California Housing Dataset Valuation
+2,0.25668648509637515,0.6273810912230131,2,k-SII,Shapley kernel,California Housing Dataset Valuation
+3,0.3134379854450875,0.47298940536411005,3,k-SII,Shapley kernel,California Housing Dataset Valuation
+4,0.3548613117130099,0.09311576184638204,4,k-SII,Shapley kernel,California Housing Dataset Valuation
+5,0.3274435611275392,0.3542337474431858,5,k-SII,Shapley kernel,California Housing Dataset Valuation
+6,0.1715553969126531,0.7089216103518033,6,k-SII,Shapley kernel,California Housing Dataset Valuation
+7,0.07358815162451746,0.8169146360214803,7,k-SII,Shapley kernel,California Housing Dataset Valuation
+8,0.015978974309205925,0.9469124741842299,8,k-SII,Shapley kernel,California Housing Dataset Valuation
+9,4.528158653710521e-05,0.9998534211966209,9,k-SII,Shapley kernel,California Housing Dataset Valuation
+10,1.108014731561709e-22,1.0,10,k-SII,Shapley kernel,California Housing Dataset Valuation
+1,0.3743175019299815,0.00960219773854265,1,STII,Shapley kernel,California Housing Dataset Valuation
+2,1.2562853725853875,0.06190626777151664,2,STII,Shapley kernel,California Housing Dataset Valuation
+3,3.9844407314823482,-1.198190805085991,3,STII,Shapley kernel,California Housing Dataset Valuation
+4,6.838553523148978,-0.2000367413790387,4,STII,Shapley kernel,California Housing Dataset Valuation
+5,5.569938224338614,-0.6710794700369831,5,STII,Shapley kernel,California Housing Dataset Valuation
+6,2.0896339892023903,0.11563779906903504,6,STII,Shapley kernel,California Housing Dataset Valuation
+7,0.3148460135369,0.18635976931970144,7,STII,Shapley kernel,California Housing Dataset Valuation
+8,0.011980222260814098,0.965451436048451,8,STII,Shapley kernel,California Housing Dataset Valuation
+9,9.12303336368451e-06,0.9999703720422428,9,STII,Shapley kernel,California Housing Dataset Valuation
+10,5.067136186485564e-26,1.0,10,STII,Shapley kernel,California Housing Dataset Valuation
+1,0.3743175054291408,0.009602174884078107,1,FSII,Shapley kernel,California Housing Dataset Valuation
+2,0.1081173674153685,0.7750007171846891,2,FSII,Shapley kernel,California Housing Dataset Valuation
+3,0.03040264454773914,0.9101758700986267,3,FSII,Shapley kernel,California Housing Dataset Valuation
+4,0.008385000715630926,0.9741378462141131,4,FSII,Shapley kernel,California Housing Dataset Valuation
+5,0.0018355285472726592,0.9940614088271847,5,FSII,Shapley kernel,California Housing Dataset Valuation
+6,0.0003552511321137564,0.9988459153940594,6,FSII,Shapley kernel,California Housing Dataset Valuation
+7,5.9647474158680696e-05,0.9998057967723503,7,FSII,Shapley kernel,California Housing Dataset Valuation
+8,7.390232928186332e-06,0.9999759377839003,8,FSII,Shapley kernel,California Housing Dataset Valuation
+9,1.87639518215498e-09,0.9999999938904643,9,FSII,Shapley kernel,California Housing Dataset Valuation
+10,3.9443229166717065e-17,0.9999999999999999,10,FSII,Shapley kernel,California Housing Dataset Valuation
+1,0.24787243535503783,-7.556347770231881,1,FBII,Shapley kernel,California Housing Dataset Valuation
+2,0.17442426754616622,-3.7904378399803704,2,FBII,Shapley kernel,California Housing Dataset Valuation
+3,0.1063073525425701,-0.08208366651607557,3,FBII,Shapley kernel,California Housing Dataset Valuation
+4,0.05264895216644948,0.5983379356651727,4,FBII,Shapley kernel,California Housing Dataset Valuation
+5,0.016749288858162018,0.9251978230042188,5,FBII,Shapley kernel,California Housing Dataset Valuation
+6,0.00339790154888084,0.9871069911174416,6,FBII,Shapley kernel,California Housing Dataset Valuation
+7,0.00036582084224607257,0.9987715296588695,7,FBII,Shapley kernel,California Housing Dataset Valuation
+8,2.690957707578797e-05,0.9999117584670469,8,FBII,Shapley kernel,California Housing Dataset Valuation
+9,6.170449825823037e-09,0.9999999799104842,9,FBII,Shapley kernel,California Housing Dataset Valuation
+10,1.5677047288432134e-26,1.0,10,FBII,Shapley kernel,California Housing Dataset Valuation
