@@ -301,9 +301,7 @@ class Regression(Approximator):
         )
 
         if index_approximation == "kADD-SHAP":
-            shapley_interactions_values[
-                0
-            ] += empty_coalition_value  # TODO: verify if condition can be removed.
+            shapley_interactions_values[0] += empty_coalition_value
         else:
             shapley_interactions_values[0] = empty_coalition_value
 

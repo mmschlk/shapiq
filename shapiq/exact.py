@@ -150,6 +150,10 @@ class ExactComputer:
         Returns:
             The Moebius transform for all coalitions stored in an InteractionValues object
         """
+        try:
+            return self._computed[("Moebius", self.n)]
+        except KeyError:  # if not computed yet, just continue
+            pass
         # compute the Moebius transform
         moebius_transform = np.zeros(2**self.n)
         coalition_lookup = {}
@@ -173,7 +177,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
-        self._computed["Moebius"] = copy.deepcopy(interaction_values)
+        self._computed[("Moebius", self.n)] = copy.deepcopy(interaction_values)
         return copy.deepcopy(interaction_values)
 
     def _base_weights(self, coalition_size: int, interaction_size: int, index: str) -> float:
@@ -378,7 +382,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
-        self._computed[index] = copy.deepcopy(base_interaction)
+        self._computed[(index, order)] = copy.deepcopy(base_interaction)
         return copy.deepcopy(base_interaction)
 
     def base_generalized_value(self, index: str, order: int) -> InteractionValues:
@@ -432,7 +436,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
-        self._computed[index] = copy.deepcopy(base_generalized_values)
+        self._computed[(index, order)] = copy.deepcopy(base_generalized_values)
         return copy.deepcopy(base_generalized_values)
 
     def base_aggregation(
@@ -541,8 +545,10 @@ class ExactComputer:
 
         if index == "FSII":
             regression_response = self.game_values - self.baseline_value  # normalization
-        if index == "FBII":
+        elif index == "FBII":
             regression_response = self.game_values  # no normalization
+        else:
+            raise ValueError(f"Index {index} not supported.")
 
         regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
         # solve the weighted least squares (WLSQ) problem
@@ -552,7 +558,8 @@ class ExactComputer:
 
         # transform into InteractionValues object
         if index == "FSII":
-            # For FSII ensure empty set is set to baseline TODO: could be removed in future, but requires testing
+            # For FSII ensure empty set is set to baseline
+            # TODO: could be removed in future, but requires testing
             baseline_value = self.baseline_value
             fii_values[0] = baseline_value  # set baseline value
         if index == "FBII":
@@ -721,7 +728,7 @@ class ExactComputer:
         """
         if index == "JointSV":
             shapley_generalized_value = self.compute_joint_sv(order)
-            self._computed[index] = shapley_generalized_value
+            self._computed[(index, order)] = shapley_generalized_value
             return copy.copy(shapley_generalized_value)
         else:
             raise ValueError(f"Index {index} not supported")
@@ -749,7 +756,7 @@ class ExactComputer:
         """
         if index == "k-SII":
             sii = self.base_interaction("SII", order)
-            self._computed["SII"] = sii  # nice
+            self._computed[("SII", order)] = sii  # nice
             shapley_interaction = self.base_aggregation(sii, order)
         elif index == "STII":
             shapley_interaction = self.compute_stii(order)
@@ -760,7 +767,7 @@ class ExactComputer:
         else:
             raise ValueError(f"Index {index} not supported")
 
-        self._computed[index] = shapley_interaction
+        self._computed[(index, order)] = shapley_interaction
         return copy.copy(shapley_interaction)
 
     def shapley_base_interaction(self, index: str, order: int) -> InteractionValues:
@@ -782,7 +789,7 @@ class ExactComputer:
 
         """
         base_interaction = self.base_interaction(index, order)
-        self._computed[index] = base_interaction
+        self._computed[(index, order)] = base_interaction
         return copy.copy(base_interaction)
 
     def probabilistic_value(self, index: str, *args, **kwargs) -> InteractionValues:
@@ -795,7 +802,8 @@ class ExactComputer:
         [probabilistic values](https://doi.org/10.1017/CBO9780511528446.008) the following indices
         are currently supported:
             - SV: Shapley value: https://doi.org/10.1515/9781400881970-018
-            - BV: Banzhaf value: Banzhaf III, J. F. (1964). Weighted voting doesn't work: A mathematical analysis. Rutgers L. Rev., 19, 317.
+            - BV: Banzhaf value: Banzhaf III, J. F. (1964). Weighted voting doesn't work: A
+                mathematical analysis. Rutgers L. Rev., 19, 317.
 
         Args:
             index: The interaction index
@@ -807,10 +815,11 @@ class ExactComputer:
         Raises:
             ValueError: If the index is not supported
         """
+        order = 1
         if index == "BV":
-            probabilistic_value = self.base_interaction(index="BII", order=1)
+            probabilistic_value = self.base_interaction(index="BII", order=order)
         elif index == "SV":
-            probabilistic_value = self.base_interaction(index="SII", order=1)
+            probabilistic_value = self.base_interaction(index="SII", order=order)
             # Change emptyset value of SII to baseline value
             probabilistic_value.baseline_value = self.baseline_value
             probabilistic_value.values[probabilistic_value.interaction_lookup[tuple()]] = (
@@ -818,7 +827,7 @@ class ExactComputer:
             )
         else:
             raise ValueError(f"Index {index} not supported")
-        self._computed[index] = probabilistic_value
+        self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
 
 
