@@ -55,6 +55,7 @@ from . import (
     AdultCensusGlobalXAI,
     AdultCensusLocalXAI,
     AdultCensusRandomForestEnsembleSelection,
+    AdultCensusUncertaintyExplanation,
     AdultCensusUnsupervisedData,
     BikeSharingClusterExplanation,
     BikeSharingDatasetValuation,
@@ -535,6 +536,22 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "precompute": True,
         },
     ],
+    # uncertainty explanation configurations -------------------------------------------------------
+    AdultCensusUncertaintyExplanation: [
+        {
+            "configurations": [
+                {"uncertainty_to_explain": "total", "imputer": "marginal"},
+                {"uncertainty_to_explain": "total", "imputer": "conditional"},
+                {"uncertainty_to_explain": "aleatoric", "imputer": "marginal"},
+                {"uncertainty_to_explain": "aleatoric", "imputer": "conditional"},
+                {"uncertainty_to_explain": "epistemic", "imputer": "marginal"},
+                {"uncertainty_to_explain": "epistemic", "imputer": "conditional"},
+            ],
+            "iteration_parameter": "x",
+            "n_players": 14,
+            "precompute": True,
+        },
+    ],
     # TreeSHAPIQXAI configurations -----------------------------------------------------------------
     SynthDataTreeSHAPIQXAI: [
         {
@@ -685,6 +702,7 @@ GAME_TO_CLASS_MAPPING = {
     "AdultCensusLocalXAI": AdultCensusLocalXAI,
     "AdultCensusRandomForestEnsembleSelection": AdultCensusRandomForestEnsembleSelection,
     "AdultCensusUnsupervisedData": AdultCensusUnsupervisedData,
+    "AdultCensusUncertaintyExplanation": AdultCensusUncertaintyExplanation,
     "BikeSharingClusterExplanation": BikeSharingClusterExplanation,
     "BikeSharingDataValuation": BikeSharingDataValuation,
     "BikeSharingDatasetValuation": BikeSharingDatasetValuation,

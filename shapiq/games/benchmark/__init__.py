@@ -1,7 +1,6 @@
 """Benchmark games."""
 
-# dataset valuation games
-# data valuation games
+# data and dataset valuation games
 from .data_valuation.base import DataValuation
 from .data_valuation.benchmark import AdultCensus as AdultCensusDataValuation
 from .data_valuation.benchmark import BikeSharing as BikeSharingDataValuation
@@ -73,6 +72,10 @@ from .treeshapiq_xai.benchmark import BikeSharing as BikeSharingTreeSHAPIQXAI
 from .treeshapiq_xai.benchmark import CaliforniaHousing as CaliforniaHousingTreeSHAPIQXAI
 from .treeshapiq_xai.benchmark import SynthData as SynthDataTreeSHAPIQXAI
 
+# uncertainty explanation games
+from .uncertainty.base import UncertaintyExplanation
+from .uncertainty.benchmark import AdultCensus as AdultCensusUncertaintyExplanation
+
 # cluster explanation games
 from .unsupervised_cluster.base import ClusterExplanation
 from .unsupervised_cluster.benchmark import AdultCensus as AdultCensusClusterExplanation
@@ -137,6 +140,9 @@ __all__ = [
     "AdultCensusRandomForestEnsembleSelection",
     "BikeSharingRandomForestEnsembleSelection",
     "CaliforniaHousingRandomForestEnsembleSelection",
+    # uncertainty explanation games
+    "UncertaintyExplanation",
+    "AdultCensusUncertaintyExplanation",
     # unspervised data
     "UnsupervisedData",
     "AdultCensusUnsupervisedData",

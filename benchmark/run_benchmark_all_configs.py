@@ -36,7 +36,7 @@ if __name__ == "__main__":
         "--rerun_if_exists",
         type=bool,
         required=False,
-        default=False,
+        default=True,
     )
     parser.add_argument(
         "--omit_regex",

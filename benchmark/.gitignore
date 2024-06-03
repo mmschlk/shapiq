@@ -1,5 +1,9 @@
 *.csv
 *.json
-results/
+/
 plots/
 results_old/
+results_older/
+results_new/
+results/
+paper_plots/

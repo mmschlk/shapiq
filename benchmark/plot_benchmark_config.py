@@ -20,11 +20,11 @@ if __name__ == "__main__":
 
     # run parameters
     save_fig = True
-    metric = "Precision@5"  # MSE Precision@10
+    metric = "MSE"  # MSE Precision@10
 
     # benchmark to plot parameters
     game = "SynthDataTreeSHAPIQXAI"
-    config_id = 4
+    config_id = 1
     n_player_id = 0
     index = "k-SII"
     order = 2
@@ -35,11 +35,11 @@ if __name__ == "__main__":
 
     # plot parameters
     log_scale_y = True
-    log_scale_max = 1e10
-    log_scale_min = 1e-1
+    log_scale_max = 2e-1
+    log_scale_min = 1e-5
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
-    increase_font_size: int = 2
+    increase_font_size: int = 4
     fig_size = (5, 5)
 
     # create the title -----------------------------------------------------------------------------
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         game_n_player_id=n_player_id,
         game_n_games=n_games,
     )
-    save_name = os.path.basename(save_path).split(".")[0] + ".pdf"
+    save_name = str(metric) + "_" + os.path.basename(save_path).split(".")[0] + ".pdf"
     save_path = os.path.join("plots", save_name)
 
     # plot the approximation quality ---------------------------------------------------------------

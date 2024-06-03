@@ -4,14 +4,18 @@ ranking at highest budget. The results are then saved to a csv file."""
 
 import os
 import sys
+import warnings
 from pathlib import Path
 
 import pandas as pd
 from tqdm.auto import tqdm
 
-# add shapiq to the path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-os.makedirs("eval", exist_ok=True)
+try:
+    from shapiq.games.benchmark.plot import abbreviate_application_name, create_application_name
+except ImportError:  # add shapiq to the path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    os.makedirs("eval", exist_ok=True)
+    from shapiq.games.benchmark.plot import abbreviate_application_name, create_application_name
 
 EVAL_DIR = Path(__file__).parent / "eval"
 BENCHMARK_RESULTS_DIR = Path(__file__).parent / "results"
@@ -27,21 +31,51 @@ METRICS = {
 }
 
 
-def _create_application_name(setup: str) -> str:
-    """Create an application name from the setup string."""
-    application_name = "".join(setup.split("_")[0:2])
-    application_name = application_name.replace("Game", "")
-    application_name = application_name.replace("SynthData", "")
-    application_name = application_name.replace("AdultCensus", "")
-    application_name = application_name.replace("CaliforniaHousing", "")
-    application_name = application_name.replace("BikeSharing", "")
-    application_name = application_name.replace("ImageClassifier", "LocalExplanation")
-    application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
-    application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
-    application_name = application_name.replace(
-        "RandomForestEnsembleSelection", "EnsembleSelection"
-    )
-    return application_name
+APPLICATION_ORDERING = {
+    "LocalExplanation": 1,
+    "GlobalExplanation": 2,
+    "FeatureSelection": 3,
+    "DataValuation": 4,
+    "DatasetValuation": 5,
+    "EnsembleSelection": 6,
+    "ClusterExplanation": 7,
+    "UnsupervisedData": 8,
+    "UncertaintyExplanation": 9,
+    "SOUM": 10,
+}
+
+SV_APPROXIMATORS_ORDERING = {
+    "KernelSHAP": 1,
+    "kADDSHAP": 2,
+    "UnbiasedKernelSHAP": 3,
+    "PermutationSamplingSV": 4,
+    "StratifiedSamplingSV": 5,
+    "OwenSamplingSV": 6,
+    "SVARM": 7,
+}
+
+
+SI_APPROXIMATORS_ORDERING = {
+    "KernelSHAPIQ": 1,
+    "InconsistentKernelSHAPIQ": 2,
+    "SHAPIQ": 3,
+    "PermutationSamplingSII": 4,
+    "SVARMIQ": 5,
+}
+
+
+def sort_values(list_to_sort: list[str], ordering: dict[str, int]) -> list[str]:
+    """Sort the application names according to the APPLICATION_ORDERING."""
+    sorted_list = []
+    for name in list_to_sort:
+        if name in ordering:
+            sorted_list.append(name)
+    sorted_list = sorted(sorted_list, key=lambda x: ordering[x])
+    for name in list_to_sort:
+        if name not in sorted_list:
+            warnings.warn(f"Item {name} not in {ordering}. Appending.")
+            sorted_list.append(name)
+    return sorted_list
 
 
 def _get_best_approximator(df: pd.DataFrame) -> dict[str, list[tuple]]:
@@ -98,7 +132,7 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
         setup = "_".join(parameters[:-2])
 
         # get the game name
-        application_name = _create_application_name(setup)
+        application_name = create_application_name(setup)
         run_id = file_name
 
         # load the benchmark results
@@ -142,38 +176,7 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
     return results_df
 
 
-def _abbreviate_application_name(application_name: str) -> str:
-    """Abbreviate the application name by taking the first three characters after each capital
-    letter and adding a dot. The last character is not abbreviated.
-
-    Args:
-        application_name: The application name to abbreviate.
-
-    Example:
-        >>> _abbreviate_application_name("LocalExplanation")
-        "Loc. Exp."
-    """
-    if application_name == "DatasetValuation":
-        return "Dset. Val."
-    abbreviations = []
-    count_char = 0
-    for char in application_name:
-        if char.isupper():
-            count_char = 0
-            abbreviations.append(char)
-        else:
-            count_char += 1
-            if count_char == 3:
-                abbreviations.append(".")
-            elif count_char > 3:
-                continue
-            else:
-                abbreviations.append(char)
-    abbreviation = "".join(abbreviations)
-    return abbreviation.strip()
-
-
-def plot_stacked_bar(df: pd.DataFrame, setting: str = "high") -> None:
+def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False) -> None:
     """Summarizes the benchmark results by plotting a collection of stacked bar plots.
 
     For each metric, this function plots a stacked bar plot showing the percentage of the best
@@ -196,6 +199,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high") -> None:
             - n_player
             - full_budget
         setting: The budget setting to use. Can be 'all', 'high', or 'low'.
+        save: Whether to save the plot to a file.
     """
     assert setting in [
         "all",
@@ -209,6 +213,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high") -> None:
 
     # get all unique applications and metrics and index
     all_applications = df["application_name"].unique()
+    all_applications = sort_values(all_applications, APPLICATION_ORDERING)
     all_metrics = df["metric"].unique()
     all_indices = df["index"].unique()
 
@@ -236,8 +241,8 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high") -> None:
             metric_df = pd.concat(high_budget_dfs)
         fig, ax = plt.subplots()
         width = 0.4
-        padding = 0.1
-        sep = 0.5
+        padding = 0.15
+        sep = 0.6
         x = list(range(len(all_applications)))
         x_ticks_index, x_tick_labels_index, x_ticks_app, x_ticks_labels_app = [], [], [], []
         for app_i, application in enumerate(all_applications):
@@ -251,10 +256,14 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high") -> None:
                     ]
                 )
                 approximators = index_approximators[index]
+                if index == "SV":
+                    approximators_sorted = sort_values(approximators, SV_APPROXIMATORS_ORDERING)
+                else:
+                    approximators_sorted = sort_values(approximators, SI_APPROXIMATORS_ORDERING)
                 start, height = 0, 0
                 pos = position + index_i * (width + padding) + (sep * position)
                 all_pos.append(pos)
-                for approximator in approximators:
+                for approximator in approximators_sorted:
                     color = STYLE_DICT[approximator]["color"]
                     count = len(
                         metric_df[
@@ -274,16 +283,11 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high") -> None:
                 x_tick_labels_index.append(index_title)
             pos_mean = sum(all_pos) / len(all_pos)
             x_ticks_app.append(pos_mean)
-            x_ticks_labels_app.append(_abbreviate_application_name(application))
-
-        ax.set_ylabel("Percentage of best approximator")
-        ax.set_title(f"Percentage of best approximator for {metric}")
+            x_ticks_labels_app.append(abbreviate_application_name(application, new_line=True))
 
         # add the x-ticks for the indices
         ax.set_xticks(x_ticks_index)
         ax.set_xticklabels(x_tick_labels_index)
-        # rotate the x-ticks
-        # plt.xticks(rotation=90)
 
         # add a second x-axis for the application names with the same limits
         ax2 = ax.twiny()
@@ -291,7 +295,17 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high") -> None:
         ax2.set_xticklabels(x_ticks_labels_app)
         ax2.set_xlim(ax.get_xlim())
 
+        # add a title for the axis
+        ax2.set_xlabel("Application")
+        ax.set_ylabel(f"Perc. of approximator being best: {metric}")
+
+        # set y-axis to max 105
+        ax.set_ylim(0, 105)
+
         plt.tight_layout()
+        if save:
+            save_path = EVAL_DIR / f"stacked_bar_{metric}.pdf"
+            plt.savefig(save_path)
         plt.show()
 
 
@@ -323,4 +337,4 @@ if __name__ == "__main__":
         print()
 
     # plot the results
-    plot_stacked_bar(eval_df, setting=budget_setting)
+    plot_stacked_bar(eval_df, setting=budget_setting, save=True)
