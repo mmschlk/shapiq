@@ -63,8 +63,7 @@ class MoebiusConverter:
             return copy.deepcopy(self._computed[(index, order)])
         elif index in self.available_indices:  # if index is supported, compute it
             computation_function = self._index_mapping[index]
-            # TODO: this breaks with all functions that do not have index in signature
-            computed_index: InteractionValues = computation_function(index, order)
+            computed_index: InteractionValues = computation_function(index=index, order=order)
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
@@ -144,7 +143,7 @@ class MoebiusConverter:
 
         return base_interactions
 
-    def stii_routine(self, order: int):
+    def stii_routine(self, order: int, **kwargs):
         """Computes STII. Routine to distribute the Moebius coefficients onto all STII interactions.
 
         The lower-order interactions are equal to their Moebius coefficients, whereas the top-order
@@ -152,6 +151,7 @@ class MoebiusConverter:
 
         Args:
             order: The order of the explanation
+            **kwargs: Additional keyword arguments (not used).
 
         Returns:
             An InteractionValues object containing the STII interactions.
@@ -217,6 +217,7 @@ class MoebiusConverter:
         (size <= order).
 
         Args:
+            index: The interaction index, e.g. FSII or FBII
             order: The order of the explanation
 
         Returns:
