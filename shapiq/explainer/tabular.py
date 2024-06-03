@@ -1,4 +1,4 @@
-"""The Tabular Explainer class for the shapiq package."""
+"""Tabular Explainer class for the shapiq package."""
 
 import warnings
 from typing import Optional, Union
@@ -8,6 +8,7 @@ import numpy as np
 from shapiq.approximator import (
     SHAPIQ,
     InconsistentKernelSHAPIQ,
+    KernelSHAPIQ,
     PermutationSamplingSII,
     PermutationSamplingSTII,
     RegressionFSII,
@@ -37,7 +38,7 @@ AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII"}
 class TabularExplainer(Explainer):
     """The tabular explainer as the main interface for the shapiq package.
 
-    The `TabularExplainer` class is the main interface for the `shapiq` package. It can be used
+    The ``TabularExplainer`` class is the main interface for the ``shapiq`` package. It can be used
     to explain the predictions of a model by estimating the Shapley interaction values.
 
     Args:
@@ -46,13 +47,14 @@ class TabularExplainer(Explainer):
         data: A background dataset to be used for imputation.
         imputer: Either an object of class Imputer or a string from ``["marginal", "conditional"]``.
             Defaults to ``"marginal"``, which innitializes the default MarginalImputer.
-        approximator: An approximator to use for the explainer. Defaults to `"auto"`, which will
+        approximator: An approximator to use for the explainer. Defaults to ``"auto"``, which will
             automatically choose the approximator based on the number of features and the number of
             samples in the background data.
-        index: Type of Shapley interaction index to use. Must be one of `"SII"` (Shapley Interaction Index),
-            `"k-SII"` (k-Shapley Interaction Index), `"STII"` (Shapley-Taylor Interaction Index), or
-            `"FSII"` (Faithful Shapley Interaction Index). Defaults to `"k-SII"`.
-        max_order: The maximum interaction order to be computed. Defaults to `2`.
+        index: Type of Shapley interaction index to use. Must be one of ``"SII"`` (Shapley Interaction Index),
+            ``"k-SII"`` (k-Shapley Interaction Index), ``"STII"`` (Shapley-Taylor Interaction Index), or
+            ``"FSII"`` (Faithful Shapley Interaction Index). Defaults to ``"k-SII"``.
+        max_order: The maximum interaction order to be computed. Defaults to ``2``.
+        random_state: The random state to initialize Imputer and Approximator with. Defaults to ``None``.
         **kwargs: Additional keyword-only arguments passed to the imputer.
 
     Attributes:
@@ -101,7 +103,9 @@ class TabularExplainer(Explainer):
         self._max_order: int = max_order
         self._approximator = self._init_approximator(approximator, self.index, self._max_order)
 
-    def explain(self, x: np.ndarray, budget: Optional[int] = None) -> InteractionValues:
+    def explain(
+        self, x: np.ndarray, budget: Optional[int] = None, random_state: Optional[int] = None
+    ) -> InteractionValues:
         """Explains the model's predictions.
 
         Args:
@@ -109,6 +113,7 @@ class TabularExplainer(Explainer):
                 (1, n_features).
             budget: The budget to use for the approximation. Defaults to `None`, which will
                 set the budget to 2**n_features based on the number of features.
+            random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
         """
         if budget is None:
             budget = 2**self._n_features
@@ -117,6 +122,10 @@ class TabularExplainer(Explainer):
                     f"Using the budget of 2**n_features={budget}, which might take long\
                               to compute. Set the `budget` parameter to suppress this warning."
                 )
+        if random_state is not None:
+            self._imputer._rng = np.random.default_rng(random_state)
+            self._approximator._rng = np.random.default_rng(random_state)
+            self._approximator._sampler._rng = np.random.default_rng(random_state)
 
         # initialize the imputer with the explanation point
         imputer = self._imputer.fit(x)
@@ -144,7 +153,14 @@ class TabularExplainer(Explainer):
                     max_order=max_order,
                     random_state=self._random_state,
                 )
-            else:  # default to ShapIQ
+            elif index == "SII" or index == "k-SII":
+                return KernelSHAPIQ(
+                    n=self._n_features,
+                    max_order=max_order,
+                    random_state=self._random_state,
+                    index=index,
+                )
+            else:
                 return SHAPIQ(
                     n=self._n_features,
                     max_order=max_order,

@@ -1,7 +1,11 @@
+"""Implementation of the conditional imputer."""
+
+import warnings
 from typing import Optional
 
 import numpy as np
 
+from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.games.imputer.base import Imputer
 
 
@@ -15,16 +19,20 @@ class ConditionalImputer(Imputer):
         model: The model to explain as a callable function expecting a data points as input and
             returning the model's predictions.
         data: The background data to use for the explainer as a two-dimensional array
-            with shape (n_samples, n_features).
-        x: The explanation point to use the imputer to.
-        method: Either 'generative' or TODO 'empirical'.
-        sample_size: The number of samples to draw from the conditional background data. Defaults to 10.
-        conditional_budget: TODO
-        conditional_threshold: TODO
+            with shape ``(n_samples, n_features)``.
+        x: The explanation point to use the imputer on.
+        sample_size: The number of samples to draw from the conditional background data for imputation.
+            Defaults to ``10``.
+        conditional_budget: The number of coallitions to sample per each point in ``data`` for training
+            the generative model. Defaults to ``16``.
+        conditional_threshold: A quantile threshold defining a neighbourhood of samples to draw
+            ``sample_size`` from. A value between ``0.0`` and ``1.0``. Defaults to ``0.05``.
+        normalize: A flag to normalize the game values. If ``True`` (default), then the game values are
+            normalized and centered to be zero for the empty set of features. Defaults to ``True``.
         categorical_features: A list of indices of the categorical features in the background data.
-            TODO: not implemented
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`
+            Currently unused.
+        method: Defaults to ``'generative'``.
+        random_state: The random state to use for sampling. Defaults to ``None``.
 
     Attributes:
         replacement_data: The data to use for imputation. Either samples from the background data
@@ -37,15 +45,17 @@ class ConditionalImputer(Imputer):
         model,
         data: np.ndarray,
         x: np.ndarray = None,
-        method="generative",
         sample_size: int = 10,
-        conditional_budget: int = 1000,
+        conditional_budget: int = 128,
         conditional_threshold: float = 0.05,
-        categorical_features: list[int] = None,
-        random_state: Optional[int] = None,
         normalize: bool = True,
+        categorical_features: list[int] = None,
+        method="generative",
+        random_state: Optional[int] = None,
     ) -> None:
         super().__init__(model, data, categorical_features, random_state)
+        if method != "generative":
+            raise ValueError("Currently only a generative conditional imputer is implemented.")
         self.method = method
         self.sample_size = sample_size
         self.conditional_budget = conditional_budget
@@ -69,16 +79,31 @@ class ConditionalImputer(Imputer):
         """
         import xgboost
 
-        X_tiled = np.tile(data, (self.conditional_budget, 1))
-        mask = self._rng.choice(
-            [True, False], size=(data.shape[0] * self.conditional_budget, data.shape[1])
+        n_features = data.shape[1]
+        if self.conditional_budget > 2**n_features:
+            warnings.warn(
+                "`conditional_budget` is higher than `2**n_features`; setting `conditional_budget = 2**n_features`"
+            )
+            self.conditional_budget = 2**n_features
+        X_tiled = np.repeat(data, repeats=self.conditional_budget, axis=0)
+        coalition_sampler = CoalitionSampler(
+            n_players=n_features,
+            sampling_weights=np.array([1e-7 for _ in range(n_features + 1)]),
+            random_state=self._random_state,
         )
+        coalitions_matrix = []
+        for _ in range(data.shape[0]):
+            coalition_sampler.sample(self.conditional_budget)
+            coalitions_matrix.append(coalition_sampler.coalitions_matrix)
+        coalitions_matrix = np.concatenate(coalitions_matrix, axis=0)
+        # (data.shape[0] * self.conditional_budget, n_features)
         X_masked = X_tiled.copy()
-        X_masked[mask] = np.NaN
+        X_masked[coalitions_matrix] = np.NaN
         tree_embedder = xgboost.XGBRegressor(random_state=self._random_state)
         tree_embedder.fit(X_masked, X_tiled)
         self._data_embedded = tree_embedder.apply(data)
         self._tree_embedder = tree_embedder
+        self._coalition_sampler = coalition_sampler
         return self
 
     def fit(self, x: np.ndarray[float]) -> "ConditionalImputer":

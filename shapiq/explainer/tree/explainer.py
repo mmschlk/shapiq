@@ -1,4 +1,4 @@
-"""The TreeExplainer class using the TreeSHAPIQ algorithm for
+"""TreeExplainer class that uses the TreeSHAPIQ algorithm for
 computing any-order Shapley Interactions for tree ensembles."""
 
 import copy
@@ -25,17 +25,15 @@ class TreeExplainer(Explainer):
     Interaction values efficiently.
 
     Args:
-        model: A single tree-based model to explain. Note unlike the TreeExplainer class,
-            TreeSHAP-IQ only supports a single tree model. The tree model can be a dictionary
-            representation of the tree, a `TreeModel` object, or any other tree model supported by
-            the `shapiq.explainer.tree.validation.validate_tree_model` function.
-        max_order: The maximum interaction order to be computed. An interaction order of 1
-            corresponds to the Shapley value. Any value higher than 1 computes the Shapley
-            interaction values up to that order. Defaults to 2.
-        min_order: The minimum interaction order to be computed. Defaults to 1.
-        interaction_type: The type of interaction to be computed. The interaction type can be
-            "k-SII" (default), "SII", "STII", "FSII", or "BZF". All indices apart from "BZF" will
-            reduce to the "SV" (Shapley value) for order 1.
+        model: A tree-based model to explain.
+        max_order: The maximum interaction order to be computed. An interaction order of ``1``
+            corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
+            interaction values up to that order. Defaults to ``2``.
+        min_order: The minimum interaction order to be computed. Defaults to ``1``.
+        index: The type of interaction to be computed. It can be one of
+            ``["k-SII", "SII", "STII", "FSII", "BZF"]``. All indices apart from ``"BZF"`` will
+            reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
+        class_label: The class label of the model to explain.
     """
 
     def __init__(
@@ -43,7 +41,7 @@ class TreeExplainer(Explainer):
         model: Union[dict, TreeModel, Any],
         max_order: int = 2,
         min_order: int = 1,
-        interaction_type: str = "k-SII",
+        index: str = "k-SII",
         class_label: Optional[int] = None,
         **kwargs,
     ) -> None:
@@ -63,7 +61,7 @@ class TreeExplainer(Explainer):
 
         # setup explainers for all trees
         self._treeshapiq_explainers: list[TreeSHAPIQ] = [
-            TreeSHAPIQ(model=_tree, max_order=self._max_order, interaction_type=interaction_type)
+            TreeSHAPIQ(model=_tree, max_order=self._max_order, index=index)
             for _tree in self._trees
         ]
 

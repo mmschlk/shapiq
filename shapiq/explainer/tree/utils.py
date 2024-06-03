@@ -14,12 +14,12 @@ def get_conditional_sample_weights(
     The conditional sample weights are the probabilities of going left or right at each decision
     node. The probabilities are computed by the number of instances going through each node
     divided by the number of instances going through the parent node. The conditional sample
-    weights of the root node is 1.
+    weights of the root node is ``1``.
 
     Args:
         sample_count: The counts of the instances going through each node.
         parent_array: The parent array denoting the id of the parent node for each node in the tree.
-            The parent of the root node is -1 or otherwise specified.
+            The parent of the root node is ``-1`` or otherwise specified.
 
     Returns:
         The conditional sample weights of the nodes.

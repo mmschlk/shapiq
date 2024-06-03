@@ -19,8 +19,9 @@ Contents
 
    notebooks/shapiq_scikit_learn
    notebooks/treeshapiq_lightgbm
-   notebooks/parallel_computation
    notebooks/language_model_game
+   notebooks/conditional_imputer
+   notebooks/parallel_computation
 
 .. toctree::
    :maxdepth: 2

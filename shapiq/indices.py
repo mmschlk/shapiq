@@ -1,5 +1,5 @@
-"""This module contains a summary of all interaction indices and game theoretic concepts available
-in the `shapiq` package."""
+"""Summary of all interaction indices and game theoretic concepts available
+in ``shapiq``."""
 
 ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     # Base Interactions
@@ -134,7 +134,7 @@ def index_generalizes_sv(index: str) -> bool:
         index: The interaction index.
 
     Returns:
-        `True` if the index generalizes the Shapley Value, `False` otherwise.
+        ``True`` if the index generalizes the Shapley Value, ``False`` otherwise.
 
     Examples:
         >>> index_generalizes_sv("SII")
@@ -156,7 +156,7 @@ def index_generalizes_bv(index: str) -> bool:
         index: The interaction index.
 
     Returns:
-        `True` if the index generalizes the Banzhaf Value, `False` otherwise.
+        ``True`` if the index generalizes the Banzhaf Value, ``False`` otherwise.
 
     Examples:
         >>> index_generalizes_bv("BII")
@@ -220,13 +220,13 @@ def get_index_from_computation_index(index: str, max_order: int) -> str:
 
 
 def is_index_aggregated(index: str) -> bool:
-    """Checks if the given index is an aggregated interaction index as denoted by a `-`.
+    """Checks if the given index is an aggregated interaction index as denoted by a ``-``.
 
     Args:
         index: The interaction index.
 
     Returns:
-        `True` if the index is an aggregated interaction index, `False` otherwise.
+        ``True`` if the index is an aggregated interaction index, ``False`` otherwise.
 
     Examples:
         >>> is_index_aggregated("k-SII")
@@ -249,7 +249,7 @@ def is_empty_value_the_baseline(index: str) -> bool:
         index: The interaction index.
 
     Returns:
-        `True` if the empty value is the baseline value, `False` otherwise.
+        ``True`` if the empty value is the baseline value, ``False`` otherwise.
 
     Examples:
         >>> is_empty_value_the_baseline("SII")

@@ -20,7 +20,7 @@ def convert_sklearn_forest(
     Args:
         tree_model: The scikit-learn random forest model to convert.
         class_label: The class label of the model to explain. Only used for classification models.
-            Defaults to 1.
+            Defaults to ``1``.
 
     Returns:
         The converted random forest model.
@@ -40,7 +40,7 @@ def convert_sklearn_tree(
     Args:
         tree_model: The scikit-learn decision tree model to convert.
         class_label: The class label of the model to explain. Only used for classification models.
-            Defaults to 1.
+            Defaults to ``1``.
         scaling: The scaling factor for the tree values.
 
     Returns:
