@@ -1,4 +1,4 @@
-# shapiq: Shapley Interactions for Machine Learning <img src="docs/source/_static/logo_shapiq_light.svg" alt="shapiq_logo" align="right" height="250px"/>
+# shapiq: Shapley Interactions for Machine Learning <img src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/logo_shapiq_light.svg" alt="shapiq_logo" align="right" height="250px"/>
 
 [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 [![Coverage Status](https://coveralls.io/repos/github/mmschlk/shapiq/badge.svg?branch=main)](https://coveralls.io/github/mmschlk/shapiq?branch=main)
@@ -86,7 +86,7 @@ interaction_values.plot_network()
 The pseudo-code above can produce the following plot (here also an image is added):
 
 <p align="center">
-  <img width="400px" src="docs/source/_static/network_example.png" alt="network_plot_example">
+  <img width="400px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/network_example.png" alt="network_plot_example">
 </p>
 
 ## 📖 Documentation with tutorials
