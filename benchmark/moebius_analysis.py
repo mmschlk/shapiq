@@ -85,7 +85,7 @@ if __name__ == "__main__":
     game_class = get_game_class_from_name(game_name)
     games = load_games_from_configuration(
         game_class=game_class,
-        configuration=config_id,
+        config_id=config_id,
         n_player_id=n_player_id,
         only_pre_computed=True,
         n_games=n_games,

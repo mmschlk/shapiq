@@ -13,7 +13,7 @@ if __name__ == "__main__":
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
         BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS,
-        GAME_TO_CLASS_MAPPING,
+        GAME_NAME_TO_CLASS_MAPPING,
         get_game_class_from_name,
     )
     from shapiq.games.benchmark.precompute import pre_compute_from_configuration
@@ -25,12 +25,12 @@ if __name__ == "__main__":
 
     datasets_to_precompute = [
         "AdultCensus",
-        # "BikeSharing",
-        # "CaliforniaHousing",
-        # "Sentiment",
-        # "Image",
-        # "SynthData",
-        # "SOUM",
+        "BikeSharing",
+        "CaliforniaHousing",
+        "Sentiment",
+        "Image",
+        "SynthData",
+        "SOUM",
     ]
     max_n_players = 16
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         # get all configurations that include the dataset in the name
         all_game_names = [
             game_name
-            for game_name in GAME_TO_CLASS_MAPPING.keys()
+            for game_name in GAME_NAME_TO_CLASS_MAPPING.keys()
             if game in game_name and game_name not in omit_games
         ]
         for game_name in all_game_names:
