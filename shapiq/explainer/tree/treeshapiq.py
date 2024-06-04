@@ -360,10 +360,10 @@ class TreeSHAPIQ:
                         self.Ns,
                         index_quotient,
                     )
-                    try:
-                        update *= float(to_update)  # cast out shape of (1, 1) to float
-                    except TypeError:
-                        update *= to_update  # multiple ancestors
+                    if to_update.shape == (1, 1):
+                        update *= to_update[0]  # cast out shape of (1, 1) to float
+                    else:
+                        update *= to_update
                     # fmt: on
                     self.shapley_interactions[interactions_with_ancestor_to_update] -= update
 
