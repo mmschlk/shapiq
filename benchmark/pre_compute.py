@@ -14,7 +14,7 @@ if __name__ == "__main__":
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
         BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS,
-        GAME_TO_CLASS_MAPPING,
+        GAME_NAME_TO_CLASS_MAPPING,
         get_game_class_from_name,
     )
     from shapiq.games.benchmark.precompute import pre_compute_from_configuration
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     default_verbose = True
 
     parser = argparse.ArgumentParser()
-    game_choices = list(GAME_TO_CLASS_MAPPING.keys())
+    game_choices = list(GAME_NAME_TO_CLASS_MAPPING.keys())
     parser.add_argument(
         "--game", type=str, required=False, choices=game_choices, default=default_game
     )

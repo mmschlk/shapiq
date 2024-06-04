@@ -1,4 +1,4 @@
-"""This module contains the InteractionValues Dataclass, which is used to store the interaction
+"""InteractionValues data-class, which is used to store the interaction
 scores."""
 
 import copy
@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Optional, Union
 from warnings import warn
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from .indices import ALL_AVAILABLE_INDICES, index_generalizes_bv, index_generalizes_sv
@@ -21,22 +22,22 @@ class InteractionValues:
     Attributes:
         values: The interaction values of the model in vectorized form.
         index: The interaction index estimated. All available indices are defined in
-            `ALL_AVAILABLE_INDICES`.
+            ``ALL_AVAILABLE_INDICES``.
         max_order: The order of the approximation.
         n_players: The number of players.
-        min_order: The minimum order of the approximation. Defaults to 0.
+        min_order: The minimum order of the approximation. Defaults to ``0``.
         interaction_lookup: A dictionary that maps interactions to their index in the values
-            vector. If `interaction_lookup` is not provided, it is computed from the `n_players`,
-            `min_order`, and `max_order` parameters. Defaults to `None`.
-        estimated: Whether the interaction values are estimated or not. Defaults to `True`.
-        estimation_budget: The budget used for the estimation. Defaults to `None`.
+            vector. If ``interaction_lookup`` is not provided, it is computed from the ``n_players``,
+            ``min_order``, and `max_order` parameters. Defaults to ``None``.
+        estimated: Whether the interaction values are estimated or not. Defaults to ``True``.
+        estimation_budget: The budget used for the estimation. Defaults to ``None``.
         baseline_value: The value of the baseline interaction also known as 'empty prediction' or
-            'empty value' since it denotes the value of the empty coalition (empty set). If not
+            ``'empty value'`` since it denotes the value of the empty coalition (empty set). If not
             provided it is searched for in the values vector (raising an Error if not found).
-            Defaults to `None`.
+            Defaults to ``None``.
 
     Raises:
-        UserWarning: If the index is not a valid index as defined in `ALL_AVAILABLE_INDICES`.
+        UserWarning: If the index is not a valid index as defined in ``ALL_AVAILABLE_INDICES``.
         TypeError: If the baseline value is not a number.
     """
 
@@ -138,8 +139,8 @@ class InteractionValues:
 
         Args:
             k: The number of top interactions to return.
-            as_interaction_values: Whether to return the top k interactions as an InteractionValues
-                object. Defaults to `False`.
+            as_interaction_values: Whether to return the top `k` interactions as an InteractionValues
+                object. Defaults to ``False``.
 
         Returns:
             The top k interactions as a dictionary and a sorted list of tuples.
@@ -206,7 +207,7 @@ class InteractionValues:
         """Returns the score for the given interaction.
 
         Args:
-            item: The interaction as a tuple of integers for which to return the score. If `item` is
+            item: The interaction as a tuple of integers for which to return the score. If ``item`` is
                 an integer it serves as the index to the values vector.
 
         Returns:
@@ -403,11 +404,11 @@ class InteractionValues:
             order: The order of the interactions to return.
 
         Returns:
-            The interaction values of the specified order as a numpy array of shape `(n_players,)`
-            for order 1 and `(n_players, n_players)` for order 2, etc.
+            The interaction values of the specified order as a numpy array of shape ``(n_players,)``
+            for order ``1`` and ``(n_players, n_players)`` for order ``2``, etc.
 
         Raises:
-            ValueError: If the order is less than 1.
+            ValueError: If the order is less than ``1``.
         """
         from itertools import permutations
 
@@ -458,8 +459,8 @@ class InteractionValues:
 
         Args:
             path: The path to save the InteractionValues object to.
-            as_pickle: Whether to save the InteractionValues object as a pickle file (`True`) or
-                as a npz file (`False`). Defaults to `False`.
+            as_pickle: Whether to save the InteractionValues object as a pickle file (``True``) or
+                as a ``npz`` file (``False``). Defaults to ``False``.
         """
         # check if the directory exists
         directory = os.path.dirname(path)
@@ -568,5 +569,89 @@ class InteractionValues:
             "baseline_value": self.baseline_value,
         }
 
+    def plot_network(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
+        """Visualize InteractionValues on a graph.
 
-# Path: shapiq/interaction_values.py
+        For arguments, see shapiq.plots.network_plot().
+
+        Returns:
+            matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
+        """
+        from shapiq import network_plot
+
+        if self.max_order > 1:
+            return network_plot(
+                first_order_values=self.get_n_order_values(1),
+                second_order_values=self.get_n_order_values(2),
+                **kwargs,
+            )
+        else:
+            raise ValueError(
+                "InteractionValues contains only 1-order values,"
+                "but requires also 2-order values for the network plot."
+            )
+
+    def plot_stacked_bar(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
+        """Visualize InteractionValues on a graph.
+
+        For arguments, see shapiq.plots.stacked_bar_plot().
+
+        Returns:
+            matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
+        """
+        from shapiq import stacked_bar_plot
+
+        if self.max_order >= 2:
+            first_order_values = self.get_n_order_values(1)
+            second_order_values = self.get_n_order_values(2)
+            ret = stacked_bar_plot(
+                n_shapley_values_pos={
+                    1: np.array([0 if x < 0 else x for x in first_order_values]),
+                    2: second_order_values.clip(min=0).sum(axis=0),
+                },
+                n_shapley_values_neg={
+                    1: np.array([0 if x > 0 else x for x in first_order_values]),
+                    2: second_order_values.clip(max=0).sum(axis=0),
+                },
+                **kwargs,
+            )
+            return ret
+        else:
+            first_order_values = self.get_n_order_values(1)
+            ret = stacked_bar_plot(
+                n_shapley_values_pos={
+                    1: np.array([0 if x < 0 else x for x in first_order_values]),
+                },
+                n_shapley_values_neg={
+                    1: np.array([0 if x > 0 else x for x in first_order_values]),
+                },
+                **kwargs,
+            )
+            return ret
+
+    def plot_force(
+        self,
+        feature_names: Optional[np.ndarray] = None,
+        feature_values: Optional[np.ndarray] = None,
+        matplotlib=True,
+        **kwargs,
+    ):
+        """Visualize InteractionValues on a force plot.
+
+        For arguments, see shapiq.plots.force_plot().
+
+        Requires the ``shap`` Python package to be installed.
+
+        Args:
+            interaction_values: The interaction values as an interaction object.
+            feature_names: The feature names used for plotting. If no feature names are provided, the
+                feature indices are used instead. Defaults to ``None``.
+            feature_values: The feature values used for plotting. Defaults to ``None``.
+            matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
+            **kwargs: Keyword arguments passed to ``shap.plots.force()``.
+        """
+        from shapiq import force_plot
+
+        return force_plot(
+            self, feature_values=feature_values, feature_names=feature_names, **kwargs
+        )

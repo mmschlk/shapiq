@@ -32,13 +32,83 @@ STYLE_DICT: dict[str, dict[str, str]] = {
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
 LIGHT_GRAY = "#d3d3d3"
-LINE_STYLES_ORDER = {0: "solid", 1: "dotted", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
-LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "s", 3: "X", 4: "d", "all": "o"}
-LINE_THICKNESS = 1.5
+LINE_STYLES_ORDER = {0: "solid", 1: "solid", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
+LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "o", 3: "X", 4: "d", "all": "o"}
+LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
 
+LOG_SCALE_MAX = 1e2
 LOG_SCALE_MIN = 1e-7
+
+METRICS_LIMITS = {
+    "Precision@10": (0, 1),
+    "Precision@5": (0, 1),
+    "KendallTau": (-1, 1),
+    "KendallTau@5": (-1, 1),
+    "KendallTau@10": (-1, 1),
+    "KendallTau@50": (-1, 1),
+}
+METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
+
+
+def create_application_name(setup: str, abbrev: bool = False) -> str:
+    """Create an application name from the setup string."""
+    application_name = "".join(setup.split("_")[0:2])
+    application_name = application_name.replace("Game", "")
+    application_name = application_name.replace("SynthData", "")
+    application_name = application_name.replace("AdultCensus", "")
+    application_name = application_name.replace("CaliforniaHousing", "")
+    application_name = application_name.replace("BikeSharing", "")
+    application_name = application_name.replace("ImageClassifier", "LocalExplanation")
+    application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
+    application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
+    application_name = application_name.replace(
+        "RandomForestEnsembleSelection", "EnsembleSelection"
+    )
+    if abbrev:
+        application_name = abbreviate_application_name(application_name)
+    return application_name
+
+
+def abbreviate_application_name(application_name: str, new_line: bool = False) -> str:
+    """Abbreviate the application name by taking the first three characters after each capital
+    letter and adding a dot. The last character is not abbreviated.
+
+    Args:
+        application_name: The application name to abbreviate.
+        new_line: Whether to add a new line after each abbreviation. Defaults to `False`.
+
+    Example:
+        >>> abbreviate_application_name("LocalExplanation")
+        "Loc. Exp."
+    """
+    abbreviations = []
+    count_char = 0
+    for char in application_name:
+        if char.isupper():
+            count_char = 0
+            abbreviations.append(char)
+        else:
+            count_char += 1
+            if count_char == 3:
+                abbreviations.append(".")
+            elif count_char > 3:
+                continue
+            else:
+                abbreviations.append(char)
+    abbreviation = "".join(abbreviations)
+    if application_name == "DatasetValuation":
+        abbreviation = "Dst. Val."
+    if application_name == "SOUM":
+        abbreviation = "SOUM"
+    if application_name == "SOUM (low)" and new_line:
+        abbreviation = "SOUM\n(low)"
+    if application_name == "SOUM (high)":
+        abbreviation = "SOUM\n(high)"
+    if new_line:
+        abbreviation = abbreviation.replace(".", ".\n")
+    return abbreviation.strip()
 
 
 def get_game_title_name(game_name: str) -> str:
@@ -62,7 +132,9 @@ def get_game_title_name(game_name: str) -> str:
         if char.isupper():
             words += " "
         words += char
-    words = words.replace("X A I", "XAI")
+    words = words.replace("Tree S H A P I Q", "TreeSHAPIQ")  # TreeSHAPIQ
+    words = words.replace("X A I", "XAI")  # XAI
+    words = words.replace("S O U M", "SOUM")  # SOUM
     return words.strip()
 
 
@@ -85,7 +157,9 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
 
 def plot_approximation_quality(
-    data: pd.DataFrame,
+    data: Optional[pd.DataFrame] = None,
+    *,
+    data_path: Optional[str] = None,
     metric: str = "MSE",
     orders: Optional[list[Union[int, str]]] = None,
     approximators: Optional[list[str]] = None,
@@ -93,6 +167,7 @@ def plot_approximation_quality(
     confidence_metric: Optional[str] = "sem",
     log_scale_y: bool = False,
     log_scale_min: float = LOG_SCALE_MIN,
+    log_scale_max: float = LOG_SCALE_MAX,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the approximation quality curves.
 
@@ -112,8 +187,26 @@ def plot_approximation_quality(
     Returns:
         The figure and axes of the plot.
     """
+    if data_path is None and data is None:
+        raise ValueError("Either data or data_path must be provided.")
+
+    if data is None:
+        data = pd.read_csv(data_path)
+
     # get the metric data
     metric_data = get_metric_data(data, metric)
+
+    sorted_budget = list(data["budget"].sort_values(ascending=False).unique())
+    y_lim_min_budget = sorted_budget[3] if sorted_budget[0] >= 2**17 else sorted_budget[2]
+    # get min metric_value for y_lim
+    min_value_y = data[data["budget"] == y_lim_min_budget][metric].min()
+    # round value down to next decimal
+    bot_lim = f"{min_value_y:.2e}"  # get the top limi in scientific notation
+    bot_lim = bot_lim.split("e")[1]  # get the exponent
+    bot_lim = int(bot_lim)  # get the top limit as the exponent + 1
+    bot_lim = 10**bot_lim  # get the top limit in scientific notation
+    if log_scale_min < bot_lim:
+        log_scale_min = bot_lim
 
     # make sure orders is a list
     if orders is None:
@@ -134,6 +227,7 @@ def plot_approximation_quality(
 
     # create the plot
     fig, ax = plt.subplots()
+    approx_max_budget = 0
     for approximator in approximators:
         for order in metric_data["order"].unique():
             if orders is not None and order not in orders:
@@ -172,9 +266,12 @@ def plot_approximation_quality(
                     alpha=0.1,
                     color=color,
                 )
+            approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
 
     # add %model calls to the x-axis as a secondary axis
-    _set_x_axis_ticks(ax, n_players=int(data["n_players"].unique().max()))
+    _set_x_axis_ticks(
+        ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
+    )
 
     # add x/y labels
     ax.set_ylabel(metric)
@@ -183,19 +280,26 @@ def plot_approximation_quality(
     # add grid to x-axis
     ax.grid(axis="x", color=LIGHT_GRAY, linestyle="dashed")
 
-    if log_scale_y:
-        _set_y_axis_log_scale(ax, log_scale_min)
+    if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE:
+        _set_y_axis_log_scale(ax, log_scale_min, log_scale_max)
+
+    if metric in METRICS_LIMITS:
+        ax.set_ylim(METRICS_LIMITS[metric])
 
     return fig, ax
 
 
-def _set_x_axis_ticks(ax: plt.Axes, n_players: int) -> None:
+def _set_x_axis_ticks(ax: plt.Axes, n_players: int, max_budget: int) -> None:
     """Sets the x-axis ticks in 25% intervals."""
     if n_players <= 16:  # only for small number of players set the ticks as 25% intervals
         budgets_relative = np.arange(0, 1.25, 0.25)
         budgets = budgets_relative * (2**n_players)
     else:
         budgets = ax.get_xticks()
+        # remove negative values
+        budgets = budgets[budgets >= 0]
+        # remove all values less than max_budget * 1.05
+        budgets = budgets[budgets <= max_budget * 1.05]
         budgets_relative = budgets / (2**n_players)
 
     xtick_labels = []
@@ -212,7 +316,7 @@ def _set_x_axis_ticks(ax: plt.Axes, n_players: int) -> None:
     ax.set_xticklabels(xtick_labels)
 
 
-def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float) -> None:
+def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float, log_scale_max: float) -> None:
     """Sets the y-axis to a log scale and adjusts the limits."""
     # adjust the top limit to be one order of magnitude higher than the current top limit
     top_lim = ax.get_ylim()[1]
@@ -220,6 +324,9 @@ def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float) -> None:
     top_lim = top_lim.split("e")[1]  # get the exponent
     top_lim = int(top_lim) + 1  # get the top limit as the exponent + 1
     top_lim = 10**top_lim  # get the top limit in scientific notation
+
+    if top_lim > log_scale_max:
+        top_lim = log_scale_max
 
     # set the y-axis limits
     ax.set_ylim(top=top_lim)

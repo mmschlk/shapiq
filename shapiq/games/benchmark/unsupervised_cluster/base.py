@@ -25,7 +25,7 @@ class ClusterExplanation(Game):
         random_state: The random state to use for the clustering algorithm. Defaults to 42.
         normalize: Whether to normalize the data before clustering. Defaults to True.
         empty_cluster_value: The worth of an empty cluster. Defaults to 0.0 (which automatically
-            results in a normalized game).
+             in a normalized game).
     """
 
     def __init__(

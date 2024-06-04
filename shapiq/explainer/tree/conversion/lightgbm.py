@@ -20,7 +20,7 @@ def convert_lightgbm_booster(
     Args:
         tree_booster: The lightgbm booster to convert.
         class_label: The class label of the model to explain. Only used for multiclass
-            classification models. Defaults to 0.
+            classification models. Defaults to ``0``.
 
     Returns:
         The converted lightgbm booster.
@@ -67,7 +67,7 @@ def _convert_lightgbm_tree_as_df(
 
     Args:
         tree_df: The lightgbm decision tree model formatted as a data frame.
-        output_type: Either "raw" or "probability". Currently unused.
+        output_type: Either ``"raw"`` or ``"probability"``. Currently unused.
         scaling: The scaling factor for the tree values.
 
     Returns:

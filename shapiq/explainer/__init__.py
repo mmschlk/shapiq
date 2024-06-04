@@ -1,4 +1,4 @@
-"""The explainer object for the shapiq package."""
+"""Explainer objects, including TreeSHAP-IQ."""
 
 from ._base import Explainer
 from .tabular import TabularExplainer

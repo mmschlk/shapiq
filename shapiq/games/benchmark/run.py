@@ -15,8 +15,10 @@ from ...interaction_values import InteractionValues
 from ..base import Game
 from .metrics import get_all_metrics
 
+BENCHMARK_RESULTS_DIR = "results"
 
-def save_results(results: list, save_path: str) -> None:
+
+def save_results(results: pd.DataFrame, save_path: str) -> None:
     """Save the results of the benchmark as a CSV file.
 
     Args:
@@ -27,15 +29,14 @@ def save_results(results: list, save_path: str) -> None:
     save_dir = os.path.dirname(save_path)
     if save_dir != "" and not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    df = pd.DataFrame(results)
-    df.to_json(save_path)
+    results.to_json(save_path)
 
 
 def run_benchmark(
     index: str,
     order: int,
     games: list[Game],
-    gt_values: list[InteractionValues],
+    gt_values: Optional[list[InteractionValues]] = None,
     approximators: Optional[
         Union[list[Approximator], list[Approximator.__class__], list[str]]
     ] = None,
@@ -48,7 +49,7 @@ def run_benchmark(
     save: bool = True,
     save_path: Optional[str] = None,
     rerun_if_exists: bool = False,
-) -> Optional[list[dict[str, Union[str, int, float, InteractionValues]]]]:
+) -> pd.DataFrame:
     """Run the benchmark for the given approximators and games.
 
     Args:
@@ -89,7 +90,7 @@ def run_benchmark(
 
     if not rerun_if_exists and os.path.exists(save_path):
         print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
-        return
+        return pd.read_json(save_path)
 
     # check that all games have the same number of players
     n_players = games[0].n_players
@@ -97,13 +98,21 @@ def run_benchmark(
         raise ValueError("All games must have the same number of players.")
 
     # check that the number of ground truth values is the same as the number of games
+    if gt_values is None:
+        print("Computing the exact values for the games.")
+        gt_values = []
+        for game in tqdm(games, unit=" games"):
+            gt_values.append(game.exact_values(index=index, order=order))
+
     if len(gt_values) != len(games):
         raise ValueError(
             "The number of ground truth values must be the same as the number of games."
         )
 
     # transform the budget steps to integers if float is provided
-    max_budget = max_budget or 2**n_players
+    if n_players > 16:  # sets the budget to 10k for synthetic games with more than 16 players
+        max_budget = 10_000
+    max_budget = max_budget or 2**n_players  # set budget to 2**n_players if not provided
     if budget_steps is None:
         budget_steps = [
             int(round(budget_step, 2) * max_budget)
@@ -188,11 +197,11 @@ def run_benchmark(
             }
         )
 
-    # save the results as a json file
-    if save:
-        save_results(results, save_path=save_path)
-
-    return results
+    # finalize results
+    results_df = pd.DataFrame(results)
+    if save:  # save the results as a json file
+        save_results(results_df, save_path=save_path)
+    return results_df
 
 
 def _run_benchmark(args) -> dict[str, Union[str, int, float, InteractionValues]]:
@@ -304,7 +313,7 @@ def load_benchmark_results(
             ][game_configuration - 1]
 
         save_path = os.path.join(
-            "results",
+            BENCHMARK_RESULTS_DIR,
             _make_benchmark_name(
                 config_id=get_game_file_name_from_config(game_configuration),
                 game_class=game_class,
@@ -393,9 +402,17 @@ def run_benchmark_from_configuration(
     # get the benchmark name for saving the results
     benchmark_name = _make_benchmark_name(config_id, game_class, len(games), index, order)
     save_path = os.path.join("results", f"{benchmark_name}.json")
+    print(
+        f"Checking if the benchmark results already exist with the name: {benchmark_name} and the "
+        f"save path: {save_path}."
+    )
     if not rerun_if_exists and os.path.exists(save_path):
         print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
         return
+    elif rerun_if_exists:
+        print(f"Rerunning the benchmark {benchmark_name}.")
+    else:
+        print(f"Results for the benchmark {benchmark_name} do not exist. Running the benchmark.")
 
     # get the exact values
     print("Computing the exact values for the games.")

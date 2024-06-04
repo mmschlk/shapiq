@@ -46,13 +46,10 @@ def test_random_forest_selection(
     game = TreeSHAPIQXAI(
         x=x_explain,
         tree_model=model,
-        index=index,
         class_label=class_label,
-        max_order=max_order,
-        min_order=min_order,
         normalize=False,
     )
-    gt_interaction_values = game.gt_interaction_values
+    gt_interaction_values = game.exact_values(index=index, order=max_order)
 
     assert isinstance(game, TreeSHAPIQXAI)
     assert isinstance(game, Game)
@@ -96,12 +93,9 @@ def test_adult():
     game = AdultCensusTreeSHAPIQXAI(
         x=1,
         model_name="decision_tree",
-        index=index,
-        max_order=max_order,
-        min_order=min_order,
         normalize=False,
     )
-    gt_interaction_values = game.gt_interaction_values
+    gt_interaction_values = game.exact_values(index=index, order=max_order)
     assert game.n_players == 14
     assert game.game_name == "AdultCensus_TreeSHAPIQXAI_Game"
 
@@ -123,12 +117,9 @@ def test_california():
     game = CaliforniaHousingTreeSHAPIQXAI(
         x=1,
         model_name="decision_tree",
-        index=index,
-        max_order=max_order,
-        min_order=min_order,
         normalize=False,
     )
-    gt_interaction_values = game.gt_interaction_values
+    gt_interaction_values = game.exact_values(index=index, order=max_order)
     assert game.n_players == 8
     assert game.game_name == "CaliforniaHousing_TreeSHAPIQXAI_Game"
 
@@ -150,12 +141,9 @@ def test_bike():
     game = BikeSharingTreeSHAPIQXAI(
         x=1,
         model_name="decision_tree",
-        index=index,
-        max_order=max_order,
-        min_order=min_order,
         normalize=False,
     )
-    gt_interaction_values = game.gt_interaction_values
+    gt_interaction_values = game.exact_values(index=index, order=max_order)
     assert game.n_players == 12
     assert game.game_name == "BikeSharing_TreeSHAPIQXAI_Game"
 

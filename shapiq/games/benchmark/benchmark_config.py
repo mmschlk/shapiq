@@ -17,16 +17,28 @@ information:
 
 - `BENCHMARK_CONFIGURATIONS`: A dictionary of the benchmark games and their configurations. The key
     is the game class, and the value is a dictionary with the following keys:
-    - `configurations`: A list of dictionaries containing the configurations for the game.
+    - `configurations`: A list of dictionaries containing the configurations for a game. Each
+        dictionary contains application/game specific parameters.
     - `iteration_parameter`: The parameter that will be used to iterate over the configurations and
-        populated by the `BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS`.
-    - `iteration_parameter_values`: An optional list of values for the iteration parameter. If
-        provided, the `BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS` will be ignored.
+        create multiple games with different random states / data points. This parameter must be
+        present in the game class. For example, the `random_state` parameter is used to iterate over
+        different random states or the `x` parameter is used to iterate over different data points
+        in local XAI games.
+    - `n_players`: The number of players in the configurations. A game class can have different
+        configurations with different numbers of players, but all game classes have at least one
+        set of number of players.
+    - `precompute`: An boolean flag to denoting weather the game should be precomputed or not. If
+        the game is precomputed, then all game evaluations are stored in a file (in the
+        `SHAPIQ_DATA_DIR` directory) and can be loaded later. If the game is not precomputed, then
+        the game evaluations are computed on the fly during the benchmark (significantly slower).
 """
 
 import os
+import time
 from collections.abc import Generator
 from typing import Any, Optional, Union
+
+import requests
 
 from ...approximator import (
     FSII_APPROXIMATORS,
@@ -38,16 +50,19 @@ from ...approximator import (
 )
 from .. import Game
 from . import (
-    AdultCensusClusterExplanation,
+    SOUM,
     AdultCensusDatasetValuation,
+    AdultCensusDataValuation,
     AdultCensusEnsembleSelection,
     AdultCensusFeatureSelection,
     AdultCensusGlobalXAI,
     AdultCensusLocalXAI,
     AdultCensusRandomForestEnsembleSelection,
+    AdultCensusUncertaintyExplanation,
     AdultCensusUnsupervisedData,
     BikeSharingClusterExplanation,
     BikeSharingDatasetValuation,
+    BikeSharingDataValuation,
     BikeSharingEnsembleSelection,
     BikeSharingFeatureSelection,
     BikeSharingGlobalXAI,
@@ -56,6 +71,7 @@ from . import (
     BikeSharingUnsupervisedData,
     CaliforniaHousingClusterExplanation,
     CaliforniaHousingDatasetValuation,
+    CaliforniaHousingDataValuation,
     CaliforniaHousingEnsembleSelection,
     CaliforniaHousingFeatureSelection,
     CaliforniaHousingGlobalXAI,
@@ -64,10 +80,9 @@ from . import (
     CaliforniaHousingUnsupervisedData,
     ImageClassifierLocalXAI,
     SentimentAnalysisLocalXAI,
+    # not to be precomputed
+    SynthDataTreeSHAPIQXAI,
 )
-
-# TODO: add TreeSHAPIQXAI
-# TODO: add SOUM
 from .precompute import SHAPIQ_DATA_DIR
 
 # default params that will be passed to any game
@@ -165,6 +180,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "x",
             "n_players": 14,
+            "precompute": True,
         },
     ],
     BikeSharingLocalXAI: [
@@ -179,6 +195,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "x",
             "n_players": 12,
+            "precompute": True,
         },
     ],
     CaliforniaHousingLocalXAI: [
@@ -195,6 +212,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "x",
             "n_players": 8,
+            "precompute": True,
         },
     ],
     # Local XAI with Sentiment Analysis configurations ---------------------------------------------
@@ -205,6 +223,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter_values": list(range(1, len(SENTIMENT_ANALYSIS_TEXTS) + 1)),
             "iteration_parameter_values_names": SENTIMENT_ANALYSIS_TEXTS,
             "n_players": 14,
+            "precompute": True,
         },
     ],
     # Local XAI with Image Classifier configurations -----------------------------------------------
@@ -215,6 +234,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter_values": list(range(1, len(IMAGENET_EXAMPLE_FILES) + 1)),
             "iteration_parameter_values_names": IMAGENET_EXAMPLE_FILES,
             "n_players": 14,
+            "precompute": True,
         },
         {
             "configurations": [{"model_name": "vit_9_patches"}],
@@ -222,6 +242,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter_values": list(range(1, len(IMAGENET_EXAMPLE_FILES) + 1)),
             "iteration_parameter_values_names": IMAGENET_EXAMPLE_FILES,
             "n_players": 9,
+            "precompute": True,
         },
         {
             "configurations": [{"model_name": "vit_16_patches"}],
@@ -229,6 +250,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter_values": list(range(1, len(IMAGENET_EXAMPLE_FILES) + 1)),
             "iteration_parameter_values_names": IMAGENET_EXAMPLE_FILES,
             "n_players": 16,
+            "precompute": True,
         },
     ],
     # global xai configurations --------------------------------------------------------------------
@@ -241,6 +263,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
+            "precompute": True,
         },
     ],
     BikeSharingGlobalXAI: [
@@ -252,6 +275,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 12,
+            "precompute": True,
         },
     ],
     CaliforniaHousingGlobalXAI: [
@@ -264,6 +288,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 8,
+            "precompute": True,
         },
     ],
     # feature selection configurations -------------------------------------------------------------
@@ -276,6 +301,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
+            "precompute": True,
         },
     ],
     BikeSharingFeatureSelection: [
@@ -287,6 +313,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 12,
+            "precompute": True,
         },
     ],
     CaliforniaHousingFeatureSelection: [
@@ -299,6 +326,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 8,
+            "precompute": True,
         },
     ],
     # ensemble selection configurations ------------------------------------------------------------
@@ -307,6 +335,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "configurations": [{"loss_function": "accuracy_score", "n_members": 10}],
             "iteration_parameter": "random_state",
             "n_players": 10,
+            "precompute": True,
         },
     ],
     BikeSharingEnsembleSelection: [
@@ -314,6 +343,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "configurations": [{"loss_function": "r2_score", "n_members": 10}],
             "iteration_parameter": "random_state",
             "n_players": 10,
+            "precompute": True,
         },
     ],
     CaliforniaHousingEnsembleSelection: [
@@ -321,6 +351,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "configurations": [{"loss_function": "r2_score", "n_members": 10}],
             "iteration_parameter": "random_state",
             "n_players": 10,
+            "precompute": True,
         },
     ],
     # ensemble selection with random forest configurations -----------------------------------------
@@ -329,6 +360,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "configurations": [{"loss_function": "accuracy_score", "n_members": 10}],
             "iteration_parameter": "random_state",
             "n_players": 10,
+            "precompute": True,
         },
     ],
     BikeSharingRandomForestEnsembleSelection: [
@@ -336,6 +368,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "configurations": [{"loss_function": "r2_score", "n_members": 10}],
             "iteration_parameter": "random_state",
             "n_players": 10,
+            "precompute": True,
         },
     ],
     CaliforniaHousingRandomForestEnsembleSelection: [
@@ -343,6 +376,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "configurations": [{"loss_function": "r2_score", "n_members": 10}],
             "iteration_parameter": "random_state",
             "n_players": 10,
+            "precompute": True,
         },
     ],
     # dataset valuation configurations -------------------------------------------------------------
@@ -355,6 +389,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 10,
+            "precompute": True,
         },
         {
             "configurations": [
@@ -365,6 +400,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",
             "n_players": 14,
             "iteration_parameter_values": list(range(1, 5 + 1)),
+            "precompute": True,
         },
     ],
     BikeSharingDatasetValuation: [
@@ -376,6 +412,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 10,
+            "precompute": True,
         },
         {
             "configurations": [
@@ -386,6 +423,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",
             "n_players": 14,
             "iteration_parameter_values": list(range(1, 5 + 1)),
+            "precompute": True,
         },
     ],
     CaliforniaHousingDatasetValuation: [
@@ -397,6 +435,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             ],
             "iteration_parameter": "random_state",
             "n_players": 10,
+            "precompute": True,
         },
         {
             "configurations": [
@@ -407,10 +446,47 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",
             "n_players": 14,
             "iteration_parameter_values": list(range(1, 5 + 1)),
+            "precompute": True,
         },
     ],
+    # data valuation configurations ----------------------------------------------------------------
+    AdultCensusDataValuation: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "n_data_points": 15},
+                {"model_name": "random_forest", "n_data_points": 15},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 15,
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "precompute": True,
+        }
+    ],
+    BikeSharingDataValuation: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "n_data_points": 15},
+                {"model_name": "random_forest", "n_data_points": 15},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 15,
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "precompute": True,
+        }
+    ],
+    CaliforniaHousingDataValuation: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "n_data_points": 15},
+                {"model_name": "random_forest", "n_data_points": 15},
+            ],
+            "iteration_parameter": "random_state",
+            "n_players": 15,
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "precompute": True,
+        }
+    ],
     # cluster explanation configurations -----------------------------------------------------------
-    AdultCensusClusterExplanation: [],  # no configuration because the game is too slow
     BikeSharingClusterExplanation: [
         {
             "configurations": [
@@ -420,6 +496,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",  # for agglomerative this does not change the game
             "iteration_parameter_values": [1],  # for agglomerative this does not change the game
             "n_players": 12,
+            "precompute": True,
         },
     ],
     CaliforniaHousingClusterExplanation: [
@@ -431,6 +508,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",  # for agglomerative this does not change the game
             "iteration_parameter_values": [1],  # for agglomerative this does not change the game
             "n_players": 8,
+            "precompute": True,
         },
     ],
     # unsupervised data configurations -------------------------------------------------------------
@@ -440,6 +518,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",  # this does not change the game
             "iteration_parameter_values": [1],  # this does not change the game
             "n_players": 14,
+            "precompute": True,
         },
     ],
     BikeSharingUnsupervisedData: [
@@ -448,6 +527,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",  # this does not change the game
             "iteration_parameter_values": [1],  # this does not change the game
             "n_players": 12,
+            "precompute": True,
         },
     ],
     CaliforniaHousingUnsupervisedData: [
@@ -456,25 +536,178 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "iteration_parameter": "random_state",  # this does not change the game
             "iteration_parameter_values": [1],  # this does not change the game
             "n_players": 8,
+            "precompute": True,
+        },
+    ],
+    # uncertainty explanation configurations -------------------------------------------------------
+    AdultCensusUncertaintyExplanation: [
+        {
+            "configurations": [
+                {"uncertainty_to_explain": "total", "imputer": "marginal"},
+                {"uncertainty_to_explain": "total", "imputer": "conditional"},
+                {"uncertainty_to_explain": "aleatoric", "imputer": "marginal"},
+                {"uncertainty_to_explain": "aleatoric", "imputer": "conditional"},
+                {"uncertainty_to_explain": "epistemic", "imputer": "marginal"},
+                {"uncertainty_to_explain": "epistemic", "imputer": "conditional"},
+            ],
+            "iteration_parameter": "x",
+            "n_players": 14,
+            "precompute": True,
         },
     ],
     # TreeSHAPIQXAI configurations -----------------------------------------------------------------
-    # TODO: add configurations for TreeSHAPIQXAI
+    SynthDataTreeSHAPIQXAI: [
+        {
+            "configurations": [
+                {"model_name": "decision_tree", "classification": True, "n_features": 30},
+                {"model_name": "random_forest", "classification": True, "n_features": 30},
+                {"model_name": "decision_tree", "classification": False, "n_features": 30},
+                {"model_name": "random_forest", "classification": False, "n_features": 30},
+            ],
+            "iteration_parameter": "x",
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "n_players": 30,
+            "precompute": False,
+        },
+    ],
     # SOUM configurations --------------------------------------------------------------------------
-    # TODO: add configurations for SOUM
+    SOUM: [
+        {
+            "configurations": [
+                {
+                    "n": 15,
+                    "n_basis_games": 30,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 5,
+                },
+                {
+                    "n": 15,
+                    "n_basis_games": 30,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 15,
+                },
+                {
+                    "n": 15,
+                    "n_basis_games": 150,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 5,
+                },
+                {
+                    "n": 15,
+                    "n_basis_games": 150,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 15,
+                },
+            ],
+            "iteration_parameter": "random_state",
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "n_players": 15,
+            "precompute": True,
+        },
+        {
+            "configurations": [
+                {
+                    "n": 30,
+                    "n_basis_games": 30,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 5,
+                },
+                {
+                    "n": 30,
+                    "n_basis_games": 30,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 15,
+                },
+                {
+                    "n": 30,
+                    "n_basis_games": 30,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 25,
+                },
+                {
+                    "n": 30,
+                    "n_basis_games": 150,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 5,
+                },
+                {
+                    "n": 30,
+                    "n_basis_games": 150,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 15,
+                },
+                {
+                    "n": 30,
+                    "n_basis_games": 150,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 25,
+                },
+            ],
+            "iteration_parameter": "random_state",
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "n_players": 30,
+            "precompute": False,
+        },
+        {
+            "configurations": [
+                {
+                    "n": 50,
+                    "n_basis_games": 30,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 5,
+                },
+                {
+                    "n": 50,
+                    "n_basis_games": 30,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 15,
+                },
+                {
+                    "n": 50,
+                    "n_basis_games": 30,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 25,
+                },
+                {
+                    "n": 50,
+                    "n_basis_games": 150,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 5,
+                },
+                {
+                    "n": 50,
+                    "n_basis_games": 150,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 15,
+                },
+                {
+                    "n": 50,
+                    "n_basis_games": 150,
+                    "min_interaction_size": 1,
+                    "max_interaction_size": 25,
+                },
+            ],
+            "iteration_parameter": "random_state",
+            "iteration_parameter_values": list(range(1, 10 + 1)),
+            "n_players": 50,
+            "precompute": False,
+        },
+    ],
 }
 
 
-GAME_TO_CLASS_MAPPING = {
-    "AdultCensusClusterExplanation": AdultCensusClusterExplanation,
+GAME_NAME_TO_CLASS_MAPPING = {
     "AdultCensusDatasetValuation": AdultCensusDatasetValuation,
+    "AdultCensusDataValuation": AdultCensusDataValuation,
     "AdultCensusEnsembleSelection": AdultCensusEnsembleSelection,
     "AdultCensusFeatureSelection": AdultCensusFeatureSelection,
     "AdultCensusGlobalXAI": AdultCensusGlobalXAI,
     "AdultCensusLocalXAI": AdultCensusLocalXAI,
     "AdultCensusRandomForestEnsembleSelection": AdultCensusRandomForestEnsembleSelection,
     "AdultCensusUnsupervisedData": AdultCensusUnsupervisedData,
+    "AdultCensusUncertaintyExplanation": AdultCensusUncertaintyExplanation,
     "BikeSharingClusterExplanation": BikeSharingClusterExplanation,
+    "BikeSharingDataValuation": BikeSharingDataValuation,
     "BikeSharingDatasetValuation": BikeSharingDatasetValuation,
     "BikeSharingEnsembleSelection": BikeSharingEnsembleSelection,
     "BikeSharingFeatureSelection": BikeSharingFeatureSelection,
@@ -484,6 +717,7 @@ GAME_TO_CLASS_MAPPING = {
     "BikeSharingUnsupervisedData": BikeSharingUnsupervisedData,
     "CaliforniaHousingClusterExplanation": CaliforniaHousingClusterExplanation,
     "CaliforniaHousingDatasetValuation": CaliforniaHousingDatasetValuation,
+    "CaliforniaHousingDataValuation": CaliforniaHousingDataValuation,
     "CaliforniaHousingEnsembleSelection": CaliforniaHousingEnsembleSelection,
     "CaliforniaHousingFeatureSelection": CaliforniaHousingFeatureSelection,
     "CaliforniaHousingGlobalXAI": CaliforniaHousingGlobalXAI,
@@ -492,9 +726,12 @@ GAME_TO_CLASS_MAPPING = {
     "CaliforniaHousingUnsupervisedData": CaliforniaHousingUnsupervisedData,
     "SentimentAnalysisLocalXAI": SentimentAnalysisLocalXAI,
     "ImageClassifierLocalXAI": ImageClassifierLocalXAI,
-    # TODO: add SOUM and TreeSHAPIQXAI
+    "SynthDataTreeSHAPIQXAI": SynthDataTreeSHAPIQXAI,
+    "SOUM": SOUM,
 }
-
+GAME_CLASS_TO_NAME_MAPPING = {
+    game_cls: name for name, game_cls in GAME_NAME_TO_CLASS_MAPPING.items()
+}
 
 APPROXIMATION_CONFIGURATIONS: dict[str, Approximator.__class__] = {
     "SV": SV_APPROXIMATORS,
@@ -579,11 +816,52 @@ def load_game_data(
             verbose=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["verbose"],
             normalize=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["normalize"],
         )
-    except FileNotFoundError as error:
+    except FileNotFoundError:
+        # download the game data if it does not exist
+        download_game_data(game_class.get_game_name(), n_players, file_name)
+        try:
+            return Game(
+                path_to_values=path_to_values,
+                verbose=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["verbose"],
+                normalize=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["normalize"],
+            )
+        except FileNotFoundError as error:
+            raise FileNotFoundError(
+                f"Game data for game {game_class.get_game_name()} with configuration "
+                f"{configuration} and iteration {iteration} could not be found."
+            ) from error
+
+
+def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
+    """Downloads the game file from the repository.
+
+    Args:
+        game_name: The name of the game.
+        n_players: The number of players in the game.
+        file_name: The name of the file to download.
+
+    Raises:
+        FileNotFoundError: If the file could not be downloaded.
+    """
+    github_url = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/precomputed_games"
+
+    # create the directory if it does not exist
+    game_dir = str(os.path.join(SHAPIQ_DATA_DIR, game_name, str(n_players)))
+    os.makedirs(game_dir, exist_ok=True)
+
+    # download the file
+    path = os.path.join(game_dir, f"{file_name}.npz")
+    url = f"{github_url}/{game_name}/{n_players}/{file_name}.npz"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as error:
         raise FileNotFoundError(
-            f"File {path_to_values} does not exist. Are you sure it was created/pre-computed? "
-            f"Consider pre-computing the game or fetching the data from the repository."
+            f"Could not download the game data from {url}. Check if configuration is correct."
         ) from error
+    with open(path, "wb") as file:
+        file.write(response.content)
+        time.sleep(0.01)
 
 
 def get_game_class_from_name(game_name: str) -> Game.__class__:
@@ -595,7 +873,7 @@ def get_game_class_from_name(game_name: str) -> Game.__class__:
     Returns:
         The class of the game
     """
-    return GAME_TO_CLASS_MAPPING[game_name]
+    return GAME_NAME_TO_CLASS_MAPPING[game_name]
 
 
 def get_name_from_game_class(game_class: Game.__class__) -> str:
@@ -607,7 +885,7 @@ def get_name_from_game_class(game_class: Game.__class__) -> str:
     Returns:
         The name of the game.
     """
-    for name, game_cls in GAME_TO_CLASS_MAPPING.items():
+    for name, game_cls in GAME_NAME_TO_CLASS_MAPPING.items():
         if game_cls == game_class:
             return name
     raise ValueError(f"Game class {game_class} not found in the mapping.")
@@ -615,45 +893,39 @@ def get_name_from_game_class(game_class: Game.__class__) -> str:
 
 def print_benchmark_configurations() -> None:
     """Print the configurations of the benchmark games."""
-    # print default parameters
-    print("Default Parameters:")
-    print(f"Normalize: {BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS['normalize']}")
-    print(f"Verbose: {BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS['verbose']}")
-    print(f"Random State: {BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS['random_state']}")
-    print()
-
-    # print default iterations
-    print("Default Iterations:")
-    print(BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS)
-    print()
-
     # print configurations of the benchmark games
-    for game_class, config_per_player_id in BENCHMARK_CONFIGURATIONS.items():
-        for config in config_per_player_id:
-            param_values = config.get(
-                "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
-            )
-            print(f"Game: {game_class.get_game_name()}")
-            print(f"Configurations: {config['configurations']}")
-            print(f"Iteration Parameter: {config['iteration_parameter']}")
-            print(f"Iteration Parameter Values: {param_values}")
-            print()
+    game_classes = list(BENCHMARK_CONFIGURATIONS.keys())
+    game_identifiers = [GAME_CLASS_TO_NAME_MAPPING[game_class] for game_class in game_classes]
+    game_identifiers = sorted(game_identifiers)
+    for game_identifier in game_identifiers:
+        game_class = GAME_NAME_TO_CLASS_MAPPING[game_identifier]
+        config_per_player_id = BENCHMARK_CONFIGURATIONS[game_class]
+        print(f"Game: {game_identifier}")
+        for player_id, configurations in enumerate(config_per_player_id):
+            print(f"Player ID: {player_id}")
+            print(f"Number of Players: {configurations['n_players']}")
+            print(f"Number of configurations: {len(configurations['configurations'])}")
+            print(f"Is the Benchmark Pre-computed: {configurations['precompute']}")
+            print(f"Iteration Parameter: {configurations['iteration_parameter']}")
+            print("Configurations:")
+            for i, configuration in enumerate(configurations["configurations"]):
+                print(f"Configuration {i + 1}: {configuration}")
+        print()
 
 
 def load_games_from_configuration(
     game_class: Union[Game.__class__, str],
-    configuration: Union[dict[str, Any], int],
+    config_id: int,
     n_games: Optional[int] = None,
     n_player_id: int = 0,
     check_pre_computed: bool = True,
     only_pre_computed: bool = True,
-    # TODO: add loading of synth never to be pre-computed games
 ) -> Generator[Game, None, None]:
     """Load the game with the given configuration from disk or create it if it does not exist.
 
     Args:
         game_class: The class of the game to load with the configuration.
-        configuration: The configuration to use to load the game.
+        config_id: The configuration to use to load the game.
         n_games: The number of games to load. Defaults to None.
         n_player_id: The player ID to use. Defaults to 0. Not all games have multiple player IDs.
         check_pre_computed: A flag to check if the game is pre-computed (load from disk). Defaults
@@ -663,16 +935,14 @@ def load_games_from_configuration(
     Returns:
         An initialized game object with the given configuration.
     """
-    game_class = GAME_TO_CLASS_MAPPING[game_class] if isinstance(game_class, str) else game_class
+    game_class = (
+        GAME_NAME_TO_CLASS_MAPPING[game_class] if isinstance(game_class, str) else game_class
+    )
 
     # get config if it is an int
-    if isinstance(configuration, int):
-        configuration = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][
-            configuration - 1
-        ]
-    elif not isinstance(configuration, dict):
-        raise ValueError("Configuration must be an integer or a dictionary.")
-
+    configuration: dict = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][
+        config_id - 1
+    ]
     params = {}
 
     # get the default parameters
@@ -682,6 +952,7 @@ def load_games_from_configuration(
 
     # get the class-specific configurations of how the iterations are set up
     config_of_class = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]
+    game_should_be_precomputed = config_of_class["precompute"]
     iteration_param = config_of_class["iteration_parameter"]
     iteration_param_values = config_of_class.get(
         "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
@@ -700,16 +971,17 @@ def load_games_from_configuration(
         game_iteration = iteration_param_values[i]  # from 1 to 30
         game_iteration_value = iteration_param_values_names[i]  # i.e. the sentence or random state
         params[iteration_param] = game_iteration_value  # set the iteration parameter
-        if not check_pre_computed and not only_pre_computed:
+        if not game_should_be_precomputed:  # e.g. for SynthDataTreeSHAPIQXAI
+            yield game_class(**params)
+        elif not check_pre_computed and not only_pre_computed:
             yield game_class(**params)
         else:
             try:  # try to load the game from disk
                 yield load_game_data(
                     game_class, configuration, iteration=game_iteration, n_player_id=n_player_id
                 )
-            except FileNotFoundError:  # fallback to creating the game
-                if not only_pre_computed:
-                    yield game_class(**params)
-                else:
-                    # if only pre-computed games are requested, skip the game
+            except FileNotFoundError:
+                if only_pre_computed:  # if only pre-computed games are requested, skip the game
                     continue
+                else:  # fallback to creating the game which is not pre-computed
+                    yield game_class(**params)

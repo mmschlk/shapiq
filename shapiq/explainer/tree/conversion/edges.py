@@ -21,23 +21,23 @@ def create_edge_tree(
     """Extracts edge information recursively from the tree information.
 
     Parses the tree recursively to create an edge-based representation of the tree. It
-    precalculates the `p_e` and `p_e_ancestors` of the interaction subsets up to order
-    `max_interaction`.
+    precalculates the ``p_e`` and ``p_e_ancestors`` of the interaction subsets up to order
+    ``max_interaction``.
 
     Args:
         children_left (np.ndarray[int]): The left children of each node. Leaf nodes are denoted
-            with -1.
+            with ``-1``.
         children_right (np.ndarray[int]): The right children of each node. Leaf nodes are denoted
-            with -1.
+            with ``-1``.
         features (np.ndarray[int]): The feature used for splitting at each node. Leaf nodes have
-            the value -2.
+            the value ``-2``.
         node_sample_weight (np.ndarray[float]): The sample weights of the tree.
         values (np.ndarray[float]): The output values at the leaf values of the tree.
         n_nodes (int): The number of nodes in the tree.
         n_features (int): The number of features of the dataset.
         max_interaction (int, optional): The maximum interaction order to be computed. An
-            interaction order of 1 corresponds to the Shapley value. Any value higher than 1
-            computes the Shapley interactions values up to that order. Defaults to 1 (i.e. SV).
+            interaction order of ``1`` corresponds to the Shapley value. Any value higher than ``1``
+            computes the Shapley interactions values up to that order. Defaults to ``1`` (i.e. SV).
         subset_updates_pos_store (dict[int, np.ndarray[int]]): A dictionary containing the
             interaction subsets for each feature given an interaction order.
 

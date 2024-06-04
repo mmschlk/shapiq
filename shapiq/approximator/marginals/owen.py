@@ -1,4 +1,4 @@
-"""This module contains the Owen Sampling approximation method for the Shapley value (SV) by
+"""This module contains the Owen Sampling approximation method for the Shapley value by
 Okhrati and Lipani (2020). It estimates the Shapley values in its integral representation by
 sampling random marginal contributions."""
 
@@ -14,19 +14,19 @@ class OwenSamplingSV(Approximator):
     """The Owen Sampling algorithm estimates the Shapley values (SV) by sampling random marginal
     contributions for each player and each coalition size. The marginal contributions are used to
     update an integral representation of the SV. For more information, see
-    [Okhrati and Lipani (2020)](https://www.computer.org/csdl/proceedings-article/icpr/2021/09412511/1tmicWxYo2Q).
+    `Okhrati and Lipani (2020) <https://doi.org/10.48550/arXiv.2010.12082>`_.
     The number of anchor points M at which the integral is to be palpated share the available budget
     for each player equally. A higher `n_anchor_points` increases the resolution of the integral
     reducing bias while reducing the accuracy of the estimation at each point.
 
     Args:
         n: The number of players.
-        random_state: The random state to use for the permutation sampling. Defaults to `None`.
+        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
         n_anchor_points: Number of anchor points at which the integral is to be palpated.
 
     Attributes:
         n: The number of players.
-        _grand_coalition_array: The array of players (starting from 0 to n).
+        _grand_coalition_array: The array of players (starting from ``0`` to ``n``).
         iteration_cost: The cost of a single iteration of the approximator.
     """
 
@@ -55,7 +55,7 @@ class OwenSamplingSV(Approximator):
 
         used_budget = 0
 
-        empty_value = float(game(np.zeros(self.n, dtype=bool)))
+        empty_value = game(np.zeros(self.n, dtype=bool))[0]
         used_budget += 1
 
         anchors = self.get_anchor_points(self.n_anchor_points)
@@ -77,10 +77,10 @@ class OwenSamplingSV(Approximator):
                         )
                         # add information that player is absent
                         coalition = np.insert(coalition, player, False)
-                        marginal_con = -game(coalition)
+                        marginal_con = -game(coalition)[0]
                         # add information that player is present to complete marginal contribution
                         coalition[player] = True
-                        marginal_con += game(coalition)
+                        marginal_con += game(coalition)[0]
                         used_budget += 2
                         # update the affected strata estimate
                         estimates[player][m] += marginal_con

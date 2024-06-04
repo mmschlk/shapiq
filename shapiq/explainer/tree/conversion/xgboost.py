@@ -20,7 +20,7 @@ def convert_xgboost_booster(
     Args:
         tree_booster: The xgboost booster to convert.
         class_label: The class label of the model to explain. Only used for multiclass
-            classification models. Defaults to 0.
+            classification models. Defaults to ``0``.
 
     Returns:
         The converted xgboost booster.

@@ -12,33 +12,35 @@ if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
 
-    from shapiq.games.benchmark.benchmark_config import GAME_TO_CLASS_MAPPING
+    from shapiq.games.benchmark.benchmark_config import GAME_NAME_TO_CLASS_MAPPING
     from shapiq.games.benchmark.plot import get_game_title_name, plot_approximation_quality
     from shapiq.games.benchmark.run import load_benchmark_results
 
-    print("Available games:", GAME_TO_CLASS_MAPPING.keys(), "\n")
+    print("Available games:", GAME_NAME_TO_CLASS_MAPPING.keys(), "\n")
 
     # run parameters
     save_fig = True
+    metric = "MSE"  # MSE Precision@10
 
     # benchmark to plot parameters
-    game = "CaliforniaHousingLocalXAI"
-    config_id = 4
+    game = "SynthDataTreeSHAPIQXAI"
+    config_id = 1
     n_player_id = 0
-    index = "SV"
-    order = 1
-    n_games = 30
+    index = "k-SII"
+    order = 2
+    n_games = 10
 
     if index == "SV":
         order = 1
 
     # plot parameters
     log_scale_y = True
-    log_scale_min = 1e-7
+    log_scale_max = 2e-1
+    log_scale_min = 1e-5
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
-    increase_font_size: int = 2
-    fig_size = (6, 5)
+    increase_font_size: int = 4
+    fig_size = (5, 5)
 
     # create the title -----------------------------------------------------------------------------
     game_title = get_game_title_name(game)
@@ -56,7 +58,7 @@ if __name__ == "__main__":
         game_n_player_id=n_player_id,
         game_n_games=n_games,
     )
-    save_name = os.path.basename(save_path).split(".")[0] + ".pdf"
+    save_name = str(metric) + "_" + os.path.basename(save_path).split(".")[0] + ".pdf"
     save_path = os.path.join("plots", save_name)
 
     # plot the approximation quality ---------------------------------------------------------------
@@ -68,7 +70,12 @@ if __name__ == "__main__":
 
     # get the plot
     fig, ax = plot_approximation_quality(
-        data=results_df, log_scale_y=log_scale_y, log_scale_min=log_scale_min
+        data=results_df,
+        log_scale_y=log_scale_y,
+        log_scale_min=log_scale_min,
+        log_scale_max=log_scale_max,
+        orders=[order],
+        metric=metric,
     )
 
     # finalize the plot

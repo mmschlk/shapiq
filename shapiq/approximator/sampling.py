@@ -138,8 +138,6 @@ class CoalitionSampler:
             None  # is_coalition_size_sampled
         )
 
-        self.sampled = False
-
     @property
     def n_coalitions(self) -> int:
         """Returns the number of coalitions that have been sampled.
@@ -426,7 +424,7 @@ class CoalitionSampler:
             raise ValueError("A minimum sampling budget of 2 samples is required.")
 
         if sampling_budget > self.n_max_coalitions:
-            warnings.warn(UserWarning("Not all budget is required due to the border-trick."))
+            warnings.warn("Not all budget is required due to the border-trick.")
             sampling_budget = min(sampling_budget, self.n_max_coalitions)  # set budget to max coals
 
         self._reset_variables(sampling_budget)
@@ -506,8 +504,6 @@ class CoalitionSampler:
         # set the flag to indicate that these sizes are sampled
         for coalition_size in self._coalitions_to_sample:
             self._is_coalition_size_sampled[coalition_size] = True
-
-        self.sampled = True
 
     def _sort_coalitions(self, value):
         """Used to sort coalition sizes by distance to center, i.e. grand coalition and emptyset first

@@ -20,6 +20,13 @@ __all__ = [
 SHAPIQ_DATA_DIR = os.path.join(os.path.dirname(__file__), "precomputed")
 os.makedirs(SHAPIQ_DATA_DIR, exist_ok=True)
 
+GITHUB_GAMES_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/precomputed/"
+
+
+def download_precomputed_data(file_name: str):
+    """Download the pre-computed data benchmarks games."""
+    pass
+
 
 def get_game_files(game: Union[Game, Game.__class__, str], n_players: int) -> list[str]:
     """Get the files for the given game and number of players.

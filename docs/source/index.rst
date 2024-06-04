@@ -1,7 +1,7 @@
 The ``shapiq`` Python package
 ================================
 
-Shapley Interaction Quantification (``shapiq``) is a Python package for (1) approximating any-order Shapley interactions, (2) benchmarking game-theoretical algorithms for machine learning, (3) explaining feature interactions of model predictions. ``shapiq`` extends the well-known `shap <https://github.com/shap/shap>`_ package for both researchers working on game theory in machine learning, as well as the end-users explaining models. SHAP-IQ extends indivdual Shapley values by quantifying the **synergy** effect between entities (aka **players** in the jargon of game theory) like explanatory features, data points, or weak learners in ensemble models. Synergies between players give a more comprehensive view of machine learning models.
+Shapley Interaction Quantification (``shapiq``) is a Python package for (1) approximating any-order Shapley interactions, (2) benchmarking game-theoretical algorithms for machine learning, (3) explaining feature interactions of model predictions. ``shapiq`` extends the well-known `shap <https://github.com/shap/shap>`_ package for both researchers working on game theory in machine learning, as well as the end-users explaining models. SHAP-IQ extends individual Shapley values by quantifying the **synergy** effect between entities (aka **players** in the jargon of game theory) like explanatory features, data points, or weak learners in ensemble models. Synergies between players give a more comprehensive view of machine learning models.
 
 Contents
 ~~~~~~~~
@@ -19,8 +19,10 @@ Contents
 
    notebooks/shapiq_scikit_learn
    notebooks/treeshapiq_lightgbm
-   notebooks/parallel_computation
    notebooks/language_model_game
+   notebooks/conditional_imputer
+   notebooks/parallel_computation
+   notebooks/benchmark_approximators
 
 .. toctree::
    :maxdepth: 2

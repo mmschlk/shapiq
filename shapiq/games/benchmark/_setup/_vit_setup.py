@@ -77,7 +77,7 @@ class ViTModel:
 
         # call the model with no information to get empty prediction
         empty_output = self(np.zeros(self.n_patches, dtype=bool))
-        self.empty_value = float(empty_output)
+        self.empty_value = empty_output[0]
 
     def __call__(self, coalitions: np.ndarray) -> np.ndarray:
         """Returns the class probability of the coalition.

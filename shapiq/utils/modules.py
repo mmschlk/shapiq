@@ -1,4 +1,5 @@
 import sys
+from importlib import import_module
 from typing import Any, Union
 
 
@@ -55,3 +56,19 @@ def safe_isinstance(obj: Any, class_path_str: Union[str, list[str], tuple[str]])
             return True
 
     return False
+
+
+def check_import_module(name=None, functionality=None):
+    """check if the optional dependency is available"""
+    if name is not None:
+        try:
+            import_module(name)
+        except ImportError:
+            raise ImportError(
+                "Missing optional dependency '"
+                + name
+                + "'. "
+                + ("Install '" + name + "' for " + functionality + ". ")
+                if functionality
+                else "" + "Use pip or conda to install '" + name + "'."
+            )

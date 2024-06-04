@@ -1,6 +1,10 @@
 """Benchmark games."""
 
-# dataset valuation games
+# data and dataset valuation games
+from .data_valuation.base import DataValuation
+from .data_valuation.benchmark import AdultCensus as AdultCensusDataValuation
+from .data_valuation.benchmark import BikeSharing as BikeSharingDataValuation
+from .data_valuation.benchmark import CaliforniaHousing as CaliforniaHousingDataValuation
 from .dataset_valuation.base import DatasetValuation
 from .dataset_valuation.benchmark import AdultCensus as AdultCensusDatasetValuation
 from .dataset_valuation.benchmark import BikeSharing as BikeSharingDatasetValuation
@@ -66,6 +70,11 @@ from .treeshapiq_xai.base import TreeSHAPIQXAI
 from .treeshapiq_xai.benchmark import AdultCensus as AdultCensusTreeSHAPIQXAI
 from .treeshapiq_xai.benchmark import BikeSharing as BikeSharingTreeSHAPIQXAI
 from .treeshapiq_xai.benchmark import CaliforniaHousing as CaliforniaHousingTreeSHAPIQXAI
+from .treeshapiq_xai.benchmark import SynthData as SynthDataTreeSHAPIQXAI
+
+# uncertainty explanation games
+from .uncertainty.base import UncertaintyExplanation
+from .uncertainty.benchmark import AdultCensus as AdultCensusUncertaintyExplanation
 
 # cluster explanation games
 from .unsupervised_cluster.base import ClusterExplanation
@@ -101,6 +110,11 @@ __all__ = [
     "AdultCensusDatasetValuation",
     "BikeSharingDatasetValuation",
     "CaliforniaHousingDatasetValuation",
+    # data_valuation games
+    "DataValuation",
+    "AdultCensusDataValuation",
+    "BikeSharingDataValuation",
+    "CaliforniaHousingDataValuation",
     # feature_selection games
     "FeatureSelection",
     "AdultCensusFeatureSelection",
@@ -126,6 +140,9 @@ __all__ = [
     "AdultCensusRandomForestEnsembleSelection",
     "BikeSharingRandomForestEnsembleSelection",
     "CaliforniaHousingRandomForestEnsembleSelection",
+    # uncertainty explanation games
+    "UncertaintyExplanation",
+    "AdultCensusUncertaintyExplanation",
     # unspervised data
     "UnsupervisedData",
     "AdultCensusUnsupervisedData",
@@ -136,6 +153,7 @@ __all__ = [
     "AdultCensusTreeSHAPIQXAI",
     "BikeSharingTreeSHAPIQXAI",
     "CaliforniaHousingTreeSHAPIQXAI",
+    "SynthDataTreeSHAPIQXAI",
     # synthetic games
     "DummyGame",
     "SOUM",

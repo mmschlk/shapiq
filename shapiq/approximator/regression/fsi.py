@@ -19,14 +19,14 @@ class RegressionFSII(Regression):
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
             be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
             of a certain size. Defaults to ``None``.
-        random_state: The random state of the estimator. Defaults to `None`.
+        random_state: The random state of the estimator. Defaults to ``None``.
 
     Attributes:
         n: The number of players.
-        N: The set of players (starting from 0 to n - 1).
+        N: The set of players (starting from ``0`` to ``n - 1``).
         max_order: The interaction order of the approximation.
         min_order: The minimum order of the approximation. For the regression estimator, min_order
-            is equal to 1.
+            is equal to ``1``.
         iteration_cost: The cost of a single iteration of the regression SII.
     """
 

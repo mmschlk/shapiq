@@ -15,10 +15,10 @@ class Imputer(Game):
     Args:
         model: The model to explain as a callable function expecting a data points as input and
             returning the model's predictions.
-        data: The background data to use for the explainer as a two-dimensional array
-            with shape (n_samples, n_features).
+        data: The background data to use for the explainer as a 2-dimensional array
+            with shape ``(n_samples, n_features)``.
         categorical_features: A list of indices of the categorical features in the background data.
-        random_state: The random state to use for sampling. Defaults to `None`.
+        random_state: The random state to use for sampling. Defaults to ``None``.
     """
 
     @abstractmethod

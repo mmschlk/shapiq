@@ -17,37 +17,37 @@ class TreeModel:
     format.
 
     Attributes:
-        children_left: The left children of each node in a tree. Leaf nodes are -1.
-        children_right: The right children of each node in a tree. Leaf nodes are -1.
+        children_left: The left children of each node in a tree. Leaf nodes are ``-1``.
+        children_right: The right children of each node in a tree. Leaf nodes are ``-1``.
         features: The feature indices of the decision nodes in a tree. Leaf nodes are assumed to be
-            -2 but no check is performed.
-        thresholds: The thresholds of the decision nodes in a tree. Leaf nodes are set to NaN.
+            ``-2`` but no check is performed.
+        thresholds: The thresholds of the decision nodes in a tree. Leaf nodes are set to ``np.NaN``.
         values: The values of the leaf nodes in a tree.
         node_sample_weight: The sample weights of the nodes in a tree.
-        empty_prediction: The empty prediction of the tree model. The default value is None. Then
+        empty_prediction: The empty prediction of the tree model. The default value is ``None`.` Then
             the empty prediction is computed from the leaf values and the sample weights.
-        leaf_mask: The boolean mask of the leaf nodes in a tree. The default value is None. Then the
+        leaf_mask: The boolean mask of the leaf nodes in a tree. The default value is ``None``. Then the
             leaf mask is computed from the children left and right arrays.
-        n_features_in_tree: The number of features in the tree model. The default value is None.
+        n_features_in_tree: The number of features in the tree model. The default value is ``None``.
             Then the number of features in the tree model is computed from the unique feature
             indices in the features array.
-        max_feature_id: The maximum feature index in the tree model. The default value is None. Then
+        max_feature_id: The maximum feature index in the tree model. The default value is ``None``. Then
             the maximum feature index in the tree model is computed from the features array.
         feature_ids: The feature indices of the decision nodes in the tree model. The default value
-            is None. Then the feature indices of the decision nodes in the tree model are computed
+            is ``None``. Then the feature indices of the decision nodes in the tree model are computed
             from the unique feature indices in the features array.
-        root_node_id: The root node id of the tree model. The default value is None. Then the root
-            node id of the tree model is set to 0.
-        n_nodes: The number of nodes in the tree model. The default value is None. Then the number
+        root_node_id: The root node id of the tree model. The default value is ``None``. Then the root
+            node id of the tree model is set to ``0``.
+        n_nodes: The number of nodes in the tree model. The default value is ``None``. Then the number
             of nodes in the tree model is computed from the children left array.
-        nodes: The node ids of the tree model. The default value is None. Then the node ids of the
+        nodes: The node ids of the tree model. The default value is ``None``. Then the node ids of the
             tree model are computed from the number of nodes in the tree model.
         feature_map_original_internal: A mapping of feature indices from the original feature
             indices (as in the model) to the internal feature indices (as in the tree model).
         feature_map_internal_original: A mapping of feature indices from the internal feature
             indices (as in the tree model) to the original feature indices (as in the model).
         original_output_type: The original output type of the tree model. The default value is
-            "raw".
+            ``"raw"``.
     """
 
     children_left: np.ndarray[int]
@@ -124,8 +124,8 @@ class TreeModel:
 
         The method reduces the feature complexity of the tree model by removing unused features and
         reindexing the feature indices of the decision nodes in the tree. The method modifies the
-        tree model in place. To see the original feature mappings, use the `feature_mapping_old_new`
-        and `feature_mapping_new_old` attributes.
+        tree model in place. To see the original feature mappings, use the ``feature_mapping_old_new``
+        and ``feature_mapping_new_old`` attributes.
 
         For example, consider a tree model with the following feature indices:
 
@@ -136,8 +136,8 @@ class TreeModel:
 
             [0, 1, 2]
 
-        Feature '8' is 'renamed' to '2' such that in the internal representation a one-hot vector
-        (and matrices) of length 3 suffices to represent the feature indices.
+        Feature ``'8'`` is 'renamed' to ``'2'`` such that in the internal representation a one-hot vector
+        (and matrices) of length ``3`` suffices to represent the feature indices.
         """
         if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
@@ -161,8 +161,6 @@ class EdgeTree:
 
     The dataclass stores the information of an edge representation of the tree in a way that is easy
     to access and manipulate for the TreeSHAP-IQ algorithm.
-
-    # TODO: add more information about the attributes
     """
 
     parents: np.ndarray[int]

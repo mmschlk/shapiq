@@ -4,11 +4,11 @@ import os
 import setuptools
 
 NAME = "shapiq"
-DESCRIPTION = "SHAPley Interaction Quantification (SHAP-IQ) for Explainable AI"
+DESCRIPTION = "Shapley Interactions for Machine Learning"
 LONG_DESCRIPTION_CONTENT_TYPE = "text/markdown"
 URL = "https://github.com/mmschlk/shapiq"
 EMAIL = "maximilian.muschalik@ifi.lmu.de"
-AUTHOR = "Maximilian Muschalik Fabian Fumagalli"
+AUTHOR = "Maximilian Muschalik et al."
 REQUIRES_PYTHON = ">=3.9.0"
 
 work_directory = os.path.abspath(os.path.dirname(__file__))
@@ -68,8 +68,9 @@ setuptools.setup(
     python_requires=REQUIRES_PYTHON,
     url=URL,
     project_urls={
-        "Tracker": "https://github.com/mmschlk/shapiq/issues?q=is%3Aissue+label%3Abug",
+        "Tracker": "https://github.com/mmschlk/shapiq/issues",
         "Source": "https://github.com/mmschlk/shapiq",
+        "Documentation": "https://shapiq.readthedocs.io",
     },
     packages=setuptools.find_packages(include=("shapiq", "shapiq.*")),
     install_requires=base_packages + plotting_packages,
@@ -81,10 +82,11 @@ setuptools.setup(
     license="MIT",
     license_files=("LICENSE",),
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "License :: OSI Approved :: MIT License",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.9",
@@ -95,8 +97,10 @@ setuptools.setup(
     keywords=[
         "python",
         "machine learning",
+        "interpretable machine learning",
         "shap",
         "xai",
+        "explainable ai",
         "interaction",
         "shapley interactions",
         "shapley values",

@@ -1,5 +1,6 @@
 """This test module contains all tests regarding the interaciton explainer for the shapiq package."""
 
+import numpy as np
 import pytest
 from sklearn.datasets import make_regression
 from sklearn.tree import DecisionTreeRegressor
@@ -51,8 +52,10 @@ def test_init_params(dt_model, data, index, max_order, imputer):
     # test defaults
     if index == "FSII":
         assert explainer._approximator.__class__.__name__ == "RegressionFSII"
+    elif index == "SII" or index == "k-SII":
+        assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
     else:
-        assert explainer._approximator.__class__.__name__ == "SHAPIQ"
+        assert explainer._approximator.__class__.__name__ == "SVARMIQ"
 
 
 def test_auto_params(dt_model, data):
@@ -66,7 +69,7 @@ def test_auto_params(dt_model, data):
     assert explainer._approximator.index == "k-SII"
     assert explainer._max_order == 2
     assert explainer._random_state is None
-    assert explainer._approximator.__class__.__name__ == "SHAPIQ"
+    assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
 
 
 def test_init_params_error(dt_model, data):
@@ -140,3 +143,11 @@ def test_explain(dt_model, data, index, budget, max_order, imputer):
     if budget is None:
         budget = 100_000_000_000
     assert interaction_values.estimation_budget <= budget + 2
+    interaction_values0 = explainer.explain(x, budget=budget, random_state=0)
+    interaction_values2 = explainer.explain(x, budget=budget, random_state=0)
+    assert np.allclose(
+        interaction_values0.get_n_order_values(1), interaction_values2.get_n_order_values(1)
+    )
+    assert np.allclose(
+        interaction_values0.get_n_order_values(2), interaction_values2.get_n_order_values(2)
+    )

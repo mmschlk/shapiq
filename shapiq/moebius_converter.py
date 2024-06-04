@@ -1,3 +1,6 @@
+"""MoebiusConverter class for computing exact Shapley Interactions
+using the (sparse) Möbius representation.."""
+
 import copy
 from typing import Callable, Optional
 
@@ -6,17 +9,6 @@ from scipy.special import binom
 
 from .interaction_values import InteractionValues
 from .utils.sets import powerset
-
-ALL_AVAILABLE_CONCEPTS: dict[str, str] = {
-    # Base Interactions
-    "SII": "Shapley Interaction Index",
-    # Shapley Interactions
-    "k-SII": "k-Shapley Interaction Index",
-    "STII": "Shapley-Taylor Interaction Index",
-    "FSII": "Faithful Shapley Interaction Index",
-}
-
-ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 
 
 class MoebiusConverter:
@@ -45,11 +37,12 @@ class MoebiusConverter:
             "FSII": self.moebius_to_shapley_interaction,
             # shapley_base_interaction
             "SII": self.moebius_to_base_interaction,
+            # Shapley value
+            "SV": self.moebius_to_base_interaction,
             # Banzhaf Interactions
             "FBII": self.fii_routine,
         }
         self.available_indices: set[str] = set(self._index_mapping.keys())
-        self.available_concepts: dict[str, str] = ALL_AVAILABLE_CONCEPTS
 
     def __call__(self, index: str, order: Optional[int] = None) -> InteractionValues:
         """Calls the MoebiusConverter of the specified index or value.
@@ -57,7 +50,7 @@ class MoebiusConverter:
         Args:
             index: The index or value to compute
             order: The order of the interaction index. If not specified the maximum order
-                (i.e. n_players) is used. Defaults to None.
+                (i.e. ``n_players``) is used. Defaults to ``None``.
 
         Returns:
             The desired interaction values or generalized values.
@@ -73,17 +66,17 @@ class MoebiusConverter:
             return copy.deepcopy(self._computed[(index, order)])
         elif index in self.available_indices:  # if index is supported, compute it
             computation_function = self._index_mapping[index]
-            computed_index: InteractionValues = computation_function(index, order)
+            computed_index: InteractionValues = computation_function(index=index, order=order)
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
             raise ValueError(f"Index {index} not supported.")
 
     def base_aggregation(self, base_interactions: InteractionValues, order: int):
-        """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII
+        """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII.
 
         Args:
-            base_interactions: InteractionValues object containing interactions up to order "order"
+            base_interactions: InteractionValues object containing interactions up to order ``order``.
             order: The highest order of interactions considered
 
         Returns:
@@ -153,7 +146,7 @@ class MoebiusConverter:
 
         return base_interactions
 
-    def stii_routine(self, order: int):
+    def stii_routine(self, order: int, **kwargs):
         """Computes STII. Routine to distribute the Moebius coefficients onto all STII interactions.
 
         The lower-order interactions are equal to their Moebius coefficients, whereas the top-order
@@ -161,6 +154,7 @@ class MoebiusConverter:
 
         Args:
             order: The order of the explanation
+            **kwargs: Additional keyword arguments (not used).
 
         Returns:
             An InteractionValues object containing the STII interactions.
@@ -222,10 +216,11 @@ class MoebiusConverter:
     def fii_routine(self, index: str, order: int):
         """Computes FII. Routine to distribute the Moebius coefficients onto all FSII interactions.
 
-        The higher-order interactions (size > order) are distributed onto all FSII interactions
-        (size <= order).
+        The higher-order interactions (``size > order``) are distributed onto all FSII interactions
+        (``size <= order``).
 
         Args:
+            index: The interaction index, e.g. FSII or FBII
             order: The order of the explanation
 
         Returns:
