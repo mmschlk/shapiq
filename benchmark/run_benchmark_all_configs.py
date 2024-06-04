@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 if __name__ == "__main__":
 
     # example python run command with nohup and nice
-    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 > tree.log &
+    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 &
 
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
@@ -34,34 +34,20 @@ if __name__ == "__main__":
         required=False,
         default=1,
     )
-    parser.add_argument(
-        "--omit_regex",
-        type=str,
-        required=False,
-        nargs="+",
-        default=[],
-    )
     args = parser.parse_args()
 
     # parse the arguments --------------------------------------------------------------------------
     n_jobs = args.n_jobs
-    omit_regex = args.omit_regex
 
     # print the arguments --------------------------------------------------------------------------
     print(f"indices_order: {indices_order}")
     print(f"rerun_if_exists: {rerun_if_exists}")
     print(f"n_jobs: {n_jobs}")
-    print(f"omit_regex: {omit_regex}")
 
     # get all configurations that are not omitted by the name --------------------------------------
     all_game_names = []
     for game_name in GAME_NAME_TO_CLASS_MAPPING.keys():
-        omit = False
-        for omit_regex_str in omit_regex:
-            if omit_regex_str in game_name:
-                omit = True
-        if not omit:
-            all_game_names.append(game_name)
+        all_game_names.append(game_name)
 
     # run all configurations -----------------------------------------------------------------------
     n_runs_done, n_configs_tried = 0, 0
