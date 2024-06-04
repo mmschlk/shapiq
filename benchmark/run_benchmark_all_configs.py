@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 if __name__ == "__main__":
 
     # example python run command with nohup and nice
-    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 --rerun_if_exists Falqse > cooler.log &
+    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 --rerun_if_exists False > cool.log &
 
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
@@ -51,6 +51,11 @@ if __name__ == "__main__":
     n_jobs = args.n_jobs
     omit_regex = args.omit_regex
     rerun_if_exists = args.rerun_if_exists
+
+    # print the arguments --------------------------------------------------------------------------
+    print(f"n_jobs: {n_jobs}")
+    print(f"rerun_if_exists: {rerun_if_exists}")
+    print(f"omit_regex: {omit_regex}")
 
     # get all configurations that are not omitted by the name --------------------------------------
     all_game_names = []
