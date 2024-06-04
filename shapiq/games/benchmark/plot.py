@@ -100,6 +100,12 @@ def abbreviate_application_name(application_name: str, new_line: bool = False) -
     abbreviation = "".join(abbreviations)
     if application_name == "DatasetValuation":
         abbreviation = "Dst. Val."
+    if application_name == "SOUM":
+        abbreviation = "SOUM"
+    if application_name == "SOUM (low)" and new_line:
+        abbreviation = "SOUM\n(low)"
+    if application_name == "SOUM (high)":
+        abbreviation = "SOUM\n(high)"
     if new_line:
         abbreviation = abbreviation.replace(".", ".\n")
     return abbreviation.strip()

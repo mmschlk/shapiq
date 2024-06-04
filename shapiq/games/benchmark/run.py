@@ -397,9 +397,15 @@ def run_benchmark_from_configuration(
     # get the benchmark name for saving the results
     benchmark_name = _make_benchmark_name(config_id, game_class, len(games), index, order)
     save_path = os.path.join("results", f"{benchmark_name}.json")
+    print(
+        f"Checking if the benchmark results already exist with the name: {benchmark_name} and the "
+        f"save path: {save_path}."
+    )
     if not rerun_if_exists and os.path.exists(save_path):
         print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
         return
+    else:
+        print(f"Results for the benchmark {benchmark_name} do not exist. Running the benchmark.")
 
     # get the exact values
     print("Computing the exact values for the games.")

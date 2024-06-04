@@ -41,7 +41,8 @@ APPLICATION_ORDERING = {
     "ClusterExplanation": 7,
     "UnsupervisedData": 8,
     "UncertaintyExplanation": 9,
-    "SOUM": 10,
+    "SOUM (low)": 10,
+    "SOUM (high)": 11,
 }
 
 SV_APPROXIMATORS_ORDERING = {
@@ -132,7 +133,13 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
         setup = "_".join(parameters[:-2])
 
         # get the game name
-        application_name = create_application_name(setup)
+        if "SOUM" not in setup:
+            application_name = create_application_name(setup)
+        else:
+            if "max_interaction_size=5" in setup:
+                application_name = "SOUM (low)"
+            else:
+                application_name = "SOUM (high)"
         run_id = file_name
 
         # load the benchmark results
