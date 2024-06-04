@@ -540,11 +540,11 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
     AdultCensusUncertaintyExplanation: [
         {
             "configurations": [
-                {"uncertainty_to_explain": "total", "imputer": "marginal"},
+                # {"uncertainty_to_explain": "total", "imputer": "marginal"},
                 {"uncertainty_to_explain": "total", "imputer": "conditional"},
-                {"uncertainty_to_explain": "aleatoric", "imputer": "marginal"},
+                # {"uncertainty_to_explain": "aleatoric", "imputer": "marginal"},
                 {"uncertainty_to_explain": "aleatoric", "imputer": "conditional"},
-                {"uncertainty_to_explain": "epistemic", "imputer": "marginal"},
+                # {"uncertainty_to_explain": "epistemic", "imputer": "marginal"},
                 {"uncertainty_to_explain": "epistemic", "imputer": "conditional"},
             ],
             "iteration_parameter": "x",
