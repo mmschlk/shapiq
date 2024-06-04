@@ -28,7 +28,9 @@ class UnsupervisedData(Game):
         # discretize the data
         from sklearn.preprocessing import KBinsDiscretizer
 
-        discretizer = KBinsDiscretizer(n_bins=20, encode="ordinal", strategy="uniform", subsample=200000)
+        discretizer = KBinsDiscretizer(
+            n_bins=20, encode="ordinal", strategy="uniform", subsample=200000
+        )
         self.data_discrete = np.zeros_like(data)
         for i in range(self._n_features):
             self.data_discrete[:, i] = discretizer.fit_transform(data[:, i].reshape(-1, 1)).ravel()

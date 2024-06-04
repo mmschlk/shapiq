@@ -218,7 +218,6 @@ def test_resnet_model_class(test_image_and_path):
     assert output[1] != 0.0
 
 
-
 def test_image_classifier_game_resnet(test_image_and_path):
     """Tests the ImageClassifierGame with the ResNet models."""
     test_image, path_from_test_root = test_image_and_path
@@ -241,7 +240,6 @@ def test_image_classifier_game_resnet(test_image_and_path):
     assert np.isclose(game_small(game_small.grand_coalition), grand_coal_output)
 
 
-
 def test_vit_model_class(test_image_and_path):
     """Tests the creation of the ViTModel class."""
     test_image, _ = test_image_and_path
@@ -255,7 +253,6 @@ def test_vit_model_class(test_image_and_path):
 
     with pytest.raises(ValueError):
         ViTModel(n_patches=10, input_image=test_image)
-
 
 
 def test_image_classifier_game_vit(test_image_and_path):
