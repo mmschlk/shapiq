@@ -472,7 +472,10 @@ class Regression(Approximator):
 
         # Pre-compute weights
         for coalition_size_pos, coalition_size in enumerate(coalition_sizes):
-            for intersection_size in range(min(coalition_size, interaction_size) + 1):
+            for intersection_size in range(
+                max(0, coalition_size + interaction_size - self.n),
+                min(coalition_size, interaction_size) + 1,
+            ):
                 ground_truth_sii_weights[coalition_size_pos, intersection_size] = (
                     self._ground_truth_sii_weight(
                         coalition_size, interaction_size, intersection_size
