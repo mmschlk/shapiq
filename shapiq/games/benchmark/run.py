@@ -404,6 +404,8 @@ def run_benchmark_from_configuration(
     if not rerun_if_exists and os.path.exists(save_path):
         print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
         return
+    elif rerun_if_exists:
+        print(f"Rerunning the benchmark {benchmark_name}.")
     else:
         print(f"Results for the benchmark {benchmark_name} do not exist. Running the benchmark.")
 
