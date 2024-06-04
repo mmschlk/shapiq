@@ -7,6 +7,7 @@ import sys
 import warnings
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm.auto import tqdm
 
@@ -33,16 +34,17 @@ METRICS = {
 
 APPLICATION_ORDERING = {
     "LocalExplanation": 1,
-    "GlobalExplanation": 2,
-    "FeatureSelection": 3,
-    "DataValuation": 4,
-    "DatasetValuation": 5,
-    "EnsembleSelection": 6,
-    "ClusterExplanation": 7,
-    "UnsupervisedData": 8,
-    "UncertaintyExplanation": 9,
-    "SOUM (low)": 10,
-    "SOUM (high)": 11,
+    "TreeExplanation": 2,
+    "GlobalExplanation": 3,
+    "FeatureSelection": 4,
+    "DataValuation": 5,
+    "DatasetValuation": 6,
+    "EnsembleSelection": 7,
+    "ClusterExplanation": 8,
+    "UnsupervisedData": 9,
+    "UncertaintyExplanation": 10,
+    "SOUM (low)": 11,
+    "SOUM (high)": 12,
 }
 
 SV_APPROXIMATORS_ORDERING = {
@@ -62,6 +64,11 @@ SI_APPROXIMATORS_ORDERING = {
     "SHAPIQ": 3,
     "PermutationSamplingSII": 4,
     "SVARMIQ": 5,
+}
+
+INDEX_ORDERING = {
+    "SV": 1,
+    "k-SII": 2,
 }
 
 
@@ -136,7 +143,7 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
         if "SOUM" not in setup:
             application_name = create_application_name(setup)
         else:
-            if "max_interaction_size=5" in setup:
+            if "n=15" in setup:
                 application_name = "SOUM (low)"
             else:
                 application_name = "SOUM (high)"
@@ -224,6 +231,9 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
     all_metrics = df["metric"].unique()
     all_indices = df["index"].unique()
 
+    # order the indices
+    all_indices = sort_values(all_indices, INDEX_ORDERING)
+
     index_approximators = {}
     for index in all_indices:
         index_approximators[index] = list(
@@ -247,9 +257,9 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
                 )
             metric_df = pd.concat(high_budget_dfs)
         fig, ax = plt.subplots()
-        width = 0.4
-        padding = 0.15
-        sep = 0.6
+        width = 0.5
+        padding = 0.2
+        sep = 0.65
         x = list(range(len(all_applications)))
         x_ticks_index, x_tick_labels_index, x_ticks_app, x_ticks_labels_app = [], [], [], []
         for app_i, application in enumerate(all_applications):
@@ -262,6 +272,8 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
                         & (metric_df["index"] == index)
                     ]
                 )
+                if n_values == 0:
+                    continue
                 approximators = index_approximators[index]
                 if index == "SV":
                     approximators_sorted = sort_values(approximators, SV_APPROXIMATORS_ORDERING)
@@ -316,10 +328,119 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
         plt.show()
 
 
+def make_latex_table_of_benchmark_configs(first_half: bool = True) -> None:
+    """Prints a latex table of the benchmark configurations.
+
+    Each configuration is printed as a row in the table. The table is created from the
+    BENCHMARK_CONFIGURATIONS dictionary and has the following columns:
+    - The Game Class Name Abbreviation: game_identifiers
+    - Precomputed: Whether the game is precomputed or not. If precomputed print "\checkmark", else
+        print "X".
+    - The Number of Players: The number of players in the game.
+    - The Number of Game evaluations: 2**n_players if more than 2**16 print ">$2^{16}$"
+    - The Number of Iterations: The number of iterations per configuration.
+    - The Game Configuration: The configuration of the game.
+    """
+    from shapiq.games.benchmark.benchmark_config import (
+        BENCHMARK_CONFIGURATIONS,
+        BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
+        GAME_CLASS_TO_NAME_MAPPING,
+        GAME_NAME_TO_CLASS_MAPPING,
+    )
+    from shapiq.games.benchmark.plot import abbreviate_application_name
+
+    # get all unique applications and metrics and index
+    game_classes = list(BENCHMARK_CONFIGURATIONS.keys())
+    game_identifiers = [GAME_CLASS_TO_NAME_MAPPING[game_class] for game_class in game_classes]
+    game_identifiers = sorted(game_identifiers)
+
+    col_names = [
+        r"\textbf{ID}",  # identifier goes from 1 to n
+        r"\textbf{Benchmark}",  # game_identifiers
+        r"\textbf{P.}",  # precomputed
+        r"\textbf{$n$}",  # number of players
+        r"\textbf{$|G|$}",  # number of game evaluations
+        r"\textbf{Iter.}",  # number of iterations
+        r"\textbf{Game Configuration}",  # game configuration
+    ]
+
+    table = r"\begin{tabular}{" + "c" * len(col_names) + "}\n"
+    table += r"\toprule" + "\n"
+    table += " & ".join(col_names) + r" \\"
+    table += r"\midrule" + "\n"
+
+    # add the rows
+    n_id = 1
+    for game_id in game_identifiers:
+        game_class = GAME_NAME_TO_CLASS_MAPPING[game_id]
+        game_class_player = BENCHMARK_CONFIGURATIONS[game_class]
+        for n_player_id, configuration_dict in enumerate(game_class_player):
+            # get all params
+            n_players: int = configuration_dict["n_players"]
+            precomputed: bool = configuration_dict["precompute"]
+            iteration_param_values = configuration_dict.get(
+                "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
+            )
+            iterations: int = len(iteration_param_values)
+            n_evals: int = 2**n_players
+            # prepare for printing
+            precomp_str: str = r"\cmark" if precomputed else r"\textbf{X}"
+            n_evals_str: str = f"{n_evals}" if n_evals <= 2**16 else r"$>2^{16}$"
+            n_players_str: str = f"{n_players}"
+            iterations_str: str = f"{iterations}"
+            game_id_str = abbreviate_application_name(game_id, new_line=False, space=True)
+            for config in configuration_dict["configurations"]:
+                config_str: str = ", ".join([f"{k}={v}" for k, v in config.items()])
+                config_str = config_str.replace("_", r"\_")
+                if config_str == "":
+                    config_str = "-"
+                n_id_str = r"\textbf{" + str(n_id) + "}"
+                # create row
+                row = [
+                    n_id_str,
+                    game_id_str,
+                    precomp_str,
+                    n_players_str,
+                    n_evals_str,
+                    iterations_str,
+                    config_str,
+                ]
+                row_str = " & ".join(row) + r" \\" + "\n"
+                if first_half and n_id <= 50:
+                    table += row_str
+                elif not first_half and n_id > 50:
+                    table += row_str
+                n_id += 1
+        if first_half and n_id > 50:
+            break
+        elif not first_half and n_id <= 50:
+            continue
+        # add a line
+        table += r"\midrule" + "\n"
+
+    # remove last midrule if present
+    if table.endswith(r"\midrule" + "\n"):
+        table = table[: -len(r"\midrule" + "\n")]
+
+    table += r"\bottomrule" + "\n"
+    table += r"\end{tabular}"
+    print(table)
+
+
 if __name__ == "__main__":
 
     create_eval = False
     budget_setting = "high"  # can be 'all', 'high', 'low'
+    print_latex_table = False
+
+    if print_latex_table:
+        make_latex_table_of_benchmark_configs(first_half=True)
+        print("\n\n\n")
+        make_latex_table_of_benchmark_configs(first_half=False)
+        sys.exit(0)
+
+    # fontsize
+    plt.rcParams.update({"font.size": 10})
 
     eval_path = EVAL_DIR / "benchmark_results_summary.csv"
     if create_eval or not os.path.exists(eval_path):

@@ -915,7 +915,8 @@ def print_benchmark_configurations() -> None:
 
 def load_games_from_configuration(
     game_class: Union[Game.__class__, str],
-    config_id: int,
+    config_id: Optional[int] = None,
+    configuration_dict: dict[str, Any] = None,
     n_games: Optional[int] = None,
     n_player_id: int = 0,
     check_pre_computed: bool = True,
@@ -940,9 +941,14 @@ def load_games_from_configuration(
     )
 
     # get config if it is an int
-    configuration: dict = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][
-        config_id - 1
-    ]
+    if config_id is not None:
+        configuration: dict = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][
+            config_id - 1
+        ]
+    elif configuration_dict is not None:
+        configuration = configuration_dict
+    else:
+        raise ValueError("Either config_id or configuration_dict must be provided.")
     params = {}
 
     # get the default parameters

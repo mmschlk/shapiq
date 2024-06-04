@@ -405,7 +405,7 @@ class TreeSHAPIQ:
             self.subset_ancestors_store[order] = subset_ancestors
             self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
             self.D_powers_store[order] = self._cache(self.D_store[order])
-            if self._index in ("SII", "k-SII"):
+            if self._index in ("SV", "SII", "k-SII"):
                 self.Ns_store[order] = self._get_N(self.D_store[order])
             else:
                 self.Ns_store[order] = self._get_N_cii(self.D_store[order], order)

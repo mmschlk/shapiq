@@ -388,7 +388,10 @@ def run_benchmark_from_configuration(
     config_id = get_game_file_name_from_config(game_configuration)
     games: list[Game] = list(
         load_games_from_configuration(
-            game_class, game_configuration, n_player_id=game_n_player_id, only_pre_computed=True
+            game_class,
+            configuration_dict=game_configuration,
+            n_player_id=game_n_player_id,
+            only_pre_computed=True,
         )
     )
     if game_n_games is not None:

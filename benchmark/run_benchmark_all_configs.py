@@ -20,10 +20,11 @@ if __name__ == "__main__":
     from shapiq.games.benchmark.run import run_benchmark_from_configuration
 
     indices_order = [
-        ("k-SII", 2),
         ("SV", 1),
+        ("k-SII", 2),
     ]
     rerun_if_exists = False
+    raise_error = False
 
     # add arguments to the parser ------------------------------------------------------------------
     parser = argparse.ArgumentParser()
@@ -92,6 +93,8 @@ if __name__ == "__main__":
                         print(f"Ran {n_runs_done} out of {n_configs_tried} configurations.")
                     except Exception as e:
                         print(f"Error occurred: {e}. Continuing.")
+                        if raise_error:
+                            raise e
                         continue
 
     print(f"Ran {n_runs_done} out of {n_configs_tried} configurations.")

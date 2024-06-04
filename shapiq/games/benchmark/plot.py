@@ -62,7 +62,7 @@ def create_application_name(setup: str, abbrev: bool = False) -> str:
     application_name = application_name.replace("BikeSharing", "")
     application_name = application_name.replace("ImageClassifier", "LocalExplanation")
     application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
-    application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
+    application_name = application_name.replace("TreeSHAPIQXAI", "TreeExplanation")
     application_name = application_name.replace(
         "RandomForestEnsembleSelection", "EnsembleSelection"
     )
@@ -71,13 +71,16 @@ def create_application_name(setup: str, abbrev: bool = False) -> str:
     return application_name
 
 
-def abbreviate_application_name(application_name: str, new_line: bool = False) -> str:
+def abbreviate_application_name(
+    application_name: str, new_line: bool = False, space: bool = False
+) -> str:
     """Abbreviate the application name by taking the first three characters after each capital
     letter and adding a dot. The last character is not abbreviated.
 
     Args:
         application_name: The application name to abbreviate.
         new_line: Whether to add a new line after each abbreviation. Defaults to `False`.
+        space: Whether to add a space after each abbreviation. Defaults to `False`.
 
     Example:
         >>> abbreviate_application_name("LocalExplanation")
@@ -108,6 +111,8 @@ def abbreviate_application_name(application_name: str, new_line: bool = False) -
         abbreviation = "SOUM\n(high)"
     if new_line:
         abbreviation = abbreviation.replace(".", ".\n")
+    if space:
+        abbreviation = abbreviation.replace(".", ". ")
     return abbreviation.strip()
 
 

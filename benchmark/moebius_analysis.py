@@ -16,6 +16,10 @@ except ImportError:
     os.makedirs("eval", exist_ok=True)
     from shapiq.interaction_values import InteractionValues
 
+HEX_BLACK = "#000000"
+MEDIAN_COLOR = "#ef27a6"
+LIGHT_GRAY = "#d3d3d3"
+
 
 def plot_box_plot(
     interactions: list[InteractionValues],
@@ -24,6 +28,7 @@ def plot_box_plot(
     save_path: Optional[str] = None,
     title: str = "Box plot of the interaction values",
     showfliers: bool = True,
+    y_lim: Optional[tuple[float, float]] = None,
 ) -> None:
     """Plot a box plot of the interaction values."""
 
@@ -44,14 +49,30 @@ def plot_box_plot(
 
     # make the boxplot for each size
     fig, ax = plt.subplots()
-    # no outlier
-    interactions_df.boxplot(by="size", column="value", ax=ax, showfliers=showfliers)
+    for size in range(min_size, max_size + 1):
+        data = interactions_df[interactions_df["size"] == size]["value"]
+        ax.boxplot(
+            data,
+            positions=[size],
+            showfliers=showfliers,
+            widths=0.6,
+            patch_artist=True,
+            boxprops=dict(facecolor=HEX_BLACK + "20", color=HEX_BLACK),
+            whiskerprops=dict(color=HEX_BLACK),
+            capprops=dict(color=HEX_BLACK),
+            flierprops=dict(marker="o", color=HEX_BLACK, markersize=3),
+            medianprops=dict(color=MEDIAN_COLOR),
+        )
     ax.set_ylabel("MI value")
     ax.set_xlabel("MI size")
+    # add grid dotted with LIGHT_GRAY
+    ax.grid(axis="x", color=LIGHT_GRAY, linestyle="dashed")
     # remove the title of the boxplot
     plt.suptitle("")
     ax.set_title(title)
     # make the y axis scientific notation
+    if y_lim is not None:
+        ax.set_ylim(y_lim)
     ax.yaxis.get_major_formatter().set_powerlimits((0, 0))
     plt.tight_layout()
     if save_path is not None:
@@ -69,17 +90,20 @@ if __name__ == "__main__":
 
     plt.rcParams.update({"font.size": 12})
     plt.rcParams.update({"figure.figsize": (5, 5)})
+    plt.rcParams.update({"figure.dpi": 400})
+    y_lim = None
 
-    game_name = "AdultCensusLocalXAI"  # AdultCensusLocalXAI
-    config_id = 3
+    game_name = "AdultCensusDataValuation"  # AdultCensusDataValuation AdultCensusLocalXAI
+    config_id = 1
     n_player_id = 0
-    index = "SV"  # "k-SII" or "SV"
-    order = 1  # 1 or 2
+    if game_name == "AdultCensusDataValuation":
+        config_id = 2
+        n_player_id = 0
+    if game_name == "AdultCensusLocalXAI":
+        config_id = 3
+        n_player_id = 0
 
-    n_games = 1
-
-    if index == "SV":
-        order = 1
+    n_games = 10
 
     # load a game
     game_class = get_game_class_from_name(game_name)
@@ -99,8 +123,12 @@ if __name__ == "__main__":
         moebius = computer(index="Moebius", order=game.n_players)
         moebius_values.append(moebius)
 
-    # plot the box plot
-    save_path = os.path.join("eval", f"{game_name}_{n_games}_moebius_box_plot.pdf")
+    # plot the box plot with outliers
+    if game_name == "AdultCensusDataValuation":
+        y_lim = (-1.2e2, 1.2e2)
+    if game_name == "AdultCensusLocalXAI":
+        y_lim = (-7e-3, 7e-3)
+    save_path = os.path.join("eval", f"{game_name}_{n_games}_moebius_box_plot.png")
     plot_box_plot(
         interactions=moebius_values,
         min_size=0,
@@ -108,4 +136,21 @@ if __name__ == "__main__":
         title=create_application_name(game_name, abbrev=True),
         showfliers=True,
         save_path=save_path,
+        y_lim=y_lim,
+    )
+
+    # plot the box plot without outliers
+    if game_name == "AdultCensusDataValuation":
+        y_lim = (-9e1, 9e1)
+    if game_name == "AdultCensusLocalXAI":
+        y_lim = (-0.6e-3, 0.6e-3)
+    save_path = os.path.join("eval", f"{game_name}_{n_games}_moebius_box_plot_no_outliers.png")
+    plot_box_plot(
+        interactions=moebius_values,
+        min_size=0,
+        max_size=n_players,
+        title=create_application_name(game_name, abbrev=True),
+        showfliers=False,
+        save_path=save_path,
+        y_lim=y_lim,
     )
