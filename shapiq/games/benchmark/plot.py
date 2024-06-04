@@ -157,7 +157,9 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
 
 def plot_approximation_quality(
-    data: pd.DataFrame,
+    data: Optional[pd.DataFrame] = None,
+    *,
+    data_path: Optional[str] = None,
     metric: str = "MSE",
     orders: Optional[list[Union[int, str]]] = None,
     approximators: Optional[list[str]] = None,
@@ -185,6 +187,12 @@ def plot_approximation_quality(
     Returns:
         The figure and axes of the plot.
     """
+    if data_path is None and data is None:
+        raise ValueError("Either data or data_path must be provided.")
+
+    if data is None:
+        data = pd.read_csv(data_path)
+
     # get the metric data
     metric_data = get_metric_data(data, metric)
 

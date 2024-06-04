@@ -18,7 +18,7 @@ from .metrics import get_all_metrics
 BENCHMARK_RESULTS_DIR = "results"
 
 
-def save_results(results: list, save_path: str) -> None:
+def save_results(results: pd.DataFrame, save_path: str) -> None:
     """Save the results of the benchmark as a CSV file.
 
     Args:
@@ -29,15 +29,14 @@ def save_results(results: list, save_path: str) -> None:
     save_dir = os.path.dirname(save_path)
     if save_dir != "" and not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    df = pd.DataFrame(results)
-    df.to_json(save_path)
+    results.to_json(save_path)
 
 
 def run_benchmark(
     index: str,
     order: int,
     games: list[Game],
-    gt_values: list[InteractionValues],
+    gt_values: Optional[list[InteractionValues]] = None,
     approximators: Optional[
         Union[list[Approximator], list[Approximator.__class__], list[str]]
     ] = None,
@@ -50,7 +49,7 @@ def run_benchmark(
     save: bool = True,
     save_path: Optional[str] = None,
     rerun_if_exists: bool = False,
-) -> Optional[list[dict[str, Union[str, int, float, InteractionValues]]]]:
+) -> pd.DataFrame:
     """Run the benchmark for the given approximators and games.
 
     Args:
@@ -91,7 +90,7 @@ def run_benchmark(
 
     if not rerun_if_exists and os.path.exists(save_path):
         print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
-        return
+        return pd.read_json(save_path)
 
     # check that all games have the same number of players
     n_players = games[0].n_players
@@ -99,6 +98,12 @@ def run_benchmark(
         raise ValueError("All games must have the same number of players.")
 
     # check that the number of ground truth values is the same as the number of games
+    if gt_values is None:
+        print("Computing the exact values for the games.")
+        gt_values = []
+        for game in tqdm(games, unit=" games"):
+            gt_values.append(game.exact_values(index=index, order=order))
+
     if len(gt_values) != len(games):
         raise ValueError(
             "The number of ground truth values must be the same as the number of games."
@@ -192,11 +197,11 @@ def run_benchmark(
             }
         )
 
-    # save the results as a json file
-    if save:
-        save_results(results, save_path=save_path)
-
-    return results
+    # finalize results
+    results_df = pd.DataFrame(results)
+    if save:  # save the results as a json file
+        save_results(results_df, save_path=save_path)
+    return results_df
 
 
 def _run_benchmark(args) -> dict[str, Union[str, int, float, InteractionValues]]:
