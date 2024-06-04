@@ -48,9 +48,9 @@ if __name__ == "__main__":
 
     # parse the arguments --------------------------------------------------------------------------
     args = parser.parse_args()
-    n_jobs = args.n_jobs
+    n_jobs = args.n_joqcatbs
     omit_regex = args.omit_regex
-    rerun_if_exists = args.rerun_if_exists
+    rerun_if_exists = False
 
     # print the arguments --------------------------------------------------------------------------
     print(f"n_jobs: {n_jobs}")
