@@ -55,7 +55,7 @@ class OwenSamplingSV(Approximator):
 
         used_budget = 0
 
-        empty_value = float(game(np.zeros(self.n, dtype=bool)))
+        empty_value = game(np.zeros(self.n, dtype=bool))[0]
         used_budget += 1
 
         anchors = self.get_anchor_points(self.n_anchor_points)
@@ -77,10 +77,10 @@ class OwenSamplingSV(Approximator):
                         )
                         # add information that player is absent
                         coalition = np.insert(coalition, player, False)
-                        marginal_con = -game(coalition)
+                        marginal_con = -game(coalition)[0]
                         # add information that player is present to complete marginal contribution
                         coalition[player] = True
-                        marginal_con += game(coalition)
+                        marginal_con += game(coalition)[0]
                         used_budget += 2
                         # update the affected strata estimate
                         estimates[player][m] += marginal_con

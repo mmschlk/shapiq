@@ -25,7 +25,20 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     interaction_lookup = {interaction: i for i, interaction in enumerate(powerset(range(n), 1, 2))}
     values = np.random.rand(len(interaction_lookup))
     baseline_value = 2.0
-    try:
+    if index == "something":
+        with pytest.warns(UserWarning):
+            interaction_values = InteractionValues(
+                values=values,
+                index=index,
+                n_players=n,
+                min_order=min_order,
+                max_order=max_order,
+                interaction_lookup=interaction_lookup,
+                estimation_budget=estimation_budget,
+                estimated=estimated,
+                baseline_value=baseline_value,
+            )
+    else:
         interaction_values = InteractionValues(
             values=values,
             index=index,
@@ -37,10 +50,6 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
             estimated=estimated,
             baseline_value=baseline_value,
         )
-    except ValueError:
-        if index == "something":
-            return
-        raise
     assert interaction_values.index == index
     assert interaction_values.n_players == n
     assert interaction_values.min_order == min_order

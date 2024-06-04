@@ -51,8 +51,8 @@ class StratifiedSamplingSV(Approximator):
         used_budget = 0
 
         # get value of empty coalition and grand coalition
-        empty_value = float(game(np.zeros(self.n, dtype=bool)))
-        full_value = float(game(np.ones(self.n, dtype=bool)))
+        empty_value = game(np.zeros(self.n, dtype=bool))[0]
+        full_value = game(np.ones(self.n, dtype=bool))[0]
         used_budget += 2
 
         strata = np.zeros((self.n, self.n), dtype=float)
@@ -73,12 +73,12 @@ class StratifiedSamplingSV(Approximator):
                         if size == 0:
                             coalition = np.zeros(self.n, dtype=bool)
                             coalition[player] = True
-                            marginal_con = game(coalition) - empty_value
+                            marginal_con = game(coalition)[0] - empty_value
                             used_budget += 1
                         elif size == self.n - 1:
                             coalition = np.ones(self.n, dtype=bool)
                             coalition[player] = False
-                            marginal_con = full_value - game(coalition)
+                            marginal_con = full_value - game(coalition)[0]
                             used_budget += 1
                         # otherwise both coalitions that make up the marginal contribution have to eb evaluated
                         else:
@@ -90,9 +90,9 @@ class StratifiedSamplingSV(Approximator):
                             )
                             coalition = np.zeros(self.n, dtype=bool)
                             coalition[coalition_list] = True
-                            marginal_con = -game(coalition)
+                            marginal_con = -game(coalition)[0]
                             coalition[player] = True
-                            marginal_con += game(coalition)
+                            marginal_con += game(coalition)[0]
                             used_budget += 2
                         # update the affected strata estimate
                         strata[player][size] += marginal_con

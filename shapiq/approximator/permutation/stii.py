@@ -98,7 +98,7 @@ class PermutationSamplingSTII(Approximator):
                 result, baseline_value=0.0, budget=used_budget, estimated=True
             )
 
-        empty_value = float(game(np.zeros(self.n, dtype=bool)))
+        empty_value = game(np.zeros(self.n, dtype=bool))[0]
         used_budget += 1
 
         # compute the number of iterations and size of the last batch (can be smaller than original)

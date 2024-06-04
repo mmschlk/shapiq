@@ -89,7 +89,7 @@ class PermutationSamplingSII(Approximator):
         result = self._init_result()
         counts = self._init_result(dtype=int)
 
-        empty_value = float(game(np.zeros(self.n, dtype=bool)))
+        empty_value = game(np.zeros(self.n, dtype=bool))[0]
         used_budget += 1
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
