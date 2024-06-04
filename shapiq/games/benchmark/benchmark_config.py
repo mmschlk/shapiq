@@ -34,8 +34,11 @@ information:
 """
 
 import os
+import time
 from collections.abc import Generator
 from typing import Any, Optional, Union
+
+import requests
 
 from ...approximator import (
     FSII_APPROXIMATORS,
@@ -540,11 +543,11 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
     AdultCensusUncertaintyExplanation: [
         {
             "configurations": [
-                # {"uncertainty_to_explain": "total", "imputer": "marginal"},
+                {"uncertainty_to_explain": "total", "imputer": "marginal"},
                 {"uncertainty_to_explain": "total", "imputer": "conditional"},
-                # {"uncertainty_to_explain": "aleatoric", "imputer": "marginal"},
+                {"uncertainty_to_explain": "aleatoric", "imputer": "marginal"},
                 {"uncertainty_to_explain": "aleatoric", "imputer": "conditional"},
-                # {"uncertainty_to_explain": "epistemic", "imputer": "marginal"},
+                {"uncertainty_to_explain": "epistemic", "imputer": "marginal"},
                 {"uncertainty_to_explain": "epistemic", "imputer": "conditional"},
             ],
             "iteration_parameter": "x",
@@ -693,7 +696,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
 }
 
 
-GAME_TO_CLASS_MAPPING = {
+GAME_NAME_TO_CLASS_MAPPING = {
     "AdultCensusDatasetValuation": AdultCensusDatasetValuation,
     "AdultCensusDataValuation": AdultCensusDataValuation,
     "AdultCensusEnsembleSelection": AdultCensusEnsembleSelection,
@@ -726,7 +729,9 @@ GAME_TO_CLASS_MAPPING = {
     "SynthDataTreeSHAPIQXAI": SynthDataTreeSHAPIQXAI,
     "SOUM": SOUM,
 }
-
+GAME_CLASS_TO_NAME_MAPPING = {
+    game_cls: name for name, game_cls in GAME_NAME_TO_CLASS_MAPPING.items()
+}
 
 APPROXIMATION_CONFIGURATIONS: dict[str, Approximator.__class__] = {
     "SV": SV_APPROXIMATORS,
@@ -811,11 +816,52 @@ def load_game_data(
             verbose=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["verbose"],
             normalize=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["normalize"],
         )
-    except FileNotFoundError as error:
+    except FileNotFoundError:
+        # download the game data if it does not exist
+        download_game_data(game_class.get_game_name(), n_players, file_name)
+        try:
+            return Game(
+                path_to_values=path_to_values,
+                verbose=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["verbose"],
+                normalize=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["normalize"],
+            )
+        except FileNotFoundError as error:
+            raise FileNotFoundError(
+                f"Game data for game {game_class.get_game_name()} with configuration "
+                f"{configuration} and iteration {iteration} could not be found."
+            ) from error
+
+
+def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
+    """Downloads the game file from the repository.
+
+    Args:
+        game_name: The name of the game.
+        n_players: The number of players in the game.
+        file_name: The name of the file to download.
+
+    Raises:
+        FileNotFoundError: If the file could not be downloaded.
+    """
+    github_url = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/precomputed_games"
+
+    # create the directory if it does not exist
+    game_dir = str(os.path.join(SHAPIQ_DATA_DIR, game_name, str(n_players)))
+    os.makedirs(game_dir, exist_ok=True)
+
+    # download the file
+    path = os.path.join(game_dir, f"{file_name}.npz")
+    url = f"{github_url}/{game_name}/{n_players}/{file_name}.npz"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as error:
         raise FileNotFoundError(
-            f"File {path_to_values} does not exist. Are you sure it was created/pre-computed? "
-            f"Consider pre-computing the game or fetching the data from the repository."
+            f"Could not download the game data from {url}. Check if configuration is correct."
         ) from error
+    with open(path, "wb") as file:
+        file.write(response.content)
+        time.sleep(0.01)
 
 
 def get_game_class_from_name(game_name: str) -> Game.__class__:
@@ -827,7 +873,7 @@ def get_game_class_from_name(game_name: str) -> Game.__class__:
     Returns:
         The class of the game
     """
-    return GAME_TO_CLASS_MAPPING[game_name]
+    return GAME_NAME_TO_CLASS_MAPPING[game_name]
 
 
 def get_name_from_game_class(game_class: Game.__class__) -> str:
@@ -839,7 +885,7 @@ def get_name_from_game_class(game_class: Game.__class__) -> str:
     Returns:
         The name of the game.
     """
-    for name, game_cls in GAME_TO_CLASS_MAPPING.items():
+    for name, game_cls in GAME_NAME_TO_CLASS_MAPPING.items():
         if game_cls == game_class:
             return name
     raise ValueError(f"Game class {game_class} not found in the mapping.")
@@ -847,34 +893,29 @@ def get_name_from_game_class(game_class: Game.__class__) -> str:
 
 def print_benchmark_configurations() -> None:
     """Print the configurations of the benchmark games."""
-    # print default parameters
-    print("Default Parameters:")
-    print(f"Normalize: {BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS['normalize']}")
-    print(f"Verbose: {BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS['verbose']}")
-    print(f"Random State: {BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS['random_state']}")
-    print()
-
-    # print default iterations
-    print("Default Iterations:")
-    print(BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS)
-    print()
-
     # print configurations of the benchmark games
-    for game_class, config_per_player_id in BENCHMARK_CONFIGURATIONS.items():
-        for config in config_per_player_id:
-            param_values = config.get(
-                "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
-            )
-            print(f"Game: {game_class.get_game_name()}")
-            print(f"Configurations: {config['configurations']}")
-            print(f"Iteration Parameter: {config['iteration_parameter']}")
-            print(f"Iteration Parameter Values: {param_values}")
-            print()
+    game_classes = list(BENCHMARK_CONFIGURATIONS.keys())
+    game_identifiers = [GAME_CLASS_TO_NAME_MAPPING[game_class] for game_class in game_classes]
+    game_identifiers = sorted(game_identifiers)
+    for game_identifier in game_identifiers:
+        game_class = GAME_NAME_TO_CLASS_MAPPING[game_identifier]
+        config_per_player_id = BENCHMARK_CONFIGURATIONS[game_class]
+        print(f"Game: {game_identifier}")
+        for player_id, configurations in enumerate(config_per_player_id):
+            print(f"Player ID: {player_id}")
+            print(f"Number of Players: {configurations['n_players']}")
+            print(f"Number of configurations: {len(configurations['configurations'])}")
+            print(f"Is the Benchmark Pre-computed: {configurations['precompute']}")
+            print(f"Iteration Parameter: {configurations['iteration_parameter']}")
+            print("Configurations:")
+            for i, configuration in enumerate(configurations["configurations"]):
+                print(f"Configuration {i + 1}: {configuration}")
+        print()
 
 
 def load_games_from_configuration(
     game_class: Union[Game.__class__, str],
-    configuration: Union[dict[str, Any], int],
+    config_id: int,
     n_games: Optional[int] = None,
     n_player_id: int = 0,
     check_pre_computed: bool = True,
@@ -884,7 +925,7 @@ def load_games_from_configuration(
 
     Args:
         game_class: The class of the game to load with the configuration.
-        configuration: The configuration to use to load the game.
+        config_id: The configuration to use to load the game.
         n_games: The number of games to load. Defaults to None.
         n_player_id: The player ID to use. Defaults to 0. Not all games have multiple player IDs.
         check_pre_computed: A flag to check if the game is pre-computed (load from disk). Defaults
@@ -894,16 +935,14 @@ def load_games_from_configuration(
     Returns:
         An initialized game object with the given configuration.
     """
-    game_class = GAME_TO_CLASS_MAPPING[game_class] if isinstance(game_class, str) else game_class
+    game_class = (
+        GAME_NAME_TO_CLASS_MAPPING[game_class] if isinstance(game_class, str) else game_class
+    )
 
     # get config if it is an int
-    if isinstance(configuration, int):
-        configuration = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][
-            configuration - 1
-        ]
-    elif not isinstance(configuration, dict):
-        raise ValueError("Configuration must be an integer or a dictionary.")
-
+    configuration: dict = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][
+        config_id - 1
+    ]
     params = {}
 
     # get the default parameters

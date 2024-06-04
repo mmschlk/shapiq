@@ -278,7 +278,7 @@ if __name__ == "__main__":
                 n_player_id = 0
 
             loaded_game = load_games_from_configuration(
-                game_class=game_name, configuration=1, n_player_id=n_player_id, n_games=N_GAMES
+                game_class=game_name, config_id=1, n_player_id=n_player_id, n_games=N_GAMES
             )
             game_list.append(loaded_game)
 

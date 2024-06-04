@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
-        GAME_TO_CLASS_MAPPING,
+        GAME_NAME_TO_CLASS_MAPPING,
         get_game_class_from_name,
     )
     from shapiq.games.benchmark.run import run_benchmark_from_configuration
@@ -23,6 +23,7 @@ if __name__ == "__main__":
         ("k-SII", 2),
         ("SV", 1),
     ]
+    rerun_if_exists = False
 
     # add arguments to the parser ------------------------------------------------------------------
     parser = argparse.ArgumentParser()
@@ -39,21 +40,21 @@ if __name__ == "__main__":
         nargs="+",
         default=[],
     )
+    args = parser.parse_args()
 
     # parse the arguments --------------------------------------------------------------------------
-    args = parser.parse_args()
     n_jobs = args.n_jobs
     omit_regex = args.omit_regex
-    rerun_if_exists = False
 
     # print the arguments --------------------------------------------------------------------------
-    print(f"n_jobs: {n_jobs}")
+    print(f"indices_order: {indices_order}")
     print(f"rerun_if_exists: {rerun_if_exists}")
+    print(f"n_jobs: {n_jobs}")
     print(f"omit_regex: {omit_regex}")
 
     # get all configurations that are not omitted by the name --------------------------------------
     all_game_names = []
-    for game_name in GAME_TO_CLASS_MAPPING.keys():
+    for game_name in GAME_NAME_TO_CLASS_MAPPING.keys():
         omit = False
         for omit_regex_str in omit_regex:
             if omit_regex_str in game_name:
