@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 if __name__ == "__main__":
 
     # example python run command with nohup and nice
-    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 --rerun_if_exists False > cool.log &
+    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 > run_benchmark_all_configs.log &
 
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
@@ -31,12 +31,6 @@ if __name__ == "__main__":
         type=int,
         required=False,
         default=1,
-    )
-    parser.add_argument(
-        "--rerun_if_exists",
-        type=bool,
-        required=False,
-        default=False,
     )
     parser.add_argument(
         "--omit_regex",
