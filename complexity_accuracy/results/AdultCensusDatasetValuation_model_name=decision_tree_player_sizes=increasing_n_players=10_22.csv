@@ -20,62 +20,62 @@
 9,5.589141126092657e-05,0.9192134927745383,9,STII,uniform,Adult Census Dataset Valuation
 10,2.656383172184816e-28,1.0,10,STII,uniform,Adult Census Dataset Valuation
 1,0.1747283886352029,-9.876129510814264,1,FSII,uniform,Adult Census Dataset Valuation
-2,0.028550948704338736,-0.3345223780902624,2,FSII,uniform,Adult Census Dataset Valuation
-3,0.017245765063760854,-0.7744891293040526,3,FSII,uniform,Adult Census Dataset Valuation
-4,0.005582839788012977,0.06314869006839807,4,FSII,uniform,Adult Census Dataset Valuation
-5,0.001770932603090972,0.2161343495176813,5,FSII,uniform,Adult Census Dataset Valuation
-6,0.00042576951431294303,0.6062325261222211,6,FSII,uniform,Adult Census Dataset Valuation
-7,8.099197743165831e-05,0.8882249887109855,7,FSII,uniform,Adult Census Dataset Valuation
-8,9.935106162045293e-06,0.9847368395694388,8,FSII,uniform,Adult Census Dataset Valuation
-9,6.492224945197842e-07,0.9989889311544685,9,FSII,uniform,Adult Census Dataset Valuation
-10,4.8124843025915816e-18,0.9999999999999925,10,FSII,uniform,Adult Census Dataset Valuation
+2,0.02855094870437846,-0.3345223780918498,2,FSII,uniform,Adult Census Dataset Valuation
+3,0.01724576506376094,-0.774489129303167,3,FSII,uniform,Adult Census Dataset Valuation
+4,0.00558283978819351,0.06314869006271162,4,FSII,uniform,Adult Census Dataset Valuation
+5,0.0017709326031572338,0.2161343494678245,5,FSII,uniform,Adult Census Dataset Valuation
+6,0.00042576951435428496,0.6062325260278665,6,FSII,uniform,Adult Census Dataset Valuation
+7,8.099197786792313e-05,0.8882249881555997,7,FSII,uniform,Adult Census Dataset Valuation
+8,9.93510602065688e-06,0.984736839780764,8,FSII,uniform,Adult Census Dataset Valuation
+9,6.492225107185302e-07,0.9989889311276661,9,FSII,uniform,Adult Census Dataset Valuation
+10,9.538400317119158e-18,0.9999999999999851,10,FSII,uniform,Adult Census Dataset Valuation
 1,0.0006242422794191008,-35.217108479492275,1,FBII,uniform,Adult Census Dataset Valuation
-2,0.000591119447248171,-10.738121423465794,2,FBII,uniform,Adult Census Dataset Valuation
-3,0.0005146706779182589,-3.058669996241833,3,FBII,uniform,Adult Census Dataset Valuation
-4,0.0003869296875270007,-0.5200614879518273,4,FBII,uniform,Adult Census Dataset Valuation
-5,0.00023183735314497386,0.4340475458393802,5,FBII,uniform,Adult Census Dataset Valuation
-6,0.00010294765042574561,0.8088360759318127,6,FBII,uniform,Adult Census Dataset Valuation
-7,3.283751620029535e-05,0.946047797105409,7,FBII,uniform,Adult Census Dataset Valuation
-8,6.155220329820065e-06,0.9903116703874443,8,FBII,uniform,Adult Census Dataset Valuation
-9,5.458145630946939e-07,0.9991484056522005,9,FBII,uniform,Adult Census Dataset Valuation
-10,2.8207231571734273e-28,1.0,10,FBII,uniform,Adult Census Dataset Valuation
-1,1.0992535923785878,-0.777126649843277,1,k-SII,Shapley kernel,Adult Census Dataset Valuation
-2,1.1424455978536552,0.33236887577452534,2,k-SII,Shapley kernel,Adult Census Dataset Valuation
-3,1.65602819770699,0.250340152924893,3,k-SII,Shapley kernel,Adult Census Dataset Valuation
-4,2.532049416456679,-0.23696340400693394,4,k-SII,Shapley kernel,Adult Census Dataset Valuation
-5,2.7125186017396743,-0.20813799120373577,5,k-SII,Shapley kernel,Adult Census Dataset Valuation
-6,1.9271628299297223,0.23428396630730774,6,k-SII,Shapley kernel,Adult Census Dataset Valuation
-7,1.1262788699017034,0.3386680502789753,7,k-SII,Shapley kernel,Adult Census Dataset Valuation
-8,0.21186565459179177,0.6936202607666414,8,k-SII,Shapley kernel,Adult Census Dataset Valuation
-9,0.028407132954353903,0.9445069914241038,9,k-SII,Shapley kernel,Adult Census Dataset Valuation
-10,6.3313214765782685e-24,1.0,10,k-SII,Shapley kernel,Adult Census Dataset Valuation
-1,1.0992535923785878,-0.777126649843277,1,STII,Shapley kernel,Adult Census Dataset Valuation
-2,5.312585559643791,-0.2834656404555418,2,STII,Shapley kernel,Adult Census Dataset Valuation
-3,23.060829094574544,-0.9612784681284552,3,STII,Shapley kernel,Adult Census Dataset Valuation
-4,50.430306580049404,-0.4317439008428867,4,STII,Shapley kernel,Adult Census Dataset Valuation
-5,52.854212052073194,-0.5278031093778945,5,STII,Shapley kernel,Adult Census Dataset Valuation
-6,25.65571665315365,-0.21518959617272193,6,STII,Shapley kernel,Adult Census Dataset Valuation
-7,5.329132415126421,-0.31179734967195905,7,STII,Shapley kernel,Adult Census Dataset Valuation
-8,0.3834643130225303,0.626091102584611,8,STII,Shapley kernel,Adult Census Dataset Valuation
-9,0.0057232805131188814,0.989338092139028,9,STII,Shapley kernel,Adult Census Dataset Valuation
-10,1.9375069560661078e-25,1.0,10,STII,Shapley kernel,Adult Census Dataset Valuation
-1,1.099253602939582,-0.7771267030454299,1,FSII,Shapley kernel,Adult Census Dataset Valuation
-2,0.39621022395514865,0.5516162464088519,2,FSII,Shapley kernel,Adult Census Dataset Valuation
-3,0.1392652606325099,0.7757230167879083,3,FSII,Shapley kernel,Adult Census Dataset Valuation
-4,0.04231073462897569,0.9280367417116431,4,FSII,Shapley kernel,Adult Census Dataset Valuation
-5,0.01074963202070225,0.9806392824157032,5,FSII,Shapley kernel,Adult Census Dataset Valuation
-6,0.0020595560594623714,0.9962651307011473,6,FSII,Shapley kernel,Adult Census Dataset Valuation
-7,0.0003005032669905584,0.9994532004375648,7,FSII,Shapley kernel,Adult Census Dataset Valuation
-8,2.6750938276639645e-05,0.9999513125199188,8,FSII,Shapley kernel,Adult Census Dataset Valuation
-9,1.1771453132780378e-06,0.9999978574527415,9,FSII,Shapley kernel,Adult Census Dataset Valuation
-10,2.2489857505445095e-17,1.0,10,FSII,Shapley kernel,Adult Census Dataset Valuation
-1,0.6212925422127564,-1217.1561478813205,1,FBII,Shapley kernel,Adult Census Dataset Valuation
-2,0.5649285974438271,-268.10951707282254,2,FBII,Shapley kernel,Adult Census Dataset Valuation
-3,0.43917115335483015,-14.321863401905254,3,FBII,Shapley kernel,Adult Census Dataset Valuation
-4,0.2623147083670601,-2.382432930626001,4,FBII,Shapley kernel,Adult Census Dataset Valuation
-5,0.10790771905411205,0.5458165592307185,5,FBII,Shapley kernel,Adult Census Dataset Valuation
-6,0.026730087115451596,0.927936522436723,6,FBII,Shapley kernel,Adult Census Dataset Valuation
-7,0.0037477230165323325,0.9924046301116045,7,FBII,Shapley kernel,Adult Census Dataset Valuation
-8,0.00021811868667013444,0.9995936005334759,8,FBII,Shapley kernel,Adult Census Dataset Valuation
-9,3.870994854669945e-06,0.9999929406713007,9,FBII,Shapley kernel,Adult Census Dataset Valuation
-10,4.2833836835685393e-26,1.0,10,FBII,Shapley kernel,Adult Census Dataset Valuation
+2,0.0005911194472481708,-10.73812142346506,2,FBII,uniform,Adult Census Dataset Valuation
+3,0.0005146706779182584,-3.0586699962418367,3,FBII,uniform,Adult Census Dataset Valuation
+4,0.00038692968752700033,-0.5200614879518681,4,FBII,uniform,Adult Census Dataset Valuation
+5,0.00023183735314497375,0.434047545839368,5,FBII,uniform,Adult Census Dataset Valuation
+6,0.00010294765042573889,0.8088360759319347,6,FBII,uniform,Adult Census Dataset Valuation
+7,3.283751620030502e-05,0.9460477971053789,7,FBII,uniform,Adult Census Dataset Valuation
+8,6.155220329822054e-06,0.9903116703874455,8,FBII,uniform,Adult Census Dataset Valuation
+9,5.45814563093941e-07,0.9991484056522016,9,FBII,uniform,Adult Census Dataset Valuation
+10,8.362752698695677e-28,1.0,10,FBII,uniform,Adult Census Dataset Valuation
+1,10.992535923785878,-2.335753895496528,1,k-SII,Shapley kernel,Adult Census Dataset Valuation
+2,11.424455978536551,-0.41364950511111953,2,k-SII,Shapley kernel,Adult Census Dataset Valuation
+3,16.5602819770699,-0.26801546393710707,3,k-SII,Shapley kernel,Adult Census Dataset Valuation
+4,25.320494164566792,-0.44034074331624584,4,k-SII,Shapley kernel,Adult Census Dataset Valuation
+5,27.125186017396743,-0.3866480548133655,5,k-SII,Shapley kernel,Adult Census Dataset Valuation
+6,19.27162829929722,-0.17110836753783065,6,k-SII,Shapley kernel,Adult Census Dataset Valuation
+7,11.262788699017035,-0.35398757095892597,7,k-SII,Shapley kernel,Adult Census Dataset Valuation
+8,2.118656545917917,0.15551577856275045,8,k-SII,Shapley kernel,Adult Census Dataset Valuation
+9,0.284071329543539,0.6014330195897704,9,k-SII,Shapley kernel,Adult Census Dataset Valuation
+10,5.125919846409125e-23,1.0,10,k-SII,Shapley kernel,Adult Census Dataset Valuation
+1,10.992535923785878,-2.335753895496528,1,STII,Shapley kernel,Adult Census Dataset Valuation
+2,53.12585559643791,-1.8383496921111253,2,STII,Shapley kernel,Adult Census Dataset Valuation
+3,230.60829094574547,-1.4204328040334397,3,STII,Shapley kernel,Adult Census Dataset Valuation
+4,504.30306580049404,-0.9202487131914978,4,STII,Shapley kernel,Adult Census Dataset Valuation
+5,528.542120520732,-0.7245096386553249,5,STII,Shapley kernel,Adult Census Dataset Valuation
+6,256.5571665315365,-0.5079262706570695,6,STII,Shapley kernel,Adult Census Dataset Valuation
+7,53.291324151264206,-0.42481793710578963,7,STII,Shapley kernel,Adult Census Dataset Valuation
+8,3.8346431302253032,-0.0071252820547702544,8,STII,Shapley kernel,Adult Census Dataset Valuation
+9,0.05723280513118881,0.9115208283085561,9,STII,Shapley kernel,Adult Census Dataset Valuation
+10,2.4327808131676683e-25,1.0,10,STII,Shapley kernel,Adult Census Dataset Valuation
+1,10.992536029395819,-2.3357539953565736,1,FSII,Shapley kernel,Adult Census Dataset Valuation
+2,3.9621022395514878,0.11095715448021803,2,FSII,Shapley kernel,Adult Census Dataset Valuation
+3,1.3926526063251128,0.23886492293708583,3,FSII,Shapley kernel,Adult Census Dataset Valuation
+4,0.4231073462897742,0.5999571058587184,4,FSII,Shapley kernel,Adult Census Dataset Valuation
+5,0.10749632020702228,0.8528362479157355,5,FSII,Shapley kernel,Adult Census Dataset Valuation
+6,0.02059556059462135,0.968320274740001,6,FSII,Shapley kernel,Adult Census Dataset Valuation
+7,0.003005032669906496,0.9952406357613998,7,FSII,Shapley kernel,Adult Census Dataset Valuation
+8,0.0002675093827659846,0.999574557076203,8,FSII,Shapley kernel,Adult Census Dataset Valuation
+9,1.1771453132728232e-05,0.9999812705460963,9,FSII,Shapley kernel,Adult Census Dataset Valuation
+10,4.467028712491547e-16,0.9999999999999993,10,FSII,Shapley kernel,Adult Census Dataset Valuation
+1,0.6228776104955843,-222.15725632998345,1,FBII,Shapley kernel,Adult Census Dataset Valuation
+2,0.5760756118721961,-57.77647768323216,2,FBII,Shapley kernel,Adult Census Dataset Valuation
+3,0.4833107425300024,-5.372125729729296,3,FBII,Shapley kernel,Adult Census Dataset Valuation
+4,0.3497530143286345,-1.0382196005390978,4,FBII,Shapley kernel,Adult Census Dataset Valuation
+5,0.19500471464579008,0.41083843144536203,5,FBII,Shapley kernel,Adult Census Dataset Valuation
+6,0.07004006533395034,0.8549973340267589,6,FBII,Shapley kernel,Adult Census Dataset Valuation
+7,0.01420835493168996,0.974949622648512,7,FBII,Shapley kernel,Adult Census Dataset Valuation
+8,0.0011711256444323277,0.9981026149394595,8,FBII,Shapley kernel,Adult Census Dataset Valuation
+9,2.8885286413772404e-05,0.9999539393380551,9,FBII,Shapley kernel,Adult Census Dataset Valuation
+10,5.342701149929906e-25,1.0,10,FBII,Shapley kernel,Adult Census Dataset Valuation
