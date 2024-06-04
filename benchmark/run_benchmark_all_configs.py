@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 if __name__ == "__main__":
 
     # example python run command with nohup and nice
-    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 80 --rerun_if_exists False > run_synth.log &
+    # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 > configs.log &
 
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
@@ -19,7 +19,10 @@ if __name__ == "__main__":
     )
     from shapiq.games.benchmark.run import run_benchmark_from_configuration
 
-    indices_order = [("k-SII", 2), ("SV", 1)]
+    indices_order = [
+        ("k-SII", 2),
+        ("SV", 1),
+    ]
 
     # add arguments to the parser ------------------------------------------------------------------
     parser = argparse.ArgumentParser()
@@ -28,12 +31,6 @@ if __name__ == "__main__":
         type=int,
         required=False,
         default=1,
-    )
-    parser.add_argument(
-        "--rerun_if_exists",
-        type=bool,
-        required=False,
-        default=False,
     )
     parser.add_argument(
         "--omit_regex",
@@ -47,7 +44,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     n_jobs = args.n_jobs
     omit_regex = args.omit_regex
-    rerun_if_exists = args.rerun_if_exists
+    rerun_if_exists = False
+
+    # print the arguments --------------------------------------------------------------------------
+    print(f"n_jobs: {n_jobs}")
+    print(f"rerun_if_exists: {rerun_if_exists}")
+    print(f"omit_regex: {omit_regex}")
 
     # get all configurations that are not omitted by the name --------------------------------------
     all_game_names = []

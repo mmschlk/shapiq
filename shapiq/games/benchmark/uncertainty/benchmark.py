@@ -3,7 +3,6 @@
 from typing import Optional, Union
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
 
 from .._config import get_x_explain
 from .._setup import GameBenchmarkSetup
@@ -23,6 +22,7 @@ class AdultCensus(UncertaintyExplanation):
         verbose: bool = False,
         random_state: Optional[int] = 42,
     ) -> None:
+        from sklearn.ensemble import RandomForestClassifier
 
         self.setup = GameBenchmarkSetup(
             dataset_name="adult_census",

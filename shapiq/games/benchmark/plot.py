@@ -52,6 +52,65 @@ METRICS_LIMITS = {
 METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
 
 
+def create_application_name(setup: str, abbrev: bool = False) -> str:
+    """Create an application name from the setup string."""
+    application_name = "".join(setup.split("_")[0:2])
+    application_name = application_name.replace("Game", "")
+    application_name = application_name.replace("SynthData", "")
+    application_name = application_name.replace("AdultCensus", "")
+    application_name = application_name.replace("CaliforniaHousing", "")
+    application_name = application_name.replace("BikeSharing", "")
+    application_name = application_name.replace("ImageClassifier", "LocalExplanation")
+    application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
+    application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
+    application_name = application_name.replace(
+        "RandomForestEnsembleSelection", "EnsembleSelection"
+    )
+    if abbrev:
+        application_name = abbreviate_application_name(application_name)
+    return application_name
+
+
+def abbreviate_application_name(application_name: str, new_line: bool = False) -> str:
+    """Abbreviate the application name by taking the first three characters after each capital
+    letter and adding a dot. The last character is not abbreviated.
+
+    Args:
+        application_name: The application name to abbreviate.
+        new_line: Whether to add a new line after each abbreviation. Defaults to `False`.
+
+    Example:
+        >>> abbreviate_application_name("LocalExplanation")
+        "Loc. Exp."
+    """
+    abbreviations = []
+    count_char = 0
+    for char in application_name:
+        if char.isupper():
+            count_char = 0
+            abbreviations.append(char)
+        else:
+            count_char += 1
+            if count_char == 3:
+                abbreviations.append(".")
+            elif count_char > 3:
+                continue
+            else:
+                abbreviations.append(char)
+    abbreviation = "".join(abbreviations)
+    if application_name == "DatasetValuation":
+        abbreviation = "Dst. Val."
+    if application_name == "SOUM":
+        abbreviation = "SOUM"
+    if application_name == "SOUM (low)" and new_line:
+        abbreviation = "SOUM\n(low)"
+    if application_name == "SOUM (high)":
+        abbreviation = "SOUM\n(high)"
+    if new_line:
+        abbreviation = abbreviation.replace(".", ".\n")
+    return abbreviation.strip()
+
+
 def get_game_title_name(game_name: str) -> str:
     """Changes the game name to a more readable title.
 
@@ -128,6 +187,18 @@ def plot_approximation_quality(
     """
     # get the metric data
     metric_data = get_metric_data(data, metric)
+
+    sorted_budget = list(data["budget"].sort_values(ascending=False).unique())
+    y_lim_min_budget = sorted_budget[3] if sorted_budget[0] >= 2**17 else sorted_budget[2]
+    # get min metric_value for y_lim
+    min_value_y = data[data["budget"] == y_lim_min_budget][metric].min()
+    # round value down to next decimal
+    bot_lim = f"{min_value_y:.2e}"  # get the top limi in scientific notation
+    bot_lim = bot_lim.split("e")[1]  # get the exponent
+    bot_lim = int(bot_lim)  # get the top limit as the exponent + 1
+    bot_lim = 10**bot_lim  # get the top limit in scientific notation
+    if log_scale_min < bot_lim:
+        log_scale_min = bot_lim
 
     # make sure orders is a list
     if orders is None:
