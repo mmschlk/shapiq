@@ -1,6 +1,6 @@
 ## Changelog
 
 
-### v0.1.0 (2024-04-xx)
+### v1.0.0 (2024-06-04)
 
-in development
+TBA

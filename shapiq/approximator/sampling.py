@@ -424,7 +424,7 @@ class CoalitionSampler:
             raise ValueError("A minimum sampling budget of 2 samples is required.")
 
         if sampling_budget > self.n_max_coalitions:
-            warnings.warn(UserWarning("Not all budget is required due to the border-trick."))
+            warnings.warn("Not all budget is required due to the border-trick.")
             sampling_budget = min(sampling_budget, self.n_max_coalitions)  # set budget to max coals
 
         self._reset_variables(sampling_budget)

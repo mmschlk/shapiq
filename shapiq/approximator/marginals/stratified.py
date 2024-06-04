@@ -1,4 +1,4 @@
-"""This module contains the Stratified Sampling approximation method for the Shapley value (SV)
+"""This module contains the Stratified Sampling approximation method for the Shapley value
 by Maleki et al. (2013). It estimates the Shapley values by sampling random marginal contributions
 grouped by size."""
 
@@ -14,15 +14,15 @@ class StratifiedSamplingSV(Approximator):
     """The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random
     marginal contributions for each player and each coalition size. The marginal contributions are
     grouped into strata by size. The strata are aggregated for each player after sampling to obtain
-    the final estimate. For more information, see [Maleki et al. (2009)](http://arxiv.org/abs/1306.4265).
+    the final estimate. For more information, see `Maleki et al. (2009) <http://arxiv.org/abs/1306.4265>`_.
 
     Args:
         n: The number of players.
-        random_state: The random state to use for the permutation sampling. Defaults to `None`.
+        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
     Attributes:
         n: The number of players.
-        _grand_coalition_array: The array of players (starting from 0 to n).
+        _grand_coalition_array: The array of players (starting from ``0`` to ``n``).
         iteration_cost: The cost of a single iteration of the approximator.
     """
 
@@ -42,7 +42,7 @@ class StratifiedSamplingSV(Approximator):
         Args:
             budget: The number of game evaluations for approximation
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If None, the batch size is set to 1. Defaults to 5.
+            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``5``.
 
         Returns:
             The estimated interaction values.
@@ -51,8 +51,8 @@ class StratifiedSamplingSV(Approximator):
         used_budget = 0
 
         # get value of empty coalition and grand coalition
-        empty_value = float(game(np.zeros(self.n, dtype=bool)))
-        full_value = float(game(np.ones(self.n, dtype=bool)))
+        empty_value = game(np.zeros(self.n, dtype=bool))[0]
+        full_value = game(np.ones(self.n, dtype=bool))[0]
         used_budget += 2
 
         strata = np.zeros((self.n, self.n), dtype=float)
@@ -73,12 +73,12 @@ class StratifiedSamplingSV(Approximator):
                         if size == 0:
                             coalition = np.zeros(self.n, dtype=bool)
                             coalition[player] = True
-                            marginal_con = game(coalition) - empty_value
+                            marginal_con = game(coalition)[0] - empty_value
                             used_budget += 1
                         elif size == self.n - 1:
                             coalition = np.ones(self.n, dtype=bool)
                             coalition[player] = False
-                            marginal_con = full_value - game(coalition)
+                            marginal_con = full_value - game(coalition)[0]
                             used_budget += 1
                         # otherwise both coalitions that make up the marginal contribution have to eb evaluated
                         else:
@@ -90,9 +90,9 @@ class StratifiedSamplingSV(Approximator):
                             )
                             coalition = np.zeros(self.n, dtype=bool)
                             coalition[coalition_list] = True
-                            marginal_con = -game(coalition)
+                            marginal_con = -game(coalition)[0]
                             coalition[player] = True
-                            marginal_con += game(coalition)
+                            marginal_con += game(coalition)[0]
                             used_budget += 2
                         # update the affected strata estimate
                         strata[player][size] += marginal_con

@@ -13,7 +13,7 @@ class UnsupervisedData(Game):
     players are features of the data. The value of a coalition is the total correlation explained by
     the features in the coalition.
 
-    For more information we refer to the following paper: https://arxiv.org/pdf/2205.09060.pdf
+    For more information, refer to the paper by `Balestra et al. (2022) <https://doi.org/10.48550/arXiv.2205.09060>`_.
 
     Args:
         data: The data to analyze as a numpy array of shape (n_samples, n_features).
@@ -28,7 +28,7 @@ class UnsupervisedData(Game):
         # discretize the data
         from sklearn.preprocessing import KBinsDiscretizer
 
-        discretizer = KBinsDiscretizer(n_bins=20, encode="ordinal", strategy="uniform")
+        discretizer = KBinsDiscretizer(n_bins=20, encode="ordinal", strategy="uniform", subsample=200000)
         self.data_discrete = np.zeros_like(data)
         for i in range(self._n_features):
             self.data_discrete[:, i] = discretizer.fit_transform(data[:, i].reshape(-1, 1)).ravel()

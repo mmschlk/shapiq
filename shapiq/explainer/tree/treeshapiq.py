@@ -37,7 +37,7 @@ class TreeSHAPIQ:
             interaction values up to that order. Defaults to ``2``.
         min_order: The minimum interaction order to be computed. Defaults to ``1``.
         index: The type of interaction to be computed. It can be one of
-            ``["k-SII", "SII", "STII", "FSII", "BZF"]``. All indices apart from ``"BZF"`` will
+            ``["k-SII", "SII", "STII", "FSII", "BII"]``. All indices apart from ``"BII"`` will
             reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
         verbose: Whether to print information about the tree during initialization. Defaults to
             False.
@@ -360,10 +360,10 @@ class TreeSHAPIQ:
                         self.Ns,
                         index_quotient,
                     )
-                    try:
-                        update *= float(to_update)  # cast out shape of (1, 1) to float
-                    except TypeError:
-                        update *= to_update  # multiple ancestors
+                    if to_update.shape == (1, 1):
+                        update *= to_update[0]  # cast out shape of (1, 1) to float
+                    else:
+                        update *= to_update
                     # fmt: on
                     self.shapley_interactions[interactions_with_ancestor_to_update] -= update
 
@@ -609,7 +609,7 @@ class TreeSHAPIQ:
                 * factorial(self._n_features_in_tree - t - 1)
                 / factorial(self._n_features_in_tree + self._max_order - 1)
             )
-        if self._index == "BZF":
+        if self._index == "BII":
             return 1 / (2 ** (self._n_features_in_tree - order))
 
     @staticmethod

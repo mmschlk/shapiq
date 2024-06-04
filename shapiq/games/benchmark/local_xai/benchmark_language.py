@@ -82,9 +82,9 @@ class SentimentAnalysis(Game):
         n_players = len(self._tokenized_input)
 
         # get original sentiment
-        self.original_model_output = float(self._classifier(self.original_input_text)[0]["score"])
-        self._full_output = float(self.value_function(np.ones((1, n_players), dtype=bool)))
-        self._empty_output = float(self.value_function(np.zeros((1, n_players), dtype=bool)))
+        self.original_model_output = self._classifier(self.original_input_text)[0]["score"]
+        self._full_output = self.value_function(np.ones((1, n_players), dtype=bool))[0]
+        self._empty_output = self.value_function(np.zeros((1, n_players), dtype=bool))[0]
 
         # setup game object
         super().__init__(

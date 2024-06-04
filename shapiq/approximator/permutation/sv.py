@@ -21,8 +21,8 @@ class PermutationSamplingSV(Approximator):
 
     Attributes:
         n: The number of players.
-        N: The set of players (starting from 0 to n - 1).
-        _grand_coalition_array: The array of players (starting from 0 to n).
+        N: The set of players (starting from ``0`` to ``n - 1``).
+        _grand_coalition_array: The array of players (starting from ``0`` to ``n``).
         iteration_cost: The cost of a single iteration of the approximator.
     """
 
@@ -42,7 +42,7 @@ class PermutationSamplingSV(Approximator):
         Args:
             budget: The number of game evaluations for approximation
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If None, the batch size is set to 1. Defaults to 5.
+            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``5``.
 
         Returns:
             The estimated interaction values.

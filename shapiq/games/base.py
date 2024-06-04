@@ -182,7 +182,7 @@ class Game(ABC):
                 tqdm(coalitions, desc="Evaluating game", unit=" coalition")
             ):
                 coalition = coalition.reshape((1, self.n_players))
-                values[i] = self.value_function(coalition)
+                values[i] = self.value_function(coalition)[0]
         else:
             values = self._lookup_coalitions(coalitions)  # lookup the values present in the storage
 

@@ -31,7 +31,7 @@ class TreeExplainer(Explainer):
             interaction values up to that order. Defaults to ``2``.
         min_order: The minimum interaction order to be computed. Defaults to ``1``.
         index: The type of interaction to be computed. It can be one of
-            ``["k-SII", "SII", "STII", "FSII", "BZF"]``. All indices apart from ``"BZF"`` will
+            ``["k-SII", "SII", "STII", "FSII", "BII"]``. All indices apart from ``"BII"`` will
             reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
         class_label: The class label of the model to explain.
     """

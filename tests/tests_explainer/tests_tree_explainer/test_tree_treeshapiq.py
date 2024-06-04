@@ -48,7 +48,7 @@ def test_init(dt_clf_model, background_clf_data):
             },
         ),
         (
-            "BZF",
+            "BII",
             {
                 (0,): -10.18947368,
                 (1,): -13.31052632,

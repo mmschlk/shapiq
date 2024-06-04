@@ -166,7 +166,7 @@ class MarginalImputer(Imputer):
         """
         empty_predictions = self.predict(self.replacement_data)
         if self._sample_replacements:
-            empty_prediction = float(np.mean(empty_predictions))
+            empty_prediction = np.mean(empty_predictions)
         else:
-            empty_prediction = float(empty_predictions)
+            empty_prediction = empty_predictions[0]
         return empty_prediction

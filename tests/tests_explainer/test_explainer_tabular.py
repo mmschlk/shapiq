@@ -55,7 +55,7 @@ def test_init_params(dt_model, data, index, max_order, imputer):
     elif index == "SII" or index == "k-SII":
         assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
     else:
-        assert explainer._approximator.__class__.__name__ == "SHAPIQ"
+        assert explainer._approximator.__class__.__name__ == "SVARMIQ"
 
 
 def test_auto_params(dt_model, data):

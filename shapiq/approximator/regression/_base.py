@@ -23,7 +23,7 @@ class Regression(Approximator):
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        index: The interaction index to be estimated. Available indices are ``['SII', 'kSII', 'STII',
+        index: The interaction index to be estimated. Available indices are ``['SII', 'k-SII', 'STII',
             'FSII']``.
         sii_consistent: If ``True``, the KernelSHAP-IQ method is used for SII, else Inconsistent
             KernelSHAP-IQ. Defaults to ``True``.
@@ -472,7 +472,10 @@ class Regression(Approximator):
 
         # Pre-compute weights
         for coalition_size_pos, coalition_size in enumerate(coalition_sizes):
-            for intersection_size in range(min(coalition_size, interaction_size) + 1):
+            for intersection_size in range(
+                max(0, coalition_size + interaction_size - self.n),
+                min(coalition_size, interaction_size) + 1,
+            ):
                 ground_truth_sii_weights[coalition_size_pos, intersection_size] = (
                     self._ground_truth_sii_weight(
                         coalition_size, interaction_size, intersection_size

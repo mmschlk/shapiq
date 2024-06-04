@@ -23,7 +23,7 @@ class MonteCarlo(Approximator):
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        index: The interaction index to be estimated. Available indices are ``['SII', 'kSII', 'STII',
+        index: The interaction index to be estimated. Available indices are ``['SII', 'k-SII', 'STII',
             'FSII']``.
         stratify_coalition_size: If ``True`` (default), then each coalition size is estimated separately.
         stratify_intersection: If ``True`` (default), then each coalition is stratified by the intersection
