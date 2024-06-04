@@ -33,7 +33,7 @@ class Approximator(ABC):
         n: The number of players.
         max_order: The interaction order of the approximation.
         min_order: The minimum interaction order, default is ``0``.
-        index: The interaction index to be estimated. Available indices are ``['SII', 'kSII', 'STII',
+        index: The interaction index to be estimated. Available indices are ``['SII', 'k-SII', 'STII',
             'FSII']``.
         top_order: If ``True``, the approximation is performed only for the top order interactions. If
             ``False``, the approximation is performed for all orders up to the specified order.
@@ -46,14 +46,14 @@ class Approximator(ABC):
 
     Attributes:
         n: The number of players.
-        _grand_coalition_set: The set of players (starting from 0 to n - 1).
-        _grand_coalition_array: The array of players (starting from 0 to n).
+        _grand_coalition_set: The set of players (starting from ``0`` to ``n - 1``).
+        _grand_coalition_array: The array of players (starting from ``0`` to ``n``).
         max_order: The interaction order of the approximation.
         index: The interaction index to be estimated.
         top_order: If True, the approximation is performed only for the top order interactions. If
             False, the approximation is performed for all orders up to the specified order.
-        min_order: The minimum order of the approximation. If top_order is True, min_order is equal
-            to max_order. Otherwise, min_order is equal to 0.
+        min_order: The minimum order of the approximation. If top_order is ``True``, ``min_order`` is equal
+            to max_order. Otherwise, ``min_order`` is equal to ``0``.
         iteration_cost: The cost of a single iteration of the approximator.
 
     """
@@ -139,7 +139,7 @@ class Approximator(ABC):
         All weights are set to ``_big_M``, if ``size < order`` or ``size > n - order`` to ensure efficiency.
 
         Returns:
-            The weights for sampling subsets of size s in shape (n + 1,).
+            The weights for sampling subsets of size ``s`` in shape ``(n + 1,)``.
         """
         weight_vector = np.zeros(shape=self.n + 1)
         for coalition_size in range(0, self.n + 1):

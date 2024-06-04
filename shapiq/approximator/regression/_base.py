@@ -23,7 +23,7 @@ class Regression(Approximator):
     Args:
         n: The number of players.
         max_order: The interaction order of the approximation.
-        index: The interaction index to be estimated. Available indices are ``['SII', 'kSII', 'STII',
+        index: The interaction index to be estimated. Available indices are ``['SII', 'k-SII', 'STII',
             'FSII']``.
         sii_consistent: If ``True``, the KernelSHAP-IQ method is used for SII, else Inconsistent
             KernelSHAP-IQ. Defaults to ``True``.

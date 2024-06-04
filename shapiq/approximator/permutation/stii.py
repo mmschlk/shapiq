@@ -18,7 +18,7 @@ class PermutationSamplingSTII(Approximator):
         n: The number of players.
         max_order: The interaction order of the approximation.
         random_state: The random state to use for the permutation sampling.
-            Defaults to ```None```.
+            Defaults to ``None``.
 
     Attributes:
         n: The number of players.

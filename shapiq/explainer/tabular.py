@@ -7,6 +7,7 @@ import numpy as np
 
 from shapiq.approximator import (
     SHAPIQ,
+    SVARMIQ,
     InconsistentKernelSHAPIQ,
     KernelSHAPIQ,
     PermutationSamplingSII,
@@ -27,7 +28,7 @@ APPROXIMATOR_CONFIGURATIONS = {
     "Permutation": {
         "SII": PermutationSamplingSII,
         "STII": PermutationSamplingSTII,
-        "kSII": PermutationSamplingSII,
+        "k-SII": PermutationSamplingSII,
     },
     "ShapIQ": {"SII": SHAPIQ, "STII": SHAPIQ, "FSII": SHAPIQ, "k-SII": SHAPIQ},
 }
@@ -161,7 +162,7 @@ class TabularExplainer(Explainer):
                     index=index,
                 )
             else:
-                return SHAPIQ(
+                return SVARMIQ(
                     n=self._n_features,
                     max_order=max_order,
                     top_order=False,
