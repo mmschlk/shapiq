@@ -52,9 +52,14 @@ METRICS_LIMITS = {
 METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
 
 
-def create_application_name(setup: str, abbrev: bool = False) -> str:
+def create_application_name(
+    setup: str, abbrev: bool = False, space: bool = False, new_line: bool = False
+) -> str:
     """Create an application name from the setup string."""
-    application_name = "".join(setup.split("_")[0:2])
+    try:
+        application_name = "".join(setup.split("_")[0:2])
+    except IndexError:
+        application_name = setup
     application_name = application_name.replace("Game", "")
     application_name = application_name.replace("SynthData", "")
     application_name = application_name.replace("AdultCensus", "")
@@ -62,12 +67,14 @@ def create_application_name(setup: str, abbrev: bool = False) -> str:
     application_name = application_name.replace("BikeSharing", "")
     application_name = application_name.replace("ImageClassifier", "LocalExplanation")
     application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
-    application_name = application_name.replace("TreeSHAPIQXAI", "TreeExplanation")
+    application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
     application_name = application_name.replace(
         "RandomForestEnsembleSelection", "EnsembleSelection"
     )
     if abbrev:
-        application_name = abbreviate_application_name(application_name)
+        application_name = abbreviate_application_name(
+            application_name, space=space, new_line=new_line
+        )
     return application_name
 
 
@@ -200,6 +207,7 @@ def plot_approximation_quality(
 
     # get the metric data
     metric_data = get_metric_data(data, metric)
+    n_players = int(data["n_players"].unique().max())
 
     sorted_budget = list(data["budget"].sort_values(ascending=False).unique())
     y_lim_min_budget = sorted_budget[3] if sorted_budget[0] >= 2**17 else sorted_budget[2]
@@ -274,13 +282,12 @@ def plot_approximation_quality(
             approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
 
     # add %model calls to the x-axis as a secondary axis
-    _set_x_axis_ticks(
-        ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
-    )
+    _set_x_axis_ticks(ax, n_players=n_players, max_budget=approx_max_budget)
 
     # add x/y labels
     ax.set_ylabel(metric)
-    ax.set_xlabel(r"Model Evaluations (relative to $2^n$)")
+    x_label = rf"Model Evaluations (relative to $2^{{{n_players}}}$)"
+    ax.set_xlabel(x_label)
 
     # add grid to x-axis
     ax.grid(axis="x", color=LIGHT_GRAY, linestyle="dashed")

@@ -146,13 +146,14 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
         setup = "_".join(parameters[:-2])
 
         # get the game name
-        if "SOUM" not in setup:
-            application_name = create_application_name(setup)
-        else:
-            if "max_interaction_size=5" in setup:
-                application_name = "SOUM (low)"
-            else:
-                application_name = "SOUM (high)"
+        application_name = create_application_name(setup)
+        # if "SOUM" not in setup:
+        #     application_name = create_application_name(setup)
+        # else:
+        #     if "max_interaction_size=5" in setup:
+        #         application_name = "SOUM (low)"
+        #     else:
+        #         application_name = "SOUM (high)"
         run_id = file_name
 
         # load the benchmark results
@@ -439,7 +440,7 @@ def make_latex_table_of_benchmark_configs(first_half: bool = True) -> None:
 
 if __name__ == "__main__":
 
-    create_eval = True
+    create_eval = False
     budget_setting = "high"  # can be 'all', 'high', 'low'
     print_latex_table = False
 
@@ -475,4 +476,4 @@ if __name__ == "__main__":
         print()
 
     # plot the results
-    plot_stacked_bar(eval_df, setting=budget_setting, save=False, metric=["MSE"])
+    plot_stacked_bar(eval_df, setting=budget_setting, save=False, metric=None)
