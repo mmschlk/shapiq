@@ -73,9 +73,12 @@ class Explainer:
         """
         assert len(X.shape) == 2
         if random_state is not None:
-            self._imputer._rng = np.random.default_rng(random_state)
-            self._approximator._rng = np.random.default_rng(random_state)
-            self._approximator._sampler._rng = np.random.default_rng(random_state)
+            if hasattr(self, "_imputer"):
+                self._imputer._rng = np.random.default_rng(random_state)
+            if hasattr(self, "_approximator"):
+                self._approximator._rng = np.random.default_rng(random_state)
+                if hasattr(self._approximator, "_sampler"):
+                    self._approximator._sampler._rng = np.random.default_rng(random_state)
         if n_jobs:
             import joblib
 
