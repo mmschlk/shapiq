@@ -48,6 +48,9 @@ Explain a model with Shapley interaction values, e.g. the k-SII values.
     # or use
     interaction_values.plot_network()
 
-.. image:: _static/network_example.png
-  :width: 400
-  :alt: Example of network plot for feature interactions
+The pseudo-code above can produce the following plot (here also an image is added):
+
+.. image:: _static/network_example2.png
+    :width: 500
+    :alt: Example of network plot for feature interactions
+    :align: center

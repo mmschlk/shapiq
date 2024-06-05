@@ -20,6 +20,7 @@ Contents
    notebooks/shapiq_scikit_learn
    notebooks/treeshapiq_lightgbm
    notebooks/language_model_game
+   notebooks/vision_transformer
    notebooks/conditional_imputer
    notebooks/parallel_computation
    notebooks/benchmark_approximators

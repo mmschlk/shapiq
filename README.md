@@ -86,11 +86,11 @@ interaction_values.plot_network()
 The pseudo-code above can produce the following plot (here also an image is added):
 
 <p align="center">
-  <img width="400px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/network_example.png" alt="network_plot_example">
+  <img width="500px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/network_example2.png" alt="network_plot_example">
 </p>
 
 ## 📖 Documentation with tutorials
-The documentation for ``shapiq`` can be found [here](https://shapiq.readthedocs.io/en/latest/).
+The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io
 
 ## 💬 Citation
 
