@@ -113,7 +113,7 @@ class TreeSHAPIQ:
         self.Ns_id_store: dict = {}
         self.Ns_store: dict = {}
         self.n_interpolation_size = self._n_features_in_tree
-        if self._index in ("SII", "k-SII"):  # SP is of order at most d_max
+        if self._index in ("SV", "SII", "k-SII"):  # SP is of order at most d_max
             self.n_interpolation_size = min(self._edge_tree.max_depth, self._n_features_in_tree)
         self._init_summary_polynomials()
 
@@ -308,7 +308,7 @@ class TreeSHAPIQ:
                 self._int_height[node_id][interaction_sets] == order
             ]
             if len(interactions_seen) > 0:
-                if self._index not in ("SII", "k-SII"):  # for CII
+                if self._index not in ("SV", "SII", "k-SII"):  # for CII
                     D_power = self.D_powers[self._n_features_in_tree - current_height]
                     index_quotient = self._n_features_in_tree - order
                 else:  # for SII and k-SII
@@ -343,7 +343,7 @@ class TreeSHAPIQ:
                     ancestor_heights = self._edge_tree.edge_heights[
                         interactions_ancestors[cond_interaction_seen]
                     ]
-                    if self._index not in ("SII", "k-SII"):  # for CII
+                    if self._index not in ("SV", "SII", "k-SII"):  # for CII
                         D_power = self.D_powers[self._n_features_in_tree - current_height]
                         index_quotient = self._n_features_in_tree - order
                     else:  # for SII and k-SII
@@ -405,7 +405,7 @@ class TreeSHAPIQ:
             self.subset_ancestors_store[order] = subset_ancestors
             self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
             self.D_powers_store[order] = self._cache(self.D_store[order])
-            if self._index in ("SII", "k-SII"):
+            if self._index in ("SV", "SII", "k-SII"):
                 self.Ns_store[order] = self._get_N(self.D_store[order])
             else:
                 self.Ns_store[order] = self._get_N_cii(self.D_store[order], order)
