@@ -122,7 +122,7 @@ def test_init_params_approx(dt_model, data):
 
 @pytest.mark.parametrize("approximator", APPROXIMATOR)
 @pytest.mark.parametrize("max_order", MAX_ORDERS + [1])
-def test_init_params_approx(dt_model, data, approximator, max_order):
+def test_init_params_approx_params(dt_model, data, approximator, max_order):
     """Test the initialization of the tabular explainer."""
     explainer = TabularExplainer(
         approximator=approximator, model=dt_model, data=data, max_order=max_order
