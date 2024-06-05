@@ -178,8 +178,8 @@ def plot_approximation_quality(
     aggregation: str = "mean",
     confidence_metric: Optional[str] = "sem",
     log_scale_y: bool = False,
-    log_scale_min: float = LOG_SCALE_MIN,
-    log_scale_max: float = LOG_SCALE_MAX,
+    log_scale_min: Optional[float] = LOG_SCALE_MIN,
+    log_scale_max: Optional[float] = LOG_SCALE_MAX,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the approximation quality curves.
 
@@ -218,7 +218,7 @@ def plot_approximation_quality(
     bot_lim = bot_lim.split("e")[1]  # get the exponent
     bot_lim = int(bot_lim)  # get the top limit as the exponent + 1
     bot_lim = 10**bot_lim  # get the top limit in scientific notation
-    if log_scale_min < bot_lim:
+    if log_scale_min is not None and log_scale_min < bot_lim:
         log_scale_min = bot_lim
 
     # make sure orders is a list
@@ -249,7 +249,7 @@ def plot_approximation_quality(
                 (metric_data["approximator"] == approximator) & (metric_data["order"] == order)
             ].copy()
 
-            if log_scale_y:
+            if log_scale_y and log_scale_min is not None:
                 # manually set all below log_scale_min to log_scale_min without a lambda function
                 data_order[aggregation] = data_order[aggregation].apply(
                     lambda x: log_scale_min if x < log_scale_min else x
@@ -337,12 +337,13 @@ def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float, log_scale_max: flo
     top_lim = int(top_lim) + 1  # get the top limit as the exponent + 1
     top_lim = 10**top_lim  # get the top limit in scientific notation
 
-    if top_lim > log_scale_max:
+    if log_scale_max is not None and top_lim > log_scale_max:
         top_lim = log_scale_max
 
-    # set the y-axis limits
-    ax.set_ylim(top=top_lim)
-    ax.set_ylim(bottom=log_scale_min)
+    if log_scale_min is not None and log_scale_min is not None:
+        # set the y-axis limits
+        ax.set_ylim(top=top_lim)
+        ax.set_ylim(bottom=log_scale_min)
     ax.set_yscale("log")
 
 

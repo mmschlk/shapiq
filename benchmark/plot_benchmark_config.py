@@ -41,20 +41,20 @@ if __name__ == "__main__":
     # ----------------------------------------------------------------------------------------------
 
     # benchmark to plot parameters
-    game = "AdultCensusUncertaintyExplanation"
-    config_id = 4
+    game = "AdultCensusDataValuation"
+    config_id = 2
     n_player_id = 0
     index = "SV"
     order = 1
-    n_games = 30
+    n_games = 10
 
     if index == "SV":
         order = 1
 
     # plot parameters
     log_scale_y = True
-    log_scale_max = 1e10
-    log_scale_min = 5e-9
+    log_scale_max = None
+    log_scale_min = None
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
     increase_font_size: int = 4

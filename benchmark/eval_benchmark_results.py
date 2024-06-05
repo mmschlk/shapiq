@@ -258,7 +258,14 @@ def plot_stacked_bar(
             if setting == "low":
                 max_budget_values_run_id = metric_df.groupby("run_id")["budget"].median()
             else:  # budget_setting == "high":
-                max_budget_values_run_id = metric_df.groupby("run_id")["budget"].max()
+                # get the fourth highest budget value this is guranteed to be still approximation
+                # and not the exact value for some estimators
+                max_budget_values_run_id = (
+                    metric_df.groupby("run_id")["budget"].nlargest(4).reset_index()
+                )
+                max_budget_values_run_id = max_budget_values_run_id.groupby("run_id")[
+                    "budget"
+                ].min()
             high_budget_dfs = []
             for run_id, max_budget in max_budget_values_run_id.items():
                 high_budget_dfs.append(
@@ -476,4 +483,4 @@ if __name__ == "__main__":
         print()
 
     # plot the results
-    plot_stacked_bar(eval_df, setting=budget_setting, save=False, metric=None)
+    plot_stacked_bar(eval_df, setting=budget_setting, save=True, metric=None)
