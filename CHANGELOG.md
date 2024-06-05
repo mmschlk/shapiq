@@ -1,5 +1,9 @@
 ## Changelog
 
+### v1.0.1 (2024-06-05)
+
+- add `max_order=1` to `TabularExplainer`
+-
 
 ### v1.0.0 (2024-06-04)
 
