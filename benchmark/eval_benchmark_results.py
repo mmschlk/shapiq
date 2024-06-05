@@ -41,7 +41,7 @@ APPLICATION_ORDERING = {
     "DatasetValuation": 6,
     "EnsembleSelection": 7,
     "ClusterExplanation": 8,
-    "UnsupervisedData": 9,
+    "UnsupervisedFeatureImportance": 9,
     "UncertaintyExplanation": 10,
     "SOUM (low)": 11,
     "SOUM (high)": 12,
@@ -352,6 +352,7 @@ def make_latex_table_of_benchmark_configs(first_half: bool = True) -> None:
     Each configuration is printed as a row in the table. The table is created from the
     BENCHMARK_CONFIGURATIONS dictionary and has the following columns:
     - The Game Class Name Abbreviation: game_identifiers
+    - The data set: The data set used in the game.
     - Precomputed: Whether the game is precomputed or not. If precomputed print "\checkmark", else
         print "X".
     - The Number of Players: The number of players in the game.
@@ -365,20 +366,60 @@ def make_latex_table_of_benchmark_configs(first_half: bool = True) -> None:
         GAME_CLASS_TO_NAME_MAPPING,
         GAME_NAME_TO_CLASS_MAPPING,
     )
-    from shapiq.games.benchmark.plot import abbreviate_application_name
 
     # get all unique applications and metrics and index
     game_classes = list(BENCHMARK_CONFIGURATIONS.keys())
     game_identifiers = [GAME_CLASS_TO_NAME_MAPPING[game_class] for game_class in game_classes]
     game_identifiers = sorted(game_identifiers)
 
+    # maps from str parts in application to paper names
+    domain_mapping: dict[str, str] = {
+        "Tree": "Tree Explanation",
+        "Local": "Local Explanation",
+        "Global": "Global Explanation",
+        "FeatureSelection": "Feature Selection",
+        "Random": "RF Ensemble Selection",
+        "Ensemble": "Ensemble Selection",
+        "DataValuation": "Data Valuation",
+        "Dataset": "Data Valuation",
+        "Uncertainty": "Uncertainty Explanation",
+        "Unsuper": "Unsupervised FI.",
+        "Cluster": "Cluster Explanation",
+        "SOUM": "Sum of Unanimity Model",
+    }
+
+    def get_dataset_from_id(game_id: str) -> str:
+        if "Cal" in game_id:
+            return "CH"
+        elif "Adu" in game_id:
+            return "AD"
+        elif "Bik" in game_id:
+            return "BS"
+        elif "Sy" in game_id:
+            return "Syn"
+        elif "SOUM" in game_id:
+            return "Syn"
+        elif "Ima" in game_id:
+            return "IC"
+        elif "Sen" in game_id:
+            return "MR"
+        else:
+            return "Unknown"
+
+    def get_domain_from_id(game_id: str) -> str:
+        for domain, name in domain_mapping.items():
+            if domain in game_id:
+                return name
+        return "Unknown"
+
     col_names = [
         r"\textbf{ID}",  # identifier goes from 1 to n
         r"\textbf{Benchmark}",  # game_identifiers
+        r"\textbf{Data}",  # dataset
         r"\textbf{P.}",  # precomputed
         r"\textbf{$n$}",  # number of players
-        r"\textbf{$|G|$}",  # number of game evaluations
-        r"\textbf{Iter.}",  # number of iterations
+        r"\textbf{$|\mathcal{P}|$}",  # number of game evaluations
+        r"\textbf{$g$}",  # number of iterations
         r"\textbf{Game Configuration}",  # game configuration
     ]
 
@@ -389,6 +430,7 @@ def make_latex_table_of_benchmark_configs(first_half: bool = True) -> None:
 
     # add the rows
     n_id = 1
+    n_precomputed = 0
     for game_id in game_identifiers:
         game_class = GAME_NAME_TO_CLASS_MAPPING[game_id]
         game_class_player = BENCHMARK_CONFIGURATIONS[game_class]
@@ -406,17 +448,19 @@ def make_latex_table_of_benchmark_configs(first_half: bool = True) -> None:
             n_evals_str: str = f"{n_evals}" if n_evals <= 2**16 else r"$>2^{16}$"
             n_players_str: str = f"{n_players}"
             iterations_str: str = f"{iterations}"
-            game_id_str = abbreviate_application_name(game_id, new_line=False, space=True)
+            game_id_domain = get_domain_from_id(game_id)
+            dataset_id = get_dataset_from_id(game_id)
             for config in configuration_dict["configurations"]:
                 config_str: str = ", ".join([f"{k}={v}" for k, v in config.items()])
                 config_str = config_str.replace("_", r"\_")
                 if config_str == "":
-                    config_str = "-"
+                    config_str = "--"
                 n_id_str = r"\textbf{" + str(n_id) + "}"
                 # create row
                 row = [
                     n_id_str,
-                    game_id_str,
+                    game_id_domain,
+                    dataset_id,
                     precomp_str,
                     n_players_str,
                     n_evals_str,
@@ -429,6 +473,9 @@ def make_latex_table_of_benchmark_configs(first_half: bool = True) -> None:
                 elif not first_half and n_id > 50:
                     table += row_str
                 n_id += 1
+                if precomputed:
+                    games_precomputed_per_config = iterations
+                    n_precomputed += games_precomputed_per_config
         if first_half and n_id > 50:
             break
         elif not first_half and n_id <= 50:
@@ -444,12 +491,15 @@ def make_latex_table_of_benchmark_configs(first_half: bool = True) -> None:
     table += r"\end{tabular}"
     print(table)
 
+    print("\n\n\n")
+    print("Precomputed games:", n_precomputed)
+
 
 if __name__ == "__main__":
 
     create_eval = False
     budget_setting = "high"  # can be 'all', 'high', 'low'
-    print_latex_table = False
+    print_latex_table = True
 
     if print_latex_table:
         make_latex_table_of_benchmark_configs(first_half=True)

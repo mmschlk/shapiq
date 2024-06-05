@@ -52,8 +52,54 @@ METRICS_LIMITS = {
 METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
 
 
+domain_mapping: dict[str, str] = {
+    "Tree": "Tree Explanation",
+    "Local": "Local Explanation",
+    "Global": "Global Explanation",
+    "FeatureSelection": "Feature Selection",
+    "Random": "RF Ensemble Selection",
+    "Ensemble": "Ensemble Selection",
+    "DataValuation": "Data Valuation",
+    "Dataset": "Data Valuation",
+    "Uncertainty": "Uncertainty Explanation",
+    "Unsuper": "Unsupervised FI.",
+    "Cluster": "Cluster Explanation",
+    "SOUM": "Sum of Unanimity Model",
+}
+
+
+def get_dataset_from_id(game_id: str) -> str:
+    if "Cal" in game_id:
+        return "CH"
+    elif "Adu" in game_id:
+        return "AC"
+    elif "Bik" in game_id:
+        return "BS"
+    elif "Sy" in game_id:
+        return "Syn"
+    elif "SOUM" in game_id:
+        return "Syn"
+    elif "Ima" in game_id:
+        return "IC"
+    elif "Sen" in game_id:
+        return "MR"
+    else:
+        return "Unknown"
+
+
+def get_domain_from_id(game_id: str) -> str:
+    for domain, name in domain_mapping.items():
+        if domain in game_id:
+            return name
+    return "Unknown"
+
+
 def create_application_name(
-    setup: str, abbrev: bool = False, space: bool = False, new_line: bool = False
+    setup: str,
+    abbrev: bool = False,
+    space: bool = False,
+    new_line: bool = False,
+    replace: bool = True,
 ) -> str:
     """Create an application name from the setup string."""
     try:
@@ -65,12 +111,16 @@ def create_application_name(
     application_name = application_name.replace("AdultCensus", "")
     application_name = application_name.replace("CaliforniaHousing", "")
     application_name = application_name.replace("BikeSharing", "")
-    application_name = application_name.replace("ImageClassifier", "LocalExplanation")
-    application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
-    application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
-    application_name = application_name.replace(
-        "RandomForestEnsembleSelection", "EnsembleSelection"
-    )
+    if replace:
+        application_name = application_name.replace("ImageClassifier", "LocalExplanation")
+        application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
+        application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
+        application_name = application_name.replace(
+            "UnsupervisedData", "UnsupervisedFeatureImportance"
+        )
+        application_name = application_name.replace(
+            "RandomForestEnsembleSelection", "EnsembleSelection"
+        )
     if abbrev:
         application_name = abbreviate_application_name(
             application_name, space=space, new_line=new_line
@@ -116,6 +166,8 @@ def abbreviate_application_name(
         abbreviation = "SOUM\n(low)"
     if application_name == "SOUM (high)":
         abbreviation = "SOUM\n(high)"
+    if application_name == "UnsupervisedFeatureImportance":
+        abbreviation = "Uns.FI"
     if new_line:
         abbreviation = abbreviation.replace(".", ".\n")
     if space:

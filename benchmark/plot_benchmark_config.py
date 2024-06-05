@@ -13,14 +13,15 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     from shapiq.games.benchmark.benchmark_config import GAME_NAME_TO_CLASS_MAPPING
-    from shapiq.games.benchmark.plot import create_application_name, plot_approximation_quality
+    from shapiq.games.benchmark.plot import (
+        abbreviate_application_name,
+        get_dataset_from_id,
+        get_domain_from_id,
+        plot_approximation_quality,
+    )
     from shapiq.games.benchmark.run import load_benchmark_results
 
     print("Available games:", GAME_NAME_TO_CLASS_MAPPING.keys(), "\n")
-
-    # run parameters
-    save_fig = True
-    metric = "MSE"  # MSE Precision@10
 
     # params for plot in the main body of the paper ------------------------------------------------
     # ImageClassifierLocalXAI:
@@ -40,11 +41,15 @@ if __name__ == "__main__":
     # n_games=30, log_scale_y=True, log_scale_max=1e10, log_scale_min=5e-9, log_scale_x=False
     # ----------------------------------------------------------------------------------------------
 
+    # run parameters
+    save_fig = True
+    metric = "MSE"  # MSE Precision@5 MSE
+
     # benchmark to plot parameters
-    game = "ImageClassifierLocalXAI"
-    config_id = 1
-    n_player_id = 2
-    index = "k-SII"
+    game = "AdultCensusGlobalXAI"
+    config_id = 3
+    n_player_id = 0
+    index = "SV"
     order = 2
     n_games = 30
 
@@ -54,14 +59,16 @@ if __name__ == "__main__":
     # plot parameters
     log_scale_y = True
     log_scale_max = 1e10
-    log_scale_min = 3e-7
+    log_scale_min = 1e-7
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
     increase_font_size: int = 4
     fig_size = (5, 5)
 
     # create the title -----------------------------------------------------------------------------
-    game_title = create_application_name(game, abbrev=True, space=True)
+    ds = get_dataset_from_id(game)
+    domain = abbreviate_application_name(get_domain_from_id(game), space=True)
+    game_title = ds + " " + domain
     index_title = index if index != "k-SII" else rf"{order}" + r"\text{-}SII"
     index_title = r"$\bf{" + index_title + "}$:"  # makes index title bold
     n_games_str = "game" if n_games == 1 else "games"

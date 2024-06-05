@@ -20,8 +20,9 @@ if __name__ == "__main__":
     from shapiq.games.benchmark.run import run_benchmark_from_configuration
 
     indices_order = [
-        ("SV", 1),
-        ("k-SII", 2),
+        # ("SV", 1),
+        # ("k-SII", 2),
+        ("k-SII", 3)
     ]
     rerun_if_exists = False
     raise_error = False
