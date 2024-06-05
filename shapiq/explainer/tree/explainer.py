@@ -2,6 +2,7 @@
 computing any-order Shapley Interactions for tree ensembles."""
 
 import copy
+import warnings
 from typing import Any, Optional, Union
 
 import numpy as np
@@ -47,6 +48,10 @@ class TreeExplainer(Explainer):
     ) -> None:
 
         super().__init__(model)
+
+        if index == "SV" and max_order > 1:
+            warnings.warn("For index='SV' the max_order is set to 1.")
+            max_order = 1
 
         # validate and parse model
         validated_model = validate_tree_model(model, class_label=class_label)

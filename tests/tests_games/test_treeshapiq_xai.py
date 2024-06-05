@@ -87,7 +87,7 @@ def test_adult():
     """Test the AdultCensus TreeSHAP-IQ explanation game."""
     max_order = 2
     min_order = 1
-    index = "SII"
+    index = "k-SII"
 
     # benchmark game
     game = AdultCensusTreeSHAPIQXAI(
@@ -107,11 +107,13 @@ def test_adult():
         assert np.isclose(exact_values[interaction], gt_interaction_values[interaction])
 
 
-def test_california():
+@pytest.mark.parametrize("index_order", [("k-SII", 2), ("SV", 1)])
+def test_california(index_order):
     """Test the CaliforniaHousing TreeSHAP-IQ explanation game."""
-    max_order = 2
+    max_order = int(index_order[1])
+    index = str(index_order[0])
+
     min_order = 1
-    index = "SII"
 
     # benchmark game
     game = CaliforniaHousingTreeSHAPIQXAI(
