@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import tqdm
-from scipy.special import bernoulli, binom
+from scipy.special import binom
 
 from shapiq.exact import ExactComputer
 from shapiq.games.benchmark.benchmark_config import load_games_from_configuration
@@ -11,26 +11,6 @@ from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
 
-def bernoulli_lambda(interaction_size, intersection_size):
-    if intersection_size == 0:
-        return 0
-    else:
-        rslt = 0
-        for size in range(1, intersection_size + 1):
-            rslt += bernoulli(interaction_size - size)[-1] * binom(intersection_size, size)
-        return rslt
-
-
-def bernoulli_lambda_with_zero(interaction_size, intersection_size):
-    if intersection_size == 0:
-        return 0
-    else:
-        rslt = 0
-        for size in range(intersection_size + 1):
-            rslt += bernoulli(interaction_size - size)[-1] * binom(intersection_size, size)
-        return rslt
-
-
 def _get_weight(n, coalition_size, weighting_scheme):
     if weighting_scheme == "uniform":
         return (1 / 2) ** n
@@ -38,7 +18,7 @@ def _get_weight(n, coalition_size, weighting_scheme):
         if coalition_size == n or coalition_size == 0:
             return 1
         else:
-            return (n - 1) / (binom(n, coalition_size) * coalition_size * (n - coalition_size))
+            return 1 / binom(n - 2, coalition_size - 1)
     else:
         raise ValueError(f"Weighting Scheme {weighting_scheme} not supported.")
 
@@ -49,36 +29,6 @@ def get_approximation_weights(n, weighting_scheme):
     for coalition_pos, coalition in enumerate(powerset(grand_coalition_set)):
         approximation_weights[coalition_pos] = _get_weight(n, len(coalition), weighting_scheme)
     return approximation_weights
-
-
-def approximation_via_sii(interaction_index, order):
-    n_players = interaction_index.n_players
-    grand_coalition_set = set(range(n_players))
-    approximations = {}
-    for current_order in range(1, order + 1):
-        approximation_lookup = {}
-        approximation_values = np.zeros(2**n_players)
-        for coalition_pos, coalition in enumerate(powerset(grand_coalition_set)):
-            approximation_lookup[coalition] = coalition_pos
-            for interaction in powerset(grand_coalition_set, min_size=1, max_size=current_order):
-                interaction_size = len(interaction)
-                intersection_size = len(set(interaction).intersection(set(coalition)))
-                approximation_values[coalition_pos] += (
-                    bernoulli_lambda(interaction_size, intersection_size)
-                    * interaction_index[interaction]
-                )
-        baseline_value = approximation_values[approximation_lookup[tuple()]]
-        # if current_order == 1:
-        approximations[current_order] = InteractionValues(
-            index=interaction_index.index,
-            max_order=n_players,
-            n_players=n_players,
-            min_order=0,
-            baseline_value=baseline_value,
-            interaction_lookup=approximation_lookup,
-            values=approximation_values,
-        )
-    return approximations
 
 
 def approximated_game(interaction_index):
@@ -130,21 +80,6 @@ def get_approximations_for_game(game):
             interactions = exact_computer.shapley_interaction(index=index, order=order)
             approximations[index][order] = approximated_game(interactions)
     return approximations, game_values
-
-
-def shapley_residual(game, player):
-    exact_computer = ExactComputer(game.n_players, game)
-    game_values = exact_computer.game_values
-    coalition_lookup = exact_computer.coalition_lookup
-    grand_coalition_without_player = set(game.grand_coalition) - set(player)
-    marginal_contributions = np.zeros(2 ** (game.n_players - 1))
-    for coalition in powerset(grand_coalition_without_player):
-        coalition_with_player = tuple(sorted(set(coalition) + set((player,))))
-        coalition_with_player_pos = coalition_lookup[coalition_with_player]
-        coalition_pos = coalition_lookup[coalition]
-        marginal_contributions[coalition_pos] = (
-            game_values[coalition_with_player_pos] - game_values[coalition_pos]
-        )
 
 
 def get_errors_for_game(approximations, game_values, n_players):
@@ -213,8 +148,8 @@ if __name__ == "__main__":
     weighted_r2 = {}
     approximations = {}
 
-    RUN_SYNTHETIC_INTERACTION_EXPERIMENT = False
-    RUN_BENCHMARK_GAMES_EXPERIMENT = True
+    RUN_SYNTHETIC_INTERACTION_EXPERIMENT = True
+    RUN_BENCHMARK_GAMES_EXPERIMENT = False
 
     if RUN_SYNTHETIC_INTERACTION_EXPERIMENT:
         INTERACTION_RANGE = range(2, n_players + 1)
