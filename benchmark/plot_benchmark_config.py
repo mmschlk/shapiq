@@ -23,20 +23,20 @@ if __name__ == "__main__":
     metric = "MSE"  # MSE Precision@10
 
     # benchmark to plot parameters
-    game = "SynthDataTreeSHAPIQXAI"
-    config_id = 1
+    game = "AdultCensusUncertaintyExplanation"
+    config_id = 4
     n_player_id = 0
     index = "k-SII"
     order = 2
-    n_games = 10
+    n_games = 30
 
     if index == "SV":
         order = 1
 
     # plot parameters
     log_scale_y = True
-    log_scale_max = 2e-1
-    log_scale_min = 1e-5
+    log_scale_max = 1e10
+    log_scale_min = 1e-10
     log_scale_x = False
     y_lim = None  # 0.0, 0.001
     increase_font_size: int = 4

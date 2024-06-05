@@ -86,26 +86,32 @@ def sort_values(list_to_sort: list[str], ordering: dict[str, int]) -> list[str]:
     return sorted_list
 
 
-def _get_best_approximator(df: pd.DataFrame) -> dict[str, list[tuple]]:
+def _get_best_approximator(df: pd.DataFrame, order) -> dict[str, list[tuple]]:
     """Get the best (approximator, budget) for each budget for a set of metrics."""
     best_approximators = {}  # will store for each metric the approximator name that performed best
     for metric, metric_type in METRICS.items():
+        metric_col = "_".join([str(order), metric])
+        df_metric = df[["approximator", "budget", metric_col]].copy()
+        # drop rows with "Exact" in the approximator column
+        df_metric = df_metric[~df_metric["approximator"].str.contains("Exact")]
+        # average the metric over all runs
+        df_metric = df_metric.groupby(["approximator", "budget"]).mean().reset_index()
         if metric_type == "max":
-            best_value = df.groupby("budget")[metric].max()
+            best_value = df_metric.groupby("budget")[metric_col].max()
             best_at_budget = []
             for budget, value in best_value.items():
-                best_approx_per_budget = df[(df["budget"] == budget) & (df[metric] >= value)][
-                    "approximator"
-                ].unique()
+                best_approx_per_budget = df_metric[
+                    (df_metric["budget"] == budget) & (df_metric[metric_col] >= value)
+                ]["approximator"].unique()
                 for approx in best_approx_per_budget:
                     best_at_budget.append((approx, budget))
         else:
-            best_value = df.groupby("budget")[metric].min()
+            best_value = df_metric.groupby("budget")[metric_col].min()
             best_at_budget = []
             for budget, value in best_value.items():
-                best_approx_per_budget = df[(df["budget"] == budget) & (df[metric] <= value)][
-                    "approximator"
-                ].unique()
+                best_approx_per_budget = df_metric[
+                    (df_metric["budget"] == budget) & (df_metric[metric_col] <= value)
+                ]["approximator"].unique()
                 for approx in best_approx_per_budget:
                     best_at_budget.append((approx, budget))
         best_approximators[metric] = best_at_budget
@@ -143,7 +149,7 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
         if "SOUM" not in setup:
             application_name = create_application_name(setup)
         else:
-            if "n=15" in setup:
+            if "max_interaction_size=5" in setup:
                 application_name = "SOUM (low)"
             else:
                 application_name = "SOUM (high)"
@@ -157,7 +163,7 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
 
         # get the best approximator
         try:
-            best_approximators: dict = _get_best_approximator(results_df)
+            best_approximators: dict = _get_best_approximator(results_df, order=order)
         except Exception as e:
             print(f"Error occurred: {e}. Continuing.")
             print(f"Skipping: {file_name}")
@@ -190,7 +196,9 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
     return results_df
 
 
-def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False) -> None:
+def plot_stacked_bar(
+    df: pd.DataFrame, setting: str = "high", save: bool = False, metric: list[str] = None
+) -> None:
     """Summarizes the benchmark results by plotting a collection of stacked bar plots.
 
     For each metric, this function plots a stacked bar plot showing the percentage of the best
@@ -239,6 +247,8 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
         index_approximators[index] = list(
             sorted(df[df["index"] == index]["best_approximator"].unique())
         )
+
+    all_metrics = metric if metric is not None else all_metrics
 
     # iterate over all metrics
     for metric in all_metrics:
@@ -429,7 +439,7 @@ def make_latex_table_of_benchmark_configs(first_half: bool = True) -> None:
 
 if __name__ == "__main__":
 
-    create_eval = False
+    create_eval = True
     budget_setting = "high"  # can be 'all', 'high', 'low'
     print_latex_table = False
 
@@ -465,4 +475,4 @@ if __name__ == "__main__":
         print()
 
     # plot the results
-    plot_stacked_bar(eval_df, setting=budget_setting, save=True)
+    plot_stacked_bar(eval_df, setting=budget_setting, save=False, metric=["MSE"])
