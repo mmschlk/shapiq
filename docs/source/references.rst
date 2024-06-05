@@ -17,7 +17,7 @@ Algorithms
 - Yu et al. `Linear tree shap <https://doi.org/10.48550/arXiv.2209.08192>`_. NeurIPS 2022
 - Harris et al. `Joint Shapley values: a measure of joint feature importance <https://doi.org/10.48550/arXiv.2107.11357>`_. ICLR 2022
 - Covert et al. `Improving KernelSHAP: Practical Shapley value estimation using linear regression <https://doi.org/10.48550/arXiv.2012.01536>`_. AISTATS 2021
-- Sundararajan et al. `The Shapley Taylor Interaction Index <https://doi.org/10.48550/arXiv.1902.05622>`_. ICML 2020
+- Sundararajan et al. `The Shapley Taylor interaction index <https://doi.org/10.48550/arXiv.1902.05622>`_. ICML 2020
 - Lundberg et al. `From local explanations to global understanding with explainable AI for trees <https://doi.org/10.1038/s42256-019-0138-9>`_. NMI 2020
 - Lundberg et al. `A unified approach to interpreting model predictions <https://doi.org/10.48550/arXiv.1705.07874>`_. NeurIPS 2017
 
@@ -25,7 +25,7 @@ Related software tools and benchmarks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Olsen et al. `A comparative study of methods for estimating model-agnostic Shapley value explanations <https://doi.org/10.1007/s10618-024-01016-z>`_. DAMI 2024
-- Li et al. `M4: A unified xai benchmark for faithfulness evaluation of feature attribution methods across metrics, modalities and models <https://openreview.net/forum?id=6zcfrSz98y>`_. NeurIPS 2023
+- Li et al. `M4: A unified XAI benchmark for faithfulness evaluation of feature attribution methods across metrics, modalities and models <https://openreview.net/forum?id=6zcfrSz98y>`_. NeurIPS 2023
 - Jiang et al. `OpenDataVal: A unified benchmark for data valuation <https://doi.org/10.48550/arXiv.2306.10577>`_. NeurIPS 2023
 - Hedström et al. `Quantus: An explainable AI toolkit for responsible evaluation of neural network explanations and beyond <https://www.jmlr.org/papers/v24/22-0142.html>`_. JMLR 2023
 - Agarwal et al. `OpenXAI: Towards a transparent evaluation of model explanations <https://doi.org/10.48550/arXiv.2206.11104>`_. NeurIPS 2022

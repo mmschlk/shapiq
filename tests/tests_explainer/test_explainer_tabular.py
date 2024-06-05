@@ -28,6 +28,7 @@ def data():
 INDICES = ["SII", "k-SII", "STII", "FSII"]
 MAX_ORDERS = [2, 3]
 IMPUTER = ["marginal", "conditional"]
+APPROXIMATOR = ["regression", "montecarlo", "permutation"]
 
 
 @pytest.mark.parametrize("index", INDICES)
@@ -72,25 +73,27 @@ def test_auto_params(dt_model, data):
     assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
 
 
-def test_init_params_error(dt_model, data):
+def test_init_params_error_and_warning(dt_model, data):
     """Test the initialization of the interaction explainer."""
     model_function = dt_model.predict
     with pytest.raises(ValueError):
+        TabularExplainer(model=model_function, data=data, index="invalid", max_order=0)
+    with pytest.warns():
         TabularExplainer(
             model=model_function,
             data=data,
-            index="invalid",
+            max_order=1,
         )
-    with pytest.raises(ValueError):
+    with pytest.warns():
         TabularExplainer(
             model=model_function,
             data=data,
-            max_order=0,
+            index="SV",
         )
 
 
 def test_init_params_approx(dt_model, data):
-    """Test the initialization of the interaction explainer."""
+    """Test the initialization of the tabular explainer."""
     model_function = dt_model.predict
     with pytest.raises(ValueError):
         TabularExplainer(
@@ -99,7 +102,7 @@ def test_init_params_approx(dt_model, data):
             approximator="invalid",
         )
     explainer = TabularExplainer(
-        approximator="Regression",
+        approximator="regression",
         index="FSII",
         model=model_function,
         data=data,
@@ -115,6 +118,17 @@ def test_init_params_approx(dt_model, data):
     )
     assert explainer._approximator.__class__.__name__ == "RegressionFSII"
     assert explainer._approximator == approximator
+
+
+@pytest.mark.parametrize("approximator", APPROXIMATOR)
+@pytest.mark.parametrize("max_order", MAX_ORDERS + [1])
+def test_init_params_approx_params(dt_model, data, approximator, max_order):
+    """Test the initialization of the tabular explainer."""
+    explainer = TabularExplainer(
+        approximator=approximator, model=dt_model, data=data, max_order=max_order
+    )
+    iv = explainer.explain(data[0])
+    assert iv.__class__.__name__ == "InteractionValues"
 
 
 BUDGETS = [2**5, 2**8, None]
