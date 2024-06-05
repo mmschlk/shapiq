@@ -32,7 +32,7 @@ class TreeExplainer(Explainer):
             interaction values up to that order. Defaults to ``2``.
         min_order: The minimum interaction order to be computed. Defaults to ``1``.
         index: The type of interaction to be computed. It can be one of
-            ``["k-SII", "SII", "STII", "FSII", "BII"]``. All indices apart from ``"BII"`` will
+            ``["k-SII", "SII", "STII", "FSII", "BII", "SV"]``. All indices apart from ``"BII"`` will
             reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
         class_label: The class label of the model to explain.
     """
@@ -52,6 +52,9 @@ class TreeExplainer(Explainer):
         if index == "SV" and max_order > 1:
             warnings.warn("For index='SV' the max_order is set to 1.")
             max_order = 1
+        elif max_order == 1 and index != "SV":
+            warnings.warn("For max_order=1 the index is set to 'SV'.")
+            index = "SV"
 
         # validate and parse model
         validated_model = validate_tree_model(model, class_label=class_label)
