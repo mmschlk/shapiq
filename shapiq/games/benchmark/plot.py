@@ -9,6 +9,9 @@ from matplotlib import pyplot as plt
 
 from shapiq.approximator._base import Approximator
 
+__all__ = ["plot_approximation_quality"]
+
+
 # TODO: add the plot colors and styles for different approximators as well
 STYLE_DICT: dict[str, dict[str, str]] = {
     # permutation sampling
@@ -171,11 +174,14 @@ def plot_approximation_quality(
     log_scale_min: float = LOG_SCALE_MIN,
     log_scale_max: float = LOG_SCALE_MAX,
     legend: bool = True,
+    remove_spines: bool = False,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the approximation quality curves.
 
     Args:
-        data: The data to plot the values from.
+        data: The data to plot the values from (if `None`, the data_path must be provided).
+        data_path: The path to the data to plot the values from (if `None`, the data must be
+            provided).
         metric: The metric to plot. Defaults to "MSE".
         orders: The orders to plot. If `None`, all orders are plotted. Defaults to `None`.
             Can be a list of integers or a single integer.
@@ -186,6 +192,11 @@ def plot_approximation_quality(
         confidence_metric: The metric to use for the confidence interval. Defaults to "sem".
             Available options are "sem", "std", "var", "quantile_95", "quantile_5".
         log_scale_y: Whether to use a log scale for the y-axis. Defaults to `False`.
+        log_scale_min: The minimum value for the log scale. Defaults to 1e-7.
+        log_scale_max: The maximum value for the log scale. Defaults to 1e2.
+        legend: Whether to add a legend to the plot. Defaults to `True`.
+        remove_spines: Whether to remove the spines in the top and right of the plot. Defaults to
+            `False`.
 
     Returns:
         The figure and axes of the plot.
@@ -195,11 +206,14 @@ def plot_approximation_quality(
 
     if data is None:
         data = pd.read_csv(data_path)
+    # remove exact
+    data = data[~data["approximator"].str.contains("Exact")]
 
     # get the metric data
     metric_data = get_metric_data(data, metric)
 
     sorted_budget = list(data["budget"].sort_values(ascending=False).unique())
+
     try:
         y_lim_min_budget = sorted_budget[3] if sorted_budget[0] >= 2**17 else sorted_budget[2]
     except IndexError:
@@ -207,7 +221,7 @@ def plot_approximation_quality(
     # get min metric_value for y_lim
     min_value_y = data[data["budget"] == y_lim_min_budget][metric].min()
     # round value down to next decimal
-    bot_lim = f"{min_value_y:.2e}"  # get the top limi in scientific notation
+    bot_lim = f"{min_value_y:.2e}"  # get the top limit in scientific notation
     bot_lim = bot_lim.split("e")[1]  # get the exponent
     bot_lim = int(bot_lim)  # get the top limit as the exponent + 1
     bot_lim = 10**bot_lim  # get the top limit in scientific notation
@@ -243,7 +257,7 @@ def plot_approximation_quality(
             ].copy()
 
             if log_scale_y:
-                # manually set all below log_scale_min to log_scale_min without a lambda function
+                # manually set all below log_scale_min to log_scale_min (to avoid log(0))
                 data_order[aggregation] = data_order[aggregation].apply(
                     lambda x: log_scale_min if x < log_scale_min else x
                 )
@@ -274,11 +288,6 @@ def plot_approximation_quality(
                 )
             approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
 
-    # add %model calls to the x-axis as a secondary axis
-    _set_x_axis_ticks(
-        ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
-    )
-
     # add x/y labels
     ax.set_ylabel(metric)
     ax.set_xlabel(r"Model Evaluations (relative to $2^n$)")
@@ -286,15 +295,29 @@ def plot_approximation_quality(
     # add grid to x-axis
     ax.grid(axis="x", color=LIGHT_GRAY, linestyle="dashed")
 
-    if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE:
-        _set_y_axis_log_scale(ax, log_scale_min, log_scale_max)
-
-    if metric in METRICS_LIMITS:
-        ax.set_ylim(METRICS_LIMITS[metric])
-
     # add the legend
     if legend:
         add_legend(ax, approximators, orders)
+
+    # set the y-axis limits
+    if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE:
+        _set_y_axis_log_scale(ax, log_scale_min, log_scale_max)
+
+    # set the y-axis limits for specific metrics
+    if metric in METRICS_LIMITS:
+        ax.set_ylim(METRICS_LIMITS[metric])
+
+    # add %model calls to the x-axis as a secondary axis
+    _set_x_axis_ticks(
+        ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
+    )
+
+    if remove_spines:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+    # resize the figure and remove padding
+    plt.tight_layout()
 
     return fig, ax
 
