@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
+from shapiq.approximator._base import Approximator
+
 # TODO: add the plot colors and styles for different approximators as well
 STYLE_DICT: dict[str, dict[str, str]] = {
     # permutation sampling
@@ -168,6 +170,7 @@ def plot_approximation_quality(
     log_scale_y: bool = False,
     log_scale_min: float = LOG_SCALE_MIN,
     log_scale_max: float = LOG_SCALE_MAX,
+    legend: bool = True,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the approximation quality curves.
 
@@ -197,7 +200,10 @@ def plot_approximation_quality(
     metric_data = get_metric_data(data, metric)
 
     sorted_budget = list(data["budget"].sort_values(ascending=False).unique())
-    y_lim_min_budget = sorted_budget[3] if sorted_budget[0] >= 2**17 else sorted_budget[2]
+    try:
+        y_lim_min_budget = sorted_budget[3] if sorted_budget[0] >= 2**17 else sorted_budget[2]
+    except IndexError:
+        y_lim_min_budget = sorted_budget[0]
     # get min metric_value for y_lim
     min_value_y = data[data["budget"] == y_lim_min_budget][metric].min()
     # round value down to next decimal
@@ -285,6 +291,10 @@ def plot_approximation_quality(
 
     if metric in METRICS_LIMITS:
         ax.set_ylim(METRICS_LIMITS[metric])
+
+    # add the legend
+    if legend:
+        add_legend(ax, approximators, orders)
 
     return fig, ax
 
@@ -388,7 +398,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 
 def add_legend(
     axis: plt.Axes,
-    approximators: list[str],
+    approximators: list[Union[str, Approximator]],
     orders: Optional[list[Union[int, str]]] = None,
     legend_subtitle: bool = True,
     loc: str = "best",
@@ -405,6 +415,16 @@ def add_legend(
     """
     if orders is None and approximators is None:
         return
+
+    # convert approximators to strings if they are not strings
+    if approximators is not None:
+        approximators_str = []
+        for approx in approximators:
+            approx_str = type(approx).__name__
+            if approx_str == "str":
+                approx_str = approx
+            approximators_str.append(approx_str)
+        approximators = approximators_str
 
     # plot the order elements
     if orders is not None:
@@ -436,5 +456,6 @@ def add_legend(
             linewidth=LINE_THICKNESS,
         )
 
-    handles, labels = axis.get_legend_handles_labels()
-    axis.legend(handles, labels, loc=loc)
+    # handles, labels = axis.get_legend_handles_labels()
+    # axis.legend(handles, labels, loc=loc)
+    axis.legend(loc=loc)
