@@ -18,7 +18,7 @@ def bar_plot(
     feature_names: Optional[np.ndarray] = None,
     show: bool = True,
     **kwargs,
-):
+) -> plt.Axes:
     """Draws interaction values on a bar plot.
 
     Requires the ``shap`` Python package to be installed.
@@ -27,8 +27,6 @@ def bar_plot(
         list_of_interaction_values: A list containing InteractionValues objects.
         feature_names: The feature names used for plotting. If no feature names are provided, the
             feature indices are used instead. Defaults to ``None``.
-        feature_values: The feature values used for plotting. Defaults to ``None``.
-        matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
         show: Whether ``matplotlib.pyplot.show()`` is called before returning. Default is ``True``.
             Setting this to ``False`` allows the plot to be customized further after it has been created.
         **kwargs: Keyword arguments passed to ``shap.plots.beeswarm()``.
@@ -54,7 +52,8 @@ def bar_plot(
             _values = _values_dict[_order]
             _shap_values.append(_values[interaction])
             if feature_names is not None and _first_iv:
-                _labels.append(" x ".join(f"{feature_names[i]:0.10}" for i in interaction))
+                _name = " x ".join(f"{feature_names[i]}".strip()[0:4] + "." for i in interaction)
+                _labels.append(_name)
         _global_values.append(_shap_values)
         _base_values.append(iv.baseline_value)
         if _first_iv:

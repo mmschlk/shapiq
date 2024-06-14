@@ -25,10 +25,9 @@ def test_stacked_bar_plot():
         n_shapley_values_pos=n_shapley_values_pos,
         n_shapley_values_neg=n_shapley_values_neg,
     )
-    assert fig is not None
-    assert axes is not None
-    plt.close(fig)
-    assert True
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(axes, plt.Axes)
+    plt.close()
 
     fig, axes = stacked_bar_plot(
         feature_names=feature_names,
@@ -39,6 +38,19 @@ def test_stacked_bar_plot():
         xlabel="X",
         ylabel="Y",
     )
-    assert fig is not None
-    assert axes is not None
-    plt.close(fig)
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(axes, plt.Axes)
+    plt.close()
+
+    fig, axes = stacked_bar_plot(
+        feature_names=None,
+        n_shapley_values_pos=n_shapley_values_pos,
+        n_shapley_values_neg=n_shapley_values_neg,
+        n_sii_max_order=2,
+        title="Title",
+        xlabel="X",
+        ylabel="Y",
+    )
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(axes, plt.Axes)
+    plt.close()

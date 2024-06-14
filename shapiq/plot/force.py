@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from shapiq.interaction_values import InteractionValues
@@ -16,9 +17,10 @@ def force_plot(
     interaction_values: InteractionValues,
     feature_names: Optional[np.ndarray] = None,
     feature_values: Optional[np.ndarray] = None,
-    matplotlib=True,
+    matplotlib: bool = True,
+    show: bool = False,
     **kwargs,
-):
+) -> Optional[plt.Figure]:
     """Draws interaction values on a force plot.
 
     Requires the ``shap`` Python package to be installed.
@@ -41,6 +43,7 @@ def force_plot(
             features=feature_values,
             feature_names=feature_names,
             matplotlib=matplotlib,
+            show=show,
             **kwargs,
         )
     else:
@@ -56,21 +59,20 @@ def force_plot(
             _order = len(interaction)
             _values = _values_dict[_order]
             _shap_values.append(_values[interaction])
-            if feature_values is not None and feature_names is None:
-                _labels.append(" x ".join(f"{feature_values[i]:0.3}" for i in interaction))
-            elif feature_names is not None and feature_values is None:
-                _labels.append(" x ".join(f"{feature_names[i]:0.5}" for i in interaction))
-            elif feature_names is not None and feature_values is not None:
-                _labels.append(
-                    " x ".join(f"{feature_names[i]:0.5}." for i in interaction)
-                    + "\n"
-                    + " x ".join(f"{feature_values[i]:0.4}" for i in interaction)
-                )
+            if feature_names is not None:
+                _name = " x ".join(f"{feature_names[i]}".strip()[0:4] + "." for i in interaction)
+            else:
+                _name = " x ".join(f"{feature}" for feature in interaction)
+            if feature_values is not None:
+                _name += "\n"
+                _name += " x ".join(f"{feature_values[i]}".strip()[0:4] for i in interaction)
+            _labels.append(_name)
 
         return shap.plots.force(
             base_value=np.array([interaction_values.baseline_value], dtype=float),  # must be array
             shap_values=np.array(_shap_values),
-            feature_names=np.array(_labels),
+            feature_names=_labels,
             matplotlib=matplotlib,
+            show=show,
             **kwargs,
         )
