@@ -388,7 +388,11 @@ def run_benchmark_from_configuration(
     config_id = get_game_file_name_from_config(game_configuration)
     games: list[Game] = list(
         load_games_from_configuration(
-            game_class, game_configuration, n_player_id=game_n_player_id, only_pre_computed=True
+            game_class,
+            game_configuration,
+            n_player_id=game_n_player_id,
+            only_pre_computed=True,
+            n_games=game_n_games,
         )
     )
     if game_n_games is not None:
@@ -402,6 +406,7 @@ def run_benchmark_from_configuration(
     # get the benchmark name for saving the results
     benchmark_name = _make_benchmark_name(config_id, game_class, len(games), index, order)
     save_path = os.path.join("results", f"{benchmark_name}.json")
+    os.makedirs("results", exist_ok=True)
     print(
         f"Checking if the benchmark results already exist with the name: {benchmark_name} and the "
         f"save path: {save_path}."

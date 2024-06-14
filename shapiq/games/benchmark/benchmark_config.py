@@ -940,9 +940,12 @@ def load_games_from_configuration(
     )
 
     # get config if it is an int
-    configuration: dict = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][
-        config_id - 1
-    ]
+    try:
+        configuration: dict = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][
+            config_id - 1
+        ]
+    except TypeError:  # not a dict
+        configuration: dict = config_id
     params = {}
 
     # get the default parameters
