@@ -16,7 +16,6 @@ NORMAL_NODE_SIZE = 0.125  # 0.125
 BASE_ALPHA_VALUE = 1.0  # the transparency level for the highest interaction
 BASE_SIZE = 0.05  # the size of the highest interaction edge (with scale factor 1)
 ADJUST_NODE_ALPHA = True
-SCALE_NODE_EXPLANATIONS_BY_AREA = False
 
 
 def _normalize_value(
@@ -184,6 +183,7 @@ def _draw_explanation_nodes(
     graph: nx.Graph,
     nodes: Optional[list] = None,
     normal_node_size: float = NORMAL_NODE_SIZE,
+    node_area_scaling: bool = False,
 ) -> None:
     """Adds the node level explanations to the graph as circles with varying sizes.
 
@@ -193,6 +193,7 @@ def _draw_explanation_nodes(
         graph: The graph to draw the nodes on.
         nodes: The nodes to draw. If ``None``, all nodes are drawn. Defaults to ``None``.
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
+        node_area_scaling: TODO add docstring.
     """
     for node in graph.nodes:
         if isinstance(node, tuple):
@@ -209,7 +210,7 @@ def _draw_explanation_nodes(
         alpha = min(1.0, max(0.0, alpha))
 
         radius = normal_node_size / 2 + explanation_size / 2
-        if SCALE_NODE_EXPLANATIONS_BY_AREA:
+        if node_area_scaling:
             # get the radius of a circle with the same area as the combined area
             normal_node_area = math.pi * (normal_node_size / 2) ** 2
             this_node_area = math.pi * (explanation_size / 2) ** 2
@@ -240,7 +241,6 @@ def _draw_graph_edges(
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
     """
     for u, v in graph.edges:
-
         if edges is not None and (u, v) not in edges and (v, u) not in edges:
             continue
 
@@ -325,6 +325,7 @@ def si_graph_plot(
     adjust_node_pos: bool = False,
     spring_k: Optional[float] = None,
     interaction_direction: Optional[str] = None,
+    node_area_scaling: bool = False,
 ) -> tuple[plt.figure, plt.axis]:
     """Plots the interaction values as an explanation graph.
 
@@ -370,6 +371,7 @@ def si_graph_plot(
         interaction_direction: The sign of the interaction values to plot. If ``None``, all
             interactions are plotted. Possible values are ``"positive"`` and
             ``"negative"``. Defaults to ``None``.
+        node_area_scaling: TODO add docstring.
 
     Returns:
         The figure and axis of the plot.
@@ -462,7 +464,6 @@ def si_graph_plot(
         pos = nx.spring_layout(original_graph, seed=random_seed, k=spring_k)
         pos = nx.kamada_kawai_layout(original_graph, scale=1.0, pos=pos)
     else:
-        pass
         # pos is given but we need to scale the positions potentially
         min_pos = np.min(list(pos.values()), axis=0)
         max_pos = np.max(list(pos.values()), axis=0)
@@ -482,7 +483,12 @@ def si_graph_plot(
         pos.update(pos_explain)
         _draw_fancy_hyper_edges(ax, pos, explanation_graph, hyper_edges=explanation_edges)
         _draw_explanation_nodes(
-            ax, pos, explanation_graph, nodes=explanation_nodes, normal_node_size=normal_node_size
+            ax,
+            pos,
+            explanation_graph,
+            nodes=explanation_nodes,
+            normal_node_size=normal_node_size,
+            node_area_scaling=node_area_scaling,
         )
 
     # add the original graph structure on top

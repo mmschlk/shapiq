@@ -1,6 +1,7 @@
 """This test module contains all tests for the explanation plot functions."""
 
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pytest
 
@@ -11,7 +12,7 @@ from shapiq.plot import si_graph_plot
 @pytest.mark.parametrize("draw_threshold", [0.0, 0.5])
 @pytest.mark.parametrize("compactness", [0.0, 1.0, 10.0])
 @pytest.mark.parametrize("n_interactions", [3, None])
-def test_explanation_graph_plot(
+def test_si_graph_plot(
     draw_threshold,
     compactness,
     n_interactions,
@@ -64,10 +65,11 @@ def test_explanation_graph_plot(
         min_order=0,
         max_order=4,
     )
+    graph_tuple = [(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)]
 
     fig, ax = si_graph_plot(
         example_values,
-        [(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)],
+        graph_tuple,
         random_seed=1,
         size_factor=0.7,
         draw_threshold=draw_threshold,
@@ -75,13 +77,12 @@ def test_explanation_graph_plot(
         n_interactions=n_interactions,
         compactness=compactness,
     )
-
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
 
     fig, ax = si_graph_plot(
         example_values,
-        [(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)],
+        graph_tuple,
         random_seed=1,
         size_factor=0.7,
         draw_threshold=draw_threshold,
@@ -89,14 +90,12 @@ def test_explanation_graph_plot(
         n_interactions=n_interactions,
         compactness=compactness,
     )
-
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
 
-    import networkx as nx
-
     edges = nx.Graph()
     edges.add_edges_from([(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)])
+    pos = nx.spring_layout(edges, seed=1)
 
     fig, ax = si_graph_plot(
         example_values,
@@ -107,6 +106,49 @@ def test_explanation_graph_plot(
         plot_explanation=True,
         n_interactions=n_interactions,
         compactness=compactness,
+        label_mapping={
+            0: "A",
+            1: "B",
+            2: "C",
+            3: "D",
+        },
+    )
+
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+    plt.close(fig)
+
+    # different parameters
+    fig, ax = si_graph_plot(
+        example_values,
+        edges,
+        pos=pos,
+        random_seed=1,
+        draw_threshold=draw_threshold,
+        plot_explanation=True,
+        n_interactions=n_interactions,
+        node_area_scaling=True,
+        adjust_node_pos=True,
+        interaction_direction="positive",
+        min_max_interactions=(-0.5, 0.5),
+    )
+
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+    plt.close(fig)
+
+    fig, ax = si_graph_plot(
+        example_values,
+        graph=graph_tuple,
+        pos=pos,
+        random_seed=1,
+        draw_threshold=draw_threshold,
+        plot_explanation=True,
+        n_interactions=n_interactions,
+        node_area_scaling=True,
+        adjust_node_pos=True,
+        interaction_direction="negative",
+        min_max_interactions=(-0.5, 0.5),
         label_mapping={
             0: "A",
             1: "B",
