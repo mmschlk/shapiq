@@ -33,6 +33,11 @@ def convert_sklearn_forest(
         for tree in tree_model.estimators_
     ]
 
+def average_path_length(isolation_forest):
+    max_samples = isolation_forest._max_samples
+    average_path_length = _average_path_length([max_samples])
+    return average_path_length
+
 def convert_sklearn_isolation_forest(
     tree_model: Model,
 ) -> list[TreeModel]:
@@ -45,6 +50,8 @@ def convert_sklearn_isolation_forest(
         The converted isolation forest model.
     """
     scaling = 1.0 / len(tree_model.estimators_)
+
+    # self.trees = [IsoTree(e.tree_, f, scaling=scaling, data=data, data_missing=data_missing) for e, f in zip(model.estimators_, model.estimators_features_)]
 
     max_samples = tree_model._max_samples
     average_path_length = _average_path_length([max_samples]) # NOTE: _average_path_length func is equivalent to equation 1 in Isolation Forest paper Lui2008
@@ -113,44 +120,29 @@ def convert_isolation_tree(
         The converted decision tree model.
     """
     output_type = "raw"
-    # tree_values = tree_model.tree_.value.copy() * scaling
-    # set class label if not given and model is a classifier
-    # if (
-    #     safe_isinstance(tree_model, "sklearn.tree.DecisionTreeClassifier")
-    #     or safe_isinstance(tree_model, "sklearn.tree._classes.DecisionTreeClassifier")
-    # ) and class_label is None:
-    #     class_label = 1
-
-    depths = tree_model.tree_.compute_node_depths()
-    depths = depths / average_path_length
-    depths = 1 - depths
+    tree_values = tree_model.tree_.value.copy() * scaling
+    depths = compute_anomaly_score(tree_model, average_path_length)
     depths = depths * scaling
-    # print("depth: ", depths)
-    
 
-    # TODO replace following code by implemention of scoring function for isolation forest
-    # if class_label is not None:
-    #     # turn node values into probabilities
-    #     if len(tree_values.shape) == 3:
-    #         tree_values = tree_values[:, 0, :]
-    #     tree_values = tree_values / np.sum(tree_values, axis=1, keepdims=True)
-    #     tree_values = tree_values[:, class_label]
-    #     output_type = "probability"
-
-    # print("shape depth and shape value: ", depths.shape, tree_values.shape)
-    # tree_values = tree_values.flatten()
-    # print("shape depth and shape value flat: ", depths.shape, tree_values.shape)
     return TreeModel(
         children_left=tree_model.tree_.children_left,
         children_right=tree_model.tree_.children_right,
         features=tree_model.tree_.feature,
         thresholds=tree_model.tree_.threshold,
-        # values=tree_values,
-        values=depths,
+        values=tree_values,
+        # values=depths,
         node_sample_weight=tree_model.tree_.weighted_n_node_samples,
         empty_prediction=None,  # compute empty prediction later
         original_output_type=output_type,
     )
 
-def compute_anomaly_score():
-    pass
+
+def compute_anomaly_score(tree_model, average_path_length):
+    # Basic implementation based on scores and normalized using average path length
+    depths = tree_model.tree_.compute_node_depths()
+    depths = depths / average_path_length
+    depths = 1 - depths
+    scores = depths
+    return scores
+
+
