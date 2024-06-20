@@ -6,7 +6,7 @@ from shapiq.utils import safe_isinstance
 
 from .base import TreeModel
 from .conversion.lightgbm import convert_lightgbm_booster
-from .conversion.sklearn import convert_sklearn_forest, convert_sklearn_tree, convert_sklearn_isolation_forest
+from .conversion.sklearn import convert_sklearn_forest, convert_sklearn_isolation_forest_shap, convert_sklearn_tree, convert_sklearn_isolation_forest
 from .conversion.xgboost import convert_xgboost_booster
 
 SUPPORTED_MODELS = {
@@ -42,8 +42,11 @@ def validate_tree_model(
     # tree model (is already in the correct format)
     if type(model).__name__ == "TreeModel":
         tree_model = model
-    elif isinstance(model, list) and all([type(m).__name__ == "TreeModel" for m in model]):
-        tree_model = model
+    # direct return if list of tree models
+    elif type(model).__name__ == "list":
+        # check if all elements are TreeModel
+        if all([type(tree).__name__ == "TreeModel" for tree in model]):
+            tree_model = model
     # dict as model is parsed to TreeModel (the dict needs to have the correct format and names)
     elif type(model).__name__ == "dict":
         tree_model = TreeModel(**model)
@@ -70,6 +73,7 @@ def validate_tree_model(
         safe_isinstance(model, "sklearn.ensemble.IsolationForest")
         or safe_isinstance(model, "sklearn.ensemble._iforest.IsolationForest")
     ):
+        # tree_model = convert_sklearn_isolation_forest_shap(model)
         tree_model = convert_sklearn_isolation_forest(model)
     elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or safe_isinstance(
         model, "lightgbm.sklearn.LGBMClassifier"
