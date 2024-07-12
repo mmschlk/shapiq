@@ -1,5 +1,11 @@
 ## Changelog
 
+### development
+
+- add a legend to benchmark plots [#170](https://github.com/mmschlk/shapiq/issues/170)
+- fix the force plot not showing and its baseline value
+- ...
+
 ### v1.0.1 (2024-06-05)
 
 - add `max_order=1` to `TabularExplainer` and `TreeExplainer`
