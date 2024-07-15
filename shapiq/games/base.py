@@ -9,8 +9,8 @@ from typing import Optional
 import numpy as np
 from tqdm.auto import tqdm
 
-from ..interaction_values import InteractionValues
-from ..utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
 
 
 class Game(ABC):

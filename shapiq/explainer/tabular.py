@@ -19,7 +19,6 @@ from shapiq.approximator import (
 )
 from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
-from shapiq.games.imputer import ConditionalImputer, MarginalImputer
 from shapiq.interaction_values import InteractionValues
 
 APPROXIMATOR_CONFIGURATIONS = {
@@ -87,6 +86,8 @@ class TabularExplainer(Explainer):
         random_state: Optional[int] = None,
         **kwargs,
     ) -> None:
+        from shapiq.games.imputer import ConditionalImputer, MarginalImputer
+
         if index not in AVAILABLE_INDICES:
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
 
