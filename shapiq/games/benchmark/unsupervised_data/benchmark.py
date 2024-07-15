@@ -1,6 +1,6 @@
 """This module contains all base game classes for the unserpervised benchmark games."""
 
-from .._config import GameBenchmarkSetup
+from ..setup import GameBenchmarkSetup
 from .base import UnsupervisedData
 
 

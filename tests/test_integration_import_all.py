@@ -50,3 +50,12 @@ def test_approximator_imports():
     """Tests whether all modules can be imported manually."""
 
     assert True
+
+
+def test_benchmark_imports():
+    """Tests if all benchmark modules can be imported directly from the shapiq package."""
+
+    import shapiq
+
+    shapiq.benchmark.print_benchmark_configurations()
+    assert True

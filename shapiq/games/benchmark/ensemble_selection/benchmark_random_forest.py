@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from .._config import GameBenchmarkSetup
+from ..setup import GameBenchmarkSetup
 from .base import RandomForestEnsembleSelection
 
 

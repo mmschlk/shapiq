@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from .._config import GameBenchmarkSetup, get_x_explain
+from ..setup import GameBenchmarkSetup, get_x_explain
 from .base import TreeSHAPIQXAI
 
 
