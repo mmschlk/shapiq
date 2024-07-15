@@ -4,9 +4,8 @@ from typing import Optional, Union
 
 import numpy as np
 
-from .._setup import GameBenchmarkSetup
-from ..setup import get_x_explain
-from .base import LocalExplanation
+from shapiq.games.benchmark.local_xai.base import LocalExplanation
+from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
 
 
 class AdultCensus(LocalExplanation):

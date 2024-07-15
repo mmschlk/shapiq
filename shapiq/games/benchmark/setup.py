@@ -19,8 +19,8 @@ from sklearn.metrics import (
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from ...datasets import load_adult_census, load_bike_sharing, load_california_housing
-from ...utils import Model, shuffle_data
+from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing
+from shapiq.utils import Model, shuffle_data
 
 AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 

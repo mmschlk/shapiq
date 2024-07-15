@@ -2,9 +2,8 @@
 
 from typing import Optional
 
-from shapiq.games.benchmark._setup import GameBenchmarkSetup
-
-from .base import FeatureSelection
+from shapiq.games.benchmark.feature_selection.base import FeatureSelection
+from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
 
 class AdultCensus(FeatureSelection):

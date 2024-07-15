@@ -2,8 +2,8 @@
 
 from typing import Optional
 
-from .._setup import GameBenchmarkSetup
-from .base import DataValuation
+from shapiq.games.benchmark.data_valuation.base import DataValuation
+from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
 
 class CaliforniaHousing(DataValuation):

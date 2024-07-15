@@ -4,8 +4,8 @@ from typing import Optional, Union
 
 import numpy as np
 
-from ..setup import GameBenchmarkSetup, get_x_explain
-from .base import TreeSHAPIQXAI
+from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
+from shapiq.games.benchmark.treeshapiq_xai.base import TreeSHAPIQXAI
 
 
 class AdultCensus(TreeSHAPIQXAI):

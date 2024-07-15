@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.metrics import calinski_harabasz_score, silhouette_score
 
-from ...base import Game
+from shapiq.games.base import Game
 
 
 class ClusterExplanation(Game):

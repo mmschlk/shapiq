@@ -2,8 +2,8 @@
 
 from typing import Optional
 
-from ..setup import GameBenchmarkSetup
-from .base import ClusterExplanation
+from shapiq.games.benchmark.setup import GameBenchmarkSetup
+from shapiq.games.benchmark.unsupervised_cluster.base import ClusterExplanation
 
 
 class AdultCensus(ClusterExplanation):

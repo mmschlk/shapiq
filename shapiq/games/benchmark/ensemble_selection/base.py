@@ -10,8 +10,8 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from ....utils.types import Model
-from ...base import Game
+from shapiq.games.base import Game
+from shapiq.utils.types import Model
 
 
 class EnsembleSelection(Game):

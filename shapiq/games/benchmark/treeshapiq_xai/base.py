@@ -6,10 +6,9 @@ from typing import Optional
 import numpy as np
 
 from shapiq.explainer.tree import TreeExplainer, TreeModel
+from shapiq.games.base import Game
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.types import Model
-
-from ...base import Game
 
 
 class TreeSHAPIQXAI(Game):

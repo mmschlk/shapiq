@@ -2,8 +2,8 @@
 
 from typing import Optional
 
-from ..setup import GameBenchmarkSetup
-from .base import RandomForestEnsembleSelection
+from shapiq.games.benchmark.ensemble_selection.base import RandomForestEnsembleSelection
+from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
 
 class AdultCensus(RandomForestEnsembleSelection):
