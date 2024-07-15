@@ -22,21 +22,6 @@ from .approximator import (
     kADDSHAP,
 )
 
-# benchmark classes
-from .benchmark import (
-    BENCHMARK_CONFIGURATIONS,
-    GAME_CLASS_TO_NAME_MAPPING,
-    GAME_NAME_TO_CLASS_MAPPING,
-    download_game_data,
-    load_benchmark_results,
-    load_game_data,
-    load_games_from_configuration,
-    plot_approximation_quality,
-    print_benchmark_configurations,
-    run_benchmark,
-    run_benchmark_from_configuration,
-)
-
 # dataset functions
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 
@@ -85,18 +70,6 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
-    # benchmark
-    "print_benchmark_configurations",
-    "BENCHMARK_CONFIGURATIONS",
-    "GAME_CLASS_TO_NAME_MAPPING",
-    "GAME_NAME_TO_CLASS_MAPPING",
-    "plot_approximation_quality",
-    "run_benchmark_from_configuration",
-    "run_benchmark",
-    "load_benchmark_results",
-    "load_games_from_configuration",
-    "download_game_data",
-    "load_game_data",
     # explainers
     "Explainer",
     "TabularExplainer",
