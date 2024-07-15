@@ -1,14 +1,25 @@
+"""This module contains utility functions for the explainer module."""
+
 import re
 import warnings
+from typing import Any
 
-from .. import explainer
 
+def get_explainers() -> dict[str, Any]:
+    """Return a dictionary of all available explainer classes.
 
-def get_explainers():
-    return {"tabular": explainer.TabularExplainer, "tree": explainer.TreeExplainer}
+    Returns:
+        A dictionary of all available explainer classes.
+    """
+    from shapiq.explainer.tabular import TabularExplainer
+    from shapiq.explainer.tree.explainer import TreeExplainer
+
+    return {"tabular": TabularExplainer, "tree": TreeExplainer}
 
 
 def get_predict_function_and_model_type(model, model_class):
+    from . import tree
+
     _predict_function = None
     _model_type = "tabular"  # default
 
@@ -76,7 +87,7 @@ def get_predict_function_and_model_type(model, model_class):
         _predict_function = predict_proba_default
     elif _predict_function is None and hasattr(model, "predict"):
         _predict_function = predict_default
-    elif isinstance(model, explainer.tree.TreeModel):  # test scenario
+    elif isinstance(model, tree.TreeModel):  # test scenario
         _predict_function = model.compute_empty_prediction
         _model_type = "tree"
     elif _predict_function is None:

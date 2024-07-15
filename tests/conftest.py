@@ -12,7 +12,7 @@ from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from shapiq.explainer.tree import TreeModel
+from shapiq.explainer.tree.base import TreeModel
 from shapiq.interaction_values import InteractionValues
 
 
