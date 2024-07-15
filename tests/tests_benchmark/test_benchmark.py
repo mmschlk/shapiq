@@ -7,9 +7,12 @@ import pandas as pd
 import pytest
 
 from shapiq.approximator import KernelSHAP, PermutationSamplingSII, kADDSHAP
-from shapiq.games.benchmark.benchmark_config import load_games_from_configuration
-from shapiq.games.benchmark.plot import plot_approximation_quality
-from shapiq.games.benchmark.run import run_benchmark, run_benchmark_from_configuration
+from shapiq.benchmark import (
+    load_games_from_configuration,
+    plot_approximation_quality,
+    run_benchmark,
+    run_benchmark_from_configuration,
+)
 
 
 @pytest.mark.parametrize("index, n_jobs", [("SV", 2), ("k-SII", 2), ("SV", 1)])

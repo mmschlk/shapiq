@@ -21,18 +21,35 @@ from .approximator import (
     UnbiasedKernelSHAP,
     kADDSHAP,
 )
+
+# benchmark classes
+from .benchmark import (
+    BENCHMARK_CONFIGURATIONS,
+    GAME_CLASS_TO_NAME_MAPPING,
+    GAME_NAME_TO_CLASS_MAPPING,
+    download_game_data,
+    load_benchmark_results,
+    load_game_data,
+    load_games_from_configuration,
+    plot_approximation_quality,
+    print_benchmark_configurations,
+    run_benchmark,
+    run_benchmark_from_configuration,
+)
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 from .exact import ExactComputer
 
 # explainer classes
 from .explainer import Explainer, TabularExplainer, TreeExplainer
-from .games import ConditionalImputer, Game, MarginalImputer
 
 # game classes
+from .games import ConditionalImputer, Game, MarginalImputer
+
+# base classes
 from .interaction_values import InteractionValues
 
 # plotting functions
-from .plot import force_plot, network_plot, stacked_bar_plot
+from .plot import bar_plot, force_plot, network_plot, si_graph_plot, stacked_bar_plot
 
 # public utils functions
 from .utils import (  # sets.py  # tree.py
@@ -64,6 +81,18 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
+    # benchmark
+    "print_benchmark_configurations",
+    "BENCHMARK_CONFIGURATIONS",
+    "GAME_CLASS_TO_NAME_MAPPING",
+    "GAME_NAME_TO_CLASS_MAPPING",
+    "plot_approximation_quality",
+    "run_benchmark_from_configuration",
+    "run_benchmark",
+    "load_benchmark_results",
+    "load_games_from_configuration",
+    "download_game_data",
+    "load_game_data",
     # explainers
     "Explainer",
     "TabularExplainer",
@@ -75,6 +104,8 @@ __all__ = [
     "network_plot",
     "stacked_bar_plot",
     "force_plot",
+    "bar_plot",
+    "si_graph_plot",
     # public utils
     "powerset",
     "get_explicit_subsets",

@@ -1,8 +1,6 @@
 """This test module contains all tests for the configuration of benchmark games."""
 
-from shapiq.games.benchmark.benchmark_config import (
-    print_benchmark_configurations,
-)
+from shapiq.benchmark import print_benchmark_configurations
 
 
 def test_print_config():
