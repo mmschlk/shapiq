@@ -12,9 +12,6 @@ from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from shapiq.explainer.tree.base import TreeModel
-from shapiq.interaction_values import InteractionValues
-
 
 @pytest.fixture
 def dt_reg_model() -> DecisionTreeRegressor:
@@ -43,7 +40,7 @@ def dt_clf_model() -> DecisionTreeClassifier:
 
 
 @pytest.fixture
-def dt_clf_model_tree_model() -> TreeModel:
+def dt_clf_model_tree_model():
     """Return a simple decision tree as a TreeModel."""
     from shapiq.explainer.tree.validation import validate_tree_model
 
@@ -184,8 +181,9 @@ def mae_loss():
 
 
 @pytest.fixture
-def interaction_values_list() -> list[InteractionValues]:
+def interaction_values_list():
     """Returns a list of three InteractionValues objects."""
+    from shapiq.interaction_values import InteractionValues
     from shapiq.utils import powerset
 
     n_objects = 3

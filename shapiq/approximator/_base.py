@@ -7,15 +7,14 @@ from typing import Callable, Optional
 import numpy as np
 
 from shapiq.approximator.sampling import CoalitionSampler
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import generate_interaction_lookup
-
-from ..indices import (
+from shapiq.indices import (
     AVAILABLE_INDICES_FOR_APPROXIMATION,
     get_computation_index,
     is_empty_value_the_baseline,
     is_index_aggregated,
 )
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import generate_interaction_lookup
 
 __all__ = [
     "Approximator",

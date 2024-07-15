@@ -10,10 +10,10 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
-from ..approximator._base import Approximator
-from ..games.base import Game
-from ..interaction_values import InteractionValues
-from .metrics import get_all_metrics
+from shapiq.approximator._base import Approximator
+from shapiq.benchmark.metrics import get_all_metrics
+from shapiq.games.base import Game
+from shapiq.interaction_values import InteractionValues
 
 BENCHMARK_RESULTS_DIR = "results"
 

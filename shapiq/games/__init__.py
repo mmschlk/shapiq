@@ -2,8 +2,7 @@
 
 # from . import benchmark
 from .base import Game
-from .imputer.conditional_imputer import ConditionalImputer
-from .imputer.marginal_imputer import MarginalImputer
+from .imputer import ConditionalImputer, MarginalImputer
 
 __all__ = ["Game", "MarginalImputer", "ConditionalImputer"]  # + benchmark.__all__
 
