@@ -803,8 +803,6 @@ def get_name_from_game_class(game_class: Game.__class__) -> str:
 
 def print_benchmark_configurations() -> None:
     """Print the configurations of the benchmark games."""
-
-    # print configurations of the benchmark games
     game_classes = list(BENCHMARK_CONFIGURATIONS.keys())
     game_identifiers = [GAME_CLASS_TO_NAME_MAPPING[game_class] for game_class in game_classes]
     game_identifiers = sorted(game_identifiers)

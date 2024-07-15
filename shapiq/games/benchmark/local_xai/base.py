@@ -5,9 +5,9 @@ from typing import Callable, Optional, Union
 import numpy as np
 
 from shapiq.games.base import Game
-from shapiq.games.imputer import ConditionalImputer, MarginalImputer
-
-from ..setup import get_x_explain
+from shapiq.games.benchmark.setup import get_x_explain
+from shapiq.games.imputer.conditional_imputer import ConditionalImputer
+from shapiq.games.imputer.marginal_imputer import MarginalImputer
 
 
 class LocalExplanation(Game):
