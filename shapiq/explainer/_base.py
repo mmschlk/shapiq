@@ -4,7 +4,7 @@ import numpy as np
 
 from shapiq.interaction_values import InteractionValues
 
-from . import utils
+from .utils import get_explainers, get_predict_function_and_model_type, print_class
 
 
 class Explainer:
@@ -25,8 +25,8 @@ class Explainer:
 
     def __init__(self, model, data: np.ndarray = None, **kwargs) -> None:
 
-        self._model_class = utils.print_class(model)
-        self._predict_function, self._model_type = utils.get_predict_function_and_model_type(
+        self._model_class = print_class(model)
+        self._predict_function, self._model_type = get_predict_function_and_model_type(
             model, self._model_class
         )
         self.model = model
@@ -48,8 +48,8 @@ class Explainer:
 
         # not super()
         if self.__class__ is Explainer:
-            if self._model_type in list(utils.get_explainers()):
-                _explainer = utils.get_explainers()[self._model_type]
+            if self._model_type in list(get_explainers()):
+                _explainer = get_explainers()[self._model_type]
                 self.__class__ = _explainer
                 _explainer.__init__(self, model=model, data=data, **kwargs)
 
