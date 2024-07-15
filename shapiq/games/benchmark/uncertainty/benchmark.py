@@ -4,9 +4,8 @@ from typing import Optional, Union
 
 import numpy as np
 
-from .._setup import GameBenchmarkSetup
-from ..setup import get_x_explain
-from .base import UncertaintyExplanation
+from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
+from shapiq.games.benchmark.uncertainty.base import UncertaintyExplanation
 
 
 class AdultCensus(UncertaintyExplanation):

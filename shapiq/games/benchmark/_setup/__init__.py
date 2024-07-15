@@ -1,5 +1,4 @@
-from shapiq.games.benchmark.setup import GameBenchmarkSetup
+"""This module contains setup functions for benchmark games that should not be imported directly,
+as they contain large dependencies like pytorch."""
 
-__all__ = ["GameBenchmarkSetup"]
-
-# Path: shapiq/games/benchmark/setup/__init__.py
+# Path: shapiq/games/benchmark/_setup/__init__.py

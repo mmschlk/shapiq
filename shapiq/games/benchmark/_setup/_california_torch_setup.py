@@ -10,6 +10,8 @@ from sklearn.metrics import r2_score
 from torch import nn
 from torch.optim import Adam
 
+__all__ = ["CaliforniaHousingTorchModel"]
+
 
 class SmallNeuralNetwork(nn.Module):
     def __init__(self):

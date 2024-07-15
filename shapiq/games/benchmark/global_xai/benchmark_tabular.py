@@ -2,8 +2,8 @@
 
 from typing import Optional
 
-from .._setup import GameBenchmarkSetup
-from .base import GlobalExplanation
+from shapiq.games.benchmark.global_xai.base import GlobalExplanation
+from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
 
 class AdultCensus(GlobalExplanation):
