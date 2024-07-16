@@ -482,3 +482,6 @@ def add_legend(
     # handles, labels = axis.get_legend_handles_labels()
     # axis.legend(handles, labels, loc=loc)
     axis.legend(loc=loc)
+
+
+# Path: shapiq/benchmark/plot.py

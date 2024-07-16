@@ -173,6 +173,7 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
     os.makedirs(game_dir, exist_ok=True)
 
     # download the file
+    file_name = file_name.replace(".npz", "")
     path = os.path.join(game_dir, f"{file_name}.npz")
     url = f"{github_url}/{game_name}/{n_players}/{file_name}.npz"
     try:
@@ -185,3 +186,6 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
     with open(path, "wb") as file:
         file.write(response.content)
         time.sleep(0.01)
+
+
+# Path: shapiq/benchmark/load.py

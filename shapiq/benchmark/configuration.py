@@ -820,3 +820,6 @@ def print_benchmark_configurations() -> None:
             for i, configuration in enumerate(configurations["configurations"]):
                 print(f"Configuration {i + 1}: {configuration}")
         print()
+
+
+# Path: shapiq/benchmark/configuration.py
