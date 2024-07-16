@@ -7,7 +7,7 @@ from shapiq.interaction_values import InteractionValues
 from shapiq.plot import force_plot
 
 
-def test_bar_plot(interaction_values_list: list[InteractionValues]):
+def test_force_plot(interaction_values_list: list[InteractionValues]):
     """Test the force plot function."""
     iv = interaction_values_list[0]
     n_players = iv.n_players
