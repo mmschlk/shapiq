@@ -634,8 +634,9 @@ class InteractionValues:
         feature_names: Optional[np.ndarray] = None,
         feature_values: Optional[np.ndarray] = None,
         matplotlib=True,
+        show: bool = False,
         **kwargs,
-    ):
+    ) -> Optional[plt.Figure]:
         """Visualize InteractionValues on a force plot.
 
         For arguments, see shapiq.plots.force_plot().
@@ -643,15 +644,49 @@ class InteractionValues:
         Requires the ``shap`` Python package to be installed.
 
         Args:
-            interaction_values: The interaction values as an interaction object.
             feature_names: The feature names used for plotting. If no feature names are provided, the
                 feature indices are used instead. Defaults to ``None``.
             feature_values: The feature values used for plotting. Defaults to ``None``.
             matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
+            show: Whether to show the plot. Defaults to ``False``.
             **kwargs: Keyword arguments passed to ``shap.plots.force()``.
         """
         from shapiq import force_plot
 
         return force_plot(
-            self, feature_values=feature_values, feature_names=feature_names, **kwargs
+            self,
+            feature_values=feature_values,
+            feature_names=feature_names,
+            matplotlib=matplotlib,
+            show=show,
+            **kwargs,
+        )
+
+    def plot_waterfall(
+        self,
+        feature_names: Optional[np.ndarray] = None,
+        feature_values: Optional[np.ndarray] = None,
+        show: bool = False,
+        max_display: int = 10,
+    ) -> Optional[plt.Axes]:
+        """Draws interaction values on a waterfall plot.
+
+        Note:
+            Requires the ``shap`` Python package to be installed.
+
+        Args:
+            feature_names: The feature names used for plotting. If no feature names are provided, the
+                feature indices are used instead. Defaults to ``None``.
+            feature_values: The feature values used for plotting. Defaults to ``None``.
+            show: Whether to show the plot. Defaults to ``False``.
+            max_display: The maximum number of interactions to display. Defaults to ``10``.
+        """
+        from shapiq import waterfall_plot
+
+        return waterfall_plot(
+            self,
+            feature_values=feature_values,
+            feature_names=feature_names,
+            show=show,
+            max_display=max_display,
         )
