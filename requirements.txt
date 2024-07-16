@@ -16,3 +16,4 @@ torchvision==0.17.2
 transformers==4.39.3
 xgboost==2.0.3
 numpy==1.26.4
+requests==2.31.0
