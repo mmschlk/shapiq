@@ -89,6 +89,7 @@ def run_benchmark(
 
     if save_path is None:
         save_path = os.path.join("results", f"{benchmark_name}.json")
+        os.makedirs("results", exist_ok=True)
 
     if not rerun_if_exists and os.path.exists(save_path):
         print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
@@ -255,6 +256,7 @@ def _init_approximator_from_class(
         n_players: The number of players.
         index: The index to initialize the approximator with.
         max_order: The maximum order to initialize the approximator with.
+        random_state: The random state to initialize the approximator with.
 
     Returns:
         The initialized approximator.
@@ -303,7 +305,14 @@ def load_benchmark_results(
             get_game_file_name_from_config,
         )
 
-        if game_class is None or game_configuration is None or game_n_player_id is None:
+        if (
+            game_class is None
+            or game_configuration is None
+            or game_n_player_id is None
+            or game_n_games is None
+            or index is None
+            or order is None
+        ):
             raise ValueError("The game configuration must be provided if the save path is not.")
 
         if isinstance(game_class, str):
@@ -461,4 +470,4 @@ def _make_benchmark_name(
     )
 
 
-# Path: shapiq/games/benchmark/run.py
+# Path: shapiq/benchmark/run.py
