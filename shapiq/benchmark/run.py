@@ -293,7 +293,7 @@ def load_benchmark_results(
         game_n_games: The number of games to load the results for. Defaults to None.
 
     Returns:
-        The loaded benchmark results as a pandas DataFrame.
+        The loaded benchmark results as a pandas DataFrame and the save path.
 
     Raises:
         ValueError: If save path is None and the game configuration is not provided.
