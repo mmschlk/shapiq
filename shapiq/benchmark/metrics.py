@@ -1,6 +1,7 @@
 """Metrics for evaluating the performance of interaction values."""
 
 import copy
+import warnings
 from typing import Optional
 
 import numpy as np
@@ -58,9 +59,19 @@ def compute_diff_metrics(ground_truth: InteractionValues, estimated: Interaction
                 kadd_values = kadd_values.get_n_order(order=1)  # make kADD-SHAP same order as SV
                 difference = sv_values - kadd_values
             else:
-                raise ValueError(
-                    f"Indices {ground_truth.index} and {estimated.index} do not match."
-                ) from error
+                if ground_truth.index == "SV":
+                    estimated_values = estimated.get_n_order(order=1, min_order=0)
+                    estimated_values.index = "SV"
+                    ground_truth_values = ground_truth
+                else:
+                    estimated_values = estimated
+                    ground_truth_values = copy.deepcopy(ground_truth)
+                    ground_truth_values.index = estimated.index
+                warnings.warn(
+                    f"Indices do not match for {ground_truth.index} and {estimated.index}. Will "
+                    f"compare anyway but results need to be interpreted with care."
+                )
+                difference = ground_truth_values - estimated_values
         else:
             raise error
     diff_values = _remove_empty_value(difference).values
