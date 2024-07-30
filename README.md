@@ -94,18 +94,5 @@ The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io
 
 ## 💬 Citation
 
-If you **enjoy** `shapiq` consider starring ⭐ the repository. If you **really enjoy** the package or it has been useful to you, and you would like to cite it in a scientific publication, please refer to our [paper](https://openreview.net/forum?id=IEMLNF4gK4):
-
-
-```bibtex
-@inproceedings{shapiq,
-  title        = {{SHAP-IQ}: Unified approximation of any-order Shapley interactions},
-  author       = {Fabian Fumagalli and
-                  Maximilian Muschalik and
-                  Patrick Kolpaczki and
-                  Eyke H{\"{u}}llermeier and
-                  Barbara Hammer},
-  booktitle    = {NeurIPS},
-  year         = {2023}
-}
+If you **enjoy** `shapiq` consider starring ⭐ the repository.
 ```
