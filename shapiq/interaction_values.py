@@ -423,21 +423,31 @@ class InteractionValues:
 
         return values
 
-    def get_n_order(self, order: int) -> "InteractionValues":
+    def get_n_order(
+        self, order: int, min_order: Optional[int] = None, max_order: Optional[int] = None
+    ) -> "InteractionValues":
         """Returns the interaction values of a specific order.
 
         Args:
             order: The order of the interactions to return.
+            min_order: The minimum order of the interactions to return. Defaults to ``None`` which
+                sets it to the order.
+            max_order: The maximum order of the interactions to return. Defaults to ``None`` which
+                sets it to the order.
 
         Returns:
             The interaction values of the specified order.
         """
+        max_order = order if max_order is None else max_order
+        min_order = order if min_order is None else min_order
+
         new_values = np.zeros(
-            count_interactions(n=self.n_players, max_order=order, min_order=order), dtype=float
+            count_interactions(n=self.n_players, max_order=max_order, min_order=min_order),
+            dtype=float,
         )
         new_interaction_lookup = {}
         for i, interaction in enumerate(
-            powerset(range(self.n_players), min_size=order, max_size=order)
+            powerset(range(self.n_players), min_size=min_order, max_size=max_order)
         ):
             new_values[i] = self[interaction]
             new_interaction_lookup[interaction] = len(new_interaction_lookup)
