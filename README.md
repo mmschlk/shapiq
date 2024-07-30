@@ -23,7 +23,7 @@ pip install shapiq
 
 ## ⭐ Quickstart
 
-You can explain a model with `shapiq.explainer` and visualize Shapley interactions with `shapiq.plot`.
+You can explain your model with `shapiq.explainer` and visualize Shapley interactions with `shapiq.plot`.
 If you are interested in the underlying game theoretic algorithms, then check out the `shapiq.approximator` and `shapiq.games` modules.
 
 ### 📈 Compute any-order feature interactions
