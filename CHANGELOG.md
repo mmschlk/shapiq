@@ -9,6 +9,8 @@
 - improve tests for plots and benchmarks
 - renames explanation graph to si_graph
 - bugfixes with plotting and benchmarks
+- `get_n_order` now has optional lower/upper limits for the order
+- computing metrics now tries to resolve not-matching interaction indices and will throw a warning instead of a ValueError [#179](https://github.com/mmschlk/shapiq/issues/179)
 - ...
 
 ### v1.0.1 (2024-06-05)
