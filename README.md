@@ -95,4 +95,3 @@ The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io
 ## 💬 Citation
 
 If you **enjoy** `shapiq` consider starring ⭐ the repository.
-```
