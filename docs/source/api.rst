@@ -10,6 +10,7 @@ Documentation of the API for public objects and functions in ``shapiq``.
 
     shapiq.aggregation
     shapiq.approximator
+    shapiq.benchmark
     shapiq.datasets
     shapiq.exact
     shapiq.explainer
