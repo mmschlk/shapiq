@@ -1,7 +1,8 @@
-from scipy.optimize import linprog
+from scipy.optimize import linprog,minimize, LinearConstraint
 import numpy as np
 
-def setup_core_calculations(coalition_values, coalition_matrix):
+def setup_core_calculations(coalition_values, coalition_matrix, positive_contraint=False,
+                            fixed_subsidy = None):
     """
     Converts the coalition_values and coalition_matrix into a linear programming problem using scipy.linprog.
     See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linprog.html for reference.
@@ -9,7 +10,8 @@ def setup_core_calculations(coalition_values, coalition_matrix):
     Args:
         coalition_values:
         coalition_matrix: binary matrix with shape (n_coaltions, n_players) where entry (i,j) denotes that in coaltion i the player j is present
-
+        positive_constraint: Indicates whether we want the credit_assignments only to have positive values. Defaults to False.
+        fixed_subsidy: The value we want the subsidy to have. None means the subsidy is also optimized. Defaults to None.
     Returns:
         (c,A_ub,b_ub,A_eq,b_eq, bounds) where
            min (x,e) in c @ (x,e)
@@ -50,49 +52,66 @@ def setup_core_calculations(coalition_values, coalition_matrix):
     # Efficiency value
     b_eq = np.array([grand_coaltion_value])
 
-    # Bounds for the values of payoff and e
-    bounds_players = [(None, None) for _ in range(n_players + 1)]
+    # Setup player credit assignment bounds
+    if positive_contraint:
+        bounds_players = [(0,None) for _ in range(n_players)]
+    else:
+        # Bounds for the values of payoff and e
+        bounds_players = [(None, None) for _ in range(n_players)]
+
+    bounds_players += [(fixed_subsidy, fixed_subsidy)]
+
 
     # Minimizer Coefficients
     c = np.ones(n_players + 1)
 
-    return c,A_ub,b_ub,A_eq,b_eq, bounds_players
+    # Convert the Constraints to the form for egalitarian least-core optimization
+    credit_assignment_constraints = LinearConstraint(A_ub,ub=b_ub)
+    efficiency_constraint = LinearConstraint(A_eq,lb=b_eq,ub=b_eq)
 
-def solve_e_Core(coalition_values, coalition_matrix, e):
+    constraints = [credit_assignment_constraints, efficiency_constraint]
+
+    return constraints, bounds_players
+
+def minimization_egal_least_core(credit_subsidy_vector):
     """
-    Solves for the e-Core given coalition_values and coalition_matrix when having fixed external subsidy e.
+    Formulates the minimization problem to find the egalitarian least-core given the guess credit_subsidy_vector.
+
     Args:
-        coalition_values:
-        coalition_matrix: binary matrix with shape (n_coaltions, n_players) where entry (i,j) denotes that in coaltion i the player j is present
-        e: External subsidy provided in the Game
+        credit_subsidy_vector: ndarray with shape (n_playes+1,) where the last element is the external subsidy e.
 
     Returns:
-        (x,e) where x is the credit assignment of the players and e is the external subsidy.
-
+        A value representing the sum of both l2_norm of the credit_assignment and subsidy.
     """
-    pass
-def solve_least_core(coalition_values, coalition_matrix):
-    """
-        Solves for the Least-Core given coaltion_values and coalition_matrix.
-    Args:
-        coalition_values:
-        coalition_matrix: binary matrix with shape (n_coaltions, n_players) where entry (i,j) denotes that in coaltion i the player j is present
+    credit_assignment = credit_subsidy_vector[:-1]
+    subsidy = credit_subsidy_vector[-1]
+    # Computes the egalitarian_least_core value and e
+    return np.linalg.norm(credit_assignment,ord=2) + subsidy
+def solve_egalitarian_e_core(coalition_values, coalition_matrix, positive_constraint=False, e=None):
+    constraints, bounds = setup_core_calculations(coalition_values,
+                                                           coalition_matrix,
+                                                           positive_constraint,
+                                                           fixed_subsidy=e)
 
-    Returns:
-        (x,e) where x is the credit assignment of the players and e is the external subsidy.
+    res = minimize(fun=minimization_egal_least_core,
+                   x0=np.zeros(coalition_matrix.shape[1]+1),
+                   bounds=bounds,
+                   constraints=constraints)
+    if res.success:
+        return res.x[:-1],res.x[-1]
+    else:
+        raise ValueError("A solution was not found for the given game and parameters!")
 
-    """
-    c,A_ub,b_ub,A_eq,b_eq,bounds = setup_core_calculations(coalition_values, coalition_matrix)
+def get_egalitarian_least_core(coaliton_values,coalition_matrix,positive_constraint=False):
+    credit_assignment,subsidy = solve_egalitarian_e_core(coaliton_values,coalition_matrix,positive_constraint,e=None)
 
-    res = linprog(c=c,
-                  A_ub=A_ub,
-                  b_ub=b_ub,
-                  A_eq=A_eq,
-                  b_eq=b_eq,
-                  bounds=bounds)
+    return (credit_assignment,subsidy)
 
+def get_egalitarian_core(coaliton_values,coalition_matrix,positive_constraint=False):
+    credit_assignment,subsidy = solve_egalitarian_e_core(coaliton_values,coalition_matrix,positive_constraint,e=0)
 
-    return (res.x[:-1],res.x[-1])
+    return (credit_assignment,subsidy)
+
 
 coalition_values = {
     ():0,
@@ -114,6 +133,7 @@ coalition_matrix = np.array([[0,0,0],
                              [1,1,1]])
 
 
-credit_assignment, e = solve_least_core(coalition_values,coalition_matrix)
+credit_assignment, e = get_egalitarian_least_core(coalition_values, coalition_matrix,
+                                                positive_constraint=False)
 print("Credit Assignment: ", credit_assignment)
 print("Subsidy: ", e)
