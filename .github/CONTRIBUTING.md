@@ -55,6 +55,14 @@ source .venv/bin/activate
 pip install -e .[dev]
 ```
 
+---
+> 📝 **Note**: Since `shapiq` uses the `requests` library, you might need to install the
+> certificates on your MacOS system ([more information](https://stackoverflow.com/a/53310545)).
+```sh
+/Applications/Python\ 3.x/Install\ Certificates.command
+```
+---
+
 Finally, install the [pre-commit](https://pre-commit.com/) push hooks. This will run some code
 quality checks every time you push to GitHub.
 
