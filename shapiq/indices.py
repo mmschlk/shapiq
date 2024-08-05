@@ -102,6 +102,12 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
         # Making" Link: http://www.getniif.com/component/rsfiles/previsualizar?path=Set%2BFunctions%2BGames%2Band%2BCapacities%2Bin%2BDecision%2BMaking%2B-%2BMichel%2BGrabisch%2BSpringer.pdf
         "generalizes": None,
     },
+    # The (egalitarian) least-core
+    "ELC": {
+        "name": "Egalitarian Least-Core",
+        "source": "https://doi.org/10.1609/aaai.v35i6.16721",
+        "generalizes":None,
+    }
 }
 
 ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
