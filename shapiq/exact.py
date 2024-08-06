@@ -857,7 +857,7 @@ class ExactComputer:
         """
         n_coalitions = 2**self.n
 
-        coalition_matrix = np.zeros((n_coalitions, self.n), dtype=bool)
+        coalition_matrix = np.zeros((n_coalitions, self.n), dtype=int)
         for i, T in enumerate(powerset(self._grand_coalition_set, min_size=0, max_size=self.n)):
             coalition_matrix[i, T] = 1  # one-hot-encode the coalition
 
@@ -865,10 +865,13 @@ class ExactComputer:
             self.coalition_lookup[self._grand_coalition_tuple]
         ]
 
-        # Setup the binary matrix representing the linear inequalities for core
+        # Setup the binary matrix representing the linear inequalities for core  except for the grand coalition
         A_ub = np.ones((n_coalitions - 1, self.n + 1))
         A_ub[:, :-1] = coalition_matrix[:-1]
         A_ub[0, -1] = 0
+
+        # Due to the Core  consisting of (>=) we need the (-1) to have (<=).
+        A_ub *= (-1)
 
         # Setup the upper bounds for the inequalities (negative coalition values)
         b_ub = (-1) * np.array([
@@ -879,8 +882,7 @@ class ExactComputer:
             if np.sum(x) < self.n  # The grandCoalition is not an inequality but an equality
         ])
 
-        # Due to the Core  consisting of (>=) we need the (-1) to have (<=).
-        A_ub *= (-1)
+
 
         # Setup the binary matrix representing the efficiency property
         A_eq = np.ones((1, self.n + 1))
@@ -945,13 +947,21 @@ class ExactComputer:
         credit_assignment, subsidy = self._solve_egalitarian_e_core(positive_constraint,
                                                                     e=None)
 
+        # Add the baseline value infront of the credit_assignments
+        credit_assignment = np.insert(credit_assignment,obj=0,values=self.baseline_value)
+
+        interaction_lookup = {}
+        for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=1)):
+            interaction_lookup[interaction] = i
+
+
         egalitarian_least_core = InteractionValues(
             values=credit_assignment,
             index="ELC",
             max_order=1,
             min_order=0,
             n_players=self.n,
-            interaction_lookup={},
+            interaction_lookup=interaction_lookup,
             estimated=False,
             baseline_value=self.baseline_value,
         )
@@ -963,13 +973,20 @@ class ExactComputer:
         credit_assignment, subsidy = self._solve_egalitarian_e_core(positive_constraint,
                                                                     e=0)
 
+        # Add the baseline value infront of the credit_assignments
+        credit_assignment = np.insert(credit_assignment,obj=0,values=self.baseline_value)
+
+        interaction_lookup = {}
+        for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=1)):
+            interaction_lookup[interaction] = i
+
         egalitarian_core = InteractionValues(
             values=credit_assignment,
             index="EC",
             max_order=1,
             min_order=0,
             n_players=self.n,
-            interaction_lookup={},
+            interaction_lookup=interaction_lookup,
             estimated=False,
             baseline_value=self.baseline_value,
         )
