@@ -2,7 +2,7 @@
 like interaction indices or generalized values."""
 
 import copy
-from typing import Callable, Union
+from typing import Callable, Union, Optional
 
 import numpy as np
 from scipy.special import bernoulli, binom
@@ -836,9 +836,7 @@ class ExactComputer:
         return copy.copy(probabilistic_value)
 
     #### Core Credit Assignment ####
-    def _setup_core_calculations(self,
-                                 positive_contraint=False,
-                                 fixed_subsidy=None):
+    def _setup_core_calculations(self, fixed_subsidy: Optional[int] = None) -> tuple[list[LinearConstraint],list[tuple[Optional[int],Optional[int]]]]:
         """
         Converts the coalition_values and coalition_matrix into a linear programming problem using scipy.linprog.
         See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linprog.html for reference.
@@ -893,13 +891,10 @@ class ExactComputer:
         # Efficiency value
         b_eq = np.array([grand_coaltion_value])
 
-        # Setup player credit assignment bounds
-        if positive_contraint:
-            bounds_players = [(0, None) for _ in range(self.n)]
-        else:
-            # Bounds for the values of payoff and e
-            bounds_players = [(None, None) for _ in range(self.n)]
+        # Bounds for the values of credit_assignments
+        bounds_players = [(None, None) for _ in range(self.n)]
 
+        # Bounds for the subsidy
         bounds_players += [(fixed_subsidy, fixed_subsidy)]
 
         # Minimizer Coefficients
@@ -913,7 +908,7 @@ class ExactComputer:
 
         return constraints, bounds_players
 
-    def _minimization_egal_least_core(self, credit_subsidy_vector):
+    def _minimization_egal_least_core(self, credit_subsidy_vector: np.ndarray) -> float:
         """
         Formulates the minimization problem to find the egalitarian least-core given the guess credit_subsidy_vector.
 
@@ -928,24 +923,22 @@ class ExactComputer:
         # Computes the egalitarian_least_core value and e
         return np.linalg.norm(credit_assignment, ord=2) + subsidy
 
-    def _solve_egalitarian_e_core(self, positive_constraint=False, e=None):
-        constraints, bounds = self._setup_core_calculations(
-                                                            positive_constraint,
-                                                            fixed_subsidy=e)
+    def _solve_egalitarian_e_core(self, subsidy: Optional[int] = None) -> tuple[np.ndarray, float]:
+        constraints, bounds = self._setup_core_calculations(fixed_subsidy=subsidy)
 
         res = minimize(fun=self._minimization_egal_least_core,
                        x0=np.zeros(self.n + 1),
                        bounds=bounds,
                        constraints=constraints)
+
         if res.success:
             return res.x[:-1], res.x[-1]
         else:
-            raise ValueError(f"A stable credit assignment was not found for the fixed_subsidy={e} in the game {self.game_fun}!")
+            raise ValueError(f"A stable credit assignment was not found for the fixed_subsidy={subsidy} in the game {self.game_fun}!")
 
-    def egalitarian_least_core(self, positive_constraint=False):
+    def egalitarian_least_core(self) -> InteractionValues:
 
-        credit_assignment, subsidy = self._solve_egalitarian_e_core(positive_constraint,
-                                                                    e=None)
+        credit_assignment, subsidy = self._solve_egalitarian_e_core(subsidy=None)
 
         # Add the baseline value infront of the credit_assignments
         credit_assignment = np.insert(credit_assignment,obj=0,values=self.baseline_value)
@@ -969,7 +962,7 @@ class ExactComputer:
 
         return copy.copy(egalitarian_least_core)
 
-    def egalitarian_core(self, positive_constraint=False):
+    def egalitarian_core(self, positive_constraint: Optional[bool] =False) -> InteractionValues:
         credit_assignment, subsidy = self._solve_egalitarian_e_core(positive_constraint,
                                                                     e=0)
 
