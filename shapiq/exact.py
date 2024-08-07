@@ -60,7 +60,9 @@ class ExactComputer:
 
         # setup callable mapping from index to computation
         self._index_mapping: dict[str, Callable[[str, int], InteractionValues]] = {
+            # moebius and co-moebius
             "Moebius": self.moebius_transform,
+            "Co-Moebius": self.shapley_base_interaction,
             # shapley_interaction
             "k-SII": self.shapley_interaction,
             "STII": self.shapley_interaction,
@@ -76,7 +78,6 @@ class ExactComputer:
             "SII": self.shapley_base_interaction,
             "BII": self.shapley_base_interaction,
             "CHII": self.shapley_base_interaction,
-            "Co-Moebius": self.shapley_base_interaction,
             # probabilistic_value
             "SV": self.probabilistic_value,
             "BV": self.probabilistic_value,
