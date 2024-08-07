@@ -21,6 +21,8 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     "Co-Moebius": {
         "name": "External Interaction Index",
         "source": "https://www.sciencedirect.com/science/article/abs/pii/S0899825605000278",
+        # see also 2.11 and 2.12.4 in "Michel Grabisch (2016) Set Functions, Games and Capacities in Decision
+        # Making" Link: http://www.getniif.com/component/rsfiles/previsualizar?path=Set%2BFunctions%2BGames%2Band%2BCapacities%2Bin%2BDecision%2BMaking%2B-%2BMichel%2BGrabisch%2BSpringer.pdf
         "generalizes": None,
     },
     # Base Generalized Values
