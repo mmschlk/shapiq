@@ -79,10 +79,18 @@ def test_exact_computer_on_soum():
         # Assert efficiency for SV
         assert (np.sum(probabilistic_values["SV"].values) - predicted_value) ** 2 < 10e-7
 
+        egalitarian_core_values_indices = ["ELC"]
+        egalitarian_core_values = {}
+        for core_index in egalitarian_core_values_indices:
+            egalitarian_core_values[core_index] = exact_computer.the_core(index=core_index)
+
+        # Assert efficiency for egalitarian_least-core
+        assert (np.sum(egalitarian_core_values["ELC"].values) - predicted_value) ** 2 < 10e-7
 
 @pytest.mark.parametrize(
     "index, order",
     [
+        ("ELC",1),
         ("SV", 1),
         ("BV", 1),
         ("SII", 2),
