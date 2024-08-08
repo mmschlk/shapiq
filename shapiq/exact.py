@@ -4,10 +4,10 @@ like interaction indices or generalized values."""
 import copy
 from typing import Callable, Union, Optional
 
+import cvxpy as cp
 import numpy as np
 from scipy.special import bernoulli, binom
 from scipy.optimize import linprog,minimize, LinearConstraint
-
 
 from shapiq.indices import ALL_AVAILABLE_CONCEPTS
 from shapiq.interaction_values import InteractionValues
@@ -836,22 +836,14 @@ class ExactComputer:
         return copy.copy(probabilistic_value)
 
     #### Core Credit Assignment ####
-    def _setup_core_calculations(self, fixed_subsidy: Optional[int] = None) -> tuple[list[LinearConstraint],list[tuple[Optional[int],Optional[int]]]]:
+    def _setup_core_constraint_matrices(self) -> tuple(np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         """
-        Converts the coalition_values and coalition_matrix into a linear programming problem using scipy.linprog.
-        See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linprog.html for reference.
+        Converts the coalition_values and coalition_matrix into a linear programming problem using cvxpy.solve().
+        See https://www.cvxpy.org/tutorial/intro/index.html for reference.
+        Returns: (A_lb,b_lb,A_eq,b_eq) which are applied to the minimization problem for vector x and subsidy e such that
+            A_lb @ x + e >= b_lb
+            A_eq @ x == b_eq
 
-        Args:
-            coalition_matrix: binary matrix with shape (n_coaltions, n_players) where entry (i,j) denotes that in coaltion i the player j is present
-            positive_constraint: Indicates whether we want the credit_assignments only to have positive values. Defaults to False.
-            fixed_subsidy: The value we want the subsidy to have. None means the subsidy is also optimized. Defaults to None.
-        Returns:
-            (c,A_ub,b_ub,A_eq,b_eq, bounds) where
-               min (x,e) in c @ (x,e)
-               such that
-                    A_ub @ x <= b_ub
-                    A_eq @ x == b_eq
-                    x in bounds
         """
         n_coalitions = 2**self.n
 
@@ -859,20 +851,16 @@ class ExactComputer:
         for i, T in enumerate(powerset(self._grand_coalition_set, min_size=0, max_size=self.n)):
             coalition_matrix[i, T] = 1  # one-hot-encode the coalition
 
-        grand_coaltion_value = self.game_values[
+        grand_coalition_value = self.game_values[
             self.coalition_lookup[self._grand_coalition_tuple]
         ]
 
-        # Setup the binary matrix representing the linear inequalities for core  except for the grand coalition
-        A_ub = np.ones((n_coalitions - 1, self.n + 1))
-        A_ub[:, :-1] = coalition_matrix[:-1]
-        A_ub[0, -1] = 0
+        # Setup binary matrix representing the linear inequalities for core except for the grand coalition
+        A_lb = np.ones((n_coalitions - 1, self.n))
+        A_lb = coalition_matrix[:-1]
 
-        # Due to the Core  consisting of (>=) we need the (-1) to have (<=).
-        A_ub *= (-1)
-
-        # Setup the upper bounds for the inequalities (negative coalition values)
-        b_ub = (-1) * np.array([
+        # Setup upper bounds for the inequalities (negative coalition values)
+        b_lb = np.array([
             self.game_values[self.coalition_lookup[tuple(
                 np.where(x)[0]  # Convert binary matrix into tuple to index into coalition values
             )]
@@ -880,76 +868,52 @@ class ExactComputer:
             if np.sum(x) < self.n  # The grandCoalition is not an inequality but an equality
         ])
 
-
-
-        # Setup the binary matrix representing the efficiency property
-        A_eq = np.ones((1, self.n + 1))
-
-        # Let the e not be contained in the efficiency property
-        A_eq[0, -1] = 0
+        # Setup binary matrix representing the efficiency property
+        A_eq = np.ones((1, self.n))
 
         # Efficiency value
-        b_eq = np.array([grand_coaltion_value])
+        b_eq = np.array([grand_coalition_value])
 
-        # Bounds for the values of credit_assignments
-        bounds_players = [(None, None) for _ in range(self.n)]
-
-        # Bounds for the subsidy
-        bounds_players += [(fixed_subsidy, fixed_subsidy)]
-
-        # Minimizer Coefficients
-        c = np.ones(self.n + 1)
-
-        # Convert the Constraints to the form for egalitarian least-core optimization
-        credit_assignment_constraints = LinearConstraint(A_ub, ub=b_ub)
-        efficiency_constraint = LinearConstraint(A_eq, lb=b_eq, ub=b_eq)
-
-        constraints = [credit_assignment_constraints, efficiency_constraint]
-
-        return constraints, bounds_players
-
-    def _minimization_egal_least_core(self, credit_subsidy_vector: np.ndarray) -> float:
-        """
-        Formulates the minimization problem to find the egalitarian least-core given the guess credit_subsidy_vector.
-
-        Args:
-            credit_subsidy_vector: ndarray with shape (n_playes+1,) where the last element is the external subsidy e.
-
-        Returns:
-            A value representing the sum of both l2_norm of the credit_assignment and subsidy.
-        """
-        credit_assignment = credit_subsidy_vector[:-1]
-        subsidy = credit_subsidy_vector[-1]
-        # Computes the egalitarian_least_core value and e
-        return np.linalg.norm(credit_assignment, ord=2) + subsidy
-
-    def _solve_egalitarian_e_core(self, subsidy: Optional[int] = None) -> tuple[np.ndarray, float]:
-        constraints, bounds = self._setup_core_calculations(fixed_subsidy=subsidy)
-
-        res = minimize(fun=self._minimization_egal_least_core,
-                       x0=np.zeros(self.n + 1),
-                       bounds=bounds,
-                       constraints=constraints)
-
-        if res.success:
-            return res.x[:-1], res.x[-1]
-        else:
-            raise ValueError(f"A stable credit assignment was not found for the fixed_subsidy={subsidy} in the game {self.game_fun}!")
+        return A_lb,b_lb,A_eq,b_eq
 
     def egalitarian_least_core(self) -> InteractionValues:
+        """
+        Finds the egalitarian core for self.game_fun.
+        
+        Returns:
+            An InteractionValues object containing egalitarian least-core values
+        """
+        # Get the binary matrices for inequalities (A_lb, b_lb) and equalities (A_eq, b_eq)
+        A_lb, b_lb, A_eq, b_eq = self._setup_core_constraint_matrices()
 
-        credit_assignment, subsidy = self._solve_egalitarian_e_core(subsidy=None)
+        # Build Variables
+        x = cp.Variable(self.n)
+        e = cp.Variable()
 
-        # Add the baseline value infront of the credit_assignments
-        credit_assignment = np.insert(credit_assignment,obj=0,values=self.baseline_value)
+        # Construct Objective: Minimize l2-norm and minimal subsidy e
+        objective = cp.Minimize(cp.norm2(x) + e)
 
+        # Construct Stability constraints and efficiency constraints
+        constraints = [A_lb @ x + e >= b_lb, A_eq @ x == b_eq - self.baseline_value]
+
+        # Build Problem
+        problem = cp.Problem(objective, constraints)
+
+        # Solve Problem
+        result = problem.solve()
+
+        # Insert baseline value into the value vector to work with visualizations
+        egalitarian_least_core_values = np.insert(x.value,0,self.baseline_value)
+
+        # Interaction Lookup
         interaction_lookup = {}
         for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=1)):
             interaction_lookup[interaction] = i
 
 
         egalitarian_least_core = InteractionValues(
-            values=credit_assignment,
+            # Insert baseline value into the value vector to work with visualizations
+            values=egalitarian_least_core_values,
             index="ELC",
             max_order=1,
             min_order=0,
@@ -962,19 +926,45 @@ class ExactComputer:
 
         return copy.copy(egalitarian_least_core)
 
-    def egalitarian_core(self, positive_constraint: Optional[bool] =False) -> InteractionValues:
-        credit_assignment, subsidy = self._solve_egalitarian_e_core(positive_constraint,
-                                                                    e=0)
+    def egalitarian_core(self) -> InteractionValues:
+        """
+        Finds the egalitarian core for self.game_fun.
 
-        # Add the baseline value infront of the credit_assignments
-        credit_assignment = np.insert(credit_assignment,obj=0,values=self.baseline_value)
+        Returns:
+            An InteractionValues object containing egalitarian core values
+        Raises:
+            ValueError: If the game (self.game_fun) has an empty core
+        """
+        # Get the binary matrices for inequalities (A_lb, b_lb) and equalities (A_eq, b_eq)
+        A_lb, b_lb, A_eq, b_eq = self._setup_core_constraint_matrices()
+
+        # Build Variables
+        x = cp.Variable(self.n)
+
+        # Construct Objective: Minimize l2-norm and minimal subsidy e
+        objective = cp.Minimize(cp.norm2(x))
+
+        # Construct Stability constraints and efficiency constraints
+        constraints = [A_lb @ x >= b_lb, A_eq @ x == b_eq - self.baseline_value]
+
+        # Build Problem
+        problem = cp.Problem(objective, constraints)
+
+        # Solve Problem
+        result = problem.solve()
+        if problem.status == cp.OPTIMAL:
+            # Insert baseline value into the value vector to work with visualizations
+            egalitarian_core_values = np.insert(x.value,0,self.baseline_value)
+        else:
+            raise ValueError("There exist no core! Try the egalitarian-least-core!")
+
 
         interaction_lookup = {}
         for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=1)):
             interaction_lookup[interaction] = i
 
         egalitarian_core = InteractionValues(
-            values=credit_assignment,
+            values=egalitarian_core_values,
             index="EC",
             max_order=1,
             min_order=0,
