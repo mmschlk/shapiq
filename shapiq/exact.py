@@ -2,12 +2,11 @@
 like interaction indices or generalized values."""
 
 import copy
-from typing import Callable, Union, Optional
+from typing import Callable, Union
 
 import cvxpy as cp
 import numpy as np
 from scipy.special import bernoulli, binom
-from scipy.optimize import linprog,minimize, LinearConstraint
 
 from shapiq.indices import ALL_AVAILABLE_CONCEPTS
 from shapiq.interaction_values import InteractionValues
@@ -86,8 +85,8 @@ class ExactComputer:
             "JointSV": self.shapley_generalized_value,
             "FBII": self.compute_fii,
             # The Core
-            "ELC":self.the_core,
-            "EC":self.the_core
+            "ELC": self.the_core,
+            "EC": self.the_core,
         }
         self.available_indices: set[str] = set(self._index_mapping.keys())
         self.available_concepts: dict[str, dict] = ALL_AVAILABLE_CONCEPTS
@@ -836,7 +835,9 @@ class ExactComputer:
         return copy.copy(probabilistic_value)
 
     #### Core Credit Assignment ####
-    def _setup_core_constraint_matrices(self) -> tuple(np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+    def _setup_core_constraint_matrices(
+        self,
+    ) -> tuple(np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         """
         Converts the coalition_values and coalition_matrix into a linear programming problem using cvxpy.solve().
         See https://www.cvxpy.org/tutorial/intro/index.html for reference.
@@ -851,22 +852,28 @@ class ExactComputer:
         for i, T in enumerate(powerset(self._grand_coalition_set, min_size=0, max_size=self.n)):
             coalition_matrix[i, T] = 1  # one-hot-encode the coalition
 
-        grand_coalition_value = self.game_values[
-            self.coalition_lookup[self._grand_coalition_tuple]
-        ]
+        grand_coalition_value = self.game_values[self.coalition_lookup[self._grand_coalition_tuple]]
 
         # Setup binary matrix representing the linear inequalities for core except for the grand coalition
         A_lb = np.ones((n_coalitions - 1, self.n))
         A_lb = coalition_matrix[:-1]
 
         # Setup upper bounds for the inequalities (negative coalition values)
-        b_lb = np.array([
-            self.game_values[self.coalition_lookup[tuple(
-                np.where(x)[0]  # Convert binary matrix into tuple to index into coalition values
-            )]
-            ] for x in coalition_matrix
-            if np.sum(x) < self.n  # The grandCoalition is not an inequality but an equality
-        ])
+        b_lb = np.array(
+            [
+                self.game_values[
+                    self.coalition_lookup[
+                        tuple(
+                            np.where(x)[
+                                0
+                            ]  # Convert binary matrix into tuple to index into coalition values
+                        )
+                    ]
+                ]
+                for x in coalition_matrix
+                if np.sum(x) < self.n  # The grandCoalition is not an inequality but an equality
+            ]
+        )
 
         # Setup binary matrix representing the efficiency property
         A_eq = np.ones((1, self.n))
@@ -874,12 +881,12 @@ class ExactComputer:
         # Efficiency value
         b_eq = np.array([grand_coalition_value])
 
-        return A_lb,b_lb,A_eq,b_eq
+        return A_lb, b_lb, A_eq, b_eq
 
     def egalitarian_least_core(self) -> InteractionValues:
         """
         Finds the egalitarian core for self.game_fun.
-        
+
         Returns:
             An InteractionValues object containing egalitarian least-core values
         """
@@ -900,16 +907,15 @@ class ExactComputer:
         problem = cp.Problem(objective, constraints)
 
         # Solve Problem
-        result = problem.solve()
+        _ = problem.solve()
 
         # Insert baseline value into the value vector to work with visualizations
-        egalitarian_least_core_values = np.insert(x.value,0,self.baseline_value)
+        egalitarian_least_core_values = np.insert(x.value, 0, self.baseline_value)
 
         # Interaction Lookup
         interaction_lookup = {}
         for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=1)):
             interaction_lookup[interaction] = i
-
 
         egalitarian_least_core = InteractionValues(
             # Insert baseline value into the value vector to work with visualizations
@@ -922,7 +928,6 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
-
 
         return copy.copy(egalitarian_least_core)
 
@@ -951,13 +956,12 @@ class ExactComputer:
         problem = cp.Problem(objective, constraints)
 
         # Solve Problem
-        result = problem.solve()
+        _ = problem.solve()
         if problem.status == cp.OPTIMAL:
             # Insert baseline value into the value vector to work with visualizations
-            egalitarian_core_values = np.insert(x.value,0,self.baseline_value)
+            egalitarian_core_values = np.insert(x.value, 0, self.baseline_value)
         else:
             raise ValueError("There exist no core! Try the egalitarian-least-core!")
-
 
         interaction_lookup = {}
         for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=1)):
@@ -976,7 +980,7 @@ class ExactComputer:
 
         return copy.copy(egalitarian_core)
 
-    def the_core(self,index: str, *args, **kwargs):
+    def the_core(self, index: str, *args, **kwargs):
         order = 1
         if index == "ELC":
             # Compute egalitarian least-core
@@ -988,7 +992,7 @@ class ExactComputer:
         else:
             raise ValueError(f"Index {index} not supported")
 
-        self._computed[(index,order)] = egalitarian_vector
+        self._computed[(index, order)] = egalitarian_vector
 
         return copy.copy(egalitarian_vector)
 
