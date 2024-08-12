@@ -17,4 +17,3 @@ transformers==4.39.3
 xgboost==2.0.3
 numpy==1.26.4
 requests==2.31.0
-cvxpy==1.5.2

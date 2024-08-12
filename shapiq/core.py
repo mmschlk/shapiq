@@ -1,0 +1,155 @@
+"""Logic to solve for the egalitarian least-core."""
+
+import copy
+from typing import Optional
+
+import numpy as np
+from scipy.optimize import LinearConstraint, minimize
+
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils import powerset
+
+__all__ = ["egalitarian_least_core"]
+
+
+def _setup_core_calculations(
+    grand_coalition_tuple: tuple[int],
+    n_players: int,
+    game_values: np.ndarray,
+    coalition_lookup: dict[tuple[int], int],
+) -> tuple[list[LinearConstraint], list[tuple[Optional[int], Optional[int]]]]:
+    """
+    Converts the coalition_values and coalition_matrix into a linear programming problem using scipy.linprog.
+    See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linprog.html for reference.
+
+    Args:
+        coalition_matrix: binary matrix with shape (n_coaltions, n_players) where entry (i,j) denotes that in coaltion i the player j is present
+        positive_constraint: Indicates whether we want the credit_assignments only to have positive values. Defaults to False.
+        fixed_subsidy: The value we want the subsidy to have. None means the subsidy is also optimized. Defaults to None.
+    Returns:
+        (c,A_ub,b_ub,A_eq,b_eq, bounds) where
+           min (x,e) in c @ (x,e)
+           such that
+                A_ub @ x <= b_ub
+                A_eq @ x == b_eq
+                x in bounds
+    """
+    n_coalitions = 2**n_players
+
+    coalition_matrix = np.zeros((n_coalitions, n_players), dtype=int)
+    for i, T in enumerate(powerset(set(grand_coalition_tuple), min_size=0, max_size=n_players)):
+        coalition_matrix[i, T] = 1  # one-hot-encode the coalition
+
+    grand_coaltion_value = game_values[coalition_lookup[grand_coalition_tuple]]
+
+    # Setup the binary matrix representing the linear inequalities for core  except for the grand coalition
+    A_ub = np.ones((n_coalitions - 1, n_players + 1))
+    A_ub[:, :-1] = coalition_matrix[:-1]
+    A_ub[0, -1] = 0
+
+    # Due to the Core  consisting of (>=) we need the (-1) to have (<=).
+    A_ub *= -1
+
+    # Setup the upper bounds for the inequalities (negative coalition values)
+    b_ub = (-1) * np.array(
+        [
+            game_values[
+                coalition_lookup[
+                    tuple(
+                        np.where(x)[
+                            0
+                        ]  # Convert binary matrix into tuple to index into coalition values
+                    )
+                ]
+            ]
+            for x in coalition_matrix
+            if np.sum(x) < n_players  # The grandCoalition is not an inequality but an equality
+        ]
+    )
+
+    # Setup the binary matrix representing the efficiency property
+    A_eq = np.ones((1, n_players + 1))
+
+    # Let the e not be contained in the efficiency property
+    A_eq[0, -1] = 0
+
+    # Efficiency value
+    b_eq = np.array([grand_coaltion_value])
+
+    # Bounds for the values of credit_assignments
+    bounds_players = [(None, None) for _ in range(n_players)]
+
+    # Bounds for the subsidy
+    bounds_players += [(0, None)]
+
+    # Convert the Constraints to the form for egalitarian least-core optimization
+    # A_ub @ (x,e) <= b_ub
+    credit_assignment_constraints = LinearConstraint(A_ub, ub=b_ub)
+    # A_eq @ (x,e) == b_eq
+    efficiency_constraint = LinearConstraint(A_eq, lb=b_eq, ub=b_eq)
+
+    constraints = [credit_assignment_constraints, efficiency_constraint]
+
+    return constraints, bounds_players
+
+
+def _minimization_egal_least_core(credit_subsidy_vector: np.ndarray) -> float:
+    """
+    Formulates the minimization problem to find the egalitarian least-core given the guess credit_subsidy_vector.
+
+    Args:
+        credit_subsidy_vector: ndarray with shape (n_playes+1,) where the last element is the external subsidy e.
+
+    Returns:
+        A value representing the sum of both l2_norm of the credit_assignment and subsidy.
+    """
+    credit_assignment = credit_subsidy_vector[:-1]
+    subsidy = credit_subsidy_vector[-1]
+    # Computes the egalitarian_least_core value and e
+    return np.linalg.norm(credit_assignment, ord=2) + subsidy
+
+
+def egalitarian_least_core(
+    grand_coalition_tuple: tuple[int],
+    n_players: int,
+    game_values: np.ndarray,
+    coalition_lookup: dict[tuple[int], int],
+) -> tuple[InteractionValues, float]:
+
+    constraints, bounds = _setup_core_calculations(
+        grand_coalition_tuple, n_players, game_values, coalition_lookup
+    )
+
+    res = minimize(
+        fun=_minimization_egal_least_core,
+        x0=np.zeros(n_players + 1),
+        bounds=bounds,
+        constraints=constraints,
+    )
+
+    if not res.success:
+        raise ValueError("A stable credit assignment was not found in the game !")
+
+    interaction_lookup = {}
+    for i, interaction in enumerate(powerset(set(grand_coalition_tuple), min_size=1, max_size=1)):
+        interaction_lookup[interaction] = i
+
+    credit_assignment, subsidy = res.x[:-1], res.x[-1]
+
+    # Create InteractionValues
+    egalitarian_least_core = InteractionValues(
+        values=credit_assignment,
+        index="ELC",
+        max_order=1,
+        min_order=1,
+        n_players=n_players,
+        interaction_lookup=interaction_lookup,
+        estimated=False,
+        baseline_value=0,
+    )
+
+    # Check subsidy close to zero
+    if subsidy < 10e-7:
+        subsidy = 0
+
+    return copy.copy(egalitarian_least_core), subsidy

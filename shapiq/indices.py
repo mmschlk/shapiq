@@ -106,13 +106,13 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     "ELC": {
         "name": "Egalitarian Least-Core",
         "source": "https://doi.org/10.1609/aaai.v35i6.16721",
-        "generalizes":None,
+        "generalizes": None,
     },
     "EC": {
         "name": "Egalitarian Core",
         "source": "https://doi.org/10.1609/aaai.v35i6.16721",
         "generalizes": None,
-    }
+    },
 }
 
 ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())

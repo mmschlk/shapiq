@@ -4,10 +4,10 @@ like interaction indices or generalized values."""
 import copy
 from typing import Callable, Union
 
-import cvxpy as cp
 import numpy as np
 from scipy.special import bernoulli, binom
 
+from shapiq import core
 from shapiq.indices import ALL_AVAILABLE_CONCEPTS
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
@@ -85,8 +85,7 @@ class ExactComputer:
             "JointSV": self.shapley_generalized_value,
             "FBII": self.compute_fii,
             # The Core
-            "ELC": self.the_core,
-            "EC": self.the_core,
+            "ELC": self.compute_egalitarian_least_core,
         }
         self.available_indices: set[str] = set(self._index_mapping.keys())
         self.available_concepts: dict[str, dict] = ALL_AVAILABLE_CONCEPTS
@@ -834,161 +833,24 @@ class ExactComputer:
         self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
 
-    #### Core Credit Assignment ####
-    def _setup_core_constraint_matrices(
-        self,
-    ) -> tuple(np.ndarray, np.ndarray, np.ndarray, np.ndarray):
-        """
-        Converts the coalition_values and coalition_matrix into a linear programming problem using cvxpy.solve().
-        See https://www.cvxpy.org/tutorial/intro/index.html for reference.
-        Returns: (A_lb,b_lb,A_eq,b_eq) which are applied to the minimization problem for vector x and subsidy e such that
-            A_lb @ x + e >= b_lb
-            A_eq @ x == b_eq
-
-        """
-        n_coalitions = 2**self.n
-
-        coalition_matrix = np.zeros((n_coalitions, self.n), dtype=int)
-        for i, T in enumerate(powerset(self._grand_coalition_set, min_size=0, max_size=self.n)):
-            coalition_matrix[i, T] = 1  # one-hot-encode the coalition
-
-        grand_coalition_value = self.game_values[self.coalition_lookup[self._grand_coalition_tuple]]
-
-        # Setup binary matrix representing the linear inequalities for core except for the grand coalition
-        A_lb = np.ones((n_coalitions - 1, self.n))
-        A_lb = coalition_matrix[:-1]
-
-        # Setup upper bounds for the inequalities (negative coalition values)
-        b_lb = np.array(
-            [
-                self.game_values[
-                    self.coalition_lookup[
-                        tuple(
-                            np.where(x)[
-                                0
-                            ]  # Convert binary matrix into tuple to index into coalition values
-                        )
-                    ]
-                ]
-                for x in coalition_matrix
-                if np.sum(x) < self.n  # The grandCoalition is not an inequality but an equality
-            ]
-        )
-
-        # Setup binary matrix representing the efficiency property
-        A_eq = np.ones((1, self.n))
-
-        # Efficiency value
-        b_eq = np.array([grand_coalition_value])
-
-        return A_lb, b_lb, A_eq, b_eq
-
-    def egalitarian_least_core(self) -> InteractionValues:
-        """
-        Finds the egalitarian core for self.game_fun.
-
-        Returns:
-            An InteractionValues object containing egalitarian least-core values
-        """
-        # Get the binary matrices for inequalities (A_lb, b_lb) and equalities (A_eq, b_eq)
-        A_lb, b_lb, A_eq, b_eq = self._setup_core_constraint_matrices()
-
-        # Build Variables
-        x = cp.Variable(self.n)
-        e = cp.Variable()
-
-        # Construct Objective: Minimize l2-norm and minimal subsidy e
-        objective = cp.Minimize(cp.norm2(x) + e)
-
-        # Construct Stability constraints and efficiency constraints
-        constraints = [A_lb @ x + e >= b_lb, A_eq @ x == b_eq - self.baseline_value]
-
-        # Build Problem
-        problem = cp.Problem(objective, constraints)
-
-        # Solve Problem
-        _ = problem.solve()
-
-        # Insert baseline value into the value vector to work with visualizations
-        egalitarian_least_core_values = np.insert(x.value, 0, self.baseline_value)
-
-        # Interaction Lookup
-        interaction_lookup = {}
-        for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=1)):
-            interaction_lookup[interaction] = i
-
-        egalitarian_least_core = InteractionValues(
-            # Insert baseline value into the value vector to work with visualizations
-            values=egalitarian_least_core_values,
-            index="ELC",
-            max_order=1,
-            min_order=0,
-            n_players=self.n,
-            interaction_lookup=interaction_lookup,
-            estimated=False,
-            baseline_value=self.baseline_value,
-        )
-
-        return copy.copy(egalitarian_least_core)
-
-    def egalitarian_core(self) -> InteractionValues:
-        """
-        Finds the egalitarian core for self.game_fun.
-
-        Returns:
-            An InteractionValues object containing egalitarian core values
-        Raises:
-            ValueError: If the game (self.game_fun) has an empty core
-        """
-        # Get the binary matrices for inequalities (A_lb, b_lb) and equalities (A_eq, b_eq)
-        A_lb, b_lb, A_eq, b_eq = self._setup_core_constraint_matrices()
-
-        # Build Variables
-        x = cp.Variable(self.n)
-
-        # Construct Objective: Minimize l2-norm and minimal subsidy e
-        objective = cp.Minimize(cp.norm2(x))
-
-        # Construct Stability constraints and efficiency constraints
-        constraints = [A_lb @ x >= b_lb, A_eq @ x == b_eq - self.baseline_value]
-
-        # Build Problem
-        problem = cp.Problem(objective, constraints)
-
-        # Solve Problem
-        _ = problem.solve()
-        if problem.status == cp.OPTIMAL:
-            # Insert baseline value into the value vector to work with visualizations
-            egalitarian_core_values = np.insert(x.value, 0, self.baseline_value)
-        else:
-            raise ValueError("There exist no core! Try the egalitarian-least-core!")
-
-        interaction_lookup = {}
-        for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=1)):
-            interaction_lookup[interaction] = i
-
-        egalitarian_core = InteractionValues(
-            values=egalitarian_core_values,
-            index="EC",
-            max_order=1,
-            min_order=0,
-            n_players=self.n,
-            interaction_lookup=interaction_lookup,
-            estimated=False,
-            baseline_value=self.baseline_value,
-        )
-
-        return copy.copy(egalitarian_core)
-
-    def the_core(self, index: str, *args, **kwargs):
+    def compute_egalitarian_least_core(self, index: str, *args, **kwargs):
         order = 1
         if index == "ELC":
-            # Compute egalitarian least-core
-            egalitarian_vector = self.egalitarian_least_core()
-        elif index == "EC":
-            # Compute egalitarian core (potentiall empty)
-            egalitarian_vector = self.egalitarian_core()
+            # Check for normalized game
+            if self.baseline_value != 0:
+                raise ValueError(
+                    "The egalitarian least-core can only be computed on normalized games!"
+                    "Please set game_fun.normalize=True!"
+                )
 
+            # Compute egalitarian least-core
+            egalitarian_vector, subsidy = core.egalitarian_least_core(
+                n_players=self.n,
+                game_values=self.game_values,
+                coalition_lookup=self.coalition_lookup,
+                grand_coalition_tuple=self._grand_coalition_tuple,
+            )
+            print("Subsidy: ", subsidy)
         else:
             raise ValueError(f"Index {index} not supported")
 

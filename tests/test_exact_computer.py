@@ -79,18 +79,38 @@ def test_exact_computer_on_soum():
         # Assert efficiency for SV
         assert (np.sum(probabilistic_values["SV"].values) - predicted_value) ** 2 < 10e-7
 
-        egalitarian_core_values_indices = ["ELC"]
-        egalitarian_core_values = {}
-        for core_index in egalitarian_core_values_indices:
-            egalitarian_core_values[core_index] = exact_computer.the_core(index=core_index)
+        index = "ELC"
+        # Core only works on normalized games
+        soum_normalized = SOUM(n, n_basis_games=n_basis_games, normalize=True)
+        exact_computer = ExactComputer(n_players=n, game_fun=soum_normalized)
 
-        # Assert efficiency for egalitarian_least-core
-        assert (np.sum(egalitarian_core_values["ELC"].values) - predicted_value) ** 2 < 10e-7
+        predicted_value = soum_normalized(np.ones(n))[0]
+
+        egalitarian_least_core = exact_computer.compute_egalitarian_least_core(index)
+        # Assert efficiency for Egalitarian Least Core
+        assert (np.sum(egalitarian_least_core.values) - predicted_value) ** 2 < 10e-7
+
+
+def test_exact_elc_on_normalized_soum():
+    for i in range(20):
+        n = np.random.randint(low=2, high=10)
+        n_basis_games = np.random.randint(low=1, high=100)
+        soum_normalized = SOUM(n, n_basis_games=n_basis_games, normalize=True)
+
+        exact_computer = ExactComputer(n_players=n, game_fun=soum_normalized)
+
+        predicted_value = soum_normalized(np.ones(n))[0]
+
+        index = "ELC"
+        egalitarian_least_core = exact_computer.compute_egalitarian_least_core(index)
+        # Assert efficiency for Egalitarian Least Core
+        assert (np.sum(egalitarian_least_core.values) - predicted_value) ** 2 < 10e-7
+
 
 @pytest.mark.parametrize(
     "index, order",
     [
-        ("ELC",1),
+        ("ELC", 1),
         ("SV", 1),
         ("BV", 1),
         ("SII", 2),
