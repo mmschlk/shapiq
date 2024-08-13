@@ -844,13 +844,12 @@ class ExactComputer:
                 )
 
             # Compute egalitarian least-core
-            egalitarian_vector, subsidy = core.egalitarian_least_core(
+            egalitarian_vector, _ = core.egalitarian_least_core(
                 n_players=self.n,
                 game_values=self.game_values,
                 coalition_lookup=self.coalition_lookup,
                 grand_coalition_tuple=self._grand_coalition_tuple,
             )
-            print("Subsidy: ", subsidy)
         else:
             raise ValueError(f"Index {index} not supported")
 

@@ -23,16 +23,13 @@ def _setup_core_calculations(
     See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linprog.html for reference.
 
     Args:
-        coalition_matrix: binary matrix with shape (n_coaltions, n_players) where entry (i,j) denotes that in coaltion i the player j is present
-        positive_constraint: Indicates whether we want the credit_assignments only to have positive values. Defaults to False.
-        fixed_subsidy: The value we want the subsidy to have. None means the subsidy is also optimized. Defaults to None.
+        grand_coalition_tuple: tuple representing the grand_coalition of the underlying game
+        n_players: amount of players in the game
+        game_values: the values of every coalition in the game
+        coalition_lookup: dictionary mapping a coalition to the corresponding value of game_values.
     Returns:
-        (c,A_ub,b_ub,A_eq,b_eq, bounds) where
-           min (x,e) in c @ (x,e)
-           such that
-                A_ub @ x <= b_ub
-                A_eq @ x == b_eq
-                x in bounds
+        (constraints,bounds): returns the constraints and bounds induced by the stability and efficiency property
+         for the underlying game.
     """
     n_coalitions = 2**n_players
 
@@ -47,25 +44,12 @@ def _setup_core_calculations(
     A_ub[:, :-1] = coalition_matrix[:-1]
     A_ub[0, -1] = 0
 
-    # Due to the Core  consisting of (>=) we need the (-1) to have (<=).
+    # Due to scipy.optimize we need to convert the stability inequality (>=) to (<=) via (-1)
     A_ub *= -1
 
-    # Setup the upper bounds for the inequalities (negative coalition values)
-    b_ub = (-1) * np.array(
-        [
-            game_values[
-                coalition_lookup[
-                    tuple(
-                        np.where(x)[
-                            0
-                        ]  # Convert binary matrix into tuple to index into coalition values
-                    )
-                ]
-            ]
-            for x in coalition_matrix
-            if np.sum(x) < n_players  # The grandCoalition is not an inequality but an equality
-        ]
-    )
+    # Setup the upper bounds for the inequalities (negative coalition values).
+    # The grand_coalition value (game_values[-1]) is hereby excluded
+    b_ub = (-1) * game_values[:-1]
 
     # Setup the binary matrix representing the efficiency property
     A_eq = np.ones((1, n_players + 1))
@@ -115,11 +99,26 @@ def egalitarian_least_core(
     game_values: np.ndarray,
     coalition_lookup: dict[tuple[int], int],
 ) -> tuple[InteractionValues, float]:
+    """
+    Computes the egalitarian least-core for the underlying game represented through the parameters.
+    Args:
+        grand_coalition_tuple: tuple representing the grand_coalition of the underlying game
+        n_players: amount of players in the game
+        game_values: the values of every coalition in the game
+        coalition_lookup: dictionary mapping a coalition to the corresponding value of game_values.
+    Returns:
+        (egalitarian_least_core, subsidy): Returns the optimization result for the underlying game.
+        Meaning the egalitarian_least_core is a stable payoff given the subsidy.
+
+    Raises:
+        ValueError: If the optimization did not complete successfully
+    """
 
     constraints, bounds = _setup_core_calculations(
         grand_coalition_tuple, n_players, game_values, coalition_lookup
     )
 
+    # Find egalitarian_least_core with subsidy
     res = minimize(
         fun=_minimization_egal_least_core,
         x0=np.zeros(n_players + 1),
@@ -127,9 +126,11 @@ def egalitarian_least_core(
         constraints=constraints,
     )
 
+    # Check if optimization was successfull
     if not res.success:
         raise ValueError("A stable credit assignment was not found in the game !")
 
+    # Build interaction_lookup for plotting functions
     interaction_lookup = {}
     for i, interaction in enumerate(powerset(set(grand_coalition_tuple), min_size=1, max_size=1)):
         interaction_lookup[interaction] = i
