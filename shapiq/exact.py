@@ -52,6 +52,7 @@ class ExactComputer:
         self._big_M: float = 10e7
         self._n_interactions: np.ndarray = self.get_n_interactions(self.n)
         self._computed: dict[tuple[str, int], InteractionValues] = {}  # will store all computations
+        self._elc_stability_subsidy: float = -1
 
         # evaluate the game on the powerset
         computed_game = self.compute_game_values(game_fun)
@@ -844,7 +845,7 @@ class ExactComputer:
                 )
 
             # Compute egalitarian least-core
-            egalitarian_vector, _ = core.egalitarian_least_core(
+            egalitarian_vector, subsidy = core.egalitarian_least_core(
                 n_players=self.n,
                 game_values=self.game_values,
                 coalition_lookup=self.coalition_lookup,
@@ -853,7 +854,9 @@ class ExactComputer:
         else:
             raise ValueError(f"Index {index} not supported")
 
+        # Store results
         self._computed[(index, order)] = egalitarian_vector
+        self._elc_stability_subsidy = subsidy
 
         return copy.copy(egalitarian_vector)
 
