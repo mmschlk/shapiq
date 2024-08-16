@@ -79,15 +79,19 @@ def test_exact_computer_on_soum():
         # Assert efficiency for SV
         assert (np.sum(probabilistic_values["SV"].values) - predicted_value) ** 2 < 10e-7
 
-        index = "ELC"
-        # Core only works on normalized games
+        # Core with unnormalized games should thus lead to direct normalization
+
+        egalitarian_least_core = exact_computer.compute_egalitarian_least_core()
+        assert (np.sum(egalitarian_least_core.values) - predicted_value) ** 2 < 10e-7
+
+        # Core on normalized games
         soum_normalized = SOUM(n, n_basis_games=n_basis_games, normalize=True)
         exact_computer = ExactComputer(n_players=n, game_fun=soum_normalized)
 
         predicted_value = soum_normalized(np.ones(n))[0]
 
-        egalitarian_least_core = exact_computer.compute_egalitarian_least_core(index)
-        # Assert efficiency for Egalitarian Least Core
+        egalitarian_least_core = exact_computer.compute_egalitarian_least_core()
+        # Assert efficiency for Egalitarian Least Core.
         assert (np.sum(egalitarian_least_core.values) - predicted_value) ** 2 < 10e-7
 
 
@@ -121,7 +125,9 @@ def test_exact_elc_computer_call(index, order):
         order = n
     assert interaction_values is not None  # should return something
     assert interaction_values.max_order == order  # order should be the same
+    assert interaction_values.min_order == 1  # ELC only has singleton values
     assert interaction_values.index == index  # index should be the same
+    assert interaction_values.baseline_value == 0  # ELC needs baseline_vlaue zero
     assert interaction_values.estimated is False  # nothing should be estimated
     assert interaction_values.values is not None  # values should be computed
 

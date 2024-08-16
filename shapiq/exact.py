@@ -2,12 +2,12 @@
 like interaction indices or generalized values."""
 
 import copy
+import warnings
 from typing import Callable, Union
 
 import numpy as np
 from scipy.special import bernoulli, binom
 
-from shapiq import core
 from shapiq.indices import ALL_AVAILABLE_CONCEPTS
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
@@ -834,28 +834,33 @@ class ExactComputer:
         self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
 
-    def compute_egalitarian_least_core(self, index: str, *args, **kwargs):
-        order = 1
-        if index == "ELC":
-            # Check for normalized game
-            if self.baseline_value != 0:
-                raise ValueError(
-                    "The egalitarian least-core can only be computed on normalized games!"
-                    "Please set game_fun.normalize=True!"
-                )
+    def compute_egalitarian_least_core(self, *args, **kwargs):
 
-            # Compute egalitarian least-core
-            egalitarian_vector, subsidy = core.egalitarian_least_core(
-                n_players=self.n,
-                game_values=self.game_values,
-                coalition_lookup=self.coalition_lookup,
-                grand_coalition_tuple=self._grand_coalition_tuple,
+        from shapiq.core import egalitarian_least_core
+
+        order = 1
+
+        # Check for normalized game
+        if self.baseline_value != 0:
+            # Normalize the game for the ELC computation
+            warnings.warn(
+                "The egalitarian least core is only defined for normalized games."
+                "Thus the resulting vector will undercut efficiency by the value of the empty set."
             )
-        else:
-            raise ValueError(f"Index {index} not supported")
+
+        # Compute egalitarian least-core
+        egalitarian_vector, subsidy = egalitarian_least_core(
+            n_players=self.n,
+            game_values=self.game_values - self.baseline_value,
+            coalition_lookup=self.coalition_lookup,
+            grand_coalition_tuple=self._grand_coalition_tuple,
+        )
+
+        # Add the value of the empty set equally to all coalition values. Experimental?
+        egalitarian_vector = egalitarian_vector + (self.baseline_value / self.n)
 
         # Store results
-        self._computed[(index, order)] = egalitarian_vector
+        self._computed[("ELC", order)] = egalitarian_vector
         self._elc_stability_subsidy = subsidy
 
         return copy.copy(egalitarian_vector)

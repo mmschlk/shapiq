@@ -107,8 +107,7 @@ def egalitarian_least_core(
         game_values: the values of every coalition in the game
         coalition_lookup: dictionary mapping a coalition to the corresponding value of game_values.
     Returns:
-        (egalitarian_least_core, subsidy): Returns the optimization result for the underlying game.
-        Meaning the egalitarian_least_core is a stable payoff given the subsidy.
+        Returns a tuple of egalitarian_least_core and subsidy value.
 
     Raises:
         ValueError: If the optimization did not complete successfully
@@ -126,9 +125,11 @@ def egalitarian_least_core(
         constraints=constraints,
     )
 
-    # Check if optimization was successfull
+    # Check if optimization was successfully
     if not res.success:
-        raise ValueError("A stable credit assignment was not found in the game !")
+        raise ValueError(
+            "The optimization was not successful. " "The resulting values may thus not be optimal."
+        )
 
     # Build interaction_lookup for plotting functions
     interaction_lookup = {}
