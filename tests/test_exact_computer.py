@@ -6,6 +6,7 @@ import pytest
 from shapiq.exact import ExactComputer
 from shapiq.games.benchmark.synthetic.soum import SOUM
 from shapiq.moebius_converter import MoebiusConverter
+from shapiq.utils import powerset
 
 
 def test_exact_computer_on_soum():
@@ -79,10 +80,32 @@ def test_exact_computer_on_soum():
         # Assert efficiency for SV
         assert (np.sum(probabilistic_values["SV"].values) - predicted_value) ** 2 < 10e-7
 
-        # Core with unnormalized games should thus lead to direct normalization
+        # Core with not normalized games should thus lead to direct normalization
 
         egalitarian_least_core = exact_computer.compute_egalitarian_least_core()
-        assert (np.sum(egalitarian_least_core.values) - predicted_value) ** 2 < 10e-7
+
+        # Assert efficiency
+        assert (
+            np.sum(egalitarian_least_core.values) + exact_computer.baseline_value - predicted_value
+        ) ** 2 < 10e-7
+        # Assert stability
+        coalition_matrix = np.zeros((2**exact_computer.n, exact_computer.n), dtype=int)
+
+        for i, T in enumerate(
+            powerset(
+                set(exact_computer._grand_coalition_tuple), min_size=0, max_size=exact_computer.n
+            )
+        ):
+            coalition_matrix[i, T] = 1  # one-hot-encode the coalition
+
+        stability_equations = (
+            coalition_matrix[:-1] @ egalitarian_least_core.values
+            + exact_computer._elc_stability_subsidy
+        )
+        game_values = exact_computer.game_values[:-1] - exact_computer.baseline_value
+
+        # Check stability
+        assert np.all(stability_equations - game_values >= -10e-7)
 
         # Core on normalized games
         soum_normalized = SOUM(n, n_basis_games=n_basis_games, normalize=True)
@@ -91,7 +114,8 @@ def test_exact_computer_on_soum():
         predicted_value = soum_normalized(np.ones(n))[0]
 
         egalitarian_least_core = exact_computer.compute_egalitarian_least_core()
-        # Assert efficiency for Egalitarian Least Core.
+
+        # Assert efficiency.
         assert (np.sum(egalitarian_least_core.values) - predicted_value) ** 2 < 10e-7
 
 

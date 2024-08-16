@@ -856,9 +856,6 @@ class ExactComputer:
             grand_coalition_tuple=self._grand_coalition_tuple,
         )
 
-        # Add the value of the empty set equally to all coalition values. Experimental?
-        egalitarian_vector = egalitarian_vector + (self.baseline_value / self.n)
-
         # Store results
         self._computed[("ELC", order)] = egalitarian_vector
         self._elc_stability_subsidy = subsidy
