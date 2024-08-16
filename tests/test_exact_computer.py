@@ -88,7 +88,8 @@ def test_exact_computer_on_soum():
         assert (
             np.sum(egalitarian_least_core.values) + exact_computer.baseline_value - predicted_value
         ) ** 2 < 10e-7
-        # Assert stability
+
+        # Check stability of elc
         coalition_matrix = np.zeros((2**exact_computer.n, exact_computer.n), dtype=int)
 
         for i, T in enumerate(
@@ -104,7 +105,7 @@ def test_exact_computer_on_soum():
         )
         game_values = exact_computer.game_values[:-1] - exact_computer.baseline_value
 
-        # Check stability
+        # Assert stability
         assert np.all(stability_equations - game_values >= -10e-7)
 
         # Core on normalized games
