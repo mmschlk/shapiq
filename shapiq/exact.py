@@ -2,7 +2,6 @@
 like interaction indices or generalized values."""
 
 import copy
-import warnings
 from typing import Callable, Union
 
 import numpy as np
@@ -840,20 +839,11 @@ class ExactComputer:
 
         order = 1
 
-        # Check for normalized game
-        if self.baseline_value != 0:
-            # Normalize the game for the ELC computation
-            warnings.warn(
-                "The egalitarian least core is only defined for normalized games."
-                "Thus the resulting vector will undercut efficiency by the value of the empty set."
-            )
-
         # Compute egalitarian least-core
         egalitarian_vector, subsidy = egalitarian_least_core(
             n_players=self.n,
-            game_values=self.game_values - self.baseline_value,
+            game_values=self.game_values,
             coalition_lookup=self.coalition_lookup,
-            grand_coalition_tuple=self._grand_coalition_tuple,
         )
 
         # Store results

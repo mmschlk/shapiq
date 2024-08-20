@@ -1,6 +1,7 @@
 """Logic to solve for the egalitarian least-core."""
 
 import copy
+import warnings
 from typing import Optional
 
 import numpy as np
@@ -13,20 +14,15 @@ __all__ = ["egalitarian_least_core"]
 
 
 def _setup_core_calculations(
-    grand_coalition_tuple: tuple[int],
-    n_players: int,
-    game_values: np.ndarray,
-    coalition_lookup: dict[tuple[int], int],
+    n_players: int, game_values: np.ndarray
 ) -> tuple[list[LinearConstraint], list[tuple[Optional[int], Optional[int]]]]:
     """
     Converts the coalition_values and coalition_matrix into a linear programming problem using scipy.linprog.
     See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linprog.html for reference.
 
     Args:
-        grand_coalition_tuple: tuple representing the grand_coalition of the underlying game
         n_players: amount of players in the game
-        game_values: the values of every coalition in the game
-        coalition_lookup: dictionary mapping a coalition to the corresponding value of game_values.
+        game_values: the values of every coalition in the game. Assumes empty set in game_values[0] and grand_coaltion game_values[-1]
     Returns:
         (constraints,bounds): returns the constraints and bounds induced by the stability and efficiency property
          for the underlying game.
@@ -34,10 +30,10 @@ def _setup_core_calculations(
     n_coalitions = 2**n_players
 
     coalition_matrix = np.zeros((n_coalitions, n_players), dtype=int)
-    for i, T in enumerate(powerset(set(grand_coalition_tuple), min_size=0, max_size=n_players)):
+    for i, T in enumerate(powerset(set(range(n_players)), min_size=0, max_size=n_players)):
         coalition_matrix[i, T] = 1  # one-hot-encode the coalition
 
-    grand_coaltion_value = game_values[coalition_lookup[grand_coalition_tuple]]
+    grand_coaltion_value = game_values[-1]
 
     # Setup the binary matrix representing the linear inequalities for core  except for the grand coalition
     A_ub = np.ones((n_coalitions - 1, n_players + 1))
@@ -94,17 +90,14 @@ def _minimization_egal_least_core(credit_subsidy_vector: np.ndarray) -> float:
 
 
 def egalitarian_least_core(
-    grand_coalition_tuple: tuple[int],
-    n_players: int,
-    game_values: np.ndarray,
-    coalition_lookup: dict[tuple[int], int],
+    n_players: int, game_values: np.ndarray, coalition_lookup: dict[tuple[int], int]
 ) -> tuple[InteractionValues, float]:
     """
     Computes the egalitarian least-core for the underlying game represented through the parameters.
     Args:
-        grand_coalition_tuple: tuple representing the grand_coalition of the underlying game
-        n_players: amount of players in the game
-        game_values: the values of every coalition in the game
+        n_players: amount of players in the game.
+        game_values: the values of every coalition in the game.
+        baseline_value: value of the empty set.
         coalition_lookup: dictionary mapping a coalition to the corresponding value of game_values.
     Returns:
         Returns a tuple of egalitarian_least_core and subsidy value.
@@ -113,9 +106,31 @@ def egalitarian_least_core(
         ValueError: If the optimization did not complete successfully
     """
 
-    constraints, bounds = _setup_core_calculations(
-        grand_coalition_tuple, n_players, game_values, coalition_lookup
-    )
+    # Rearange the game_values and base_line and 0
+    tmp = game_values[coalition_lookup[tuple()]]
+    game_values[coalition_lookup[tuple()]] = game_values[0]
+    game_values[0] = tmp
+
+    # Rearrange the game_values to have grand_coalition at -1
+    tmp = game_values[coalition_lookup[tuple(range(n_players))]]
+    game_values[coalition_lookup[tuple(range(n_players))]] = game_values[-1]
+    game_values[-1] = tmp
+
+    baseline_value = game_values[0]
+
+    # Check for normalized game
+    if baseline_value != 0:
+        # Normalize the game for the ELC computation
+        warnings.warn(
+            "The egalitarian least core is only defined for normalized games."
+            "Thus the resulting vector will undercut efficiency by the value of the empty set."
+            "To suppress warnings normalize the game to have baseline_value == 0."
+        )
+
+    # Potentially normalize the game
+    game_values = game_values - baseline_value
+
+    constraints, bounds = _setup_core_calculations(n_players, game_values)
 
     # Find egalitarian_least_core with subsidy
     res = minimize(
@@ -125,15 +140,9 @@ def egalitarian_least_core(
         constraints=constraints,
     )
 
-    # Check if optimization was successfully
-    if not res.success:
-        raise ValueError(
-            "The optimization was not successful. " "The resulting values may thus not be optimal."
-        )
-
     # Build interaction_lookup for plotting functions
     interaction_lookup = {}
-    for i, interaction in enumerate(powerset(set(grand_coalition_tuple), min_size=1, max_size=1)):
+    for i, interaction in enumerate(powerset(set(range(n_players)), min_size=1, max_size=1)):
         interaction_lookup[interaction] = i
 
     credit_assignment, subsidy = res.x[:-1], res.x[-1]
