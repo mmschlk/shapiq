@@ -5,10 +5,9 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
-
+from ..interaction_values import InteractionValues
 from ..utils.modules import check_import_module
+from .utils import get_interaction_values_and_feature_names
 
 __all__ = ["bar_plot"]
 
@@ -35,34 +34,25 @@ def bar_plot(
     import shap
 
     assert len(np.unique([iv.max_order for iv in list_of_interaction_values])) == 1
-    max_order = list_of_interaction_values[0].max_order
 
     _global_values = []
     _base_values = []
     _labels = []
     _first_iv = True
     for iv in list_of_interaction_values:
-        _values_dict = {}
-        for i in range(1, max_order + 1):
-            _values_dict[i] = iv.get_n_order_values(i)
-        _n_features = len(_values_dict[1])
-        _shap_values = []
-        for interaction in powerset(range(_n_features), min_size=1, max_size=max_order):
-            _order = len(interaction)
-            _values = _values_dict[_order]
-            _shap_values.append(_values[interaction])
-            if feature_names is not None and _first_iv:
-                _name = " x ".join(f"{feature_names[i]}".strip()[0:4] + "." for i in interaction)
-                _labels.append(_name)
+
+        _shap_values, _names = get_interaction_values_and_feature_names(iv, feature_names, None)
+        if _first_iv:
+            _labels = _names
+            _first_iv = False
         _global_values.append(_shap_values)
         _base_values.append(iv.baseline_value)
-        if _first_iv:
-            _first_iv = False
 
+    _labels = np.array(_labels) if feature_names is not None else None
     explanation = shap.Explanation(
         values=np.stack(_global_values),
         base_values=np.array(_base_values),
-        feature_names=np.array(_labels) if feature_names is not None else None,
+        feature_names=_labels,
     )
 
     if show:
