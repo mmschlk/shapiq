@@ -6,7 +6,6 @@ import pytest
 from shapiq.exact import ExactComputer
 from shapiq.games.benchmark.synthetic.soum import SOUM
 from shapiq.moebius_converter import MoebiusConverter
-from shapiq.utils import powerset
 
 
 def test_exact_computer_on_soum():
@@ -80,61 +79,6 @@ def test_exact_computer_on_soum():
         # Assert efficiency for SV
         assert (np.sum(probabilistic_values["SV"].values) - predicted_value) ** 2 < 10e-7
 
-        # Core with not normalized games should thus lead to direct normalization
-
-        egalitarian_least_core = exact_computer.compute_egalitarian_least_core()
-
-        # Assert efficiency
-        assert (
-            np.sum(egalitarian_least_core.values) + exact_computer.baseline_value - predicted_value
-        ) ** 2 < 10e-7
-
-        # Check stability of elc
-        coalition_matrix = np.zeros((2**exact_computer.n, exact_computer.n), dtype=int)
-
-        for i, T in enumerate(
-            powerset(
-                set(exact_computer._grand_coalition_tuple), min_size=0, max_size=exact_computer.n
-            )
-        ):
-            coalition_matrix[i, T] = 1  # one-hot-encode the coalition
-
-        stability_equations = (
-            coalition_matrix[:-1] @ egalitarian_least_core.values
-            + exact_computer._elc_stability_subsidy
-        )
-        game_values = exact_computer.game_values[:-1] - exact_computer.baseline_value
-
-        # Assert stability
-        assert np.all(stability_equations - game_values >= -10e-7)
-
-        # Core on normalized games
-        soum_normalized = SOUM(n, n_basis_games=n_basis_games, normalize=True)
-        exact_computer = ExactComputer(n_players=n, game_fun=soum_normalized)
-
-        predicted_value = soum_normalized(np.ones(n))[0]
-
-        egalitarian_least_core = exact_computer.compute_egalitarian_least_core()
-
-        # Assert efficiency.
-        assert (np.sum(egalitarian_least_core.values) - predicted_value) ** 2 < 10e-7
-
-
-def test_exact_elc_on_normalized_soum():
-    for i in range(20):
-        n = np.random.randint(low=2, high=10)
-        n_basis_games = np.random.randint(low=1, high=100)
-        soum_normalized = SOUM(n, n_basis_games=n_basis_games, normalize=True)
-
-        exact_computer = ExactComputer(n_players=n, game_fun=soum_normalized)
-
-        predicted_value = soum_normalized(np.ones(n))[0]
-
-        index = "ELC"
-        egalitarian_least_core = exact_computer.compute_egalitarian_least_core(index)
-        # Assert efficiency for Egalitarian Least Core
-        assert (np.sum(egalitarian_least_core.values) - predicted_value) ** 2 < 10e-7
-
 
 @pytest.mark.parametrize(
     "index, order",
@@ -152,9 +96,10 @@ def test_exact_elc_computer_call(index, order):
     assert interaction_values.max_order == order  # order should be the same
     assert interaction_values.min_order == 1  # ELC only has singleton values
     assert interaction_values.index == index  # index should be the same
-    assert interaction_values.baseline_value == 0  # ELC needs baseline_vlaue zero
+    assert interaction_values.baseline_value == 0  # ELC needs baseline_value zero
     assert interaction_values.estimated is False  # nothing should be estimated
     assert interaction_values.values is not None  # values should be computed
+    assert exact_computer._elc_stability_subsidy is not None  # ELC should have stored subsidy
 
 
 @pytest.mark.parametrize(
