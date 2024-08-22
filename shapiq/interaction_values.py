@@ -644,7 +644,7 @@ class InteractionValues:
         feature_names: Optional[np.ndarray] = None,
         feature_values: Optional[np.ndarray] = None,
         matplotlib=True,
-        show: bool = False,
+        show: bool = True,
         **kwargs,
     ) -> Optional[plt.Figure]:
         """Visualize InteractionValues on a force plot.
