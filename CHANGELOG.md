@@ -8,8 +8,7 @@
 - add a legend to benchmark plots [#170](https://github.com/mmschlk/shapiq/issues/170)
 - fix the force plot not showing and its baseline value
 - improve tests for plots and benchmarks
-- renames explanation graph to si_graph
-- bugfixes with plotting and benchmarks
+- renames explanation graph to `si_graph`
 - `get_n_order` now has optional lower/upper limits for the order
 - computing metrics now tries to resolve not-matching interaction indices and will throw a warning instead of a ValueError [#179](https://github.com/mmschlk/shapiq/issues/179)
 - ...
