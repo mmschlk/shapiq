@@ -8,7 +8,7 @@ import numpy as np
 from scipy.optimize import LinearConstraint, minimize
 
 from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
+from shapiq.utils.sets import powerset
 
 __all__ = ["egalitarian_least_core"]
 
@@ -16,13 +16,12 @@ __all__ = ["egalitarian_least_core"]
 def _setup_core_calculations(
     n_players: int, game_values: np.ndarray
 ) -> tuple[list[LinearConstraint], list[tuple[Optional[int], Optional[int]]]]:
-    """
-    Converts the coalition_values and coalition_matrix into a linear programming problem using scipy.linprog.
-    See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linprog.html for reference.
+    """Setup core optimization matrices for scipy.linprog.
 
     Args:
         n_players: amount of players in the game
-        game_values: the values of every coalition in the game. Assumes empty set in game_values[0] and grand_coaltion game_values[-1]
+        game_values: the values of every coalition in the game. Assumes empty set in game_values[0] and grand_coalition
+            game_values[-1]
     Returns:
         (constraints,bounds): returns the constraints and bounds induced by the stability and efficiency property
          for the underlying game.
@@ -36,25 +35,27 @@ def _setup_core_calculations(
     grand_coaltion_value = game_values[-1]
 
     # Setup the binary matrix representing the linear inequalities for core  except for the grand coalition
-    A_ub = np.ones((n_coalitions - 1, n_players + 1))
-    A_ub[:, :-1] = coalition_matrix[:-1]
-    A_ub[0, -1] = 0
+    stability_matrix = np.ones(
+        (n_coalitions - 1, n_players + 1)
+    )  # $A_\{ub\}$. Optimization upper bound values.
+    stability_matrix[:, :-1] = coalition_matrix[:-1]
+    stability_matrix[0, -1] = 0
 
     # Due to scipy.optimize we need to convert the stability inequality (>=) to (<=) via (-1)
-    A_ub *= -1
+    stability_matrix *= -1
 
     # Setup the upper bounds for the inequalities (negative coalition values).
     # The grand_coalition value (game_values[-1]) is hereby excluded
-    b_ub = (-1) * game_values[:-1]
+    stability_values = (-1) * game_values[:-1]
 
     # Setup the binary matrix representing the efficiency property
-    A_eq = np.ones((1, n_players + 1))
+    efficiency_matrix = np.ones((1, n_players + 1))  # $A_\{eq\}$. Optimization equality values.
 
     # Let the e not be contained in the efficiency property
-    A_eq[0, -1] = 0
+    efficiency_matrix[0, -1] = 0
 
     # Efficiency value
-    b_eq = np.array([grand_coaltion_value])
+    efficiency_value = np.array([grand_coaltion_value])  # $b_\{eq\}$.
 
     # Bounds for the values of credit_assignments
     bounds_players = [(None, None) for _ in range(n_players)]
@@ -63,10 +64,12 @@ def _setup_core_calculations(
     bounds_players += [(0, None)]
 
     # Convert the Constraints to the form for egalitarian least-core optimization
-    # A_ub @ (x,e) <= b_ub
-    credit_assignment_constraints = LinearConstraint(A_ub, ub=b_ub)
-    # A_eq @ (x,e) == b_eq
-    efficiency_constraint = LinearConstraint(A_eq, lb=b_eq, ub=b_eq)
+    # $A_\{ub\}$ @ (x,e) <= $b_\{ub\}$
+    credit_assignment_constraints = LinearConstraint(stability_matrix, ub=stability_values)
+    # $A_\{eq\} @ (x,e) == $b_\{eq\}$
+    efficiency_constraint = LinearConstraint(
+        efficiency_matrix, lb=efficiency_value, ub=efficiency_value
+    )
 
     constraints = [credit_assignment_constraints, efficiency_constraint]
 
@@ -74,11 +77,10 @@ def _setup_core_calculations(
 
 
 def _minimization_egal_least_core(credit_subsidy_vector: np.ndarray) -> float:
-    """
-    Formulates the minimization problem to find the egalitarian least-core given the guess credit_subsidy_vector.
+    """Formulates the minimization problem to find the egalitarian least-core given the guess credit_subsidy_vector.
 
     Args:
-        credit_subsidy_vector: ndarray with shape (n_playes+1,) where the last element is the external subsidy e.
+        credit_subsidy_vector: ndarray with shape (n_players + 1,) where the last element is the external subsidy e.
 
     Returns:
         A value representing the sum of both l2_norm of the credit_assignment and subsidy.
@@ -92,12 +94,11 @@ def _minimization_egal_least_core(credit_subsidy_vector: np.ndarray) -> float:
 def egalitarian_least_core(
     n_players: int, game_values: np.ndarray, coalition_lookup: dict[tuple[int], int]
 ) -> tuple[InteractionValues, float]:
-    """
-    Computes the egalitarian least-core for the underlying game represented through the parameters.
+    """Computes the egalitarian least-core for the underlying game represented through the parameters.
+
     Args:
         n_players: amount of players in the game.
         game_values: the values of every coalition in the game.
-        baseline_value: value of the empty set.
         coalition_lookup: dictionary mapping a coalition to the corresponding value of game_values.
     Returns:
         Returns a tuple of egalitarian_least_core and subsidy value.
@@ -106,7 +107,7 @@ def egalitarian_least_core(
         ValueError: If the optimization did not complete successfully
     """
 
-    # Rearange the game_values and base_line and 0
+    # Rearrange the game_values and base_line and 0
     tmp = game_values[coalition_lookup[tuple()]]
     game_values[coalition_lookup[tuple()]] = game_values[0]
     game_values[0] = tmp

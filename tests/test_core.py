@@ -1,4 +1,4 @@
-"""This test module tests the ExactComputer class."""
+"""This test module tests the core calculations"""
 
 import numpy as np
 import pytest
@@ -70,13 +70,14 @@ def test_core_on_normalized_soum():
 
 
 def test_core_political_game_empty_core():
-    """
+    """Tests that core is empty for non-convex game and egalitarian least-core has subsidy=33.3.
+
     The political game tested here is constructed such that the core is [33.3, 33.3, 33.3] with subsidy 33.3.
     This is due to all coalitions with at least two players gets 100.
 
     """
 
-    class PoliticalGame(shapiq.Game):
+    class NonConvexGame(shapiq.Game):
 
         def __init__(self) -> None:
             super().__init__(n_players=3, normalize=True, normalization_value=0)
@@ -97,7 +98,7 @@ def test_core_political_game_empty_core():
 
             return values
 
-    game_political = PoliticalGame()
+    game_political = NonConvexGame()
     coalition_lookup = {}
     coalition_matrix = np.zeros((2**game_political.n_players, game_political.n_players), dtype=bool)
     grand_coalition_set = set(range(3))
@@ -134,14 +135,12 @@ def test_core_baseline_warning():
 
 
 def test_core_political_game_existing_core():
-    """
-    The political game tested here is constructed such that the core has zero subsidy.
-    This is due to the game now being convex, meaning that the v(S u {i}) - v(S) <= v(T u {i}) - v(T) for S<=T<={1,..,n} \ {i}.
-    Thus the contribution of a player is always bigger if it joins a bigger coalition.
+    """Tests that the ELC is equal to the core with subsidy equal to 0, due to convex game structure."""
 
-    """
-
-    class PoliticalGame(shapiq.Game):
+    class ConvexGame(shapiq.Game):
+        """Convex game, i.e. meaning that the v(S u {i}) - v(S) <= v(T u {i}) - v(T) for S<=T<={1,..,n} \ {i}.
+        The marginal contribution of a player i is always bigger if it joins a bigger coalition.
+        """
 
         def __init__(self) -> None:
             super().__init__(n_players=3, normalize=True, normalization_value=0)
@@ -162,7 +161,7 @@ def test_core_political_game_existing_core():
 
             return values
 
-    game_political = PoliticalGame()
+    game_political = ConvexGame()
     coalition_lookup = {}
     coalition_matrix = np.zeros((2**game_political.n_players, game_political.n_players), dtype=bool)
     grand_coalition_set = set(range(3))
@@ -181,7 +180,7 @@ def test_core_political_game_existing_core():
     )
     # Assert correct values
     assert np.all(egalitarian_vector.values - np.array([200 / 3, 200 / 3, 200 / 3]) < 10e-7)
-    assert subsidy == 0
+    pytest.approx(subsidy, rel=0, abs=1e-5)
 
     # Assert efficiency
     assert (np.sum(egalitarian_vector.values) + baseline_value - predicted_value) ** 2 < 10e-7
