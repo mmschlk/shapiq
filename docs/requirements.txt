@@ -22,7 +22,7 @@ dict2css==0.3.0
 docutils==0.18.1
 domdf-python-tools==3.6.1
 exceptiongroup==1.1.3
-fastjsonschema==2.18.1
+fastjsonschema==2.20.0
 filelock==3.12.4
 fonttools==4.43.1
 furo==2023.9.10
