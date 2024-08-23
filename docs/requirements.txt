@@ -3,7 +3,7 @@ apeye-core==1.1.4
 attrs==23.1.0
 autodocsumm==0.2.11
 Babel==2.13.0
-beautifulsoup4==4.12.2
+beautifulsoup4==4.12.3
 black==23.11.0
 bleach==6.1.0
 build==1.0.3
