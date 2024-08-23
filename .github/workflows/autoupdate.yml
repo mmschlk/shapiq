@@ -1,0 +1,33 @@
+# more information to be found here: https://github.com/marketplace/actions/auto-update
+name: autoupdate
+on:
+  push: {}
+jobs:
+  autoupdate:
+    name: autoupdate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker://chinthakagodawita/autoupdate-action:v1
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+          # if true potential actions are only logged. Good for testing purpose
+          DRY_RUN: "false"
+
+          # if only specific pull request should be updated. Values are: ["all", "labelled", "protected", "auto_merge"].
+          # "labelled" requires the PR_LABELS option, in which the labels are defined which should trigger autoupdates
+          PR_FILTER: "all"
+
+          # PR with thoose labels are not getting updated
+          EXCLUDED_LABELS: "dependencies,wontfix"
+
+          # which commit message should be displayed
+          MERGE_MSG: "Branch was auto-updated."
+
+          RETRY_COUNT: "1"
+
+          # time in ms
+          RETRY_SLEEP: "5000"
+
+          # what to do on merge conflict. if fail it is also reported. options: ["fail", "ignore"]
+          MERGE_CONFLICT_ACTION: "fail"
