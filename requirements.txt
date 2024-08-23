@@ -14,6 +14,6 @@ tqdm==4.66.2
 torch==2.2.2
 torchvision==0.17.2
 transformers==4.39.3
-xgboost==2.0.3
+xgboost==2.1.1
 numpy==1.26.4
 requests==2.31.0
