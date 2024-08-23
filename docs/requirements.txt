@@ -101,7 +101,7 @@ tabulate==0.9.0
 tinycss2==1.2.1
 tomli==2.0.1
 tornado==6.3.3
-tqdm==4.66.1
+tqdm==4.66.5
 traitlets==5.11.2
 typing_extensions==4.8.0
 urllib3==2.0.7
