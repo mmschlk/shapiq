@@ -7,7 +7,7 @@ beautifulsoup4==4.12.2
 black==23.11.0
 bleach==6.1.0
 build==1.0.3
-CacheControl==0.13.1
+CacheControl==0.14.0
 certifi==2023.7.22
 charset-normalizer==3.3.0
 click==8.1.7
