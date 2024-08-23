@@ -82,6 +82,28 @@ def test_exact_computer_on_soum():
 
 @pytest.mark.parametrize(
     "index, order",
+    [("ELC", 1)],
+)
+def test_exact_elc_computer_call(index, order):
+    """Tests the call function for the ExactComputer."""
+    n = 5
+    soum = SOUM(n, n_basis_games=10, normalize=True)
+    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    interaction_values = exact_computer(index=index, order=order)
+    if order is None:
+        order = n
+    assert interaction_values is not None  # should return something
+    assert interaction_values.max_order == order  # order should be the same
+    assert interaction_values.min_order == 1  # ELC only has singleton values
+    assert interaction_values.index == index  # index should be the same
+    assert interaction_values.baseline_value == 0  # ELC needs baseline_value zero
+    assert interaction_values.estimated is False  # nothing should be estimated
+    assert interaction_values.values is not None  # values should be computed
+    assert exact_computer._elc_stability_subsidy is not None  # ELC should have stored subsidy
+
+
+@pytest.mark.parametrize(
+    "index, order",
     [
         ("SV", 1),
         ("BV", 1),

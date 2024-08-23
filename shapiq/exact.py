@@ -51,6 +51,7 @@ class ExactComputer:
         self._big_M: float = 10e7
         self._n_interactions: np.ndarray = self.get_n_interactions(self.n)
         self._computed: dict[tuple[str, int], InteractionValues] = {}  # will store all computations
+        self._elc_stability_subsidy: float = -1
 
         # evaluate the game on the powerset
         computed_game = self.compute_game_values(game_fun)
@@ -84,6 +85,8 @@ class ExactComputer:
             # shapley_generalized_value
             "JointSV": self.shapley_generalized_value,
             "FBII": self.compute_fii,
+            # The Core
+            "ELC": self.compute_egalitarian_least_core,
         }
         self.available_indices: set[str] = set(self._index_mapping.keys())
         self.available_concepts: dict[str, dict] = ALL_AVAILABLE_CONCEPTS
@@ -830,6 +833,25 @@ class ExactComputer:
             raise ValueError(f"Index {index} not supported")
         self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
+
+    def compute_egalitarian_least_core(self, *args, **kwargs):
+
+        from shapiq.core import egalitarian_least_core
+
+        order = 1
+
+        # Compute egalitarian least-core
+        egalitarian_vector, subsidy = egalitarian_least_core(
+            n_players=self.n,
+            game_values=self.game_values,
+            coalition_lookup=self.coalition_lookup,
+        )
+
+        # Store results
+        self._computed[("ELC", order)] = egalitarian_vector
+        self._elc_stability_subsidy = subsidy
+
+        return copy.copy(egalitarian_vector)
 
 
 def get_bernoulli_weights(order: int) -> np.ndarray:
