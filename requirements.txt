@@ -1,4 +1,4 @@
-black==24.3.0
+black==24.8.0
 colour==0.1.5
 coverage==7.6.1
 matplotlib==3.9.2
