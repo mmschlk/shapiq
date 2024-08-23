@@ -10,7 +10,7 @@ scikit-image==0.22.0
 scikit-learn==1.4.1.post1
 scipy==1.13.0
 shap==0.45.1
-tqdm==4.66.2
+tqdm==4.66.5
 torch==2.2.2
 torchvision==0.17.2
 transformers==4.39.3
