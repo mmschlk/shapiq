@@ -1,6 +1,6 @@
 ﻿black==24.3.0
 colour==0.1.5
-coverage==7.4.4
+coverage==7.6.1
 matplotlib==3.8.4
 networkx==3.2.1
 pandas==2.2.1
