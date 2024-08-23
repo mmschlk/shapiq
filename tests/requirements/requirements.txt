@@ -1,5 +1,5 @@
-﻿# this requirements.txt file is maintained and bumbped by dependabot
-# this file is used to see weather new versions of the libraries are available and break shapiq
+# this requirements.txt file is pinned to versions that will work for all python 3.9+ environments
+# the file is set into this directory to not be bumped by dependabot
 black==24.8.0
 colour==0.1.5
 coverage==7.6.1
