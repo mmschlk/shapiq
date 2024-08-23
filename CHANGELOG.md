@@ -2,6 +2,7 @@
 
 ### development
 
+- [added](https://github.com/mmschlk/shapiq/pull/185) Exact Core computation closing [#182](https://github.com/mmschlk/shapiq/issues/182)
 - refactored the `shapiq.games.benchmark` module into a separate `shapiq.benchmark` module by moving all but the benchmark games into the new modul. This closes [#169](https://github.com/mmschlk/shapiq/issues/169) and makes benchmarking more flexible and convenient.
 - add waterfall plot as described in [#34](https://github.com/mmschlk/shapiq/issues/34)
 - add a legend to benchmark plots [#170](https://github.com/mmschlk/shapiq/issues/170)
