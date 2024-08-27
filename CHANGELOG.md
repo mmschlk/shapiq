@@ -1,15 +1,15 @@
 ## Changelog
 
-### development
+### Development
 
+- started work on [188](https://github.com/mmschlk/shapiq/issues/188) which overhauls the existing `shapiq` tutorial notebooks and fixes [199](https://github.com/mmschlk/shapiq/issues/199)
 - [added](https://github.com/mmschlk/shapiq/pull/185) Exact Core computation closing [#182](https://github.com/mmschlk/shapiq/issues/182)
 - refactored the `shapiq.games.benchmark` module into a separate `shapiq.benchmark` module by moving all but the benchmark games into the new modul. This closes [#169](https://github.com/mmschlk/shapiq/issues/169) and makes benchmarking more flexible and convenient.
 - add waterfall plot as described in [#34](https://github.com/mmschlk/shapiq/issues/34)
 - add a legend to benchmark plots [#170](https://github.com/mmschlk/shapiq/issues/170)
 - fix the force plot not showing and its baseline value
 - improve tests for plots and benchmarks
-- renames explanation graph to si_graph
-- bugfixes with plotting and benchmarks
+- renames explanation graph to `si_graph`
 - `get_n_order` now has optional lower/upper limits for the order
 - computing metrics now tries to resolve not-matching interaction indices and will throw a warning instead of a ValueError [#179](https://github.com/mmschlk/shapiq/issues/179)
 - ...

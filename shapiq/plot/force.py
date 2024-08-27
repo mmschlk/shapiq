@@ -18,7 +18,7 @@ def force_plot(
     feature_names: Optional[np.ndarray] = None,
     feature_values: Optional[np.ndarray] = None,
     matplotlib: bool = True,
-    show: bool = False,
+    show: bool = True,
     **kwargs,
 ) -> Optional[plt.Figure]:
     """Draws interaction values on a force plot.
