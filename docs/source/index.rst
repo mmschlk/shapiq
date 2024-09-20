@@ -24,7 +24,7 @@ Contents
    notebooks/conditional_imputer
    notebooks/parallel_computation
    notebooks/benchmark_approximators
-
+   notebooks/data_valuation
 .. toctree::
    :maxdepth: 2
    :caption: API REFERENCE
