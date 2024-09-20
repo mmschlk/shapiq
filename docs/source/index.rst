@@ -24,6 +24,7 @@ Contents
    notebooks/conditional_imputer
    notebooks/parallel_computation
    notebooks/benchmark_approximators
+   notebooks/core
 
 .. toctree::
    :maxdepth: 2
