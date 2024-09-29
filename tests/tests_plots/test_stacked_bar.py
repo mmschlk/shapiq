@@ -3,36 +3,33 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from shapiq.interaction_values import InteractionValues
 from shapiq.plot import stacked_bar_plot
 
 
 def test_stacked_bar_plot():
     """Tests whether the stacked bar plot can be created."""
 
-    n_shapley_values_pos = {
-        1: np.asarray([1, 0, 1.75]),
-        2: np.asarray([0.25, 0.5, 0.75]),
-        3: np.asarray([0.5, 0.25, 0.25]),
-    }
-    n_shapley_values_neg = {
-        1: np.asarray([0, -1.5, 0]),
-        2: np.asarray([-0.25, -0.5, -0.75]),
-        3: np.asarray([-0.5, -0.25, -0.25]),
-    }
+    interaction_values = InteractionValues(
+        values=np.array([1, -1.5, 1.75, 0.25, -0.5, 0.75, 0.2]),
+        index="SII",
+        min_order=1,
+        max_order=3,
+        n_players=3,
+        baseline_value=0,
+    )
     feature_names = ["a", "b", "c"]
     fig, axes = stacked_bar_plot(
+        n_shapley_interaction_values=interaction_values,
         feature_names=feature_names,
-        n_shapley_values_pos=n_shapley_values_pos,
-        n_shapley_values_neg=n_shapley_values_neg,
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(axes, plt.Axes)
     plt.close()
 
     fig, axes = stacked_bar_plot(
+        n_shapley_interaction_values=interaction_values,
         feature_names=feature_names,
-        n_shapley_values_pos=n_shapley_values_pos,
-        n_shapley_values_neg=n_shapley_values_neg,
         n_sii_max_order=2,
         title="Title",
         xlabel="X",
@@ -43,9 +40,8 @@ def test_stacked_bar_plot():
     plt.close()
 
     fig, axes = stacked_bar_plot(
+        n_shapley_interaction_values=interaction_values,
         feature_names=None,
-        n_shapley_values_pos=n_shapley_values_pos,
-        n_shapley_values_neg=n_shapley_values_neg,
         n_sii_max_order=2,
         title="Title",
         xlabel="X",

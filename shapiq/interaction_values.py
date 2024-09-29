@@ -611,33 +611,12 @@ class InteractionValues:
         """
         from shapiq import stacked_bar_plot
 
-        if self.max_order >= 2:
-            first_order_values = self.get_n_order_values(1)
-            second_order_values = self.get_n_order_values(2)
-            ret = stacked_bar_plot(
-                n_shapley_values_pos={
-                    1: np.array([0 if x < 0 else x for x in first_order_values]),
-                    2: second_order_values.clip(min=0).sum(axis=0),
-                },
-                n_shapley_values_neg={
-                    1: np.array([0 if x > 0 else x for x in first_order_values]),
-                    2: second_order_values.clip(max=0).sum(axis=0),
-                },
-                **kwargs,
-            )
-            return ret
-        else:
-            first_order_values = self.get_n_order_values(1)
-            ret = stacked_bar_plot(
-                n_shapley_values_pos={
-                    1: np.array([0 if x < 0 else x for x in first_order_values]),
-                },
-                n_shapley_values_neg={
-                    1: np.array([0 if x > 0 else x for x in first_order_values]),
-                },
-                **kwargs,
-            )
-            return ret
+        ret = stacked_bar_plot(
+            self,
+            **kwargs,
+        )
+
+        return ret
 
     def plot_force(
         self,
