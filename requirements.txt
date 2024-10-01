@@ -7,7 +7,7 @@ matplotlib==3.9.2
 networkx==3.3.0
 pandas==2.2.2
 pytest==8.3.2
-ruff==0.6.2
+ruff==0.6.8
 scikit-image==0.24.0
 scikit-learn==1.5.1
 scipy==1.14.1
