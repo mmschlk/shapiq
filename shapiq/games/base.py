@@ -163,11 +163,6 @@ class Game(ABC):
         """Checks if the game is normalized/centered."""
         return self(self.empty_coalition) == 0
 
-    @property
-    def player_names(self) -> dict[int, str]:
-        """Return the player names as lookup table."""
-        return self.player_name_lookup
-
     def _check_coalitions(
         self, coalitions: np.ndarray | list[tuple[int] | tuple[str]] | tuple[int | str] | str
     ) -> np.ndarray:

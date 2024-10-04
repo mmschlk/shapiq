@@ -30,7 +30,7 @@ def test_call():
     )
 
     # assert that player names are correctly stored
-    assert test_game.player_names == {
+    assert test_game.player_name_lookup == {
         "Alice": 0,
         "Bob": 1,
         "Charlie": 2,
