@@ -68,8 +68,6 @@ def test_call():
     # test wrong datatype in coalition call
     with pytest.raises(TypeError):
         assert test_game({0, 1, 2}) == 0.0
-
-    # test wrong datatype in coalition call
     with pytest.raises(TypeError):
         assert test_game([(None)]) == 0.0
 
@@ -78,6 +76,7 @@ def test_call():
     assert test_game(test_coalition) == 0.0
     assert test_game(()) == 0.0
     assert test_game([()]) == 0.0
+    assert test_game("empty") == 0.0
 
     # test with grand coalition all call variants
     test_coalition = test_game.grand_coalition
@@ -86,6 +85,7 @@ def test_call():
     assert test_game([tuple(range(0, test_game.n_players))]) == 1.0
     assert test_game(tuple(test_game.player_name_lookup.values())) == 1.0
     assert test_game([tuple(test_game.player_name_lookup.values())]) == 1.0
+    assert test_game("grand") == 1.0
 
     # test with single player coalition all call variants
     test_coalition = np.array([True] + [False for _ in range(test_game.n_players - 1)])
@@ -94,6 +94,18 @@ def test_call():
     assert test_game([tuple([0])]) - 1 / 6 < 10e-7
     assert test_game(tuple(("Alice",))) - 1 / 6 < 10e-7
     assert test_game([tuple(("Alice",))]) - 1 / 6 < 10e-7
+    assert test_game("Alice") - 1 / 6 < 10e-7
+
+    # test string calls with missing player names
+    test_game2 = TestGame(n=n_players)
+    assert test_game2("grand") == 1.0
+    assert test_game2("empty") == 0.0
+    with pytest.raises(TypeError):
+        assert test_game2("Alice") == 0.0
+    with pytest.raises(TypeError):
+        assert test_game2(("Bob",)) == 0.0
+    with pytest.raises(TypeError):
+        assert test_game2([("Charlie",)]) == 0.0
 
 
 def test_precompute():

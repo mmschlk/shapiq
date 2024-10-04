@@ -195,7 +195,11 @@ class Game(ABC):
             if tuple_types[0] not in [set(), {int}, {str}]:
                 raise TypeError("Tuples must contain either integers or strings.")
 
-            # convert strings in tuples to integers
+            # check that string tuples are only used if player names are provided
+            if self.player_name_lookup is None and tuple_types[0] == {str}:
+                raise TypeError("Player names have to be provided to evaluate string tuples.")
+
+            # convert strings to integers
             if tuple_types[0] == {str}:
                 coalitions = [
                     tuple([self.player_name_lookup[name] for name in coal]) for coal in coalitions
@@ -211,9 +215,16 @@ class Game(ABC):
                 raise TypeError("Elements of tuple must have the same type.")
             if tuple_types not in [set(), {int}, {str}]:
                 raise TypeError("Tuple must contain either integers or strings.")
+
+            # check that string tuples are only used if player names are provided
+            if self.player_name_lookup is None and tuple_types == {str}:
+                raise TypeError("Player names have to be provided to evaluate string tuples.")
+
+            # convert strings to integers
             if tuple_types == {str}:
                 coalitions = tuple([self.player_name_lookup[name] for name in coalitions])
 
+            # convert tuple to one-hot encoding
             coalitions = transform_coalitions_to_array([coalitions], self.n_players)
             return coalitions
         elif isinstance(coalitions, np.ndarray):
@@ -232,6 +243,18 @@ class Game(ABC):
                     f"the number of players in the game ({self.n_players})."
                 )
             return coalitions
+        elif isinstance(coalitions, str):
+            if coalitions == "empty":
+                return self.empty_coalition.reshape((1, self.n_players))
+            elif coalitions == "grand":
+                return self.grand_coalition.reshape((1, self.n_players))
+            else:
+                if self.player_name_lookup is None:
+                    raise TypeError("Player names have to be provided to evaluate strings.")
+
+                tuple_coal = tuple([self.player_name_lookup[coalitions]])
+                return transform_coalitions_to_array([tuple_coal], self.n_players)
+
         else:
             raise TypeError("Coalitions have to be numpy arrays or lists of tuples or tuple.")
 
