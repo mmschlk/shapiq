@@ -9,6 +9,52 @@ from shapiq.games.benchmark import DummyGame  # used to test the base class
 from shapiq.utils.sets import powerset, transform_coalitions_to_array
 
 
+def test_call():
+    """This test tests the call function of the base game class."""
+    n_players = 6
+    dummy_game = DummyGame(n=n_players)
+
+    # test missing coalition in call
+    with pytest.raises(ValueError):
+        assert dummy_game([]) == 0.0  # ValueError due to empty list
+    with pytest.raises(ValueError):
+        assert dummy_game(np.array([]))  # ValueError due to empty array
+
+    # test mixed coalitions in call
+    with pytest.raises(TypeError):
+        assert dummy_game([(0, 1), "Alice", "Charlie"])
+
+    # test wrong coalition size in call
+    with pytest.raises(ValueError):
+        assert dummy_game(np.array([True, False, True])) == 0.0
+
+    # test wrong coalition size in shape[1]
+    with pytest.raises(TypeError):
+        assert dummy_game(np.array([[True, False, True]])) == 0.0
+
+    # test wrong datatype in coalition call
+    with pytest.raises(TypeError):
+        assert dummy_game({0, 1, 2}) == 0.0
+
+    # test with empty coalition all call variants
+    test_coalition = dummy_game.empty_coalition
+    assert dummy_game(test_coalition) == 0.0
+    assert dummy_game(()) == 0.0
+    assert dummy_game([()]) == 0.0
+
+    # test with grand coalition all call variants
+    test_coalition = dummy_game.grand_coalition
+    assert dummy_game(test_coalition) == 1.0
+    assert dummy_game(tuple(range(0, dummy_game.n_players))) == 1.0
+    assert dummy_game([tuple(range(0, dummy_game.n_players))]) == 1.0
+
+    # test with single player coalition all call variants
+    test_coalition = np.array([True] + [False for _ in range(dummy_game.n_players - 1)])
+    assert dummy_game(test_coalition) - 1 / 6 < 10e-7
+    assert dummy_game((0,)) - 1 / 6 < 10e-7
+    assert dummy_game([tuple([0])]) - 1 / 6 < 10e-7
+
+
 def test_precompute():
     """This test tests the precompute function of the base game class"""
     n_players = 6

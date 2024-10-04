@@ -157,7 +157,52 @@ class Game(ABC):
         """Checks if the game is normalized/centered."""
         return self(self.empty_coalition) == 0
 
-    def __call__(self, coalitions: np.ndarray, verbose: bool = False) -> np.ndarray:
+    def _check_coalitions(
+        self, coalitions: np.ndarray | list[tuple[int]] | tuple[int]
+    ) -> np.ndarray:
+        """
+        Check if the coalitions are in the correct format and convert them to the correct format.
+        Args:
+            coalitions: The coalitions to evaluate.
+        Returns:
+            np.ndarray: The coalitions in the correct format
+        Raises:
+            TypeError: If the coalitions are not in the correct format.
+
+        """
+        if isinstance(coalitions, list):
+            if len(coalitions) == 0:
+                raise ValueError("The list of coalitions is empty.")
+            if not all(isinstance(coal, tuple) for coal in coalitions):
+                raise TypeError("Coalitions have to be numpy arrays or lists of tuples or tuple.")
+            # convert list of tuples to one-hot encoding
+            coalitions = transform_coalitions_to_array(coalitions, self.n_players)
+            return coalitions
+        elif isinstance(coalitions, tuple):
+            coalitions = transform_coalitions_to_array([coalitions], self.n_players)
+            return coalitions
+        elif isinstance(coalitions, np.ndarray):
+            if len(coalitions) == 0:
+                raise ValueError("The array of coalitions is empty.")
+            if coalitions.ndim == 1:
+                if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
+                    raise ValueError(
+                        "The array of coalitions is not correctly formatted."
+                        f"It should have a length of {self.n_players}"
+                    )
+                coalitions = coalitions.reshape((1, self.n_players))
+            if coalitions.shape[1] != self.n_players:
+                raise TypeError(
+                    f"The number of players in the coalitions ({coalitions.shape[1]}) does not match "
+                    f"the number of players in the game ({self.n_players})."
+                )
+            return coalitions
+        else:
+            raise TypeError("Coalitions have to be numpy arrays or lists of tuples or tuple.")
+
+    def __call__(
+        self, coalitions: np.ndarray | list[tuple[int]] | tuple[int], verbose: bool = False
+    ) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
         value function.
 
@@ -168,9 +213,8 @@ class Game(ABC):
         Returns:
             The values of the coalitions.
         """
-        # check if coalitions are correct dimensions
-        if coalitions.ndim == 1:
-            coalitions = coalitions.reshape((1, self.n_players))
+        # check if coalitions are correct format
+        coalitions = self._check_coalitions(coalitions)
 
         verbose = verbose or self.verbose
 
