@@ -15,9 +15,9 @@ from shapiq.interaction_values import InteractionValues
 
 
 def stacked_bar_plot(
-    n_shapley_interaction_values: InteractionValues,
+    interaction_values: InteractionValues,
     feature_names: Optional[list[Any]] = None,
-    n_sii_max_order: Optional[int] = None,
+    max_order: Optional[int] = None,
     title: Optional[str] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
@@ -36,10 +36,10 @@ def stacked_bar_plot(
         :align: center
 
     Args:
-        n_shapley_interaction_values(InteractionValues): n-SII values as InteractionValues object
+        interaction_values(InteractionValues): n-SII values as InteractionValues object
         feature_names: The feature names used for plotting. If no feature names are provided, the
             feature indices are used instead. Defaults to ``None``.
-        n_sii_max_order (int): The order of the n-SII values.
+        max_order (int): The order of the n-SII values.
         title (str): The title of the plot.
         xlabel (str): The label of the x-axis.
         ylabel (str): The label of the y-axis.
@@ -64,32 +64,32 @@ def stacked_bar_plot(
         ... )
         >>> feature_names = ["a", "b", "c"]
         >>> fig, axes = stacked_bar_plot(
-        ...     n_shapley_interaction_values=interaction_values,
+        ...     interaction_values=interaction_values,
         ...     feature_names=feature_names,
         ... )
         >>> plt.show()
     """
     # sanitize inputs
-    if n_sii_max_order is None:
-        n_sii_max_order = n_shapley_interaction_values.max_order
+    if max_order is None:
+        max_order = interaction_values.max_order
 
     fig, axis = plt.subplots()
 
     # transform data to make plotting easier
     values_pos = np.array(
         [
-            n_shapley_interaction_values.get_n_order_values(order)
+            interaction_values.get_n_order_values(order)
             .clip(min=0)
             .sum(axis=tuple(range(1, order)))
-            for order in range(1, n_sii_max_order + 1)
+            for order in range(1, max_order + 1)
         ]
     )
     values_neg = np.array(
         [
-            n_shapley_interaction_values.get_n_order_values(order)
+            interaction_values.get_n_order_values(order)
             .clip(max=0)
             .sum(axis=tuple(range(1, order)))
-            for order in range(1, n_sii_max_order + 1)
+            for order in range(1, max_order + 1)
         ]
     )
     # get the number of features and the feature names
@@ -118,11 +118,11 @@ def stacked_bar_plot(
 
     # add a legend to the plots
     legend_elements = []
-    for order in range(n_sii_max_order):
+    for order in range(max_order):
         legend_elements.append(
             Patch(facecolor=COLORS_K_SII[order], edgecolor="black", label=f"Order {order + 1}")
         )
-    axis.legend(handles=legend_elements, loc="upper center", ncol=min(n_sii_max_order, 4))
+    axis.legend(handles=legend_elements, loc="upper center", ncol=min(max_order, 4))
 
     x_ticks_labels = [feature for feature in feature_names]  # might be unnecessary
     axis.set_xticks(x)
@@ -137,7 +137,7 @@ def stacked_bar_plot(
     # set title and labels if not provided
 
     (
-        axis.set_title(f"n-SII values up to order ${n_sii_max_order}$")
+        axis.set_title(f"n-SII values up to order ${max_order}$")
         if title is None
         else axis.set_title(title)
     )
