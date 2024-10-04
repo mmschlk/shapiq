@@ -94,6 +94,7 @@ class Game(ABC):
         normalization_value: Optional[float] = None,
         path_to_values: Optional[str] = None,
         verbose: bool = False,
+        player_names: Optional[list[str]] = None,
         *args,
         **kwargs,
     ) -> None:
@@ -135,6 +136,11 @@ class Game(ABC):
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)
         self.grand_coalition = np.ones(self.n_players, dtype=bool)
 
+        # define player_names
+        self.player_name_lookup = (
+            {name: i for i, name in enumerate(player_names)} if player_names is not None else None
+        )
+
         self.verbose = verbose
 
     @property
@@ -157,11 +163,16 @@ class Game(ABC):
         """Checks if the game is normalized/centered."""
         return self(self.empty_coalition) == 0
 
+    @property
+    def player_names(self) -> dict[int, str]:
+        """Return the player names as lookup table."""
+        return self.player_name_lookup
+
     def _check_coalitions(
-        self, coalitions: np.ndarray | list[tuple[int]] | tuple[int]
+        self, coalitions: np.ndarray | list[tuple[int] | tuple[str]] | tuple[int | str] | str
     ) -> np.ndarray:
         """
-        Check if the coalitions are in the correct format and convert them to the correct format.
+        Check if the coalitions are in the correct format and convert them to one-hot encoding.
         Args:
             coalitions: The coalitions to evaluate.
         Returns:
@@ -171,14 +182,38 @@ class Game(ABC):
 
         """
         if isinstance(coalitions, list):
+            # Check that list is not empty and that all elements are tuples
             if len(coalitions) == 0:
                 raise ValueError("The list of coalitions is empty.")
             if not all(isinstance(coal, tuple) for coal in coalitions):
-                raise TypeError("Coalitions have to be numpy arrays or lists of tuples or tuple.")
+                raise TypeError("List of coalitions has to be a list of tuples.")
+
+            # Check that tuple have consistent types
+            tuple_types = [set(map(type, coal)) for coal in coalitions]
+            if len(tuple_types) > 1:
+                raise TypeError("Elements of tuple must have the same type.")
+            if tuple_types[0] not in [set(), {int}, {str}]:
+                raise TypeError("Tuples must contain either integers or strings.")
+
+            # convert strings in tuples to integers
+            if tuple_types[0] == {str}:
+                coalitions = [
+                    tuple([self.player_name_lookup[name] for name in coal]) for coal in coalitions
+                ]
+
             # convert list of tuples to one-hot encoding
             coalitions = transform_coalitions_to_array(coalitions, self.n_players)
             return coalitions
         elif isinstance(coalitions, tuple):
+            # Check that tuple has consistent types
+            tuple_types = set(type(player) for player in coalitions)
+            if len(tuple_types) > 1:
+                raise TypeError("Elements of tuple must have the same type.")
+            if tuple_types not in [set(), {int}, {str}]:
+                raise TypeError("Tuple must contain either integers or strings.")
+            if tuple_types == {str}:
+                coalitions = tuple([self.player_name_lookup[name] for name in coalitions])
+
             coalitions = transform_coalitions_to_array([coalitions], self.n_players)
             return coalitions
         elif isinstance(coalitions, np.ndarray):
