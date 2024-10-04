@@ -20,7 +20,7 @@ def test_stacked_bar_plot():
     )
     feature_names = ["a", "b", "c"]
     fig, axes = stacked_bar_plot(
-        n_shapley_interaction_values=interaction_values,
+        interaction_values=interaction_values,
         feature_names=feature_names,
     )
     assert isinstance(fig, plt.Figure)
@@ -28,9 +28,9 @@ def test_stacked_bar_plot():
     plt.close()
 
     fig, axes = stacked_bar_plot(
-        n_shapley_interaction_values=interaction_values,
+        interaction_values=interaction_values,
         feature_names=feature_names,
-        n_sii_max_order=2,
+        max_order=2,
         title="Title",
         xlabel="X",
         ylabel="Y",
@@ -40,9 +40,9 @@ def test_stacked_bar_plot():
     plt.close()
 
     fig, axes = stacked_bar_plot(
-        n_shapley_interaction_values=interaction_values,
+        interaction_values=interaction_values,
         feature_names=None,
-        n_sii_max_order=2,
+        max_order=2,
         title="Title",
         xlabel="X",
         ylabel="Y",
