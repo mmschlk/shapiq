@@ -99,7 +99,7 @@ If you use the `shapiq` package, please cite our [NeurIPS paper](https://arxiv.o
 ```html
 @inproceedings{muschalik2024shapiq,
   title     = {shapiq: Shapley Interactions for Machine Learning},
-  author    = {Maximilian Muschalik and Hubert Baniecki and Fabian Fumagalli and 
+  author    = {Maximilian Muschalik and Hubert Baniecki and Fabian Fumagalli and
                Patrick Kolpaczki and Barbara Hammer and Eyke H\"{u}llermeier},
   booktitle = {NeurIPS},
   year      = {2024}
