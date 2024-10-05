@@ -4,7 +4,7 @@ import os
 import pickle
 import warnings
 from abc import ABC
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -137,7 +137,7 @@ class Game(ABC):
         self.grand_coalition = np.ones(self.n_players, dtype=bool)
 
         # define player_names
-        self.player_name_lookup = (
+        self.player_name_lookup: dict[str, int] = (
             {name: i for i, name in enumerate(player_names)} if player_names is not None else None
         )
 
@@ -164,7 +164,10 @@ class Game(ABC):
         return self(self.empty_coalition) == 0
 
     def _check_coalitions(
-        self, coalitions: np.ndarray | list[tuple[int] | tuple[str]] | tuple[int | str] | str
+        self,
+        coalitions: Union[
+            np.ndarray, list[Union[tuple[int], tuple[str]]], tuple[Union[int, str]], str
+        ],
     ) -> np.ndarray:
         """
         Check if the coalitions are in the correct format and convert them to one-hot encoding.
@@ -254,7 +257,11 @@ class Game(ABC):
             raise TypeError("Coalitions have to be numpy arrays or lists of tuples or tuple.")
 
     def __call__(
-        self, coalitions: np.ndarray | list[tuple[int]] | tuple[int], verbose: bool = False
+        self,
+        coalitions: Union[
+            np.ndarray, list[Union[tuple[int], tuple[str]]], tuple[Union[int, str]], str
+        ],
+        verbose: bool = False,
     ) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
         value function.
