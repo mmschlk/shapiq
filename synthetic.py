@@ -10,6 +10,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, PolynomialFeatures
 
 from explanation_game import LocalExplanationGame, MultiDataExplanationGame, loss_mse
+from shapiq import ExactComputer, Game
 
 
 # Function to generate the multivariate normal data
@@ -106,7 +107,7 @@ if __name__ == "__main__":
 
         # pre-compute the game values
         local_game.precompute()
-        local_game.save_values(os.path.join(game_storage_path, f"local_game_rho_{rho}.json"))
+        local_game.save_values(os.path.join(game_storage_path, f"local_game_rho_{rho}.npz"))
 
         # make a global explanation game
         global_game = MultiDataExplanationGame(
@@ -125,7 +126,7 @@ if __name__ == "__main__":
 
         # pre-compute the game values
         global_game.precompute()
-        global_game.save_values(os.path.join(game_storage_path, f"global_game_rho_{rho}.json"))
+        global_game.save_values(os.path.join(game_storage_path, f"global_game_rho_{rho}.npz"))
 
         # make a sensitivity game
         sensitivity_game = MultiDataExplanationGame(
@@ -145,5 +146,21 @@ if __name__ == "__main__":
         # pre-compute the game values
         sensitivity_game.precompute()
         sensitivity_game.save_values(
-            os.path.join(game_storage_path, f"sensitivity_game_rho_{rho}.json")
+            os.path.join(game_storage_path, f"sensitivity_game_rho_{rho}.npz")
         )
+
+    # compute möbius values for each game
+    for file in os.listdir(game_storage_path):
+        if not file.endswith(".npz"):
+            continue
+
+        game = Game(path_to_values=os.path.join(game_storage_path, file))
+        if game.n_players > 10:
+            print(f"Skipping {file} due to high number of players")
+            continue
+
+        computer = ExactComputer(game_fun=game, n_players=game.n_players)
+        mi_values = computer(index="Moebius", order=game.n_players)
+
+        print(f"Moebius values for {file}:")
+        print(mi_values)
