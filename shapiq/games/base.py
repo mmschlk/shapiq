@@ -134,6 +134,8 @@ class Game(ABC):
         # define some handy coalition variables
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)
         self.grand_coalition = np.ones(self.n_players, dtype=bool)
+        self._empty_coalition_value: Optional[float] = None
+        self._grand_coalition_value: Optional[float] = None
 
         self.verbose = verbose
 
@@ -404,3 +406,17 @@ class Game(ABC):
                 break
             parent = parent.__base__
         return "_".join(class_names)
+
+    @property
+    def empty_coalition_value(self) -> float:
+        """Return the value of the empty coalition."""
+        if self._empty_coalition_value is None:
+            self._empty_coalition_value = float(self(self.empty_coalition))
+        return self._empty_coalition_value
+
+    @property
+    def grand_coalition_value(self) -> float:
+        """Return the value of the grand coalition."""
+        if self._grand_coalition_value is None:
+            self._grand_coalition_value = float(self(self.grand_coalition))
+        return self._grand_coalition_value

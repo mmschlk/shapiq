@@ -10,24 +10,19 @@ from shapiq.games.imputer import ConditionalImputer, MarginalImputer
 
 def loss_mse(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]) -> float:
     """Mean squared error loss function."""
-    return np.mean((y_true - y_pred) ** 2)
+    return float(np.mean((y_true - y_pred) ** 2))
 
 
 def loss_mae(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]) -> float:
     """Mean absolute error loss function."""
-    return np.mean(np.abs(y_true - y_pred))
+    return float(np.mean(np.abs(y_true - y_pred)))
 
 
 def loss_r2(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]) -> float:
     """R2 score loss function."""
     ss_res = np.sum((y_true - y_pred) ** 2)
     ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
-    return 1 - ss_res / ss_tot
-
-
-def loss_cross_entropy(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]) -> float:
-    """Cross entropy loss function."""
-    return -np.sum(y_true * np.log(y_pred))
+    return float(1 - ss_res / ss_tot)
 
 
 class LocalExplanationGame(Game):
@@ -47,7 +42,6 @@ class LocalExplanationGame(Game):
         x_explain: The data point to explain as a 1-dimensional array with shape `(n_features,)`.
         y_explain: An optional target value for the data point to explain. A target value is only
             required if a loss function is provided. Defaults to `None`.
-        loss_function: The loss function to evaluate the model's prediction. Defaults to `None`.
         sample_size: The number of samples to use for integration in the fanova. Defaults to 100.
         random_seed: The random state to use for sampling. Defaults to `None`.
         normalize: Whether to normalize the game values. Defaults to `False`.
@@ -63,7 +57,6 @@ class LocalExplanationGame(Game):
         x_explain: np.ndarray,
         y_explain: Optional[np.ndarray] = None,
         fanova: str = "m",
-        loss_function: Optional[Callable] = None,
         sample_size: int = 100,
         random_seed: Optional[int] = None,
         normalize: bool = False,
@@ -108,10 +101,7 @@ class LocalExplanationGame(Game):
             raise ValueError(f"Invalid fanova value: {fanova}. Available: 'b', 'm', 'c'.")
         self.imputer = imputer
 
-        self.loss_function = loss_function
         empty_prediction = self.imputer.empty_prediction
-        if self.loss_function is not None:
-            empty_prediction = loss_function(empty_prediction, y_explain)
 
         n_players = x_data.shape[1]
         self.y_explain = y_explain
@@ -139,9 +129,7 @@ class LocalExplanationGame(Game):
             The model's prediction (or loss) on the given coalitions as a 1-dimensional
             array with shape `(n_samples,)`.
         """
-        outputs = self.imputer.value_function(coalitions)
-        if self.loss_function is not None:
-            return self.loss_function(outputs, self.y_explain)
+        outputs = self.imputer(coalitions)
         return outputs
 
 
@@ -177,9 +165,11 @@ class MultiDataExplanationGame(Game):
 
     def __init__(
         self,
-        model: Any,
-        x_data: np.ndarray,
-        y_data: np.ndarray,
+        local_games: Optional[list[Game]] = None,
+        y_targets: Optional[np.ndarray] = None,
+        model: Optional[Any] = None,
+        x_data: Optional[np.ndarray] = None,
+        y_data: Optional[np.ndarray] = None,
         sensitivity_game: bool = False,
         fanova: str = "m",
         loss_function: Optional[Callable] = None,
@@ -204,27 +194,39 @@ class MultiDataExplanationGame(Game):
         self.y = y_data
 
         # get local games
-        self.local_games = []
-        n_samples = min(n_samples, x_data.shape[0])
-        idx = self._rng.choice(x_data.shape[0], n_samples, replace=False)
-        for i in idx:
-            local_game = LocalExplanationGame(
-                fanova=fanova,
-                model=model,
-                x_data=x_data,
-                x_explain=x_data[i],
-                y_explain=y_data[i],
-                loss_function=loss_function,
-                sample_size=sample_size,
-                random_seed=random_seed,
-                normalize=False,
-            )
-            self.local_games.append(local_game)
+        self.local_games = local_games
+        self.y_targets = y_targets
+        if local_games is None:
+            self.local_games = []
+            self.y_targets = np.zeros(n_samples)
+            n_samples = min(n_samples, x_data.shape[0])
+            idx = self._rng.choice(x_data.shape[0], n_samples, replace=False)
+            for i in idx:
+                local_game = LocalExplanationGame(
+                    fanova=fanova,
+                    model=model,
+                    x_data=x_data,
+                    x_explain=x_data[i],
+                    y_explain=y_data[i],
+                    sample_size=sample_size,
+                    random_seed=random_seed,
+                    normalize=False,
+                )
+                self.local_games.append(local_game)
+                self.y_targets[i] = y_data[i]
+        n_players = local_games[0].n_players
 
-        n_players = x_data.shape[1]
-        empty_prediction = np.mean(y_data)
-        if self.loss_function is not None:
-            empty_prediction = loss_function(empty_prediction, y_data)
+        if sensitivity_game:
+            empty_predictions = [game.empty_coalition_value for game in self.local_games]
+            empty_prediction = float(np.var(empty_predictions))
+        else:
+            # empty_predictions = [game.grand_coalition_value for game in self.local_games]
+            empty_predictions = [game.empty_coalition_value for game in self.local_games]
+            empty_losses = [
+                loss_function(y_target, empty_prediction)
+                for y_target, empty_prediction in zip(self.y_targets, empty_predictions)
+            ]
+            empty_prediction = float(np.mean(empty_losses))
 
         super().__init__(
             n_players=n_players,
@@ -248,8 +250,11 @@ class MultiDataExplanationGame(Game):
             `(n_samples,)`.
         """
         outputs = np.zeros(coalitions.shape[0])
-        for game in self.local_games:
-            outputs += game.value_function(coalitions)
+        for i, game in enumerate(self.local_games):
+            marginal_predictions = game(coalitions)
+            y_target = np.full(marginal_predictions.shape, self.y_targets[i])
+            loss = self.loss_function(marginal_predictions, y_target)
+            outputs += loss
         outputs /= len(self.local_games)
         return outputs
 
@@ -268,7 +273,7 @@ class MultiDataExplanationGame(Game):
         """
         outputs = np.zeros((len(self.local_games), coalitions.shape[0]))
         for i, game in enumerate(self.local_games):
-            outputs[i] = game.value_function(coalitions)
+            outputs[i] = game(coalitions)
         outputs = np.var(outputs, axis=0)
         return outputs
 
