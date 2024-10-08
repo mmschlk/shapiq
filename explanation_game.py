@@ -31,18 +31,42 @@ def loss_cross_entropy(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarra
 
 
 class LocalExplanationGame(Game):
+    """Local Explanation Game.
+
+    The local explanation game is defined as the model's prediction on the given coalition.
+    Optionally, a loss function can be provided to evaluate the model's prediction.
+
+    Args:
+        fanova: The type of functional ANOVA to apply for accounting for the feature distribution.
+            Defaults to 'm'. Available options are 'b' for baseline, 'm' for marginal, and 'c' for
+            conditional.
+        model: The model to explain as a callable function expecting data points as input and
+            returning the model's predictions.
+        x_data: The background data to use for the explainer as a 2-dimensional array with shape
+            `(n_samples, n_features)`.
+        x_explain: The data point to explain as a 1-dimensional array with shape `(n_features,)`.
+        y_explain: An optional target value for the data point to explain. A target value is only
+            required if a loss function is provided. Defaults to `None`.
+        loss_function: The loss function to evaluate the model's prediction. Defaults to `None`.
+        sample_size: The number of samples to use for integration in the fanova. Defaults to 100.
+        random_seed: The random state to use for sampling. Defaults to `None`.
+        normalize: Whether to normalize the game values. Defaults to `False`.
+
+    Raises:
+        ValueError: If an invalid fanova value is provided.
+    """
 
     def __init__(
         self,
-        fanova: str,
         model: Any,
         x_data: np.ndarray,
         x_explain: np.ndarray,
-        y_explain: Optional[np.ndarray],
+        y_explain: Optional[np.ndarray] = None,
+        fanova: str = "m",
         loss_function: Optional[Callable] = None,
         sample_size: int = 100,
         random_seed: Optional[int] = None,
-        normalize: bool = True,
+        normalize: bool = False,
         *args,
         **kwargs,
     ) -> None:
@@ -102,7 +126,19 @@ class LocalExplanationGame(Game):
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """Evaluate the model and imputer on the given coalitions."""
+        """Evaluate the model and imputer on the given coalitions.
+
+        The value function is the model's prediction (or loss) on the given coalition. Features
+        not in the coalition are imputed using the selected imputer to approximate the fanova.
+
+        Args:
+            coalitions: The coalitions to evaluate as a 2-dimensional array with shape
+                `(n_samples, n_features)`.
+
+        Returns:
+            The model's prediction (or loss) on the given coalitions as a 1-dimensional
+            array with shape `(n_samples,)`.
+        """
         outputs = self.imputer.value_function(coalitions)
         if self.loss_function is not None:
             return self.loss_function(outputs, self.y_explain)
@@ -112,24 +148,45 @@ class LocalExplanationGame(Game):
 class MultiDataExplanationGame(Game):
     """Global and Sensitivity Explanation games.
 
+    This class defines the global and sensitivity explanation games. The global explanation game
+    is defined as the average of the local explanation games. The sensitivity explanation game is
+    defined as the variance of the local explanation games.
 
-    The global explanation games is defined as the average over local explanation games. The
-    sensitivity explanation game is defined as the variance over local explanation games.
+    Args:
+        model: The model to explain as a callable function expecting a data points as input and
+            returning the model's predictions.
+        x_data: The background data to use for the explainer as a 2-dimensional array with shape
+            `(n_samples, n_features)`.
+        y_data: The target values for the background data as a 1-dimensional array with shape
+            `(n_samples,)`.
+        sensitivity_game: Whether to select the sensitivity explanation game (variance) or the
+            global explanation game (average). Defaults to `False` for the global explanation game.
+        fanova: The type of functional ANOVA to apply for accounting for the feature distribution.
+            Defaults to 'm'. Available options are 'b' for baseline, 'm' for marginal, and 'c' for
+            conditional.
+        loss_function: The loss function to evaluate the model's prediction. Required if the
+            sensitivity game is `False`.
+        sample_size: The number of samples to use for integration in the fanova. Defaults to 100.
+        n_samples: The number of samples to use for the local explanation games. Defaults to 100.
+        random_seed: The random state to use for sampling. Defaults to `None`.
+        normalize: Whether to normalize the game values. Defaults to `False`.
 
+    Raises:
+        ValueError: If a loss function is not provided for the global explanation game.
     """
 
     def __init__(
         self,
-        fanova: str,
         model: Any,
-        X: np.ndarray,
-        y: np.ndarray,
+        x_data: np.ndarray,
+        y_data: np.ndarray,
+        sensitivity_game: bool = False,
+        fanova: str = "m",
         loss_function: Optional[Callable] = None,
         sample_size: int = 100,
         n_samples: int = 100,
         random_seed: Optional[int] = None,
-        normalize: bool = True,
-        sensitivity_game: bool = False,
+        normalize: bool = False,
         *args,
         **kwargs,
     ) -> None:
@@ -143,20 +200,20 @@ class MultiDataExplanationGame(Game):
         self.sample_size = sample_size
         self.random_seed = random_seed
         self.loss_function = loss_function
-        self.X = X
-        self.y = y
+        self.X = x_data
+        self.y = y_data
 
         # get local games
         self.local_games = []
-        n_samples = min(n_samples, X.shape[0])
-        idx = self._rng.choice(X.shape[0], n_samples, replace=False)
+        n_samples = min(n_samples, x_data.shape[0])
+        idx = self._rng.choice(x_data.shape[0], n_samples, replace=False)
         for i in idx:
             local_game = LocalExplanationGame(
                 fanova=fanova,
                 model=model,
-                x_data=X,
-                x_explain=X[i],
-                y_explain=y[i],
+                x_data=x_data,
+                x_explain=x_data[i],
+                y_explain=y_data[i],
                 loss_function=loss_function,
                 sample_size=sample_size,
                 random_seed=random_seed,
@@ -164,10 +221,10 @@ class MultiDataExplanationGame(Game):
             )
             self.local_games.append(local_game)
 
-        n_players = X.shape[1]
-        empty_prediction = np.mean(y)
+        n_players = x_data.shape[1]
+        empty_prediction = np.mean(y_data)
         if self.loss_function is not None:
-            empty_prediction = loss_function(empty_prediction, y)
+            empty_prediction = loss_function(empty_prediction, y_data)
 
         super().__init__(
             n_players=n_players,
@@ -178,7 +235,18 @@ class MultiDataExplanationGame(Game):
         )
 
     def global_value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """Evaluate the model and imputer on the given coalitions."""
+        """Evaluate the model and imputer on the global explanation game.
+
+        The global explanation game is defined as the average of the local explanation games.
+
+        Args:
+            coalitions: The coalitions to evaluate as a 2-dimensional array with shape
+                `(n_samples, n_features)`.
+
+        Returns:
+            The average of the local explanation games as a 1-dimensional array with shape
+            `(n_samples,)`.
+        """
         outputs = np.zeros(coalitions.shape[0])
         for game in self.local_games:
             outputs += game.value_function(coalitions)
@@ -186,7 +254,18 @@ class MultiDataExplanationGame(Game):
         return outputs
 
     def sensitivity_value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """Evaluate the model and imputer on the given coalitions."""
+        """Evaluate the model and imputer on the sensitivity explanation game.
+
+        The sensitivity explanation game is defined as the variance of the local explanation games.
+
+        Args:
+            coalitions: The coalitions to evaluate as a 2-dimensional array with shape
+                `(n_samples, n_features)`.
+
+        Returns:
+            The variance of the local explanation games as a 1-dimensional array with shape
+            `(n_samples,)`.
+        """
         outputs = np.zeros((len(self.local_games), coalitions.shape[0]))
         for i, game in enumerate(self.local_games):
             outputs[i] = game.value_function(coalitions)
