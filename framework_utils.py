@@ -17,6 +17,91 @@ from xgboost import XGBRegressor
 from shapiq import Game
 from shapiq.datasets import load_california_housing
 
+COVARIANCE_DIAG = 0.1
+
+
+class SynthConditionalSampler:
+
+    def __init__(
+        self, sample_size: int = 128, rho: float = 0.0, random_seed: int = 42, n_features: int = 4
+    ):
+        self.sample_size = sample_size
+        self.n_features = n_features
+        self.rho = rho
+        self.random_seed = random_seed
+        self.mu = np.zeros(n_features)
+        self.sigma = np.full((n_features, n_features), rho)
+        np.fill_diagonal(self.sigma, COVARIANCE_DIAG)
+
+    def __call__(self, coalitions: np.ndarray[bool], x_to_impute: np.ndarray) -> np.ndarray:
+        """Evaluate the conditional distribution for the given coalitions.
+
+        Args:
+            coalitions: A boolean array indicating which features are present (``True``) and which
+                are missing (``False``). The shape of the array must be ``(n_subsets, n_features)``.
+        """
+        # check if the coalitions are 2 dimensional
+        if coalitions.ndim != 2:
+            coalitions = coalitions.reshape(1, -1)
+        n_coalitions = coalitions.shape[0]
+        replacement_data = np.zeros((self.sample_size, n_coalitions, self.n_features))
+        for i in range(n_coalitions):
+            coalition = coalitions[i]
+            if sum(coalition) == 0:
+                # sample from the original distribution
+                rng = np.random.default_rng(self.random_seed)
+                replacement_data[:, i] = rng.multivariate_normal(
+                    self.mu, self.sigma, size=self.sample_size
+                )
+                continue
+            if sum(coalition) == self.n_features:
+                # all features are present
+                replacement_data[:, i] = np.tile(x_to_impute, (self.sample_size, 1))
+                continue
+            conditioned_values = {idx: val for idx, val in enumerate(x_to_impute) if coalition[idx]}
+            values = self.sample(conditioned_values, self.sample_size)
+            replacement_data[:, i, ~coalition] = values
+        return replacement_data
+
+    def sample(self, conditioned_values: dict[int:float], n_samples: int) -> np.ndarray:
+        """Sample from the conditional distribution.
+
+        Args:
+            conditioned_values: The conditioned values in a dictionary.
+            n_samples: The number of samples to draw.
+
+        Returns:
+            The samples drawn from the conditional distribution.
+        """
+
+        # set the random seed
+        rng = np.random.default_rng(self.random_seed)
+
+        # get the indices of the conditioned and free variables
+        conditioned_idx = np.array(list(conditioned_values.keys()))
+        free_idx = np.array([i for i in range(self.n_features) if i not in conditioned_idx])
+
+        # Partition the mean vector
+        mu_A = self.mu[free_idx]  # mean of the free variables
+        mu_B = self.mu[conditioned_idx]  # mean of the conditioned variables
+
+        # Partition the covariance matrix
+        sigma_AA = self.sigma[np.ix_(free_idx, free_idx)]  # cov. of the free vars.
+        sigma_AB = self.sigma[np.ix_(free_idx, conditioned_idx)]  # cov.: free and cond. vars.
+        sigma_BB = self.sigma[np.ix_(conditioned_idx, conditioned_idx)]  # cov.: of cond. vars
+
+        # condition values (X_B = x_B_star)
+        x_B_star = np.array([conditioned_values[i] for i in conditioned_idx])
+
+        # compute conditional mean and covariance
+        sigma_BB_inv = np.linalg.inv(sigma_BB)  # inverse of the covariance of the conditioned vars
+        mu_conditional = mu_A + sigma_AB @ sigma_BB_inv @ (x_B_star - mu_B)
+        sigma_conditional = sigma_AA - sigma_AB @ sigma_BB_inv @ sigma_AB.T
+
+        # sample from the conditional distribution
+        samples = rng.multivariate_normal(mu_conditional, sigma_conditional, size=n_samples)
+        return samples
+
 
 # Function to generate the multivariate normal data
 def generate_data(num_samples: int, rho: float, random_seed: int = 42, load_data=True):
@@ -27,7 +112,7 @@ def generate_data(num_samples: int, rho: float, random_seed: int = 42, load_data
     rng = np.random.default_rng(random_seed)
     mu = np.zeros(4)
     sigma = np.full((4, 4), rho)
-    np.fill_diagonal(sigma, 1)
+    np.fill_diagonal(sigma, COVARIANCE_DIAG)
     X = rng.multivariate_normal(mu, sigma, size=num_samples)
     np.savez(os.path.join("game_storage", save_name), X=X)
     return X

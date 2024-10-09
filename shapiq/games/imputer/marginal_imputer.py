@@ -1,6 +1,6 @@
 """Implementation of the marginal imputer."""
 
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -49,6 +49,7 @@ class MarginalImputer(Imputer):
         normalize: bool = True,
         random_state: Optional[int] = None,
         joint_marginal_distribution: bool = True,  # TODO: changed from False
+        cond_sampler: Optional[Callable] = None,
     ) -> None:
         super().__init__(model, data, categorical_features, random_state)
 
@@ -62,6 +63,7 @@ class MarginalImputer(Imputer):
             self.fit(x)
 
         self.joint_marginal_distribution: bool = joint_marginal_distribution
+        self.replacement_sampler: Optional[Callable] = cond_sampler
 
         # set empty value and normalization
         self.empty_prediction: float = self._calc_empty_prediction()
@@ -83,7 +85,10 @@ class MarginalImputer(Imputer):
         data = np.tile(np.copy(self._x), (n_coalitions, 1))
         if self._sample_replacements:
             # sampling from background returning array of shape (sample_size, n_subsets, n_features)
-            replacement_data = self._sample_replacement_values(coalitions)
+            if self.replacement_sampler is not None:
+                replacement_data = self.replacement_sampler(coalitions, x_to_impute=self._x)
+            else:
+                replacement_data = self._sample_replacement_values(coalitions)
             outputs = np.zeros((self._sample_size, n_coalitions))
             for i in range(self._sample_size):
                 replacements = replacement_data[i].reshape(n_coalitions, self._n_features)
@@ -162,10 +167,11 @@ class MarginalImputer(Imputer):
                 replacement_data[:, :, feature] = sampled_feature_values
         else:
             for i in range(n_coalitions):
-                sampled_indices = self._rng.choice(
+                _rng = np.random.default_rng(self._random_state)
+                sampled_indices = _rng.choice(
                     self.replacement_data.shape[0],
                     size=self._sample_size,
-                    replace=False,
+                    replace=True,
                 )
                 replacement_data[:, i, :] = self.replacement_data[sampled_indices]
         return replacement_data

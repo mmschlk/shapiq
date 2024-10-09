@@ -75,12 +75,12 @@ if __name__ == "__main__":
     # params games
     model_name = "lin_reg"  # lin_reg, xgb_reg, rnf_reg
     n_instances = 1  # 100
-    random_seed = 40  # 42
+    random_seed = 42  # 42
     num_samples = 10_000  # 10_000
-    sample_size = 250  # 1_000
+    sample_size = 128  # 1_000
     interaction_datas = [False]  # False True
     rho_values = [0.0, 0.5, 0.9]  # 0.0, 0.5, 0.9
-    fanova_settings = ["b", "m"]  # b c m
+    fanova_settings = ["c"]  # b c m
     setting_params = list(product(interaction_datas, rho_values, fanova_settings))
 
     for interaction_data, rho_value, fanova_setting in setting_params:

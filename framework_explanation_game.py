@@ -5,7 +5,7 @@ from typing import Any, Callable, Optional, Union
 import numpy as np
 
 from shapiq import Game
-from shapiq.games.imputer import ConditionalImputer, MarginalImputer
+from shapiq.games.imputer import MarginalImputer
 
 
 def loss_mse(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]) -> float:
@@ -60,6 +60,7 @@ class LocalExplanationGame(Game):
         sample_size: int = 100,
         random_seed: Optional[int] = None,
         normalize: bool = False,
+        cond_sampler: Optional[Callable] = None,
         *args,
         **kwargs,
     ) -> None:
@@ -91,12 +92,17 @@ class LocalExplanationGame(Game):
                 joint_marginal_distribution=True,
             )
         elif self.fanova == "c":
-            imputer = ConditionalImputer(
+            assert cond_sampler is not None, "Conditional sampler must be provided for fanova 'c'."
+            imputer = MarginalImputer(
                 model=predict_function,
                 data=x_data,
                 x=x_explain,
+                sample_replacements=True,  # will be using marginal imputation with samples
                 random_state=random_seed,
                 normalize=False,
+                sample_size=sample_size,
+                joint_marginal_distribution=True,
+                cond_sampler=cond_sampler,
             )
         else:
             raise ValueError(f"Invalid fanova value: {fanova}. Available: 'b', 'm', 'c'.")

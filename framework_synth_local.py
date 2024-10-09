@@ -7,7 +7,12 @@ import numpy as np
 import tqdm
 
 from framework_explanation_game import LocalExplanationGame
-from framework_utils import get_save_name, get_storage_dir, get_synth_data_and_model
+from framework_utils import (
+    SynthConditionalSampler,
+    get_save_name,
+    get_storage_dir,
+    get_synth_data_and_model,
+)
 
 if __name__ == "__main__":
 
@@ -18,16 +23,16 @@ if __name__ == "__main__":
     RUN_IF_EXISTS = True
 
     # Experiment settings
-    RANDOM_SEED = 40
+    RANDOM_SEED = 42
     model_name = "lin_reg"
     num_samples = 10_000
     rho_values = [0.0, 0.5, 0.9]
     interaction_data = False
 
     # Explanation Settings
-    sample_size = 250
+    sample_size = 128
     n_instances = 1
-    fanova_settings = ["m", "b"]
+    fanova_settings = ["c"]
 
     # get the directory for saving
     game_storage_path = get_storage_dir(model_name)
@@ -64,6 +69,14 @@ if __name__ == "__main__":
                     if PBAR:
                         pbar.update(1)
                     continue
+                cond_sampler = None
+                if fanova == "c":
+                    cond_sampler = SynthConditionalSampler(
+                        n_features=x_data.shape[1],
+                        sample_size=sample_size,
+                        random_seed=RANDOM_SEED,
+                        rho=rho,
+                    )
                 local_game = LocalExplanationGame(
                     fanova=fanova,
                     model=model,
@@ -74,6 +87,7 @@ if __name__ == "__main__":
                     random_seed=RANDOM_SEED,
                     normalize=False,
                     verbose=VERBOSE_GAME,
+                    cond_sampler=cond_sampler,
                 )
                 print(f"Empty {fanova}", local_game(np.array([[False, False, False, False]])))
                 # pre-compute the game values
