@@ -27,12 +27,12 @@ if __name__ == "__main__":
     model_name = "lin_reg"
     num_samples = 10_000
     rho_values = [0.0, 0.5, 0.9]
-    interaction_data = False
+    interaction_data = True
 
     # Explanation Settings
-    sample_size = 128
+    sample_size = 512
     n_instances = 1
-    fanova_settings = ["c"]
+    fanova_settings = ["c", "b", "m"]
 
     # get the directory for saving
     game_storage_path = get_storage_dir(model_name)
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                     fanova=fanova,
                     model=model,
                     x_data=x_data,
-                    x_explain=x_data[instance_id],
+                    x_explain=np.array([1, 1, 1, 1]),
                     loss_function=None,
                     sample_size=sample_size,
                     random_seed=RANDOM_SEED,

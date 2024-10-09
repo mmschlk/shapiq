@@ -77,10 +77,10 @@ if __name__ == "__main__":
     n_instances = 1  # 100
     random_seed = 42  # 42
     num_samples = 10_000  # 10_000
-    sample_size = 128  # 1_000
-    interaction_datas = [False]  # False True
+    sample_size = 512  # 1_000
+    interaction_datas = [True, False]  # False True
     rho_values = [0.0, 0.5, 0.9]  # 0.0, 0.5, 0.9
-    fanova_settings = ["c"]  # b c m
+    fanova_settings = ["c", "b", "m"]  # b c m
     setting_params = list(product(interaction_datas, rho_values, fanova_settings))
 
     for interaction_data, rho_value, fanova_setting in setting_params:
@@ -127,7 +127,7 @@ if __name__ == "__main__":
                     _game_id=game_id,
                     _feature_influence=feature_influence,
                     _entity=entity,
-                    _x_explain=x_explain[game_id],
+                    _x_explain=np.array([1, 1, 1, 1]),
                     _y_explain=y_explain[game_id],
                 )
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
                     _game_id=game_id,
                     _feature_influence=feature_influence,
                     _entity=entity,
-                    _x_explain=x_explain[game_id],
+                    _x_explain=np.array([1, 1, 1, 1]),
                     _y_explain=y_explain[game_id],
                 )
 

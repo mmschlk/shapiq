@@ -1,5 +1,6 @@
 """This module contains utility functions for the synthetic experiments."""
 
+import copy
 import os
 from typing import Optional
 
@@ -17,7 +18,7 @@ from xgboost import XGBRegressor
 from shapiq import Game
 from shapiq.datasets import load_california_housing
 
-COVARIANCE_DIAG = 0.1
+COVARIANCE_DIAG = 1
 
 
 class SynthConditionalSampler:
@@ -82,16 +83,20 @@ class SynthConditionalSampler:
         free_idx = np.array([i for i in range(self.n_features) if i not in conditioned_idx])
 
         # Partition the mean vector
-        mu_A = self.mu[free_idx]  # mean of the free variables
-        mu_B = self.mu[conditioned_idx]  # mean of the conditioned variables
+        mu_A = copy.deepcopy(self.mu[free_idx])  # mean of the free variables
+        mu_B = copy.deepcopy(self.mu[conditioned_idx])  # mean of the conditioned variables
 
         # Partition the covariance matrix
-        sigma_AA = self.sigma[np.ix_(free_idx, free_idx)]  # cov. of the free vars.
-        sigma_AB = self.sigma[np.ix_(free_idx, conditioned_idx)]  # cov.: free and cond. vars.
-        sigma_BB = self.sigma[np.ix_(conditioned_idx, conditioned_idx)]  # cov.: of cond. vars
+        sigma_AA = copy.deepcopy(self.sigma[np.ix_(free_idx, free_idx)])  # cov. of the free vars.
+        sigma_AB = copy.deepcopy(
+            self.sigma[np.ix_(free_idx, conditioned_idx)]
+        )  # cov.: free and cond. vars.
+        sigma_BB = copy.deepcopy(
+            self.sigma[np.ix_(conditioned_idx, conditioned_idx)]
+        )  # cov.: of cond. vars
 
         # condition values (X_B = x_B_star)
-        x_B_star = np.array([conditioned_values[i] for i in conditioned_idx])
+        x_B_star = copy.deepcopy(np.array([conditioned_values[i] for i in conditioned_idx]))
 
         # compute conditional mean and covariance
         sigma_BB_inv = np.linalg.inv(sigma_BB)  # inverse of the covariance of the conditioned vars
