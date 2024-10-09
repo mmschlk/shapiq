@@ -77,7 +77,7 @@ if __name__ == "__main__":
     n_instances = 1  # 100
     random_seed = 40  # 42
     num_samples = 10_000  # 10_000
-    sample_size = 1_000  # 1_000
+    sample_size = 250  # 1_000
     interaction_datas = [False]  # False True
     rho_values = [0.0, 0.5, 0.9]  # 0.0, 0.5, 0.9
     fanova_settings = ["b", "m"]  # b c m
@@ -104,6 +104,7 @@ if __name__ == "__main__":
             n_instances=n_instances,
             random_seed=random_seed,
             num_samples=num_samples,
+            sample_size=sample_size,
         )
 
         pbar = tqdm.tqdm(total=len(explanation_params) * len(games) * 2)

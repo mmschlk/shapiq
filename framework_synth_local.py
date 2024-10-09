@@ -25,7 +25,7 @@ if __name__ == "__main__":
     interaction_data = False
 
     # Explanation Settings
-    sample_size = 1_000
+    sample_size = 250
     n_instances = 1
     fanova_settings = ["m", "b"]
 
