@@ -23,7 +23,7 @@ def _compute_pure(
     pure_value = moebius_values[feature_set]
     if not joint:
         return pure_value
-    for feature_subset in powerset(feature_set, max_size=len(feature_set) - 1):
+    for feature_subset in powerset(feature_set, max_size=len(feature_set) - 1, min_size=1):
         pure_value += moebius_values[feature_subset]
     return pure_value
 
@@ -48,7 +48,7 @@ def _compute_partial(
     partial_value = moebius_values[feature_set]
     feature_set = set(feature_set)
     for subset in powerset(player_set, min_size=1):
-        if not joint and feature_set.issubset(subset) and feature_set != subset:
+        if not joint and feature_set.issubset(subset) and feature_set != set(subset):
             weight = weights(len(subset), len(feature_set))
             partial_value += moebius_values[subset] * weight
         elif joint and feature_set.intersection(subset) not in [set(), feature_set]:
@@ -74,7 +74,7 @@ def _compute_full(
     full_value = moebius_values[feature_set]
     feature_set = set(feature_set)
     for subset in powerset(player_set, min_size=1):
-        if not joint and feature_set.issubset(subset) and feature_set != subset:
+        if not joint and feature_set.issubset(subset) and feature_set != set(subset):
             full_value += moebius_values[subset]
         elif joint and feature_set.intersection(subset) not in [set(), feature_set]:
             full_value += moebius_values[subset]
@@ -158,7 +158,8 @@ def compute_explanation(
             explanation[feature_set] = sv_values[feature_set]
     elif entity == "individual" and feature_influence == "full":
         for feature_set in feature_sets:
-            explanation[feature_set] = game.grand_coalition_value - game[feature_set]
+            complement_set = tuple(sorted(set(range(game.n_players)) - set(feature_set)))
+            explanation[feature_set] = game.grand_coalition_value - game[complement_set]
 
     # entity = joint
     elif entity == "joint" and feature_influence == "pure":
@@ -170,7 +171,8 @@ def compute_explanation(
             explanation[feature_set] = joint_sv_values[feature_set]
     elif entity == "joint" and feature_influence == "full":
         for feature_set in feature_sets:
-            explanation[feature_set] = game.grand_coalition_value - game[feature_set]
+            complement_set = tuple(sorted(set(range(game.n_players)) - set(feature_set)))
+            explanation[feature_set] = game.grand_coalition_value - game[complement_set]
 
     # entity = interaction
     elif entity == "interaction" and feature_influence == "pure":

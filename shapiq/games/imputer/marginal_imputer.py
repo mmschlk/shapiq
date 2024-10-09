@@ -48,6 +48,7 @@ class MarginalImputer(Imputer):
         categorical_features: list[int] = None,
         normalize: bool = True,
         random_state: Optional[int] = None,
+        joint_marginal_distribution: bool = True,  # TODO: changed from False
     ) -> None:
         super().__init__(model, data, categorical_features, random_state)
 
@@ -59,6 +60,8 @@ class MarginalImputer(Imputer):
         self._x: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten @ fit
         if x is not None:
             self.fit(x)
+
+        self.joint_marginal_distribution: bool = joint_marginal_distribution
 
         # set empty value and normalization
         self.empty_prediction: float = self._calc_empty_prediction()
@@ -149,13 +152,21 @@ class MarginalImputer(Imputer):
         replacement_data = np.zeros(
             (self._sample_size, n_coalitions, self._n_features), dtype=object
         )
-        for feature in range(self._n_features):
-            sampled_feature_values = self._rng.choice(
-                self.replacement_data[:, feature],
+        if not self.joint_marginal_distribution:
+            for feature in range(self._n_features):
+                sampled_feature_values = self._rng.choice(
+                    self.replacement_data[:, feature],
+                    size=(self._sample_size, n_coalitions),
+                    replace=True,
+                )
+                replacement_data[:, :, feature] = sampled_feature_values
+        else:
+            sampled_indices = self._rng.choice(
+                self.replacement_data.shape[0],
                 size=(self._sample_size, n_coalitions),
                 replace=True,
             )
-            replacement_data[:, :, feature] = sampled_feature_values
+            replacement_data = self.replacement_data[sampled_indices]
         return replacement_data
 
     def _calc_empty_prediction(self) -> float:

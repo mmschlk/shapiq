@@ -19,26 +19,35 @@ from shapiq.datasets import load_california_housing
 
 
 # Function to generate the multivariate normal data
-def generate_data(num_samples, rho, rng=np.random.default_rng()):
+def generate_data(num_samples: int, rho: float, random_seed: int = 42, load_data=True):
+    save_name = f"synthetic_data_{rho}_{num_samples}_{random_seed}.npz"
+    if load_data and os.path.exists(os.path.join("game_storage", save_name)):
+        data = np.load(os.path.join("game_storage", save_name))
+        return data["X"]
+    rng = np.random.default_rng(random_seed)
     mu = np.zeros(4)
     sigma = np.full((4, 4), rho)
     np.fill_diagonal(sigma, 1)
     X = rng.multivariate_normal(mu, sigma, size=num_samples)
+    np.savez(os.path.join("game_storage", save_name), X=X)
     return X
 
 
 # Linear main effect model
 def linear_function(X):
-    return 2 * X[:, 0] + 2 * X[:, 1]
+    return 2 * X[:, 0] + 2 * X[:, 1] + 2 * X[:, 2]
 
 
 # Interaction model
 def interaction_function(X):
-    return linear_function(X) + X[:, 1] * X[:, 2]
+    second_order_interaction = 1 * X[:, 0] * X[:, 1]
+    third_order_interaction = 1 * X[:, 0] * X[:, 1] * X[:, 2]
+    return linear_function(X) + second_order_interaction + third_order_interaction
 
 
 # Add Gaussian noise
-def add_noise(Y, noise_std=0.1, rng=np.random.default_rng()):
+def add_noise(Y, noise_std=0.1, random_seed: int = 42):
+    rng = np.random.default_rng(random_seed)
     noise = rng.normal(0, noise_std, Y.shape)
     return Y + noise
 
@@ -49,13 +58,13 @@ def make_df(X):
 
 
 def _select_interaction_features(X):
-    """Returns X_1, X_2 and X_1*X_3. Expects input of shape (n_samples, 10)"""
-    return X[:, [0, 1, 7]]
+    """Returns X_1, X_2 and X_1*X_3. Expects input of shape (n_samples, 14)"""
+    return X[:, [0, 1, 2, 4, 10]]
 
 
 def _select_linear_features(X):
-    """Returns X_1 and X_2. Expects input of shape (n_samples, 10)"""
-    return X[:, [0, 1]]
+    """Returns X_1 and X_2. Expects input of shape (n_samples, 4)"""
+    return X[:, [0, 1, 2]]
 
 
 def get_california_data_and_model(
@@ -97,12 +106,11 @@ def get_synth_data_and_model(
     random_seed: Optional[int] = None,
 ):
     # generate the data
-    rng = np.random.default_rng(random_seed)
-    x_data = generate_data(num_samples, rho, rng=rng)
+    x_data = generate_data(num_samples, rho, random_seed, load_data=True)
     if interaction_data:
-        y_data = add_noise(interaction_function(x_data), rng=rng)
+        y_data = add_noise(interaction_function(x_data), random_seed=random_seed)
     else:
-        y_data = add_noise(linear_function(x_data), rng=rng)
+        y_data = add_noise(linear_function(x_data), random_seed=random_seed)
 
     # get the model
     if model_name == "lin_reg":
@@ -111,7 +119,7 @@ def get_synth_data_and_model(
                 [
                     (
                         "poly",
-                        PolynomialFeatures(degree=2, interaction_only=True, include_bias=False),
+                        PolynomialFeatures(degree=3, interaction_only=True, include_bias=False),
                     ),
                     ("select", FunctionTransformer(_select_interaction_features)),
                     ("lin_reg", LinearRegression()),
@@ -130,9 +138,9 @@ def get_synth_data_and_model(
         model = MLPRegressor(random_state=random_seed)
     elif model_name == "xgb_reg":
         if interaction_data:
-            interaction_constraints_int = [["f1"], ["f2"], ["f2", "f3"]]
+            interaction_constraints_int = [["f1"], ["f2"], ["f3"], ["f1", "f2"], ["f1", "f2", "f3"]]
         else:
-            interaction_constraints_int = [["f1"], ["f2"]]
+            interaction_constraints_int = [["f1"], ["f2"], ["f3"]]
         model = XGBRegressor(interaction_constraints=interaction_constraints_int)
     else:
         raise ValueError(f"Unknown model name: {model_name}")
@@ -215,3 +223,10 @@ def load_local_games(
         game = Game(path_to_values=save_path)
         games.append(game)
     return games
+
+
+if __name__ == "__main__":
+    # generate the data
+    _ = generate_data(10_000, 0.0, random_seed=42)
+    _ = generate_data(10_000, 0.5, random_seed=42)
+    _ = generate_data(10_000, 0.0, random_seed=42)

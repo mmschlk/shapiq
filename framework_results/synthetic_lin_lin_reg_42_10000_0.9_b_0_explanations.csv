@@ -1,0 +1,13 @@
+game_id,feature_set,feature_influence,entity,explanation
+0,0,pure,individual,-0.07227993348315397
+0,1,pure,individual,-1.154866175769557
+0,2,pure,individual,-1.0323748598078295
+0,3,pure,individual,0.0
+0,0,partial,individual,-0.07227993348315409
+0,1,partial,individual,-1.1548661757695573
+0,2,partial,individual,-1.0323748598078295
+0,3,partial,individual,1.1102230246251565e-16
+0,0,full,individual,-0.07227993348315431
+0,1,full,individual,-1.1548661757695577
+0,2,full,individual,-1.03237485980783
+0,3,full,individual,0.0

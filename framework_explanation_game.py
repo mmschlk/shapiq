@@ -88,6 +88,7 @@ class LocalExplanationGame(Game):
                 random_state=random_seed,
                 normalize=False,
                 sample_size=sample_size,
+                joint_marginal_distribution=True,
             )
         elif self.fanova == "c":
             imputer = ConditionalImputer(
