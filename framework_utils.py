@@ -176,6 +176,7 @@ def get_save_name(
     num_samples: int,
     rho: float,
     fanova: str,
+    sample_size: int,
     instance_id: int,
     data_name: Optional[str] = None,
 ) -> str:
@@ -192,6 +193,7 @@ def get_save_name(
             str(num_samples),
             str(rho),
             fanova,
+            str(sample_size),
             str(instance_id),
         ]
     )
@@ -210,7 +212,8 @@ def load_local_games(
     fanova_setting: str,
     n_instances: int,
     random_seed: int = 42,
-    num_samples: int = 128,
+    num_samples: int = 10_000,
+    sample_size: int = 1_000,
 ) -> tuple[list[Game], list[np.ndarray], list[float]]:
     """Loads a list of local games from disk."""
     game_storage_path = get_storage_dir(model_name)
@@ -222,7 +225,14 @@ def load_local_games(
         y_data = add_noise(linear_function(x_data), random_seed=random_seed)
     for idx in range(n_instances):
         name = get_save_name(
-            interaction_data, model_name, random_seed, num_samples, rho_value, fanova_setting, idx
+            interaction_data,
+            model_name,
+            random_seed,
+            num_samples,
+            rho_value,
+            fanova_setting,
+            sample_size,
+            idx,
         )
         save_path = os.path.join(game_storage_path, name) + ".npz"
         game = Game(path_to_values=save_path)

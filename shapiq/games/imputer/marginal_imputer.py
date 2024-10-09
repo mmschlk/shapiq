@@ -161,12 +161,13 @@ class MarginalImputer(Imputer):
                 )
                 replacement_data[:, :, feature] = sampled_feature_values
         else:
-            sampled_indices = self._rng.choice(
-                self.replacement_data.shape[0],
-                size=(self._sample_size, n_coalitions),
-                replace=True,
-            )
-            replacement_data = self.replacement_data[sampled_indices]
+            for i in range(n_coalitions):
+                sampled_indices = self._rng.choice(
+                    self.replacement_data.shape[0],
+                    size=self._sample_size,
+                    replace=False,
+                )
+                replacement_data[:, i, :] = self.replacement_data[sampled_indices]
         return replacement_data
 
     def _calc_empty_prediction(self) -> float:

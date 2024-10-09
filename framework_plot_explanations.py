@@ -25,6 +25,22 @@ def quick_boxplot(data: pd.DataFrame, _feature_influence: str, _entity: str) -> 
     plt.show()
 
 
+def draw_bar_plot(
+    dfs: list[pd.DataFrame],
+    feature_sets: list[tuple[int, ...]],
+    feature_influences: list[str],
+    entities: list[str],
+    fanova_settings: list[str],
+) -> None:
+    """Draws a bar plot of the data.
+
+    The bar plot consists of multiple groups of bars, where each bar is a feature set. Each group
+    of bars corresponds to a different feature influence + entity + fanova combination. Each group
+    is of a different color.
+    """
+    pass
+
+
 if __name__ == "__main__":
 
     # plot params

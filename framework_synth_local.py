@@ -3,6 +3,7 @@
 import os
 import warnings
 
+import numpy as np
 import tqdm
 
 from framework_explanation_game import LocalExplanationGame
@@ -14,18 +15,19 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     PBAR = True
     VERBOSE_GAME = not PBAR
+    RUN_IF_EXISTS = True
 
     # Experiment settings
-    RANDOM_SEED = 42
+    RANDOM_SEED = 40
     model_name = "lin_reg"
     num_samples = 10_000
     rho_values = [0.0, 0.5, 0.9]
     interaction_data = False
 
     # Explanation Settings
-    sample_size = 128
+    sample_size = 1_000
     n_instances = 1
-    fanova_settings = ["b", "m"]
+    fanova_settings = ["m", "b"]
 
     # get the directory for saving
     game_storage_path = get_storage_dir(model_name)
@@ -44,13 +46,21 @@ if __name__ == "__main__":
             interaction_data=interaction_data,
             num_samples=num_samples,
         )
+        print(np.mean(x_data, axis=0), np.mean(y_data))
         for instance_id in range(n_instances):
             for fanova in fanova_settings:
                 name = get_save_name(
-                    interaction_data, model_name, RANDOM_SEED, num_samples, rho, fanova, instance_id
+                    interaction_data=interaction_data,
+                    model_name=model_name,
+                    random_seed=RANDOM_SEED,
+                    num_samples=num_samples,
+                    rho=rho,
+                    fanova=fanova,
+                    instance_id=instance_id,
+                    sample_size=sample_size,
                 )
                 save_path = os.path.join(game_storage_path, name)
-                if os.path.exists(save_path + ".npz"):
+                if not RUN_IF_EXISTS and os.path.exists(save_path + ".npz"):
                     if PBAR:
                         pbar.update(1)
                     continue
@@ -65,6 +75,7 @@ if __name__ == "__main__":
                     normalize=False,
                     verbose=VERBOSE_GAME,
                 )
+                print(f"Empty {fanova}", local_game(np.array([[False, False, False, False]])))
                 # pre-compute the game values
                 local_game.precompute()
                 local_game.save_values(save_path)

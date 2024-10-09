@@ -23,9 +23,9 @@ def _update_results(
     _x_explain: np.ndarray,
     _y_explain: float,
 ) -> None:
-    _y_explain = round(_y_explain, 6)
+    _y_explain = _y_explain
     for _feature_set, _exp_val in _explanation.items():
-        _x_val = round(float(_x_explain[_feature_set]), 6)
+        _x_val = float(_x_explain[_feature_set])
         if len(_feature_set) == 1:
             _feature_set = _feature_set[0]
         else:
@@ -39,7 +39,7 @@ def _update_results(
                 "explanation": _exp_val,
                 "feature_value": _x_val,
                 "y_explain": _y_explain,
-                "explanation/feature_value": round(_exp_val / _x_val, 6) if _x_val != 0 else 0,
+                "explanation/feature_value": _exp_val / _x_val if _x_val != 0 else 0,
             }
         )
 
@@ -75,9 +75,10 @@ if __name__ == "__main__":
     # params games
     model_name = "lin_reg"  # lin_reg, xgb_reg, rnf_reg
     n_instances = 1  # 100
-    random_seed = 42  # 42
+    random_seed = 40  # 42
     num_samples = 10_000  # 10_000
-    interaction_datas = [True, False]  # False True
+    sample_size = 1_000  # 1_000
+    interaction_datas = [False]  # False True
     rho_values = [0.0, 0.5, 0.9]  # 0.0, 0.5, 0.9
     fanova_settings = ["b", "m"]  # b c m
     setting_params = list(product(interaction_datas, rho_values, fanova_settings))
@@ -90,6 +91,7 @@ if __name__ == "__main__":
             num_samples=num_samples,
             rho=rho_value,
             fanova=fanova_setting,
+            sample_size=sample_size,
             instance_id=0,
         )
 
