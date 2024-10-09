@@ -420,3 +420,12 @@ class Game(ABC):
         if self._grand_coalition_value is None:
             self._grand_coalition_value = float(self(self.grand_coalition))
         return self._grand_coalition_value
+
+    def __getitem__(self, item: tuple[int, ...]):
+        """Return the value of the given coalition."""
+        try:
+            return self.value_storage[self.coalition_lookup[item]]
+        except KeyError as error:
+            if len(item) == 0:
+                return self.empty_coalition_value
+            raise KeyError(f"Coalition {item} not found in the game.") from error

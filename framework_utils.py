@@ -162,29 +162,29 @@ def get_synth_data_and_model(
 
 
 def get_save_name(
-    _interaction_data: bool,
-    _model_name: str,
-    _random_seed: int,
-    _num_samples: int,
-    _rho: float,
-    _fanova: str,
-    _instance_id: int,
+    interaction_data: bool,
+    model_name: str,
+    random_seed: int,
+    num_samples: int,
+    rho: float,
+    fanova: str,
+    instance_id: int,
     data_name: Optional[str] = None,
 ) -> str:
     _data_name = data_name
     if data_name is None:
         _data_name = "synthetic"
-    _int_name = "int" if _interaction_data else "lin"
+    _int_name = "int" if interaction_data else "lin"
     return "_".join(
         [
             _data_name,
             _int_name,
-            _model_name,
-            str(_random_seed),
-            str(_num_samples),
-            str(_rho),
-            _fanova,
-            str(_instance_id),
+            model_name,
+            str(random_seed),
+            str(num_samples),
+            str(rho),
+            fanova,
+            str(instance_id),
         ]
     )
 
