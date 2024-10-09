@@ -3,6 +3,7 @@
 import os
 from itertools import product
 
+import numpy as np
 import pandas as pd
 import tqdm
 
@@ -14,9 +15,17 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
 def _update_results(
-    _results: list, _explanation: dict, _game_id: int, _feature_influence: str, _entity: str
+    _results: list,
+    _explanation: dict[tuple[int, ...], float],
+    _game_id: int,
+    _feature_influence: str,
+    _entity: str,
+    _x_explain: np.ndarray,
+    _y_explain: float,
 ) -> None:
+    _y_explain = round(_y_explain, 6)
     for _feature_set, _exp_val in _explanation.items():
+        _x_val = round(float(_x_explain[_feature_set]), 6)
         if len(_feature_set) == 1:
             _feature_set = _feature_set[0]
         else:
@@ -28,6 +37,9 @@ def _update_results(
                 "feature_influence": _feature_influence,
                 "entity": _entity,
                 "explanation": _exp_val,
+                "feature_value": _x_val,
+                "y_explain": _y_explain,
+                "explanation/feature_value": round(_exp_val / _x_val, 6) if _x_val != 0 else 0,
             }
         )
 
@@ -82,7 +94,7 @@ if __name__ == "__main__":
         )
 
         # get game
-        games = load_local_games(
+        games, x_explain, y_explain = load_local_games(
             model_name=model_name,
             interaction_data=interaction_data,
             rho_value=rho_value,
@@ -112,6 +124,8 @@ if __name__ == "__main__":
                     _game_id=game_id,
                     _feature_influence=feature_influence,
                     _entity=entity,
+                    _x_explain=x_explain[game_id],
+                    _y_explain=y_explain[game_id],
                 )
 
                 # compute explanation via shapiq
@@ -128,6 +142,8 @@ if __name__ == "__main__":
                     _game_id=game_id,
                     _feature_influence=feature_influence,
                     _entity=entity,
+                    _x_explain=x_explain[game_id],
+                    _y_explain=y_explain[game_id],
                 )
 
                 # check if explanations are somewhat similar

@@ -211,10 +211,15 @@ def load_local_games(
     n_instances: int,
     random_seed: int = 42,
     num_samples: int = 128,
-) -> list[Game]:
+) -> tuple[list[Game], list[np.ndarray], list[float]]:
     """Loads a list of local games from disk."""
     game_storage_path = get_storage_dir(model_name)
-    games = []
+    games, x_explain, y_explain = [], [], []
+    x_data = generate_data(num_samples, rho_value, random_seed, load_data=True)
+    if interaction_data:
+        y_data = add_noise(interaction_function(x_data), random_seed=random_seed)
+    else:
+        y_data = add_noise(linear_function(x_data), random_seed=random_seed)
     for idx in range(n_instances):
         name = get_save_name(
             interaction_data, model_name, random_seed, num_samples, rho_value, fanova_setting, idx
@@ -222,7 +227,9 @@ def load_local_games(
         save_path = os.path.join(game_storage_path, name) + ".npz"
         game = Game(path_to_values=save_path)
         games.append(game)
-    return games
+        x_explain.append(x_data[idx])
+        y_explain.append(float(y_data[idx]))
+    return games, x_explain, y_explain
 
 
 if __name__ == "__main__":

@@ -3,6 +3,8 @@
 import os
 import warnings
 
+import numpy as np
+
 from framework_explanation_game import MultiDataExplanationGame, loss_mse
 from framework_utils import (
     get_save_name,
@@ -48,8 +50,7 @@ if __name__ == "__main__":
             save_path = os.path.join(game_storage_path, name)
             if os.path.exists(save_path + ".npz"):
                 continue
-            y_targets = y_data[:n_instances]
-            local_games = load_local_games(
+            local_games, x_explain, y_explain = load_local_games(
                 model_name=model_name,
                 interaction_data=interaction_data,
                 rho_value=rho_value,
@@ -58,10 +59,11 @@ if __name__ == "__main__":
                 random_seed=RANDOM_SEED,
                 num_samples=num_samples,
             )
-            assert y_targets.shape[0] == len(local_games)
+            y_explain = np.asarray(y_explain)
+            assert y_explain.shape[0] == len(local_games)
 
             global_game = MultiDataExplanationGame(
-                local_games=local_games, y_targets=y_targets, loss_function=loss_mse
+                local_games=local_games, y_targets=y_explain, loss_function=loss_mse
             )
             global_game.precompute()
 
