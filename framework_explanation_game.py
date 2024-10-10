@@ -4,7 +4,7 @@ from typing import Any, Callable, Optional, Union
 
 import numpy as np
 
-from shapiq import Game
+from shapiq import ConditionalImputer, Game
 from shapiq.games.imputer import MarginalImputer
 
 
@@ -91,8 +91,7 @@ class LocalExplanationGame(Game):
                 sample_size=sample_size,
                 joint_marginal_distribution=True,
             )
-        elif self.fanova == "c":
-            assert cond_sampler is not None, "Conditional sampler must be provided for fanova 'c'."
+        elif self.fanova == "c" and cond_sampler is not None:
             imputer = MarginalImputer(
                 model=predict_function,
                 data=x_data,
@@ -103,6 +102,15 @@ class LocalExplanationGame(Game):
                 sample_size=sample_size,
                 joint_marginal_distribution=True,
                 cond_sampler=cond_sampler,
+            )
+        elif self.fanova == "c" and cond_sampler is None:
+            imputer = ConditionalImputer(
+                model=predict_function,
+                data=x_data,
+                x=x_explain,
+                sample_size=sample_size,
+                random_state=random_seed,
+                normalize=False,
             )
         else:
             raise ValueError(f"Invalid fanova value: {fanova}. Available: 'b', 'm', 'c'.")

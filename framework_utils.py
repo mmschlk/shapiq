@@ -169,7 +169,7 @@ def get_california_data_and_model(
 
     # get a model and train
     if model_name == "xgb_reg":
-        model = XGBRegressor(random_state=random_seed)
+        model = XGBRegressor(random_state=random_seed, max_depth=4, n_estimators=100)
     elif model_name == "rnf_reg":
         model = RandomForestRegressor(random_state=random_seed)
     else:

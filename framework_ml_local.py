@@ -17,11 +17,11 @@ if __name__ == "__main__":
 
     # Experiment settings
     RANDOM_SEED = 42
-    model_name = "rnf_reg"
+    model_name = "xgb_reg"
 
     # Explanation Settings
-    sample_size = 128
-    n_instances = 100
+    sample_size = 512
+    n_instances = 2
     fanova_settings = ["c", "m", "b"]
 
     # get the directory for saving
@@ -47,7 +47,7 @@ if __name__ == "__main__":
             local_game = LocalExplanationGame(
                 fanova=fanova,
                 model=model,
-                x_data=x_test[0:1000],
+                x_data=x_test[0:500],
                 x_explain=x_test[instance_id],
                 loss_function=None,
                 sample_size=sample_size,

@@ -14,6 +14,9 @@ RESULTS_DIR = "framework_results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
+COLOR_PALETTE = ["#00b4d8", "#ef27a6", "#ff6f00", "#ffbe0b"]
+
+
 def load_explanation_data(
     num_samples: int = 10_000,
     model_name: str = "lin_reg",
@@ -79,15 +82,26 @@ def load_explanation_data(
 
 def plot_bar_plot(
     df: pd.DataFrame,
-    fanova_settings: list[str],
-    entities: list[str],
+    axis: plt.Axes,
     feature_sets: list[tuple[int, ...]],
-    feature_influences: list[str],
-    rho_values: list[float],
-    spacing: float = 0.5,
-    bar_padding: float = 0.2,
-) -> None:
+    group_ordering: list[dict[str, list]],
+    spacing: float = 0.1,
+    bar_padding: float = 0.05,
+    inner_group_spacing: float = 0.15,
+    bar_width: float = 0.1,
+    color_features: bool = True,
+) -> tuple[tuple[float, float], tuple[float, float]]:
     """Plots the bar plot for the selected explanations."""
+    group_ordering = list(group_ordering)
+    rho_values = [element["rho_values"] for element in group_ordering if "rho_values" in element][0]
+    fanova_settings = [
+        element["fanova_setting"] for element in group_ordering if "fanova_setting" in element
+    ][0]
+    entities = [element["entity"] for element in group_ordering if "entity" in element][0]
+    feature_influences = [
+        element["feature_influence"] for element in group_ordering if "feature_influence" in element
+    ][0]
+
     df_plot = df.copy()
     feature_sets = [str(feature_set) for feature_set in feature_sets]
     df_plot = df_plot[df_plot["feature_set"].isin(feature_sets)]
@@ -105,33 +119,45 @@ def plot_bar_plot(
     if len(df_plot) != len(df_plot.drop_duplicates()):
         raise ValueError("There are duplicates in the data.")
 
-    fig, axis = plt.subplots(figsize=(11, 4))
+    # order the groups of bars with the group ordering
+    n_inner_most_values = len(rho_values)
+    plotting_order = []
+    for entity in entities:
+        for feature_influence in feature_influences:
+            for fanova_setting in fanova_settings:
+                for rho_value in rho_values:
+                    group = {
+                        "entity": entity,
+                        "feature_influence": feature_influence,
+                        "fanova_setting": fanova_setting,
+                        "rho": rho_value,
+                    }
+                    plotting_order.append(group)
+    print("Order", plotting_order)
 
-    # get bar width
-    bar_space = 1 - spacing
-    bar_width = bar_space / len(feature_sets)
-    bar_padding = bar_width * bar_padding
-    bar_width = bar_width - bar_padding
-
-    # will be plotted in this order
-    groups_of_bars = list(product(entities, feature_influences, fanova_settings, rho_values))
-    print(groups_of_bars)
-    n_groups = len(groups_of_bars)
-
-    # get the color palette
-    color_palette = plt.cm.viridis(np.linspace(0, 1, int(len(groups_of_bars) / 2)))
+    # ad horizontal lines at 0, 1, and 2
+    for line in [0, 1, 2]:
+        axis.axhline(line, color="gray", linestyle="--", alpha=0.75, linewidth=1, zorder=1)
 
     min_height, max_height = 0, 0
-    legend_items = {}
+    all_positions = []
+    group_pos_endings = []
+    x_pos = 0
+    x_pos_line = x_pos - inner_group_spacing / 2 - spacing / 2 - bar_padding / 2 - bar_width / 2
+    group_start = [x_pos_line]
+    group_end = []
+    plt.vlines(x=x_pos_line, ymin=0, ymax=3, color="black", linestyle="--")
+    color_id = 0
+    for group_id, group in enumerate(plotting_order, start=1):
 
-    for group_id, group in enumerate(groups_of_bars):
-        entity, feature_influence, fanova_setting, rho_value = group
+        color = COLOR_PALETTE[color_id]
+        if group_id % n_inner_most_values == 0:
+            color_id += 1
 
-        color = color_palette[group_id // 2]
-        x_pos = group_id + spacing / 2
-
-        legend_name = f"{fanova_setting} {entity} {feature_influence} {rho_value}"
-        legend_items[legend_name] = color
+        fanova_setting = group["fanova_setting"]
+        entity = group["entity"]
+        feature_influence = group["feature_influence"]
+        rho_value = group["rho"]
 
         df_group = df_agg[
             (df_agg["fanova_setting"] == fanova_setting)
@@ -141,58 +167,181 @@ def plot_bar_plot(
         ]
 
         # get the x values
-        for feature_set in feature_sets:
-            x_pos += bar_padding / 2 + bar_width / 2
+        for f_id, feature_set in enumerate(feature_sets):
             y_value = float(df_group[df_group["feature_set"] == feature_set]["mean"].values[0])
             y_error = float(df_group[df_group["feature_set"] == feature_set]["std"].values[0])
             max_height = max(max_height, y_value + y_error)
             min_height = min(min_height, y_value - y_error)
-
-            # plot the bar
+            if color_features:
+                color = COLOR_PALETTE[f_id]
+            # add to plot
             axis.bar(x=x_pos, height=y_value, width=bar_width, yerr=y_error, color=color)
-            x_pos += bar_padding / 2 + bar_width / 2 + bar_padding / 2
+            all_positions.append(x_pos)
+            x_pos += bar_width
+            x_pos += bar_padding
+        x_pos += spacing
 
-    # add a grey rectangles for each interaction order
-    for i in range(n_groups):
+        if group_id % n_inner_most_values == 0:
+            x_pos += inner_group_spacing
+
+            x_pos_line = (
+                x_pos - inner_group_spacing / 2 - spacing / 2 - bar_padding / 2 - bar_width / 2
+            )
+            group_end.append(x_pos_line)
+            group_start.append(x_pos_line)
+
+    group_start = group_start[:-1]
+
+    # add accent behind groups
+    group_pos_endings.append(x_pos)
+    for i, (start, end) in enumerate(zip(group_start, group_end)):
         if i % 2 == 0:
             continue
-        axis.add_patch(plt.Rectangle((i, -50), 1, 100, color="#eeeeee", alpha=0.5, zorder=0))
-
-    for legend_item in legend_items:
-        axis.plot([], [], color=legend_items[legend_item], label=legend_item)
+        axis.add_patch(
+            plt.Rectangle(
+                (start, -50),
+                end - start,
+                100,
+                color="black",
+                alpha=0.75,
+                zorder=0,
+            )
+        )
 
     # set the ylim
-    axis.set_ylim(min_height - 0.1, max_height + 2)
+    y_lim = (min_height - 0.1, max_height + 0.1)
+    x_lim = (group_start[0], group_end[-1])
 
-    # set xlim
-    axis.set_xlim(0, n_groups)
+    axis.set_xticks([])
+    axis.set_yticks([])
 
-    # ad horizontal lines at 0, 1, and 2
-    for line in [0, 1, 2]:
-        axis.axhline(line, color="#eeeeee", linestyle="--", alpha=0.75)
-
-    # remove all xticks
-    axis.set_xticks(np.arange(n_groups) + 0.5)
-    axis.set_xticklabels([])
-
-    # plot
-    axis.set_ylabel("Explanation")
-    axis.legend(ncols=3)
-    plt.show()
+    return y_lim, x_lim
 
 
 if __name__ == "__main__":
 
     # load the data
-    _ = load_explanation_data(only_load=False, interaction_data=False)
-    data = load_explanation_data(only_load=False, interaction_data=True)
+    _ = load_explanation_data(only_load=True, interaction_data=False)
+    data = load_explanation_data(only_load=True, interaction_data=True)
+
+    FANOVA_SETTINGS = ["b", "m", "c"]
+    FEATURE_INFLUENCES = ["pure", "partial", "full"]
+    RHO_VALUES = [0.0, 0.5, 0.9]
+
+    pad = False
+    title_fontsize = 25
+    label_fontsize = 19
 
     # plot the explanations
-    plot_bar_plot(
-        df=data,
-        fanova_settings=["c", "m", "b"],
-        entities=["individual"],
-        feature_sets=[(0,), (1,), (2,), (3,)],
-        feature_influences=["partial"],
-        rho_values=[0.0, 0.5],
-    )
+    fig, axes = plt.subplots(3, 3, figsize=(12, 10), sharex=True, sharey=True)
+    y_lim_min, y_lim_max = 0, 0
+    x_lim_min, x_lim_max = 0, 0
+    for i, fanova_setting in enumerate(FANOVA_SETTINGS):
+        for j, feature_influence in enumerate(FEATURE_INFLUENCES):
+            y_lim, x_lim = plot_bar_plot(
+                df=data,
+                axis=axes[i, j],
+                feature_sets=[(0,), (1,), (2,), (3,)],
+                group_ordering=[
+                    {"entity": ["individual"]},
+                    {"feature_influence": [feature_influence]},
+                    {"fanova_setting": [fanova_setting]},
+                    {"rho_values": RHO_VALUES},
+                ],
+                bar_width=0.15,
+                spacing=0.1,
+                inner_group_spacing=0.15,
+                bar_padding=0.05,
+            )
+            y_lim_min = min(y_lim_min, y_lim[0])
+            y_lim_max = max(y_lim_max, y_lim[1])
+            x_lim_min = min(x_lim_min, x_lim[0])
+            x_lim_max = max(x_lim_max, x_lim[1])
+
+    # adjust the limits
+    for i in range(3):
+        for j in range(3):
+            axes[i, j].set_ylim(y_lim_min, y_lim_max)
+            axes[i, j].set_xlim(x_lim_min, x_lim_max)
+
+    # add y ticks to the first column
+    for i in range(3):
+        axes[i, 0].set_yticks(list(range(0, 7)))
+        axes[i, 0].set_yticklabels(list(range(0, 7)), fontdict={"fontsize": 19})
+
+    # add x ticks to the last row
+    for j in range(3):
+        x_ticks = np.linspace(x_lim_min, x_lim_max, 7)[[1, 3, 5]]
+        x_ticklabels = RHO_VALUES
+        axes[2, j].set_xticks(x_ticks)
+        axes[2, j].set_xticklabels(x_ticklabels, fontdict={"fontsize": 19})
+
+    # add y label at the left once to the figure not all subplots
+    axes[1, 0].set_ylabel("Explanation", fontdict={"fontsize": 25}, labelpad=10)
+    # add x label at the bottom once to the figure not all subplots
+    axes[2, 1].set_xlabel("Correlation", fontdict={"fontsize": 25}, labelpad=10)
+
+    # add titles to the subplots
+    for i, fanova_setting in enumerate(FANOVA_SETTINGS):
+        axes[i, 2].text(
+            1.1,
+            0.5,
+            # fanova setting in bold
+            fanova_setting,
+            fontdict={"fontsize": 25},
+            horizontalalignment="center",
+            verticalalignment="center",
+            transform=axes[i, 2].transAxes,
+        )
+
+    # add titles below the last row
+    for j, feature_influence in enumerate(FEATURE_INFLUENCES):
+        # todo
+        pass
+
+    stops = np.linspace(x_lim_min, x_lim_max - 0.1, 4)[[1, 2, 3]]
+    for i in range(3):
+        for j in range(3):
+            # add grey patch betweet stop 1 and 2
+            axes[i, j].add_patch(
+                plt.Rectangle(
+                    (stops[0], -50),
+                    stops[1] - stops[0],
+                    100,
+                    color="#f0f0f0",
+                    alpha=0.5,
+                    zorder=0,
+                )
+            )
+            # add grey patch betweet stop 2 and 3
+            axes[i, j].add_patch(
+                plt.Rectangle(
+                    (stops[1], -50),
+                    stops[2] - stops[1],
+                    100,
+                    color="#f0f0f0",
+                    alpha=1,
+                    zorder=0,
+                )
+            )
+
+    # remove whitespace between subplots
+    plt.tight_layout()
+    if pad:
+        pad_str = "pad"
+        plt.subplots_adjust(wspace=0.08, hspace=0.08)
+    else:
+        pad_str = "no_pad"
+        plt.subplots_adjust(wspace=0, hspace=0)
+    plt.savefig(f"explanations_all_{pad_str}.pdf")
+    plt.show()
+
+    # plot_bar_plot(
+    #     df=data,
+    #     fanova_settings=["b", "m", "c"],
+    #     entities=["individual"],
+    #     feature_sets=[(0,), (1,), (2,), (3,)],
+    #     feature_influences=["pure", "partial", "full"],
+    #     rho_values=[0.0],
+    #     facet=True,
+    # )
