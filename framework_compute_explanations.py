@@ -25,11 +25,10 @@ def _update_results(
 ) -> None:
     for _feature_set, _exp_val in _explanation.items():
         if len(_feature_set) == 1:
-            _feature_set = _feature_set[0]
             _x_val = float(_x_explain[_feature_set])
         else:
-            _feature_set = tuple(_feature_set)
             _x_val = float(np.prod(_x_explain[list(_feature_set)]))
+        _feature_set = tuple(_feature_set)
         _results.append(
             {
                 "game_id": _game_id,
