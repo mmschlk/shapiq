@@ -5,7 +5,7 @@ colour==0.1.5
 coverage==7.6.1
 matplotlib==3.9.2
 networkx==3.3.0
-pandas==2.2.2
+pandas==2.2.3
 pytest==8.3.3
 ruff==0.6.9
 scikit-image==0.24.0
