@@ -304,6 +304,7 @@ def load_local_games(
     random_seed: int = 42,
     num_samples: int = 10_000,
     sample_size: int = 1_000,
+    data_name: Optional[str] = None,
 ) -> tuple[list[Game], list[np.ndarray], list[float]]:
     """Loads a list of local games from disk."""
     game_storage_path = get_storage_dir(model_name)
@@ -323,6 +324,7 @@ def load_local_games(
             fanova_setting,
             sample_size,
             idx,
+            data_name,
         )
         save_path = os.path.join(game_storage_path, name) + ".npz"
         game = Game(path_to_values=save_path)

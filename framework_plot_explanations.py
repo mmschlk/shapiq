@@ -3,8 +3,9 @@
 import os
 from itertools import product
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import pandas as pd
+from tqdm import tqdm
 
 from framework_utils import get_save_name
 
@@ -12,33 +13,65 @@ RESULTS_DIR = "framework_results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
-def quick_boxplot(data: pd.DataFrame, _feature_influence: str, _entity: str) -> None:
-    """Draws a quick boxplot of the data."""
-    fig, ax = plt.subplots()
-    data_selection = data[
-        (data["feature_influence"] == _feature_influence) & (data["entity"] == _entity)
-    ]
-    data_selection.boxplot(column="explanation", by="feature_set", ax=ax)
-    plt.title(
-        f"Feature Influence: {_feature_influence}, Entity: {_entity}, FANOVA {fanova_setting}"
+def load_explanation_data(
+    num_samples: int = 10_000,
+    model_name: str = "lin_reg",
+    rho_values: list[float] = (0.0, 0.5, 0.9),
+    sample_sizes: list[int] = (512,),
+    interaction_data: bool = True,
+    ones_instances: bool = (True,),
+    n_instances: list[int] = (1,),
+    random_seeds: int = 30,
+    only_load: bool = False,
+) -> pd.DataFrame:
+    """Loads the explanation data from disk."""
+
+    if only_load:
+        try:
+            data_all_df = pd.read_csv(os.path.join(RESULTS_DIR, "all_explanations.csv"))
+            return data_all_df
+        except FileNotFoundError:
+            pass
+
+    random_seeds = list(range(random_seeds))
+
+    # params games
+    rho_values = list(rho_values)
+    n_instances = list(n_instances)
+    sample_sizes = list(sample_sizes)
+    ones_instances = [ones_instances]
+
+    data_settings = list(
+        product(random_seeds, rho_values, n_instances, sample_sizes, ones_instances)
     )
-    plt.show()
 
+    data_all: list[pd.DataFrame] = []
+    for random_seed, rho_value, n_instance, sample_size, ones_instance in tqdm(data_settings):
+        # get the save name
+        save_name = get_save_name(
+            interaction_data=interaction_data,
+            model_name=model_name,
+            random_seed=random_seed,
+            num_samples=num_samples,
+            rho=rho_value,
+            fanova="all",
+            sample_size=sample_size,
+            instance_id=0,
+            data_name="synthetic_ones" if ones_instance else "synthetic",
+        )
+        save_path = os.path.join(RESULTS_DIR, f"{save_name}_explanations.csv")
 
-def draw_bar_plot(
-    dfs: list[pd.DataFrame],
-    feature_sets: list[tuple[int, ...]],
-    feature_influences: list[str],
-    entities: list[str],
-    fanova_settings: list[str],
-) -> None:
-    """Draws a bar plot of the data.
+        # load the explanations
+        explanations_df = pd.read_csv(save_path)
+        explanations_df["random_seed"] = random_seed
+        explanations_df["rho"] = rho_value
+        explanations_df["n_instance"] = n_instance
+        explanations_df["sample_size"] = sample_size
+        data_all.append(explanations_df)
 
-    The bar plot consists of multiple groups of bars, where each bar is a feature set. Each group
-    of bars corresponds to a different feature influence + entity + fanova combination. Each group
-    is of a different color.
-    """
-    pass
+    # save all data
+    data_all_df = pd.concat(data_all)
+    data_all_df.to_csv(os.path.join(RESULTS_DIR, "all_explanations.csv"), index=False)
 
 
 if __name__ == "__main__":
@@ -47,38 +80,10 @@ if __name__ == "__main__":
     plot_mi_explanations = False
 
     # params explanations
-    feature_sets = [(0,), (1,), (2,), (3,)]
-    feature_influences = ["full"]
-    entities = ["individual"]
-    explanation_params = list(product(feature_influences, entities))
+    feature_sets = [(0,), (1,), (2,), (3,), (1, 2), (1, 2, 3)]
+    feature_influences = ["pure", "partial", "full"]
+    fanova_settings = ["c", "b", "m"]
+    entities = ["individual", "joint", "interaction"]
 
-    # params games
-    model_name = "lin_reg"  # lin_reg, xgb_reg, rnf_reg
-    interaction_data = True  # False True
-    rho_value = 0.9  # 0, 0.5, 0.9
-    fanova_setting = "c"  # b c m
-    n_instances = 100  # 100
-    random_seed = 42  # 42
-    num_samples = 10_000  # 10_000
-
-    # get the save name
-    save_name = get_save_name(
-        interaction_data=interaction_data,
-        model_name=model_name,
-        random_seed=random_seed,
-        num_samples=num_samples,
-        rho=rho_value,
-        fanova=fanova_setting,
-        instance_id=0,
-    )
-    mi_save_id = ""
-    if plot_mi_explanations:
-        mi_save_id = "_mi"
-    save_path = os.path.join(RESULTS_DIR, f"{save_name}_explanations{mi_save_id}.csv")
-
-    # load the explanations
-    explanations_df = pd.read_csv(save_path)
-
-    # plot the explanations
-    for feature_influence, entity in explanation_params:
-        quick_boxplot(explanations_df, feature_influence, entity)
+    # load the data
+    data_all_df = load_explanation_data(only_load=True)
