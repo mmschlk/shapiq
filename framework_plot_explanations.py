@@ -30,7 +30,7 @@ def load_explanation_data(
 
     if only_load:
         try:
-            data_all_df = pd.read_csv(os.path.join(RESULTS_DIR, f"all_explanations{int_str}.csv"))
+            data_all_df = pd.read_csv(os.path.join(RESULTS_DIR, f"all_explanations_{int_str}.csv"))
             return data_all_df
         except FileNotFoundError:
             pass
@@ -73,7 +73,7 @@ def load_explanation_data(
 
     # save all data
     data_all_df = pd.concat(data_all)
-    data_all_df.to_csv(os.path.join(RESULTS_DIR, f"all_explanations{int_str}.csv"), index=False)
+    data_all_df.to_csv(os.path.join(RESULTS_DIR, f"all_explanations_{int_str}.csv"), index=False)
     return data_all_df
 
 
@@ -184,6 +184,7 @@ def plot_bar_plot(
 if __name__ == "__main__":
 
     # load the data
+    _ = load_explanation_data(only_load=False, interaction_data=False)
     data = load_explanation_data(only_load=False, interaction_data=True)
 
     # plot the explanations
