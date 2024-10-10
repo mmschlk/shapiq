@@ -224,16 +224,17 @@ if __name__ == "__main__":
     _ = load_explanation_data(only_load=True, interaction_data=False)
     data = load_explanation_data(only_load=True, interaction_data=True)
 
-    FANOVA_SETTINGS = ["b", "m", "c"]
+    FANOVA_SETTINGS = ["c", "m", "b"]
     FEATURE_INFLUENCES = ["pure", "partial", "full"]
     RHO_VALUES = [0.0, 0.5, 0.9]
 
-    pad = False
+    pad = True
+    figsize = (12, 10)
     title_fontsize = 25
-    label_fontsize = 19
+    label_fontsize = 17
 
     # plot the explanations
-    fig, axes = plt.subplots(3, 3, figsize=(12, 10), sharex=True, sharey=True)
+    fig, axes = plt.subplots(3, 3, figsize=figsize, sharex=False, sharey=False)
     y_lim_min, y_lim_max = 0, 0
     x_lim_min, x_lim_max = 0, 0
     for i, fanova_setting in enumerate(FANOVA_SETTINGS):
@@ -264,41 +265,6 @@ if __name__ == "__main__":
             axes[i, j].set_ylim(y_lim_min, y_lim_max)
             axes[i, j].set_xlim(x_lim_min, x_lim_max)
 
-    # add y ticks to the first column
-    for i in range(3):
-        axes[i, 0].set_yticks(list(range(0, 7)))
-        axes[i, 0].set_yticklabels(list(range(0, 7)), fontdict={"fontsize": 19})
-
-    # add x ticks to the last row
-    for j in range(3):
-        x_ticks = np.linspace(x_lim_min, x_lim_max, 7)[[1, 3, 5]]
-        x_ticklabels = RHO_VALUES
-        axes[2, j].set_xticks(x_ticks)
-        axes[2, j].set_xticklabels(x_ticklabels, fontdict={"fontsize": 19})
-
-    # add y label at the left once to the figure not all subplots
-    axes[1, 0].set_ylabel("Explanation", fontdict={"fontsize": 25}, labelpad=10)
-    # add x label at the bottom once to the figure not all subplots
-    axes[2, 1].set_xlabel("Correlation", fontdict={"fontsize": 25}, labelpad=10)
-
-    # add titles to the subplots
-    for i, fanova_setting in enumerate(FANOVA_SETTINGS):
-        axes[i, 2].text(
-            1.1,
-            0.5,
-            # fanova setting in bold
-            fanova_setting,
-            fontdict={"fontsize": 25},
-            horizontalalignment="center",
-            verticalalignment="center",
-            transform=axes[i, 2].transAxes,
-        )
-
-    # add titles below the last row
-    for j, feature_influence in enumerate(FEATURE_INFLUENCES):
-        # todo
-        pass
-
     stops = np.linspace(x_lim_min, x_lim_max - 0.1, 4)[[1, 2, 3]]
     for i in range(3):
         for j in range(3):
@@ -325,6 +291,58 @@ if __name__ == "__main__":
                 )
             )
 
+    # add x-ticks to the top row and to the top of the plots
+    x_tick_labels = RHO_VALUES
+    stops = np.linspace(x_lim_min, x_lim_max, 7)[[1, 3, 5]]
+    for i in range(3):
+        for j in range(3):
+            axes[i, j].yaxis.set_ticks_position("right")
+            axes[i, j].xaxis.set_ticks_position("top")
+            # remove current x-ticks
+            axes[i, j].set_xticks(stops)
+            axes[i, j].set_xticklabels([])
+            axes[i, j].set_yticks(list(range(7)))
+            axes[i, j].set_yticklabels([])
+
+    for i in range(3):
+        axes[0, i].set_xticklabels(x_tick_labels, fontsize=label_fontsize)
+
+    # label position top
+    axes[0, 1].xaxis.set_label_position("top")
+    axes[0, 1].set_xlabel("Correlation", fontsize=title_fontsize, labelpad=10)
+
+    for i in range(3):
+        axes[i, 2].set_yticklabels(list(range(7)), fontsize=label_fontsize)
+
+    # label position right
+    axes[1, 2].yaxis.set_label_position("right")
+    axes[1, 2].set_ylabel(
+        "Explanation", fontsize=title_fontsize, labelpad=20, rotation=270, va="center"
+    )
+
+    # add the labels to the bottom row (feature influence)
+    for i, feature_influence in enumerate(FEATURE_INFLUENCES):
+        # capitalize the first letter
+        feature_influence = feature_influence.capitalize()
+        axes[2, i].set_xlabel(feature_influence, fontsize=title_fontsize, labelpad=10)
+
+    # add the labels to the left column (fanova setting)
+    for i, fanova_setting in enumerate(FANOVA_SETTINGS):
+        axes[i, 0].set_ylabel(fanova_setting, fontsize=title_fontsize, labelpad=12, ha="right")
+
+    # add super x label
+    axes[2, 1].set_xlabel(
+        "Partial\n$\\bf{Higher-order\ Interaction\ Influence}$",
+        fontsize=title_fontsize,
+        labelpad=10,
+    )
+    axes[1, 0].set_ylabel(
+        "$\\bf{Influnece\ of\ Feature\ Distribution}$\nm",
+        fontsize=title_fontsize,
+        labelpad=12,
+        ha="center",
+    )
+
     # remove whitespace between subplots
     plt.tight_layout()
     if pad:
@@ -333,7 +351,7 @@ if __name__ == "__main__":
     else:
         pad_str = "no_pad"
         plt.subplots_adjust(wspace=0, hspace=0)
-    plt.savefig(f"explanations_all_{pad_str}.pdf")
+    plt.savefig(f"explanations_all_{pad_str}_{str(figsize[0])}x{str(figsize[1])}.pdf")
     plt.show()
 
     # plot_bar_plot(

@@ -271,7 +271,7 @@ class MultiDataExplanationGame(Game):
             loss = self.loss_function(marginal_predictions, y_target)
             outputs += loss
         outputs /= len(self.local_games)
-        return outputs
+        return -outputs  # negative loss for maximization
 
     def sensitivity_value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Evaluate the model and imputer on the sensitivity explanation game.

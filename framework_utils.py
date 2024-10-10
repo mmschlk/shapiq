@@ -6,13 +6,14 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, PolynomialFeatures
+from sklearn.tree import DecisionTreeRegressor
 from xgboost import XGBRegressor
 
 from shapiq import Game
@@ -162,19 +163,35 @@ def get_california_data_and_model(
     random_seed: Optional[int] = None,
 ):
     # get data
-    x_data, y_data = load_california_housing(to_numpy=True)
+    x_data, y_data = load_california_housing(to_numpy=False)
+    feature_names = x_data.columns
+    x_data = x_data.to_numpy()
+    y_data = y_data.to_numpy()
     x_train, x_test, y_train, y_test = train_test_split(
-        x_data, y_data, random_state=random_seed, train_size=0.8
+        x_data, y_data, train_size=0.7, shuffle=True, random_state=random_seed
     )
+
+    x_train_df = pd.DataFrame(x_train, columns=feature_names)
 
     # get a model and train
     if model_name == "xgb_reg":
-        model = XGBRegressor(random_state=random_seed, max_depth=4, n_estimators=100)
+        model = XGBRegressor(random_state=random_seed)
     elif model_name == "rnf_reg":
         model = RandomForestRegressor(random_state=random_seed)
+    elif model_name == "gbt_reg":
+        model = GradientBoostingRegressor(
+            max_depth=10,
+            learning_rate=0.1,
+            min_samples_leaf=5,
+            n_estimators=10,
+            max_features=1.0,
+            random_state=random_seed,
+        )
+    elif model_name == "dt_reg":
+        model = DecisionTreeRegressor(random_state=random_seed)
     else:
         raise ValueError(f"Unknown model name for california housing: {model_name}")
-    model.fit(x_train, y_train)
+    model.fit(x_train_df, y_train)
 
     # predict the data and print performance
     y_pred = model.predict(x_test)
@@ -185,7 +202,7 @@ def get_california_data_and_model(
     print(f"Model: {model_name}")
     print(f"MSE: {mse} R^2: {r2}")
 
-    return model, x_data, y_data, x_train, x_test, y_train, y_test
+    return model, x_data, y_data, x_train, x_test, y_train, y_test, feature_names
 
 
 def get_synth_data_and_model(
