@@ -117,6 +117,17 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
 
     # test baseline value
     assert interaction_values.baseline_value == baseline_value
+    # test baseline value initialization
+    with pytest.raises(TypeError):
+        InteractionValues(
+            values=values,
+            index=index,
+            n_players=n,
+            min_order=min_order,
+            max_order=max_order,
+            interaction_lookup=interaction_lookup,
+            baseline_value="None",
+        )
     # expected behavior of interactions is 0 for emptyset
     assert interaction_values[()] == 0
 
