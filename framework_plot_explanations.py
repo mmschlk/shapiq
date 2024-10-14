@@ -218,6 +218,21 @@ def plot_bar_plot(
     return y_lim, x_lim
 
 
+def plot_legend(
+    ax,
+    legend_elements: list[str],
+    legend_colors: list[str],
+    legend_symbols: list[str],
+    font_size: int = 15,
+):
+    """Plots the legend onto a given axis."""
+    for i, (element, color, symbol) in enumerate(
+        zip(legend_elements, legend_colors, legend_symbols)
+    ):
+        ax.bar(0, 0, color=color, label=element)
+    ax.legend(loc="upper right", ncol=len(legend_elements) / 2, fontsize=font_size)
+
+
 if __name__ == "__main__":
 
     # load the data
@@ -229,7 +244,7 @@ if __name__ == "__main__":
     RHO_VALUES = [0.0, 0.5, 0.9]
 
     pad = True
-    figsize = (12, 10)
+    figsize = (14, 10)
     title_fontsize = 25
     label_fontsize = 17
 
@@ -309,16 +324,14 @@ if __name__ == "__main__":
 
     # label position top
     axes[0, 1].xaxis.set_label_position("top")
-    axes[0, 1].set_xlabel("Correlation", fontsize=title_fontsize, labelpad=10)
+    axes[0, 1].set_xlabel(r"Correlation: $\rho$", fontsize=title_fontsize, labelpad=10)
 
     for i in range(3):
         axes[i, 2].set_yticklabels(list(range(7)), fontsize=label_fontsize)
 
     # label position right
     axes[1, 2].yaxis.set_label_position("right")
-    axes[1, 2].set_ylabel(
-        "Explanation", fontsize=title_fontsize, labelpad=20, rotation=270, va="center"
-    )
+    axes[1, 2].set_ylabel("Effect", fontsize=title_fontsize, labelpad=20, rotation=270, va="center")
 
     # add the labels to the bottom row (feature influence)
     for i, feature_influence in enumerate(FEATURE_INFLUENCES):
@@ -332,7 +345,7 @@ if __name__ == "__main__":
 
     # add super x label
     axes[2, 1].set_xlabel(
-        "Partial\n$\\bf{Higher-order\ Interaction\ Influence}$",
+        "Partial\n$\\bf{Influence\ of\ Higher-order\ Interaction}$",
         fontsize=title_fontsize,
         labelpad=10,
     )
@@ -341,6 +354,13 @@ if __name__ == "__main__":
         fontsize=title_fontsize,
         labelpad=12,
         ha="center",
+    )
+
+    # add legend to top right
+    ax_legend = axes[0, 2]
+    feature_names = [r"$x_1$", r"$x_2$", r"$x_3$", r"$x_4$"]
+    plot_legend(
+        ax_legend, feature_names, COLOR_PALETTE, [""] * len(feature_names), font_size=label_fontsize
     )
 
     # remove whitespace between subplots
@@ -363,3 +383,5 @@ if __name__ == "__main__":
     #     rho_values=[0.0],
     #     facet=True,
     # )
+
+    # plot a legend for the features
