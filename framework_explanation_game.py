@@ -8,21 +8,18 @@ from shapiq import ConditionalImputer, Game
 from shapiq.games.imputer import MarginalImputer
 
 
-def loss_mse(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]) -> float:
+def mse(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]) -> float:
     """Mean squared error loss function."""
     return float(np.mean((y_true - y_pred) ** 2))
 
 
-def loss_mae(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]) -> float:
-    """Mean absolute error loss function."""
-    return float(np.mean(np.abs(y_true - y_pred)))
-
-
-def loss_r2(y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]) -> float:
-    """R2 score loss function."""
-    ss_res = np.sum((y_true - y_pred) ** 2)
-    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
-    return float(1 - ss_res / ss_tot)
+def loss_binary_crossentropy(
+    y_true: Union[np.ndarray, float], y_pred: Union[np.ndarray, float]
+) -> float:
+    """Binary crossentropy loss function."""
+    # y pred is log odds, convert to probability
+    y_pred = 1 / (1 + np.exp(-y_pred))
+    return -float(np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)))
 
 
 class LocalExplanationGame(Game):
@@ -69,9 +66,10 @@ class LocalExplanationGame(Game):
         self.random_seed = random_seed
 
         if hasattr(model, "predict_proba"):
-            # get the predict function as a callable for the first class
+
             def predict_function(x):
-                return model.predict_logit(x)[:, 1]
+                probas = model.predict_proba(x)[:, 1]
+                return np.log(probas / (1 - probas))  # transform probailities to log odds
 
         else:
             predict_function = model.predict
@@ -281,7 +279,7 @@ class MultiDataExplanationGame(Game):
                 )
             outputs += loss
         outputs /= len(self.local_games)
-        return outputs  # negative loss for maximization
+        return outputs
 
     def sensitivity_value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Evaluate the model and imputer on the sensitivity explanation game.

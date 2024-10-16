@@ -482,6 +482,8 @@ def si_graph_plot(
         else:
             pos = nx.spring_layout(original_graph, seed=random_seed, k=spring_k)
             pos = nx.kamada_kawai_layout(original_graph, scale=1.0, pos=pos)
+        min_pos = np.min(list(pos.values()), axis=0)
+        max_pos = np.max(list(pos.values()), axis=0)
     else:
         # pos is given but we need to scale the positions potentially
         min_pos = np.min(list(pos.values()), axis=0)
@@ -520,6 +522,10 @@ def si_graph_plot(
             ax, pos, original_graph, normal_node_size=normal_node_size, edge_color="#808080"
         )
     _draw_graph_labels(ax, pos, original_graph)
+
+    # crop the plot to be 1.2 times the size of the graph
+    # ax.set_xlim(min_pos[0] - 0.1, max_pos[0] + 0.2)
+    # ax.set_ylim(min_pos[1] - 0.1, max_pos[1] + 0.2)
 
     # tidy up the plot
     ax.set_aspect("equal", adjustable="datalim")  # make y- and x-axis scales equal

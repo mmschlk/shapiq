@@ -59,6 +59,7 @@ if __name__ == "__main__":
                     interaction_data=interaction_data,
                     num_samples=num_samples,
                 )
+                local_games = []
                 for instance_id in range(n_instances):
                     data_name = "synthetic_ones" if ones_instance else "synthetic"
                     name = get_save_name_synth(

@@ -29,7 +29,9 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
         return data
 
 
-def load_california_housing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
+def load_california_housing(
+    to_numpy=False, pre_processing: bool = True
+) -> tuple[pd.DataFrame, pd.Series]:
     """Load the California housing dataset.
 
     Args:
@@ -42,6 +44,11 @@ def load_california_housing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     class_label = "MedHouseVal"
     y_data = dataset[class_label]
     x_data = dataset.drop(columns=[class_label])
+    if pre_processing:
+        # only do standard scaling on the inputs
+        from sklearn.preprocessing import StandardScaler
+
+        x_data = pd.DataFrame(StandardScaler().fit_transform(x_data), columns=x_data.columns)
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()

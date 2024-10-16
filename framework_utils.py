@@ -6,7 +6,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -15,7 +15,7 @@ from sklearn.preprocessing import FunctionTransformer
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from xgboost import XGBClassifier, XGBRegressor
 
-from framework_train_nn_california import CaliforniaScikitWrapper
+from framework_train_neural_nets import CaliforniaScikitWrapper
 from shapiq import Game
 from shapiq.datasets import load_bike_sharing, load_california_housing, load_titanic
 
@@ -204,6 +204,7 @@ def get_ml_data(
     model_name: str,
     random_seed: Optional[int] = None,
     data_name: Optional[str] = None,
+    do_k_fold: bool = False,
 ):
     try:
         model_name = model_name.split("_")[0]
@@ -216,6 +217,11 @@ def get_ml_data(
         x_data, y_data = load_california_housing(to_numpy=False)
     elif data_name == "bike":
         x_data, y_data = load_bike_sharing(to_numpy=False)
+        if model_name == "nn":
+            from sklearn.preprocessing import StandardScaler
+
+            x_data = pd.DataFrame(StandardScaler().fit_transform(x_data), columns=x_data.columns)
+            y_data = np.log(y_data + 1)
     elif data_name == "titanic":
         x_data, y_data = load_titanic(to_numpy=False)
     else:
@@ -227,10 +233,10 @@ def get_ml_data(
         x_data, y_data, train_size=0.7, shuffle=True, random_state=random_seed
     )
 
-    x_train_df = pd.DataFrame(x_train, columns=feature_names)
-
     if model_name == "nn" and data_name == "california":
-        model = CaliforniaScikitWrapper("california_model.pt")
+        model = CaliforniaScikitWrapper(f"california_model_{random_seed}.pth")
+    elif model_name == "nn" and data_name == "bike":
+        model = CaliforniaScikitWrapper(f"bike_model_{random_seed}.pth")
     else:
         # get a model and train
         if model_name == "xgb":
@@ -240,9 +246,9 @@ def get_ml_data(
                 model = XGBRegressor(seed=random_seed)
         elif model_name == "rnf":
             if clf:
-                model = RandomForestRegressor(random_state=random_seed, n_estimators=500)
+                model = RandomForestClassifier(random_state=random_seed, n_estimators=50)
             else:
-                model = RandomForestRegressor(random_state=random_seed, n_estimators=500)
+                model = RandomForestRegressor(random_state=random_seed, n_estimators=50)
         elif model_name == "dt":
             if clf:
                 model = DecisionTreeClassifier(random_state=random_seed)
@@ -252,7 +258,29 @@ def get_ml_data(
             raise ValueError(
                 f"Unknown model name for california housing: {model_name} and {data_name}"
             )
-        model.fit(x_train_df, y_train)
+
+        if do_k_fold:
+            first_perf, second_perf = [], []
+            for i in range(5):
+                x_train, x_test, y_train, y_test = train_test_split(
+                    x_data, y_data, train_size=0.7, shuffle=True, random_state=i
+                )
+                model.fit(x_train, y_train)
+                y_pred = model.predict(x_test)
+                if clf:
+                    acc = accuracy_score(y_test, y_pred)
+                    f_one = f1_score(y_test, y_pred)
+                    print(f"Accuracy: {acc} F1: {f_one}")
+                    first_perf.append(acc), second_perf.append(f_one)
+                else:
+                    mse = mean_squared_error(y_test, y_pred)
+                    r2 = r2_score(y_test, y_pred)
+                    print(f"MSE: {mse} R^2: {r2}")
+                    first_perf.append(mse), second_perf.append(r2)
+            print(f"Mean performance: {np.mean(first_perf)} and {np.mean(second_perf)}")
+            print(f"Std performance: {np.std(first_perf)} and {np.std(second_perf)}")
+
+        model.fit(x_train, y_train)
 
     # predict the data and print performance
 
