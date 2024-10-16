@@ -68,7 +68,13 @@ class LocalExplanationGame(Game):
         self.sample_size = sample_size
         self.random_seed = random_seed
 
-        predict_function = model.predict_proba if hasattr(model, "predict_proba") else model.predict
+        if hasattr(model, "predict_proba"):
+            # get the predict function as a callable for the first class
+            def predict_function(x):
+                return model.predict_logit(x)[:, 1]
+
+        else:
+            predict_function = model.predict
 
         # select the imputer based on the fanova
         if self.fanova == "b":
@@ -90,6 +96,7 @@ class LocalExplanationGame(Game):
                 normalize=False,
                 sample_size=sample_size,
                 joint_marginal_distribution=True,
+                take_all_background=True,
             )
         elif self.fanova == "c" and cond_sampler is not None:
             imputer = MarginalImputer(
@@ -267,11 +274,14 @@ class MultiDataExplanationGame(Game):
         outputs = np.zeros(coalitions.shape[0])
         for i, game in enumerate(self.local_games):
             marginal_predictions = game(coalitions)
-            y_target = np.full(marginal_predictions.shape, self.y_targets[i])
-            loss = self.loss_function(marginal_predictions, y_target)
+            loss = np.zeros(marginal_predictions.shape[0])
+            for coalition_idx, coalition in enumerate(coalitions):
+                loss[coalition_idx] = self.loss_function(
+                    self.y_targets[i], marginal_predictions[coalition_idx]
+                )
             outputs += loss
         outputs /= len(self.local_games)
-        return -outputs  # negative loss for maximization
+        return outputs  # negative loss for maximization
 
     def sensitivity_value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Evaluate the model and imputer on the sensitivity explanation game.

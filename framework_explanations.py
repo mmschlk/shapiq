@@ -2,6 +2,8 @@
 
 from typing import Callable, Optional, Union
 
+import numpy as np
+
 from shapiq import ExactComputer, Game, InteractionValues, powerset
 
 
@@ -189,3 +191,67 @@ def compute_explanation(
             explanation[feature_set] = co_mi_values[feature_set]
 
     return explanation
+
+
+def compute_explanation_int_val(
+    game: Game,
+    entity_type: str,
+    influence: str,
+    explanation_order: int,
+) -> InteractionValues:
+    """Computes Explanations as shapiq.InteractionValues.
+
+    Args:
+        game: The game for which the explanation should be computed.
+        entity_type: The feature effect to measure. Either `individual`, `joint`, or `interaction`.
+        influence: The type higher-order interaction influence to compute the explanation with.
+            Either `pure`, `partial`, or `full`.
+        explanation_order: The order of the explanation.
+
+    Returns:
+        The feature-based explanation as an InteractionValues object.
+    """
+    computer = ExactComputer(game.n_players, game)
+    if entity_type == "individual" or entity_type == "joint":
+        if influence == "partial":
+            if entity_type == "individual":
+                int_values = computer(index="SV", order=1)
+            else:
+                int_values = computer(index="SGV", order=explanation_order)
+        else:
+            explanation_order = 1 if entity_type == "individual" else explanation_order
+            all_interactions = list(powerset(range(game.n_players), max_size=explanation_order))
+            explanation_dict = {}
+            if influence == "pure":
+                for feature_set in all_interactions:
+                    explanation_dict[feature_set] = game[feature_set] - game.empty_coalition_value
+            else:  # influence == "full"
+                for feature_set in all_interactions:
+                    complement_set = tuple(sorted(set(range(game.n_players)) - set(feature_set)))
+                    explanation_dict[feature_set] = (
+                        game.grand_coalition_value - game[complement_set]
+                    )
+            # fill interaction values object
+            values, interaction_lookup = [], {}
+            for i in range(len(all_interactions)):
+                values.append(explanation_dict[all_interactions[i]])
+                interaction_lookup[all_interactions[i]] = i
+            int_values = InteractionValues(
+                values=np.array(values),
+                index="Moebius",
+                max_order=game.n_players,
+                n_players=game.n_players,
+                min_order=1,
+                baseline_value=0,
+                interaction_lookup=interaction_lookup,
+            )
+    elif entity_type == "interaction":
+        if influence == "pure":
+            int_values = computer(index="Moebius", order=game.n_players)
+        elif influence == "partial":
+            int_values = computer(index="k-SII", order=explanation_order)
+        else:
+            int_values = computer(index="Co-Moebius", order=game.n_players)
+    else:
+        raise ValueError(f"Unknown entity type: {entity_type}")
+    return int_values

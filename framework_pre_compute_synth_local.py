@@ -10,7 +10,7 @@ import tqdm
 from framework_explanation_game import LocalExplanationGame
 from framework_utils import (
     SynthConditionalSampler,
-    get_save_name,
+    get_save_name_synth,
     get_storage_dir,
     get_synth_data_and_model,
 )
@@ -24,18 +24,18 @@ if __name__ == "__main__":
     RUN_IF_EXISTS = True
 
     # random seed
-    random_seeds = list(range(30))
+    random_seeds = list(range(1))
 
     # Experiment settings
     model_names = ["lin_reg"]
     num_samples = 10_000
     rho_values = [0.0, 0.5, 0.9]
-    interaction_datas = [True, False]
+    interaction_datas = [None, "linear-interaction", "non-linear-interaction"]
     synth_settings = list(product(model_names, rho_values, interaction_datas))
 
     # Explanation Settings
     sample_sizes = [512]
-    n_instances_list = [1]
+    n_instances_list = [50]
     fanova_settings = ["c", "b", "m"]
     ones_instances = [True]
     game_settings = list(product(sample_sizes, n_instances_list, fanova_settings, ones_instances))
@@ -54,7 +54,6 @@ if __name__ == "__main__":
             game_storage_path = get_storage_dir(model_name)
             for sample_size, n_instances, fanova, ones_instance in game_settings:
                 x_data, y_data, model = get_synth_data_and_model(
-                    model_name=model_name,
                     random_seed=random_seed,
                     rho=rho,
                     interaction_data=interaction_data,
@@ -62,7 +61,7 @@ if __name__ == "__main__":
                 )
                 for instance_id in range(n_instances):
                     data_name = "synthetic_ones" if ones_instance else "synthetic"
-                    name = get_save_name(
+                    name = get_save_name_synth(
                         interaction_data=interaction_data,
                         model_name=model_name,
                         random_seed=random_seed,

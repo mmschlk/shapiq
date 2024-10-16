@@ -1,5 +1,6 @@
 """Base class for all imputers."""
 
+import copy
 from abc import abstractmethod
 from typing import Optional
 
@@ -34,7 +35,7 @@ class Imputer(Game):
         else:  # shapiq.Explainer
             self._predict_function = model._predict_function
         self.model = model
-        self.data = data
+        self.data = copy.deepcopy(data)
         self._n_features = self.data.shape[1]
         self._cat_features: list = [] if categorical_features is None else categorical_features
         self._random_state = random_state

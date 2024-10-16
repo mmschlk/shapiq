@@ -49,6 +49,46 @@ def load_california_housing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
         return x_data, y_data
 
 
+def load_titanic(to_numpy=False, pre_processing: bool = True) -> tuple[pd.DataFrame, pd.Series]:
+    """Load the Titanic dataset from openml.
+
+    Args:
+        to_numpy: Return numpy objects instead of pandas. Default is ``False``.
+        pre_processing: Apply some basic pre-processing. Default is ``True``.
+
+    Returns:
+        The Titanic dataset as a pandas DataFrame.
+    """
+    dataset = _try_load("titanic.csv")
+    class_label = "Survived"
+    y_data = dataset[class_label]
+    x_data = dataset.drop(columns=[class_label])
+
+    if pre_processing:
+        from sklearn.compose import ColumnTransformer
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import OrdinalEncoder
+
+        num_feature_names = ["Age", "Fare"]
+        cat_feature_names = [col for col in x_data.columns if col not in num_feature_names]
+        x_data[num_feature_names] = x_data[num_feature_names].apply(pd.to_numeric)
+        cat_pipeline = Pipeline([("ordinal_encoder", OrdinalEncoder())])
+        column_transformer = ColumnTransformer(
+            [
+                ("categorical", cat_pipeline, cat_feature_names),
+            ],
+            remainder="passthrough",
+        )
+        x_data = pd.DataFrame(column_transformer.fit_transform(x_data), columns=x_data.columns)
+        x_data.columns = cat_feature_names + num_feature_names  # reorder columns
+        y_data = y_data.astype(int)
+
+    if to_numpy:
+        return x_data.to_numpy(), y_data.to_numpy()
+    else:
+        return x_data, y_data
+
+
 def load_bike_sharing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
     """Load the bike-sharing dataset from openml.
 

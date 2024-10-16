@@ -6,20 +6,18 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
-from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer, PolynomialFeatures
-from sklearn.tree import DecisionTreeRegressor
-from xgboost import XGBRegressor
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from xgboost import XGBClassifier, XGBRegressor
 
+from framework_train_nn_california import CaliforniaScikitWrapper
 from shapiq import Game
-from shapiq.datasets import load_california_housing
-
-COVARIANCE_DIAG = 1
+from shapiq.datasets import load_bike_sharing, load_california_housing, load_titanic
 
 
 class SynthConditionalSampler:
@@ -33,7 +31,7 @@ class SynthConditionalSampler:
         self.random_seed = random_seed
         self.mu = np.zeros(n_features)
         self.sigma = np.full((n_features, n_features), rho)
-        np.fill_diagonal(self.sigma, COVARIANCE_DIAG)
+        np.fill_diagonal(self.sigma, 1)
 
     def __call__(self, coalitions: np.ndarray[bool], x_to_impute: np.ndarray) -> np.ndarray:
         """Evaluate the conditional distribution for the given coalitions.
@@ -118,7 +116,7 @@ def generate_data(num_samples: int, rho: float, random_seed: int = 42, load_data
     rng = np.random.default_rng(random_seed)
     mu = np.zeros(4)
     sigma = np.full((4, 4), rho)
-    np.fill_diagonal(sigma, COVARIANCE_DIAG)
+    np.fill_diagonal(sigma, 1)
     X = rng.multivariate_normal(mu, sigma, size=num_samples)
     np.savez(os.path.join("game_storage", save_name), X=X)
     return X
@@ -136,6 +134,12 @@ def interaction_function(X):
     return linear_function(X) + second_order_interaction + third_order_interaction
 
 
+def non_linear_interaction_function(X):
+    x_two = X[:, 1] ** 2
+    x_tree = X[:, 2] ** 3
+    return 2 * X[:, 0] + x_two + x_tree
+
+
 # Add Gaussian noise
 def add_noise(Y, noise_std=0.1, random_seed: int = 42):
     rng = np.random.default_rng(random_seed)
@@ -150,7 +154,16 @@ def make_df(X):
 
 def _select_interaction_features(X):
     """Returns X_1, X_2 and X_1*X_3. Expects input of shape (n_samples, 14)"""
-    return X[:, [0, 1, 2, 4, 10]]
+    x_two_order = X[:, 0] * X[:, 1]
+    x_third_order = X[:, 0] * X[:, 1] * X[:, 2]
+    return np.column_stack((X[:, 0], X[:, 1], X[:, 2], x_two_order, x_third_order))
+
+
+def _select_non_linear_features(X):
+    """Returns X_1, X_2^2 and X_3^3."""
+    x_two = X[:, 1] ** 2
+    x_tree = X[:, 2] ** 3
+    return np.column_stack((X[:, 0], x_two, x_tree))
 
 
 def _select_linear_features(X):
@@ -158,12 +171,55 @@ def _select_linear_features(X):
     return X[:, [0, 1, 2]]
 
 
-def get_california_data_and_model(
+def update_results(
+    _results: list,
+    _explanation: dict[tuple[int, ...], float],
+    _game_id: int,
+    _feature_influence: str,
+    _fanova_setting: str,
+    _entity: str,
+    _x_explain: np.ndarray,
+) -> None:
+    for _feature_set, _exp_val in _explanation.items():
+        if len(_feature_set) == 1:
+            _x_val = float(_x_explain[_feature_set])
+        else:
+            _x_val = float(np.prod(_x_explain[list(_feature_set)]))
+        _feature_set = tuple(_feature_set)
+        _results.append(
+            {
+                "game_id": _game_id,
+                "feature_set": _feature_set,
+                "feature_influence": _feature_influence,
+                "fanova_setting": _fanova_setting,
+                "entity": _entity,
+                "explanation": _exp_val,
+                "feature_value": _x_val,
+                "explanation/feature_value": _exp_val / _x_val if _x_val != 0 else 0,
+            }
+        )
+
+
+def get_ml_data(
     model_name: str,
     random_seed: Optional[int] = None,
+    data_name: Optional[str] = None,
 ):
+    try:
+        model_name = model_name.split("_")[0]
+    except IndexError:
+        pass
+    clf = True if data_name == "titanic" else False
+
     # get data
-    x_data, y_data = load_california_housing(to_numpy=False)
+    if data_name == "california":
+        x_data, y_data = load_california_housing(to_numpy=False)
+    elif data_name == "bike":
+        x_data, y_data = load_bike_sharing(to_numpy=False)
+    elif data_name == "titanic":
+        x_data, y_data = load_titanic(to_numpy=False)
+    else:
+        raise ValueError(f"Unknown data name: {data_name}")
     feature_names = x_data.columns
     x_data = x_data.to_numpy()
     y_data = y_data.to_numpy()
@@ -173,91 +229,96 @@ def get_california_data_and_model(
 
     x_train_df = pd.DataFrame(x_train, columns=feature_names)
 
-    # get a model and train
-    if model_name == "xgb_reg":
-        model = XGBRegressor(random_state=random_seed)
-    elif model_name == "rnf_reg":
-        model = RandomForestRegressor(random_state=random_seed)
-    elif model_name == "gbt_reg":
-        model = GradientBoostingRegressor(
-            max_depth=10,
-            learning_rate=0.1,
-            min_samples_leaf=5,
-            n_estimators=10,
-            max_features=1.0,
-            random_state=random_seed,
-        )
-    elif model_name == "dt_reg":
-        model = DecisionTreeRegressor(random_state=random_seed)
+    if model_name == "nn" and data_name == "california":
+        model = CaliforniaScikitWrapper("california_model.pt")
     else:
-        raise ValueError(f"Unknown model name for california housing: {model_name}")
-    model.fit(x_train_df, y_train)
+        # get a model and train
+        if model_name == "xgb":
+            if clf:
+                model = XGBClassifier(seed=random_seed)
+            else:
+                model = XGBRegressor(seed=random_seed)
+        elif model_name == "rnf":
+            if clf:
+                model = RandomForestRegressor(random_state=random_seed, n_estimators=500)
+            else:
+                model = RandomForestRegressor(random_state=random_seed, n_estimators=500)
+        elif model_name == "dt":
+            if clf:
+                model = DecisionTreeClassifier(random_state=random_seed)
+            else:
+                model = DecisionTreeRegressor(random_state=random_seed)
+        else:
+            raise ValueError(
+                f"Unknown model name for california housing: {model_name} and {data_name}"
+            )
+        model.fit(x_train_df, y_train)
 
     # predict the data and print performance
-    y_pred = model.predict(x_test)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
 
-    # print the summary
+    y_pred = model.predict(x_test)
     print(f"Model: {model_name}")
-    print(f"MSE: {mse} R^2: {r2}")
+    if not clf:
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        print(f"MSE: {mse} R^2: {r2}")
+    else:
+        acc = accuracy_score(y_test, y_pred)
+        f_one = f1_score(y_test, y_pred)
+        print(f"Accuracy: {acc} F1: {f_one}")
 
     return model, x_data, y_data, x_train, x_test, y_train, y_test, feature_names
 
 
+def get_y_synth(
+    x_data: np.ndarray, interaction_data: Optional[str] = None, random_seed: Optional[int] = None
+) -> np.ndarray:
+    if interaction_data == "linear-interaction":
+        return add_noise(interaction_function(x_data), random_seed=random_seed)
+    elif interaction_data == "non-linear-interaction":
+        return add_noise(non_linear_interaction_function(x_data), random_seed=random_seed)
+    else:
+        return add_noise(linear_function(x_data), random_seed=random_seed)
+
+
 def get_synth_data_and_model(
-    model_name: str,
     num_samples: int = 10_000,
     rho: float = 0.0,
-    interaction_data: bool = True,
+    interaction_data: Optional[str] = None,
     random_seed: Optional[int] = None,
-):
+) -> tuple[np.ndarray, np.ndarray, Pipeline]:
+    if interaction_data not in [None, "linear-interaction", "non-linear-interaction"]:
+        raise ValueError(f"Unknown interaction data: {interaction_data}")
+
     # generate the data
     x_data = generate_data(num_samples, rho, random_seed, load_data=True)
-    if interaction_data:
-        y_data = add_noise(interaction_function(x_data), random_seed=random_seed)
-    else:
-        y_data = add_noise(linear_function(x_data), random_seed=random_seed)
+    y_data = get_y_synth(x_data, interaction_data, random_seed)
 
     # get the model
-    if model_name == "lin_reg":
-        if interaction_data:
-            model = Pipeline(
-                [
-                    (
-                        "poly",
-                        PolynomialFeatures(degree=3, interaction_only=True, include_bias=False),
-                    ),
-                    ("select", FunctionTransformer(_select_interaction_features)),
-                    ("lin_reg", LinearRegression()),
-                ]
-            )
-        else:
-            model = Pipeline(
-                [
-                    ("select", FunctionTransformer(_select_linear_features)),
-                    ("lin_reg", LinearRegression()),
-                ]
-            )
-    elif model_name == "rnf_reg":
-        model = RandomForestRegressor(random_state=random_seed)
-    elif model_name == "mlp_reg":
-        model = MLPRegressor(random_state=random_seed)
-    elif model_name == "xgb_reg":
-        if interaction_data:
-            interaction_constraints_int = [["f1"], ["f2"], ["f3"], ["f1", "f2"], ["f1", "f2", "f3"]]
-        else:
-            interaction_constraints_int = [["f1"], ["f2"], ["f3"]]
-        model = XGBRegressor(interaction_constraints=interaction_constraints_int)
+    if interaction_data == "linear-interaction":  # model for interactions
+        model = Pipeline(
+            [
+                ("select", FunctionTransformer(_select_interaction_features)),
+                ("lin_reg", LinearRegression()),
+            ]
+        )
+    elif interaction_data == "non-linear-interaction":  # model for non-linear interactions
+        model = Pipeline(
+            [
+                ("select", FunctionTransformer(_select_non_linear_features)),
+                ("lin_reg", LinearRegression()),
+            ]
+        )
     else:
-        raise ValueError(f"Unknown model name: {model_name}")
+        model = Pipeline(
+            [
+                ("select", FunctionTransformer(_select_linear_features)),
+                ("lin_reg", LinearRegression()),
+            ]
+        )
 
     # train the model
-    if model_name in ("xgb_reg", "xgb_clf"):
-        x_data_df = make_df(x_data)
-        model.fit(x_data_df, y_data)
-    else:
-        model.fit(x_data, y_data)
+    model.fit(x_data, y_data)
 
     # predict the data and print performance
     y_pred = model.predict(x_data)
@@ -265,19 +326,27 @@ def get_synth_data_and_model(
     r2 = r2_score(y_data, y_pred)
 
     # print the summary
-    print(f"Model: {model_name}")
+    print(f"Linear Model with Interaction: {interaction_data}")
     print(f"MSE: {mse} R^2: {r2}")
-    if model_name == "lin_reg":
-        print(f"Model: {model_name}")
-        print(f"Intercept: {model.named_steps['lin_reg'].intercept_}")
-        print(f"Coefficients: {model.named_steps['lin_reg'].coef_}")
+    print(f"Intercept: {model.named_steps['lin_reg'].intercept_}")
+    print(f"Coefficients: {model.named_steps['lin_reg'].coef_}")
     print()
 
     return x_data, y_data, model
 
 
-def get_save_name(
-    interaction_data: bool,
+def get_save_name_ml(
+    model_name: str,
+    random_seed: int,
+    fanova: str,
+    instance_id: int,
+    data_name: str,
+) -> str:
+    return "_".join([data_name, model_name, str(random_seed), fanova, str(instance_id)])
+
+
+def get_save_name_synth(
+    interaction_data: Optional[str],
     model_name: str,
     random_seed: int,
     num_samples: int,
@@ -290,7 +359,7 @@ def get_save_name(
     _data_name = data_name
     if data_name is None:
         _data_name = "synthetic"
-    _int_name = "int" if interaction_data else "lin"
+    _int_name = "lin" if interaction_data is None else interaction_data
     return "_".join(
         [
             _data_name,
@@ -312,9 +381,30 @@ def get_storage_dir(model_name: str, game_type: str = "local"):
     return path
 
 
-def load_local_games(
+def load_local_games_ml(
+    model_name: str, fanova_setting: str, n_instances: int, random_seed: int, data_name: str
+) -> list[Game]:
+    """Loads a list of local games from disk."""
+    game_type = os.path.join("local", data_name)
+    game_storage_path = get_storage_dir(model_name, game_type=game_type)
+    games = []
+    for idx in range(n_instances):
+        name = get_save_name_ml(
+            model_name=model_name,
+            random_seed=random_seed,
+            fanova=fanova_setting,
+            instance_id=idx,
+            data_name=data_name,
+        )
+        save_path = os.path.join(game_storage_path, name) + ".npz"
+        game = Game(path_to_values=save_path)
+        games.append(game)
+    return games
+
+
+def load_local_games_synth(
     model_name: str,
-    interaction_data: bool,
+    interaction_data: Optional[str],
     rho_value: float,
     fanova_setting: str,
     n_instances: int,
@@ -324,15 +414,12 @@ def load_local_games(
     data_name: Optional[str] = None,
 ) -> tuple[list[Game], list[np.ndarray], list[float]]:
     """Loads a list of local games from disk."""
-    game_storage_path = get_storage_dir(model_name)
+    game_storage_path = get_storage_dir(model_name, game_type="local")
     games, x_explain, y_explain = [], [], []
     x_data = generate_data(num_samples, rho_value, random_seed, load_data=True)
-    if interaction_data:
-        y_data = add_noise(interaction_function(x_data), random_seed=random_seed)
-    else:
-        y_data = add_noise(linear_function(x_data), random_seed=random_seed)
+    y_data = get_y_synth(x_data, interaction_data, random_seed)
     for idx in range(n_instances):
-        name = get_save_name(
+        name = get_save_name_synth(
             interaction_data,
             model_name,
             random_seed,

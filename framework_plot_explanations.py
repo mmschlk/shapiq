@@ -2,13 +2,14 @@
 
 import os
 from itertools import product
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from framework_utils import get_save_name
+from framework_utils import get_save_name_synth
 
 RESULTS_DIR = "framework_results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -22,14 +23,14 @@ def load_explanation_data(
     model_name: str = "lin_reg",
     rho_values: list[float] = (0.0, 0.5, 0.9),
     sample_sizes: list[int] = (512,),
-    interaction_data: bool = False,
+    interaction_data: Optional[str] = None,
     ones_instances: bool = (True,),
     n_instances: list[int] = (1,),
     random_seeds: int = 30,
     only_load: bool = False,
 ) -> pd.DataFrame:
     """Loads the explanation data from disk."""
-    int_str = "int" if interaction_data else "no_int"
+    int_str = "lin" if interaction_data is None else interaction_data
 
     if only_load:
         try:
@@ -53,7 +54,7 @@ def load_explanation_data(
     data_all: list[pd.DataFrame] = []
     for random_seed, rho_value, n_instance, sample_size, ones_instance in tqdm(data_settings):
         # get the save name
-        save_name = get_save_name(
+        save_name = get_save_name_synth(
             interaction_data=interaction_data,
             model_name=model_name,
             random_seed=random_seed,
@@ -235,16 +236,22 @@ def plot_legend(
 
 if __name__ == "__main__":
 
+    interaction_data = (
+        "non-linear-interaction"  # None, "linear-interaction", "non-linear-interaction"
+    )
+
     # load the data
-    _ = load_explanation_data(only_load=True, interaction_data=False)
-    data = load_explanation_data(only_load=True, interaction_data=True)
+    # _ = load_explanation_data(only_load=True, interaction_data=None)
+    data = load_explanation_data(only_load=True, interaction_data=interaction_data)
+
+    plot_save_name = interaction_data if interaction_data is not None else "linear"
+    plot_save_name = plot_save_name.replace("-", "_")
 
     FANOVA_SETTINGS = ["c", "m", "b"]
     FEATURE_INFLUENCES = ["pure", "partial", "full"]
     RHO_VALUES = [0.0, 0.5, 0.9]
 
-    pad = True
-    figsize = (14, 10)
+    figsize = (12, 10)
     title_fontsize = 25
     label_fontsize = 17
 
@@ -365,13 +372,8 @@ if __name__ == "__main__":
 
     # remove whitespace between subplots
     plt.tight_layout()
-    if pad:
-        pad_str = "pad"
-        plt.subplots_adjust(wspace=0.08, hspace=0.08)
-    else:
-        pad_str = "no_pad"
-        plt.subplots_adjust(wspace=0, hspace=0)
-    plt.savefig(f"explanations_all_{pad_str}_{str(figsize[0])}x{str(figsize[1])}.pdf")
+    plt.subplots_adjust(wspace=0.08, hspace=0.08)
+    plt.savefig(f"explanations_all_{plot_save_name}_{str(figsize[0])}x{str(figsize[1])}.pdf")
     plt.show()
 
     # plot_bar_plot(

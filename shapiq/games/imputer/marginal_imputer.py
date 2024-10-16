@@ -50,6 +50,7 @@ class MarginalImputer(Imputer):
         random_state: Optional[int] = None,
         joint_marginal_distribution: bool = True,  # TODO: changed from False
         cond_sampler: Optional[Callable] = None,
+        take_all_background: bool = False,
     ) -> None:
         super().__init__(model, data, categorical_features, random_state)
 
@@ -57,6 +58,7 @@ class MarginalImputer(Imputer):
         self._sample_replacements = sample_replacements
         self._sample_size: int = sample_size
         self.replacement_data: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten
+        self.take_all_background: bool = take_all_background
         self.init_background(self.data)
         self._x: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten @ fit
         if x is not None:
@@ -85,15 +87,23 @@ class MarginalImputer(Imputer):
         data = np.tile(np.copy(self._x), (n_coalitions, 1))
         if self._sample_replacements:
             # sampling from background returning array of shape (sample_size, n_subsets, n_features)
-            if self.replacement_sampler is not None:
-                replacement_data = self.replacement_sampler(coalitions, x_to_impute=self._x)
+            if not self.take_all_background:
+                if self.replacement_sampler is not None:
+                    replacement_data = self.replacement_sampler(coalitions, x_to_impute=self._x)
+                else:
+                    replacement_data = self._sample_replacement_values(coalitions)
+                outputs = np.zeros((self._sample_size, n_coalitions))
+                for i in range(self._sample_size):
+                    replacements = replacement_data[i].reshape(n_coalitions, self._n_features)
+                    data[~coalitions] = replacements[~coalitions]
+                    outputs[i] = self.predict(data)
             else:
-                replacement_data = self._sample_replacement_values(coalitions)
-            outputs = np.zeros((self._sample_size, n_coalitions))
-            for i in range(self._sample_size):
-                replacements = replacement_data[i].reshape(n_coalitions, self._n_features)
-                data[~coalitions] = replacements[~coalitions]
-                outputs[i] = self.predict(data)
+                outputs = np.zeros((self.replacement_data.shape[0], n_coalitions))
+                for i in range(self.replacement_data.shape[0]):
+                    data[~coalitions] = np.tile(self.replacement_data[i], (n_coalitions, 1))[
+                        ~coalitions
+                    ]
+                    outputs[i] = self.predict(data)
             outputs = np.mean(outputs, axis=0)  # average over the samples
         else:
             replacement_data = np.tile(self.replacement_data, (n_coalitions, 1))
@@ -112,6 +122,11 @@ class MarginalImputer(Imputer):
             The initialized imputer.
         """
         if self._sample_replacements:
+            if self.take_all_background and self.data.shape[0] < self._sample_size:
+                # if background data is smaller then increase it by repeating it until it is sample_size
+                missing_rows = self._sample_size - self.data.shape[0]
+                sample_indices = np.random.choice(self.data.shape[0], missing_rows, replace=True)
+                data = np.concatenate((data, self.data[sample_indices]))
             self.replacement_data = data
         else:
             self.replacement_data = np.zeros((1, self._n_features), dtype=object)

@@ -8,39 +8,10 @@ import pandas as pd
 import tqdm
 
 from framework_explanations import compute_explanation, compute_explanation_with_mi
-from framework_utils import get_save_name, load_local_games
+from framework_utils import get_save_name_synth, load_local_games_synth, update_results
 
-RESULTS_DIR = "framework_results"
+RESULTS_DIR = "framework_results_synth"
 os.makedirs(RESULTS_DIR, exist_ok=True)
-
-
-def _update_results(
-    _results: list,
-    _explanation: dict[tuple[int, ...], float],
-    _game_id: int,
-    _feature_influence: str,
-    _fanova_setting: str,
-    _entity: str,
-    _x_explain: np.ndarray,
-) -> None:
-    for _feature_set, _exp_val in _explanation.items():
-        if len(_feature_set) == 1:
-            _x_val = float(_x_explain[_feature_set])
-        else:
-            _x_val = float(np.prod(_x_explain[list(_feature_set)]))
-        _feature_set = tuple(_feature_set)
-        _results.append(
-            {
-                "game_id": _game_id,
-                "feature_set": _feature_set,
-                "feature_influence": _feature_influence,
-                "fanova_setting": _fanova_setting,
-                "entity": _entity,
-                "explanation": _exp_val,
-                "feature_value": _x_val,
-                "explanation/feature_value": _exp_val / _x_val if _x_val != 0 else 0,
-            }
-        )
 
 
 def compare_mi_to_shapiq(_explanation: dict, print_error: bool = False):
@@ -85,7 +56,7 @@ if __name__ == "__main__":
     model_names = ["lin_reg"]
     num_samples = 10_000
     rho_values = [0.0, 0.5, 0.9]
-    interaction_datas = [True, False]
+    interaction_datas = [None, "linear-interaction", "non-linear-interaction"]
     sample_sizes = [512]
     n_instances_list = [1]
     ones_instances = [True]
@@ -116,7 +87,7 @@ if __name__ == "__main__":
         ) in game_settings:
             # get a save name for later
             data_name = "synthetic_ones" if ones_instance else "synthetic"
-            save_name = get_save_name(
+            save_name = get_save_name_synth(
                 interaction_data=interaction_data,
                 model_name=model_name,
                 random_seed=random_seed,
@@ -130,7 +101,7 @@ if __name__ == "__main__":
             results = []
             for feature_influence, fanova_setting, entity in explanation_params:
                 # get the games from disk
-                games, x_explain, y_explain = load_local_games(
+                games, x_explain, y_explain = load_local_games_synth(
                     model_name=model_name,
                     interaction_data=interaction_data,
                     rho_value=rho_value,
@@ -152,7 +123,7 @@ if __name__ == "__main__":
                         entity=entity,
                     )
                     x_explain = np.ones(4) if ones_instance else x_explain[game_id]
-                    _update_results(
+                    update_results(
                         _results=results,
                         _explanation=explanation,
                         _game_id=game_id,
