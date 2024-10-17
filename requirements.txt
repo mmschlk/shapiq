@@ -13,7 +13,7 @@ scikit-learn==1.5.2
 scipy==1.14.1
 shap==0.46.0
 tqdm==4.66.5
-torch==2.5.0
+torch==2.4.1
 torchvision==0.19.1
 transformers==4.44.2
 xgboost==2.1.1
