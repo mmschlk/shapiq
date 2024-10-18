@@ -64,7 +64,12 @@ class ScikitWrapper:
 
     def predict(self, X):
         if not isinstance(X, torch.Tensor):
-            X = torch.tensor(X).float()
+            try:
+                # first make float numpy
+                X = np.array(X).astype(np.float32)
+                X = torch.tensor(X).float()
+            except TypeError:
+                raise TypeError("Input should be a torch tensor or a numpy array")
         pred = self.model(X).clone().detach()
         pred = pred.numpy()[:, 0]
         return pred
