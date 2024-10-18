@@ -467,7 +467,17 @@ def load_local_games_synth(
 
 
 if __name__ == "__main__":
-    # generate the data
-    _ = generate_data(10_000, 0.0, random_seed=42)
-    _ = generate_data(10_000, 0.5, random_seed=42)
-    _ = generate_data(10_000, 0.0, random_seed=42)
+
+    # do k-fold monte-carlo cross validation for all ml models
+    random_seed = 42
+    k_folds = 5
+
+    for model_name in ["xgb", "rnf", "dt", "nn"]:
+        for data_name in ["california", "bike", "titanic"]:
+            try:
+                print(f"Model: {model_name}, Data: {data_name}")
+                _ = get_ml_data(model_name, random_seed, data_name, True)
+                print()
+            except Exception as e:
+                print(f"Error: {e}")  # some models might not work or are not specified
+                continue
