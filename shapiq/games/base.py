@@ -4,7 +4,7 @@ import os
 import pickle
 import warnings
 from abc import ABC
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -94,6 +94,7 @@ class Game(ABC):
         normalization_value: Optional[float] = None,
         path_to_values: Optional[str] = None,
         verbose: bool = False,
+        player_names: Optional[list[str]] = None,
         *args,
         **kwargs,
     ) -> None:
@@ -135,6 +136,11 @@ class Game(ABC):
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)
         self.grand_coalition = np.ones(self.n_players, dtype=bool)
 
+        # define player_names
+        self.player_name_lookup: dict[str, int] = (
+            {name: i for i, name in enumerate(player_names)} if player_names is not None else None
+        )
+
         self.verbose = verbose
 
     @property
@@ -157,7 +163,106 @@ class Game(ABC):
         """Checks if the game is normalized/centered."""
         return self(self.empty_coalition) == 0
 
-    def __call__(self, coalitions: np.ndarray, verbose: bool = False) -> np.ndarray:
+    def _check_coalitions(
+        self,
+        coalitions: Union[
+            np.ndarray, list[Union[tuple[int], tuple[str]]], tuple[Union[int, str]], str
+        ],
+    ) -> np.ndarray:
+        """
+        Check if the coalitions are in the correct format and convert them to one-hot encoding.
+        Args:
+            coalitions: The coalitions to evaluate.
+        Returns:
+            np.ndarray: The coalitions in the correct format
+        Raises:
+            TypeError: If the coalitions are not in the correct format.
+
+        """
+        if isinstance(coalitions, list):
+            # Check that list is not empty and that all elements are tuples
+            if len(coalitions) == 0:
+                raise ValueError("The list of coalitions is empty.")
+            if not all(isinstance(coal, tuple) for coal in coalitions):
+                raise TypeError("List of coalitions has to be a list of tuples.")
+
+            # Check that tuple have consistent types
+            tuple_types = [set(map(type, coal)) for coal in coalitions]
+            if len(tuple_types) > 1:
+                raise TypeError("Elements of tuple must have the same type.")
+            if tuple_types[0] not in [set(), {int}, {str}]:
+                raise TypeError("Tuples must contain either integers or strings.")
+
+            # check that string tuples are only used if player names are provided
+            if self.player_name_lookup is None and tuple_types[0] == {str}:
+                raise TypeError("Player names have to be provided to evaluate string tuples.")
+
+            # convert strings to integers
+            if tuple_types[0] == {str}:
+                coalitions = [
+                    tuple([self.player_name_lookup[name] for name in coal]) for coal in coalitions
+                ]
+
+            # convert list of tuples to one-hot encoding
+            coalitions = transform_coalitions_to_array(coalitions, self.n_players)
+            return coalitions
+        elif isinstance(coalitions, tuple):
+            # Check that tuple has consistent types
+            tuple_types = set(type(player) for player in coalitions)
+            if len(tuple_types) > 1:
+                raise TypeError("Elements of tuple must have the same type.")
+            if tuple_types not in [set(), {int}, {str}]:
+                raise TypeError("Tuple must contain either integers or strings.")
+
+            # check that string tuples are only used if player names are provided
+            if self.player_name_lookup is None and tuple_types == {str}:
+                raise TypeError("Player names have to be provided to evaluate string tuples.")
+
+            # convert strings to integers
+            if tuple_types == {str}:
+                coalitions = tuple([self.player_name_lookup[name] for name in coalitions])
+
+            # convert tuple to one-hot encoding
+            coalitions = transform_coalitions_to_array([coalitions], self.n_players)
+            return coalitions
+        elif isinstance(coalitions, np.ndarray):
+            if len(coalitions) == 0:
+                raise ValueError("The array of coalitions is empty.")
+            if coalitions.ndim == 1:
+                if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
+                    raise ValueError(
+                        "The array of coalitions is not correctly formatted."
+                        f"It should have a length of {self.n_players}"
+                    )
+                coalitions = coalitions.reshape((1, self.n_players))
+            if coalitions.shape[1] != self.n_players:
+                raise TypeError(
+                    f"The number of players in the coalitions ({coalitions.shape[1]}) does not match "
+                    f"the number of players in the game ({self.n_players})."
+                )
+            return coalitions
+        elif isinstance(coalitions, str):
+            if coalitions == "empty":
+                return self.empty_coalition.reshape((1, self.n_players))
+            elif coalitions == "grand":
+                return self.grand_coalition.reshape((1, self.n_players))
+            else:
+                if self.player_name_lookup is None:
+                    raise TypeError("Player names have to be provided to evaluate strings.")
+
+                tuple_coal = tuple([self.player_name_lookup[coalitions]])
+                return transform_coalitions_to_array([tuple_coal], self.n_players)
+
+        else:
+            raise TypeError("Coalitions have to be numpy arrays or lists of tuples or tuple.")
+
+    def __call__(
+        self,
+        coalitions: Union[
+            np.ndarray, list[Union[tuple[int], tuple[str]]], tuple[Union[int, str]], str
+        ],
+        verbose: bool = False,
+    ) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
         value function.
 
@@ -168,9 +273,8 @@ class Game(ABC):
         Returns:
             The values of the coalitions.
         """
-        # check if coalitions are correct dimensions
-        if coalitions.ndim == 1:
-            coalitions = coalitions.reshape((1, self.n_players))
+        # check if coalitions are correct format
+        coalitions = self._check_coalitions(coalitions)
 
         verbose = verbose or self.verbose
 
