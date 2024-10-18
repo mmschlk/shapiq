@@ -279,7 +279,7 @@ class MultiDataExplanationGame(Game):
                 )
             outputs += loss
         outputs /= len(self.local_games)
-        return outputs
+        return -outputs
 
     def sensitivity_value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Evaluate the model and imputer on the sensitivity explanation game.
