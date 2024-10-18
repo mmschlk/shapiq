@@ -320,7 +320,9 @@ def get_synth_data_and_model(
 
     # generate the data
     x_data = generate_data(num_samples, rho, random_seed, load_data=True)
+    x_test = generate_data(num_samples, rho, random_seed + 1, load_data=True)
     y_data = get_y_synth(x_data, interaction_data, random_seed)
+    y_test = get_y_synth(x_test, interaction_data, random_seed + 1)
 
     # get the model
     if interaction_data == "linear-interaction":  # model for interactions
@@ -349,9 +351,9 @@ def get_synth_data_and_model(
     model.fit(x_data, y_data)
 
     # predict the data and print performance
-    y_pred = model.predict(x_data)
-    mse = mean_squared_error(y_data, y_pred)
-    r2 = r2_score(y_data, y_pred)
+    y_pred = model.predict(x_test)
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
 
     # print the summary
     print(f"Linear Model with Interaction: {interaction_data}")
@@ -468,8 +470,15 @@ def load_local_games_synth(
 
 if __name__ == "__main__":
 
-    # do k-fold monte-carlo cross validation for all ml models
     random_seed = 42
+
+    # evaluate the synth model
+    for rho_value in [0.0, 0.5, 0.9]:
+        _, _, _ = get_synth_data_and_model(
+            num_samples=10_000, rho=0.0, interaction_data=None, random_seed=random_seed
+        )
+
+    # do k-fold monte-carlo cross validation for all ml models
     k_folds = 5
 
     for model_name in ["xgb", "rnf", "dt", "nn"]:
