@@ -10,6 +10,10 @@ updates:
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 12
+    groups:
+      pip-all-updates:
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
