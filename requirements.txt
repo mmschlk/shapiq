@@ -1,21 +1,21 @@
 ﻿# this requirements.txt file is maintained and bumbped by dependabot
 # this file is used to see weather new versions of the libraries are available and break shapiq
-black==24.8.0
+black==24.10.0
 colour==0.1.5
-coverage==7.6.1
+coverage==7.6.3
 matplotlib==3.9.2
-networkx==3.3.0
+networkx==3.4.1
 pandas==2.2.3
 pytest==8.3.3
-ruff==0.6.9
+ruff==0.7.0
 scikit-image==0.24.0
 scikit-learn==1.5.2
 scipy==1.14.1
 shap==0.46.0
 tqdm==4.66.5
-torch==2.4.0
-torchvision==0.19.0
-transformers==4.44.2
+torch==2.5.0
+torchvision==0.20.0
+transformers==4.45.2
 xgboost==2.1.1
 numpy==1.26.4
 requests==2.32.3
