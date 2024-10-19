@@ -37,6 +37,7 @@ Contents
    notebooks/conditional_imputer
    notebooks/parallel_computation
    notebooks/benchmark_approximators
+   notebooks/data_valuation
    notebooks/core
 
 .. toctree::
