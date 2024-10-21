@@ -242,16 +242,11 @@ class Game(ABC):
                 )
             return coalitions
         elif isinstance(coalitions, str):
-            if coalitions == "empty":
-                return self.empty_coalition.reshape((1, self.n_players))
-            elif coalitions == "grand":
-                return self.grand_coalition.reshape((1, self.n_players))
-            else:
-                if self.player_name_lookup is None:
-                    raise TypeError("Player names have to be provided to evaluate strings.")
+            if self.player_name_lookup is None:
+                raise TypeError("Player names have to be provided to evaluate strings.")
 
-                tuple_coal = tuple([self.player_name_lookup[coalitions]])
-                return transform_coalitions_to_array([tuple_coal], self.n_players)
+            tuple_coal = (self.player_name_lookup[coalitions],)
+            return transform_coalitions_to_array([tuple_coal], self.n_players)
 
         else:
             raise TypeError("Coalitions have to be numpy arrays or lists of tuples or tuple.")
