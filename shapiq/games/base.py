@@ -180,54 +180,63 @@ class Game(ABC):
 
         """
         if isinstance(coalitions, list):
-            # Check that list is not empty and that all elements are tuples
-            if len(coalitions) == 0:
-                raise ValueError("The list of coalitions is empty.")
-            if not all(isinstance(coal, tuple) for coal in coalitions):
-                raise TypeError("List of coalitions has to be a list of tuples.")
-
-            # Check that tuple have consistent types
-            tuple_types = [set(map(type, coal)) for coal in coalitions]
-            if len(tuple_types) > 1:
-                raise TypeError("Elements of tuple must have the same type.")
-            if tuple_types[0] not in [set(), {int}, {str}]:
-                raise TypeError("Tuples must contain either integers or strings.")
-
-            # check that string tuples are only used if player names are provided
-            if self.player_name_lookup is None and tuple_types[0] == {str}:
-                raise TypeError("Player names have to be provided to evaluate string tuples.")
-
-            # convert strings to integers
-            if tuple_types[0] == {str}:
+            try:
+                # Iterate through list to replace empty tuples with empty coalition
                 coalitions = [
-                    tuple([self.player_name_lookup[name] for name in coal]) for coal in coalitions
+                    coal if len(coal) > 0 else self.empty_coalition for coal in coalitions
                 ]
 
-            # convert list of tuples to one-hot encoding
-            coalitions = transform_coalitions_to_array(coalitions, self.n_players)
+                if self.player_name_lookup is not None:
+                    # if player names are provided, it might contain strings
+                    if type(coalitions[0][0]) is str:
+                        # If the first item is a string, we assume all items are strings
+                        # If not an error is thrown, indicating that the list is not correctly formatted
+                        coalitions = [
+                            tuple([self.player_name_lookup[name] for name in coal])
+                            for coal in coalitions
+                        ]
+
+                # convert list of tuples to one-hot encoding
+                coalitions = transform_coalitions_to_array(coalitions, self.n_players)
+            except Exception:
+                raise TypeError(
+                    "List may only contain tuples of integers or strings!"
+                    "The tuples are not allowed to have heterogeneous types!"
+                    "List is not allowed to be empty!"
+                    "If strings are used, player names have to be provided via player_name_lookup in .init()!"
+                    "Examples: [('Alice', 'Bob'), ('Alice', 'Charlie')] or [(0, 1), (0, 2)]"
+                )
+
             return coalitions
         elif isinstance(coalitions, tuple):
-            # Check that tuple has consistent types
-            tuple_types = set(type(player) for player in coalitions)
-            if len(tuple_types) > 1:
-                raise TypeError("Elements of tuple must have the same type.")
-            if tuple_types not in [set(), {int}, {str}]:
-                raise TypeError("Tuple must contain either integers or strings.")
-
-            # check that string tuples are only used if player names are provided
-            if self.player_name_lookup is None and tuple_types == {str}:
-                raise TypeError("Player names have to be provided to evaluate string tuples.")
-
-            # convert strings to integers
-            if tuple_types == {str}:
-                coalitions = tuple([self.player_name_lookup[name] for name in coalitions])
-
             # convert tuple to one-hot encoding
-            coalitions = transform_coalitions_to_array([coalitions], self.n_players)
+            # If an error is raised of any kind the given tuple was not correctly
+            try:
+                if coalitions == ():
+                    # convert empty tuple to empty coalition
+                    coalitions = self.empty_coalition
+
+                if isinstance(coalitions[0], str):
+                    # convert strings to integers.
+                    if self.player_name_lookup is None:
+                        # if player names are not provided, raise an error
+                        raise TypeError("Player names have to be provided to evaluate strings.")
+                    coalitions = tuple([self.player_name_lookup[player] for player in coalitions])
+                # try to convert the tuple to a one-hot encoding
+                coalitions = transform_coalitions_to_array([coalitions], self.n_players)
+            except Exception:
+                # The tuple is not correctly formatted. Raise an error explaining the correct format.
+                raise TypeError(
+                    "Tuple may only contain integers or strings!"
+                    "The tuple is not allowed to have heterogeneous types!"
+                    "If strings are used, player names have to be provided via player_name_lookup in .init()!"
+                    "Examples: ('Alice', 'Bob') or (0, 1)"
+                )
             return coalitions
         elif isinstance(coalitions, np.ndarray):
             if len(coalitions) == 0:
                 raise ValueError("The array of coalitions is empty.")
+
             if coalitions.ndim == 1:
                 if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
                     raise ValueError(
@@ -235,6 +244,7 @@ class Game(ABC):
                         f"It should have a length of {self.n_players}"
                     )
                 coalitions = coalitions.reshape((1, self.n_players))
+
             if coalitions.shape[1] != self.n_players:
                 raise TypeError(
                     f"The number of players in the coalitions ({coalitions.shape[1]}) does not match "

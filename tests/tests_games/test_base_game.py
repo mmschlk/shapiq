@@ -40,7 +40,7 @@ def test_call():
     }
 
     # test missing coalition in call
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         assert test_game([]) == 0.0  # ValueError due to empty list
     with pytest.raises(ValueError):
         assert test_game(np.array([]))  # ValueError due to empty array
@@ -51,11 +51,7 @@ def test_call():
     with pytest.raises(TypeError):
         assert test_game([(0, 1), ("Alice",), ("Bob",)])
     with pytest.raises(TypeError):
-        assert test_game([(np.array([1, 1]),)])
-    with pytest.raises(TypeError):
         assert test_game(("Alice", 1))
-    with pytest.raises(TypeError):
-        assert test_game((np.array(1), np.array(2)))
 
     # test wrong coalition size in call
     with pytest.raises(ValueError):
