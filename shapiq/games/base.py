@@ -165,101 +165,95 @@ class Game(ABC):
 
     def _check_coalitions(
         self,
-        coalitions: Union[
-            np.ndarray, list[Union[tuple[int], tuple[str]]], tuple[Union[int, str]], str
-        ],
+        coalitions: Union[np.ndarray, list[Union[tuple[int], tuple[str]]]],
     ) -> np.ndarray:
         """
         Check if the coalitions are in the correct format and convert them to one-hot encoding.
+        The format may either be a numpy array containg the coalitions in one-hot encoding or a list of tuples with integers or strings.
         Args:
-            coalitions: The coalitions to evaluate.
+            coalitions: The coalitions to convert to one-hot encoding.
         Returns:
             np.ndarray: The coalitions in the correct format
         Raises:
             TypeError: If the coalitions are not in the correct format.
+        Examples:
+            >>> coalitions = np.asarray([[1, 0, 0, 0], [0, 1, 1, 0]])
+            >>> coalitions = [(0, 1), (1, 2)]
+            >>> coalitions = [()]
+            >>> coalitions = [(0, 1), (1, 2), (0, 1, 2)]
+            if player_name_lookup is not None:
+            >>> coalitions = [("Alice", "Bob"), ("Bob", "Charlie")]
+            Wrong format:
+            >>> coalitions = [1, 0, 0, 0]
+            >>> coalitions = [(1,"Alice")]
+            >>> coalitions = np.array([1,-1,2])
+
 
         """
-        if isinstance(coalitions, list):
-            try:
-                # Iterate through list to replace empty tuples with empty coalition
-                coalitions = [
-                    coal if len(coal) > 0 else self.empty_coalition for coal in coalitions
-                ]
+        error_message = (
+            "List may only contain tuples of integers or strings."
+            "The tuples are not allowed to have heterogeneous types."
+            "Reconcile the docs for correct format of coalitions."
+        )
 
-                if self.player_name_lookup is not None:
-                    # if player names are provided, it might contain strings
-                    if type(coalitions[0][0]) is str:
-                        # If the first item is a string, we assume all items are strings
-                        # If not an error is thrown, indicating that the list is not correctly formatted
-                        coalitions = [
-                            tuple([self.player_name_lookup[name] for name in coal])
-                            for coal in coalitions
-                        ]
+        if isinstance(coalitions, np.ndarray):
 
-                # convert list of tuples to one-hot encoding
-                coalitions = transform_coalitions_to_array(coalitions, self.n_players)
-            except Exception:
-                raise TypeError(
-                    "List may only contain tuples of integers or strings!"
-                    "The tuples are not allowed to have heterogeneous types!"
-                    "List is not allowed to be empty!"
-                    "If strings are used, player names have to be provided via player_name_lookup in .init()!"
-                    "Examples: [('Alice', 'Bob'), ('Alice', 'Charlie')] or [(0, 1), (0, 2)]"
-                )
-
-            return coalitions
-        elif isinstance(coalitions, tuple):
-            # convert tuple to one-hot encoding
-            # If an error is raised of any kind the given tuple was not correctly
-            try:
-                if coalitions == ():
-                    # convert empty tuple to empty coalition
-                    coalitions = self.empty_coalition
-
-                if isinstance(coalitions[0], str):
-                    # convert strings to integers.
-                    if self.player_name_lookup is None:
-                        # if player names are not provided, raise an error
-                        raise TypeError("Player names have to be provided to evaluate strings.")
-                    coalitions = tuple([self.player_name_lookup[player] for player in coalitions])
-                # try to convert the tuple to a one-hot encoding
-                coalitions = transform_coalitions_to_array([coalitions], self.n_players)
-            except Exception:
-                # The tuple is not correctly formatted. Raise an error explaining the correct format.
-                raise TypeError(
-                    "Tuple may only contain integers or strings!"
-                    "The tuple is not allowed to have heterogeneous types!"
-                    "If strings are used, player names have to be provided via player_name_lookup in .init()!"
-                    "Examples: ('Alice', 'Bob') or (0, 1)"
-                )
-            return coalitions
-        elif isinstance(coalitions, np.ndarray):
+            # Check that coalition is contained in array
             if len(coalitions) == 0:
-                raise ValueError("The array of coalitions is empty.")
+                raise TypeError("The array of coalitions is empty.")
 
+            # Check if single coalition is correctly given
             if coalitions.ndim == 1:
                 if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
-                    raise ValueError(
+                    raise TypeError(
                         "The array of coalitions is not correctly formatted."
                         f"It should have a length of {self.n_players}"
                     )
                 coalitions = coalitions.reshape((1, self.n_players))
 
+            # Check that all coalitions have the correct number of players
             if coalitions.shape[1] != self.n_players:
                 raise TypeError(
                     f"The number of players in the coalitions ({coalitions.shape[1]}) does not match "
                     f"the number of players in the game ({self.n_players})."
                 )
+
+            # Check that values of numpy array are either 0 or 1
+            if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
+                raise TypeError("The values in the array of coalitions are not binary.")
+
             return coalitions
-        elif isinstance(coalitions, str):
-            if self.player_name_lookup is None:
-                raise TypeError("Player names have to be provided to evaluate strings.")
 
-            tuple_coal = (self.player_name_lookup[coalitions],)
-            return transform_coalitions_to_array([tuple_coal], self.n_players)
+        # We now assume to work with list of tuples
+        if isinstance(coalitions, tuple):
+            # if by any chance a tuple was given wrap into a list
+            coalitions = [coalitions]
 
-        else:
-            raise TypeError("Coalitions have to be numpy arrays or lists of tuples or tuple.")
+        try:
+            # convert list of tuples to one-hot encoding
+            coalitions = transform_coalitions_to_array(coalitions, self.n_players)
+
+            return coalitions
+        except Exception as err:
+            # It may either be the tuples contain strings or wrong format
+            if self.player_name_lookup is not None:
+                # We now assume the tuples to contain strings
+                try:
+                    coalitions = [
+                        (
+                            tuple(self.player_name_lookup[player] for player in coalition)
+                            if coalition != tuple()
+                            else tuple()
+                        )
+                        for coalition in coalitions
+                    ]
+                    coalitions = transform_coalitions_to_array(coalitions, self.n_players)
+
+                    return coalitions
+                except Exception as err:
+                    raise TypeError(error_message) from err
+
+            raise TypeError(error_message) from err
 
     def __call__(
         self,

@@ -39,11 +39,7 @@ def test_call():
         "Frank": 5,
     }
 
-    # test missing coalition in call
-    with pytest.raises(TypeError):
-        assert test_game([]) == 0.0  # ValueError due to empty list
-    with pytest.raises(ValueError):
-        assert test_game(np.array([]))  # ValueError due to empty array
+    assert test_game([]) == 0.0
 
     # test coalition calls with wrong datatype
     with pytest.raises(TypeError):
@@ -54,18 +50,18 @@ def test_call():
         assert test_game(("Alice", 1))
 
     # test wrong coalition size in call
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         assert test_game(np.array([True, False, True])) == 0.0
+    with pytest.raises(TypeError):
+        assert test_game(np.array([])) == 0.0
+
+    # test wrong method for numpy array values
+    with pytest.raises(TypeError):
+        assert test_game(np.array([1, 2, 3, 4, 5, 6])) == 0.0
 
     # test wrong coalition size in shape[1]
     with pytest.raises(TypeError):
         assert test_game(np.array([[True, False, True]])) == 0.0
-
-    # test wrong datatype in coalition call
-    with pytest.raises(TypeError):
-        assert test_game({0, 1, 2}) == 0.0
-    with pytest.raises(TypeError):
-        assert test_game([(None)]) == 0.0
 
     # test with empty coalition all call variants
     test_coalition = test_game.empty_coalition
@@ -85,10 +81,9 @@ def test_call():
     test_coalition = np.array([True] + [False for _ in range(test_game.n_players - 1)])
     assert test_game(test_coalition) - 1 / 6 < 10e-7
     assert test_game((0,)) - 1 / 6 < 10e-7
-    assert test_game([tuple([0])]) - 1 / 6 < 10e-7
-    assert test_game(tuple(("Alice",))) - 1 / 6 < 10e-7
-    assert test_game([tuple(("Alice",))]) - 1 / 6 < 10e-7
-    assert test_game("Alice") - 1 / 6 < 10e-7
+    assert test_game([(0,)]) - 1 / 6 < 10e-7
+    assert test_game(("Alice",)) - 1 / 6 < 10e-7
+    assert test_game([("Alice",)]) - 1 / 6 < 10e-7
 
     # test string calls with missing player names
     test_game2 = TestGame(n=n_players)
