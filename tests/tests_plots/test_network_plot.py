@@ -53,6 +53,11 @@ def test_network_plot():
     with pytest.raises(ValueError):
         network_plot()
 
+    # test show=True
+    output = network_plot(interaction_values=iv, show=True)
+    assert output is None
+    plt.close("all")
+
     assert True
 
 

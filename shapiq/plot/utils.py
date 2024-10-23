@@ -7,7 +7,7 @@ import numpy as np
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
-__all__ = ["get_interaction_values_and_feature_names"]
+__all__ = ["get_interaction_values_and_feature_names", "abbreviate_feature_names"]
 
 
 def get_interaction_values_and_feature_names(
@@ -49,3 +49,18 @@ def get_interaction_values_and_feature_names(
     _shap_values = np.array(_shap_values)
     _labels = np.array(_labels)
     return _shap_values, _labels
+
+
+def abbreviate_feature_names(feature_names: list[str]) -> list[str]:
+    """A rudimentary function to abbreviate feature names for plotting.
+
+    Args:
+        feature_names: The feature names to be abbreviated.
+
+    Returns:
+        list[str]: The abbreviated feature names.
+    """
+    abbreviated_names = []
+    for name in feature_names:
+        abbreviated_names.append(name.strip()[0:3] + ".")
+    return abbreviated_names

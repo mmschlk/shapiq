@@ -36,3 +36,8 @@ def test_force_plot(interaction_values_list: list[InteractionValues]):
     fp = iv.plot_force(show=False)
     assert isinstance(fp, plt.Figure)
     plt.close()
+
+    # test show=True
+    output = iv.plot_force(show=True)
+    assert output is None
+    plt.close("all")
