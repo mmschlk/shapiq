@@ -134,8 +134,15 @@ class Game(ABC):
         # define some handy coalition variables
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)
         self.grand_coalition = np.ones(self.n_players, dtype=bool)
-        self._empty_coalition_value: Optional[float] = None
-        self._grand_coalition_value: Optional[float] = None
+        # don't know if the following is kosher (probably not)
+        try:
+            self._empty_coalition_value = self._empty_coalition_value
+        except AttributeError:
+            self._empty_coalition_value = None
+        try:
+            self._grand_coalition_value = self._grand_coalition_value
+        except AttributeError:
+            self._grand_coalition_value = None
 
         self.verbose = verbose
 
