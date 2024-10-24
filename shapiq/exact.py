@@ -16,7 +16,7 @@ __all__ = ["ExactComputer", "get_bernoulli_weights"]
 
 class ExactComputer:
     """Computes exact Shapley Interactions for specified game by evaluating the powerset of all
-        :math:`2^n` coalitions.
+    :math:`2^n` coalitions.
 
     The ExactComputer class computes a variety of game theoretic concepts like interaction indices
     or generalized values. Currently, the following indices and values are supported:
@@ -856,7 +856,7 @@ class ExactComputer:
 
 def get_bernoulli_weights(order: int) -> np.ndarray:
     """Returns the bernoulli weights in the k-additive approximation via SII, e.g. used in
-        kADD-SHAP.
+    kADD-SHAP.
 
     Args:
         order: The highest order of interactions
