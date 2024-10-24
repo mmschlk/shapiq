@@ -36,3 +36,8 @@ def test_waterfall_plot(interaction_values_list: list[InteractionValues]):
     wp = iv.plot_waterfall(show=False)
     assert isinstance(wp, plt.Axes)
     plt.close()
+
+    # test show=True
+    output = iv.plot_waterfall(show=True)
+    assert output is None
+    plt.close("all")

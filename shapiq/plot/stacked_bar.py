@@ -21,6 +21,7 @@ def stacked_bar_plot(
     title: Optional[str] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
+    show: bool = False,
 ):
     """Plot the n-SII values for a given instance.
 
@@ -43,6 +44,7 @@ def stacked_bar_plot(
         title (str): The title of the plot.
         xlabel (str): The label of the x-axis.
         ylabel (str): The label of the y-axis.
+        show (bool): Whether to show the plot. Defaults to ``False``.
 
     Returns:
         tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]: A tuple containing the figure and
@@ -147,4 +149,6 @@ def stacked_bar_plot(
 
     plt.tight_layout()
 
-    return fig, axis
+    if not show:
+        return fig, axis
+    plt.show()

@@ -579,20 +579,21 @@ class InteractionValues:
             "baseline_value": self.baseline_value,
         }
 
-    def plot_network(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
+    def plot_network(self, show: bool = True, **kwargs) -> Optional[tuple[plt.Figure, plt.Axes]]:
         """Visualize InteractionValues on a graph.
 
         For arguments, see shapiq.plots.network_plot().
 
         Returns:
-            matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
+
         """
-        from shapiq import network_plot
+        from shapiq.plot.network import network_plot
 
         if self.max_order > 1:
             return network_plot(
                 first_order_values=self.get_n_order_values(1),
                 second_order_values=self.get_n_order_values(2),
+                show=show,
                 **kwargs,
             )
         else:
@@ -601,22 +602,32 @@ class InteractionValues:
                 "but requires also 2-order values for the network plot."
             )
 
-    def plot_stacked_bar(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
+    def plot_si_graph(self, show: bool = True, **kwargs) -> Optional[tuple[plt.Figure, plt.Axes]]:
+        """Visualize InteractionValues as a SI graph.
+
+        For arguments, see shapiq.plots.si_graph_plot().
+
+        Returns:
+            The SI graph as a tuple containing the figure and the axes.
+        """
+
+        from shapiq.plot.si_graph import si_graph_plot
+
+        return si_graph_plot(self, show=show, **kwargs)
+
+    def plot_stacked_bar(
+        self, show: bool = True, **kwargs
+    ) -> Optional[tuple[plt.Figure, plt.Axes]]:
         """Visualize InteractionValues on a graph.
 
         For arguments, see shapiq.plots.stacked_bar_plot().
 
         Returns:
-            matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
+            The stacked bar plot as a tuple containing the figure and the axes.
         """
         from shapiq import stacked_bar_plot
 
-        ret = stacked_bar_plot(
-            self,
-            **kwargs,
-        )
-
-        return ret
+        return stacked_bar_plot(self, show=show, **kwargs)
 
     def plot_force(
         self,
@@ -639,6 +650,9 @@ class InteractionValues:
             matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
             show: Whether to show the plot. Defaults to ``False``.
             **kwargs: Keyword arguments passed to ``shap.plots.force()``.
+
+        Returns:
+            The force plot as a matplotlib figure (if show is ``False``).
         """
         from shapiq import force_plot
 
@@ -655,7 +669,7 @@ class InteractionValues:
         self,
         feature_names: Optional[np.ndarray] = None,
         feature_values: Optional[np.ndarray] = None,
-        show: bool = False,
+        show: bool = True,
         max_display: int = 10,
     ) -> Optional[plt.Axes]:
         """Draws interaction values on a waterfall plot.

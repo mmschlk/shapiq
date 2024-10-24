@@ -67,6 +67,17 @@ def test_si_graph_plot(
     )
     graph_tuple = [(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)]
 
+    # test without graph and from interaction values
+    fig, ax = example_values.plot_si_graph(show=False)
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+    plt.close(fig)
+
+    # test with show=True
+    output = example_values.plot_si_graph(show=True)
+    assert output is None
+    plt.close("all")
+
     fig, ax = si_graph_plot(
         example_values,
         graph_tuple,
@@ -106,12 +117,7 @@ def test_si_graph_plot(
         plot_explanation=True,
         n_interactions=n_interactions,
         compactness=compactness,
-        label_mapping={
-            0: "A",
-            1: "B",
-            2: "C",
-            3: "D",
-        },
+        feature_names=["A", "B", "C", "D"],
     )
 
     assert isinstance(fig, plt.Figure)
@@ -149,12 +155,7 @@ def test_si_graph_plot(
         adjust_node_pos=True,
         interaction_direction="negative",
         min_max_interactions=(-0.5, 0.5),
-        label_mapping={
-            0: "A",
-            1: "B",
-            2: "C",
-            3: "D",
-        },
+        feature_names=["A", "B", "C", "D"],
     )
 
     assert isinstance(fig, plt.Figure)
