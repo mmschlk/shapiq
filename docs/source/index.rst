@@ -32,6 +32,7 @@ Contents
 
    notebooks/shapiq_scikit_learn
    notebooks/treeshapiq_lightgbm
+   notebooks/visualizing_shapley_interactions
    notebooks/language_model_game
    notebooks/vision_transformer
    notebooks/conditional_imputer

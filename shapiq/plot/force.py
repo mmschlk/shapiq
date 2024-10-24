@@ -18,7 +18,7 @@ def force_plot(
     feature_names: Optional[np.ndarray] = None,
     feature_values: Optional[np.ndarray] = None,
     matplotlib: bool = True,
-    show: bool = True,
+    show: bool = False,
     **kwargs,
 ) -> Optional[plt.Figure]:
     """Draws interaction values on a force plot.
@@ -37,26 +37,15 @@ def force_plot(
     check_import_module("shap")
     import shap
 
-    if interaction_values.max_order == 1:
-        return shap.plots.force(
-            base_value=np.array([interaction_values.baseline_value], dtype=float),  # must be array
-            shap_values=interaction_values.get_n_order_values(1),
-            features=feature_values,
-            feature_names=feature_names,
-            matplotlib=matplotlib,
-            show=show,
-            **kwargs,
-        )
-    else:
-        _shap_values, _labels = get_interaction_values_and_feature_names(
-            interaction_values, feature_names, feature_values
-        )
+    _shap_values, _labels = get_interaction_values_and_feature_names(
+        interaction_values, feature_names, feature_values
+    )
 
-        return shap.plots.force(
-            base_value=np.array([interaction_values.baseline_value], dtype=float),  # must be array
-            shap_values=np.array(_shap_values),
-            feature_names=_labels,
-            matplotlib=matplotlib,
-            show=show,
-            **kwargs,
-        )
+    return shap.plots.force(
+        base_value=np.array([interaction_values.baseline_value], dtype=float),  # must be array
+        shap_values=np.array(_shap_values),
+        feature_names=_labels,
+        matplotlib=matplotlib,
+        show=show,
+        **kwargs,
+    )

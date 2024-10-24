@@ -29,7 +29,8 @@ def network_plot(
     center_image_size: Optional[float] = 0.6,
     draw_legend: bool = True,
     center_text: Optional[str] = None,
-) -> tuple[plt.Figure, plt.Axes]:
+    show: bool = False,
+) -> Optional[tuple[plt.Figure, plt.Axes]]:
     """Draws the interaction network.
 
     An interaction network is a graph where the nodes represent the features and the edges represent
@@ -59,9 +60,11 @@ def network_plot(
         center_image_size: The size of the center image. Defaults to ``0.6``.
         draw_legend: Whether to draw the legend. Defaults to ``True``.
         center_text: The text to be displayed in the center of the network. Defaults to ``None``.
+        show: Whether to show the plot. Defaults to ``False``. If ``False``, the figure and the axis
+            containing the plot are returned, otherwise ``None``.
 
     Returns:
-        The figure and the axis containing the plot.
+        The figure and the axis containing the plot if ``show=False``.
     """
     fig, axis = plt.subplots(figsize=(6, 6))
     axis.axis("off")
@@ -175,7 +178,9 @@ def network_plot(
     if draw_legend:
         _add_legend_to_axis(axis)
 
-    return fig, axis
+    if not show:
+        return fig, axis
+    plt.show()
 
 
 def _add_weight_to_edges_in_graph(
