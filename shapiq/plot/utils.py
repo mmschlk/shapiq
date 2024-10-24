@@ -29,7 +29,8 @@ def get_interaction_values_and_feature_names(
         A tuple containing the SHAP values and the corresponding labels.
     """
     feature_names = copy.deepcopy(feature_names)
-    feature_names = abbreviate_feature_names(feature_names)
+    if feature_names is not None:
+        feature_names = abbreviate_feature_names(feature_names)
     _values_dict = {}
     for i in range(1, interaction_values.max_order + 1):
         _values_dict[i] = interaction_values.get_n_order_values(i)
