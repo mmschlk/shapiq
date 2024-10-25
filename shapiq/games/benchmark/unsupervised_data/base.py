@@ -23,7 +23,6 @@ class UnsupervisedData(Game):
     def __init__(self, data: np.ndarray, verbose: bool = False, *args, **kwargs) -> None:
         self.data = data
         self._n_features = data.shape[1]
-        self.empty_coalition_value = 0.0
 
         # discretize the data
         from sklearn.preprocessing import KBinsDiscretizer

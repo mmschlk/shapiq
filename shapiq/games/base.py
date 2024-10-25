@@ -134,6 +134,8 @@ class Game(ABC):
         # define some handy coalition variables
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)
         self.grand_coalition = np.ones(self.n_players, dtype=bool)
+        self._empty_coalition_value_property = None
+        self._grand_coalition_value_property = None
 
         self.verbose = verbose
 
@@ -194,7 +196,13 @@ class Game(ABC):
         for i, coalition in enumerate(coalitions):
             # convert one-hot vector to tuple
             coalition_tuple = tuple(np.where(coalition)[0])
-            values[i] = self.value_storage[self.coalition_lookup[coalition_tuple]]
+            try:
+                values[i] = self.value_storage[self.coalition_lookup[coalition_tuple]]
+            except KeyError as error:
+                raise KeyError(
+                    f"The coalition {coalition_tuple} is not stored in the game. "
+                    f"Are all values pre-computed?"
+                ) from error
         return values
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
@@ -404,3 +412,36 @@ class Game(ABC):
                 break
             parent = parent.__base__
         return "_".join(class_names)
+
+    @property
+    def empty_coalition_value(self) -> float:
+        """Return the value of the empty coalition."""
+        if self._empty_coalition_value_property is None:
+            self._empty_coalition_value_property = float(self(self.empty_coalition))
+        return self._empty_coalition_value_property
+
+    @property
+    def grand_coalition_value(self) -> float:
+        """Return the value of the grand coalition."""
+        if self._grand_coalition_value_property is None:
+            self._grand_coalition_value_property = float(self(self.grand_coalition))
+        return self._grand_coalition_value_property
+
+    def __getitem__(self, item: tuple[int, ...]):
+        """Return the value of the given coalition. Only retrieves precomputed/store values.
+
+        Args:
+            item: The coalition to evaluate.
+
+        Returns:
+            The value of the coalition
+
+        Raises:
+            KeyError: If the coalition is not stored in the game.
+        """
+        try:
+            return self.value_storage[self.coalition_lookup[tuple(sorted(item))]]
+        except (KeyError, IndexError) as error:
+            raise KeyError(
+                f"The coalition {item} is not stored in the game. Is it precomputed?"
+            ) from error
