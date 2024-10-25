@@ -134,15 +134,8 @@ class Game(ABC):
         # define some handy coalition variables
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)
         self.grand_coalition = np.ones(self.n_players, dtype=bool)
-        # don't know if the following is kosher (probably not)
-        try:
-            self._empty_coalition_value = self._empty_coalition_value
-        except AttributeError:
-            self._empty_coalition_value = None
-        try:
-            self._grand_coalition_value = self._grand_coalition_value
-        except AttributeError:
-            self._grand_coalition_value = None
+        self._empty_coalition_value_property = None
+        self._grand_coalition_value_property = None
 
         self.verbose = verbose
 
@@ -423,16 +416,16 @@ class Game(ABC):
     @property
     def empty_coalition_value(self) -> float:
         """Return the value of the empty coalition."""
-        if self._empty_coalition_value is None:
-            self._empty_coalition_value = float(self(self.empty_coalition))
-        return self._empty_coalition_value
+        if self._empty_coalition_value_property is None:
+            self._empty_coalition_value_property = float(self(self.empty_coalition))
+        return self._empty_coalition_value_property
 
     @property
     def grand_coalition_value(self) -> float:
         """Return the value of the grand coalition."""
-        if self._grand_coalition_value is None:
-            self._grand_coalition_value = float(self(self.grand_coalition))
-        return self._grand_coalition_value
+        if self._grand_coalition_value_property is None:
+            self._grand_coalition_value_property = float(self(self.grand_coalition))
+        return self._grand_coalition_value_property
 
     def __getitem__(self, item: tuple[int, ...]):
         """Return the value of the given coalition. Only retrieves precomputed/store values.
