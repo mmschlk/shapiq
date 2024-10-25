@@ -4,7 +4,7 @@ import os
 import pickle
 import warnings
 from abc import ABC
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -94,6 +94,7 @@ class Game(ABC):
         normalization_value: Optional[float] = None,
         path_to_values: Optional[str] = None,
         verbose: bool = False,
+        player_names: Optional[list[str]] = None,
         *args,
         **kwargs,
     ) -> None:
@@ -137,6 +138,11 @@ class Game(ABC):
         self._empty_coalition_value_property = None
         self._grand_coalition_value_property = None
 
+        # define player_names
+        self.player_name_lookup: dict[str, int] = (
+            {name: i for i, name in enumerate(player_names)} if player_names is not None else None
+        )
+
         self.verbose = verbose
 
     @property
@@ -159,7 +165,105 @@ class Game(ABC):
         """Checks if the game is normalized/centered."""
         return self(self.empty_coalition) == 0
 
-    def __call__(self, coalitions: np.ndarray, verbose: bool = False) -> np.ndarray:
+    def _check_coalitions(
+        self,
+        coalitions: Union[np.ndarray, list[Union[tuple[int], tuple[str]]]],
+    ) -> np.ndarray:
+        """
+        Check if the coalitions are in the correct format and convert them to one-hot encoding.
+        The format may either be a numpy array containg the coalitions in one-hot encoding or a list of tuples with integers or strings.
+        Args:
+            coalitions: The coalitions to convert to one-hot encoding.
+        Returns:
+            np.ndarray: The coalitions in the correct format
+        Raises:
+            TypeError: If the coalitions are not in the correct format.
+        Examples:
+            >>> coalitions = np.asarray([[1, 0, 0, 0], [0, 1, 1, 0]])
+            >>> coalitions = [(0, 1), (1, 2)]
+            >>> coalitions = [()]
+            >>> coalitions = [(0, 1), (1, 2), (0, 1, 2)]
+            if player_name_lookup is not None:
+            >>> coalitions = [("Alice", "Bob"), ("Bob", "Charlie")]
+            Wrong format:
+            >>> coalitions = [1, 0, 0, 0]
+            >>> coalitions = [(1,"Alice")]
+            >>> coalitions = np.array([1,-1,2])
+
+
+        """
+        error_message = (
+            "List may only contain tuples of integers or strings."
+            "The tuples are not allowed to have heterogeneous types."
+            "Reconcile the docs for correct format of coalitions."
+        )
+
+        if isinstance(coalitions, np.ndarray):
+
+            # Check that coalition is contained in array
+            if len(coalitions) == 0:
+                raise TypeError("The array of coalitions is empty.")
+
+            # Check if single coalition is correctly given
+            if coalitions.ndim == 1:
+                if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
+                    raise TypeError(
+                        "The array of coalitions is not correctly formatted."
+                        f"It should have a length of {self.n_players}"
+                    )
+                coalitions = coalitions.reshape((1, self.n_players))
+
+            # Check that all coalitions have the correct number of players
+            if coalitions.shape[1] != self.n_players:
+                raise TypeError(
+                    f"The number of players in the coalitions ({coalitions.shape[1]}) does not match "
+                    f"the number of players in the game ({self.n_players})."
+                )
+
+            # Check that values of numpy array are either 0 or 1
+            if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
+                raise TypeError("The values in the array of coalitions are not binary.")
+
+            return coalitions
+
+        # We now assume to work with list of tuples
+        if isinstance(coalitions, tuple):
+            # if by any chance a tuple was given wrap into a list
+            coalitions = [coalitions]
+
+        try:
+            # convert list of tuples to one-hot encoding
+            coalitions = transform_coalitions_to_array(coalitions, self.n_players)
+
+            return coalitions
+        except Exception as err:
+            # It may either be the tuples contain strings or wrong format
+            if self.player_name_lookup is not None:
+                # We now assume the tuples to contain strings
+                try:
+                    coalitions = [
+                        (
+                            tuple(self.player_name_lookup[player] for player in coalition)
+                            if coalition != tuple()
+                            else tuple()
+                        )
+                        for coalition in coalitions
+                    ]
+                    coalitions = transform_coalitions_to_array(coalitions, self.n_players)
+
+                    return coalitions
+                except Exception as err:
+                    raise TypeError(error_message) from err
+
+            raise TypeError(error_message) from err
+
+    def __call__(
+        self,
+        coalitions: Union[
+            np.ndarray, list[Union[tuple[int], tuple[str]]], tuple[Union[int, str]], str
+        ],
+        verbose: bool = False,
+    ) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
         value function.
 
@@ -170,9 +274,8 @@ class Game(ABC):
         Returns:
             The values of the coalitions.
         """
-        # check if coalitions are correct dimensions
-        if coalitions.ndim == 1:
-            coalitions = coalitions.reshape((1, self.n_players))
+        # check if coalitions are correct format
+        coalitions = self._check_coalitions(coalitions)
 
         verbose = verbose or self.verbose
 

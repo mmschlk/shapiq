@@ -5,8 +5,94 @@ import os
 import numpy as np
 import pytest
 
+from shapiq.games.base import Game
 from shapiq.games.benchmark import DummyGame  # used to test the base class
 from shapiq.utils.sets import powerset, transform_coalitions_to_array
+
+
+def test_call():
+    """This test tests the call function of the base game class."""
+
+    class TestGame(Game):
+        """This is a test game class that inherits from the base game class.
+        Its value function is the amount of players divided by the number of players.
+        """
+
+        def __init__(self, n, **kwargs):
+            super().__init__(n_players=n, normalization_value=0, **kwargs)
+
+        def value_function(self, coalition):
+            return np.sum(coalition) / self.n_players
+
+    n_players = 6
+    test_game = TestGame(
+        n=n_players, player_names=["Alice", "Bob", "Charlie", "David", "Eve", "Frank"]
+    )
+
+    # assert that player names are correctly stored
+    assert test_game.player_name_lookup == {
+        "Alice": 0,
+        "Bob": 1,
+        "Charlie": 2,
+        "David": 3,
+        "Eve": 4,
+        "Frank": 5,
+    }
+
+    assert test_game([]) == 0.0
+
+    # test coalition calls with wrong datatype
+    with pytest.raises(TypeError):
+        assert test_game([(0, 1), "Alice", "Charlie"])
+    with pytest.raises(TypeError):
+        assert test_game([(0, 1), ("Alice",), ("Bob",)])
+    with pytest.raises(TypeError):
+        assert test_game(("Alice", 1))
+
+    # test wrong coalition size in call
+    with pytest.raises(TypeError):
+        assert test_game(np.array([True, False, True])) == 0.0
+    with pytest.raises(TypeError):
+        assert test_game(np.array([])) == 0.0
+
+    # test wrong method for numpy array values
+    with pytest.raises(TypeError):
+        assert test_game(np.array([1, 2, 3, 4, 5, 6])) == 0.0
+
+    # test wrong coalition size in shape[1]
+    with pytest.raises(TypeError):
+        assert test_game(np.array([[True, False, True]])) == 0.0
+
+    # test with empty coalition all call variants
+    test_coalition = test_game.empty_coalition
+    assert test_game(test_coalition) == 0.0
+    assert test_game(()) == 0.0
+    assert test_game([()]) == 0.0
+
+    # test with grand coalition all call variants
+    test_coalition = test_game.grand_coalition
+    assert test_game(test_coalition) == 1.0
+    assert test_game(tuple(range(0, test_game.n_players))) == 1.0
+    assert test_game([tuple(range(0, test_game.n_players))]) == 1.0
+    assert test_game(tuple(test_game.player_name_lookup.values())) == 1.0
+    assert test_game([tuple(test_game.player_name_lookup.values())]) == 1.0
+
+    # test with single player coalition all call variants
+    test_coalition = np.array([True] + [False for _ in range(test_game.n_players - 1)])
+    assert test_game(test_coalition) - 1 / 6 < 10e-7
+    assert test_game((0,)) - 1 / 6 < 10e-7
+    assert test_game([(0,)]) - 1 / 6 < 10e-7
+    assert test_game(("Alice",)) - 1 / 6 < 10e-7
+    assert test_game([("Alice",)]) - 1 / 6 < 10e-7
+
+    # test string calls with missing player names
+    test_game2 = TestGame(n=n_players)
+    with pytest.raises(TypeError):
+        assert test_game2("Alice") == 0.0
+    with pytest.raises(TypeError):
+        assert test_game2(("Bob",)) == 0.0
+    with pytest.raises(TypeError):
+        assert test_game2([("Charlie",)]) == 0.0
 
 
 def test_precompute():
