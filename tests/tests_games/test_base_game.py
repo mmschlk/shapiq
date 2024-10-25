@@ -120,14 +120,24 @@ def test_precompute():
     dummy_game.precompute(coalitions=coalitions)
 
     assert dummy_game.n_values_stored == 1
+    with pytest.raises(KeyError):  # test error case where not all values are precomputed
+        _ = dummy_game(dummy_game.empty_coalition)
 
+    # test with large number of players and see if it raises a warning
     with pytest.warns(UserWarning):
         n_players_large = 17
         dummy_game_large = DummyGame(n=n_players_large)
-        # call precompute but stop it before it finishes
         dummy_game_large.precompute()
-
         assert dummy_game_large.n_values_stored == 2**n_players_large
+
+    # test empty and grand coalition lookup
+    dummy_game = DummyGame(n=4, interaction=(0, 1))
+    dummy_game.precompute()
+    assert dummy_game.empty_coalition_value == dummy_game(dummy_game.empty_coalition)
+    assert dummy_game.grand_coalition_value == dummy_game(dummy_game.grand_coalition)
+    assert dummy_game[(0, 1)] == dummy_game[(1, 0)] != 0.0
+    with pytest.raises(KeyError):
+        _ = dummy_game[(0, 9)]  # only 4 players
 
 
 def test_core_functions():
