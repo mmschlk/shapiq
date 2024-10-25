@@ -15,9 +15,9 @@ __all__ = ["bar_plot"]
 def bar_plot(
     list_of_interaction_values: list[InteractionValues],
     feature_names: Optional[np.ndarray] = None,
-    show: bool = True,
+    show: bool = False,
     **kwargs,
-) -> plt.Axes:
+) -> Optional[plt.Axes]:
     """Draws interaction values on a bar plot.
 
     Requires the ``shap`` Python package to be installed.
@@ -55,11 +55,8 @@ def bar_plot(
         feature_names=_labels,
     )
 
-    if show:
-        ax = shap.plots.bar(explanation, **kwargs, show=False)
-        ax.set_xlabel("mean(|Shapley Interaction value|)")
-        plt.show()
-    else:
-        ax = shap.plots.bar(explanation, **kwargs, show=False)
-        ax.set_xlabel("mean(|Shapley Interaction value|)")
+    ax = shap.plots.bar(explanation, **kwargs, show=False)
+    ax.set_xlabel("mean(|Shapley Interaction value|)")
+    if not show:
         return ax
+    plt.show()

@@ -50,3 +50,12 @@ def test_stacked_bar_plot():
     assert isinstance(fig, plt.Figure)
     assert isinstance(axes, plt.Axes)
     plt.close()
+
+    # test show=True
+    output = stacked_bar_plot(
+        interaction_values=interaction_values,
+        feature_names=feature_names,
+        show=True,
+    )
+    assert output is None
+    plt.close("all")

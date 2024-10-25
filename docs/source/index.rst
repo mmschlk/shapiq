@@ -30,13 +30,16 @@ Contents
    :maxdepth: 1
    :caption: TUTORIALS
 
+   notebooks/sv_calculation
    notebooks/shapiq_scikit_learn
    notebooks/treeshapiq_lightgbm
+   notebooks/visualizing_shapley_interactions
    notebooks/language_model_game
    notebooks/vision_transformer
    notebooks/conditional_imputer
    notebooks/parallel_computation
    notebooks/benchmark_approximators
+   notebooks/data_valuation
    notebooks/core
 
 .. toctree::

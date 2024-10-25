@@ -22,3 +22,8 @@ def test_bar_plot(interaction_values_list: list[InteractionValues]):
     axis = bar_plot(interaction_values_list, show=True)
     assert axis is None
     plt.close()
+
+    # test show=True
+    output = bar_plot(interaction_values_list, show=True)
+    assert output is None
+    plt.close("all")
