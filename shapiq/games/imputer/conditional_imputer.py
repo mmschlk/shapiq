@@ -36,8 +36,6 @@ class ConditionalImputer(Imputer):
         random_state: The random state to use for sampling. Defaults to ``None``.
 
     Attributes:
-        replacement_data: The data to use for imputation. Either samples from the background data
-            or the mean/median of the background data.
         empty_prediction: The model's prediction on an empty data point (all features missing).
     """
 
@@ -54,11 +52,10 @@ class ConditionalImputer(Imputer):
         method="generative",
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(model, data, categorical_features, random_state)
+        super().__init__(model, data, sample_size, categorical_features, random_state)
         if method != "generative":
             raise ValueError("Currently only a generative conditional imputer is implemented.")
         self.method = method
-        self.sample_size = sample_size
         self.conditional_budget = conditional_budget
         self.conditional_threshold = conditional_threshold
         self.init_background(data=data)
@@ -70,7 +67,7 @@ class ConditionalImputer(Imputer):
             self.normalization_value = self.empty_prediction
 
     def init_background(self, data: np.ndarray) -> "ConditionalImputer":
-        """Intializes the conditional imputer.
+        """Initializes the conditional imputer.
         Args:
             data: The background data to use for the imputer. The shape of the array must
                 be (n_samples, n_features).

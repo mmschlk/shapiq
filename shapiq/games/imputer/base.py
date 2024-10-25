@@ -26,6 +26,7 @@ class Imputer(Game):
         self,
         model,
         data: np.ndarray,
+        sample_size: int = 100,
         categorical_features: list[int] = None,
         random_state: Optional[int] = None,
     ) -> None:
@@ -35,6 +36,7 @@ class Imputer(Game):
             self._predict_function = model._predict_function
         self.model = model
         self.data = data
+        self.sample_size = sample_size
         self._n_features = self.data.shape[1]
         self._cat_features: list = [] if categorical_features is None else categorical_features
         self._random_state = random_state

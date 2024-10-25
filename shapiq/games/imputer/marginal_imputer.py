@@ -1,5 +1,6 @@
 """Implementation of the marginal imputer."""
 
+import warnings
 from typing import Optional
 
 import numpy as np
@@ -19,9 +20,6 @@ class MarginalImputer(Imputer):
         data: The background data to use for the explainer as a two-dimensional array
             with shape ``(n_samples, n_features)``.
         x: The explanation point to use the imputer to.
-        sample_replacements: Whether to sample replacements from the background data or to use the
-            mean (for numerical features) or the median (for categorical features) of the background
-            data. Defaults to ``True``.
         sample_size: The number of samples to draw from the background data. Only used if
             ``sample_replacements`` is ``True``. Increasing this value will linearly increase the
             runtime of the explainer. Defaults to ``100``.
@@ -49,11 +47,15 @@ class MarginalImputer(Imputer):
         normalize: bool = True,
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(model, data, categorical_features, random_state)
+        if not sample_replacements:
+            warnings.warn(
+                "The 'sample_replacements' argument is deprecated and will be removed in the next "
+                "release. The marginal imputer now always samples from the background data.",
+                DeprecationWarning,
+            )
+        super().__init__(model, data, sample_size, categorical_features, random_state)
 
         # setup attributes
-        self._sample_replacements = sample_replacements
-        self._sample_size: int = sample_size
         self.replacement_data: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten
         self.init_background(self.data)
         self._x: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten @ fit
@@ -65,7 +67,7 @@ class MarginalImputer(Imputer):
         if normalize:
             self.normalization_value = self.empty_prediction
 
-    def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Imputes the missing values of a data point and calls the model.
 
         Args:
@@ -78,19 +80,14 @@ class MarginalImputer(Imputer):
         """
         n_coalitions = coalitions.shape[0]
         data = np.tile(np.copy(self._x), (n_coalitions, 1))
-        if self._sample_replacements:
-            # sampling from background returning array of shape (sample_size, n_subsets, n_features)
-            replacement_data = self._sample_replacement_values(coalitions)
-            outputs = np.zeros((self._sample_size, n_coalitions))
-            for i in range(self._sample_size):
-                replacements = replacement_data[i].reshape(n_coalitions, self._n_features)
-                data[~coalitions] = replacements[~coalitions]
-                outputs[i] = self.predict(data)
-            outputs = np.mean(outputs, axis=0)  # average over the samples
-        else:
-            replacement_data = np.tile(self.replacement_data, (n_coalitions, 1))
-            data[~coalitions] = replacement_data[~coalitions]
-            outputs = self.predict(data)
+        # sampling from background returning array of shape (sample_size, n_subsets, n_features)
+        replacement_data = self._sample_replacement_values(coalitions)
+        outputs = np.zeros((self.sample_size, n_coalitions))
+        for i in range(self.sample_size):
+            replacements = replacement_data[i].reshape(n_coalitions, self._n_features)
+            data[~coalitions] = replacements[~coalitions]
+            outputs[i] = self.predict(data)
+        outputs = np.mean(outputs, axis=0)  # average over the samples
         return outputs
 
     def init_background(self, data: np.ndarray) -> "MarginalImputer":
@@ -103,26 +100,10 @@ class MarginalImputer(Imputer):
         Returns:
             The initialized imputer.
         """
-        if self._sample_replacements:
-            self.replacement_data = data
-        else:
-            self.replacement_data = np.zeros((1, self._n_features), dtype=object)
-            for feature in range(self._n_features):
-                feature_column = data[:, feature]
-                if feature in self._cat_features:
-                    # get mode for categorical features
-                    counts = np.unique(feature_column, return_counts=True)
-                    summarized_feature = counts[0][np.argmax(counts[1])]
-                else:
-                    try:  # try to use mean for numerical features
-                        summarized_feature = np.mean(feature_column)
-                    except TypeError:  # fallback to mode for string features
-                        counts = np.unique(feature_column, return_counts=True)
-                        summarized_feature = counts[0][np.argmax(counts[1])]
-                self.replacement_data[:, feature] = summarized_feature
+        self.replacement_data = data
         return self
 
-    def fit(self, x: np.ndarray[float]) -> "MarginalImputer":
+    def fit(self, x: np.ndarray) -> "MarginalImputer":
         """Fits the imputer to the explanation point.
 
         Args:
@@ -134,7 +115,7 @@ class MarginalImputer(Imputer):
         self._x = x
         return self
 
-    def _sample_replacement_values(self, coalitions: np.ndarray[bool]) -> np.ndarray:
+    def _sample_replacement_values(self, coalitions: np.ndarray) -> np.ndarray:
         """Samples replacement values from the background data.
 
         Args:
@@ -147,12 +128,12 @@ class MarginalImputer(Imputer):
         """
         n_coalitions = coalitions.shape[0]
         replacement_data = np.zeros(
-            (self._sample_size, n_coalitions, self._n_features), dtype=object
+            (self.sample_size, n_coalitions, self._n_features), dtype=object
         )
         for feature in range(self._n_features):
             sampled_feature_values = self._rng.choice(
                 self.replacement_data[:, feature],
-                size=(self._sample_size, n_coalitions),
+                size=(self.sample_size, n_coalitions),
                 replace=True,
             )
             replacement_data[:, :, feature] = sampled_feature_values
@@ -165,8 +146,5 @@ class MarginalImputer(Imputer):
             The empty prediction.
         """
         empty_predictions = self.predict(self.replacement_data)
-        if self._sample_replacements:
-            empty_prediction = np.mean(empty_predictions)
-        else:
-            empty_prediction = empty_predictions[0]
+        empty_prediction = np.mean(empty_predictions)
         return empty_prediction
