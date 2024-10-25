@@ -30,6 +30,7 @@ Contents
    :maxdepth: 1
    :caption: TUTORIALS
 
+   notebooks/sv_calculation
    notebooks/shapiq_scikit_learn
    notebooks/treeshapiq_lightgbm
    notebooks/visualizing_shapley_interactions
