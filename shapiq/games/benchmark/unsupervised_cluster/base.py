@@ -71,12 +71,11 @@ class ClusterExplanation(Game):
         self.data = data
 
         self.random_state = random_state
-        self.empty_cluster_value = empty_cluster_value
 
         super().__init__(
             data.shape[1],
             normalize=normalize,
-            normalization_value=self.empty_cluster_value,
+            normalization_value=0,
             verbose=verbose,
         )
 
@@ -93,7 +92,7 @@ class ClusterExplanation(Game):
         worth = np.zeros(n_coalitions, dtype=float)
         for i, coalition in enumerate(coalitions):
             if sum(coalition) == 0:
-                worth[i] = self.empty_cluster_value
+                worth[i] = 0.0
                 continue
             data_selection = self.data[:, coalition]
             self.cluster.fit(data_selection)
