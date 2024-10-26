@@ -4,6 +4,7 @@ import re
 import warnings
 from typing import Any
 
+from shapiq.games.base import Game
 
 def get_explainers() -> dict[str, Any]:
     """Return a dictionary of all available explainer classes.
@@ -12,12 +13,16 @@ def get_explainers() -> dict[str, Any]:
         A dictionary of all available explainer classes.
     """
     from shapiq.explainer.tabular import TabularExplainer
+    from shapiq.explainer.game import GameExplainer
     from shapiq.explainer.tree.explainer import TreeExplainer
 
-    return {"tabular": TabularExplainer, "tree": TreeExplainer}
+    return {"tabular": TabularExplainer, "tree": TreeExplainer, "game": GameExplainer}
 
 
 def get_predict_function_and_model_type(model, model_class):
+    if isinstance(model, Game):
+        return None, "game"
+
     from . import tree
 
     _predict_function = None

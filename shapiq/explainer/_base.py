@@ -50,7 +50,7 @@ class Explainer:
             if self._model_type in list(get_explainers()):
                 _explainer = get_explainers()[self._model_type]
                 self.__class__ = _explainer
-                _explainer.__init__(self, model=model, data=data, **kwargs)
+                _explainer.__init__(self, model, data=data, **kwargs)
 
     def explain(self, x: np.ndarray) -> InteractionValues:
         """Explain the model's prediction in terms of interaction values.
