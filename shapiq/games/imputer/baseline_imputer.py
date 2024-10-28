@@ -29,7 +29,7 @@ class BaselineImputer(Imputer):
         random_state: The random state to use for sampling. Defaults to ``None``.
 
     Attributes:
-        baseline_vector: The baseline values to use for imputation.
+        baseline_values: The baseline values to use for imputation.
         empty_prediction: The model's prediction on an empty data point (all features missing).
     """
 
@@ -42,14 +42,11 @@ class BaselineImputer(Imputer):
         normalize: bool = True,
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(model, data, 1, categorical_features, random_state)
+        super().__init__(model, data, x, 1, categorical_features, random_state)
 
         # setup attributes
-        self.baseline_vector: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten
+        self.baseline_values: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten
         self.init_background(self.data)
-        self._x: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten @ fit
-        if x is not None:
-            self.fit(x)
 
         # set empty value and normalization
         self.empty_prediction: float = self._calc_empty_prediction()
@@ -69,8 +66,8 @@ class BaselineImputer(Imputer):
         """
         n_coalitions = coalitions.shape[0]
         data = np.tile(np.copy(self._x), (n_coalitions, 1))
-        baseline_vector = np.tile(self.baseline_vector, (n_coalitions, 1))
-        data[~coalitions] = baseline_vector[~coalitions]
+        for i in range(n_coalitions):
+            data[i, ~coalitions[i]] = self.baseline_values[0, ~coalitions[i]]
         outputs = self.predict(data)
         return outputs
 
@@ -85,11 +82,11 @@ class BaselineImputer(Imputer):
         Returns:
             The initialized imputer.
         """
-        if data.ndim == 1:  # if data is a vector of baseline values
-            self.baseline_vector = data.reshape(1, -1)
+        if data.ndim == 1 or data.shape[0] == 1:  # data is a vector -> use as baseline values
+            self.baseline_values = data.reshape(1, self._n_features)
             return self
         # data is a matrix -> calculate baseline values as mean or mode
-        self.baseline_vector = np.zeros((1, self._n_features), dtype=object)
+        self.baseline_values = np.zeros((1, self._n_features), dtype=object)
         for feature in range(self._n_features):
             feature_column = data[:, feature]
             if feature in self._cat_features:  # get mode for categorical features
@@ -101,19 +98,7 @@ class BaselineImputer(Imputer):
                 except TypeError:  # fallback to mode for potentially string features
                     counts = np.unique(feature_column, return_counts=True)
                     summarized_feature = counts[0][np.argmax(counts[1])]
-            self.baseline_vector[0, feature] = summarized_feature
-        return self
-
-    def fit(self, x: np.ndarray) -> "BaselineImputer":
-        """Fits the imputer to the explanation point.
-
-        Args:
-            x: The explanation point to use the imputer on.
-
-        Returns:
-            The fitted imputer.
-        """
-        self._x = x
+            self.baseline_values[0, feature] = summarized_feature
         return self
 
     def _calc_empty_prediction(self) -> float:
@@ -122,6 +107,5 @@ class BaselineImputer(Imputer):
         Returns:
             The empty prediction.
         """
-        empty_predictions = self.predict(self.baseline_vector)
-        empty_prediction = empty_predictions[0]
-        return float(empty_prediction)
+        empty_predictions = self.predict(self.baseline_values)
+        return float(empty_predictions[0])

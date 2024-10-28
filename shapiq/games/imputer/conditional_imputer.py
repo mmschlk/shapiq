@@ -43,24 +43,23 @@ class ConditionalImputer(Imputer):
         self,
         model,
         data: np.ndarray,
-        x: np.ndarray = None,
+        x: Optional[np.ndarray] = None,
         sample_size: int = 10,
         conditional_budget: int = 128,
         conditional_threshold: float = 0.05,
         normalize: bool = True,
-        categorical_features: list[int] = None,
+        categorical_features: Optional[list[int]] = None,
         method="generative",
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(model, data, sample_size, categorical_features, random_state)
+        super().__init__(model, data, x, sample_size, categorical_features, random_state)
         if method != "generative":
             raise ValueError("Currently only a generative conditional imputer is implemented.")
         self.method = method
         self.conditional_budget = conditional_budget
         self.conditional_threshold = conditional_threshold
         self.init_background(data=data)
-        if x is not None:
-            self.fit(x)
+
         # set empty value and normalization
         self.empty_prediction: float = self._calc_empty_prediction()
         if normalize:
@@ -103,18 +102,6 @@ class ConditionalImputer(Imputer):
         self._data_embedded = tree_embedder.apply(data)
         self._tree_embedder = tree_embedder
         self._coalition_sampler = coalition_sampler
-        return self
-
-    def fit(self, x: np.ndarray[float]) -> "ConditionalImputer":
-        """Fits the imputer to the explanation point.
-
-        Args:
-            x: The explanation point to use the imputer to.
-
-        Returns:
-            The fitted imputer.
-        """
-        self._x = x
         return self
 
     def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
@@ -178,5 +165,5 @@ def hamming_distance(X, x):
     https://en.wikipedia.org/wiki/Hamming_distance
     """
     x_tiled = np.tile(x, (X.shape[0], 1))
-    distances = (X != x_tiled).sum(axis=1)
+    distances = np.sum(X != x_tiled, axis=1)
     return distances

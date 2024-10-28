@@ -1,6 +1,7 @@
 """This test module contains all tests for the conditional imputer module of the shapiq package."""
 
 import numpy as np
+import pytest
 
 from shapiq.games.imputer import ConditionalImputer
 
@@ -9,7 +10,7 @@ def test_conditional_imputer_init():
     """Test the initialization of the conditional imputer."""
 
     def model(x: np.ndarray) -> np.ndarray:
-        return 0
+        return np.sum(x, axis=1)
 
     data = np.random.rand(10, 3)
     x = np.random.rand(1, 3)
@@ -25,6 +26,17 @@ def test_conditional_imputer_init():
     assert imputer.sample_size == 9
     assert imputer._random_state == 42
     assert imputer._n_features == 3
+
+    # test raise warning with non generative method
+    with pytest.raises(ValueError):
+        _ = ConditionalImputer(
+            model=model,
+            data=data,
+            x=x,
+            sample_size=9,
+            random_state=42,
+            method="not_generative",
+        )
 
 
 def test_conditional_imputer_value_function():
