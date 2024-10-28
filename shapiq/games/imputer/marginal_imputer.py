@@ -53,14 +53,11 @@ class MarginalImputer(Imputer):
                 "release. The marginal imputer now always samples from the background data.",
                 DeprecationWarning,
             )
-        super().__init__(model, data, sample_size, categorical_features, random_state)
+        super().__init__(model, data, x, sample_size, categorical_features, random_state)
 
         # setup attributes
         self.replacement_data: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten
         self.init_background(self.data)
-        self._x: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten @ fit
-        if x is not None:
-            self.fit(x)
 
         # set empty value and normalization
         self.empty_prediction: float = self._calc_empty_prediction()
@@ -101,18 +98,6 @@ class MarginalImputer(Imputer):
             The initialized imputer.
         """
         self.replacement_data = data
-        return self
-
-    def fit(self, x: np.ndarray) -> "MarginalImputer":
-        """Fits the imputer to the explanation point.
-
-        Args:
-            x: The explanation point to use the imputer to.
-
-        Returns:
-            The fitted imputer.
-        """
-        self._x = x
         return self
 
     def _sample_replacement_values(self, coalitions: np.ndarray) -> np.ndarray:
