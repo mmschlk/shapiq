@@ -21,8 +21,7 @@ def test_marginal_imputer_init():
         sample_size=10,
         random_state=42,
     )
-    assert imputer._sample_replacements
-    assert imputer._sample_size == 10
+    assert imputer.sample_size == 10
     assert imputer._random_state == 42
     assert imputer._n_features == 3
 
@@ -38,7 +37,6 @@ def test_marginal_imputer_init():
     assert np.array_equal(imputer._x, x)
     assert imputer._n_features == 3
     assert imputer._random_state == 42
-    assert not imputer._sample_replacements
 
     # check with categorical features and a wrong numerical feature
     data = np.asarray([["a", "b", 1], ["c", "d", 2], ["e", "f", 3]])
