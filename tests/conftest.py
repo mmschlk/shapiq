@@ -103,16 +103,16 @@ def rf_clf_binary_model() -> RandomForestClassifier:
 
 
 @pytest.fixture
-def background_reg_data() -> tuple[np.ndarray, np.ndarray]:
+def background_reg_data() -> np.ndarray:
     """Return a simple background dataset."""
-    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    X, _ = make_regression(n_samples=100, n_features=7, random_state=42)
     return X
 
 
 @pytest.fixture
-def background_clf_data() -> tuple[np.ndarray, np.ndarray]:
+def background_clf_data() -> np.ndarray:
     """Return a simple background dataset."""
-    X, y = make_classification(
+    X, _ = make_classification(
         n_samples=100,
         n_features=7,
         random_state=42,

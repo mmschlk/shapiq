@@ -7,6 +7,15 @@ import numpy as np
 
 from shapiq.games.imputer.base import Imputer
 
+_too_large_sample_size_warning = (
+    "The sample size is larger than the number of data points in the background set. "
+    "Reducing the sample size to the number of background samples."
+)
+_deprecated_sample_replacements_warning = (
+    "The 'sample_replacements' argument is deprecated and will be removed in the next release. "
+    "The marginal imputer now always samples from the background data."
+)
+
 
 class MarginalImputer(Imputer):
     """The marginal imputer for the shapiq package.
@@ -31,8 +40,8 @@ class MarginalImputer(Imputer):
         random_state: The random state to use for sampling. Defaults to ``None``.
 
     Attributes:
-        replacement_data: The data to use for imputation. Either samples from the background data
-            or the mean / median of the background data.
+        replacement_data: The data to use for imputation. To change the data, use the
+            ``init_background`` method.
         empty_prediction: The model's prediction on an empty data point (all features missing).
     """
 
@@ -44,19 +53,17 @@ class MarginalImputer(Imputer):
         sample_replacements: bool = True,
         sample_size: int = 100,
         categorical_features: list[int] = None,
+        joint_marginal_distribution: bool = False,
         normalize: bool = True,
         random_state: Optional[int] = None,
     ) -> None:
         if not sample_replacements:
-            warnings.warn(
-                "The 'sample_replacements' argument is deprecated and will be removed in the next "
-                "release. The marginal imputer now always samples from the background data.",
-                DeprecationWarning,
-            )
+            warnings.warn(DeprecationWarning(_deprecated_sample_replacements_warning))
         super().__init__(model, data, x, sample_size, categorical_features, random_state)
 
         # setup attributes
-        self.replacement_data: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten
+        self.joint_marginal_distribution: bool = joint_marginal_distribution
+        self.replacement_data: np.ndarray = np.zeros((1, self.n_features))  # will be overwritten
         self.init_background(self.data)
 
         # set empty value and normalization
@@ -76,19 +83,23 @@ class MarginalImputer(Imputer):
                ``(n_subsets, n_outputs)``.
         """
         n_coalitions = coalitions.shape[0]
-        data = np.tile(np.copy(self._x), (n_coalitions, 1))
-        # sampling from background returning array of shape (sample_size, n_subsets, n_features)
-        replacement_data = self._sample_replacement_values(coalitions)
-        outputs = np.zeros((self.sample_size, n_coalitions))
-        for i in range(self.sample_size):
-            replacements = replacement_data[i].reshape(n_coalitions, self._n_features)
-            data[~coalitions] = replacements[~coalitions]
-            outputs[i] = self.predict(data)
+        replacement_data = self._sample_replacement_values(self.sample_size)
+        sample_size = replacement_data.shape[0]
+        outputs = np.zeros((sample_size, n_coalitions))
+        imputed_data = np.tile(np.copy(self._x), (n_coalitions, 1))
+        for j in range(sample_size):
+            for i in range(n_coalitions):
+                imputed_data[i, ~coalitions[i]] = replacement_data[j, ~coalitions[i]]
+            predictions = self.predict(imputed_data)
+            outputs[j] = predictions
         outputs = np.mean(outputs, axis=0)  # average over the samples
         return outputs
 
     def init_background(self, data: np.ndarray) -> "MarginalImputer":
         """Initializes the imputer to the background data.
+
+        The background data is used to sample replacement values for the missing features.
+        To change the background data, use this method.
 
         Args:
             data: The background data to use for the imputer. The shape of the array must
@@ -96,32 +107,34 @@ class MarginalImputer(Imputer):
 
         Returns:
             The initialized imputer.
+
+        Examples:
+            >>> model = lambda x: np.sum(x, axis=1)
+            >>> data = np.random.rand(10, 3)
+            >>> imputer = MarginalImputer(model=model, data=data, x=data[0])
+            >>> new_data = np.random.rand(10, 3)
+            >>> imputer.init_background(data=new_data)
         """
         self.replacement_data = data
+        if self.sample_size > self.replacement_data.shape[0]:
+            warnings.warn(UserWarning(_too_large_sample_size_warning))
+            self.sample_size = self.replacement_data.shape[0]
         return self
 
-    def _sample_replacement_values(self, coalitions: np.ndarray) -> np.ndarray:
-        """Samples replacement values from the background data.
-
-        Args:
-            coalitions: A boolean array indicating which features are present (``True``) and which are
-                missing (``False``). The shape of the array must be ``(n_subsets, n_features)``.
-
-        Returns:
-            The sampled replacement values. The shape of the array is ``(sample_size, n_subsets,
-                n_features)``.
-        """
-        n_coalitions = coalitions.shape[0]
-        replacement_data = np.zeros(
-            (self.sample_size, n_coalitions, self._n_features), dtype=object
-        )
-        for feature in range(self._n_features):
-            sampled_feature_values = self._rng.choice(
-                self.replacement_data[:, feature],
-                size=(self.sample_size, n_coalitions),
-                replace=True,
-            )
-            replacement_data[:, :, feature] = sampled_feature_values
+    def _sample_replacement_values(self, sample_size: int) -> np.ndarray:
+        """Samples replacement values from the background data."""
+        replacement_data = np.copy(self.replacement_data)
+        rng = np.random.default_rng(self._random_state)
+        if not self.joint_marginal_distribution:
+            for feature in range(self.n_features):
+                rng.shuffle(replacement_data[:, feature])
+        # sample replacement values
+        n_samples = replacement_data.shape[0]
+        if sample_size > n_samples:
+            sample_size = n_samples
+            warnings.warn(UserWarning(_too_large_sample_size_warning))
+        replacement_idx = rng.choice(n_samples, size=sample_size, replace=False)
+        replacement_data = replacement_data[replacement_idx]
         return replacement_data
 
     def _calc_empty_prediction(self) -> float:
@@ -131,5 +144,7 @@ class MarginalImputer(Imputer):
             The empty prediction.
         """
         empty_predictions = self.predict(self.replacement_data)
-        empty_prediction = np.mean(empty_predictions)
+        empty_prediction = float(np.mean(empty_predictions))
+        if self.normalize:  # reset the normalization value
+            self.normalization_value = empty_prediction
         return empty_prediction

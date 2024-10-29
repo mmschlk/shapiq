@@ -19,6 +19,12 @@ class Imputer(Game):
             with shape ``(n_samples, n_features)``.
         categorical_features: A list of indices of the categorical features in the background data.
         random_state: The random state to use for sampling. Defaults to ``None``.
+
+    Attributes:
+        n_features: The number of features in the data (equals the number of players in the game).
+        data: The background data to use for the imputer.
+        model: The model to impute missing values for as a callable function.
+        sample_size: The number of samples to draw from the background data.
     """
 
     @abstractmethod
@@ -33,7 +39,7 @@ class Imputer(Game):
     ) -> None:
         if callable(model):
             self._predict_function = utils.predict_callable
-        else:  # shapiq.Explainer
+        else:  # shapiq.Explainer adds a predict function to the model to make it callable
             self._predict_function = model._predict_function
         self.model = model
         # check if data is a vector
@@ -41,7 +47,7 @@ class Imputer(Game):
             data = data.reshape(1, data.shape[0])
         self.data = data
         self.sample_size = sample_size
-        self._n_features = self.data.shape[1]
+        self.n_features = self.data.shape[1]
         self._cat_features: list = [] if categorical_features is None else categorical_features
         self._random_state = random_state
         self._rng = np.random.default_rng(self._random_state)
@@ -52,7 +58,7 @@ class Imputer(Game):
             self.fit(x)
 
         # the normalization_value needs to be set in the subclass
-        super().__init__(n_players=self._n_features, normalize=False)
+        super().__init__(n_players=self.n_features, normalize=False)
 
     @property
     def x(self) -> Optional[np.ndarray]:
@@ -73,7 +79,7 @@ class Imputer(Game):
         Returns:
             The fitted imputer.
         """
-        if x.ndim == 1:
-            x = x.reshape(1, x.shape[0])
         self._x = x.copy()
+        if self._x.ndim == 1:
+            self._x = self._x.reshape(1, x.shape[0])
         return self

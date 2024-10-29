@@ -23,7 +23,7 @@ def test_marginal_imputer_init():
     )
     assert imputer.sample_size == 10
     assert imputer._random_state == 42
-    assert imputer._n_features == 3
+    assert imputer.n_features == 3
 
     # test with x
     x = np.random.rand(1, 3)
@@ -34,7 +34,7 @@ def test_marginal_imputer_init():
         random_state=42,
     )
     assert np.array_equal(imputer._x, x)
-    assert imputer._n_features == 3
+    assert imputer.n_features == 3
     assert imputer._random_state == 42
 
     # check with categorical features and a wrong numerical feature
@@ -64,7 +64,7 @@ def test_marginal_imputer_value_function():
         model=model,
         data=data,
         x=np.ones((1, 3)),
-        sample_size=10,
+        sample_size=8,
         random_state=42,
     )
 

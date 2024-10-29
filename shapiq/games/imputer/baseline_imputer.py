@@ -1,5 +1,6 @@
 """Implementation of the baseline imputer."""
 
+import warnings
 from typing import Optional
 
 import numpy as np
@@ -45,7 +46,7 @@ class BaselineImputer(Imputer):
         super().__init__(model, data, x, 1, categorical_features, random_state)
 
         # setup attributes
-        self.baseline_values: np.ndarray = np.zeros((1, self._n_features))  # will be overwritten
+        self.baseline_values: np.ndarray = np.zeros((1, self.n_features))  # will be overwritten
         self.init_background(self.data)
 
         # set empty value and normalization
@@ -76,28 +77,46 @@ class BaselineImputer(Imputer):
 
         Args:
             data: The background data to use for the imputer. Either a vector of baseline values
-                of shape ``(1, n_features)`` or a matrix of shape ``(n_samples, n_features)``.
+                of shape ``(n_features,)`` or a matrix of shape ``(n_samples, n_features)``.
                 If the data is a matrix, the baseline values are calculated from the data.
 
         Returns:
             The initialized imputer.
+
+        Examples:
+            >>> import numpy as np
+            >>> from shapiq.games.imputer import BaselineImputer
+            >>> data = np.array([[1, 2, "a"], [2, 3, "a"], [2, 4, "b"]], dtype=object)
+            >>> x = np.array([1, 2, 3])
+            >>> imputer = BaselineImputer(model=lambda x: np.sum(x, axis=1), data=data, x=x)
+            >>> imputer.baseline_values
+            array([[1.66, 3, 'a']], dtype=object)  # computed from data
+            >>> baseline_vector = np.array([0, 0, 0])
+            >>> imputer.init_background(baseline_vector)
+            >>> imputer.baseline_values
+            array([[0, 0, 0]])  # given as input
         """
         if data.ndim == 1 or data.shape[0] == 1:  # data is a vector -> use as baseline values
-            self.baseline_values = data.reshape(1, self._n_features)
+            self.baseline_values = data.reshape(1, self.n_features)
             return self
         # data is a matrix -> calculate baseline values as mean or mode
-        self.baseline_values = np.zeros((1, self._n_features), dtype=object)
-        for feature in range(self._n_features):
+        self.baseline_values = np.zeros((1, self.n_features), dtype=object)
+        for feature in range(self.n_features):
             feature_column = data[:, feature]
             if feature in self._cat_features:  # get mode for categorical features
-                counts = np.unique(feature_column, return_counts=True)
-                summarized_feature = counts[0][np.argmax(counts[1])]
+                values, counts = np.unique(feature_column, return_counts=True)
+                summarized_feature = values[np.argmax(counts)]
             else:
                 try:  # try to use mean for numerical features
                     summarized_feature = np.mean(feature_column)
                 except TypeError:  # fallback to mode for potentially string features
-                    counts = np.unique(feature_column, return_counts=True)
-                    summarized_feature = counts[0][np.argmax(counts[1])]
+                    values, counts = np.unique(feature_column, return_counts=True)
+                    summarized_feature = values[np.argmax(counts)]
+                    # add feature to categorical features
+                    warnings.warn(
+                        f"Feature {feature} is not numerical. Adding it to categorical features."
+                    )
+                    self._cat_features.append(feature)
             self.baseline_values[0, feature] = summarized_feature
         return self
 
@@ -108,4 +127,7 @@ class BaselineImputer(Imputer):
             The empty prediction.
         """
         empty_predictions = self.predict(self.baseline_values)
-        return float(empty_predictions[0])
+        empty_prediction = float(empty_predictions[0])
+        if self.normalize:  # reset the normalization value
+            self.normalization_value = empty_prediction
+        return empty_prediction
