@@ -72,6 +72,47 @@ def test_marginal_imputer_value_function():
     assert len(imputed_values) == 2
 
 
+def test_joint_marginal_distribution():
+    """Test weather the marginal imputer correctly samples replacement values."""
+
+    def model(x: np.ndarray) -> np.ndarray:
+        return np.sum(x, axis=1)
+
+    data = [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+    ]
+    data_as_tuples = [tuple(row) for row in data]
+    data = np.array(data)
+    x = np.array([1, 1, 1])
+
+    imputer = MarginalImputer(
+        model=model,
+        data=data,
+        x=x,
+        sample_size=3,
+        random_state=42,
+        joint_marginal_distribution=False,
+    )
+    replacement_data_independent = imputer._sample_replacement_values(3)
+    print(replacement_data_independent)
+
+    imputer = MarginalImputer(
+        model=model,
+        data=data,
+        x=x,
+        sample_size=3,
+        random_state=42,
+        joint_marginal_distribution=True,
+    )
+    replacement_data_joint = imputer._sample_replacement_values(3)
+    for i in range(3):
+        assert tuple(replacement_data_joint[i]) in data_as_tuples
+        # the below only works because of the random seed (might break in future)
+        assert tuple(replacement_data_independent[i]) not in data_as_tuples
+
+
 def test_raise_warning():
 
     def model(x: np.ndarray) -> np.ndarray:
