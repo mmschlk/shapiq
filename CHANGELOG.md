@@ -12,7 +12,9 @@
 - renames explanation graph to `si_graph`
 - `get_n_order` now has optional lower/upper limits for the order
 - computing metrics now tries to resolve not-matching interaction indices and will throw a warning instead of a ValueError [#179](https://github.com/mmschlk/shapiq/issues/179)
-- ...
+- removed the `sample_replacements` parameter from `MarginalImputer` which is now handled by the `BaselineImputer`. Added a DeprecationWarning for the parameter, which will be removed in the next release.
+- adds `BaselineImputer` [#107](https://github.com/mmschlk/shapiq/issues/107)
+- adds `joint_marginal_distribution` parameter to `MarginalImputer` [#261](https://github.com/mmschlk/shapiq/issues/261)
 
 ### v1.0.1 (2024-06-05)
 

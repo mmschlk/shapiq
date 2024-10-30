@@ -45,7 +45,8 @@ from .exact import ExactComputer
 from .explainer import Explainer, TabularExplainer, TreeExplainer
 
 # game classes
-from .games import ConditionalImputer, Game, MarginalImputer
+# imputer classes
+from .games import BaselineImputer, ConditionalImputer, Game, MarginalImputer
 
 # base classes
 from .interaction_values import InteractionValues
@@ -96,6 +97,7 @@ __all__ = [
     "TreeExplainer",
     # imputers
     "MarginalImputer",
+    "BaselineImputer",
     "ConditionalImputer",
     # plots
     "network_plot",

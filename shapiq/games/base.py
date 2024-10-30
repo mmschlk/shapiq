@@ -187,8 +187,8 @@ class Game(ABC):
             >>> coalitions = [("Alice", "Bob"), ("Bob", "Charlie")]
             Wrong format:
             >>> coalitions = [1, 0, 0, 0]
-            >>> coalitions = [(1,"Alice")]
-            >>> coalitions = np.array([1,-1,2])
+            >>> coalitions = [(1, "Alice")]
+            >>> coalitions = np.array([1, -1, 2])
 
 
         """
@@ -220,6 +220,7 @@ class Game(ABC):
                     f"the number of players in the game ({self.n_players})."
                 )
 
+            # TODO maybe remove this, as it might increase runtime unnecessarily
             # Check that values of numpy array are either 0 or 1
             if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
                 raise TypeError("The values in the array of coalitions are not binary.")
