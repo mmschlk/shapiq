@@ -8,11 +8,12 @@ If you enjoy using the ``shapiq`` package, please consider citing our `NeurIPS p
 .. code::
 
    @inproceedings{muschalik2024shapiq,
-      title     = {shapiq: Shapley Interactions for Machine Learning},
-      author    = {Maximilian Muschalik and Hubert Baniecki and Fabian Fumagalli and
-                   Patrick Kolpaczki and Barbara Hammer and Eyke H\"{u}llermeier},
-      booktitle = {NeurIPS},
-      year      = {2024}
+     title     = {shapiq: Shapley Interactions for Machine Learning},
+     author    = {Maximilian Muschalik and Hubert Baniecki and Fabian Fumagalli and
+                  Patrick Kolpaczki and Barbara Hammer and Eyke H\"{u}llermeier},
+     booktitle = {The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
+     year      = {2024},
+     url       = {https://openreview.net/forum?id=knxGmi6SJi}
    }
 
 
