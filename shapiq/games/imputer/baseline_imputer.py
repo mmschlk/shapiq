@@ -32,6 +32,23 @@ class BaselineImputer(Imputer):
     Attributes:
         baseline_values: The baseline values to use for imputation.
         empty_prediction: The model's prediction on an empty data point (all features missing).
+
+    Examples:
+        >>> model = lambda x: np.sum(x, axis=1)  # some dummy model
+        >>> data = np.random.rand(1000, 4)  # some background data
+        >>> x_to_impute = np.array([[1, 1, 1, 1]])  # some data point to impute
+        >>> imputer = BaselineImputer(model=model, data=data, x=x_to_impute)
+        >>> # get the baseline values
+        >>> imputer.baseline_values
+        array([[0.5, 0.5, 0.5, 0.5]])  # computed from data
+        >>> # set new baseline values
+        >>> baseline_vector = np.array([0, 0, 0, 0])
+        >>> imputer.init_background(baseline_vector)
+        >>> imputer.baseline_values
+        array([[0, 0, 0, 0]])  # given as input
+        >>> # get the model prediction with missing values
+        >>> imputer(np.array([[True, False, True, False]]))
+        np.array([2.])  # model prediciton with the last baseline value
     """
 
     def __init__(

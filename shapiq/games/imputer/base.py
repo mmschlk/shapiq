@@ -1,4 +1,4 @@
-"""Base class for all imputers."""
+"""Base class for all Imputers."""
 
 from abc import abstractmethod
 from typing import Optional
@@ -10,13 +10,17 @@ from ..base import Game
 
 
 class Imputer(Game):
-    """Base class for imputers.
+    """Base class for Imputers.
 
     Args:
         model: The model to explain as a callable function expecting a data points as input and
             returning the model's predictions.
         data: The background data to use for the explainer as a 2-dimensional array
             with shape ``(n_samples, n_features)``.
+        x: The explanation point to use the imputer on either as a 2-dimensional array with
+            shape ``(1, n_features)`` or as a vector with shape ``(n_features,)``.
+        sample_size: The number of samples to draw from the background data. Defaults to ``100`` but
+            can is usually overwritten in the subclasses.
         categorical_features: A list of indices of the categorical features in the background data.
         random_state: The random state to use for sampling. Defaults to ``None``.
 
@@ -25,6 +29,9 @@ class Imputer(Game):
         data: The background data to use for the imputer.
         model: The model to impute missing values for as a callable function.
         sample_size: The number of samples to draw from the background data.
+
+    Properties:
+        x: The explanation point to use the imputer on.
     """
 
     @abstractmethod
@@ -57,16 +64,24 @@ class Imputer(Game):
         if x is not None:
             self.fit(x)
 
-        # the normalization_value needs to be set in the subclass
+        # init the game
+        # developer note: the normalization_value needs to be set in the subclass
         super().__init__(n_players=self.n_features, normalize=False)
 
     @property
     def x(self) -> Optional[np.ndarray]:
-        """Returns the explanation point."""
+        """Returns the explanation point if it is set."""
         return self._x.copy() if self._x is not None else None
 
     def predict(self, x: np.ndarray) -> np.ndarray:
-        """Provides a unified prediction interface."""
+        """Provides a unified prediction interface.
+
+        Args:
+            x: The data point to predict the model's output for.
+
+        Returns:
+            The model's prediction for the given data point as a vector.
+        """
         return self._predict_function(self.model, x)
 
     def fit(self, x: np.ndarray) -> "Imputer":

@@ -35,6 +35,10 @@ class MarginalImputer(Imputer):
         categorical_features: A list of indices of the categorical features in the background data.
             If no categorical features are given, all features are assumed to be numerical or in
             string format (where ``np.mean`` fails) features. Defaults to ``None``.
+        joint_marginal_distribution: A flag to sample the replacement values from the joint marginal
+            distribution. If ``False``, the replacement values are sampled independently for each
+            feature. If ``True``, the replacement values are sampled from the joint marginal
+            distribution. Defaults to ``False``.
         normalize: A flag to normalize the game values. If ``True``, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to ``True``.
         random_state: The random state to use for sampling. Defaults to ``None``.
@@ -42,7 +46,21 @@ class MarginalImputer(Imputer):
     Attributes:
         replacement_data: The data to use for imputation. To change the data, use the
             ``init_background`` method.
+        joint_marginal_distribution: A flag weather replacement values are sampled from the joint
+            marginal distribution (``True``) or independently for each feature (``False``).
         empty_prediction: The model's prediction on an empty data point (all features missing).
+
+    Examples:
+        >>> model = lambda x: np.sum(x, axis=1)  # some dummy model
+        >>> data = np.random.rand(1000, 4)  # some background data
+        >>> x_to_impute = np.array([[1, 1, 1, 1]])  # some data point to impute
+        >>> imputer = MarginalImputer(model=model, data=data, x=x_to_impute, sample_size=100)
+        >>> # get the model prediction with missing values
+        >>> imputer(np.array([[True, False, True, False]]))
+        np.array([2.01])  # some model prediction (might be different)
+        >>> # exchange the background data
+        >>> new_data = np.random.rand(1000, 4)
+        >>> imputer.init_background(data=new_data)
     """
 
     def __init__(
