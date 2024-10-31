@@ -67,7 +67,6 @@ class BaselineImputer(Imputer):
         self.init_background(self.data)
 
         # set empty value and normalization
-        self.empty_prediction: float = self._calc_empty_prediction()
         if normalize:
             self.normalization_value = self.empty_prediction
 
@@ -135,9 +134,10 @@ class BaselineImputer(Imputer):
                     )
                     self._cat_features.append(feature)
             self.baseline_values[0, feature] = summarized_feature
+        self.calc_empty_prediction()  # reset the empty prediction to the new baseline values
         return self
 
-    def _calc_empty_prediction(self) -> float:
+    def calc_empty_prediction(self) -> float:
         """Runs the model on empty data points (all features missing) to get the empty prediction.
 
         Returns:
@@ -145,6 +145,7 @@ class BaselineImputer(Imputer):
         """
         empty_predictions = self.predict(self.baseline_values)
         empty_prediction = float(empty_predictions[0])
+        self.empty_prediction = empty_prediction
         if self.normalize:  # reset the normalization value
             self.normalization_value = empty_prediction
         return empty_prediction

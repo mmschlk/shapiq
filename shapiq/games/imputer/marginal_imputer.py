@@ -32,9 +32,6 @@ class MarginalImputer(Imputer):
         sample_size: The number of samples to draw from the background data. Only used if
             ``sample_replacements`` is ``True``. Increasing this value will linearly increase the
             runtime of the explainer. Defaults to ``100``.
-        categorical_features: A list of indices of the categorical features in the background data.
-            If no categorical features are given, all features are assumed to be numerical or in
-            string format (where ``np.mean`` fails) features. Defaults to ``None``.
         joint_marginal_distribution: A flag to sample the replacement values from the joint marginal
             distribution. If ``False``, the replacement values are sampled independently for each
             feature. If ``True``, the replacement values are sampled from the joint marginal
@@ -71,7 +68,7 @@ class MarginalImputer(Imputer):
         sample_replacements: bool = True,
         sample_size: int = 100,
         categorical_features: list[int] = None,
-        joint_marginal_distribution: bool = False,
+        joint_marginal_distribution: bool = True,
         normalize: bool = True,
         random_state: Optional[int] = None,
     ) -> None:
@@ -81,27 +78,27 @@ class MarginalImputer(Imputer):
 
         # setup attributes
         self.joint_marginal_distribution: bool = joint_marginal_distribution
-        self.replacement_data: np.ndarray = np.zeros((1, self.n_features))  # will be overwritten
+        self.replacement_data: np.ndarray = np.zeros(
+            (1, self.n_features)
+        )  # overwritten at init_background
         self.init_background(self.data)
 
-        # set empty value and normalization
-        self.empty_prediction: float = self._calc_empty_prediction()
-        if normalize:
+        if normalize:  # update normalization value
             self.normalization_value = self.empty_prediction
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Imputes the missing values of a data point and calls the model.
 
         Args:
-            coalitions: A boolean array indicating which features are present (``True``) and which are
-                missing (``False``). The shape of the array must be ``(n_subsets, n_features)``.
+            coalitions: A boolean array indicating which features are present (``True``) and which
+                are missing (``False``). The shape of the array must be ``(n_subsets, n_features)``.
 
         Returns:
             The model's predictions on the imputed data points. The shape of the array is
                ``(n_subsets, n_outputs)``.
         """
         n_coalitions = coalitions.shape[0]
-        replacement_data = self._sample_replacement_values(self.sample_size)
+        replacement_data = self._sample_replacement_data(self.sample_size)
         sample_size = replacement_data.shape[0]
         outputs = np.zeros((sample_size, n_coalitions))
         imputed_data = np.tile(np.copy(self._x), (n_coalitions, 1))
@@ -111,6 +108,8 @@ class MarginalImputer(Imputer):
             predictions = self.predict(imputed_data)
             outputs[j] = predictions
         outputs = np.mean(outputs, axis=0)  # average over the samples
+        # insert the better approximate empty prediction for the empty coalitions
+        outputs[~np.any(coalitions, axis=1)] = self.empty_prediction
         return outputs
 
     def init_background(self, data: np.ndarray) -> "MarginalImputer":
@@ -133,36 +132,50 @@ class MarginalImputer(Imputer):
             >>> new_data = np.random.rand(10, 3)
             >>> imputer.init_background(data=new_data)
         """
-        self.replacement_data = data
+        self.replacement_data = np.copy(data)
         if self.sample_size > self.replacement_data.shape[0]:
             warnings.warn(UserWarning(_too_large_sample_size_warning))
             self.sample_size = self.replacement_data.shape[0]
+        self.calc_empty_prediction()  # reset the empty prediction to the new background data
         return self
 
-    def _sample_replacement_values(self, sample_size: int) -> np.ndarray:
-        """Samples replacement values from the background data."""
+    def _sample_replacement_data(self, sample_size: Optional[int] = None) -> np.ndarray:
+        """Samples replacement values from the background data.
+
+        Args:
+            sample_size: The number of replacement values to sample. If ``None``, all replacement
+                values are sampled. Defaults to ``None``.
+
+        Returns:
+            The replacement values as a two-dimensional array with shape
+                ``(sample_size, n_features)``.
+        """
         replacement_data = np.copy(self.replacement_data)
-        rng = np.random.default_rng(self._random_state)
-        if not self.joint_marginal_distribution:
+        rng = np.random.default_rng(self.random_state)
+        if not self.joint_marginal_distribution:  # shuffle data to break joint marginal dist.
             for feature in range(self.n_features):
                 rng.shuffle(replacement_data[:, feature])
-        # sample replacement values
         n_samples = replacement_data.shape[0]
+        if sample_size is None or sample_size == n_samples:
+            return replacement_data
         if sample_size > n_samples:
-            sample_size = n_samples
             warnings.warn(UserWarning(_too_large_sample_size_warning))
+            return replacement_data
+        # sample replacement values
         replacement_idx = rng.choice(n_samples, size=sample_size, replace=False)
         replacement_data = replacement_data[replacement_idx]
         return replacement_data
 
-    def _calc_empty_prediction(self) -> float:
+    def calc_empty_prediction(self) -> float:
         """Runs the model on empty data points (all features missing) to get the empty prediction.
 
         Returns:
             The empty prediction.
         """
-        empty_predictions = self.predict(self.replacement_data)
+        background_data = self._sample_replacement_data()
+        empty_predictions = self.predict(background_data)
         empty_prediction = float(np.mean(empty_predictions))
+        self.empty_prediction = empty_prediction
         if self.normalize:  # reset the normalization value
             self.normalization_value = empty_prediction
         return empty_prediction

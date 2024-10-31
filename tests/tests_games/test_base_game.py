@@ -87,11 +87,9 @@ def test_call():
 
     # test string calls with missing player names
     test_game2 = TestGame(n=n_players)
-    with pytest.raises(TypeError):
-        assert test_game2("Alice") == 0.0
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         assert test_game2(("Bob",)) == 0.0
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         assert test_game2([("Charlie",)]) == 0.0
 
 

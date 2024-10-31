@@ -25,7 +25,7 @@ def test_conditional_imputer_init():
     )
     assert np.array_equal(imputer._x, x)
     assert imputer.sample_size == 9
-    assert imputer._random_state == 42
+    assert imputer.random_state == 42
     assert imputer.n_features == 3
 
     # test raise warning with non generative method
