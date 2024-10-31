@@ -157,7 +157,7 @@ class Game(ABC):
 
     @property
     def normalize(self) -> bool:
-        """Indication whether the game values are normalized."""
+        """Indication whether the game values are getting normalized."""
         return self.normalization_value != 0
 
     @property
@@ -167,17 +167,28 @@ class Game(ABC):
 
     def _check_coalitions(
         self,
-        coalitions: Union[np.ndarray, list[Union[tuple[int], tuple[str]]]],
+        coalitions: Union[
+            np.ndarray,
+            list[tuple[int, ...]],
+            list[tuple[str, ...]],
+            tuple[int, ...],
+            tuple[str, ...],
+        ],
     ) -> np.ndarray:
-        """
+        """Validates the coalitions and convert them to one-hot encoding.
+
         Check if the coalitions are in the correct format and convert them to one-hot encoding.
-        The format may either be a numpy array containg the coalitions in one-hot encoding or a list of tuples with integers or strings.
+        The format may either be a numpy array containg the coalitions in one-hot encoding or a
+        list of tuples with integers or strings.
+
         Args:
             coalitions: The coalitions to convert to one-hot encoding.
         Returns:
             np.ndarray: The coalitions in the correct format
+
         Raises:
             TypeError: If the coalitions are not in the correct format.
+
         Examples:
             >>> coalitions = np.asarray([[1, 0, 0, 0], [0, 1, 1, 0]])
             >>> coalitions = [(0, 1), (1, 2)]
@@ -189,79 +200,63 @@ class Game(ABC):
             >>> coalitions = [1, 0, 0, 0]
             >>> coalitions = [(1, "Alice")]
             >>> coalitions = np.array([1, -1, 2])
-
-
         """
         error_message = (
-            "List may only contain tuples of integers or strings."
-            "The tuples are not allowed to have heterogeneous types."
-            "Reconcile the docs for correct format of coalitions."
+            "List may only contain tuples of integers or strings. The tuples are not allowed to "
+            "have heterogeneous types. See the docs for correct format of coalitions. If strings "
+            "are used, the player_name_lookup has to be provided during initialization."
         )
-
+        # check for array input and do validation
         if isinstance(coalitions, np.ndarray):
-
-            # Check that coalition is contained in array
-            if len(coalitions) == 0:
+            if len(coalitions) == 0:  # check that coalition is contained in array
                 raise TypeError("The array of coalitions is empty.")
-
-            # Check if single coalition is correctly given
-            if coalitions.ndim == 1:
+            if coalitions.ndim == 1:  # check if single coalition is correctly given
                 if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
                     raise TypeError(
                         "The array of coalitions is not correctly formatted."
                         f"It should have a length of {self.n_players}"
                     )
                 coalitions = coalitions.reshape((1, self.n_players))
-
-            # Check that all coalitions have the correct number of players
-            if coalitions.shape[1] != self.n_players:
+            if coalitions.shape[1] != self.n_players:  # check if players match
                 raise TypeError(
-                    f"The number of players in the coalitions ({coalitions.shape[1]}) does not match "
+                    f"Number of players in the coalitions ({coalitions.shape[1]}) does not match "
                     f"the number of players in the game ({self.n_players})."
                 )
-
             # TODO maybe remove this, as it might increase runtime unnecessarily
-            # Check that values of numpy array are either 0 or 1
+            # check that values of numpy array are either 0 or 1
             if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
                 raise TypeError("The values in the array of coalitions are not binary.")
-
             return coalitions
-
-        # We now assume to work with list of tuples
+        # try for list of tuples
         if isinstance(coalitions, tuple):
-            # if by any chance a tuple was given wrap into a list
             coalitions = [coalitions]
-
         try:
             # convert list of tuples to one-hot encoding
             coalitions = transform_coalitions_to_array(coalitions, self.n_players)
-
             return coalitions
-        except Exception as err:
-            # It may either be the tuples contain strings or wrong format
-            if self.player_name_lookup is not None:
-                # We now assume the tuples to contain strings
-                try:
-                    coalitions = [
-                        (
-                            tuple(self.player_name_lookup[player] for player in coalition)
-                            if coalition != tuple()
-                            else tuple()
-                        )
-                        for coalition in coalitions
-                    ]
-                    coalitions = transform_coalitions_to_array(coalitions, self.n_players)
-
-                    return coalitions
-                except Exception as err:
-                    raise TypeError(error_message) from err
-
-            raise TypeError(error_message) from err
+        except (IndexError, TypeError):
+            pass
+        # assuming str input
+        if self.player_name_lookup is None:
+            raise ValueError("Player names are not provided. Cannot convert string to integer.")
+        try:
+            coalitions_from_str = []
+            for coalition in coalitions:
+                coal_indices = sorted([self.player_name_lookup[player] for player in coalition])
+                coalitions_from_str.append(tuple(coal_indices))
+            coalitions = transform_coalitions_to_array(coalitions_from_str, self.n_players)
+            return coalitions
+        except Exception as error:
+            raise TypeError(error_message) from error
 
     def __call__(
         self,
         coalitions: Union[
-            np.ndarray, list[Union[tuple[int], tuple[str]]], tuple[Union[int, str]], str
+            np.ndarray,
+            list[tuple[int, ...]],
+            list[tuple[str, ...]],
+            tuple[int, ...],
+            tuple[str, ...],
         ],
         verbose: bool = False,
     ) -> np.ndarray:
@@ -275,11 +270,8 @@ class Game(ABC):
         Returns:
             The values of the coalitions.
         """
-        # check if coalitions are correct format
-        coalitions = self._check_coalitions(coalitions)
-
+        coalitions = self._check_coalitions(coalitions)  # validate and convert input coalitions
         verbose = verbose or self.verbose
-
         if not self.precomputed and not verbose:
             values = self.value_function(coalitions)
         elif not self.precomputed and verbose:
@@ -291,7 +283,6 @@ class Game(ABC):
                 values[i] = self.value_function(coalition)[0]
         else:
             values = self._lookup_coalitions(coalitions)  # lookup the values present in the storage
-
         return values - self.normalization_value
 
     def _lookup_coalitions(self, coalitions: np.ndarray) -> np.ndarray:
