@@ -22,7 +22,7 @@ def test_marginal_imputer_init():
         random_state=42,
     )
     assert imputer.sample_size == 10
-    assert imputer._random_state == 42
+    assert imputer.random_state == 42
     assert imputer.n_features == 3
 
     # test with x
@@ -35,7 +35,7 @@ def test_marginal_imputer_init():
     )
     assert np.array_equal(imputer._x, x)
     assert imputer.n_features == 3
-    assert imputer._random_state == 42
+    assert imputer.random_state == 42
 
     # check with categorical features and a wrong numerical feature
 
@@ -95,7 +95,7 @@ def test_joint_marginal_distribution():
         random_state=42,
         joint_marginal_distribution=False,
     )
-    replacement_data_independent = imputer._sample_replacement_values(3)
+    replacement_data_independent = imputer._sample_replacement_data(3)
     print(replacement_data_independent)
 
     imputer = MarginalImputer(
@@ -106,7 +106,7 @@ def test_joint_marginal_distribution():
         random_state=42,
         joint_marginal_distribution=True,
     )
-    replacement_data_joint = imputer._sample_replacement_values(3)
+    replacement_data_joint = imputer._sample_replacement_data(3)
     for i in range(3):
         assert tuple(replacement_data_joint[i]) in data_as_tuples
         # the below only works because of the random seed (might break in future)

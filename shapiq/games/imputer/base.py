@@ -29,6 +29,8 @@ class Imputer(Game):
         data: The background data to use for the imputer.
         model: The model to impute missing values for as a callable function.
         sample_size: The number of samples to draw from the background data.
+        random_state: The random state to use for sampling.
+        empty_prediction: The model's prediction on an empty data point (all features missing).
 
     Properties:
         x: The explanation point to use the imputer on.
@@ -54,10 +56,11 @@ class Imputer(Game):
             data = data.reshape(1, data.shape[0])
         self.data = data
         self.sample_size = sample_size
+        self.empty_prediction: float = 0.0  # will be overwritten in the subclasses
         self.n_features = self.data.shape[1]
         self._cat_features: list = [] if categorical_features is None else categorical_features
-        self._random_state = random_state
-        self._rng = np.random.default_rng(self._random_state)
+        self.random_state = random_state
+        self._rng = np.random.default_rng(self.random_state)
 
         # fit x
         self._x: Optional[np.ndarray] = None  # will be overwritten @ fit
@@ -98,3 +101,16 @@ class Imputer(Game):
         if self._x.ndim == 1:
             self._x = self._x.reshape(1, x.shape[0])
         return self
+
+    def insert_empty_value(self, outputs: np.ndarray, coalitions: np.ndarray) -> np.ndarray:
+        """Inserts the empty value into the outputs.
+
+        Args:
+            outputs: The model's predictions on the imputed data points.
+            coalitions: The coalitions for which the model's predictions were made.
+
+        Returns:
+            The model's predictions with the empty value inserted for the empty coalitions.
+        """
+        outputs[~np.any(coalitions, axis=1)] = self.empty_prediction
+        return outputs

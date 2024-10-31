@@ -49,7 +49,7 @@ def test_baseline_imputer_with_model(dt_reg_model, background_reg_dataset):
     )
     assert np.array_equal(imputer.x[0], x)
     assert imputer.sample_size == 1
-    assert imputer._random_state == 42
+    assert imputer.random_state == 42
     assert imputer.n_features == data.shape[1]
     imputed_values = imputer(coalitions)
     assert len(imputed_values) == 3
@@ -109,7 +109,7 @@ def test_baseline_imputer_init():
         random_state=42,
     )
     assert imputer.sample_size == 1  # sample size is always 1 for baseline imputer
-    assert imputer._random_state == 42
+    assert imputer.random_state == 42
     assert imputer.n_features == 3
 
     # call with two inputs
@@ -129,6 +129,6 @@ def test_baseline_imputer_init():
     imputer.fit(x)
     assert np.array_equal(imputer.x, x)
     assert imputer.n_features == 3
-    assert imputer._random_state == 42
+    assert imputer.random_state == 42
     imputer.fit(x=np.ones((n_features,)))  # test with vector
     assert np.array_equal(imputer.x, np.ones((1, n_features)))

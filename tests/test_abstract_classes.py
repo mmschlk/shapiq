@@ -45,7 +45,7 @@ def test_imputer():
     assert np.all(imputer.data == data)
     assert imputer.n_features == 3
     assert imputer._cat_features == []
-    assert imputer._random_state is None
+    assert imputer.random_state is None
     assert imputer._rng is not None
 
     with pytest.raises(NotImplementedError):

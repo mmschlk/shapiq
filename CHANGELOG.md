@@ -14,7 +14,8 @@
 - computing metrics now tries to resolve not-matching interaction indices and will throw a warning instead of a ValueError [#179](https://github.com/mmschlk/shapiq/issues/179)
 - removed the `sample_replacements` parameter from `MarginalImputer` which is now handled by the `BaselineImputer`. Added a DeprecationWarning for the parameter, which will be removed in the next release.
 - adds `BaselineImputer` [#107](https://github.com/mmschlk/shapiq/issues/107)
-- adds `joint_marginal_distribution` parameter to `MarginalImputer` [#261](https://github.com/mmschlk/shapiq/issues/261)
+- adds `joint_marginal_distribution` parameter to `MarginalImputer` with default value `True` [#261](https://github.com/mmschlk/shapiq/issues/261)
+- fixes a bug with SIs not adding to model prediciton because of wrong value in empty set [#264](https://github.com/mmschlk/shapiq/issues/264)
 
 ### v1.0.1 (2024-06-05)
 

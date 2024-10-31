@@ -61,7 +61,7 @@ class ConditionalImputer(Imputer):
         self.init_background(data=data)
 
         # set empty value and normalization
-        self.empty_prediction: float = self._calc_empty_prediction()
+        self.empty_prediction: float = self.calc_empty_prediction()
         if normalize:
             self.normalization_value = self.empty_prediction
 
@@ -88,7 +88,7 @@ class ConditionalImputer(Imputer):
         coalition_sampler = CoalitionSampler(
             n_players=n_features,
             sampling_weights=np.array([1e-7 for _ in range(n_features + 1)]),
-            random_state=self._random_state,
+            random_state=self.random_state,
         )
         coalitions_matrix = []
         for _ in range(data.shape[0]):
@@ -98,7 +98,7 @@ class ConditionalImputer(Imputer):
         # (data.shape[0] * self.conditional_budget, n_features)
         X_masked = X_tiled.copy()
         X_masked[coalitions_matrix] = np.NaN
-        tree_embedder = xgboost.XGBRegressor(random_state=self._random_state)
+        tree_embedder = xgboost.XGBRegressor(random_state=self.random_state)
         tree_embedder.fit(X_masked, X_tiled)
         self._data_embedded = tree_embedder.apply(data)
         self._tree_embedder = tree_embedder
@@ -125,6 +125,8 @@ class ConditionalImputer(Imputer):
         x_tiled[~coalitions_tiled] = background_data_tiled[~coalitions_tiled]
         predictions = self.predict(x_tiled)
         avg_predictions = predictions.reshape(n_coalitions, -1).mean(axis=1)
+        # insert the better approximate empty prediction for the empty coalitions
+        avg_predictions[~np.any(coalitions, axis=1)] = self.empty_prediction
         return avg_predictions
 
     def _sample_background_data(self) -> np.ndarray:
@@ -144,7 +146,7 @@ class ConditionalImputer(Imputer):
             return conditional_data[idc, :]
         return conditional_data
 
-    def _calc_empty_prediction(self) -> float:
+    def calc_empty_prediction(self) -> float:
         """Runs the model on empty data points (all features missing) to get the empty prediction.
 
         Returns:

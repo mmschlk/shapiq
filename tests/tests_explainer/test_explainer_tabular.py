@@ -27,7 +27,7 @@ def data():
 
 INDICES = ["SII", "k-SII", "STII", "FSII"]
 MAX_ORDERS = [2, 3]
-IMPUTER = ["marginal", "conditional"]
+IMPUTER = ["marginal", "conditional", "baseline"]
 APPROXIMATOR = ["regression", "montecarlo", "permutation"]
 
 
@@ -165,3 +165,10 @@ def test_explain(dt_model, data, index, budget, max_order, imputer):
     assert np.allclose(
         interaction_values0.get_n_order_values(2), interaction_values2.get_n_order_values(2)
     )
+
+    # test for efficiency
+    if index in ("FSII", "k-SII"):
+        prediction = float(model_function(x)[0])
+        sum_of_values = float(np.sum(interaction_values.values) + interaction_values.baseline_value)
+        assert interaction_values[()] == 0.0
+        assert pytest.approx(sum_of_values, 0.01) == prediction
