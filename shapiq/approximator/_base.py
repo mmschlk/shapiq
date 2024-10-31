@@ -320,6 +320,11 @@ class Approximator(ABC):
         """
         from ..aggregation import aggregate_interaction_values
 
+        if player_set is not None:
+            raise NotImplementedError(
+                "Aggregating interaction values for a subset of players is not implemented."
+            )
+
         return aggregate_interaction_values(base_interactions, order=order)
 
     @staticmethod
