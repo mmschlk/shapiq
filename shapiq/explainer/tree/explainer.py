@@ -71,11 +71,7 @@ class TreeExplainer(Explainer):
         self._treeshapiq_explainers: list[TreeSHAPIQ] = [
             TreeSHAPIQ(model=_tree, max_order=self._max_order, index=index) for _tree in self._trees
         ]
-
-        # TODO: for the current implementation this is correct for other trees this may vary
-        self.baseline_value = sum(
-            [treeshapiq.empty_prediction for treeshapiq in self._treeshapiq_explainers]
-        )
+        self.baseline_value = self._compute_baseline_value()
 
     def explain(self, x: np.ndarray) -> InteractionValues:
         # run treeshapiq for all trees
@@ -90,3 +86,17 @@ class TreeExplainer(Explainer):
             for i in range(1, len(interaction_values)):
                 final_explanation += interaction_values[i]
         return final_explanation
+
+    def _compute_baseline_value(self) -> float:
+        """Computes the baseline value for the explainer.
+
+        The baseline value is the sum of the empty predictions of all trees in the ensemble.
+
+        Returns:
+            The baseline value for the explainer.
+        """
+
+        baseline_value = sum(
+            [treeshapiq.empty_prediction for treeshapiq in self._treeshapiq_explainers]
+        )
+        return baseline_value

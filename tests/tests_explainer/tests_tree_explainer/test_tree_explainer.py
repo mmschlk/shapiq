@@ -1,5 +1,7 @@
 """This test module contains all tests for the tree explainer module of the shapiq package."""
 
+import copy
+
 import numpy as np
 import pytest
 
@@ -121,3 +123,122 @@ def test_against_shap_implementation():
 
     with pytest.warns(UserWarning):
         _ = TreeExplainer(model=tree_model, max_order=2, min_order=1, index="SV")
+
+
+def test_xgboost_reg(xgb_reg_model, background_reg_data):
+    """Tests the shapiq implementation of TreeSHAP agains SHAP's implementation for XGBoost."""
+
+    explanation_instance = 0
+
+    # the following code is used to get the shap values from the SHAP implementation
+    # import shap
+    # explainer_shap = shap.TreeExplainer(model=xgb_reg_model)
+    # x_explain_shap = background_reg_data[explanation_instance].reshape(1, -1)
+    # sv_shap = explainer_shap.shap_values(x_explain_shap)[0]
+    sv_shap = [-2.555832, 28.50987, 1.7708225, -7.8653603, 10.7955885, -0.1877861, 4.549199]
+    sv_shap = np.asarray(sv_shap)
+
+    # compute with shapiq
+    explainer_shapiq = TreeExplainer(model=xgb_reg_model, max_order=1, index="SV")
+    x_explain_shapiq = background_reg_data[explanation_instance]
+    sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
+    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
+    baseline_shapiq = sv_shapiq.baseline_value
+
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+
+    # get prediction of the model
+    prediction = xgb_reg_model.predict(x_explain_shapiq.reshape(1, -1))
+    assert prediction == pytest.approx(baseline_shapiq + np.sum(sv_shapiq_values), rel=1e-5)
+
+
+def test_xgboost_clf(xgb_clf_model, background_clf_data):
+    """Tests the shapiq implementation of TreeSHAP agains SHAP's implementation for XGBoost."""
+
+    explanation_instance = 1
+    class_label = 1
+
+    # the following code is used to get the shap values from the SHAP implementation
+    # import shap
+    # model_copy = copy.deepcopy(xgb_clf_model)
+    # explainer_shap = shap.TreeExplainer(model=model_copy)
+    # baseline_shap = float(explainer_shap.expected_value[class_label])
+    # print(baseline_shap)
+    # x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))
+    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
+    # sv_shap = sv_shap_all_classes[0][:, class_label]
+    # print(sv_shap)
+    sv = [-0.00545454, -0.15837783, -0.17675081, -0.24213657, 0.00247543, 0.00988865, -0.01564346]
+    sv_shap = np.array(sv)
+
+    # compute with shapiq
+    explainer_shapiq = TreeExplainer(
+        model=xgb_clf_model, max_order=1, index="SV", class_label=class_label
+    )
+    x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
+    sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
+    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
+    baseline_shapiq = sv_shapiq.baseline_value
+
+    # assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+
+    # get prediction of the model (as the log odds)
+    prediction = xgb_clf_model.predict(x_explain_shapiq.reshape(1, -1), output_margin=True)[0][
+        class_label
+    ]
+    assert prediction == pytest.approx(baseline_shapiq + np.sum(sv_shapiq_values), rel=1e-5)
+
+
+def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
+    """Tests for the strange behavior of SHAP's XGBoost implementation.
+
+    The test is used to show that the shapiq implementation is correct and the SHAP implementation
+    is doing something weird. For some instances (e.g. the one used in this test) the SHAP values
+    are different from the shapiq values. However, when we round the `thresholds` of the xgboost
+    trees in shapiq, then the computed explanations match. This is a strange behavior as rounding
+    the thresholds makes the model less true to the original model but only then the explanations
+    match.
+    """
+
+    explanation_instance = 0
+    class_label = 1
+
+    # get the shap explanations (the following code is used to get SVs from SHAP)
+    # import shap
+    # model_copy = copy.deepcopy(xgb_clf_model)
+    # explainer_shap = shap.TreeExplainer(model=model_copy)
+    # baseline_shap = float(explainer_shap.expected_value[class_label])
+    # x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))
+    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
+    # sv_shap = sv_shap_all_classes[0][:, class_label]
+    # print(sv_shap)
+    # print(baseline_shap)
+    sv = [-0.00163636, 0.05099502, -0.13182959, -0.44538185, 0.00428653, -0.04872373, -0.01370917]
+    sv_shap = np.array(sv)
+
+    # setup shapiq TreeSHAP
+    explainer_shapiq = TreeExplainer(
+        model=xgb_clf_model, max_order=1, index="SV", class_label=class_label
+    )
+    x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
+    sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
+    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
+
+    # the SHAP sv values should be different from the shapiq values
+    assert not np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+
+    # when we round the model thresholds of the xgb model (thresholds decide weather a feature is
+    # used or not) -> then suddenly the shap and shapiq values are the same, which points to the
+    # fact that the shapiq implementation is correct
+    explainer_shapiq_rounded = TreeExplainer(
+        model=xgb_clf_model, max_order=1, index="SV", class_label=class_label
+    )
+    for tree_explainer in explainer_shapiq_rounded._treeshapiq_explainers:
+        tree_explainer._tree.thresholds = np.round(tree_explainer._tree.thresholds, 4)
+    x_explain_shapiq_rounded = copy.deepcopy(background_clf_data[explanation_instance])
+    sv_shapiq_rounded = explainer_shapiq_rounded.explain(x=x_explain_shapiq_rounded)
+    sv_shapiq_rounded_values = sv_shapiq_rounded.get_n_order_values(1)
+
+    # now the values surprisingly are the same
+    assert np.allclose(sv_shap, sv_shapiq_rounded_values, rtol=1e-5)
