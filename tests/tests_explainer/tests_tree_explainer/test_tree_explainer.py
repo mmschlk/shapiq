@@ -135,10 +135,8 @@ def test_xgboost_reg(xgb_reg_model, background_reg_data):
     # explainer_shap = shap.TreeExplainer(model=xgb_reg_model)
     # x_explain_shap = background_reg_data[explanation_instance].reshape(1, -1)
     # sv_shap = explainer_shap.shap_values(x_explain_shap)[0]
-    # baseline_shap = explainer_shap.expected_value
     sv_shap = [-2.555832, 28.50987, 1.7708225, -7.8653603, 10.7955885, -0.1877861, 4.549199]
     sv_shap = np.asarray(sv_shap)
-    baseline_shap = -2.5668228
 
     # compute with shapiq
     explainer_shapiq = TreeExplainer(model=xgb_reg_model, max_order=1, index="SV")
@@ -147,12 +145,11 @@ def test_xgboost_reg(xgb_reg_model, background_reg_data):
     sv_shapiq_values = sv_shapiq.get_n_order_values(1)
     baseline_shapiq = sv_shapiq.baseline_value
 
-    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
-    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-4)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
     # get prediction of the model
     prediction = xgb_reg_model.predict(x_explain_shapiq.reshape(1, -1))
-    assert prediction == pytest.approx(baseline_shapiq + np.sum(sv_shapiq_values), rel=1e-2)
+    assert prediction == pytest.approx(baseline_shapiq + np.sum(sv_shapiq_values), rel=1e-5)
 
 
 def test_xgboost_clf(xgb_clf_model, background_clf_data):
@@ -173,7 +170,6 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
     # print(sv_shap)
     sv = [-0.00545454, -0.15837783, -0.17675081, -0.24213657, 0.00247543, 0.00988865, -0.01564346]
     sv_shap = np.array(sv)
-    baseline_shap = 0.5
 
     # compute with shapiq
     explainer_shapiq = TreeExplainer(
@@ -184,14 +180,14 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
     sv_shapiq_values = sv_shapiq.get_n_order_values(1)
     baseline_shapiq = sv_shapiq.baseline_value
 
-    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
-    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-4)
+    # assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
     # get prediction of the model (as the log odds)
     prediction = xgb_clf_model.predict(x_explain_shapiq.reshape(1, -1), output_margin=True)[0][
         class_label
     ]
-    assert prediction == pytest.approx(baseline_shapiq + np.sum(sv_shapiq_values), rel=2e-2)
+    assert prediction == pytest.approx(baseline_shapiq + np.sum(sv_shapiq_values), rel=1e-5)
 
 
 def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
@@ -220,7 +216,6 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     # print(baseline_shap)
     sv = [-0.00163636, 0.05099502, -0.13182959, -0.44538185, 0.00428653, -0.04872373, -0.01370917]
     sv_shap = np.array(sv)
-    baseline_shap = 0.5
 
     # setup shapiq TreeSHAP
     explainer_shapiq = TreeExplainer(
@@ -230,9 +225,8 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
     sv_shapiq_values = sv_shapiq.get_n_order_values(1)
 
-    # the baseline scores should be the same as with SHAP but the values should be different
-    assert baseline_shap == pytest.approx(sv_shapiq.baseline_value, rel=1e-4)
-    assert not np.allclose(sv_shap, sv_shapiq_values, rtol=1e-4)
+    # the SHAP sv values should be different from the shapiq values
+    assert not np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
     # when we round the model thresholds of the xgb model (thresholds decide weather a feature is
     # used or not) -> then suddenly the shap and shapiq values are the same, which points to the
@@ -247,4 +241,4 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     sv_shapiq_rounded_values = sv_shapiq_rounded.get_n_order_values(1)
 
     # now the values surprisingly are the same
-    assert np.allclose(sv_shap, sv_shapiq_rounded_values, rtol=1e-4)
+    assert np.allclose(sv_shap, sv_shapiq_rounded_values, rtol=1e-5)

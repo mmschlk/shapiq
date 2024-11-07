@@ -96,6 +96,7 @@ def _convert_xgboost_tree_as_df(
 
     # pandas can't chill https://stackoverflow.com/q/77900971
     with pd.option_context("future.no_silent_downcasting", True):
+        values = tree_df["Gain"].values * scaling + intercept  # add intercept to all values
         tree_model = TreeModel(
             children_left=tree_df["Yes"]
             .replace(convert_node_str_to_int)
@@ -111,9 +112,9 @@ def _convert_xgboost_tree_as_df(
             .values,
             features=tree_df["Feature"].values,
             thresholds=tree_df["Split"].values,
-            values=tree_df["Gain"].values * scaling,  # values in non-leaf nodes are not used
+            values=values,  # values in non-leaf nodes are not used
             node_sample_weight=tree_df["Cover"].values,
-            empty_prediction=intercept,
+            empty_prediction=None,
             original_output_type=output_type,
         )
 
