@@ -86,6 +86,17 @@ def rf_clf_model() -> RandomForestClassifier:
 
 
 @pytest.fixture
+def xgb_reg_model():
+    """Return a simple xgboost regression model."""
+    from xgboost import XGBRegressor
+
+    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    model = XGBRegressor(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
 def rf_clf_binary_model() -> RandomForestClassifier:
     """Return a simple random forest model."""
     X, y = make_classification(
@@ -98,6 +109,25 @@ def rf_clf_binary_model() -> RandomForestClassifier:
         n_redundant=0,
     )
     model = RandomForestClassifier(random_state=42, max_depth=3, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def xgb_clf_model():
+    """Return a simple xgboost classification model."""
+    from xgboost import XGBClassifier
+
+    X, y = make_classification(
+        n_samples=100,
+        n_features=7,
+        random_state=42,
+        n_classes=3,
+        n_informative=7,
+        n_repeated=0,
+        n_redundant=0,
+    )
+    model = XGBClassifier(random_state=42, n_estimators=3)
     model.fit(X, y)
     return model
 

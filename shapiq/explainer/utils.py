@@ -90,6 +90,9 @@ def get_predict_function_and_model_type(model, model_class):
     elif isinstance(model, tree.TreeModel):  # test scenario
         _predict_function = model.compute_empty_prediction
         _model_type = "tree"
+    elif isinstance(model, list) and all([isinstance(m, tree.TreeModel) for m in model]):
+        _predict_function = model[0].compute_empty_prediction
+        _model_type = "tree"
     elif _predict_function is None:
         raise TypeError(
             f"`model` is of unsupported type: {model_class}.\n"

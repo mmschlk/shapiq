@@ -102,9 +102,13 @@ class TreeSHAPIQ:
         self._edge_tree: EdgeTree = copy.deepcopy(edge_tree)
 
         # compute the empty prediction
-        self.empty_prediction: float = float(
+        computed_empty_prediction = float(
             np.sum(self._edge_tree.empty_predictions[self._tree.leaf_mask])
         )
+        tree_empty_prediction = self._tree.empty_prediction
+        if tree_empty_prediction is None:
+            tree_empty_prediction = computed_empty_prediction
+        self.empty_prediction: float = tree_empty_prediction
 
         # stores the interaction scores up to a given order
         self.subset_ancestors_store: dict = {}
