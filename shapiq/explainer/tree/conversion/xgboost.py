@@ -1,6 +1,7 @@
 """Functions for converting xgboost decision trees to the format used by
 shapiq."""
 
+import warnings
 from typing import Optional
 
 import numpy as np
@@ -25,20 +26,23 @@ def convert_xgboost_booster(
     Returns:
         The converted xgboost booster.
     """
+    try:
+        intercept = tree_booster.base_score
+        if intercept is None:
+            intercept = float(tree_booster.intercept_[0])
+        tree_booster = tree_booster.get_booster()
+    except AttributeError:
+        intercept = 0.0
+        warnings.warn(
+            "The model does not have a valid base score. Setting the intercept to 0.0."
+            "Baseline values of the interaction models might be different."
+        )
+
     # https://github.com/shap/shap/blob/77e92c3c110e816b768a0ec2acfbf4cc08ee13db/shap/explainers/_tree.py#L1992
     scaling = 1.0
     booster_df = tree_booster.trees_to_dataframe()
     output_type = "raw"
-    if len(booster_df["Tree"].unique()) > tree_booster.num_boosted_rounds():
-        # choose only trees for the selected class (xgboost grows n_estimators*n_class trees)
-        # approximation for the number of classes in xgboost
-        n_class = int(len(booster_df["Tree"].unique()) / tree_booster.num_boosted_rounds())
-        if class_label is None:
-            class_label = 0
-        idc = booster_df["Tree"] % n_class == class_label
-        booster_df = booster_df.loc[idc, :]
 
-    #
     if tree_booster.feature_names:
         feature_names = tree_booster.feature_names
     else:
@@ -52,14 +56,29 @@ def convert_xgboost_booster(
         booster_df.loc[:, "Feature"] = booster_df.loc[:, "Feature"].replace(
             convert_feature_str_to_int
         )
+
+    if len(booster_df["Tree"].unique()) > tree_booster.num_boosted_rounds():
+        # choose only trees for the selected class (xgboost grows n_estimators*n_class trees)
+        # approximation for the number of classes in xgboost
+        n_class = int(len(booster_df["Tree"].unique()) / tree_booster.num_boosted_rounds())
+        if class_label is None:
+            class_label = 0
+        idc = booster_df["Tree"] % n_class == class_label
+        booster_df = booster_df.loc[idc, :]
+
+    n_trees = len(booster_df["Tree"].unique())
+    intercept /= n_trees
     return [
-        _convert_xgboost_tree_as_df(tree_df=tree_df, output_type=output_type, scaling=scaling)
+        _convert_xgboost_tree_as_df(
+            tree_df=tree_df, intercept=intercept, output_type=output_type, scaling=scaling
+        )
         for _, tree_df in booster_df.groupby("Tree")
     ]
 
 
 def _convert_xgboost_tree_as_df(
     tree_df: Model,
+    intercept: float,
     output_type: str,
     scaling: float = 1.0,
 ) -> TreeModel:
@@ -77,7 +96,7 @@ def _convert_xgboost_tree_as_df(
 
     # pandas can't chill https://stackoverflow.com/q/77900971
     with pd.option_context("future.no_silent_downcasting", True):
-        return TreeModel(
+        tree_model = TreeModel(
             children_left=tree_df["Yes"]
             .replace(convert_node_str_to_int)
             .infer_objects(copy=False)
@@ -94,6 +113,8 @@ def _convert_xgboost_tree_as_df(
             thresholds=tree_df["Split"].values,
             values=tree_df["Gain"].values * scaling,  # values in non-leaf nodes are not used
             node_sample_weight=tree_df["Cover"].values,
-            empty_prediction=None,
+            empty_prediction=intercept,
             original_output_type=output_type,
         )
+
+    return tree_model

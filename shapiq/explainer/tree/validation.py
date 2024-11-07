@@ -42,6 +42,8 @@ def validate_tree_model(
     # tree model (is already in the correct format)
     if type(model).__name__ == "TreeModel":
         tree_model = model
+    elif isinstance(model, list) and all([type(m).__name__ == "TreeModel" for m in model]):
+        tree_model = model
     # dict as model is parsed to TreeModel (the dict needs to have the correct format and names)
     elif type(model).__name__ == "dict":
         tree_model = TreeModel(**model)
@@ -73,8 +75,6 @@ def validate_tree_model(
     elif safe_isinstance(model, "xgboost.sklearn.XGBRegressor") or safe_isinstance(
         model, "xgboost.sklearn.XGBClassifier"
     ):
-        tree_model = convert_xgboost_booster(model.get_booster(), class_label=class_label)
-    elif safe_isinstance(model, "xgboost.core.Booster"):
         tree_model = convert_xgboost_booster(model, class_label=class_label)
     # unsupported model
     else:

@@ -14,6 +14,31 @@ from .treeshapiq import TreeModel, TreeSHAPIQ
 from .validation import validate_tree_model
 
 
+def set_baseline_value(model: Any, treeshapiq_explainers: list[TreeSHAPIQ]) -> float:
+    """Sets the baseline value for the interaction values.
+
+    Tries to set the baseline value for the interaction values from a model.
+
+    Args:
+        model: The model to explain.
+        treeshapiq_explainers: The treeSHAP-IQ explainers.
+
+    Returns:
+        The baseline value for the interaction values.
+    """
+    # default value for the baseline provided by ensembles
+    # works for sklearn decision trees and random forests
+    baseline_value = sum([treeshapiq.empty_prediction for treeshapiq in treeshapiq_explainers])
+    try:  # xgboost models have base_score/intercept_
+        base_score = model.base_score
+        if base_score is None:
+            base_score = float(model.intercept_[0])
+        baseline_value = base_score if base_score is not None else baseline_value
+    except AttributeError:
+        pass
+    return baseline_value
+
+
 class TreeExplainer(Explainer):
     """
     The explainer for tree-based models using the TreeSHAP-IQ algorithm.
@@ -72,10 +97,7 @@ class TreeExplainer(Explainer):
             TreeSHAPIQ(model=_tree, max_order=self._max_order, index=index) for _tree in self._trees
         ]
 
-        # TODO: for the current implementation this is correct for other trees this may vary
-        self.baseline_value = sum(
-            [treeshapiq.empty_prediction for treeshapiq in self._treeshapiq_explainers]
-        )
+        self.baseline_value = set_baseline_value(self.model, self._treeshapiq_explainers)
 
     def explain(self, x: np.ndarray) -> InteractionValues:
         # run treeshapiq for all trees

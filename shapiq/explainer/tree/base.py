@@ -87,8 +87,10 @@ class TreeModel:
             self.leaf_mask = np.asarray(self.children_left == -1)
         # sanitize features
         self.features = np.where(self.leaf_mask, -2, self.features)
+        self.features = self.features.astype(int)  # make features integer type
         # sanitize thresholds
         self.thresholds = np.where(self.leaf_mask, np.nan, self.thresholds)
+        # self.thresholds = np.round(self.thresholds, 4)  # round thresholds
         # setup empty prediction
         if self.empty_prediction is None:
             self.compute_empty_prediction()
@@ -118,6 +120,13 @@ class TreeModel:
         # setup new feature mapping
         if self.feature_map_internal_original is None:
             self.feature_map_internal_original = {i: i for i in unique_features}
+        # flatten values if necessary
+        if self.values.ndim > 1:
+            if self.values.shape[1] != 1:
+                raise ValueError("Values array has more than one column.")
+            self.values = self.values.flatten()
+        # set all values of non leaf nodes to zero
+        self.values[~self.leaf_mask] = 0
 
     def reduce_feature_complexity(self) -> None:
         """Reduces the feature complexity of the tree model.
