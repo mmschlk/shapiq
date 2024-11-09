@@ -46,7 +46,7 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
     assert explanation.baseline_value == explainer.baseline_value
 
 
-def test_random_forrest_regression(rf_reg_model, background_reg_data):
+def test_random_forest_regression(rf_reg_model, background_reg_data):
     """Test TreeExplainer with a simple decision tree regressor."""
     explainer = TreeExplainer(model=rf_reg_model, max_order=2, min_order=1)
 
@@ -62,7 +62,7 @@ def test_random_forrest_regression(rf_reg_model, background_reg_data):
     assert explanation.baseline_value == explainer.baseline_value
 
 
-def test_random_forrest_classification(rf_clf_model, background_clf_data):
+def test_random_forest_classification(rf_clf_model, background_clf_data):
     """Test TreeExplainer with a simple decision tree regressor."""
     explainer = TreeExplainer(model=rf_clf_model, max_order=2, min_order=1)
 
