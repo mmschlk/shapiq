@@ -10,13 +10,16 @@ import pytest
 from PIL import Image
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+
+NR_FEATURES = 7
 
 
 @pytest.fixture
 def dt_reg_model() -> DecisionTreeRegressor:
     """Return a simple decision tree model."""
-    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
     model = DecisionTreeRegressor(random_state=42, max_depth=3)
     model.fit(X, y)
     return model
@@ -27,7 +30,7 @@ def dt_clf_model() -> DecisionTreeClassifier:
     """Return a simple decision tree model."""
     X, y = make_classification(
         n_samples=100,
-        n_features=7,
+        n_features=NR_FEATURES,
         random_state=42,
         n_classes=3,
         n_informative=7,
@@ -46,7 +49,7 @@ def dt_clf_model_tree_model():
 
     X, y = make_classification(
         n_samples=100,
-        n_features=7,
+        n_features=NR_FEATURES,
         random_state=42,
         n_classes=3,
         n_informative=7,
@@ -61,8 +64,8 @@ def dt_clf_model_tree_model():
 
 @pytest.fixture
 def rf_reg_model() -> RandomForestRegressor:
-    """Return a simple random forest model."""
-    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    """Return a simple (regression) random forest model."""
+    X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
     model = RandomForestRegressor(random_state=42, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model
@@ -70,10 +73,10 @@ def rf_reg_model() -> RandomForestRegressor:
 
 @pytest.fixture
 def rf_clf_model() -> RandomForestClassifier:
-    """Return a simple random forest model."""
+    """Return a simple (classification) random forest model."""
     X, y = make_classification(
         n_samples=100,
-        n_features=7,
+        n_features=NR_FEATURES,
         random_state=42,
         n_classes=3,
         n_informative=7,
@@ -90,7 +93,7 @@ def rf_clf_binary_model() -> RandomForestClassifier:
     """Return a simple random forest model."""
     X, y = make_classification(
         n_samples=100,
-        n_features=7,
+        n_features=NR_FEATURES,
         random_state=42,
         n_classes=2,
         n_informative=7,
@@ -103,18 +106,18 @@ def rf_clf_binary_model() -> RandomForestClassifier:
 
 
 @pytest.fixture
-def background_reg_data() -> tuple[np.ndarray, np.ndarray]:
+def background_reg_data() -> np.ndarray:
     """Return a simple background dataset."""
-    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
     return X
 
 
 @pytest.fixture
-def background_clf_data() -> tuple[np.ndarray, np.ndarray]:
+def background_clf_data() -> np.ndarray:
     """Return a simple background dataset."""
     X, y = make_classification(
         n_samples=100,
-        n_features=7,
+        n_features=NR_FEATURES,
         random_state=42,
         n_classes=3,
         n_informative=7,
@@ -127,7 +130,7 @@ def background_clf_data() -> tuple[np.ndarray, np.ndarray]:
 @pytest.fixture
 def background_reg_dataset() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple background dataset."""
-    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
     return X, y
 
 
@@ -136,7 +139,7 @@ def background_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple background dataset."""
     X, y = make_classification(
         n_samples=100,
-        n_features=7,
+        n_features=NR_FEATURES,
         random_state=42,
         n_classes=3,
         n_informative=7,
@@ -151,7 +154,7 @@ def background_clf_dataset_binary() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple background dataset."""
     X, y = make_classification(
         n_samples=100,
-        n_features=7,
+        n_features=NR_FEATURES,
         random_state=42,
         n_classes=2,
         n_informative=7,
@@ -211,3 +214,130 @@ def interaction_values_list():
         )
         iv_list.append(iv)
     return iv_list
+
+
+@pytest.fixture
+def regression_model(background_reg_dataset) -> LinearRegression:
+    """Return a sklearn linear regression model"""
+    X, y = background_reg_dataset
+    reg = LinearRegression()
+    reg.fit(X, y)
+    return reg
+
+
+@pytest.fixture
+def lightgbm_regressor(background_reg_dataset):
+    """Return a lgbm regression model"""
+    import lightgbm
+
+    X, y = background_reg_dataset
+    model = lightgbm.sklearn.LGBMRegressor(
+        n_estimators=100, max_depth=NR_FEATURES, random_state=42, verbose=-1
+    )
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def xgboost_regressor(background_reg_dataset):
+    """Return a xgb regression model"""
+    import xgboost as xgb
+
+    X, y = background_reg_dataset
+    model = xgb.XGBRegressor(n_estimators=10, max_depth=1)
+    model.fit(X, y, verbose=False)
+    return model
+
+
+@pytest.fixture
+def xgboost_booster(background_reg_dataset):
+    """Return a xgb booster"""
+    import xgboost as xgb
+
+    X, y = background_reg_dataset
+    dtrain = xgb.DMatrix(X, label=y)
+    params = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7}
+    booster = xgb.train(params=params, dtrain=dtrain, num_boost_round=0)
+    return booster
+
+
+@pytest.fixture
+def lightgbm_basic(background_reg_dataset):
+    """Return a lgm basic booster"""
+    import lightgbm as lgb
+
+    X, y = background_reg_dataset
+    train_data = lgb.Dataset(X, label=y)
+    model = lgb.train(params={}, train_set=train_data, num_boost_round=1)
+    return model
+
+
+@pytest.fixture
+def sequential_model_1_class():
+    """Return a keras nn with output dimension 1"""
+    return _sequential_model(1)
+
+
+@pytest.fixture
+def sequential_model_2_classes():
+    """Return a keras nn with output dimension 2"""
+    return _sequential_model(2)
+
+
+@pytest.fixture
+def sequential_model_3_classes():
+    """Return a keras nn with output dimension 3"""
+    return _sequential_model(3)
+
+
+def _sequential_model(output_shape_nr):
+    """Return a keras nn with specified output dimension"""
+    import keras
+
+    model = keras.Sequential(
+        [
+            keras.layers.Input(shape=(NR_FEATURES,)),
+            keras.layers.Dense(2, activation="relu", name="layer1"),
+            keras.layers.Dense(output_shape_nr, name="layer2"),
+        ]
+    )
+    model.compile(optimizer="adam", loss="mse")
+    X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
+    model.fit(X, y, epochs=0, batch_size=32)
+    return model
+
+
+class CustomModel:
+    def __init__(self, data: tuple[np.ndarray, np.ndarray]):
+        self.data = data
+
+    def __call__(self, *args, **kwargs):
+        return self.data[1]
+
+
+@pytest.fixture
+def custom_model(background_reg_dataset) -> CustomModel:
+    """Return a callable mock custom model"""
+    return CustomModel(background_reg_dataset)
+
+
+TABULAR_MODEL_FIXTURES = [
+    ("custom_model", "custom_model"),
+    ("regression_model", "sklearn.linear_model.LinearRegression"),
+    ("sequential_model_1_class", "tensorflow.python.keras.engine.sequential.Sequential"),
+    ("sequential_model_2_classes", "keras.src.models.sequential.Sequential"),
+    ("sequential_model_3_classes", "keras.engine.sequential.Sequential"),
+]
+
+TREE_MODEL_FIXTURES = [
+    ("lightgbm_regressor", "lightgbm.sklearn.LGBMRegressor"),
+    ("xgboost_regressor", "xgboost.sklearn.XGBRegressor"),
+    ("xgboost_booster", "xgboost.core.Booster"),
+    ("lightgbm_basic", "lightgbm.basic.Booster"),
+    ("rf_reg_model", "sklearn.ensemble.RandomForestRegressor"),
+    ("rf_clf_model", "sklearn.ensemble.RandomForestClassifier"),
+    ("dt_clf_model", "sklearn.tree.DecisionTreeClassifier"),
+    ("dt_reg_model", "sklearn.tree.DecisionTreeRegressor"),
+]
+
+ALL_MODEL_FIXTURES = TABULAR_MODEL_FIXTURES + TREE_MODEL_FIXTURES
