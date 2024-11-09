@@ -2,7 +2,9 @@
 
 import re
 import warnings
-from typing import Any
+from typing import Any, Callable
+
+import numpy as np
 
 
 def get_explainers() -> dict[str, Any]:
@@ -17,7 +19,9 @@ def get_explainers() -> dict[str, Any]:
     return {"tabular": TabularExplainer, "tree": TreeExplainer}
 
 
-def get_predict_function_and_model_type(model, model_class):
+def get_predict_function_and_model_type(
+    model: Any, model_class: str
+) -> tuple[Callable[[Any, np.ndarray], np.ndarray], str]:
     from . import tree
 
     _predict_function = None
