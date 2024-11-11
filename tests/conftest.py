@@ -133,6 +133,34 @@ def xgb_clf_model():
 
 
 @pytest.fixture
+def torch_clf_model():
+    """Return a simple torch model."""
+    import torch
+
+    model = torch.nn.Sequential(
+        torch.nn.Linear(7, 10),
+        torch.nn.ReLU(),
+        torch.nn.Linear(10, 3),
+    )
+    model.eval()
+    return model
+
+
+@pytest.fixture
+def torch_reg_model():
+    """Return a simple torch model."""
+    import torch
+
+    model = torch.nn.Sequential(
+        torch.nn.Linear(7, 10),
+        torch.nn.ReLU(),
+        torch.nn.Linear(10, 1),
+    )
+    model.eval()
+    return model
+
+
+@pytest.fixture
 def background_reg_data() -> np.ndarray:
     """Return a simple background dataset."""
     X, _ = make_regression(n_samples=100, n_features=7, random_state=42)

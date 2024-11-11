@@ -59,7 +59,16 @@ def get_predict_function_and_model_type(model, model_class):
     ]:
         _model_type = "tree"
 
-    # TODO: torch.Sequential
+    # pytorch
+    if model_class in [
+        "torch.nn.modules.container.Sequential",
+        "torch.nn.modules.module.Module",
+        "torch.nn.modules.container.ModuleList",
+        "torch.nn.modules.container.ModuleDict",
+    ]:
+        _model_type = "tabular"
+        warnings.warn("PyTorch: No data provided. Explaining the 1st '0' class.")
+        _predict_function = predict_torch_first
 
     # tensorflow
     if model_class in [
@@ -87,6 +96,7 @@ def get_predict_function_and_model_type(model, model_class):
         _predict_function = predict_proba_default
     elif _predict_function is None and hasattr(model, "predict"):
         _predict_function = predict_default
+    # extraction for tree models
     elif isinstance(model, tree.TreeModel):  # test scenario
         _predict_function = model.compute_empty_prediction
         _model_type = "tree"
@@ -120,6 +130,13 @@ def predict_xgboost(m, d):
     from xgboost import DMatrix
 
     return m.predict(DMatrix(d))
+
+
+def predict_torch_first(m, d):
+    import torch
+
+    d = torch.tensor(d, dtype=torch.float32)
+    return m(d).detach().numpy()[:, 0]
 
 
 def predict_tf_single(m, d):
