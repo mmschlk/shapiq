@@ -2,7 +2,12 @@
 
 import re
 import warnings
-from typing import Any
+from typing import Any, Optional
+
+WARNING_NO_CLASS_LABEL = (
+    "No class_label provided. Explaining the 2nd '1' per default. "
+    "Please provide the class_label to explain a different class."
+)
 
 
 def get_explainers() -> dict[str, Any]:
@@ -17,14 +22,15 @@ def get_explainers() -> dict[str, Any]:
     return {"tabular": TabularExplainer, "tree": TreeExplainer}
 
 
-def get_predict_function_and_model_type(model, model_class):
+def get_predict_function_and_model_type(model, model_class, class_label: Optional[int] = None):
     from . import tree
 
-    _predict_function = None
+    model_predictor = ModelPredictor(class_label)
     _model_type = "tabular"  # default
+    _predict_function = None
 
     if callable(model):
-        _predict_function = predict_callable
+        _predict_function = model_predictor.predict_callable
 
     # sklearn
     if model_class in [
@@ -51,7 +57,7 @@ def get_predict_function_and_model_type(model, model_class):
 
     # xgboost
     if model_class == "xgboost.core.Booster":
-        _predict_function = predict_xgboost
+        _predict_function = model_predictor.predict_xgboost
     if model_class in [
         "xgboost.core.Booster",
         "xgboost.sklearn.XGBRegressor",
@@ -67,8 +73,7 @@ def get_predict_function_and_model_type(model, model_class):
         "torch.nn.modules.container.ModuleDict",
     ]:
         _model_type = "tabular"
-        warnings.warn("PyTorch: No data provided. Explaining the 1st '0' class.")
-        _predict_function = predict_torch_first
+        _predict_function = model_predictor.predict_torch
 
     # tensorflow
     if model_class in [
@@ -81,21 +86,15 @@ def get_predict_function_and_model_type(model, model_class):
         "keras.src.models.sequential.Sequential",
     ]:
         _model_type = "tabular"
-        if model.output_shape[1] == 1:
-            _predict_function = predict_tf_single
-        elif model.output_shape[1] == 2:
-            _predict_function = predict_tf_binary
-        else:
-            _predict_function = predict_tf_first
-            warnings.warn(
-                "Tensorflow: Output shape of the model greater than 2. Explaining the 1st '0' class."
-            )
+        _predict_function = model_predictor.predict_tensorflow
 
     # default extraction (sklearn api)
     if _predict_function is None and hasattr(model, "predict_proba"):
-        _predict_function = predict_proba_default
+        _predict_function = model_predictor.predict_proba
+        if class_label is None:
+            warnings.warn(WARNING_NO_CLASS_LABEL)
     elif _predict_function is None and hasattr(model, "predict"):
-        _predict_function = predict_default
+        _predict_function = model_predictor.predict
     # extraction for tree models
     elif isinstance(model, tree.TreeModel):  # test scenario
         _predict_function = model.compute_empty_prediction
@@ -114,43 +113,59 @@ def get_predict_function_and_model_type(model, model_class):
     return _predict_function, _model_type
 
 
-def predict_callable(m, d):
-    return m(d)
+class ModelPredictor:
+    """A wrapper class for different model prediction functions.
 
+    This class provides a unified interface for different model types to predict on data.
 
-def predict_default(m, d):
-    return m.predict(d)
+    Args:
+        class_label: The class label to predict on. Defaults to ``None``. If ``None``, a warning is
+        raised and the class label is set to ``1``.
 
+    Raises:
+        UserWarning: If no class label is provided.
+    """
 
-def predict_proba_default(m, d):
-    return m.predict_proba(d)[:, 1]
+    def __init__(self, class_label: Optional[int] = None):
+        if class_label is None:
+            warnings.warn(WARNING_NO_CLASS_LABEL)
+            class_label = 1
+        self.class_label = class_label
 
+    @staticmethod
+    def predict_callable(model, data):
+        return model(data)
 
-def predict_xgboost(m, d):
-    from xgboost import DMatrix
+    @staticmethod
+    def predict(model, data):
+        return model.predict(data)
 
-    return m.predict(DMatrix(d))
+    def predict_proba(self, model, data):
+        return model.predict_proba(data)[:, self.class_label]
 
+    @staticmethod
+    def predict_xgboost(model, data):
+        from xgboost import DMatrix
 
-def predict_torch_first(m, d):
-    import torch
+        return model.predict(DMatrix(data))
 
-    d = torch.tensor(d, dtype=torch.float32)
-    return m(d).detach().numpy()[:, 0]
+    def predict_torch(self, model, data):
+        import torch
 
+        data = torch.tensor(data, dtype=torch.float32)
+        predictions = model(data).detach().numpy()
+        return self._get_class_based_predictions(predictions)
 
-def predict_tf_single(m, d):
-    return m.predict(d, verbose=0).reshape(
-        -1,
-    )
+    def predict_tensorflow(self, model, data):
+        predictions = model.predict(data, verbose=0)
+        return self._get_class_based_predictions(predictions)
 
-
-def predict_tf_binary(m, d):
-    return m.predict(d, verbose=0)[:, 1]
-
-
-def predict_tf_first(m, d):
-    return m.predict(d, verbose=0)[:, 0]
+    def _get_class_based_predictions(self, predictions):
+        if len(predictions.shape) == 1:
+            return predictions
+        elif predictions.shape[1] == 1:
+            return predictions[:, 0]
+        return predictions[:, self.class_label]
 
 
 def print_classes_nicely(obj):

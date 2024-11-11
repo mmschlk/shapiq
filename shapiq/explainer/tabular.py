@@ -56,6 +56,7 @@ class TabularExplainer(Explainer):
         model: The model to be explained as a callable function expecting data points as input and
             returning 1-dimensional predictions.
         data: A background dataset to be used for imputation.
+        class_label: The class label to be explained. Defaults to ``None``.
         imputer: Either an object of class Imputer or a string from ``["marginal", "conditional"]``.
             Defaults to ``"marginal"``, which innitializes the default MarginalImputer.
         approximator: An approximator object to use for the explainer. Defaults to ``"auto"``, which will
@@ -79,6 +80,7 @@ class TabularExplainer(Explainer):
         self,
         model,
         data: np.ndarray,
+        class_label: Optional[int] = None,
         imputer="marginal",
         approximator: Union[str, Approximator] = "auto",
         index: str = "k-SII",
@@ -91,7 +93,7 @@ class TabularExplainer(Explainer):
         if index not in AVAILABLE_INDICES:
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
 
-        super().__init__(model, data)
+        super().__init__(model, data, class_label)
 
         self._random_state = random_state
         if imputer == "marginal":

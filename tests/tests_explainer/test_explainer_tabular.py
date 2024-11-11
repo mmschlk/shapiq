@@ -172,3 +172,41 @@ def test_explain(dt_model, data, index, budget, max_order, imputer):
         sum_of_values = float(np.sum(interaction_values.values) + interaction_values.baseline_value)
         assert interaction_values[()] == 0.0
         assert pytest.approx(sum_of_values, 0.01) == prediction
+
+
+def test_against_shap_linear():
+    """Tests weather TabularExplainer yields similar results as SHAP with a basic linear model."""
+    import shap
+
+    n_samples = 3
+    dim = 5
+
+    def make_linear_model():
+        w = np.random.default_rng().normal(size=dim)
+
+        def model(X: np.ndarray):
+            return np.dot(X, w)
+
+        return model
+
+    X = np.random.default_rng().normal(size=(n_samples, dim))
+    model = make_linear_model()
+
+    # compute with shap
+    explainer_shap = shap.explainers.Exact(model, X)
+    shap_values = explainer_shap(X).values
+
+    # compute with shapiq
+    explainer_shapiq = TabularExplainer(
+        model=model,
+        data=X,
+        random_state=42,
+        index="SV",
+        max_order=1,
+        approximator="auto",
+        imputer="marginal",
+    )
+    shapiq_values = explainer_shapiq.explain_X(X)
+    shapiq_values = np.array([values.get_n_order_values(1) for values in shapiq_values])
+
+    assert np.allclose(shap_values, shapiq_values, atol=1e-5)
