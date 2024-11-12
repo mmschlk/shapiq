@@ -3,7 +3,7 @@
 ### v1.1.1 (2024-11-11)
 
 #### Improvements and Ease of Use
-- adds a `class_label` parameter to `TabularExplainer` and `Explainer` to specify the class label to be explained for classification models [#271](https://github.com/mmschlk/shapiq/issues/271)
+- adds a `class_index` parameter to `TabularExplainer` and `Explainer` to specify the class index to be explained for classification models [#271](https://github.com/mmschlk/shapiq/issues/271) (renames `class_label` parameter in TreeExplainer to `class_index`)
 - adds support for `PyTorch` models to `Explainer` [#272](https://github.com/mmschlk/shapiq/issues/272)
 
 #### Bug Fixes

@@ -19,11 +19,11 @@ def test_decision_tree_classifier(dt_clf_model, background_clf_data):
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
     # check init with class label
-    _ = TreeExplainer(model=dt_clf_model, max_order=2, min_order=1, class_label=0)
+    _ = TreeExplainer(model=dt_clf_model, max_order=2, min_order=1, class_index=0)
 
     assert True
 
-    explainer = _ = TreeExplainer(model=dt_clf_model, max_order=1, min_order=1, class_label=1)
+    explainer = _ = TreeExplainer(model=dt_clf_model, max_order=1, min_order=1, class_index=1)
     explanation = explainer.explain(x_explain)
 
     # compare baseline_value with empty_predictions
@@ -83,7 +83,7 @@ def test_random_forrest_classification(rf_clf_model, background_clf_data):
     """Test TreeExplainer with a simple decision tree regressor."""
     class_label = 0
     explainer = TreeExplainer(
-        model=rf_clf_model, max_order=1, min_order=1, index="SV", class_label=class_label
+        model=rf_clf_model, max_order=1, min_order=1, index="SV", class_index=class_label
     )
 
     x_explain = background_clf_data[0]
@@ -196,7 +196,7 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
 
     # compute with shapiq
     explainer_shapiq = TreeExplainer(
-        model=xgb_clf_model, max_order=1, index="SV", class_label=class_label
+        model=xgb_clf_model, max_order=1, index="SV", class_index=class_label
     )
     x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
     sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
@@ -263,7 +263,7 @@ def test_random_forest_shap(rf_clf_model, background_clf_data):
 
     # compute with shapiq
     explainer_shapiq = TreeExplainer(
-        model=rf_clf_model, max_order=1, index="SV", class_label=class_label
+        model=rf_clf_model, max_order=1, index="SV", class_index=class_label
     )
     x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
     sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
@@ -303,7 +303,7 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
 
     # setup shapiq TreeSHAP
     explainer_shapiq = TreeExplainer(
-        model=xgb_clf_model, max_order=1, index="SV", class_label=class_label
+        model=xgb_clf_model, max_order=1, index="SV", class_index=class_label
     )
     x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
     sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
@@ -316,7 +316,7 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     # used or not) -> then suddenly the shap and shapiq values are the same, which points to the
     # fact that the shapiq implementation is correct
     explainer_shapiq_rounded = TreeExplainer(
-        model=xgb_clf_model, max_order=1, index="SV", class_label=class_label
+        model=xgb_clf_model, max_order=1, index="SV", class_index=class_label
     )
     for tree_explainer in explainer_shapiq_rounded._treeshapiq_explainers:
         tree_explainer._tree.thresholds = np.round(tree_explainer._tree.thresholds, 4)

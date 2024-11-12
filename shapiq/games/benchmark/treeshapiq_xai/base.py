@@ -43,7 +43,7 @@ class TreeSHAPIQXAI(Game):
             min_order=1,
             max_order=1,
             index="SII",
-            class_label=class_label,
+            class_index=class_label,
         )
         # compute ground truth values
         # self.gt_interaction_values: InteractionValues = self._tree_explainer.explain(x=x)
@@ -112,7 +112,7 @@ class TreeSHAPIQXAI(Game):
             min_order=0,
             max_order=order,
             index=index,
-            class_label=self.class_label,
+            class_index=self.class_label,
         )
         return tree_explainer.explain(x=self.x_explain)
 

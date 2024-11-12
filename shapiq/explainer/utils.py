@@ -2,12 +2,18 @@
 
 import re
 import warnings
-from typing import Any, Optional
+from typing import Any, Callable, Optional, TypeVar
 
-WARNING_NO_CLASS_LABEL = (
-    "No class_label provided. Explaining the 2nd '1' per default. "
-    "Please provide the class_label to explain a different class."
+import numpy as np
+
+WARNING_NO_CLASS_INDEX = (
+    "No class_index provided. "
+    "Explaining the 2nd '1' class for classification models. "
+    "Please provide the class_index to explain a different class. "
+    "Disregard this warning for regression models."
 )
+
+ModelType = TypeVar("ModelType")
 
 
 def get_explainers() -> dict[str, Any]:
@@ -22,15 +28,16 @@ def get_explainers() -> dict[str, Any]:
     return {"tabular": TabularExplainer, "tree": TreeExplainer}
 
 
-def get_predict_function_and_model_type(model, model_class, class_label: Optional[int] = None):
+def get_predict_function_and_model_type(
+    model: ModelType, model_class: str, class_index: Optional[int] = None
+) -> tuple[Callable[[ModelType, np.ndarray], np.ndarray], str]:
     from . import tree
 
-    model_predictor = ModelPredictor(class_label)
     _model_type = "tabular"  # default
     _predict_function = None
 
     if callable(model):
-        _predict_function = model_predictor.predict_callable
+        _predict_function = predict_callable
 
     # sklearn
     if model_class in [
@@ -57,7 +64,7 @@ def get_predict_function_and_model_type(model, model_class, class_label: Optiona
 
     # xgboost
     if model_class == "xgboost.core.Booster":
-        _predict_function = model_predictor.predict_xgboost
+        _predict_function = predict_xgboost
     if model_class in [
         "xgboost.core.Booster",
         "xgboost.sklearn.XGBRegressor",
@@ -73,7 +80,7 @@ def get_predict_function_and_model_type(model, model_class, class_label: Optiona
         "torch.nn.modules.container.ModuleDict",
     ]:
         _model_type = "tabular"
-        _predict_function = model_predictor.predict_torch
+        _predict_function = predict_torch
 
     # tensorflow
     if model_class in [
@@ -86,15 +93,13 @@ def get_predict_function_and_model_type(model, model_class, class_label: Optiona
         "keras.src.models.sequential.Sequential",
     ]:
         _model_type = "tabular"
-        _predict_function = model_predictor.predict_tensorflow
+        _predict_function = predict_tensorflow
 
     # default extraction (sklearn api)
     if _predict_function is None and hasattr(model, "predict_proba"):
-        _predict_function = model_predictor.predict_proba
-        if class_label is None:
-            warnings.warn(WARNING_NO_CLASS_LABEL)
+        _predict_function = predict_proba
     elif _predict_function is None and hasattr(model, "predict"):
-        _predict_function = model_predictor.predict
+        _predict_function = predict
     # extraction for tree models
     elif isinstance(model, tree.TreeModel):  # test scenario
         _predict_function = model.compute_empty_prediction
@@ -110,62 +115,57 @@ def get_predict_function_and_model_type(model, model_class, class_label: Optiona
             f'{", ".join(print_classes_nicely(get_explainers()))}'
         )
 
-    return _predict_function, _model_type
+    if class_index is None:
+        warnings.warn(WARNING_NO_CLASS_INDEX)
+        class_index = 1
 
+    def _predict_function_with_class_index(model: ModelType, data: np.ndarray) -> np.ndarray:
+        """A wrapper prediction function to retrieve class_index predictions for classifiers.
+        Regression models are not affected by this function.
 
-class ModelPredictor:
-    """A wrapper class for different model prediction functions.
+        Args:
+            model: The model to predict with.
+            data: The data to predict on.
 
-    This class provides a unified interface for different model types to predict on data.
-
-    Args:
-        class_label: The class label to predict on. Defaults to ``None``. If ``None``, a warning is
-        raised and the class label is set to ``1``.
-
-    Raises:
-        UserWarning: If no class label is provided.
-    """
-
-    def __init__(self, class_label: Optional[int] = None):
-        if class_label is None:
-            warnings.warn(WARNING_NO_CLASS_LABEL)
-            class_label = 1
-        self.class_label = class_label
-
-    @staticmethod
-    def predict_callable(model, data):
-        return model(data)
-
-    @staticmethod
-    def predict(model, data):
-        return model.predict(data)
-
-    def predict_proba(self, model, data):
-        return model.predict_proba(data)[:, self.class_label]
-
-    @staticmethod
-    def predict_xgboost(model, data):
-        from xgboost import DMatrix
-
-        return model.predict(DMatrix(data))
-
-    def predict_torch(self, model, data):
-        import torch
-
-        data = torch.tensor(data, dtype=torch.float32)
-        predictions = model(data).detach().numpy()
-        return self._get_class_based_predictions(predictions)
-
-    def predict_tensorflow(self, model, data):
-        predictions = model.predict(data, verbose=0)
-        return self._get_class_based_predictions(predictions)
-
-    def _get_class_based_predictions(self, predictions):
-        if len(predictions.shape) == 1:
+        Returns:
+            The model's prediction for the given data point as a vector.
+        """
+        predictions = _predict_function(model, data)
+        if predictions.ndim == 1:
             return predictions
         elif predictions.shape[1] == 1:
             return predictions[:, 0]
-        return predictions[:, self.class_label]
+        return predictions[:, class_index]
+
+    return _predict_function_with_class_index, _model_type
+
+
+def predict_callable(model: ModelType, data: np.ndarray) -> np.ndarray:
+    return model(data)
+
+
+def predict(model: ModelType, data: np.ndarray) -> np.ndarray:
+    return model.predict(data)
+
+
+def predict_proba(model: ModelType, data: np.ndarray) -> np.ndarray:
+    return model.predict_proba(data)
+
+
+def predict_xgboost(model: ModelType, data: np.ndarray) -> np.ndarray:
+    from xgboost import DMatrix
+
+    return model.predict(DMatrix(data))
+
+
+def predict_tensorflow(model: ModelType, data: np.ndarray) -> np.ndarray:
+    return model.predict(data, verbose=0)
+
+
+def predict_torch(model: ModelType, data: np.ndarray) -> np.ndarray:
+    import torch
+
+    return model(torch.from_numpy(data).float()).detach().numpy()
 
 
 def print_classes_nicely(obj):
