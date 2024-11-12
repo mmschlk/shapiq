@@ -14,15 +14,16 @@ def test_decision_tree_classifier(dt_clf_model, background_clf_data):
 
     x_explain = background_clf_data[0]
     explanation = explainer.explain(x_explain)
+    prediction = dt_clf_model.predict_proba(x_explain.reshape(1, -1))[0]
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
     # check init with class label
-    _ = TreeExplainer(model=dt_clf_model, max_order=2, min_order=1, class_label=0)
+    _ = TreeExplainer(model=dt_clf_model, max_order=2, min_order=1, class_index=0)
 
     assert True
 
-    explainer = _ = TreeExplainer(model=dt_clf_model, max_order=1, min_order=1, class_label=1)
+    explainer = _ = TreeExplainer(model=dt_clf_model, max_order=1, min_order=1, class_index=1)
     explanation = explainer.explain(x_explain)
 
     # compare baseline_value with empty_predictions
@@ -30,6 +31,10 @@ def test_decision_tree_classifier(dt_clf_model, background_clf_data):
         [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers]
     )
     assert explanation.baseline_value == explainer.baseline_value
+
+    # test efficiency
+    sum_of_values = sum(explanation.values)
+    assert prediction[1] == pytest.approx(sum_of_values)
 
 
 def test_decision_tree_regression(dt_reg_model, background_reg_data):
@@ -38,6 +43,7 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
 
     x_explain = background_reg_data[0]
     explanation = explainer.explain(x_explain)
+    prediction = dt_reg_model.predict(x_explain.reshape(1, -1))
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
@@ -46,6 +52,10 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
         [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers]
     )
     assert explanation.baseline_value == explainer.baseline_value
+
+    # test efficiency
+    sum_of_values = sum(explanation.values)
+    assert prediction == pytest.approx(sum_of_values)
 
 
 def test_random_forrest_regression(rf_reg_model, background_reg_data):
@@ -63,10 +73,18 @@ def test_random_forrest_regression(rf_reg_model, background_reg_data):
     )
     assert explanation.baseline_value == explainer.baseline_value
 
+    # assert efficieny
+    prediction = rf_reg_model.predict(x_explain.reshape(1, -1))[0]
+    sum_of_values = sum(explanation.values)
+    assert prediction == pytest.approx(sum_of_values)
+
 
 def test_random_forrest_classification(rf_clf_model, background_clf_data):
     """Test TreeExplainer with a simple decision tree regressor."""
-    explainer = TreeExplainer(model=rf_clf_model, max_order=2, min_order=1)
+    class_label = 0
+    explainer = TreeExplainer(
+        model=rf_clf_model, max_order=1, min_order=1, index="SV", class_index=class_label
+    )
 
     x_explain = background_clf_data[0]
     explanation = explainer.explain(x_explain)
@@ -78,6 +96,11 @@ def test_random_forrest_classification(rf_clf_model, background_clf_data):
         [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers]
     )
     assert explanation.baseline_value == explainer.baseline_value
+
+    # assert efficieny
+    prediction = rf_clf_model.predict_proba(x_explain.reshape(1, -1))[0, class_label]
+    sum_of_values = sum(explanation.values)
+    assert prediction == pytest.approx(sum_of_values)
 
 
 def test_against_shap_implementation():
@@ -173,7 +196,7 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
 
     # compute with shapiq
     explainer_shapiq = TreeExplainer(
-        model=xgb_clf_model, max_order=1, index="SV", class_label=class_label
+        model=xgb_clf_model, max_order=1, index="SV", class_index=class_label
     )
     x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
     sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
@@ -188,6 +211,67 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
         class_label
     ]
     assert prediction == pytest.approx(baseline_shapiq + np.sum(sv_shapiq_values), rel=1e-5)
+
+
+def test_random_forest_reg(rf_reg_model, background_reg_data):
+    """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for Random Forest."""
+
+    explanation_instance = 1
+
+    # the following code is used to get the shap values from the SHAP implementation
+    # import shap
+    # model_copy = copy.deepcopy(rf_reg_model)
+    # explainer_shap = shap.TreeExplainer(model=model_copy)
+    # baseline_shap = float(explainer_shap.expected_value)
+    # x_explain_shap = copy.deepcopy(background_reg_data[explanation_instance].reshape(1, -1))
+    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
+    # sv_shap = sv_shap_all_classes[0]
+    # print(sv_shap_all_classes, baseline_shap)
+    sv_shap = [25.8278293, -77.40235947, 0.0, 21.7067263, -4.85542565, 0.0, 4.91330141]
+    sv_shap = np.asarray(sv_shap)
+    baseline_shap = -0.713665621534487
+
+    # compute with shapiq
+    explainer_shapiq = TreeExplainer(model=rf_reg_model, max_order=1, index="SV")
+    x_explain_shapiq = copy.deepcopy(background_reg_data[explanation_instance])
+    sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
+    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
+    baseline_shapiq = sv_shapiq.baseline_value
+
+    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+
+
+def test_random_forest_shap(rf_clf_model, background_clf_data):
+    """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for Random Forest."""
+
+    explanation_instance = 1
+    class_label = 1
+
+    # the following code is used to get the shap values from the SHAP implementation
+    # import shap
+    # model_copy = copy.deepcopy(rf_clf_model)
+    # explainer_shap = shap.TreeExplainer(model=model_copy)
+    # baseline_shap = float(explainer_shap.expected_value[class_label])
+    # x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))
+    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
+    # sv_shap = sv_shap_all_classes[0][:, class_label]
+    # print(sv_shap_all_classes, baseline_shap)
+    sv_shap = [-0.00537992, 0.0, -0.08206514, -0.03122057, 0.0025626, 0.03182904, 0.03782473]
+    sv_shap = np.asarray(sv_shap)
+    baseline_shap = 0.32000000000000006
+
+    # compute with shapiq
+    explainer_shapiq = TreeExplainer(
+        model=rf_clf_model, max_order=1, index="SV", class_index=class_label
+    )
+    x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
+    sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
+    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
+    baseline_shapiq = sv_shapiq.baseline_value
+
+    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
 
 def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
@@ -219,7 +303,7 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
 
     # setup shapiq TreeSHAP
     explainer_shapiq = TreeExplainer(
-        model=xgb_clf_model, max_order=1, index="SV", class_label=class_label
+        model=xgb_clf_model, max_order=1, index="SV", class_index=class_label
     )
     x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
     sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
@@ -232,7 +316,7 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     # used or not) -> then suddenly the shap and shapiq values are the same, which points to the
     # fact that the shapiq implementation is correct
     explainer_shapiq_rounded = TreeExplainer(
-        model=xgb_clf_model, max_order=1, index="SV", class_label=class_label
+        model=xgb_clf_model, max_order=1, index="SV", class_index=class_label
     )
     for tree_explainer in explainer_shapiq_rounded._treeshapiq_explainers:
         tree_explainer._tree.thresholds = np.round(tree_explainer._tree.thresholds, 4)

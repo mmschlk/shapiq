@@ -1,5 +1,7 @@
 """The base Explainer classes for the shapiq package."""
 
+from typing import Optional
+
 import numpy as np
 
 from shapiq.explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
@@ -15,6 +17,9 @@ class Explainer:
     Args:
         model: The model object to be explained.
         data: A background dataset to be used for imputation in ``TabularExplainer``.
+        class_index: The class index of the model to explain. Defaults to ``None``, which will set
+            the class index to ``1`` per default for classification models and is ignored for
+            regression models.
         **kwargs: Additional keyword-only arguments passed to ``TabularExplainer`` or ``TreeExplainer``.
 
     Attributes:
@@ -22,11 +27,13 @@ class Explainer:
         data: A background data to use for the explainer.
     """
 
-    def __init__(self, model, data: np.ndarray = None, **kwargs) -> None:
+    def __init__(
+        self, model, data: Optional[np.ndarray] = None, class_index: Optional[int] = None, **kwargs
+    ) -> None:
 
         self._model_class = print_class(model)
         self._predict_function, self._model_type = get_predict_function_and_model_type(
-            model, self._model_class
+            model, self._model_class, class_index
         )
         self.model = model
 
@@ -50,7 +57,7 @@ class Explainer:
             if self._model_type in list(get_explainers()):
                 _explainer = get_explainers()[self._model_type]
                 self.__class__ = _explainer
-                _explainer.__init__(self, model=model, data=data, **kwargs)
+                _explainer.__init__(self, model=model, data=data, class_index=class_index, **kwargs)
 
     def explain(self, x: np.ndarray) -> InteractionValues:
         """Explain the model's prediction in terms of interaction values.

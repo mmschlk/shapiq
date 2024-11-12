@@ -46,7 +46,7 @@ class Imputer(Game):
         categorical_features: list[int] = None,
         random_state: Optional[int] = None,
     ) -> None:
-        if callable(model):
+        if callable(model) and not hasattr(model, "_predict_function"):
             self._predict_function = utils.predict_callable
         else:  # shapiq.Explainer adds a predict function to the model to make it callable
             self._predict_function = model._predict_function

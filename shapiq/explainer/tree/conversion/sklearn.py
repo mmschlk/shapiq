@@ -47,7 +47,7 @@ def convert_sklearn_tree(
         The converted decision tree model.
     """
     output_type = "raw"
-    tree_values = tree_model.tree_.value.copy() * scaling
+    tree_values = tree_model.tree_.value.copy()
     # set class label if not given and model is a classifier
     if (
         safe_isinstance(tree_model, "sklearn.tree.DecisionTreeClassifier")
@@ -63,6 +63,7 @@ def convert_sklearn_tree(
         tree_values = tree_values[:, class_label]
         output_type = "probability"
     tree_values = tree_values.flatten()
+    tree_values *= scaling
     return TreeModel(
         children_left=tree_model.tree_.children_left,
         children_right=tree_model.tree_.children_right,

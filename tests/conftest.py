@@ -10,6 +10,7 @@ import pytest
 from PIL import Image
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 
@@ -35,6 +36,32 @@ def dt_clf_model() -> DecisionTreeClassifier:
         n_redundant=0,
     )
     model = DecisionTreeClassifier(random_state=42, max_depth=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def lr_clf_model() -> LogisticRegression:
+    """Return a simple logistic regression model."""
+    X, y = make_classification(
+        n_samples=100,
+        n_features=7,
+        random_state=42,
+        n_classes=3,
+        n_informative=7,
+        n_repeated=0,
+        n_redundant=0,
+    )
+    model = LogisticRegression(random_state=42, max_iter=200)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def lr_reg_model() -> LinearRegression:
+    """Return a simple linear regression model."""
+    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    model = LinearRegression()
     model.fit(X, y)
     return model
 
@@ -129,6 +156,34 @@ def xgb_clf_model():
     )
     model = XGBClassifier(random_state=42, n_estimators=3)
     model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def torch_clf_model():
+    """Return a simple torch model."""
+    import torch
+
+    model = torch.nn.Sequential(
+        torch.nn.Linear(7, 10),
+        torch.nn.ReLU(),
+        torch.nn.Linear(10, 3),
+    )
+    model.eval()
+    return model
+
+
+@pytest.fixture
+def torch_reg_model():
+    """Return a simple torch model."""
+    import torch
+
+    model = torch.nn.Sequential(
+        torch.nn.Linear(7, 10),
+        torch.nn.ReLU(),
+        torch.nn.Linear(10, 1),
+    )
+    model.eval()
     return model
 
 
