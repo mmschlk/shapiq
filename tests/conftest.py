@@ -67,6 +67,36 @@ def lr_reg_model() -> LinearRegression:
 
 
 @pytest.fixture
+def lightgbm_reg_model():
+    """Return a simple lightgbm regression model."""
+    from lightgbm import LGBMRegressor
+
+    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    model = LGBMRegressor(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def lightgbm_clf_model():
+    """Return a simple lightgbm classification model."""
+    from lightgbm import LGBMClassifier
+
+    X, y = make_classification(
+        n_samples=100,
+        n_features=7,
+        random_state=42,
+        n_classes=3,
+        n_informative=7,
+        n_repeated=0,
+        n_redundant=0,
+    )
+    model = LGBMClassifier(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
 def dt_clf_model_tree_model():
     """Return a simple decision tree as a TreeModel."""
     from shapiq.explainer.tree.validation import validate_tree_model

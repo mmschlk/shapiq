@@ -274,6 +274,43 @@ def test_random_forest_shap(rf_clf_model, background_clf_data):
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
 
+def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
+    """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for LightGBM."""
+
+    explanation_instance = 1
+    class_label = 1
+
+    # the following code is used to get the shap values from the SHAP implementation
+    # note that you need to uncomment these lines in the shap library you have locally installed:
+    # https://github.com/shap/shap/blob/6c4a71ce59ea579be58917d824fa0ba5cd97e787/shap/explainers/_tree.py#L543C1-L547C26
+
+    # import shap
+    # model_copy = copy.deepcopy(lightgbm_clf_model)
+    # explainer_shap = shap.TreeExplainer(model=model_copy)
+    # baseline_shap = float(explainer_shap.expected_value[class_label])
+    # x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))
+    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
+    # sv_shap = sv_shap_all_classes[0][:, class_label]
+    # print(sv_shap_all_classes, baseline_shap)
+    sv_shap = [0.0, 0.0, -0.05747963, -0.20128496, 0.0, 0.0, 0.01560273]
+    sv_shap = np.asarray(sv_shap)
+    baseline_shap = -1.0862557008895362
+
+    # compute with shapiq
+    explainer_shapiq = TreeExplainer(
+        model=lightgbm_clf_model, max_order=1, index="SV", class_index=class_label
+    )
+    x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
+    sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
+    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
+    baseline_shapiq = sv_shapiq.baseline_value
+
+    print(sv_shapiq_values, baseline_shapiq)
+
+    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+
+
 def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     """Tests for the strange behavior of SHAP's XGBoost implementation.
 
