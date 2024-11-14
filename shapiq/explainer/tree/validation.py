@@ -73,8 +73,8 @@ def validate_tree_model(
         safe_isinstance(model, "sklearn.ensemble.IsolationForest")
         or safe_isinstance(model, "sklearn.ensemble._iforest.IsolationForest")
     ):
-        # tree_model = convert_sklearn_isolation_forest_shap(model)
-        tree_model = convert_sklearn_isolation_forest(model)
+        tree_model = convert_sklearn_isolation_forest_shap(model)
+        # tree_model = convert_sklearn_isolation_forest(model)
     elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or safe_isinstance(
         model, "lightgbm.sklearn.LGBMClassifier"
     ):
