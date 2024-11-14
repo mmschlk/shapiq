@@ -21,19 +21,19 @@ from .approximator import (
     UnbiasedKernelSHAP,
     kADDSHAP,
 )
-from .benchmark import (
-    BENCHMARK_CONFIGURATIONS,
-    GAME_CLASS_TO_NAME_MAPPING,
-    GAME_NAME_TO_CLASS_MAPPING,
-    download_game_data,
-    load_benchmark_results,
-    load_game_data,
-    load_games_from_configuration,
-    plot_approximation_quality,
-    print_benchmark_configurations,
-    run_benchmark,
-    run_benchmark_from_configuration,
-)
+# from .benchmark import (
+#     BENCHMARK_CONFIGURATIONS,
+#     GAME_CLASS_TO_NAME_MAPPING,
+#     GAME_NAME_TO_CLASS_MAPPING,
+#     download_game_data,
+#     load_benchmark_results,
+#     load_game_data,
+#     load_games_from_configuration,
+#     plot_approximation_quality,
+#     print_benchmark_configurations,
+#     run_benchmark,
+#     run_benchmark_from_configuration,
+# )
 
 # dataset functions
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
