@@ -174,7 +174,13 @@ def convert_isolation_tree_shap_isotree(
     """
     output_type = "raw"
     tree_values = tree_model.tree_.value.copy()
+    tree_values = tree_values.flatten()
+    # print(tree_values)
+    # print(np.max(tree_values, axis=0))
+    # print(np.min(tree_values, axis=0))
+    # print("scaling:", scaling)
     features_updated, values_updated = isotree_value_traversal(tree_model.tree_, tree_features, normalize=False, scaling=1.0)
+    # print(values_updated)
 
     values_updated = values_updated * scaling
     values_updated = values_updated.flatten()
@@ -184,7 +190,7 @@ def convert_isolation_tree_shap_isotree(
         children_right=tree_model.tree_.children_right,
         features=features_updated,
         thresholds=tree_model.tree_.threshold,
-        values=tree_values,
+        values=tree_values * scaling,
         # values=values_updated,
         node_sample_weight=tree_model.tree_.weighted_n_node_samples,
         empty_prediction=None,  # compute empty prediction later
