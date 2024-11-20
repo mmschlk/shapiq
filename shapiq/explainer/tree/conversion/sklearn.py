@@ -190,8 +190,8 @@ def convert_isolation_tree_shap_isotree(
         children_right=tree_model.tree_.children_right,
         features=features_updated,
         thresholds=tree_model.tree_.threshold,
-        values=tree_values * scaling,
-        # values=values_updated,
+        # values=tree_values * scaling,
+        values=values_updated,
         node_sample_weight=tree_model.tree_.weighted_n_node_samples,
         empty_prediction=None,  # compute empty prediction later
         original_output_type=output_type,
