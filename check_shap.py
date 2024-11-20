@@ -135,3 +135,8 @@ if __name__ == '__main__':
     explainer = shapiq.TreeExplainer(clf, index="SV", max_order=1)
     sv_shapiq = explainer.explain(x_explain)
     print(sv_shapiq)
+
+    for i, sv in enumerate(sv_shap):
+        sv_iq = sv_shapiq[(i,)]
+        print(sv, sv_iq)
+        assert np.allclose(sv, sv_iq)
