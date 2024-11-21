@@ -8,6 +8,7 @@
 [![PyPI Version](https://img.shields.io/pypi/pyversions/shapiq.svg)](https://pypi.org/project/shapiq)
 [![PyPI status](https://img.shields.io/pypi/status/shapiq.svg?color=blue)](https://pypi.org/project/shapiq)
 [![PePy](https://static.pepy.tech/badge/shapiq?style=flat-square)](https://pepy.tech/project/shapiq)
+
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 > An interaction may speak more than a thousand main effects.
@@ -94,14 +95,15 @@ The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io
 
 ## 💬 Citation
 
-If you use the `shapiq` package, please cite our [NeurIPS paper](https://arxiv.org/abs/2410.01649):
+If you enjoy using the `shapiq` package, please consider citing our [NeurIPS paper](https://arxiv.org/abs/2410.01649):
 
-```html
+```bibtex
 @inproceedings{muschalik2024shapiq,
   title     = {shapiq: Shapley Interactions for Machine Learning},
   author    = {Maximilian Muschalik and Hubert Baniecki and Fabian Fumagalli and
                Patrick Kolpaczki and Barbara Hammer and Eyke H\"{u}llermeier},
-  booktitle = {NeurIPS},
-  year      = {2024}
+  booktitle = {The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
+  year      = {2024},
+  url       = {https://openreview.net/forum?id=knxGmi6SJi}
 }
 ```

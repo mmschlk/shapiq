@@ -10,7 +10,7 @@ import pytest
 from PIL import Image
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 NR_FEATURES = 7
@@ -43,6 +43,62 @@ def dt_clf_model() -> DecisionTreeClassifier:
 
 
 @pytest.fixture
+def lr_clf_model() -> LogisticRegression:
+    """Return a simple logistic regression model."""
+    X, y = make_classification(
+        n_samples=100,
+        n_features=7,
+        random_state=42,
+        n_classes=3,
+        n_informative=7,
+        n_repeated=0,
+        n_redundant=0,
+    )
+    model = LogisticRegression(random_state=42, max_iter=200)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def lr_reg_model() -> LinearRegression:
+    """Return a simple linear regression model."""
+    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    model = LinearRegression()
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def lightgbm_reg_model():
+    """Return a simple lightgbm regression model."""
+    from lightgbm import LGBMRegressor
+
+    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    model = LGBMRegressor(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def lightgbm_clf_model():
+    """Return a simple lightgbm classification model."""
+    from lightgbm import LGBMClassifier
+
+    X, y = make_classification(
+        n_samples=100,
+        n_features=7,
+        random_state=42,
+        n_classes=3,
+        n_informative=7,
+        n_repeated=0,
+        n_redundant=0,
+    )
+    model = LGBMClassifier(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
 def dt_clf_model_tree_model():
     """Return a simple decision tree as a TreeModel."""
     from shapiq.explainer.tree.validation import validate_tree_model
@@ -64,8 +120,8 @@ def dt_clf_model_tree_model():
 
 @pytest.fixture
 def rf_reg_model() -> RandomForestRegressor:
-    """Return a simple (regression) random forest model."""
-    X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
+    """Return a simple random forest model."""
+    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
     model = RandomForestRegressor(random_state=42, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model
@@ -89,6 +145,17 @@ def rf_clf_model() -> RandomForestClassifier:
 
 
 @pytest.fixture
+def xgb_reg_model():
+    """Return a simple xgboost regression model."""
+    from xgboost import XGBRegressor
+
+    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    model = XGBRegressor(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
 def rf_clf_binary_model() -> RandomForestClassifier:
     """Return a simple random forest model."""
     X, y = make_classification(
@@ -106,16 +173,63 @@ def rf_clf_binary_model() -> RandomForestClassifier:
 
 
 @pytest.fixture
+def xgb_clf_model():
+    """Return a simple xgboost classification model."""
+    from xgboost import XGBClassifier
+
+    X, y = make_classification(
+        n_samples=100,
+        n_features=7,
+        random_state=42,
+        n_classes=3,
+        n_informative=7,
+        n_repeated=0,
+        n_redundant=0,
+    )
+    model = XGBClassifier(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def torch_clf_model():
+    """Return a simple torch model."""
+    import torch
+
+    model = torch.nn.Sequential(
+        torch.nn.Linear(7, 10),
+        torch.nn.ReLU(),
+        torch.nn.Linear(10, 3),
+    )
+    model.eval()
+    return model
+
+
+@pytest.fixture
+def torch_reg_model():
+    """Return a simple torch model."""
+    import torch
+
+    model = torch.nn.Sequential(
+        torch.nn.Linear(7, 10),
+        torch.nn.ReLU(),
+        torch.nn.Linear(10, 1),
+    )
+    model.eval()
+    return model
+
+
+@pytest.fixture
 def background_reg_data() -> np.ndarray:
     """Return a simple background dataset."""
-    X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
+    X, _ = make_regression(n_samples=100, n_features=7, random_state=42)
     return X
 
 
 @pytest.fixture
 def background_clf_data() -> np.ndarray:
     """Return a simple background dataset."""
-    X, y = make_classification(
+    X, _ = make_classification(
         n_samples=100,
         n_features=NR_FEATURES,
         random_state=42,

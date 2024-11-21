@@ -131,6 +131,9 @@ env/
 venv/
 venv_tests/
 venv_dev/
+# ignore all folders starting with venv
+venv
+venv*/
 
 ENV/
 env.bak/

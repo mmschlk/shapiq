@@ -137,15 +137,11 @@ def stacked_bar_plot(
     )
 
     # set title and labels if not provided
-
-    (
-        axis.set_title(f"n-SII values up to order ${max_order}$")
-        if title is None
-        else axis.set_title(title)
-    )
+    if title is not None:
+        axis.set_title(title)
 
     axis.set_xlabel("features") if xlabel is None else axis.set_xlabel(xlabel)
-    axis.set_ylabel("n-SII values") if ylabel is None else axis.set_ylabel(ylabel)
+    axis.set_ylabel("SI values") if ylabel is None else axis.set_ylabel(ylabel)
 
     plt.tight_layout()
 

@@ -2,7 +2,7 @@
 the well established Shapley value and its generalization to interaction.
 """
 
-__version__ = "1.0.1.9001"
+__version__ = "1.1.1"
 
 # approximator classes
 from .approximator import (
@@ -45,7 +45,8 @@ from .exact import ExactComputer
 from .explainer import Explainer, TabularExplainer, TreeExplainer
 
 # game classes
-from .games import ConditionalImputer, Game, MarginalImputer
+# imputer classes
+from .games import BaselineImputer, ConditionalImputer, Game, MarginalImputer
 
 # base classes
 from .interaction_values import InteractionValues
@@ -96,6 +97,7 @@ __all__ = [
     "TreeExplainer",
     # imputers
     "MarginalImputer",
+    "BaselineImputer",
     "ConditionalImputer",
     # plots
     "network_plot",
