@@ -73,7 +73,7 @@ def lightgbm_reg_model():
     """Return a simple lightgbm regression model."""
     from lightgbm import LGBMRegressor
 
-    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
     model = LGBMRegressor(random_state=42, n_estimators=3)
     model.fit(X, y)
     return model
@@ -86,7 +86,7 @@ def lightgbm_clf_model():
 
     X, y = make_classification(
         n_samples=100,
-        n_features=7,
+        n_features=NR_FEATURES,
         random_state=42,
         n_classes=3,
         n_informative=7,
@@ -179,7 +179,7 @@ def xgb_clf_model():
 
     X, y = make_classification(
         n_samples=100,
-        n_features=7,
+        n_features=NR_FEATURES,
         random_state=42,
         n_classes=3,
         n_informative=7,
@@ -331,28 +331,6 @@ def interaction_values_list():
 
 
 @pytest.fixture
-def regression_model(background_reg_dataset) -> LinearRegression:
-    """Return a sklearn linear regression model"""
-    X, y = background_reg_dataset
-    reg = LinearRegression()
-    reg.fit(X, y)
-    return reg
-
-
-@pytest.fixture
-def lightgbm_regressor(background_reg_dataset):
-    """Return a lgbm regression model"""
-    import lightgbm
-
-    X, y = background_reg_dataset
-    model = lightgbm.sklearn.LGBMRegressor(
-        n_estimators=100, max_depth=NR_FEATURES, random_state=42, verbose=-1
-    )
-    model.fit(X, y)
-    return model
-
-
-@pytest.fixture
 def xgboost_regressor(background_reg_dataset):
     """Return a xgb regression model"""
     import xgboost as xgb
@@ -437,14 +415,17 @@ def custom_model(background_reg_dataset) -> CustomModel:
 
 TABULAR_MODEL_FIXTURES = [
     ("custom_model", "custom_model"),
-    ("regression_model", "sklearn.linear_model.LinearRegression"),
+    ("lr_reg_model", "sklearn.linear_model.LinearRegression"),
     ("sequential_model_1_class", "tensorflow.python.keras.engine.sequential.Sequential"),
     ("sequential_model_2_classes", "keras.src.models.sequential.Sequential"),
     ("sequential_model_3_classes", "keras.engine.sequential.Sequential"),
+    ("lr_clf_model", "sklearn.linear_model.LogisticRegression"),
+    ("torch_clf_model", "torch.nn.modules.container.Sequential"),
+    ("torch_reg_model", "torch.nn.modules.container.Sequential")
 ]
 
 TREE_MODEL_FIXTURES = [
-    ("lightgbm_regressor", "lightgbm.sklearn.LGBMRegressor"),
+    ("lightgbm_reg_model", "lightgbm.sklearn.LGBMRegressor"),
     ("xgboost_regressor", "xgboost.sklearn.XGBRegressor"),
     ("xgboost_booster", "xgboost.core.Booster"),
     ("lightgbm_basic", "lightgbm.basic.Booster"),

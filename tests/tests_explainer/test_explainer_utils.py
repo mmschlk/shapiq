@@ -67,21 +67,37 @@ def test_exceptions_get_predict_function_and_model_type(background_reg_data):
     with pytest.raises(TypeError):
         _, _ = get_predict_function_and_model_type(model_without_call, "non_sense_model")
 
+def test_class_index():
+    def _model(x: np.ndarray):
+        return np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
+    for i in range(0, 4):
+        pred_fun, label = get_predict_function_and_model_type(_model, "custom_model", i)
+        return_value = pred_fun(_model, np.array([[11, 22, 33, 44], [11, 22, 33, 44]]))
+        assert return_value[0] == i+1
+
+@pytest.mark.skip("not possible to implement right now")
+def test_class_index():
+    def _model(x: np.ndarray):
+        return np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
+    # out of bounds
+    with pytest.raises(TypeError):
+        _, _ = get_predict_function_and_model_type(_model, "non_sense_model", 4)
+    # out of bounds
+    with pytest.raises(TypeError):
+        _, _ = get_predict_function_and_model_type(_model, "non_sense_model", -5)
+
 
 def _valid_sig(param: inspect.Parameter):
     return (
-        param.annotation == np.ndarray
-        or param.annotation == inspect._empty
-        or param.annotation == Any
+            param.annotation == np.ndarray
+            or param.annotation == inspect._empty
+            or param.annotation == Any
     )
 
 
 def callable_check():  # todo useful addition?
     # call with false signature
     model_with_false_call = ModelWithFalseCall()
-    try:
-        call_signature = inspect.signature(model_with_false_call)
-        if not any([_valid_sig(param) for param in call_signature.parameters.values()]):
-            raise TypeError
-    except (ValueError, TypeError):
-        print("raised error.")
+    call_signature = inspect.signature(model_with_false_call)
+    if not any([_valid_sig(param) for param in call_signature.parameters.values()]):
+        raise TypeError
