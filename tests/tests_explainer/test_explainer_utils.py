@@ -76,7 +76,7 @@ def test_class_index():
         assert return_value[0] == i+1
 
 @pytest.mark.skip("not possible to implement right now")
-def test_class_index():
+def test_class_index_errors():
     def _model(x: np.ndarray):
         return np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
     # out of bounds
