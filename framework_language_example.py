@@ -84,64 +84,91 @@ def _get_color_and_alpha(max_value: float, value: float) -> tuple[str, float]:
     return color, abs(ratio)
 
 
-def sentence_plot(interaction_values: shapiq.InteractionValues, feature_names: list[str]):
+def sentence_plot(
+    interaction_values: shapiq.InteractionValues,
+    feature_names: list[str],
+    fontsize: int = 15,
+    xlim: tuple[float, float] = (0.0, 1.2),
+    word_spacing: float = 0.03,
+) -> None:
     """Plots the first order effects of a sentence.
 
     The effects are plotted as a color behind the words of the sentence. The words are text in black
     and behind them the color indicates the effect of the word on the sentiment of the sentence.
 
     Args:
-        interaction_values: The interaction values of the sentence.
-        feature_names: The names of the features.
+        interaction_values: The interaction values of the sentence
+        feature_names: The words of the sentence.
+        fontsize: The fontsize of the words.
+        xlim: The x-axis limits of the plot.
+        word_spacing: The spacing between the words.
     """
-    fig, ax = plt.subplots(figsize=(10, 2))
+    feature_names = [feature_name.strip() for feature_name in feature_names]
+
+    # first draw the words on a plot to get the width of the words
+    fig_dummy, ax_dummy = plt.subplots()
+    x_pos = 0
+    x_positions, widths, heights = [], [], []
+    for i, feature_name in enumerate(feature_names):
+        r = fig_dummy.canvas.get_renderer()
+        t = ax_dummy.text(x_pos, 0.5, feature_name, fontsize=fontsize, ha="left", va="bottom")
+        bb = t.get_window_extent(renderer=r).transformed(plt.gca().transData.inverted())
+        widths.append(bb.width)
+        heights.append(bb.height)
+        x_positions.append(x_pos)
+        x_pos += bb.width + word_spacing
+    plt.close(fig_dummy)
+
+    # now draw the real plot
+    fig, ax = plt.subplots()
+    ax.set_xlim(xlim)
     ax.axis("off")
 
     attributions = [interaction_values[(i,)] for i in range(len(feature_names))]
     max_abs_value = max([abs(value) for value in attributions])
 
     x_pos = 0
-    word_spacing = 0.01
     for i, (feature_name, attribution) in enumerate(zip(feature_names, attributions)):
-        feature_name = feature_name.strip()
         color, alpha = _get_color_and_alpha(max_abs_value, attribution)
-        text_color = "black" if alpha < 0.75 else "white"
-        r = fig.canvas.get_renderer()
-        t = ax.text(x_pos, 0.5, feature_name, fontsize=12, ha="left", va="bottom", color=text_color)
-        bb = t.get_window_extent(renderer=r).transformed(plt.gca().transData.inverted())
-
-        word_width = bb.width
-        word_height = bb.height
+        text_color = "black" if alpha < 0.7 else "white"
+        ax.text(
+            x_pos, 0.5, feature_name, fontsize=fontsize, ha="left", va="bottom", color=text_color
+        )
 
         # draw the background color
         padding = 0.04 * alpha
+        height = heights[i] + padding
+        width = widths[i]
         patch = FancyBboxPatch(
             xy=(x_pos, 0.5 - padding / 2),
-            width=word_width,
-            height=word_height + padding,
+            width=width,
+            height=height,
             color=color,
             alpha=alpha,
             zorder=-1,
-            boxstyle="Round, pad=0, rounding_size=0.01",
+            boxstyle="Round, pad=0, rounding_size=0.005",
         )
         ax.add_patch(patch)
-        x_pos += word_width + word_spacing
-
-    # ax.set_ylim(0, 1)
+        x_pos += width + word_spacing
 
 
 if __name__ == "__main__":
 
-    PLOT_TITLE = True
+    PLOT_TITLE = False
 
     # framework settings ---------------------------------------------------------------------------
     # for the language model only baseline fanova is available
     feature_influence = "full"  # "pure", "partial", "full"
-    entity = "individual"  # "individual", "joint", "interaction"
-    order = 1  # 1, 2, 3, ...
+    entity = "interaction"  # "individual", "joint", "interaction"
+    order = 2  # 1, 2, 3, ...
+
+    print("Feature influence:", feature_influence)
+    print("Entity:", entity)
+    print("Order:", order)
+    print()
 
     # sentence -------------------------------------------------------------------------------------
-    review = "The acting was good but the movie was not interesting"
+    review = "The acting was bad but the movie enjoyable"
     save_name = review.replace(" ", "_")
     values_name = f"language_game_{save_name}.npz"
     plot_save_name = f"language_game_{save_name}_{feature_influence}_{entity}_{order}"
