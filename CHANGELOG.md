@@ -1,5 +1,8 @@
 ## Changelog
 
+### Development
+-
+
 ### v1.1.1 (2024-11-13)
 
 #### Improvements and Ease of Use
