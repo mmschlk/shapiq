@@ -158,8 +158,8 @@ if __name__ == "__main__":
 
     # framework settings ---------------------------------------------------------------------------
     # for the language model only baseline fanova is available
-    feature_influence = "partial"  # "pure", "partial", "full"
-    entity = "individual"  # "individual", "joint", "interaction"
+    feature_influence = "full"  # "pure", "partial", "full"
+    entity = "interaction"  # "individual", "joint", "interaction"
     order = 1  # 1, 2, 3, ...
 
     print("Feature influence:", feature_influence)
