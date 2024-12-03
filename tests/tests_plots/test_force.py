@@ -20,6 +20,11 @@ def test_force_plot(interaction_values_list: list[InteractionValues]):
     assert isinstance(fp, plt.Figure)
     plt.close()
 
+    fp = force_plot(iv, show=False, abbreviate=False)
+    assert fp is not None
+    assert isinstance(fp, plt.Figure)
+    plt.close()
+
     fp = force_plot(iv, show=False, feature_names=feature_names, feature_values=feature_values)
     assert isinstance(fp, plt.Figure)
     plt.close()

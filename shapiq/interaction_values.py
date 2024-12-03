@@ -591,8 +591,7 @@ class InteractionValues:
 
         if self.max_order > 1:
             return network_plot(
-                first_order_values=self.get_n_order_values(1),
-                second_order_values=self.get_n_order_values(2),
+                interaction_values=self,
                 show=show,
                 **kwargs,
             )
@@ -635,6 +634,7 @@ class InteractionValues:
         feature_values: Optional[np.ndarray] = None,
         matplotlib=True,
         show: bool = True,
+        abbreviate: bool = True,
         **kwargs,
     ) -> Optional[plt.Figure]:
         """Visualize InteractionValues on a force plot.
@@ -649,6 +649,7 @@ class InteractionValues:
             feature_values: The feature values used for plotting. Defaults to ``None``.
             matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
             show: Whether to show the plot. Defaults to ``False``.
+            abbreviate: Whether to abbreviate the feature names or not. Defaults to ``True``.
             **kwargs: Keyword arguments passed to ``shap.plots.force()``.
 
         Returns:
@@ -662,6 +663,7 @@ class InteractionValues:
             feature_names=feature_names,
             matplotlib=matplotlib,
             show=show,
+            abbreviate=abbreviate,
             **kwargs,
         )
 
@@ -670,6 +672,7 @@ class InteractionValues:
         feature_names: Optional[np.ndarray] = None,
         feature_values: Optional[np.ndarray] = None,
         show: bool = True,
+        abbreviate: bool = True,
         max_display: int = 10,
     ) -> Optional[plt.Axes]:
         """Draws interaction values on a waterfall plot.
@@ -682,6 +685,7 @@ class InteractionValues:
                 feature indices are used instead. Defaults to ``None``.
             feature_values: The feature values used for plotting. Defaults to ``None``.
             show: Whether to show the plot. Defaults to ``False``.
+            abbreviate: Whether to abbreviate the feature names or not. Defaults to ``True``.
             max_display: The maximum number of interactions to display. Defaults to ``10``.
         """
         from shapiq import waterfall_plot
@@ -691,6 +695,7 @@ class InteractionValues:
             feature_values=feature_values,
             feature_names=feature_names,
             show=show,
+            abbreviate=abbreviate,
             max_display=max_display,
         )
 
