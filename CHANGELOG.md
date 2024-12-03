@@ -1,7 +1,7 @@
 ## Changelog
 
 ### Development
--
+- adds the `sentence_plot` function to the `plot` module to visualize the contributions of words to a language model prediction in a sentence-like format
 
 ### v1.1.1 (2024-11-13)
 

@@ -693,3 +693,21 @@ class InteractionValues:
             show=show,
             max_display=max_display,
         )
+
+    def plot_sentence(
+        self,
+        words: list[str],
+        show: bool = True,
+        **kwargs,
+    ) -> Optional[tuple[plt.Figure, plt.Axes]]:
+        """Plots the first order effects (attributions) of a sentence or paragraph.
+
+        For arguments, see shapiq.plots.sentence_plot().
+
+        Returns:
+            If ``show`` is ``True``, the function returns ``None``. Otherwise, it returns a tuple
+            with the figure and the axis of the plot.
+        """
+        from shapiq.plot.sentence import sentence_plot
+
+        return sentence_plot(self, words, show=show, **kwargs)
