@@ -8,7 +8,7 @@ import numpy as np
 from scipy.special import bernoulli, binom
 
 from shapiq.approximator._base import Approximator
-from shapiq.indices import AVAILABLE_INDICES_REGRESSION
+from shapiq.game_theory.indices import AVAILABLE_INDICES_REGRESSION
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 

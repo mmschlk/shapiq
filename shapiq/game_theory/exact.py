@@ -7,7 +7,7 @@ from typing import Callable, Union
 import numpy as np
 from scipy.special import bernoulli, binom
 
-from shapiq.indices import ALL_AVAILABLE_CONCEPTS
+from .indices import ALL_AVAILABLE_CONCEPTS
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
@@ -27,6 +27,7 @@ class ExactComputer:
         n_players: The number of players in the game.
         game_fun: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
             and returns a numpy array of shape ``(n_coalitions,)`` containing the game values.
+        evaluate_game: whether to compute the values at init (if True) or first call (False)
 
     Attributes:
         n: The number of players.
@@ -40,6 +41,7 @@ class ExactComputer:
         self,
         n_players: int,
         game_fun: Callable[[np.ndarray], np.ndarray[float]],
+        evaluate_game: bool = False,
     ) -> None:
         # set parameter attributes
         self.n: int = n_players
@@ -52,12 +54,15 @@ class ExactComputer:
         self._n_interactions: np.ndarray = self.get_n_interactions(self.n)
         self._computed: dict[tuple[str, int], InteractionValues] = {}  # will store all computations
         self._elc_stability_subsidy: float = -1
+        self._game_is_computed: bool = False
 
-        # evaluate the game on the powerset
-        computed_game = self.compute_game_values(game_fun)
-        self.baseline_value: float = computed_game[0]
-        self.game_values: np.ndarray[float] = computed_game[1]
-        self.coalition_lookup: dict[tuple[int], int] = computed_game[2]
+        self._baseline_value: float = 0.0
+        self._game_values: np.ndarray[float] = None
+        self._coalition_lookup: dict[tuple[int], int] = {}
+
+        if evaluate_game:
+            # evaluate the game on the powerset
+            self._evaluate_game()
 
         # setup callable mapping from index to computation
         self._index_mapping: dict[str, Callable[[str, int], InteractionValues]] = {
@@ -124,8 +129,33 @@ class ExactComputer:
         else:
             raise ValueError(f"Index {index} not supported.")
 
+    @property
+    def baseline_value(self) -> float:
+        if not self._game_is_computed:
+            self._evaluate_game()
+        return self._baseline_value
+
+    @property
+    def coalition_lookup(self) -> dict[tuple[int], int]:
+        if not self._game_is_computed:
+            self._evaluate_game()
+        return self._coalition_lookup
+
+    @property
+    def game_values(self) -> np.ndarray[float]:
+        if not self._game_is_computed:
+            self._evaluate_game()
+        return self._game_values
+
+    def _evaluate_game(self):
+        computed_game = self.compute_game_values()
+        self._baseline_value = computed_game[0]
+        self._game_values = computed_game[1]
+        self._coalition_lookup = computed_game[2]
+        self._game_is_computed = True
+
     def compute_game_values(
-        self, game_fun: Callable[[np.ndarray], np.ndarray[float]]
+        self
     ) -> tuple[float, np.ndarray[float], dict[tuple[int], int]]:
         """Evaluates the game on the powerset of all coalitions.
 
@@ -141,8 +171,9 @@ class ExactComputer:
         for i, T in enumerate(powerset(self._grand_coalition_set, min_size=0, max_size=self.n)):
             coalition_lookup[T] = i  # set lookup for the coalition
             coalition_matrix[i, T] = True  # one-hot-encode the coalition
-        game_values = game_fun(coalition_matrix)  # compute the game values
+        game_values = self.game_fun(coalition_matrix)  # compute the game values
         baseline_value = float(game_values[0])  # set the baseline value
+        coalition_lookup = coalition_lookup
         return baseline_value, game_values, coalition_lookup
 
     def moebius_transform(self, *args, **kwargs) -> InteractionValues:
@@ -158,6 +189,10 @@ class ExactComputer:
             return self._computed[("Moebius", self.n)]
         except KeyError:  # if not computed yet, just continue
             pass
+
+        if not self._game_is_computed:
+            self._evaluate_game()
+
         # compute the Moebius transform
         moebius_transform = np.zeros(2**self.n)
         coalition_lookup = {}
@@ -302,6 +337,8 @@ class ExactComputer:
             discrete_derivative += (-1) ** (
                 interaction_size - interaction_subset_size
             ) * self.game_values[pos]
+        print(self.coalition_lookup)
+        print(self.game_values)
         return discrete_derivative
 
     @staticmethod
@@ -875,3 +912,34 @@ def get_bernoulli_weights(order: int) -> np.ndarray:
                     * bernoulli_numbers[interaction_size - sum_index]
                 )
     return weights
+
+'''
+def get_discrete_derivative(interaction: Union[set[int], tuple[int]], coalition: Union[set[int], tuple[int]], n_players: int,
+                            game_fun: Callable[[np.ndarray], np.ndarray[float]],
+    ) -> float:
+        """Computes the discrete derivative of a coalition with respect to an interaction.
+
+        Args:
+            interaction: A subset of the grand coalition as a set or tuple
+            coalition: Subset of N as set of tuple
+            n_players: The number of players in the game.
+            game_fun: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
+                and returns a numpy array of shape ``(n_coalitions,)`` containing the game values.
+
+        Returns:
+            The discrete derivative of the coalition with respect to the interaction
+        """
+
+        discrete_derivative = 0.0
+        interaction_size = len(interaction)
+        for interaction_subset in powerset(interaction):
+            interaction_subset_size = len(interaction_subset)
+            pos = coalition_lookup[
+                tuple(sorted(set(coalition).union(set(interaction_subset))))
+            ]
+            discrete_derivative += (-1) ** (
+                    interaction_size - interaction_subset_size
+            ) * game_values[pos]
+        return discrete_derivative
+
+'''

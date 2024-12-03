@@ -39,7 +39,7 @@ from .benchmark import (
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 
 # exact computer classes
-from .exact import ExactComputer
+from game_theory.exact import ExactComputer
 
 # explainer classes
 from .explainer import Explainer, TabularExplainer, TreeExplainer

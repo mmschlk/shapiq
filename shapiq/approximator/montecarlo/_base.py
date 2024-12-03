@@ -6,7 +6,7 @@ import numpy as np
 from scipy.special import binom, factorial
 
 from shapiq.approximator._base import Approximator
-from shapiq.indices import AVAILABLE_INDICES_MONTE_CARLO
+from shapiq.game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 

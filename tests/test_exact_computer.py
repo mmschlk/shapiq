@@ -1,5 +1,4 @@
 """This test module tests the ExactComputer class."""
-import math
 
 import numpy as np
 import pytest
@@ -152,6 +151,20 @@ def test_basic_functions():
     exact_computer = ExactComputer(n_players=n, game_fun=soum)
     isinstance(repr(exact_computer), str)
     isinstance(str(exact_computer), str)
+
+def test_lazy_computation():
+    """Tests if the lazy computation is correct."""
+    n = 5
+    soum = SOUM(n, n_basis_games=10)
+    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    isinstance(repr(exact_computer), str)
+    isinstance(str(exact_computer), str)
+    #print("before call")
+    sv = exact_computer("SV", 1)
+    #print("after call")
+    #print(exact_computer.baseline_value)
+    #print(exact_computer.game_values)
+
 
 @pytest.fixture
 def original_game():
