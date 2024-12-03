@@ -100,8 +100,10 @@ def sentence_plot(
         interaction_values: The interaction values of the sentence
         feature_names: The words of the sentence.
         fontsize: The fontsize of the words.
-        xlim: The x-axis limits of the plot.
-        word_spacing: The spacing between the words.
+        xlim: The x-axis limits of the plot. You can use this to adjust the width of the plot and
+            how much space the words take up.
+        word_spacing: The spacing between the words. You can use this to adjust the width of the
+            plot and how much space the words take up.
     """
     feature_names = [feature_name.strip() for feature_name in feature_names]
 
@@ -188,6 +190,8 @@ if __name__ == "__main__":
     # setup the game -------------------------------------------------------------------------------
     game = SentimentClassificationGame(classifier, tokenizer, review)
     print(f"Game for the full coalition: {game(game.grand_coalition)[0]}")
+    print(f"Game for the empty coalition: {game(game.empty_coalition)[0]}")
+    print(f"Normalization value: {game.normalization_value}")
 
     # pre-compute and store the game values --------------------------------------------------------
     if os.path.exists(values_name):
