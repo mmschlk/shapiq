@@ -2,7 +2,7 @@
 like interaction indices or generalized values."""
 
 import copy
-from typing import Callable, Union
+from typing import Callable, Union, Optional
 
 import numpy as np
 from scipy.special import bernoulli, binom
@@ -56,9 +56,9 @@ class ExactComputer:
         self._elc_stability_subsidy: float = -1
         self._game_is_computed: bool = False
 
-        self._baseline_value: float = 0.0
-        self._game_values: np.ndarray[float] = None
-        self._coalition_lookup: dict[tuple[int], int] = {}
+        self._baseline_value: Optional[float] = None
+        self._game_values: Optional[np.ndarray] = None
+        self._coalition_lookup: Optional[dict[tuple[int], int]] = None
 
         if evaluate_game:
             # evaluate the game on the powerset
@@ -191,7 +191,7 @@ class ExactComputer:
             pass
 
         if not self._game_is_computed:
-            self._evaluate_game()
+            self._evaluate_game() #todo
 
         # compute the Moebius transform
         moebius_transform = np.zeros(2**self.n)
@@ -913,33 +913,3 @@ def get_bernoulli_weights(order: int) -> np.ndarray:
                 )
     return weights
 
-'''
-def get_discrete_derivative(interaction: Union[set[int], tuple[int]], coalition: Union[set[int], tuple[int]], n_players: int,
-                            game_fun: Callable[[np.ndarray], np.ndarray[float]],
-    ) -> float:
-        """Computes the discrete derivative of a coalition with respect to an interaction.
-
-        Args:
-            interaction: A subset of the grand coalition as a set or tuple
-            coalition: Subset of N as set of tuple
-            n_players: The number of players in the game.
-            game_fun: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
-                and returns a numpy array of shape ``(n_coalitions,)`` containing the game values.
-
-        Returns:
-            The discrete derivative of the coalition with respect to the interaction
-        """
-
-        discrete_derivative = 0.0
-        interaction_size = len(interaction)
-        for interaction_subset in powerset(interaction):
-            interaction_subset_size = len(interaction_subset)
-            pos = coalition_lookup[
-                tuple(sorted(set(coalition).union(set(interaction_subset))))
-            ]
-            discrete_derivative += (-1) ** (
-                    interaction_size - interaction_subset_size
-            ) * game_values[pos]
-        return discrete_derivative
-
-'''
