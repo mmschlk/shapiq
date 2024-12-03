@@ -5,8 +5,8 @@ import pytest
 
 from shapiq import powerset
 from shapiq.game_theory.exact import ExactComputer
-from shapiq.games.benchmark.synthetic.soum import SOUM
 from shapiq.game_theory.moebius_converter import MoebiusConverter
+from shapiq.games.benchmark.synthetic.soum import SOUM
 
 
 def test_exact_computer_on_soum():
@@ -45,9 +45,6 @@ def test_exact_computer_on_soum():
                 )
                 < 10e-7
             )
-            print(shapley_interactions_exact[index].values)
-
-            print(shapley_interactions_gt[index].values)
 
         index = "JointSV"
         shapley_generalized_values = exact_computer.shapley_generalized_value(
@@ -337,7 +334,7 @@ def test_null_player(index, order):
     for coalition in powerset(range(n-2)):
         coalition_with_first = (0,) + tuple([player+1 for player in coalition])
         coalition_with_last = tuple([player+1 for player in coalition]) + (4,)
-        print(f"{interaction_values[coalition_with_first]} for {coalition_with_first}")
+        #print(f"{interaction_values[coalition_with_first]} for {coalition_with_first}")
         assert interaction_values[coalition_with_first] < 10e-7
         assert interaction_values[coalition_with_last] < 10e-7
 

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import shapiq
-from shapiq.core import egalitarian_least_core
+from shapiq.game_theory.core import egalitarian_least_core
 from shapiq.games.benchmark.synthetic.soum import SOUM
 from shapiq.utils import powerset
 

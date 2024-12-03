@@ -190,9 +190,6 @@ class ExactComputer:
         except KeyError:  # if not computed yet, just continue
             pass
 
-        if not self._game_is_computed:
-            self._evaluate_game() #todo
-
         # compute the Moebius transform
         moebius_transform = np.zeros(2**self.n)
         coalition_lookup = {}
@@ -337,8 +334,6 @@ class ExactComputer:
             discrete_derivative += (-1) ** (
                 interaction_size - interaction_subset_size
             ) * self.game_values[pos]
-        print(self.coalition_lookup)
-        print(self.game_values)
         return discrete_derivative
 
     @staticmethod
@@ -873,7 +868,7 @@ class ExactComputer:
 
     def compute_egalitarian_least_core(self, *args, **kwargs):
 
-        from shapiq.core import egalitarian_least_core
+        from shapiq.game_theory.core import egalitarian_least_core
 
         order = 1
 
