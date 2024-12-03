@@ -3,11 +3,11 @@
 import numpy as np
 import pytest
 
-from shapiq.game_theory.aggregation import aggregate_to_one_dimension
 from shapiq.approximator import (
     SHAPIQ,
     PermutationSamplingSII,
 )
+from shapiq.game_theory.aggregation import aggregate_to_one_dimension
 from shapiq.games.benchmark import DummyGame
 
 

@@ -11,7 +11,11 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 
-from shapiq.game_theory.indices import ALL_AVAILABLE_INDICES, index_generalizes_bv, index_generalizes_sv
+from shapiq.game_theory.indices import (
+    ALL_AVAILABLE_INDICES,
+    index_generalizes_bv,
+    index_generalizes_sv,
+)
 from shapiq.utils.sets import count_interactions, generate_interaction_lookup, powerset
 
 

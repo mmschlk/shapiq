@@ -421,7 +421,7 @@ TABULAR_MODEL_FIXTURES = [
     ("sequential_model_3_classes", "keras.engine.sequential.Sequential"),
     ("lr_clf_model", "sklearn.linear_model.LogisticRegression"),
     ("torch_clf_model", "torch.nn.modules.container.Sequential"),
-    ("torch_reg_model", "torch.nn.modules.container.Sequential")
+    ("torch_reg_model", "torch.nn.modules.container.Sequential"),
 ]
 
 TREE_MODEL_FIXTURES = [

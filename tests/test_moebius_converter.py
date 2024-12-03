@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from shapiq.games.benchmark.synthetic.soum import SOUM
 from shapiq.game_theory.moebius_converter import MoebiusConverter
+from shapiq.games.benchmark.synthetic.soum import SOUM
 
 
 def test_soum_moebius_conversion():

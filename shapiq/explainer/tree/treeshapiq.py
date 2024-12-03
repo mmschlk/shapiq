@@ -11,6 +11,7 @@ from shapiq.game_theory.aggregation import aggregate_interaction_values
 from shapiq.game_theory.indices import get_computation_index
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import generate_interaction_lookup, powerset
+
 from .base import EdgeTree, TreeModel
 from .conversion.edges import create_edge_tree
 from .validation import validate_tree_model

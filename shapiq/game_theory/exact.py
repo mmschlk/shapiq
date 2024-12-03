@@ -2,14 +2,15 @@
 like interaction indices or generalized values."""
 
 import copy
-from typing import Callable, Union, Optional
+from typing import Callable, Optional, Union
 
 import numpy as np
 from scipy.special import bernoulli, binom
 
-from .indices import ALL_AVAILABLE_CONCEPTS
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
+
+from .indices import ALL_AVAILABLE_CONCEPTS
 
 __all__ = ["ExactComputer", "get_bernoulli_weights"]
 
@@ -154,9 +155,7 @@ class ExactComputer:
         self._coalition_lookup = computed_game[2]
         self._game_is_computed = True
 
-    def compute_game_values(
-        self
-    ) -> tuple[float, np.ndarray[float], dict[tuple[int], int]]:
+    def compute_game_values(self) -> tuple[float, np.ndarray[float], dict[tuple[int], int]]:
         """Evaluates the game on the powerset of all coalitions.
 
         Args:
@@ -907,4 +906,3 @@ def get_bernoulli_weights(order: int) -> np.ndarray:
                     * bernoulli_numbers[interaction_size - sum_index]
                 )
     return weights
-

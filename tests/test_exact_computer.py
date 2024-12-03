@@ -149,6 +149,7 @@ def test_basic_functions():
     isinstance(repr(exact_computer), str)
     isinstance(str(exact_computer), str)
 
+
 def test_lazy_computation():
     """Tests if the lazy computation is correct."""
     n = 5
@@ -156,11 +157,11 @@ def test_lazy_computation():
     exact_computer = ExactComputer(n_players=n, game_fun=soum)
     isinstance(repr(exact_computer), str)
     isinstance(str(exact_computer), str)
-    #print("before call")
+    # print("before call")
     sv = exact_computer("SV", 1)
-    #print("after call")
-    #print(exact_computer.baseline_value)
-    #print(exact_computer.game_values)
+    # print("after call")
+    # print(exact_computer.baseline_value)
+    # print(exact_computer.game_values)
 
 
 @pytest.fixture
@@ -169,12 +170,17 @@ def original_game():
         x_as_float = np.zeros_like(X, dtype=float)
         x_as_float[X] = 1
         fist_order_coefficients = [0, 0.2, -0.1, -0.9, 0]
-        second_order_coefficients = np.asarray([[0, 0.4, 0, 0, 0], # interaction btw 0, 1; 1, 3 and 2, 4
-                                                [0, 0, 0, 0.3, 0],
-                                                [0, 0, 0, 0, 1],
-                                                [0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0]])
-        def _interaction(arr: np.ndarray): #dtype bool
+        second_order_coefficients = np.asarray(
+            [
+                [0, 0.4, 0, 0, 0],  # interaction btw 0, 1; 1, 3 and 2, 4
+                [0, 0, 0, 0.3, 0],
+                [0, 0, 0, 0, 1],
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0],
+            ]
+        )
+
+        def _interaction(arr: np.ndarray):  # dtype bool
             outer = np.outer(arr, arr)
             interaction_array = second_order_coefficients.copy()
             interaction_array[~outer] = 0
@@ -183,9 +189,11 @@ def original_game():
         value = np.sum(fist_order_coefficients * x_as_float, axis=1)
         interaction_addition = np.apply_along_axis(_interaction, axis=1, arr=X)
         return value + interaction_addition
+
     return _game_fun
 
-#(fails for [CHII-2] bc empty set is nan)
+
+# (fails for [CHII-2] bc empty set is nan)
 @pytest.mark.parametrize(
     "index, order",
     [
@@ -213,9 +221,11 @@ def test_permutation_symmetry(index, order, original_game):
     n = 5
     if order is None:
         order = n
-    permutation = (4, 1, 3, 2, 0) # order = 1, its own inverse
+    permutation = (4, 1, 3, 2, 0)  # order = 1, its own inverse
+
     def permutation_game(X: np.ndarray):
-        return original_game((X[:, permutation]))
+        return original_game(X[:, permutation])
+
     exact_computer = ExactComputer(n_players=n, game_fun=original_game)
     interaction_values = exact_computer(index=index, order=order)
 
@@ -226,6 +236,7 @@ def test_permutation_symmetry(index, order, original_game):
     for coalition, value in interaction_values.dict_values.items():
         perm_coalition = tuple(sorted([permutation[player] for player in coalition]))
         assert (value - perm_interaction_values[perm_coalition]) < 10e-7
+
 
 @pytest.mark.parametrize(
     "index, order",
@@ -259,12 +270,17 @@ def test_player_symmetry(index, order):
         x_as_float = np.zeros_like(X, dtype=float)
         x_as_float[X] = 1
         fist_order_coefficients = [0.4, 0.2, -0.1, -0.9, 0.4]
-        second_order_coefficients = np.asarray([[0, 0.4, 0.1, 0, 0], # interaction btw 0, 1; 0, 2; 1, 4; 2, 4
-                                                [0, 0, 0, 0, 0.4],
-                                                [0, 0, 0, 0, 0.1],
-                                                [0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0]])
-        def _interaction(arr: np.ndarray): #dtype bool
+        second_order_coefficients = np.asarray(
+            [
+                [0, 0.4, 0.1, 0, 0],  # interaction btw 0, 1; 0, 2; 1, 4; 2, 4
+                [0, 0, 0, 0, 0.4],
+                [0, 0, 0, 0, 0.1],
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0],
+            ]
+        )
+
+        def _interaction(arr: np.ndarray):  # dtype bool
             outer = np.outer(arr, arr)
             interaction_array = second_order_coefficients.copy()
             interaction_array[~outer] = 0
@@ -278,11 +294,13 @@ def test_player_symmetry(index, order):
     interaction_values = exact_computer(index=index, order=order)
 
     # symmetry of players with same attribution
-    for coalition in powerset(range(n-2)):
-        coalition_with_first = (0,) + tuple([player+1 for player in coalition])
-        coalition_with_last = tuple([player+1 for player in coalition]) + (4,)
-        #print(f"{interaction_values[coalition_with_first]} for {coalition_with_first}")
-        assert (interaction_values[coalition_with_first] - interaction_values[coalition_with_last]) < 10e-7
+    for coalition in powerset(range(n - 2)):
+        coalition_with_first = (0,) + tuple([player + 1 for player in coalition])
+        coalition_with_last = tuple([player + 1 for player in coalition]) + (4,)
+        # print(f"{interaction_values[coalition_with_first]} for {coalition_with_first}")
+        assert (
+            interaction_values[coalition_with_first] - interaction_values[coalition_with_last]
+        ) < 10e-7
 
 
 @pytest.mark.parametrize(
@@ -299,7 +317,7 @@ def test_player_symmetry(index, order):
         ("FSII", 2),
         ("FBII", 2),
         ("kADD-SHAP", 2),
-        ("SII", None)
+        ("SII", None),
     ],
 )
 def test_null_player(index, order):
@@ -312,12 +330,17 @@ def test_null_player(index, order):
         x_as_float = np.zeros_like(X, dtype=float)
         x_as_float[X] = 1
         fist_order_coefficients = [0, 0.2, -0.1, -0.9, 0]
-        second_order_coefficients = np.asarray([[0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0.3, 0],
-                                                [0, 0, 0, 0.4, 0],
-                                                [0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0]])
-        def _interaction(arr: np.ndarray): #dtype bool
+        second_order_coefficients = np.asarray(
+            [
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0.3, 0],
+                [0, 0, 0, 0.4, 0],
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0],
+            ]
+        )
+
+        def _interaction(arr: np.ndarray):  # dtype bool
             outer = np.outer(arr, arr)
             interaction_array = second_order_coefficients.copy()
             interaction_array[~outer] = 0
@@ -331,12 +354,13 @@ def test_null_player(index, order):
     interaction_values = exact_computer(index=index, order=order)
 
     # no attribution for coalitions which include the null players.
-    for coalition in powerset(range(n-2)):
-        coalition_with_first = (0,) + tuple([player+1 for player in coalition])
-        coalition_with_last = tuple([player+1 for player in coalition]) + (4,)
-        #print(f"{interaction_values[coalition_with_first]} for {coalition_with_first}")
+    for coalition in powerset(range(n - 2)):
+        coalition_with_first = (0,) + tuple([player + 1 for player in coalition])
+        coalition_with_last = tuple([player + 1 for player in coalition]) + (4,)
+        # print(f"{interaction_values[coalition_with_first]} for {coalition_with_first}")
         assert interaction_values[coalition_with_first] < 10e-7
         assert interaction_values[coalition_with_last] < 10e-7
+
 
 @pytest.mark.parametrize(
     "index, order",
@@ -352,7 +376,7 @@ def test_null_player(index, order):
         ("FSII", 2),
         ("FBII", 2),
         ("kADD-SHAP", 2),
-        ("SII", None)
+        ("SII", None),
     ],
 )
 def test_no_artefact_interaction(index, order):
@@ -367,13 +391,13 @@ def test_no_artefact_interaction(index, order):
         fist_order_coefficients = [0, 0.2, -0.1, -0.9, 0]
         return np.sum(fist_order_coefficients * x_as_float, axis=1)
 
-
     exact_computer = ExactComputer(n_players=n, game_fun=_game_fun)
     interaction_values = exact_computer(index=index, order=order)
 
     for coalition, value in interaction_values.dict_values.items():
         if len(coalition) > 1:
             assert value < 10e-7
+
 
 @pytest.mark.parametrize(
     "index, order",
@@ -391,17 +415,23 @@ def test_generalized_null_player(index, order):
     n = 5
     if order is None:
         order = n
+
     # game with 0, 4 as null players, has interactions
     def _game_fun(X: np.ndarray):
         x_as_float = np.zeros_like(X, dtype=float)
         x_as_float[X] = 1
         fist_order_coefficients = [0, 0.2, -0.1, -0.9, 0]
-        second_order_coefficients = np.asarray([[0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0.3, 0],
-                                                [0, 0, 0, 0.4, 0],
-                                                [0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0]])
-        def _interaction(arr: np.ndarray): #dtype bool
+        second_order_coefficients = np.asarray(
+            [
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0.3, 0],
+                [0, 0, 0, 0.4, 0],
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0],
+            ]
+        )
+
+        def _interaction(arr: np.ndarray):  # dtype bool
             outer = np.outer(arr, arr)
             interaction_array = second_order_coefficients.copy()
             interaction_array[~outer] = 0

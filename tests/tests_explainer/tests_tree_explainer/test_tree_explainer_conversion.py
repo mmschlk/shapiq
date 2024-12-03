@@ -1,9 +1,10 @@
 """This test module collects all tests for the conversions of the supported tree models for the
 TreeExplainer class."""
 
+import random
+
 import numpy as np
 import pytest
-import random
 
 from shapiq import TreeExplainer
 from shapiq.explainer.tree.base import TreeModel
@@ -135,7 +136,9 @@ def test_skleanr_rf_conversion(rf_clf_model, rf_reg_model):
 @pytest.mark.parametrize("model_fixture, model_class", TREE_MODEL_FIXTURES)
 def test_conversion_predict_identity(model_fixture, model_class, background_reg_data, request):
     if model_class not in SUPPORTED_MODELS:
-        pytest.skip(f"skipped test, {model_class} not in the supported models for the tree explainer.")
+        pytest.skip(
+            f"skipped test, {model_class} not in the supported models for the tree explainer."
+        )
     else:
         model = request.getfixturevalue(model_fixture)
         predict_function, _ = get_predict_function_and_model_type(model, model_class)
@@ -147,5 +150,5 @@ def test_conversion_predict_identity(model_fixture, model_class, background_reg_
             prediction = sum(sv.values)
             if sv[()] == 0:
                 prediction += sv.baseline_value
-            tolerance=1e-5
+            tolerance = 1e-5
             assert abs(prediction - original_pred[index]) <= tolerance
