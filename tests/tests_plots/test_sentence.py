@@ -31,13 +31,23 @@ def test_sentence_plot():
     assert isinstance(ax, plt.Axes)
     plt.close(fig)
 
-    fig, ax = iv.plot_sentence(words, show=False, connected_words=[("Shapley", "values")])
+    fig, ax = iv.plot_sentence(
+        words,
+        show=False,
+        connected_words=[("Shapley", "values")],
+        max_score=0.5,  # max_score is intentionally lower than the attributions here
+    )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
     plt.close(fig)
 
     output = sentence_plot(
-        iv, words, chars_per_line=100, show=True, connected_words=[("Shapley", "values")]
+        iv,
+        words,
+        chars_per_line=100,
+        show=True,
+        connected_words=[("Shapley", "values")],
+        max_score=1.0,
     )
     assert output is None
     plt.close("all")

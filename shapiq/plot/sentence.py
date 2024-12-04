@@ -15,8 +15,9 @@ from ._config import BLUE, RED
 def _get_color_and_alpha(max_value: float, value: float) -> tuple[str, float]:
     """Gets the color and alpha value for an interaction value."""
     color = RED.hex if value >= 0 else BLUE.hex
-    ratio = value / max_value
-    return color, abs(ratio)
+    ratio = abs(value / max_value)
+    ratio = min(ratio, 1.0)  # make ratio at most 1
+    return color, ratio
 
 
 def sentence_plot(
@@ -26,6 +27,7 @@ def sentence_plot(
     chars_per_line: int = 35,
     font_family: str = "sans-serif",
     show: bool = False,
+    max_score: Optional[float] = None,
 ) -> Optional[tuple[plt.Figure, plt.Axes]]:
     """Plots the first order effects (attributions) of a sentence or paragraph.
 
@@ -48,6 +50,9 @@ def sentence_plot(
         font_family: The font family used for the plot. Defaults to ``sans-serif``. For a list of
             available font families, see the matplotlib documentation of
             ``matplotlib.font_manager.FontProperties``. Note the plot is optimized for sans-serif.
+        max_score: The maximum score for the attributions to scale the colors and alpha values. This
+            is useful if you want to compare the attributions of different sentences and both plots
+            should have the same color scale. Defaults to ``None``.
         show: Whether to show the plot. Defaults to ``False``.
 
     Returns:
@@ -87,7 +92,11 @@ def sentence_plot(
     connected_words = [] if connected_words is None else connected_words
     words = [word.strip() for word in words]
     attributions = [interaction_values[(i,)] for i in range(len(words))]
-    max_abs_attribution = max([abs(value) for value in attributions])
+
+    # get the maximum score
+    max_abs_attribution = max_score
+    if max_score is None:
+        max_abs_attribution = max([abs(value) for value in attributions])
 
     # create plot
     fig, ax = plt.subplots()
