@@ -7,7 +7,7 @@ from typing import Callable, Optional
 import numpy as np
 
 from shapiq.approximator.sampling import CoalitionSampler
-from shapiq.indices import (
+from shapiq.game_theory.indices import (
     AVAILABLE_INDICES_FOR_APPROXIMATION,
     get_computation_index,
     is_empty_value_the_baseline,
@@ -318,7 +318,7 @@ class Approximator(ABC):
         Returns:
             The aggregated interaction values.
         """
-        from ..aggregation import aggregate_interaction_values
+        from shapiq.game_theory.aggregation import aggregate_interaction_values
 
         if player_set is not None:
             raise NotImplementedError(
@@ -339,6 +339,6 @@ class Approximator(ABC):
         Returns:
             tuple[np.ndarray, np.ndarray]: The positive and negative aggregated values.
         """
-        from ..aggregation import aggregate_to_one_dimension
+        from shapiq.game_theory.aggregation import aggregate_to_one_dimension
 
         return aggregate_to_one_dimension(interaction_values)

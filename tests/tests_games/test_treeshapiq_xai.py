@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from shapiq.approximator.montecarlo import SHAPIQ
-from shapiq.exact import ExactComputer
+from shapiq.game_theory.exact import ExactComputer
 from shapiq.games import Game
 from shapiq.games.benchmark import (
     AdultCensusTreeSHAPIQXAI,
