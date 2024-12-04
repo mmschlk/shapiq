@@ -16,6 +16,7 @@ def get_interaction_values_and_feature_names(
     interaction_values: InteractionValues,
     feature_names: Optional[np.ndarray] = None,
     feature_values: Optional[np.ndarray] = None,
+    abbreviate: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Converts higher-order interaction values to SHAP-like vectors with associated labels.
 
@@ -24,12 +25,13 @@ def get_interaction_values_and_feature_names(
         feature_names: The feature names used for plotting. If no feature names are provided, the
             feature indices are used instead. Defaults to ``None``.
         feature_values: The feature values used for plotting. Defaults to ``None``.
+        abbreviate: Whether to abbreviate the feature names. Defaults to ``True``.
 
     Returns:
         A tuple containing the SHAP values and the corresponding labels.
     """
     feature_names = copy.deepcopy(feature_names)
-    if feature_names is not None:
+    if feature_names is not None and abbreviate:
         feature_names = abbreviate_feature_names(feature_names)
     _values_dict = {}
     for i in range(1, interaction_values.max_order + 1):

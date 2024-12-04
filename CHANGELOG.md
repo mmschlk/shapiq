@@ -1,7 +1,8 @@
 ## Changelog
 
 ### Development
--
+- adds the `sentence_plot` function to the `plot` module to visualize the contributions of words to a language model prediction in a sentence-like format
+- makes abbreviations in the `plot` module optional [#281](https://github.com/mmschlk/shapiq/issues/281)
 
 ### v1.1.1 (2024-11-13)
 

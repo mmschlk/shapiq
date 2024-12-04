@@ -19,6 +19,7 @@ def force_plot(
     feature_values: Optional[np.ndarray] = None,
     matplotlib: bool = True,
     show: bool = False,
+    abbreviate: bool = True,
     **kwargs,
 ) -> Optional[plt.Figure]:
     """Draws interaction values on a force plot.
@@ -32,13 +33,14 @@ def force_plot(
         feature_values: The feature values used for plotting. Defaults to ``None``.
         matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
         show: Whether to show the plot. Defaults to ``False``.
+        abbreviate: Whether to abbreviate the feature names. Defaults to ``True``.
         **kwargs: Keyword arguments passed to ``shap.plots.force()``.
     """
     check_import_module("shap")
     import shap
 
     _shap_values, _labels = get_interaction_values_and_feature_names(
-        interaction_values, feature_names, feature_values
+        interaction_values, feature_names, feature_values, abbreviate=abbreviate
     )
 
     return shap.plots.force(
