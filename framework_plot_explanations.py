@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from framework_utils import get_save_name_synth
 
-RESULTS_DIR = "framework_results"
+RESULTS_DIR = "framework_results_synth"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
@@ -236,13 +236,11 @@ def plot_legend(
 
 if __name__ == "__main__":
 
-    interaction_data = (
-        "non-linear-interaction"  # None, "linear-interaction", "non-linear-interaction"
-    )
+    interaction_data = None  # None, "linear-interaction", "non-linear-interaction"
 
     # load the data
     # _ = load_explanation_data(only_load=True, interaction_data=None)
-    data = load_explanation_data(only_load=True, interaction_data=interaction_data)
+    data = load_explanation_data(only_load=False, interaction_data=interaction_data)
 
     plot_save_name = interaction_data if interaction_data is not None else "linear"
     plot_save_name = plot_save_name.replace("-", "_")
@@ -357,7 +355,7 @@ if __name__ == "__main__":
         labelpad=10,
     )
     axes[1, 0].set_ylabel(
-        "$\\bf{Influnece\ of\ Feature\ Distribution}$\nm",
+        "$\\bf{Influence\ of\ Feature\ Distribution}$\nm",
         fontsize=title_fontsize,
         labelpad=12,
         ha="center",
