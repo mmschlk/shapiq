@@ -176,11 +176,3 @@ shapiq/games/benchmark/precomputed/
 precomputed.zip
 
 game_storage/
-game_storage_outdated/
-game_storage_old/
-framework_results/
-framework_results_ml/
-framework_results_old/
-framework_results_synth/
-framework_plots/
-/framework_plots/
