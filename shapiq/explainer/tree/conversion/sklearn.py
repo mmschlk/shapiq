@@ -81,14 +81,6 @@ def average_path_length(isolation_forest):
     average_path_length = _average_path_length([max_samples]) # NOTE: _average_path_length func is equivalent to equation 1 in Isolation Forest paper Lui2008
     return average_path_length
 
-def compute_anomaly_score(tree_model, average_path_length):
-    # Basic implementation based on scores and normalized using average path length
-    depths = tree_model.tree_.compute_node_depths()
-    depths = depths / average_path_length
-    depths = 1 - depths
-    scores = depths
-    return scores
-
 def convert_sklearn_isolation_forest(
     tree_model: Model,
 ) -> list[TreeModel]:
@@ -101,64 +93,14 @@ def convert_sklearn_isolation_forest(
         The converted isolation forest model.
     """
     scaling = 1.0 / len(tree_model.estimators_)
-    avg_length = average_path_length(tree_model)
 
     return [
-        convert_isolation_tree(tree, scaling=scaling, average_path_length=avg_length)
-        for tree in tree_model.estimators_
-    ]
-
-def convert_isolation_tree(
-            tree_model: Model, class_label: Optional[int] = None, scaling: float = 1.0, average_path_length: float = 1.0 # TODO fix default value
-) -> TreeModel:
-    """Convert a scikit-learn isolation tree to the format used by shapiq.
-
-    Args:
-        tree_model: The scikit-learn decision tree model to convert.
-        class_label: The class label of the model to explain. Only used for classification models.
-            Defaults to ``1``.
-        scaling: The scaling factor for the tree values.
-
-    Returns:
-        The converted decision tree model.
-    """
-    output_type = "raw"
-    tree_values = tree_model.tree_.value.copy() * scaling
-    depths = compute_anomaly_score(tree_model, average_path_length)
-    depths = depths * scaling
-
-    return TreeModel(
-        children_left=tree_model.tree_.children_left,
-        children_right=tree_model.tree_.children_right,
-        features=tree_model.tree_.feature,
-        thresholds=tree_model.tree_.threshold,
-        values=tree_values,
-        # values=depths,
-        node_sample_weight=tree_model.tree_.weighted_n_node_samples,
-        empty_prediction=None,  # compute empty prediction later
-        original_output_type=output_type,
-    )
-
-def convert_sklearn_isolation_forest_shap(
-    tree_model: Model,
-) -> list[TreeModel]:
-    """Transforms a scikit-learn isolation forest to the format used by shapiq.
-
-    Args:
-        tree_model: The scikit-learn isolation forest model to convert.
-
-    Returns:
-        The converted isolation forest model.
-    """
-    scaling = 1.0 / len(tree_model.estimators_)
-
-    return [
-        convert_isolation_tree_shap_isotree(tree, features, scaling=scaling)
+        # convert_isolation_tree_shap_isotree(tree, features, scaling=scaling)
+        convert_isolation_tree(tree, features, scaling=scaling)
         for tree, features in zip(tree_model.estimators_, tree_model.estimators_features_)
     ]
 
-
-def convert_isolation_tree_shap_isotree(
+def convert_isolation_tree(
             tree_model: Model, tree_features, class_label: Optional[int] = None, scaling: float = 1.0, average_path_length: float = 1.0 # TODO fix default value
 ) -> TreeModel:
     """Convert a scikit-learn decision tree to the format used by shapiq.
@@ -175,13 +117,7 @@ def convert_isolation_tree_shap_isotree(
     output_type = "raw"
     tree_values = tree_model.tree_.value.copy()
     tree_values = tree_values.flatten()
-    # print(tree_values)
-    # print(np.max(tree_values, axis=0))
-    # print(np.min(tree_values, axis=0))
-    # print("scaling:", scaling)
     features_updated, values_updated = isotree_value_traversal(tree_model.tree_, tree_features, normalize=False, scaling=1.0)
-    # print(values_updated)
-
     values_updated = values_updated * scaling
     values_updated = values_updated.flatten()
 
@@ -190,8 +126,7 @@ def convert_isolation_tree_shap_isotree(
         children_right=tree_model.tree_.children_right,
         features=features_updated,
         thresholds=tree_model.tree_.threshold,
-        values=tree_values * scaling,
-        # values=values_updated,
+        values=values_updated,
         node_sample_weight=tree_model.tree_.weighted_n_node_samples,
         empty_prediction=None,  # compute empty prediction later
         original_output_type=output_type,

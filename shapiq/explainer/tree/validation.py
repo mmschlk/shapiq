@@ -6,7 +6,7 @@ from shapiq.utils import safe_isinstance
 
 from .base import TreeModel
 from .conversion.lightgbm import convert_lightgbm_booster
-from .conversion.sklearn import convert_sklearn_forest, convert_sklearn_isolation_forest_shap, convert_sklearn_tree, convert_sklearn_isolation_forest
+from .conversion.sklearn import convert_sklearn_forest, convert_sklearn_tree, convert_sklearn_isolation_forest
 from .conversion.xgboost import convert_xgboost_booster
 
 SUPPORTED_MODELS = {
@@ -20,6 +20,8 @@ SUPPORTED_MODELS = {
     "sklearn.ensemble._forest.ExtraTreesClassifier",
     "sklearn.ensemble.RandomForestRegressor",
     "sklearn.ensemble._forest.RandomForestRegressor",
+    "sklearn.ensemble.IsolationForest",
+    "sklearn.ensemble._iforest.IsolationForest",
     "lightgbm.sklearn.LGBMRegressor",
     "lightgbm.sklearn.LGBMClassifier",
     "lightgbm.basic.Booster",
@@ -73,8 +75,7 @@ def validate_tree_model(
         safe_isinstance(model, "sklearn.ensemble.IsolationForest")
         or safe_isinstance(model, "sklearn.ensemble._iforest.IsolationForest")
     ):
-        tree_model = convert_sklearn_isolation_forest_shap(model)
-        # tree_model = convert_sklearn_isolation_forest(model)
+        tree_model = convert_sklearn_isolation_forest(model)
     elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or safe_isinstance(
         model, "lightgbm.sklearn.LGBMClassifier"
     ):
