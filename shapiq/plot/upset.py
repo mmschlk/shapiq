@@ -19,7 +19,9 @@ def upset_plot(
 
     UpSet plots are used to visualize the interactions between features. The plot consists of two
     parts: the upper part shows the interaction values as bars, and the lower part shows the
-    interactions as a matrix. Originally, the UpSet plot was introduced by Lex et al. [1].
+    interactions as a matrix. Originally, the UpSet plot was introduced by Lex et al. [1]. For a
+    more detailed explanation, see the references or the original
+    [documentation](https://upset.app/).
 
     Args:
         interaction_values: The interaction values as an interaction object.
