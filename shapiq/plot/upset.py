@@ -17,6 +17,10 @@ def upset_plot(
 ) -> Optional[plt.Figure]:
     """Plots the upset plot.
 
+    UpSet plots are used to visualize the interactions between features. The plot consists of two
+    parts: the upper part shows the interaction values as bars, and the lower part shows the
+    interactions as a matrix. Originally, the UpSet plot was introduced by Lex et al. [1].
+
     Args:
         interaction_values: The interaction values as an interaction object.
         feature_names: The names of the features. Defaults to ``None``. If ``None``, the features
@@ -28,6 +32,9 @@ def upset_plot(
     Returns:
         If ``show`` is ``True``, the function returns ``None``. Otherwise, it returns a tuple with
         the figure and the axis of the plot.
+
+    References:
+        - [1] Alexander Lex, Nils Gehlenborg, Hendrik Strobelt, Romain Vuillemot, Hanspeter Pfister. UpSet: Visualization of Intersecting Sets IEEE Transactions on Visualization and Computer Graphics (InfoVis), 20(12): 1983--1992, doi:10.1109/TVCG.2014.2346248, 2014.
     """
 
     # prepare data
