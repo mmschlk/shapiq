@@ -11,10 +11,10 @@ from ._config import BLUE, RED
 
 def upset_plot(
     interaction_values: InteractionValues,
+    n_interactions: int = 20,
     feature_names: Optional[Sequence[str]] = None,
-    top_n: int = 20,
     color_matrix: bool = False,
-    present_features_only: bool = True,
+    all_features: bool = True,
     show: bool = False,
 ) -> Optional[plt.Figure]:
     """Plots the upset plot.
@@ -29,12 +29,12 @@ def upset_plot(
         interaction_values: The interaction values as an interaction object.
         feature_names: The names of the features. Defaults to ``None``. If ``None``, the features
             will be named with their index.
-        top_n: The number of top interactions to plot. Defaults to ``20``. Note this number is
+        n_interactions: The number of top interactions to plot. Defaults to ``20``. Note this number is
             completely arbitrary and can be adjusted to the user's needs.
         color_matrix: Whether to color the matrix (red for positive values, blue for negative) or
             not (black). Defaults to ``False``.
-        present_features_only: Whether to only plot the features that are present in the top
-            interactions. Defaults to ``True``.
+        all_features: Whether to plot all ``n_players`` features or only the features that are
+            present in the top interactions. Defaults to ``True``.
         show: Whether to show the plot. Defaults to ``False``.
 
     Returns:
@@ -52,22 +52,21 @@ def upset_plot(
     }
     values_abs = abs(values)
     idx = values_abs.argsort()[::-1]
-    idx = idx[:top_n] if top_n > 0 else idx
+    idx = idx[:n_interactions] if n_interactions > 0 else idx
     values = values[idx]
     interactions: list[tuple[int, ...]] = [values_ids[i] for i in idx]
 
     # prepare feature names ------------------------------------------------------------------------
-    features = set([feature for interaction in interactions for feature in interaction])
+    if all_features:
+        features = set(range(interaction_values.n_players))
+    else:
+        features = set([feature for interaction in interactions for feature in interaction])
     n_features = len(features)
     feature_pos = {feature: n_features - 1 - i for i, feature in enumerate(features)}
     if feature_names is None:
         feature_names = [f"Feature {feature}" for feature in features]
     else:
         feature_names = [feature_names[feature] for feature in features]
-
-    print(features)
-    print(feature_pos)
-    print(feature_names)
 
     # create figure --------------------------------------------------------------------------------
     height_upper, height_lower = 5, n_features * 0.75

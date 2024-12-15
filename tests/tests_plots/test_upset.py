@@ -37,10 +37,20 @@ def test_upset_plot():
     feature_names = [f"feature-{i}" for i in range(n_players)]
     feature_names = np.array(feature_names)
 
-    fig = upset_plot(iv, show=False, feature_names=feature_names)
+    fig = upset_plot(iv, feature_names=feature_names, show=False)
     assert isinstance(fig, plt.Figure)
     plt.close("all")
 
-    fp = upset_plot(iv, show=True, feature_names=feature_names, color_matrix=True)
+    fp = upset_plot(iv, feature_names=feature_names, color_matrix=True, show=True)
     assert fp is None
+    plt.close("all")
+
+    # in the following feature 3 is not shown
+    fp = upset_plot(iv, n_interactions=5, all_features=False, show=False)
+    assert isinstance(fig, plt.Figure)
+    plt.close("all")
+
+    # in the following feature 3 is shown
+    fp = upset_plot(iv, n_interactions=5, all_features=True, show=False)
+    assert isinstance(fig, plt.Figure)
     plt.close("all")
