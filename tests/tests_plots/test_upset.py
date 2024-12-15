@@ -41,16 +41,21 @@ def test_upset_plot():
     assert isinstance(fig, plt.Figure)
     plt.close("all")
 
-    fp = upset_plot(iv, feature_names=feature_names, color_matrix=True, show=True)
-    assert fp is None
+    fig = upset_plot(iv, feature_names=feature_names, color_matrix=True, show=True)
+    assert fig is None
     plt.close("all")
 
     # in the following feature 3 is not shown
-    fp = upset_plot(iv, n_interactions=5, all_features=False, show=False)
+    fig = upset_plot(iv, n_interactions=5, all_features=False, show=False)
     assert isinstance(fig, plt.Figure)
     plt.close("all")
 
     # in the following feature 3 is shown
-    fp = upset_plot(iv, n_interactions=5, all_features=True, show=False)
+    fig = upset_plot(iv, n_interactions=5, all_features=True, show=False)
+    assert isinstance(fig, plt.Figure)
+    plt.close("all")
+
+    # test once directly from the interaction values
+    fig = iv.plot_upset(feature_names=feature_names, show=False)
     assert isinstance(fig, plt.Figure)
     plt.close("all")

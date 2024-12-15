@@ -716,3 +716,15 @@ class InteractionValues:
         from shapiq.plot.sentence import sentence_plot
 
         return sentence_plot(self, words, show=show, **kwargs)
+
+    def plot_upset(self, show: bool = True, **kwargs) -> Optional[plt.Figure]:
+        """Plots the upset plot.
+
+        For arguments, see shapiq.plot.upset_plot().
+
+        Returns:
+            The upset plot as a matplotlib figure (if show is ``False``).
+        """
+        from shapiq.plot.upset import upset_plot
+
+        return upset_plot(self, show=show, **kwargs)
