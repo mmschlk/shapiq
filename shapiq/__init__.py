@@ -56,8 +56,10 @@ from .plot import (
     bar_plot,
     force_plot,
     network_plot,
+    sentence_plot,
     si_graph_plot,
     stacked_bar_plot,
+    upset_plot,
     waterfall_plot,
 )
 
@@ -106,6 +108,8 @@ __all__ = [
     "bar_plot",
     "si_graph_plot",
     "waterfall_plot",
+    "sentence_plot",
+    "upset_plot",
     # public utils
     "powerset",
     "get_explicit_subsets",
