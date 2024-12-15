@@ -6,6 +6,7 @@ from .network import network_plot
 from .sentence import sentence_plot
 from .si_graph import si_graph_plot
 from .stacked_bar import stacked_bar_plot
+from .upset import upset_plot
 from .utils import abbreviate_feature_names, get_interaction_values_and_feature_names
 from .watefall import waterfall_plot
 
@@ -17,6 +18,7 @@ __all__ = [
     "bar_plot",
     "waterfall_plot",
     "sentence_plot",
+    "upset_plot",
     # utils
     "abbreviate_feature_names",
     "get_interaction_values_and_feature_names",
