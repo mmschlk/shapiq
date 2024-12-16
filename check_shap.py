@@ -1,12 +1,14 @@
 """This script checks if the SV computed for an IsoForest model are the same for shap and shapiq."""
+
 import copy
 from dataclasses import dataclass
 
 import numpy as np
 import shap
-import shapiq
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import IsolationForest
+from sklearn.model_selection import train_test_split
+
+import shapiq
 
 
 def generate_random_perturb_features(settings):
@@ -46,8 +48,9 @@ def generate_random_perturb_features(settings):
     data = np.vstack(clusters)
 
     # Function to perturb a subset of features to create outliers
-    def create_outliers(data, n_outliers, n_features, n_perturb_features,
-                        always_perturb_same_features):
+    def create_outliers(
+        data, n_outliers, n_features, n_perturb_features, always_perturb_same_features
+    ):
         original_indices = rng.choice(len(data), n_outliers, replace=False)
         outliers = data[original_indices].copy()
 
@@ -62,8 +65,9 @@ def generate_random_perturb_features(settings):
         return outliers, original_indices
 
     # Create outliers and get the indices of the original points
-    outliers, original_indices = create_outliers(data, n_outliers, n_features, n_perturb_features,
-                                                 always_perturb_same_features)
+    outliers, original_indices = create_outliers(
+        data, n_outliers, n_features, n_perturb_features, always_perturb_same_features
+    )
 
     # Store original samples and perturbed samples separately
     original_samples = data[original_indices].copy()
@@ -84,12 +88,21 @@ def generate_random_perturb_features(settings):
     # print("Final Data:\n", final_data)
 
     # Split the data into training and test sets
-    X_train, X_test, y_train, y_test = train_test_split(final_data, labels, test_size=0.33,
-                                                        random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        final_data, labels, test_size=0.33, random_state=42
+    )
 
     # Create a mapping between original points and their perturbed versions
     original_to_perturbed = {i: i for i in range(n_outliers)}
-    return X_train, X_test, y_train, y_test, original_samples, perturbed_samples, original_to_perturbed
+    return (
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        original_samples,
+        perturbed_samples,
+        original_to_perturbed,
+    )
 
 
 @dataclass
@@ -104,7 +117,7 @@ class SyntheticOutlierInlierSettings:
     random_state: int = None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # create data
     settings = SyntheticOutlierInlierSettings(
@@ -114,7 +127,7 @@ if __name__ == '__main__':
         n_features=12,
         n_perturb_features=2,
         always_perturb_same_features=True,
-        random_state=0
+        random_state=0,
     )
     d = generate_random_perturb_features(settings)
     X_train, X_test, y_train, y_test, original_samples, perturbed_samples, original_to_perturbed = d
