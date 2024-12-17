@@ -1,6 +1,6 @@
 """Tests the indices configuration module."""
 
-from shapiq.indices import ALL_AVAILABLE_CONCEPTS
+from shapiq.game_theory.indices import ALL_AVAILABLE_CONCEPTS
 
 
 def test_configuration():

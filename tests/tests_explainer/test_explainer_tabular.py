@@ -1,4 +1,4 @@
-"""This test module contains all tests regarding the interaciton explainer for the shapiq package."""
+"""This test module contains all tests regarding the interaction explainer for the shapiq package."""
 
 import numpy as np
 import pytest

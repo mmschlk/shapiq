@@ -7,8 +7,8 @@ from typing import Callable, Optional
 import numpy as np
 from scipy.special import binom
 
-from .interaction_values import InteractionValues
-from .utils.sets import powerset
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import powerset
 
 
 class MoebiusConverter:

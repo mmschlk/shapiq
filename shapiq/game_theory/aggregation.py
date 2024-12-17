@@ -7,8 +7,8 @@ from typing import Optional
 import numpy as np
 import scipy as sp
 
-from .interaction_values import InteractionValues
-from .utils.sets import powerset
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import powerset
 
 
 def _change_index(index: str) -> str:
