@@ -51,6 +51,8 @@ def get_predict_function_and_model_type(
         "sklearn.ensemble._forest.ExtraTreesClassifier",
         "sklearn.ensemble.RandomForestRegressor",
         "sklearn.ensemble._forest.RandomForestRegressor",
+        "sklearn.ensemble.IsolationForest",
+        "sklearn.ensemble._iforest.IsolationForest",
     ]:
         _model_type = "tree"
 
