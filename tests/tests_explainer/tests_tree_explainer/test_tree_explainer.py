@@ -363,3 +363,29 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
 
     # now the values surprisingly are the same
     assert np.allclose(sv_shap, sv_shapiq_rounded_values, rtol=1e-5)
+
+
+def test_iso_forest_shap(if_clf_model):
+    """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for Isolation Forest."""
+
+    x_explain = np.array([0.125, 0.05])
+
+    # the following code is used to get the shap values from the SHAP implementation
+    # import shap
+    # model_copy = copy.deepcopy(if_clf_model)
+    # explainer_shap = shap.TreeExplainer(model=model_copy)
+    # baseline_shap = float(explainer_shap.expected_value)
+    # sv_shap = explainer_shap.shap_values(x_explain)
+    # print(sv_shap)
+    # print(baseline_shap)
+    sv_shap = np.array([-2.34951688, -4.55545493])
+    baseline_shap = 12.238305148044713
+
+    # compute with shapiq
+    explainer_shapiq = TreeExplainer(model=if_clf_model, max_order=1, index="SV")
+    sv_shapiq = explainer_shapiq.explain(x=x_explain)
+    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
+    baseline_shapiq = sv_shapiq.baseline_value
+
+    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-6)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)

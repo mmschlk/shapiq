@@ -655,7 +655,7 @@ class InteractionValues:
         Returns:
             The force plot as a matplotlib figure (if show is ``False``).
         """
-        from shapiq import force_plot
+        from .plot import force_plot
 
         return force_plot(
             self,
