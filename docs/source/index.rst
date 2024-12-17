@@ -27,6 +27,7 @@ Contents
    introduction/index
    introduction/installation
    introduction/start
+   introduction/why-use-shapiq
 
 .. toctree::
    :maxdepth: 2
