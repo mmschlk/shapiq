@@ -25,6 +25,12 @@ def upset_plot(
     more detailed explanation, see the references or the original
     [documentation](https://upset.app/).
 
+    An example of this plot is shown below.
+
+    .. image:: /_static/images/sentence_plot_example.png
+        :width: 500
+        :align: center
+
     Args:
         interaction_values: The interaction values as an interaction object.
         feature_names: The names of the features. Defaults to ``None``. If ``None``, the features
