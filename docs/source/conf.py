@@ -67,12 +67,12 @@ html_static_path = ["_static"]
 html_css_files = [
     "css/custom.css",
 ]
-html_favicon = "_static/shapiq.ico"
+html_favicon = "_static/logo/shapiq.ico"
 pygments_dark_style = "monokai"
 html_theme_options = {
     "sidebar_hide_name": True,
-    "light_logo": "logo_shapiq_light.svg",
-    "dark_logo": "logo_shapiq_dark.svg",
+    "light_logo": "logo/logo_shapiq_light.svg",
+    "dark_logo": "logo/logo_shapiq_dark.svg",
 }
 
 html_sidebars = {
