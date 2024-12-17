@@ -1,5 +1,5 @@
-🛠️ Installation
-===============
+Installation
+=============
 
 The latest release version of ``shapiq`` can be installed from
 `PyPI <https://pypi.org/project/shapiq>`_ with:

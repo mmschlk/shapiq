@@ -22,26 +22,24 @@ Contents
 
 .. toctree::
    :maxdepth: 1
-   :caption: OVERVIEW
+   :caption: INTRODUCTION
 
-   installation
-   start
+   introduction/index
+   introduction/installation
+   introduction/start
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: TUTORIALS
 
-   notebooks/sv_calculation
-   notebooks/shapiq_scikit_learn
-   notebooks/treeshapiq_lightgbm
-   notebooks/visualizing_shapley_interactions
-   notebooks/language_model_game
-   notebooks/vision_transformer
-   notebooks/conditional_imputer
-   notebooks/parallel_computation
-   notebooks/benchmark_approximators
-   notebooks/data_valuation
-   notebooks/core
+   Basic Examples <notebooks/basics>
+   Tabular Examples <notebooks/tabular>
+   Tree Examples <notebooks/trees>
+   Vision Examples <notebooks/vision>
+   Language Examples <notebooks/language>
+   Visualization <notebooks/visualization>
+   Game Theoretic Concepts <notebooks/game_theory>
+   Benchmarking <notebooks/benchmark>
 
 .. toctree::
    :maxdepth: 2

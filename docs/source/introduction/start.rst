@@ -1,5 +1,5 @@
-⭐ Getting Started
-==================
+Getting Started
+===============
 
 Explain a model with Shapley interaction values, e.g. the k-SII values.
 
@@ -50,7 +50,7 @@ Explain a model with Shapley interaction values, e.g. the k-SII values.
 
 The pseudo-code above can produce the following plot (here also an image is added):
 
-.. image:: _static/network_example2.png
+.. image:: ../_static/network_example2.png
     :width: 500
     :alt: Example of network plot for feature interactions
     :align: center
