@@ -27,7 +27,7 @@ def upset_plot(
 
     An example of this plot is shown below.
 
-    .. image:: /_static/images/sentence_plot_example.png
+    .. image:: /_static/images/upset_plot.png
         :width: 500
         :align: center
 
