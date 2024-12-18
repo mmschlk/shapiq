@@ -620,3 +620,9 @@ def test_subset():
     assert len(subset_interaction_values.values) == len(
         subset_interaction_values.interaction_lookup
     )
+    assert interaction_values.baseline_value == subset_interaction_values.baseline_value
+    assert subset_interaction_values.min_order == interaction_values.min_order
+    assert subset_interaction_values.max_order == interaction_values.max_order
+    assert subset_interaction_values.estimated == interaction_values.estimated
+    assert subset_interaction_values.estimation_budget == interaction_values.estimation_budget
+    assert subset_interaction_values.index == interaction_values.index
