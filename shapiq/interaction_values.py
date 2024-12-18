@@ -468,10 +468,10 @@ class InteractionValues:
         """Selects a subset of players from the InteractionValues object.
 
         Args:
-            players (list[int]): _description_
+            players (list[int]): List of players to select from the InteractionValues object.
 
         Returns:
-            InteractionValues: _description_
+            InteractionValues: Filtered InteractionValues object containing only values related to selected players.
         """
         keys = self.interaction_lookup.keys()
         idx = [i for i, key in enumerate(keys) if all(p in players for p in key)]
