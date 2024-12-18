@@ -464,6 +464,53 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
+    def get_subset(self, players: list[int]) -> "InteractionValues":
+        """Selects a subset of players from the InteractionValues object.
+
+        Args:
+            players (list[int]): List of players to select from the InteractionValues object.
+
+        Returns:
+            InteractionValues: Filtered InteractionValues object containing only values related to
+            selected players.
+
+        Example:
+            >>> interaction_values = InteractionValues(
+            ...     values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+            ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+            ...     index="SII",
+            ...     max_order=2,
+            ...     n_players=3,
+            ...     min_order=1,
+            ...     baseline_value=0.0,
+            ... )
+            >>> interaction_values.get_subset([0, 1]).dict_values
+            {(0,): 0.1, (1,): 0.2, (0, 1): 0.3}
+            >>> interaction_values.get_subset([0, 2]).dict_values
+            {(0,): 0.1, (2,): 0.3, (0, 2): 0.4}
+            >>> interaction_values.get_subset([1]).dict_values
+            {(1,): 0.2}
+        """
+        keys = self.interaction_lookup.keys()
+        idx = [i for i, key in enumerate(keys) if all(p in players for p in key)]
+        new_values = self.values[idx]
+        new_interaction_lookup = {
+            key: self.interaction_lookup[key] for i, key in enumerate(keys) if i in idx
+        }
+        n_players = self.n_players - len(players)
+
+        return InteractionValues(
+            values=new_values,
+            index=self.index,
+            max_order=self.max_order,
+            n_players=n_players,
+            min_order=self.min_order,
+            interaction_lookup=new_interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )
+
     def save(self, path: str, as_pickle: bool = True) -> None:
         """Save the InteractionValues object to a file.
 
