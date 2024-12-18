@@ -464,6 +464,35 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
+    def get_subset(self, players: list[int]) -> "InteractionValues":
+        """Selects a subset of players from the InteractionValues object.
+
+        Args:
+            players (list[int]): _description_
+
+        Returns:
+            InteractionValues: _description_
+        """
+        keys = self.interaction_lookup.keys()
+        idx = [i for i, key in enumerate(keys) if all(p in players for p in key)]
+        new_values = self.values[idx]
+        new_interaction_lookup = {
+            key: self.interaction_lookup[key] for i, key in enumerate(keys) if i in idx
+        }
+        n_players = self.n_players - len(players)
+
+        return InteractionValues(
+            values=new_values,
+            index=self.index,
+            max_order=self.max_order,
+            n_players=n_players,
+            min_order=self.min_order,
+            interaction_lookup=new_interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )
+
     def save(self, path: str, as_pickle: bool = True) -> None:
         """Save the InteractionValues object to a file.
 

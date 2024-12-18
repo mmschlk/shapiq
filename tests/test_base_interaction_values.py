@@ -587,3 +587,36 @@ def test_plot():
         _ = interaction_values.plot_network(feature_names=["a" for _ in range(n)])
     _ = interaction_values.plot_stacked_bar()
     _ = interaction_values.plot_stacked_bar(feature_names=["a" for _ in range(n)])
+
+
+def test_subset():
+    n = 5
+    min_order = 1
+    max_order = 3
+    values = np.random.rand(2**n - 1)
+    interaction_lookup = {
+        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    }
+    interaction_values = InteractionValues(
+        values=values,
+        index=None,
+        max_order=max_order,
+        n_players=n,
+        min_order=min_order,
+        interaction_lookup=interaction_lookup,
+        estimated=False,
+        estimation_budget=0,
+        baseline_value=0.0,
+    )
+
+    subset_players = [0, 1, 2]
+    subset_interaction_values = interaction_values.get_subset(subset_players)
+
+    assert subset_interaction_values.n_players == n - len(subset_players)
+    assert all(
+        all(p in subset_players for p in key)
+        for key in subset_interaction_values.interaction_lookup.keys()
+    )
+    assert len(subset_interaction_values.values) == len(
+        subset_interaction_values.interaction_lookup
+    )
