@@ -9,7 +9,11 @@ import pytest
 from shapiq import TreeExplainer
 from shapiq.explainer.tree.base import TreeModel
 from shapiq.explainer.tree.conversion.edges import create_edge_tree
-from shapiq.explainer.tree.conversion.sklearn import convert_sklearn_forest, convert_sklearn_tree
+from shapiq.explainer.tree.conversion.sklearn import (
+    convert_sklearn_forest,
+    convert_sklearn_isolation_forest,
+    convert_sklearn_tree,
+)
 from shapiq.explainer.tree.validation import SUPPORTED_MODELS
 from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.utils import safe_isinstance
@@ -127,6 +131,17 @@ def test_skleanr_rf_conversion(rf_clf_model, rf_reg_model):
 
     # test the classification model
     tree_model = convert_sklearn_forest(rf_clf_model)
+    assert isinstance(tree_model, list)
+    assert safe_isinstance(tree_model[0], tree_model_class_path_str)
+    assert tree_model[0].empty_prediction is not None
+
+
+def test_sklearn_if_conversion(if_clf_model):
+    """Test the conversion of a scikit-learn isolation forest model."""
+    tree_model_class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
+
+    # test the isolation forest model
+    tree_model = convert_sklearn_isolation_forest(if_clf_model)
     assert isinstance(tree_model, list)
     assert safe_isinstance(tree_model[0], tree_model_class_path_str)
     assert tree_model[0].empty_prediction is not None
