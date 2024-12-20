@@ -29,6 +29,7 @@ SUPPORTED_MODELS = {
     "lightgbm.sklearn.LGBMRegressor",
     "lightgbm.sklearn.LGBMClassifier",
     "lightgbm.basic.Booster",
+    # xboost?
 }
 
 

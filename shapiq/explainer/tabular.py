@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from shapiq.approximator import (
+from ..approximator import (
     SHAPIQ,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
@@ -17,9 +17,9 @@ from shapiq.approximator import (
     RegressionFSII,
     UnbiasedKernelSHAP,
 )
-from shapiq.approximator._base import Approximator
-from shapiq.explainer._base import Explainer
-from shapiq.interaction_values import InteractionValues
+from ..approximator._base import Approximator
+from ..explainer._base import Explainer
+from ..interaction_values import InteractionValues
 
 APPROXIMATOR_CONFIGURATIONS = {
     "regression": {

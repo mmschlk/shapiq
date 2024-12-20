@@ -7,8 +7,8 @@ from typing import Any, Optional, Union
 import numpy as np
 import scipy as sp
 
-from ...aggregation import aggregate_interaction_values
-from ...indices import get_computation_index
+from ...game_theory.aggregation import aggregate_interaction_values
+from ...game_theory.indices import get_computation_index
 from ...interaction_values import InteractionValues
 from ...utils.sets import generate_interaction_lookup, powerset
 from .base import EdgeTree, TreeModel

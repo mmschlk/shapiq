@@ -7,10 +7,10 @@ from typing import Callable, Optional
 import numpy as np
 from scipy.special import bernoulli, binom
 
-from shapiq.approximator._base import Approximator
-from shapiq.indices import AVAILABLE_INDICES_REGRESSION
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import powerset
+from ...game_theory.indices import AVAILABLE_INDICES_REGRESSION
+from ...interaction_values import InteractionValues
+from ...utils.sets import powerset
+from .._base import Approximator
 
 
 class Regression(Approximator):

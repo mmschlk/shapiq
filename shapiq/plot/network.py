@@ -9,9 +9,8 @@ import networkx as nx
 import numpy as np
 from PIL import Image
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
-
+from ..interaction_values import InteractionValues
+from ..utils import powerset
 from ._config import BLUE, LINES, NEUTRAL, RED, get_color
 
 __all__ = ["network_plot"]

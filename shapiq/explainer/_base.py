@@ -4,8 +4,8 @@ from typing import Optional
 
 import numpy as np
 
-from shapiq.explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
-from shapiq.interaction_values import InteractionValues
+from ..explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
+from ..interaction_values import InteractionValues
 
 
 class Explainer:

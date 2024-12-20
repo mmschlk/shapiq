@@ -38,11 +38,11 @@ from .benchmark import (
 # dataset functions
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 
-# exact computer classes
-from .exact import ExactComputer
-
 # explainer classes
 from .explainer import Explainer, TabularExplainer, TreeExplainer
+
+# exact computer classes
+from .game_theory.exact import ExactComputer
 
 # game classes
 # imputer classes

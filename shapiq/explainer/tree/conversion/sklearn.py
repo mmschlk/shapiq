@@ -4,11 +4,9 @@ shapiq."""
 from typing import Optional
 
 import numpy as np
-from sklearn.ensemble._iforest import _average_path_length
 
-from shapiq.utils import safe_isinstance
-from shapiq.utils.types import Model
-
+from ....utils import safe_isinstance
+from ....utils.types import Model
 from ..base import TreeModel
 
 
@@ -77,11 +75,20 @@ def convert_sklearn_tree(
     )
 
 
-def average_path_length(isolation_forest):
+def average_path_length(isolation_forest: Model) -> float:
+    """Compute the average path length of the isolation forest.
+
+    Args:
+        isolation_forest: The isolation forest model.
+
+    Returns:
+        The average path length of the isolation forest.
+    """
+    from sklearn.ensemble._iforest import _average_path_length
+
     max_samples = isolation_forest._max_samples
-    average_path_length = _average_path_length(
-        [max_samples]
-    )  # NOTE: _average_path_length func is equivalent to equation 1 in Isolation Forest paper Lui2008
+    # NOTE: _average_path_length func is equivalent to equation 1 in Isolation Forest paper Lui2008
+    average_path_length = _average_path_length([max_samples])
     return average_path_length
 
 
@@ -99,7 +106,6 @@ def convert_sklearn_isolation_forest(
     scaling = 1.0 / len(tree_model.estimators_)
 
     return [
-        # convert_isolation_tree_shap_isotree(tree, features, scaling=scaling)
         convert_isolation_tree(tree, features, scaling=scaling)
         for tree, features in zip(tree_model.estimators_, tree_model.estimators_features_)
     ]
@@ -107,25 +113,20 @@ def convert_sklearn_isolation_forest(
 
 def convert_isolation_tree(
     tree_model: Model,
-    tree_features,
-    class_label: Optional[int] = None,
+    tree_features: np.ndarray,
     scaling: float = 1.0,
-    average_path_length: float = 1.0,  # TODO fix default value
 ) -> TreeModel:
     """Convert a scikit-learn decision tree to the format used by shapiq.
 
     Args:
         tree_model: The scikit-learn decision tree model to convert.
-        class_label: The class label of the model to explain. Only used for classification models.
-            Defaults to ``1``.
+        tree_features: The features used in the tree.
         scaling: The scaling factor for the tree values.
 
     Returns:
         The converted decision tree model.
     """
     output_type = "raw"
-    tree_values = tree_model.tree_.value.copy()
-    tree_values = tree_values.flatten()
     features_updated, values_updated = isotree_value_traversal(
         tree_model.tree_, tree_features, normalize=False, scaling=1.0
     )
@@ -145,8 +146,24 @@ def convert_isolation_tree(
 
 
 def isotree_value_traversal(
-    tree, tree_features, normalize=False, scaling=1.0, data=None, data_missing=None
-):
+    tree: Model,
+    tree_features: np.ndarray,
+    normalize: bool = False,
+    scaling: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Traverse the tree and calculate the average path length for each node.
+
+    Args:
+        tree: The tree to traverse.
+        tree_features: The features used in the tree.
+        normalize: Whether to normalize the values.
+        scaling: The scaling factor for the values.
+
+    Returns:
+        The updated features and values.
+    """
+    from sklearn.ensemble._iforest import _average_path_length
+
     features = tree.feature.copy()
     corrected_values = tree.value.copy()
     if safe_isinstance(tree, "sklearn.tree._tree.Tree"):

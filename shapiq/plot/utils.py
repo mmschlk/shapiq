@@ -6,8 +6,8 @@ from typing import Optional
 
 import numpy as np
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
+from ..interaction_values import InteractionValues
+from ..utils import powerset
 
 __all__ = ["get_interaction_values_and_feature_names", "abbreviate_feature_names"]
 

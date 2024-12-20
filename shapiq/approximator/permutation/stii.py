@@ -6,9 +6,9 @@ from typing import Callable, Optional
 import numpy as np
 import scipy as sp
 
-from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import get_explicit_subsets, powerset
+from ...interaction_values import InteractionValues
+from ...utils import get_explicit_subsets, powerset
+from .._base import Approximator
 
 
 class PermutationSamplingSTII(Approximator):

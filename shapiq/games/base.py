@@ -9,8 +9,8 @@ from typing import Optional, Union
 import numpy as np
 from tqdm.auto import tqdm
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
+from ..interaction_values import InteractionValues
+from ..utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
 
 
 class Game(ABC):
@@ -478,7 +478,7 @@ class Game(ABC):
         Returns:
             InteractionValues: The exact interaction values.
         """
-        from ..exact import ExactComputer
+        from shapiq.game_theory.exact import ExactComputer
 
         # raise warning if the game is not precomputed and n_players > 16
         if not self.precomputed and self.n_players > 16:

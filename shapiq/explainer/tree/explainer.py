@@ -7,9 +7,8 @@ from typing import Any, Optional, Union
 
 import numpy as np
 
-from shapiq.explainer._base import Explainer
-from shapiq.interaction_values import InteractionValues
-
+from ...interaction_values import InteractionValues
+from .._base import Explainer
 from .treeshapiq import TreeModel, TreeSHAPIQ
 from .validation import validate_tree_model
 
@@ -77,6 +76,8 @@ class TreeExplainer(Explainer):
         self.baseline_value = self._compute_baseline_value()
 
     def explain(self, x: np.ndarray) -> InteractionValues:
+        if len(x.shape) != 1:
+            raise TypeError("explain expects a single instance, not a batch.")
         # run treeshapiq for all trees
         interaction_values: list[InteractionValues] = []
         for explainer in self._treeshapiq_explainers:

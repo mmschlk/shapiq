@@ -6,6 +6,8 @@
 - adds the `upset_plot` function to the `plot` module to visualize the interactions of higher-order [#290](https://github.com/mmschlk/shapiq/issues/290)
 - adds support for IsoForest models to explainer and tree explainer [#278](https://github.com/mmschlk/shapiq/issues/278)
 - adds support for sub-selection of players in the interaction values data class [#276](https://github.com/mmschlk/shapiq/issues/276) which allows retrieving interaction values for a subset of players
+- refactors game theory computations like `ExactComputer`, `MoebiusConverter`, `core`, among others to be more modular and flexible into the `game_theory` module [#258](https://github.com/mmschlk/shapiq/issues/258)
+- improves quality of the tests by adding many more semantic tests to the different interaction indices and computations [#285](https://github.com/mmschlk/shapiq/pull/285)
 
 ### v1.1.1 (2024-11-13)
 

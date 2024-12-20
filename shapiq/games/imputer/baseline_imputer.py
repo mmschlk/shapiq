@@ -5,7 +5,7 @@ from typing import Optional
 
 import numpy as np
 
-from shapiq.games.imputer.base import Imputer
+from .base import Imputer
 
 
 class BaselineImputer(Imputer):
