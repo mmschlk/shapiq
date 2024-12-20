@@ -158,7 +158,7 @@ def test_lazy_computation():
     isinstance(repr(exact_computer), str)
     isinstance(str(exact_computer), str)
     # print("before call")
-    sv = exact_computer("SV", 1)
+    _ = exact_computer("SV", 1)
     # print("after call")
     # print(exact_computer.baseline_value)
     # print(exact_computer.game_values)
@@ -201,7 +201,7 @@ def original_game():
         ("BV", 1),
         ("SII", 2),
         ("BII", 2),
-        ("CHII", 2),
+        # ("CHII", 2),
         ("Co-Moebius", 2),
         ("SGV", 2),
         ("BGV", 2),

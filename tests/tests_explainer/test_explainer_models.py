@@ -229,3 +229,24 @@ def test_lightgbm_clf(lightgbm_clf_model, background_clf_data):
     # note we do not check for efficiency here as the explanations are in log-odds space and
     # it is not straightforward to compare them with the probabilities from the model
     # https://github.com/shap/shap/issues/963
+
+
+def test_isoforest_clf(if_clf_model, if_clf_dataset):
+
+    x_data = if_clf_dataset[0]
+
+    x_explain = x_data[0]
+    prediction = if_clf_model.predict(x_explain.reshape(1, -1))[0]
+
+    explainer = TabularExplainer(model=if_clf_model, data=x_data, class_index=2)
+    values = explainer.explain(x_explain)
+    assert isinstance(values, InteractionValues)
+    sum_of_values = sum(values.values) + values.baseline_value
+    assert pytest.approx(sum_of_values, abs=0.001) == prediction
+
+    # do the same with the bare explainer
+    explainer = Explainer(model=if_clf_model, data=x_data, class_index=2)
+    assert isinstance(explainer, TreeExplainer)  # check explainer to be a TreeExplainer
+    values = explainer.explain(x_explain)
+    assert isinstance(values, InteractionValues)
+    # tree explainer explains a bit differently than the tabular explainer so we do not compare the values

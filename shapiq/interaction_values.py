@@ -468,6 +468,53 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
+    def get_subset(self, players: list[int]) -> "InteractionValues":
+        """Selects a subset of players from the InteractionValues object.
+
+        Args:
+            players (list[int]): List of players to select from the InteractionValues object.
+
+        Returns:
+            InteractionValues: Filtered InteractionValues object containing only values related to
+            selected players.
+
+        Example:
+            >>> interaction_values = InteractionValues(
+            ...     values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+            ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+            ...     index="SII",
+            ...     max_order=2,
+            ...     n_players=3,
+            ...     min_order=1,
+            ...     baseline_value=0.0,
+            ... )
+            >>> interaction_values.get_subset([0, 1]).dict_values
+            {(0,): 0.1, (1,): 0.2, (0, 1): 0.3}
+            >>> interaction_values.get_subset([0, 2]).dict_values
+            {(0,): 0.1, (2,): 0.3, (0, 2): 0.4}
+            >>> interaction_values.get_subset([1]).dict_values
+            {(1,): 0.2}
+        """
+        keys = self.interaction_lookup.keys()
+        idx = [i for i, key in enumerate(keys) if all(p in players for p in key)]
+        new_values = self.values[idx]
+        new_interaction_lookup = {
+            key: self.interaction_lookup[key] for i, key in enumerate(keys) if i in idx
+        }
+        n_players = self.n_players - len(players)
+
+        return InteractionValues(
+            values=new_values,
+            index=self.index,
+            max_order=self.max_order,
+            n_players=n_players,
+            min_order=self.min_order,
+            interaction_lookup=new_interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )
+
     def save(self, path: str, as_pickle: bool = True) -> None:
         """Save the InteractionValues object to a file.
 
@@ -595,8 +642,7 @@ class InteractionValues:
 
         if self.max_order > 1:
             return network_plot(
-                first_order_values=self.get_n_order_values(1),
-                second_order_values=self.get_n_order_values(2),
+                interaction_values=self,
                 show=show,
                 **kwargs,
             )
@@ -639,6 +685,7 @@ class InteractionValues:
         feature_values: Optional[np.ndarray] = None,
         matplotlib=True,
         show: bool = True,
+        abbreviate: bool = True,
         **kwargs,
     ) -> Optional[plt.Figure]:
         """Visualize InteractionValues on a force plot.
@@ -653,12 +700,13 @@ class InteractionValues:
             feature_values: The feature values used for plotting. Defaults to ``None``.
             matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
             show: Whether to show the plot. Defaults to ``False``.
+            abbreviate: Whether to abbreviate the feature names or not. Defaults to ``True``.
             **kwargs: Keyword arguments passed to ``shap.plots.force()``.
 
         Returns:
             The force plot as a matplotlib figure (if show is ``False``).
         """
-        from shapiq import force_plot
+        from .plot import force_plot
 
         return force_plot(
             self,
@@ -666,6 +714,7 @@ class InteractionValues:
             feature_names=feature_names,
             matplotlib=matplotlib,
             show=show,
+            abbreviate=abbreviate,
             **kwargs,
         )
 
@@ -674,6 +723,7 @@ class InteractionValues:
         feature_names: Optional[np.ndarray] = None,
         feature_values: Optional[np.ndarray] = None,
         show: bool = True,
+        abbreviate: bool = True,
         max_display: int = 10,
     ) -> Optional[plt.Axes]:
         """Draws interaction values on a waterfall plot.
@@ -686,6 +736,7 @@ class InteractionValues:
                 feature indices are used instead. Defaults to ``None``.
             feature_values: The feature values used for plotting. Defaults to ``None``.
             show: Whether to show the plot. Defaults to ``False``.
+            abbreviate: Whether to abbreviate the feature names or not. Defaults to ``True``.
             max_display: The maximum number of interactions to display. Defaults to ``10``.
         """
         from shapiq import waterfall_plot
@@ -695,5 +746,36 @@ class InteractionValues:
             feature_values=feature_values,
             feature_names=feature_names,
             show=show,
+            abbreviate=abbreviate,
             max_display=max_display,
         )
+
+    def plot_sentence(
+        self,
+        words: list[str],
+        show: bool = True,
+        **kwargs,
+    ) -> Optional[tuple[plt.Figure, plt.Axes]]:
+        """Plots the first order effects (attributions) of a sentence or paragraph.
+
+        For arguments, see shapiq.plots.sentence_plot().
+
+        Returns:
+            If ``show`` is ``True``, the function returns ``None``. Otherwise, it returns a tuple
+            with the figure and the axis of the plot.
+        """
+        from shapiq.plot.sentence import sentence_plot
+
+        return sentence_plot(self, words, show=show, **kwargs)
+
+    def plot_upset(self, show: bool = True, **kwargs) -> Optional[plt.Figure]:
+        """Plots the upset plot.
+
+        For arguments, see shapiq.plot.upset_plot().
+
+        Returns:
+            The upset plot as a matplotlib figure (if show is ``False``).
+        """
+        from shapiq.plot.upset import upset_plot
+
+        return upset_plot(self, show=show, **kwargs)

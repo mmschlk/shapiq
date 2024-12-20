@@ -1,5 +1,12 @@
 ## Changelog
 
+### Development
+- adds the `sentence_plot` function to the `plot` module to visualize the contributions of words to a language model prediction in a sentence-like format
+- makes abbreviations in the `plot` module optional [#281](https://github.com/mmschlk/shapiq/issues/281)
+- adds the `upset_plot` function to the `plot` module to visualize the interactions of higher-order [#290](https://github.com/mmschlk/shapiq/issues/290)
+- adds support for IsoForest models to explainer and tree explainer [#278](https://github.com/mmschlk/shapiq/issues/278)
+- adds support for sub-selection of players in the interaction values data class [#276](https://github.com/mmschlk/shapiq/issues/276) which allows retrieving interaction values for a subset of players
+
 ### v1.1.1 (2024-11-13)
 
 #### Improvements and Ease of Use

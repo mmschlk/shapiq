@@ -2,21 +2,21 @@
 # this file is used to see weather new versions of the libraries are available and break shapiq
 black==24.10.0
 colour==0.1.5
-coverage==7.6.4
-matplotlib==3.9.2
+coverage==7.6.8
+matplotlib==3.9.3
 networkx==3.4.2
 pandas==2.2.3
 pytest==8.3.3
-ruff==0.7.1
+ruff==0.8.1
 scikit-image==0.24.0
 scikit-learn==1.5.2
 scipy==1.14.1
 shap==0.46.0
-tqdm==4.66.6
+tqdm==4.67.1
 torch==2.5.1
 torchvision==0.20.1
-transformers==4.46.1
-xgboost==2.1.2
+transformers==4.46.3
+xgboost==2.1.3
 numpy==1.26.4
 requests==2.32.3
 lightgbm==4.5.0

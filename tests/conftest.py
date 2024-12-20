@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from PIL import Image
 from sklearn.datasets import make_classification, make_regression
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import IsolationForest, RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
@@ -142,6 +142,32 @@ def rf_clf_model() -> RandomForestClassifier:
     model = RandomForestClassifier(random_state=42, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model
+
+
+# Isolationforest model
+@pytest.fixture
+def if_clf_model(if_clf_dataset) -> IsolationForest:
+    """Return a simple isolation forest model."""
+    X, y = if_clf_dataset
+
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
+    model = IsolationForest(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def if_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
+    """Return a simple dataset for the isolation forest model."""
+    n_samples, n_outliers = 120, 40
+    rng = np.random.RandomState(0)
+    covariance = np.array([[0.5, -0.1], [0.7, 0.4]])
+    cluster_1 = 0.4 * rng.randn(n_samples, 2) @ covariance + np.array([2, 2])  # general
+    cluster_2 = 0.3 * rng.randn(n_samples, 2) + np.array([-2, -2])  # spherical
+    outliers = rng.uniform(low=-4, high=4, size=(n_outliers, 2))
+    X = np.concatenate([cluster_1, cluster_2, outliers])
+    y = np.concatenate([np.ones((2 * n_samples), dtype=int), -np.ones((n_outliers), dtype=int)])
+    return X, y
 
 
 @pytest.fixture

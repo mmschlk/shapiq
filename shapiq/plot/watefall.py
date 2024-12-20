@@ -18,6 +18,7 @@ def waterfall_plot(
     feature_names: Optional[np.ndarray] = None,
     feature_values: Optional[np.ndarray] = None,
     show: bool = False,
+    abbreviate: bool = True,
     max_display: int = 10,
 ) -> Optional[plt.Axes]:
     """Draws interaction values on a waterfall plot.
@@ -31,6 +32,7 @@ def waterfall_plot(
             feature indices are used instead. Defaults to ``None``.
         feature_values: The feature values used for plotting. Defaults to ``None``.
         show: Whether to show the plot. Defaults to ``False``.
+        abbreviate: Whether to abbreviate the feature names or not. Defaults to ``True``.
         max_display: The maximum number of interactions to display. Defaults to ``10``.
     """
     check_import_module("shap")
@@ -45,7 +47,7 @@ def waterfall_plot(
         )
     else:
         _shap_values, _labels = get_interaction_values_and_feature_names(
-            interaction_values, feature_names, feature_values
+            interaction_values, feature_names, feature_values, abbreviate=abbreviate
         )
 
         shap_explanation = shap.Explanation(

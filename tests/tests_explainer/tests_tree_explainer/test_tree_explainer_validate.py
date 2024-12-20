@@ -8,7 +8,7 @@ from shapiq.explainer.tree.validation import SUPPORTED_MODELS, validate_tree_mod
 from tests.conftest import TREE_MODEL_FIXTURES
 
 
-def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model):
+def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model, if_clf_model):
     """Test the validation of the model."""
     class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
     # sklearn dt models are supported
@@ -21,6 +21,10 @@ def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model):
     for tree in tree_model:
         assert safe_isinstance(tree, class_path_str)
     tree_model = validate_tree_model(rf_reg_model)
+    for tree in tree_model:
+        assert safe_isinstance(tree, class_path_str)
+    # sklearn isolation forest is supported
+    tree_model = validate_tree_model(if_clf_model)
     for tree in tree_model:
         assert safe_isinstance(tree, class_path_str)
 
