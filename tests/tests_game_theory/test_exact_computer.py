@@ -201,7 +201,7 @@ def original_game():
         ("BV", 1),
         ("SII", 2),
         ("BII", 2),
-        # ("CHII", 2),  # TODO: fix this
+        ("CHII", 2),
         ("Co-Moebius", 2),
         ("SGV", 2),
         ("BGV", 2),
@@ -237,6 +237,18 @@ def test_permutation_symmetry(index, order, original_game):
     for coalition, value in interaction_values.dict_values.items():
         perm_coalition = tuple(sorted([permutation[player] for player in coalition]))
         assert (value - perm_interaction_values[perm_coalition]) < 10e-7
+
+
+def test_warning_cii():
+    """Checks weather a warning is raised for the CHII index and min_order = 0."""
+    n = 5
+    soum = SOUM(n, n_basis_games=10)
+    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    with pytest.warns(UserWarning):
+        exact_computer("CHII", 0)
+
+    # check that warning is not raised for min_order > 0
+    exact_computer("CHII", 1)
 
 
 @pytest.mark.parametrize(

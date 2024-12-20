@@ -2,6 +2,7 @@
 like interaction indices or generalized values."""
 
 import copy
+import warnings
 from typing import Callable, Optional, Union
 
 import numpy as np
@@ -404,6 +405,14 @@ class ExactComputer:
         interaction_lookup = {}
         for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order)):
             interaction_lookup[interaction] = i
+
+        # CHII is un-defined for empty set
+        if index == "CHII" and () in interaction_lookup:
+            warnings.warn(
+                f"CHII is not defined for the empty set. Setting to the baseline value "
+                f"{self.baseline_value}."
+            )
+            base_interaction_values[interaction_lookup[()]] = self.baseline_value
 
         # Transform into InteractionValues object and store in computed dictionary
         base_interaction = InteractionValues(
