@@ -151,17 +151,15 @@ def test_basic_functions():
 
 
 def test_lazy_computation():
-    """Tests if the lazy computation is correct."""
+    """Tests if the lazy computation (calling without params) works."""
     n = 5
     soum = SOUM(n, n_basis_games=10)
     exact_computer = ExactComputer(n_players=n, game_fun=soum)
     isinstance(repr(exact_computer), str)
     isinstance(str(exact_computer), str)
-    # print("before call")
-    _ = exact_computer("SV", 1)
-    # print("after call")
-    # print(exact_computer.baseline_value)
-    # print(exact_computer.game_values)
+    sv = exact_computer("SV", 1)
+    assert sv.index == "SV"
+    assert sv.max_order == 1
 
 
 @pytest.fixture
