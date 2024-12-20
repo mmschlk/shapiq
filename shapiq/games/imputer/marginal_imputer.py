@@ -5,7 +5,7 @@ from typing import Optional
 
 import numpy as np
 
-from shapiq.games.imputer.base import Imputer
+from .base import Imputer
 
 _too_large_sample_size_warning = (
     "The sample size is larger than the number of data points in the background set. "

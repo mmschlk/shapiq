@@ -7,9 +7,8 @@ from typing import Callable, Optional, Union
 import numpy as np
 from scipy.special import bernoulli, binom
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
-
+from ..interaction_values import InteractionValues
+from ..utils import powerset
 from .indices import ALL_AVAILABLE_CONCEPTS
 
 __all__ = ["ExactComputer", "get_bernoulli_weights"]

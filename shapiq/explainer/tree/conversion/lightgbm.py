@@ -5,8 +5,7 @@ from typing import Optional
 
 import pandas as pd
 
-from shapiq.utils.types import Model
-
+from ....utils.types import Model
 from ..base import TreeModel
 
 

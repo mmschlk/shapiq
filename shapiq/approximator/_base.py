@@ -6,15 +6,15 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from shapiq.approximator.sampling import CoalitionSampler
-from shapiq.game_theory.indices import (
+from ..approximator.sampling import CoalitionSampler
+from ..game_theory.indices import (
     AVAILABLE_INDICES_FOR_APPROXIMATION,
     get_computation_index,
     is_empty_value_the_baseline,
     is_index_aggregated,
 )
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import generate_interaction_lookup
+from ..interaction_values import InteractionValues
+from ..utils.sets import generate_interaction_lookup
 
 __all__ = [
     "Approximator",

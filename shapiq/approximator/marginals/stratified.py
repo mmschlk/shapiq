@@ -6,8 +6,8 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues
+from ...interaction_values import InteractionValues
+from .._base import Approximator
 
 
 class StratifiedSamplingSV(Approximator):

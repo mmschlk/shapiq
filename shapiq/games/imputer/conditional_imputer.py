@@ -5,9 +5,9 @@ from typing import Optional
 
 import numpy as np
 
-from shapiq.approximator.sampling import CoalitionSampler
-from shapiq.games.imputer.base import Imputer
-from shapiq.utils.modules import check_import_module
+from ...approximator.sampling import CoalitionSampler
+from ...utils.modules import check_import_module
+from .base import Imputer
 
 
 class ConditionalImputer(Imputer):

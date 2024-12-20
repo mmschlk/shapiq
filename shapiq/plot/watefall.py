@@ -5,9 +5,8 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.modules import check_import_module
-
+from ..interaction_values import InteractionValues
+from ..utils.modules import check_import_module
 from .utils import get_interaction_values_and_feature_names
 
 __all__ = ["waterfall_plot"]

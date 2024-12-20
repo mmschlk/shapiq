@@ -5,10 +5,10 @@ from typing import Callable, Optional
 import numpy as np
 from scipy.special import binom, factorial
 
-from shapiq.approximator._base import Approximator
-from shapiq.game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import powerset
+from ...game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
+from ...interaction_values import InteractionValues
+from ...utils.sets import powerset
+from .._base import Approximator
 
 
 class MonteCarlo(Approximator):
