@@ -166,6 +166,8 @@ def test_lazy_computation():
 
 @pytest.fixture
 def original_game():
+    """This fixture returns a game function with interactions."""
+
     def _game_fun(X: np.ndarray):
         x_as_float = np.zeros_like(X, dtype=float)
         x_as_float[X] = 1
@@ -201,7 +203,7 @@ def original_game():
         ("BV", 1),
         ("SII", 2),
         ("BII", 2),
-        # ("CHII", 2),
+        # ("CHII", 2),  # TODO: fix this
         ("Co-Moebius", 2),
         ("SGV", 2),
         ("BGV", 2),
@@ -218,6 +220,7 @@ def original_game():
     ],
 )
 def test_permutation_symmetry(index, order, original_game):
+    """This test checks that the values are invariant under permutations of the players."""
     n = 5
     if order is None:
         order = n
@@ -262,6 +265,7 @@ def test_permutation_symmetry(index, order, original_game):
     ],
 )
 def test_player_symmetry(index, order):
+    """This test checks that the players with the same attribution get the same value."""
     n = 5
     if order is None:
         order = n
@@ -321,6 +325,7 @@ def test_player_symmetry(index, order):
     ],
 )
 def test_null_player(index, order):
+    """This test checks that the null players don't get any attribution in the values."""
     n = 5
     if order is None:
         order = n
@@ -380,6 +385,7 @@ def test_null_player(index, order):
     ],
 )
 def test_no_artefact_interaction(index, order):
+    """This test checks that the interactions are zero for the game without interactions."""
     n = 5
     if order is None:
         order = n
@@ -411,6 +417,7 @@ def test_no_artefact_interaction(index, order):
     ],
 )
 def test_generalized_null_player(index, order):
+    """This test checks that the null players don't get any attribution in the generalized values"""
     # implicit in above test for the rest of the indices
     n = 5
     if order is None:
