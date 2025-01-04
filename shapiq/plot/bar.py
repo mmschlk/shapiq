@@ -8,7 +8,6 @@ import numpy as np
 
 from ..interaction_values import InteractionValues
 from ._config import BLUE, RED
-from .utils import get_interaction_values_and_feature_names
 
 __all__ = ["bar_plot"]
 
@@ -77,8 +76,7 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
     if issubclass(type(feature_names), str):
         feature_names = [i + " " + feature_names for i in range(len(values[0]))]
 
-    # build our auto xlabel based on the transform history of the Explanation object
-    xlabel = "SHAP value"
+    xlabel = "Shapley value"
 
     # determine how many top features we will plot
     if max_display is None:
@@ -92,9 +90,7 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
     y_pos = np.arange(len(feature_order), 0, -1)
 
     # build our y-tick labels
-    yticklabels = []
-    for i in feature_order:
-        yticklabels.append(feature_names[i])
+    yticklabels = [feature_names[i] for i in feature_order]
 
     if ax is None:
         ax = plt.gca()
@@ -125,7 +121,7 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
             ],
             hatch=patterns[i],
             edgecolor=(1, 1, 1, 0.8),
-            label="",
+            label="Model " + str(i),
         )
 
     # draw the yticks (the 1e-8 is so matplotlib 3.3 doesn't try and collapse the ticks)
@@ -193,7 +189,7 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
     ax.set_xlabel(xlabel, fontsize=13)
 
     if len(values) > 1:
-        ax.legend(fontsize=12)
+        ax.legend(fontsize=12, loc="lower right")
 
     # color the y tick labels that have the feature values as gray
     # (these fall behind the black ones with just the feature name)
@@ -205,6 +201,15 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
         plt.show()
     else:
         return ax
+
+
+def default_feature_name(feature_tuple):
+    if len(feature_tuple) == 0:
+        return "Basevalue"
+    elif len(feature_tuple) == 1:
+        return "Feature " + str(feature_tuple[0])
+    else:
+        return " x ".join([str(f) for f in feature_tuple])
 
 
 def bar_plot(
@@ -230,25 +235,16 @@ def bar_plot(
 
     assert len(np.unique([iv.max_order for iv in list_of_interaction_values])) == 1
 
-    _global_values = []
-    _base_values = []
-    _labels = []
-    _first_iv = True
-    for iv in list_of_interaction_values:
+    values = np.stack([iv.values for iv in list_of_interaction_values])
 
-        _shap_values, _names = get_interaction_values_and_feature_names(
-            iv, feature_names, None, abbreviate=abbreviate
-        )
-        if _first_iv:
-            _labels = _names
-            _first_iv = False
-        _global_values.append(_shap_values)
-        _base_values.append(iv.baseline_value)
+    labels = (
+        np.array(list(map(default_feature_name, list_of_interaction_values[0].dict_values.keys())))
+        if feature_names is None
+        else feature_names
+    )
 
-    _labels = np.array(_labels) if feature_names is not None else None
-
-    ax = _bar(values=np.stack(_global_values), feature_names=_labels, show=False)
-    ax.set_xlabel("mean(|Shapley Interaction value|)")
+    ax = _bar(values=values, feature_names=labels, show=False)
+    ax.set_xlabel("Shapley value")
     if not show:
         return ax
     plt.show()
