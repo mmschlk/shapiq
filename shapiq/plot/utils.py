@@ -23,6 +23,15 @@ def format_value(s, format_str):
     return s
 
 
+def format_labels(feature_mapping, feature_tuple):
+    if len(feature_tuple) == 0:
+        return "Baseval."
+    elif len(feature_tuple) == 1:
+        return str(feature_mapping[feature_tuple[0]])
+    else:
+        return " x ".join([feature_mapping[f] for f in feature_tuple])
+
+
 def get_interaction_values_and_feature_names(
     interaction_values: InteractionValues,
     feature_names: Optional[np.ndarray] = None,

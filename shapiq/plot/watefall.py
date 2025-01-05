@@ -8,7 +8,7 @@ import numpy as np
 
 from ..interaction_values import InteractionValues
 from ._config import BLUE, RED
-from .utils import abbreviate_feature_names, format_value
+from .utils import abbreviate_feature_names, format_labels, format_value
 
 __all__ = ["waterfall_plot"]
 
@@ -320,15 +320,6 @@ def _draw_waterfall_plot(
         plt.show()
     else:
         return plt.gca()
-
-
-def format_labels(feature_mapping, feature_tuple):
-    if len(feature_tuple) == 0:
-        return "Basevalue"
-    elif len(feature_tuple) == 1:
-        return str(feature_mapping[feature_tuple[0]])
-    else:
-        return " x ".join([feature_mapping[f] for f in feature_tuple])
 
 
 def waterfall_plot(

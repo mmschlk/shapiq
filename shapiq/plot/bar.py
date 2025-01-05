@@ -7,7 +7,7 @@ import numpy as np
 
 from ..interaction_values import InteractionValues
 from ._config import BLUE, RED
-from .utils import format_value
+from .utils import abbreviate_feature_names, format_labels, format_value
 
 __all__ = ["bar_plot"]
 
@@ -196,15 +196,6 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
         return ax
 
 
-def format_labels(feature_mapping, feature_tuple):
-    if len(feature_tuple) == 0:
-        return "Basevalue"
-    elif len(feature_tuple) == 1:
-        return str(feature_mapping[feature_tuple[0]])
-    else:
-        return " x ".join([feature_mapping[f] for f in feature_tuple])
-
-
 def bar_plot(
     list_of_interaction_values: list[InteractionValues],
     feature_names: Optional[np.ndarray] = None,
@@ -229,6 +220,8 @@ def bar_plot(
     n_players = list_of_interaction_values[0].n_players
 
     if feature_names is not None:
+        if abbreviate:
+            feature_names = abbreviate_feature_names(feature_names)
         feature_mapping = {i: feature_names[i] for i in range(n_players)}
     else:
         feature_mapping = {i: str(i) for i in range(n_players)}
