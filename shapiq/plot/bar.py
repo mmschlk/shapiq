@@ -59,13 +59,6 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
 
     """
     # assert str(type(shap_values)).endswith("Explanation'>"), "The shap_values parameter must be a shap.Explanation object!"
-
-    # ensure we at least have default feature names
-    if feature_names is None:
-        feature_names = np.array([f"Feature {i}" for i in range(len(values[0]))])
-    if issubclass(type(feature_names), str):
-        feature_names = [i + " " + feature_names for i in range(len(values[0]))]
-
     xlabel = "Shapley value"
 
     # determine how many top features we will plot
@@ -201,7 +194,7 @@ def bar_plot(
     feature_names: Optional[np.ndarray] = None,
     show: bool = False,
     abbreviate: bool = True,
-    **kwargs,
+    max_display: Optional[int] = 10,
 ) -> Optional[plt.Axes]:
     """Draws interaction values on a bar plot.
 
@@ -239,7 +232,7 @@ def bar_plot(
         )
     )
 
-    ax = _bar(values=values, feature_names=labels, show=False)
+    ax = _bar(values=values, feature_names=labels, show=False, max_display=max_display)
     ax.set_xlabel("Shapley value")
     if not show:
         return ax
