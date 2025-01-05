@@ -1,6 +1,5 @@
 """Wrapper for the bar plot from the ``shap`` package."""
 
-import re
 from typing import Optional
 
 import matplotlib.pyplot as plt
@@ -8,18 +7,9 @@ import numpy as np
 
 from ..interaction_values import InteractionValues
 from ._config import BLUE, RED
+from .utils import format_value
 
 __all__ = ["bar_plot"]
-
-
-def format_value(s, format_str):
-    """Strips trailing zeros and uses a unicode minus sign."""
-    if not issubclass(type(s), str):
-        s = format_str % s
-    s = re.sub(r"\.?0+$", "", s)
-    if s[0] == "-":
-        s = "\u2212" + s[1:]
-    return s
 
 
 def _bar(values, feature_names, max_display=10, ax=None, show=True):

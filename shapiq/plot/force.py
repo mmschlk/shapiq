@@ -430,7 +430,7 @@ def _draw_force_plot(
 
     # Compute overall metrics
     base_value = interaction_value.baseline_value
-    out_value = np.sum(interaction_value.values)  # TODO: Must be the value of the grand coalition
+    out_value = np.sum(interaction_value.values)  # Sum of all values with the baseline value
     # Format data
     feature_to_names = {i: name for i, name in enumerate(feature_names)}
     dict_values = interaction_value.dict_values

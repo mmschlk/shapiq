@@ -1,6 +1,7 @@
 """This utility module contains helper functions for plotting."""
 
 import copy
+import re
 from collections.abc import Iterable
 from typing import Optional
 
@@ -9,7 +10,17 @@ import numpy as np
 from ..interaction_values import InteractionValues
 from ..utils import powerset
 
-__all__ = ["get_interaction_values_and_feature_names", "abbreviate_feature_names"]
+__all__ = ["get_interaction_values_and_feature_names", "abbreviate_feature_names", "format_value"]
+
+
+def format_value(s, format_str):
+    """Strips trailing zeros and uses a unicode minus sign."""
+    if not issubclass(type(s), str):
+        s = format_str % s
+    s = re.sub(r"\.?0+$", "", s)
+    if s[0] == "-":
+        s = "\u2212" + s[1:]
+    return s
 
 
 def get_interaction_values_and_feature_names(
