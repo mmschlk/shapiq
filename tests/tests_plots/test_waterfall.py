@@ -13,18 +13,13 @@ def test_waterfall_plot(interaction_values_list: list[InteractionValues]):
     n_players = iv.n_players
     feature_names = [f"feature-{i}" for i in range(n_players)]
     feature_names = np.array(feature_names)
-    feature_values = np.array([i for i in range(n_players)])
 
     wp = waterfall_plot(iv, show=False)
     assert wp is not None
     assert isinstance(wp, plt.Axes)
     plt.close()
 
-    wp = waterfall_plot(iv, show=False, feature_names=feature_names, feature_values=feature_values)
-    assert isinstance(wp, plt.Axes)
-    plt.close()
-
-    wp = waterfall_plot(iv, show=False, feature_names=None, feature_values=feature_values)
+    wp = waterfall_plot(iv, show=False, feature_names=feature_names)
     assert isinstance(wp, plt.Axes)
     plt.close()
 

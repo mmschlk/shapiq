@@ -682,17 +682,12 @@ class InteractionValues:
     def plot_force(
         self,
         feature_names: Optional[np.ndarray] = None,
-        feature_values: Optional[np.ndarray] = None,
-        matplotlib=True,
         show: bool = True,
         abbreviate: bool = True,
-        **kwargs,
     ) -> Optional[plt.Figure]:
         """Visualize InteractionValues on a force plot.
 
         For arguments, see shapiq.plots.force_plot().
-
-        Requires the ``shap`` Python package to be installed.
 
         Args:
             feature_names: The feature names used for plotting. If no feature names are provided, the
@@ -710,18 +705,14 @@ class InteractionValues:
 
         return force_plot(
             self,
-            feature_values=feature_values,
             feature_names=feature_names,
-            matplotlib=matplotlib,
             show=show,
             abbreviate=abbreviate,
-            **kwargs,
         )
 
     def plot_waterfall(
         self,
         feature_names: Optional[np.ndarray] = None,
-        feature_values: Optional[np.ndarray] = None,
         show: bool = True,
         abbreviate: bool = True,
         max_display: int = 10,
@@ -743,11 +734,10 @@ class InteractionValues:
 
         return waterfall_plot(
             self,
-            feature_values=feature_values,
             feature_names=feature_names,
             show=show,
-            abbreviate=abbreviate,
             max_display=max_display,
+            abbreviate=abbreviate,
         )
 
     def plot_sentence(

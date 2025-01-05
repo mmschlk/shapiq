@@ -75,7 +75,7 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
     max_display = min(max_display, num_features)
 
     # Make it descending order
-    feature_order = np.argsort(values)[0][::-1]
+    feature_order = np.argsort(np.mean(values, axis=0))[::-1]
 
     y_pos = np.arange(len(feature_order), 0, -1)
 
@@ -88,7 +88,10 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
         # compute our figure size based on how many features we are showing
         fig = plt.gcf()
         row_height = 0.5
-        fig.set_size_inches(8, num_features * row_height * np.sqrt(len(values)) + 1.5)
+        fig.set_size_inches(
+            8 + 0.3 * max([len(f) for f in feature_names]),
+            num_features * row_height * np.sqrt(len(values)) + 1.5,
+        )
 
     # if negative values are present then we draw a vertical line to mark 0, otherwise the axis does this for us...
     negative_values_present = np.sum(values[:, feature_order[:num_features]] < 0) > 0
@@ -193,13 +196,13 @@ def _bar(values, feature_names, max_display=10, ax=None, show=True):
         return ax
 
 
-def default_feature_name(feature_tuple):
+def format_labels(feature_mapping, feature_tuple):
     if len(feature_tuple) == 0:
         return "Basevalue"
     elif len(feature_tuple) == 1:
-        return "Feature " + str(feature_tuple[0])
+        return str(feature_mapping[feature_tuple[0]])
     else:
-        return " x ".join([str(f) for f in feature_tuple])
+        return " x ".join([feature_mapping[f] for f in feature_tuple])
 
 
 def bar_plot(
@@ -223,14 +226,24 @@ def bar_plot(
         **kwargs: Keyword arguments passed to ``shap.plots.beeswarm()``.
     """
 
+    n_players = list_of_interaction_values[0].n_players
+
+    if feature_names is not None:
+        feature_mapping = {i: feature_names[i] for i in range(n_players)}
+    else:
+        feature_mapping = {i: str(i) for i in range(n_players)}
+
     assert len(np.unique([iv.max_order for iv in list_of_interaction_values])) == 1
 
     values = np.stack([iv.values for iv in list_of_interaction_values])
 
-    labels = (
-        np.array(list(map(default_feature_name, list_of_interaction_values[0].dict_values.keys())))
-        if feature_names is None
-        else feature_names
+    labels = np.array(
+        list(
+            map(
+                lambda x: format_labels(feature_mapping, x),
+                list_of_interaction_values[0].dict_values.keys(),
+            )
+        )
     )
 
     ax = _bar(values=values, feature_names=labels, show=False)

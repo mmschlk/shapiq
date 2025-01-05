@@ -11,6 +11,7 @@ from matplotlib.patches import PathPatch
 from matplotlib.path import Path
 
 from ..interaction_values import InteractionValues
+from .utils import abbreviate_feature_names
 
 __all__ = ["force_plot"]
 
@@ -561,7 +562,22 @@ def force_plot(
     interaction_values: InteractionValues,
     feature_names: Optional[np.ndarray] = None,
     show: bool = False,
-):
+    abbreviate: bool = True,
+) -> Optional[plt.Figure]:
+    """
+    Draw a force plot.
+    Args:
+        interaction_values:
+        feature_names:
+        show:
+        abbreviate:
+
+    Returns:
+
+    """
     if feature_names is None:
         feature_names = np.array([str(i) for i in range(interaction_values.n_players)])
+    if abbreviate:
+        feature_names = abbreviate_feature_names(feature_names)
+
     return _draw_force_plot(interaction_values, feature_names, figsize=(20, 3), show=show)

@@ -8,7 +8,7 @@ import numpy as np
 
 from ..interaction_values import InteractionValues
 from ._config import BLUE, RED
-from .utils import format_value
+from .utils import abbreviate_feature_names, format_value
 
 __all__ = ["waterfall_plot"]
 
@@ -84,7 +84,7 @@ def _draw_waterfall_plot(
 
     # add a last grouped feature to represent the impact of all the features we didn't show
     if num_features < len(values):
-        yticklabels[0] = "%d other features" % (len(values) - num_features + 1)
+        yticklabels[0] = "%d other features".format()
         remaining_impact = base_values - loc
         if remaining_impact < 0:
             pos_inds.append(0)
@@ -322,29 +322,48 @@ def _draw_waterfall_plot(
         return plt.gca()
 
 
+def format_labels(feature_mapping, feature_tuple):
+    if len(feature_tuple) == 0:
+        return "Basevalue"
+    elif len(feature_tuple) == 1:
+        return str(feature_mapping[feature_tuple[0]])
+    else:
+        return " x ".join([feature_mapping[f] for f in feature_tuple])
+
+
 def waterfall_plot(
     interaction_values: InteractionValues,
+    feature_names: Optional[np.ndarray[str]] = None,
     show: bool = False,
     max_display: int = 10,
+    abbreviate: bool = True,
 ) -> Optional[plt.Axes]:
     """Draws a waterfall plot with the interaction values.
 
-    Note:
-        Requires the ``shap`` Python package to be installed.
-
     Args:
         interaction_values: The interaction values as an interaction object.
+        feature_names: The names of the features. Defaults to ``None``.
         show: Whether to show the plot. Defaults to ``False``.
         max_display: The maximum number of interactions to display. Defaults to ``10``.
+        abbreviate: Whether to abbreviate the feature names. Defaults to ``True``.
     """
+
+    if feature_names is None:
+        feature_mapping = {i: str(i) for i in range(interaction_values.n_players)}
+    else:
+        if abbreviate:
+            feature_names = abbreviate_feature_names(feature_names)
+        feature_mapping = {i: feature_names[i] for i in range(interaction_values.n_players)}
+
     data = np.array(
         [
-            (" x ".join([str(f) for f in feature_tuple]), str(value))
+            (format_labels(feature_mapping, feature_tuple), str(value))
             for feature_tuple, value in interaction_values.dict_values.items()
             if len(feature_tuple) > 0
         ],
         dtype=object,
     )
+
     values = data[:, 1].astype(float)
     feature_names = data[:, 0]
 
