@@ -318,39 +318,6 @@ def _add_base_value(base_value: float, ax: plt.Axes) -> None:
     text_out_val.set_bbox(dict(facecolor="white", edgecolor="white"))
 
 
-def draw_higher_lower_element(out_value, offset_text):
-    plt.text(
-        out_value - offset_text,
-        0.405,
-        "higher",
-        fontsize=13,
-        color="#FF0D57",
-        horizontalalignment="right",
-    )
-
-    plt.text(
-        out_value + offset_text,
-        0.405,
-        "lower",
-        fontsize=13,
-        color="#1E88E5",
-        horizontalalignment="left",
-    )
-
-    plt.text(
-        out_value, 0.4, r"$\leftarrow$", fontsize=13, color="#1E88E5", horizontalalignment="center"
-    )
-
-    plt.text(
-        out_value,
-        0.425,
-        r"$\rightarrow$",
-        fontsize=13,
-        color="#FF0D57",
-        horizontalalignment="center",
-    )
-
-
 def update_axis_limits(
     ax: plt.Axes,
     total_pos: float,
