@@ -11,7 +11,7 @@ from matplotlib.patches import PathPatch
 from matplotlib.path import Path
 
 from ..interaction_values import InteractionValues
-from .utils import abbreviate_feature_names
+from .utils import abbreviate_feature_names, format_labels
 
 __all__ = ["force_plot"]
 
@@ -403,44 +403,22 @@ def update_axis_limits(
             spine.set_visible(False)
 
 
-def _draw_force_plot(
-    interaction_value: InteractionValues,
-    feature_names: np.ndarray,
-    figsize: tuple[int, int],
-    show: bool = True,
-    text_rotation: float = 0,
-    min_perc: float = 0.05,
-):
+def _split_features(
+    interaction_dictionary: dict[tuple[int, ...], float],
+    feature_to_names: dict[int, str],
+    out_value: float,
+) -> tuple[np.ndarray, np.ndarray, float, float]:
     """
-    Draw the force plot.
+    Split the features into positive and negative values.
     Args:
-        interaction_value: Interactiovalues ot be plotted
-        feature_names: names of the features
-        figsize: size of the figure
-        show: Whether to show the plot
-        text_rotation: Amount of text rotation
-        min_perc: Define the minimum percentage of the total effect that a feature must contribute to be shown.
-         Defaults to 0.05.
-
-    Returns: None
-
+        interaction_dictionary: Dictionary of the interaction values
     """
-    # Turn off interactive plot
-    if show is False:
-        plt.ioff()
-
-    # Compute overall metrics
-    base_value = interaction_value.baseline_value
-    out_value = np.sum(interaction_value.values)  # Sum of all values with the baseline value
-    # Format data
-    feature_to_names = {i: name for i, name in enumerate(feature_names)}
-    dict_values = interaction_value.dict_values
     pos_features = np.array(
         sorted(
             [
-                [str(values), " x ".join([feature_to_names[f] for f in features])]
-                for features, values in dict_values.items()
-                if values >= 0 and len(features) > 0
+                [str(value), format_labels(feature_to_names, coaltion)]
+                for coaltion, value in interaction_dictionary.items()
+                if value >= 0 and len(coaltion) > 0
             ],
             key=lambda x: x[0],
             reverse=True,
@@ -450,9 +428,9 @@ def _draw_force_plot(
     neg_features = np.array(
         sorted(
             [
-                [str(values), " x ".join([feature_to_names[f] for f in features])]
-                for features, values in dict_values.items()
-                if values < 0 and len(features) > 0
+                [str(value), " x ".join([feature_to_names[f] for f in coaltion])]
+                for coaltion, value in interaction_dictionary.items()
+                if value < 0 and len(coaltion) > 0
             ],
             key=lambda x: x[0],
             reverse=True,
@@ -487,18 +465,25 @@ def _draw_force_plot(
     else:
         total_pos = 0
 
-    # Define plots
-    offset_text = (np.abs(total_neg) + np.abs(total_pos)) * 0.04
+    return pos_features, neg_features, total_pos, total_neg
 
-    fig, ax = plt.subplots(figsize=figsize)
 
-    # Compute axis limit
-    update_axis_limits(ax, total_pos, pos_features, total_neg, neg_features, base_value, out_value)
+def _add_bars(
+    ax: plt.Axes, out_value: float, pos_features: np.ndarray, neg_features: np.ndarray
+) -> None:
+    """
+    Add bars to the plot.
+    Args:
+        ax: Axes of the plot
+        out_value: grand total value
+        pos_features: positive features
+        neg_features: negative features
 
-    # Define width of bar
+    Returns:
+
+    """
     width_bar = 0.1
     width_separators = (ax.get_xlim()[1] - ax.get_xlim()[0]) / 200
-
     # Create bar for negative shap values
     rectangle_list, separator_list = _create_bars(
         out_value, neg_features, "negative", width_separators, width_bar
@@ -518,6 +503,53 @@ def _draw_force_plot(
 
     for i in separator_list:
         ax.add_patch(i)
+
+
+def _draw_force_plot(
+    interaction_value: InteractionValues,
+    feature_names: np.ndarray,
+    figsize: tuple[int, int],
+    show: bool = True,
+    text_rotation: float = 0,
+    min_perc: float = 0.05,
+):
+    """
+    Draw the force plot.
+    Args:
+        interaction_value: Interactiovalues ot be plotted
+        feature_names: names of the features
+        figsize: size of the figure
+        show: Whether to show the plot
+        text_rotation: Amount of text rotation
+        min_perc: Define the minimum percentage of the total effect that a feature must contribute to be shown.
+         Defaults to 0.05.
+
+    Returns: None
+
+    """
+    # Turn off interactive plot
+    if show is False:
+        plt.ioff()
+
+    # Compute overall metrics
+    base_value = interaction_value.baseline_value
+    out_value = np.sum(interaction_value.values)  # Sum of all values with the baseline value
+
+    # Split features into positive and negative values
+    pos_features, neg_features, total_pos, total_neg = _split_features(
+        interaction_value.dict_values, {i: name for i, name in enumerate(feature_names)}, out_value
+    )
+
+    # Define plots
+    offset_text = (np.abs(total_neg) + np.abs(total_pos)) * 0.04
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Compute axis limit
+    update_axis_limits(ax, total_pos, pos_features, total_neg, neg_features, base_value, out_value)
+
+    # Add the bars to the plot
+    _add_bars(ax, out_value, pos_features, neg_features)
 
     # Add labels
     total_effect = np.abs(total_neg) + total_pos
