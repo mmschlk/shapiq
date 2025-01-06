@@ -31,13 +31,13 @@ if __name__ == "__main__":
     save_path = "sv_benchmark_results.json"
 
     faith_2_mirror = FaithSHAP(n=n_players, random_state=42, max_order=2, mirrored=True)
-    faith_2_mirror.__name__ = "FaithSHAP_2_Mirror"
+    faith_2_mirror.__name__ = "2_Mirror"
     faith_2 = FaithSHAP(n=n_players, random_state=42, max_order=2, mirrored=True)
-    faith_2.__name__ = "FaithSHAP_2"
+    faith_2.__name__ = "2"
     faith_3_mirror = FaithSHAP(n=n_players, random_state=42, max_order=3, mirrored=True)
-    faith_3_mirror.__name__ = "FaithSHAP_3_Mirror"
+    faith_3_mirror.__name__ = "3_Mirror"
     faith_3 = FaithSHAP(n=n_players, random_state=42, max_order=3, mirrored=True)
-    faith_3.__name__ = "FaithSHAP_3"
+    faith_3.__name__ = "3"
 
     sv_approximators = [
         KernelSHAP(n=n_players, random_state=42),
