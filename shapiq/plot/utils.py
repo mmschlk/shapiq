@@ -3,7 +3,7 @@
 import re
 from collections.abc import Iterable
 
-__all__ = ["abbreviate_feature_names", "format_value"]
+__all__ = ["abbreviate_feature_names", "format_value", "format_labels"]
 
 
 def format_value(s, format_str):

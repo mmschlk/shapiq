@@ -6,7 +6,7 @@ from copy import copy, deepcopy
 import numpy as np
 import pytest
 
-from shapiq.interaction_values import InteractionValues
+from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 from shapiq.utils import powerset
 
 
@@ -626,3 +626,56 @@ def test_subset():
     assert subset_interaction_values.estimated == interaction_values.estimated
     assert subset_interaction_values.estimation_budget == interaction_values.estimation_budget
     assert subset_interaction_values.index == interaction_values.index
+
+
+@pytest.mark.parametrize("aggregation", ["sum", "mean", "median", "max", "min"])
+def test_aggregation(aggregation):
+
+    n_objects = 3
+
+    n, min_order, max_order = 5, 1, 3
+    interaction_values_list = []
+    for _ in range(n_objects):
+        values = np.random.rand(2**n - 1)
+        interaction_lookup = {
+            interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+        }
+        interaction_values = InteractionValues(
+            values=values,
+            index="SII",
+            max_order=max_order,
+            n_players=n,
+            min_order=min_order,
+            interaction_lookup=interaction_lookup,
+            estimated=False,
+            estimation_budget=0,
+            baseline_value=0.0,
+        )
+        interaction_values_list.append(interaction_values)
+
+    aggregated_interaction_values = aggregate_interaction_values(
+        interaction_values_list, aggregation=aggregation
+    )
+
+    assert isinstance(aggregated_interaction_values, InteractionValues)
+    assert aggregated_interaction_values.index == "SII"
+    assert aggregated_interaction_values.n_players == n
+    assert aggregated_interaction_values.min_order == min_order
+    assert aggregated_interaction_values.max_order == max_order
+
+    # check that all interactions are equal to the expected value
+    for interaction in powerset(range(n), 1, n):
+        aggregated_value = np.array(
+            [interaction_values[interaction] for interaction_values in interaction_values_list]
+        )
+        if aggregation == "sum":
+            expected_value = np.sum(aggregated_value)
+        elif aggregation == "mean":
+            expected_value = np.mean(aggregated_value)
+        elif aggregation == "median":
+            expected_value = np.median(aggregated_value)
+        elif aggregation == "max":
+            expected_value = np.max(aggregated_value)
+        elif aggregation == "min":
+            expected_value = np.min(aggregated_value)
+        assert aggregated_interaction_values[interaction] == expected_value

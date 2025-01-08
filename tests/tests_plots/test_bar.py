@@ -8,7 +8,7 @@ from shapiq.interaction_values import InteractionValues
 from shapiq.plot import bar_plot
 
 
-def test_bar_concret():
+def test_bar_concrete():
     class CookingGame(shapiq.Game):
         def __init__(self):
             self.characteristic_function = {

@@ -769,3 +769,70 @@ class InteractionValues:
         from shapiq.plot.upset import upset_plot
 
         return upset_plot(self, show=show, **kwargs)
+
+
+def aggregate_interaction_values(
+    interaction_values: list[InteractionValues],
+    aggregation: str = "mean",
+) -> InteractionValues:
+    """Aggregates InteractionValues objects using a specific aggregation method.
+
+    Args:
+        interaction_values: A list of InteractionValues objects to aggregate.
+        aggregation: The aggregation method to use. Defaults to ``"mean"``. Other options are
+            ``"median"``, ``"sum"``, ``"max"``, and ``"min"``.
+
+    Returns:
+        The aggregated InteractionValues object.
+
+    Note:
+        The index of the aggregated InteractionValues object is set to the index of the first
+        InteractionValues object in the list.
+
+    Raises:
+        ValueError: If the aggregation method is not supported.
+    """
+
+    def _aggregate(vals: list[float], method: str) -> float:
+        """Does the actual aggregation of the values."""
+        if method == "mean":
+            return np.mean(vals)
+        elif method == "median":
+            return np.median(vals)
+        elif method == "sum":
+            return np.sum(vals)
+        elif method == "max":
+            return np.max(vals)
+        elif method == "min":
+            return np.min(vals)
+        else:
+            raise ValueError(f"Aggregation method {method} is not supported.")
+
+    # get all keys from all InteractionValues objects
+    all_keys = set()
+    for iv in interaction_values:
+        all_keys.update(iv.interaction_lookup.keys())
+
+    # aggregate the values
+    new_values = np.zeros(len(all_keys), dtype=float)
+    new_lookup = {}
+    for i, key in enumerate(all_keys):
+        new_lookup[key] = i
+        values = [iv[key] for iv in interaction_values]
+        new_values[i] = _aggregate(values, aggregation)
+
+    max_order = max([iv.max_order for iv in interaction_values])
+    min_order = min([iv.min_order for iv in interaction_values])
+    n_players = max([iv.n_players for iv in interaction_values])
+
+    return InteractionValues(
+        values=new_values,
+        index=interaction_values[0].index,
+        max_order=max_order,
+        n_players=n_players,
+        min_order=min_order,
+        interaction_lookup=new_lookup,
+        estimated=True,
+        estimation_budget=None,
+        baseline_value=_aggregate([iv.baseline_value for iv in interaction_values], aggregation),
+    )
