@@ -1,6 +1,6 @@
 ## Changelog
 
-### Development
+### v1.1.2 (2025-01-13)
 - renames ``game_fun`` parameter in ``shapiq.ExactComputer`` to ``game`` [#297](https://github.com/mmschlk/shapiq/issues/297)
 - adds a TabPFN example notebook to the documentation
 - removes warning when class_index is not provided in explainers [#298](https://github.com/mmschlk/shapiq/issues/298)
