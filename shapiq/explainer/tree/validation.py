@@ -29,6 +29,7 @@ SUPPORTED_MODELS = {
     "lightgbm.sklearn.LGBMRegressor",
     "lightgbm.sklearn.LGBMClassifier",
     "lightgbm.basic.Booster",
+    # TODO: add xgboost to the list of supported models and check if all tests pass
     # xboost?
 }
 

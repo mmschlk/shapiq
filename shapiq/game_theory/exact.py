@@ -26,7 +26,7 @@ class ExactComputer:
 
     Args:
         n_players: The number of players in the game.
-        game_fun: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
+        game: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
             and returns a numpy array of shape ``(n_coalitions,)`` containing the game values.
         evaluate_game: whether to compute the values at init (if True) or first call (False)
 
@@ -41,12 +41,12 @@ class ExactComputer:
     def __init__(
         self,
         n_players: int,
-        game_fun: Callable[[np.ndarray], np.ndarray[float]],
+        game: Callable[[np.ndarray], np.ndarray[float]],
         evaluate_game: bool = False,
     ) -> None:
         # set parameter attributes
         self.n: int = n_players
-        self.game_fun = game_fun
+        self.game_fun = game
 
         # set object attributes
         self._grand_coalition_tuple: tuple[int] = tuple(range(self.n))
@@ -125,6 +125,7 @@ class ExactComputer:
         elif index in self.available_indices:
             computation_function = self._index_mapping[index]
             computed_index: InteractionValues = computation_function(index=index, order=order)
+            computed_index.baseline_value = self.baseline_value
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
@@ -157,9 +158,6 @@ class ExactComputer:
 
     def compute_game_values(self) -> tuple[float, np.ndarray[float], dict[tuple[int], int]]:
         """Evaluates the game on the powerset of all coalitions.
-
-        Args:
-            game_fun: A callable game
 
         Returns:
             baseline value (empty prediction), all game values, and the lookup dictionary

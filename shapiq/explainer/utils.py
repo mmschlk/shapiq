@@ -1,7 +1,6 @@
 """This module contains utility functions for the explainer module."""
 
 import re
-import warnings
 from typing import Any, Callable, Optional, TypeVar
 
 import numpy as np
@@ -118,7 +117,6 @@ def get_predict_function_and_model_type(
         )
 
     if class_index is None:
-        warnings.warn(WARNING_NO_CLASS_INDEX)
         class_index = 1
 
     def _predict_function_with_class_index(model: ModelType, data: np.ndarray) -> np.ndarray:

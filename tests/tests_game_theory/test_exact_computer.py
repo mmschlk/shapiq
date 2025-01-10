@@ -19,7 +19,7 @@ def test_exact_computer_on_soum():
         predicted_value = soum(np.ones(n))[0]
 
         # Compute via exactComputer
-        exact_computer = ExactComputer(n_players=n, game_fun=soum)
+        exact_computer = ExactComputer(n_players=n, game=soum)
 
         # Compute via sparse Möbius representation
         moebius_converter = MoebiusConverter(soum.moebius_coefficients)
@@ -89,7 +89,7 @@ def test_exact_elc_computer_call(index, order):
     """Tests the call function for the ExactComputer."""
     n = 5
     soum = SOUM(n, n_basis_games=10, normalize=True)
-    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    exact_computer = ExactComputer(n_players=n, game=soum)
     interaction_values = exact_computer(index=index, order=order)
     if order is None:
         order = n
@@ -130,7 +130,7 @@ def test_exact_computer_call(index, order):
     """Tests the call function for the ExactComputer."""
     n = 5
     soum = SOUM(n, n_basis_games=10)
-    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    exact_computer = ExactComputer(n_players=n, game=soum)
     interaction_values = exact_computer(index=index, order=order)
     if order is None:
         order = n
@@ -145,7 +145,7 @@ def test_basic_functions():
     """Tests the basic functions of the ExactComputer."""
     n = 5
     soum = SOUM(n, n_basis_games=10)
-    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    exact_computer = ExactComputer(n_players=n, game=soum)
     isinstance(repr(exact_computer), str)
     isinstance(str(exact_computer), str)
 
@@ -154,7 +154,7 @@ def test_lazy_computation():
     """Tests if the lazy computation (calling without params) works."""
     n = 5
     soum = SOUM(n, n_basis_games=10)
-    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    exact_computer = ExactComputer(n_players=n, game=soum)
     isinstance(repr(exact_computer), str)
     isinstance(str(exact_computer), str)
     sv = exact_computer("SV", 1)
@@ -227,10 +227,10 @@ def test_permutation_symmetry(index, order, original_game):
     def permutation_game(X: np.ndarray):
         return original_game(X[:, permutation])
 
-    exact_computer = ExactComputer(n_players=n, game_fun=original_game)
+    exact_computer = ExactComputer(n_players=n, game=original_game)
     interaction_values = exact_computer(index=index, order=order)
 
-    perm_exact_computer = ExactComputer(n_players=n, game_fun=permutation_game)
+    perm_exact_computer = ExactComputer(n_players=n, game=permutation_game)
     perm_interaction_values = perm_exact_computer(index=index, order=order)
 
     # permutation does not matter
@@ -243,7 +243,7 @@ def test_warning_cii():
     """Checks weather a warning is raised for the CHII index and min_order = 0."""
     n = 5
     soum = SOUM(n, n_basis_games=10)
-    exact_computer = ExactComputer(n_players=n, game_fun=soum)
+    exact_computer = ExactComputer(n_players=n, game=soum)
     with pytest.warns(UserWarning):
         exact_computer("CHII", 0)
 
@@ -304,7 +304,7 @@ def test_player_symmetry(index, order):
         interaction_addition = np.apply_along_axis(_interaction, axis=1, arr=X)
         return value + interaction_addition
 
-    exact_computer = ExactComputer(n_players=n, game_fun=_game_fun)
+    exact_computer = ExactComputer(n_players=n, game=_game_fun)
     interaction_values = exact_computer(index=index, order=order)
 
     # symmetry of players with same attribution
@@ -365,7 +365,7 @@ def test_null_player(index, order):
         interaction_addition = np.apply_along_axis(_interaction, axis=1, arr=X)
         return value + interaction_addition
 
-    exact_computer = ExactComputer(n_players=n, game_fun=_game_fun)
+    exact_computer = ExactComputer(n_players=n, game=_game_fun)
     interaction_values = exact_computer(index=index, order=order)
 
     # no attribution for coalitions which include the null players.
@@ -407,7 +407,7 @@ def test_no_artefact_interaction(index, order):
         fist_order_coefficients = [0, 0.2, -0.1, -0.9, 0]
         return np.sum(fist_order_coefficients * x_as_float, axis=1)
 
-    exact_computer = ExactComputer(n_players=n, game_fun=_game_fun)
+    exact_computer = ExactComputer(n_players=n, game=_game_fun)
     interaction_values = exact_computer(index=index, order=order)
 
     for coalition, value in interaction_values.dict_values.items():
@@ -458,7 +458,7 @@ def test_generalized_null_player(index, order):
         interaction_addition = np.apply_along_axis(_interaction, axis=1, arr=X)
         return value + interaction_addition
 
-    exact_computer = ExactComputer(n_players=n, game_fun=_game_fun)
+    exact_computer = ExactComputer(n_players=n, game=_game_fun)
     interaction_values = exact_computer(index=index, order=order)
 
     # no attribution for coalitions consisting of the null players.
