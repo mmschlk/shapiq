@@ -12,35 +12,16 @@ from .utils import abbreviate_feature_names, format_labels, format_value
 __all__ = ["bar_plot"]
 
 
-def _bar(values, feature_names, max_display=10, ax=None):
+def _bar(
+    values: np.ndarray,
+    feature_names: np.ndarray,
+    max_display: Optional[int] = 10,
+    ax: Optional[plt.Axes] = None,
+) -> plt.Axes:
     """Create a bar plot of a set of SHAP values.
 
-    Parameters
-    ----------
-    shap_values : shap.Explanation or shap.Cohorts or dictionary of shap.Explanation objects
-        Passing a multi-row :class:`.Explanation` object creates a global
-        feature importance plot.
-
-        Passing a single row of an explanation (i.e. ``shap_values[0]``) creates
-        a local feature importance plot.
-
-        Passing a dictionary of Explanation objects will create a multiple-bar
-        plot with one bar type for each of the cohorts represented by the
-        explanation objects.
-    max_display : int
-        How many top features to include in the bar plot (default is 10).
-    ax: matplotlib Axes
-        Axes object to draw the plot onto, otherwise uses the current Axes.
-
-    Returns
-    -------
-    ax: matplotlib Axes
-        Returns the Axes object with the plot drawn onto it. Only returned if ``show=False``.
-
-    Examples
-    --------
-    See `bar plot examples <https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/bar.html>`_.
-
+    This is a modified version of the bar plot from the SHAP package. The original code can be found
+    at https://github.com/shap/shap.
     """
     # determine how many top features we will plot
     num_features = len(values[0])
@@ -199,7 +180,8 @@ def bar_plot(
             ``None``, all features are displayed.
         global_plot: Weather to aggregate the values of the different InteractionValues objects
             into a global explanation (``True``) or to plot them as separate bars (``False``).
-            Defaults to ``True``.
+            Defaults to ``True``. If only one InteractionValues object is provided, this parameter
+            is ignored.
     """
     n_players = list_of_interaction_values[0].n_players
 
@@ -208,13 +190,14 @@ def bar_plot(
             feature_names = abbreviate_feature_names(feature_names)
         feature_mapping = {i: feature_names[i] for i in range(n_players)}
     else:
-        feature_mapping = {i: str(i) for i in range(n_players)}
+        feature_mapping = {i: "F" + str(i) for i in range(n_players)}
 
+    # aggregate the interaction values if global_plot is True
     if global_plot:
         global_values = aggregate_interaction_values(list_of_interaction_values)
         values = np.expand_dims(global_values.values, axis=0)
         interaction_list = global_values.interaction_lookup.keys()
-    else:
+    else:  # plot the interaction values separately  (also includes the case of a single object)
         all_interactions = set()
         for iv in list_of_interaction_values:
             all_interactions.update(iv.interaction_lookup.keys())
@@ -226,16 +209,8 @@ def bar_plot(
             for i, iv in enumerate(list_of_interaction_values):
                 values[i, j] = iv[interaction]
 
-    # TODO: update this to be correct with the order of labels
-
-    labels = np.array(
-        list(
-            map(
-                lambda x: format_labels(feature_mapping, x),
-                interaction_list,
-            )
-        )
-    )
+    # format the labels
+    labels = [format_labels(feature_mapping, interaction) for interaction in interaction_list]
 
     ax = _bar(values=values, feature_names=labels, max_display=max_display)
     if not show:

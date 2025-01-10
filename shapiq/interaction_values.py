@@ -4,6 +4,7 @@ scores."""
 import copy
 import os
 import pickle
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Optional, Union
 from warnings import warn
@@ -630,6 +631,25 @@ class InteractionValues:
             "baseline_value": self.baseline_value,
         }
 
+    def aggregate(
+        self, others: Sequence["InteractionValues"], aggregation: str = "mean"
+    ) -> "InteractionValues":
+        """Aggregates InteractionValues objects using a specific aggregation method.
+
+        Args:
+            others: A list of InteractionValues objects to aggregate.
+            aggregation: The aggregation method to use. Defaults to ``"mean"``. Other options are
+                ``"median"``, ``"sum"``, ``"max"``, and ``"min"``.
+
+        Returns:
+            The aggregated InteractionValues object.
+
+        Note:
+            For documentation on the aggregation methods, see the ``aggregate_interaction_values()``
+            function.
+        """
+        return aggregate_interaction_values([self, *others], aggregation)
+
     def plot_network(self, show: bool = True, **kwargs) -> Optional[tuple[plt.Figure, plt.Axes]]:
         """Visualize InteractionValues on a graph.
 
@@ -772,7 +792,7 @@ class InteractionValues:
 
 
 def aggregate_interaction_values(
-    interaction_values: list[InteractionValues],
+    interaction_values: Sequence[InteractionValues],
     aggregation: str = "mean",
 ) -> InteractionValues:
     """Aggregates InteractionValues objects using a specific aggregation method.
@@ -785,6 +805,37 @@ def aggregate_interaction_values(
     Returns:
         The aggregated InteractionValues object.
 
+    Example:
+        >>> iv1 = InteractionValues(
+        ...     values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+        ...     index="SII",
+        ...     max_order=2,
+        ...     n_players=3,
+        ...     min_order=1,
+        ...     baseline_value=0.0,
+        ... )
+        >>> iv2 = InteractionValues(
+        ...     values=np.array([0.2, 0.3, 0.4, 0.5, 0.6]),  # this iv is missing the (1, 2) value
+        ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4},  # no (1, 2)
+        ...     index="SII",
+        ...     max_order=2,
+        ...     n_players=3,
+        ...     min_order=1,
+        ...     baseline_value=1.0,
+        ... )
+        >>> aggregate_interaction_values([iv1, iv2], "mean")
+        InteractionValues(
+            index=SII, max_order=2, min_order=1, estimated=True, estimation_budget=None,
+            n_players=3, baseline_value=0.5,
+            Top 10 interactions:
+                (1, 2): 0.60
+                (0, 2): 0.35
+                (0, 1): 0.25
+                (0,): 0.15
+                (1,): 0.25
+                (2,): 0.35
+        )
     Note:
         The index of the aggregated InteractionValues object is set to the index of the first
         InteractionValues object in the list.
@@ -812,6 +863,7 @@ def aggregate_interaction_values(
     all_keys = set()
     for iv in interaction_values:
         all_keys.update(iv.interaction_lookup.keys())
+    all_keys = sorted(all_keys)
 
     # aggregate the values
     new_values = np.zeros(len(all_keys), dtype=float)
@@ -824,6 +876,7 @@ def aggregate_interaction_values(
     max_order = max([iv.max_order for iv in interaction_values])
     min_order = min([iv.min_order for iv in interaction_values])
     n_players = max([iv.n_players for iv in interaction_values])
+    baseline_value = _aggregate([iv.baseline_value for iv in interaction_values], aggregation)
 
     return InteractionValues(
         values=new_values,
@@ -834,5 +887,5 @@ def aggregate_interaction_values(
         interaction_lookup=new_lookup,
         estimated=True,
         estimation_budget=None,
-        baseline_value=_aggregate([iv.baseline_value for iv in interaction_values], aggregation),
+        baseline_value=baseline_value,
     )

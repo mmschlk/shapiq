@@ -679,3 +679,50 @@ def test_aggregation(aggregation):
         elif aggregation == "min":
             expected_value = np.min(aggregated_value)
         assert aggregated_interaction_values[interaction] == expected_value
+
+    # test aggregate from InteractionValues object
+    aggregated_from_object = interaction_values_list[0].aggregate(
+        aggregation=aggregation, others=interaction_values_list[1:]
+    )
+    assert isinstance(aggregated_from_object, InteractionValues)
+    assert aggregated_from_object == aggregated_interaction_values  # same values
+    assert aggregated_from_object is not aggregated_interaction_values  # but different objects
+
+
+def test_docs_aggregation_function():
+    """Tests the aggregation function in the InteractionValues dataclass like in the docs."""
+
+    iv1 = InteractionValues(
+        values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        index="SII",
+        n_players=3,
+        min_order=1,
+        max_order=2,
+        interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+        baseline_value=0.0,
+    )
+
+    # this does not contain the (1, 2) interaction (i.e. is 0)
+    iv2 = InteractionValues(
+        values=np.array([0.2, 0.3, 0.4, 0.5, 0.6]),
+        index="SII",
+        n_players=3,
+        min_order=1,
+        max_order=2,
+        interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4},
+        baseline_value=1.0,
+    )
+
+    # test sum
+    aggregated_interaction_values = aggregate_interaction_values([iv1, iv2], aggregation="sum")
+    assert pytest.approx(aggregated_interaction_values[(0,)]) == 0.3
+    assert pytest.approx(aggregated_interaction_values[(1,)]) == 0.5
+    assert pytest.approx(aggregated_interaction_values[(1, 2)]) == 0.6
+    assert pytest.approx(aggregated_interaction_values.baseline_value) == 1.0
+
+    # test mean
+    aggregated_interaction_values = aggregate_interaction_values([iv1, iv2], aggregation="mean")
+    assert pytest.approx(aggregated_interaction_values[(0,)]) == 0.15
+    assert pytest.approx(aggregated_interaction_values[(1,)]) == 0.25
+    assert pytest.approx(aggregated_interaction_values[(1, 2)]) == 0.3
+    assert pytest.approx(aggregated_interaction_values.baseline_value) == 0.5

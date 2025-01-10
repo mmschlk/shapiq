@@ -2,12 +2,30 @@
 
 import re
 from collections.abc import Iterable
+from typing import Union
 
 __all__ = ["abbreviate_feature_names", "format_value", "format_labels"]
 
 
-def format_value(s, format_str):
-    """Strips trailing zeros and uses a unicode minus sign."""
+def format_value(
+    s: Union[float, str],
+    format_str: str = "%.2f",
+) -> str:
+    """Strips trailing zeros and uses a unicode minus sign.
+
+    Args:
+        s: The value to be formatted.
+        format_str: The format string to be used. Defaults to "%.2f".
+
+    Returns:
+        str: The formatted value.
+
+    Examples:
+        >>> format_value(1.0)
+        "1"
+        >>> format_value(1.234)
+        "1.23"
+    """
     if not issubclass(type(s), str):
         s = format_str % s
     s = re.sub(r"\.?0+$", "", s)
@@ -16,13 +34,34 @@ def format_value(s, format_str):
     return s
 
 
-def format_labels(feature_mapping, feature_tuple):
+def format_labels(
+    feature_mapping: dict[int, str],
+    feature_tuple: tuple[int, ...],
+) -> str:
+    """Formats the feature labels for the plots.
+
+    Args:
+        feature_mapping: A dictionary mapping feature indices to feature names.
+        feature_tuple: The feature tuple to be formatted.
+
+    Returns:
+        str: The formatted feature tuple.
+
+    Example:
+        >>> feature_mapping = {0: "A", 1: "B", 2: "C"}
+        >>> format_labels(feature_mapping, (0, 1))
+        "A x B"
+        >>> format_labels(feature_mapping, (0,))
+        "A"
+        >>> format_labels(feature_mapping, ())
+        "Base Value"
+    """
     if len(feature_tuple) == 0:
-        return "Baseval."
+        return "Base Value"
     elif len(feature_tuple) == 1:
         return str(feature_mapping[feature_tuple[0]])
     else:
-        return " x ".join([feature_mapping[f] for f in feature_tuple])
+        return " x ".join([str(feature_mapping[f]) for f in feature_tuple])
 
 
 def abbreviate_feature_names(feature_names: Iterable[str]) -> list[str]:
