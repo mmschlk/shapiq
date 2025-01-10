@@ -220,7 +220,7 @@ def _draw_waterfall_plot(
         if text_bbox.width > arrow_bbox.width:
             txt_obj.remove()
 
-            txt_obj = plt.text(
+            plt.text(
                 neg_lefts[i] - (5 / 72) * bbox_to_xscale + dist,
                 neg_inds[i],
                 format_value(neg_widths[i], "%+0.02f"),
@@ -346,15 +346,12 @@ def waterfall_plot(
             feature_names = abbreviate_feature_names(feature_names)
         feature_mapping = {i: feature_names[i] for i in range(interaction_values.n_players)}
 
-    data = np.array(
-        [
-            (format_labels(feature_mapping, feature_tuple), str(value))
-            for feature_tuple, value in interaction_values.dict_values.items()
-            if len(feature_tuple) > 0
-        ],
-        dtype=object,
-    )
-
+    # create the data for the waterfall plot in the correct format
+    data = []
+    for feature_tuple, value in interaction_values.dict_values.items():
+        if len(feature_tuple) > 0:
+            data.append((format_labels(feature_mapping, feature_tuple), str(value)))
+    data = np.array(data, dtype=object)
     values = data[:, 1].astype(float)
     feature_names = data[:, 0]
 

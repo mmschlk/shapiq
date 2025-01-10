@@ -360,6 +360,8 @@ def mae_loss():
 @pytest.fixture
 def interaction_values_list():
     """Returns a list of three InteractionValues objects."""
+    rng = np.random.RandomState(42)
+
     from shapiq.interaction_values import InteractionValues
     from shapiq.utils import powerset
 
@@ -375,7 +377,7 @@ def interaction_values_list():
             powerset(range(n_players), min_size=min_order, max_size=max_order)
         ):
             interaction_lookup[interaction] = i
-            values.append(np.random.rand())
+            values.append(rng.uniform(0, 1))
         values = np.array(values)
         iv = InteractionValues(
             n_players=n_players,
