@@ -1,6 +1,7 @@
 ## Changelog
 
 ### Development
+- adds a TabPFN example notebook to the documentation
 - removes warning when class_index is not provided in explainers [#298](https://github.com/mmschlk/shapiq/issues/298)
 - adds the `sentence_plot` function to the `plot` module to visualize the contributions of words to a language model prediction in a sentence-like format
 - makes abbreviations in the `plot` module optional [#281](https://github.com/mmschlk/shapiq/issues/281)
