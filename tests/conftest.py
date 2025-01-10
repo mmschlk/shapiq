@@ -17,6 +17,40 @@ NR_FEATURES = 7
 
 
 @pytest.fixture
+def cooking_game():
+    """Return a simple game object."""
+    import shapiq
+
+    class CookingGame(shapiq.Game):
+        def __init__(self):
+            self.characteristic_function = {
+                (): 10,
+                (0,): 4,
+                (1,): 3,
+                (2,): 2,
+                (0, 1): 9,
+                (0, 2): 8,
+                (1, 2): 7,
+                (0, 1, 2): 15,
+            }
+            super().__init__(
+                n_players=3,
+                player_names=["Alice", "Bob", "Charlie"],  # Optional list of names
+                normalization_value=self.characteristic_function[()],  # 0
+                normalize=False,
+            )
+
+        def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+            """Defines the worth of a coalition as a lookup in the characteristic function."""
+            output = []
+            for coalition in coalitions:
+                output.append(self.characteristic_function[tuple(np.where(coalition)[0])])
+            return np.array(output)
+
+    return CookingGame()
+
+
+@pytest.fixture
 def dt_reg_model() -> DecisionTreeRegressor:
     """Return a simple decision tree model."""
     X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
@@ -326,6 +360,8 @@ def mae_loss():
 @pytest.fixture
 def interaction_values_list():
     """Returns a list of three InteractionValues objects."""
+    rng = np.random.RandomState(42)
+
     from shapiq.interaction_values import InteractionValues
     from shapiq.utils import powerset
 
@@ -341,7 +377,7 @@ def interaction_values_list():
             powerset(range(n_players), min_size=min_order, max_size=max_order)
         ):
             interaction_lookup[interaction] = i
-            values.append(np.random.rand())
+            values.append(rng.uniform(0, 1))
         values = np.array(values)
         iv = InteractionValues(
             n_players=n_players,

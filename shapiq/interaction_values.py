@@ -4,6 +4,7 @@ scores."""
 import copy
 import os
 import pickle
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Optional, Union
 from warnings import warn
@@ -630,6 +631,25 @@ class InteractionValues:
             "baseline_value": self.baseline_value,
         }
 
+    def aggregate(
+        self, others: Sequence["InteractionValues"], aggregation: str = "mean"
+    ) -> "InteractionValues":
+        """Aggregates InteractionValues objects using a specific aggregation method.
+
+        Args:
+            others: A list of InteractionValues objects to aggregate.
+            aggregation: The aggregation method to use. Defaults to ``"mean"``. Other options are
+                ``"median"``, ``"sum"``, ``"max"``, and ``"min"``.
+
+        Returns:
+            The aggregated InteractionValues object.
+
+        Note:
+            For documentation on the aggregation methods, see the ``aggregate_interaction_values()``
+            function.
+        """
+        return aggregate_interaction_values([self, *others], aggregation)
+
     def plot_network(self, show: bool = True, **kwargs) -> Optional[tuple[plt.Figure, plt.Axes]]:
         """Visualize InteractionValues on a graph.
 
@@ -682,17 +702,12 @@ class InteractionValues:
     def plot_force(
         self,
         feature_names: Optional[np.ndarray] = None,
-        feature_values: Optional[np.ndarray] = None,
-        matplotlib=True,
         show: bool = True,
         abbreviate: bool = True,
-        **kwargs,
     ) -> Optional[plt.Figure]:
         """Visualize InteractionValues on a force plot.
 
         For arguments, see shapiq.plots.force_plot().
-
-        Requires the ``shap`` Python package to be installed.
 
         Args:
             feature_names: The feature names used for plotting. If no feature names are provided, the
@@ -710,18 +725,14 @@ class InteractionValues:
 
         return force_plot(
             self,
-            feature_values=feature_values,
             feature_names=feature_names,
-            matplotlib=matplotlib,
             show=show,
             abbreviate=abbreviate,
-            **kwargs,
         )
 
     def plot_waterfall(
         self,
         feature_names: Optional[np.ndarray] = None,
-        feature_values: Optional[np.ndarray] = None,
         show: bool = True,
         abbreviate: bool = True,
         max_display: int = 10,
@@ -743,11 +754,10 @@ class InteractionValues:
 
         return waterfall_plot(
             self,
-            feature_values=feature_values,
             feature_names=feature_names,
             show=show,
-            abbreviate=abbreviate,
             max_display=max_display,
+            abbreviate=abbreviate,
         )
 
     def plot_sentence(
@@ -779,3 +789,103 @@ class InteractionValues:
         from shapiq.plot.upset import upset_plot
 
         return upset_plot(self, show=show, **kwargs)
+
+
+def aggregate_interaction_values(
+    interaction_values: Sequence[InteractionValues],
+    aggregation: str = "mean",
+) -> InteractionValues:
+    """Aggregates InteractionValues objects using a specific aggregation method.
+
+    Args:
+        interaction_values: A list of InteractionValues objects to aggregate.
+        aggregation: The aggregation method to use. Defaults to ``"mean"``. Other options are
+            ``"median"``, ``"sum"``, ``"max"``, and ``"min"``.
+
+    Returns:
+        The aggregated InteractionValues object.
+
+    Example:
+        >>> iv1 = InteractionValues(
+        ...     values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+        ...     index="SII",
+        ...     max_order=2,
+        ...     n_players=3,
+        ...     min_order=1,
+        ...     baseline_value=0.0,
+        ... )
+        >>> iv2 = InteractionValues(
+        ...     values=np.array([0.2, 0.3, 0.4, 0.5, 0.6]),  # this iv is missing the (1, 2) value
+        ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4},  # no (1, 2)
+        ...     index="SII",
+        ...     max_order=2,
+        ...     n_players=3,
+        ...     min_order=1,
+        ...     baseline_value=1.0,
+        ... )
+        >>> aggregate_interaction_values([iv1, iv2], "mean")
+        InteractionValues(
+            index=SII, max_order=2, min_order=1, estimated=True, estimation_budget=None,
+            n_players=3, baseline_value=0.5,
+            Top 10 interactions:
+                (1, 2): 0.60
+                (0, 2): 0.35
+                (0, 1): 0.25
+                (0,): 0.15
+                (1,): 0.25
+                (2,): 0.35
+        )
+    Note:
+        The index of the aggregated InteractionValues object is set to the index of the first
+        InteractionValues object in the list.
+
+    Raises:
+        ValueError: If the aggregation method is not supported.
+    """
+
+    def _aggregate(vals: list[float], method: str) -> float:
+        """Does the actual aggregation of the values."""
+        if method == "mean":
+            return np.mean(vals)
+        elif method == "median":
+            return np.median(vals)
+        elif method == "sum":
+            return np.sum(vals)
+        elif method == "max":
+            return np.max(vals)
+        elif method == "min":
+            return np.min(vals)
+        else:
+            raise ValueError(f"Aggregation method {method} is not supported.")
+
+    # get all keys from all InteractionValues objects
+    all_keys = set()
+    for iv in interaction_values:
+        all_keys.update(iv.interaction_lookup.keys())
+    all_keys = sorted(all_keys)
+
+    # aggregate the values
+    new_values = np.zeros(len(all_keys), dtype=float)
+    new_lookup = {}
+    for i, key in enumerate(all_keys):
+        new_lookup[key] = i
+        values = [iv[key] for iv in interaction_values]
+        new_values[i] = _aggregate(values, aggregation)
+
+    max_order = max([iv.max_order for iv in interaction_values])
+    min_order = min([iv.min_order for iv in interaction_values])
+    n_players = max([iv.n_players for iv in interaction_values])
+    baseline_value = _aggregate([iv.baseline_value for iv in interaction_values], aggregation)
+
+    return InteractionValues(
+        values=new_values,
+        index=interaction_values[0].index,
+        max_order=max_order,
+        n_players=n_players,
+        min_order=min_order,
+        interaction_lookup=new_lookup,
+        estimated=True,
+        estimation_budget=None,
+        baseline_value=baseline_value,
+    )
