@@ -11,7 +11,8 @@ def test_force_cooking_game(cooking_game):
     exact_computer = ExactComputer(n_players=cooking_game.n_players, game=cooking_game)
     interaction_values = exact_computer(index="k-SII", order=2)
     print(interaction_values.dict_values)
-    force_plot(interaction_values, show=True, min_percentage=0.2)
+    feature_names = list(cooking_game.player_name_lookup.keys())
+    force_plot(interaction_values, show=True, min_percentage=0.2, feature_names=feature_names)
     plt.close()
 
     # visual inspection:
