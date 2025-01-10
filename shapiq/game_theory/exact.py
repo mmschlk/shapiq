@@ -26,7 +26,7 @@ class ExactComputer:
 
     Args:
         n_players: The number of players in the game.
-        game_fun: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
+        game: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
             and returns a numpy array of shape ``(n_coalitions,)`` containing the game values.
         evaluate_game: whether to compute the values at init (if True) or first call (False)
 
@@ -41,12 +41,12 @@ class ExactComputer:
     def __init__(
         self,
         n_players: int,
-        game_fun: Callable[[np.ndarray], np.ndarray[float]],
+        game: Callable[[np.ndarray], np.ndarray[float]],
         evaluate_game: bool = False,
     ) -> None:
         # set parameter attributes
         self.n: int = n_players
-        self.game_fun = game_fun
+        self.game_fun = game
 
         # set object attributes
         self._grand_coalition_tuple: tuple[int] = tuple(range(self.n))

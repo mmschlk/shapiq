@@ -490,7 +490,7 @@ class Game(ABC):
                 "Computing the exact interaction values via brute force may take a long time."
             )
 
-        exact_computer = ExactComputer(self.n_players, game_fun=self)
+        exact_computer = ExactComputer(self.n_players, game=self)
         return exact_computer(index=index, order=order)
 
     @property
