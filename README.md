@@ -100,8 +100,8 @@ interaction_values = explainer.explain(data[0])
 interaction_values.plot_force(feature_names=...)
 ```
 
-<p>
-  <img width="500px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/motivation_sv_and_si.png" alt="An example Force Plot for the California Housing Dataset with Shapley Interactions">
+<p align="center">
+  <img width="700px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/motivation_sv_and_si.png" alt="An example Force Plot for the California Housing Dataset with Shapley Interactions">
 </p>
 
 ### 📊 Visualize feature interactions
@@ -122,7 +122,7 @@ interaction_values.plot_network()
 
 The pseudo-code above can produce the following plot (here also an image is added):
 
-<p>
+<p align="center">
   <img width="500px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/network_example2.png" alt="network_plot_example">
 </p>
 
