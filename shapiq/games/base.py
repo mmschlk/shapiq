@@ -131,6 +131,9 @@ class Game(ABC):
         if path_to_values is not None:
             self.load_values(path_to_values, precomputed=True)
             self.game_id = path_to_values.split(os.path.sep)[-1].split(".")[0]
+            # if game should not be normalized, reset normalization value to 0
+            if not normalize and self.normalization_value != 0:
+                self.normalization_value = 0.0
 
         # define some handy coalition variables
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)

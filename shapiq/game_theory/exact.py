@@ -125,6 +125,7 @@ class ExactComputer:
         elif index in self.available_indices:
             computation_function = self._index_mapping[index]
             computed_index: InteractionValues = computation_function(index=index, order=order)
+            computed_index.baseline_value = self.baseline_value
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
@@ -157,9 +158,6 @@ class ExactComputer:
 
     def compute_game_values(self) -> tuple[float, np.ndarray[float], dict[tuple[int], int]]:
         """Evaluates the game on the powerset of all coalitions.
-
-        Args:
-            game_fun: A callable game
 
         Returns:
             baseline value (empty prediction), all game values, and the lookup dictionary
