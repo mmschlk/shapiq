@@ -75,7 +75,7 @@ def test_random_forest_selection(
     assert estimates.index == index
 
     # test against the exact computation
-    exact = ExactComputer(n_players=n_players, game_fun=game)
+    exact = ExactComputer(n_players=n_players, game=game)
     exact_values = exact(index=index, order=max_order)
 
     for interaction in powerset(range(n_players), min_size=min_order, max_size=max_order):
@@ -100,7 +100,7 @@ def test_adult():
     assert game.game_name == "AdultCensus_TreeSHAPIQXAI_Game"
 
     # test against the exact computation
-    exact = ExactComputer(n_players=game.n_players, game_fun=game)
+    exact = ExactComputer(n_players=game.n_players, game=game)
     exact_values = exact(index=index, order=max_order)
 
     for interaction in powerset(range(game.n_players), min_size=min_order, max_size=max_order):
@@ -126,7 +126,7 @@ def test_california(index_order):
     assert game.game_name == "CaliforniaHousing_TreeSHAPIQXAI_Game"
 
     # test against the exact computation
-    exact = ExactComputer(n_players=game.n_players, game_fun=game)
+    exact = ExactComputer(n_players=game.n_players, game=game)
     exact_values = exact(index=index, order=max_order)
 
     for interaction in powerset(range(game.n_players), min_size=min_order, max_size=max_order):
@@ -150,7 +150,7 @@ def test_bike():
     assert game.game_name == "BikeSharing_TreeSHAPIQXAI_Game"
 
     # test against the exact computation
-    exact = ExactComputer(n_players=game.n_players, game_fun=game)
+    exact = ExactComputer(n_players=game.n_players, game=game)
     exact_values = exact(index=index, order=max_order)
 
     for interaction in powerset(range(game.n_players), min_size=min_order, max_size=max_order):

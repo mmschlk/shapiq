@@ -8,3 +8,4 @@ The following notebooks provide basic examples of how to use the ``shapiq`` pack
    :maxdepth: 1
 
    tabular_notebooks/*
+   tree_notebooks/treeshapiq_lightgbm.ipynb
