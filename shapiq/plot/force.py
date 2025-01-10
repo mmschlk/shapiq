@@ -313,7 +313,7 @@ def _add_base_value(base_value: float, ax: plt.Axes) -> None:
     ax.add_line(line)
 
     text_out_val = ax.text(
-        base_value, 0.33, "base value", fontsize=12, alpha=1, horizontalalignment="center"
+        base_value, 0.25, "base value", fontsize=12, alpha=1, horizontalalignment="center"
     )
     text_out_val.set_bbox(dict(facecolor="white", edgecolor="white"))
 
@@ -375,37 +375,34 @@ def _split_features(
     feature_to_names: dict[int, str],
     out_value: float,
 ) -> tuple[np.ndarray, np.ndarray, float, float]:
-    """
-    Split the features into positive and negative values.
-    Args:
-        interaction_dictionary: Dictionary of the interaction values
-    """
-    pos_features = np.array(
-        sorted(
-            [
-                [str(value), format_labels(feature_to_names, coaltion)]
-                for coaltion, value in interaction_dictionary.items()
-                if value >= 0 and len(coaltion) > 0
-            ],
-            key=lambda x: x[0],
-            reverse=True,
-        ),
-        dtype=object,
-    )
-    neg_features = np.array(
-        sorted(
-            [
-                [str(value), " x ".join([feature_to_names[f] for f in coaltion])]
-                for coaltion, value in interaction_dictionary.items()
-                if value < 0 and len(coaltion) > 0
-            ],
-            key=lambda x: x[0],
-            reverse=True,
-        ),
-        dtype=object,
-    )
+    """Splits the features into positive and negative values.
 
-    # Convert negative feature values to plot values
+    Args:
+        interaction_dictionary: Dictionary containing the interaction values mapping from
+            feature indices to their values.
+        feature_to_names: Dictionary mapping feature indices to feature names.
+        out_value: The output value.
+
+    Returns:
+        tuple: A tuple containing the positive features, negative features, total positive value,
+            and total negative value.
+    """
+    # split features into positive and negative values
+    pos_features, neg_features = [], []
+    for coaltion, value in interaction_dictionary.items():
+        if len(coaltion) == 0:
+            continue
+        label = format_labels(feature_to_names, coaltion)
+        if value >= 0:
+            pos_features.append([str(value), label])
+        elif value < 0:
+            neg_features.append([str(value), label])
+    pos_features = sorted(pos_features, key=lambda x: x[0], reverse=True)
+    neg_features = sorted(neg_features, key=lambda x: x[0], reverse=True)
+    pos_features = np.array(pos_features, dtype=object)
+    neg_features = np.array(neg_features, dtype=object)
+
+    # convert negative feature values to plot values
     neg_val = out_value
     for i in neg_features:
         val = float(i[0])
@@ -418,7 +415,7 @@ def _split_features(
     else:
         total_neg = 0
 
-    # Convert positive feature values to plot values
+    # convert positive feature values to plot values
     pos_val = out_value
     for i in pos_features:
         val = float(i[0])
@@ -472,53 +469,80 @@ def _add_bars(
         ax.add_patch(i)
 
 
+def draw_higher_lower_element(out_value, offset_text):
+    plt.text(
+        out_value - offset_text,
+        0.35,
+        "higher",
+        fontsize=13,
+        color="#FF0D57",
+        horizontalalignment="right",
+    )
+    plt.text(
+        out_value + offset_text,
+        0.35,
+        "lower",
+        fontsize=13,
+        color="#1E88E5",
+        horizontalalignment="left",
+    )
+    plt.text(
+        out_value, 0.34, r"$\leftarrow$", fontsize=13, color="#1E88E5", horizontalalignment="center"
+    )
+    plt.text(
+        out_value,
+        0.36,
+        r"$\rightarrow$",
+        fontsize=13,
+        color="#FF0D57",
+        horizontalalignment="center",
+    )
+
+
 def _draw_force_plot(
     interaction_value: InteractionValues,
     feature_names: np.ndarray,
     figsize: tuple[int, int],
-    show: bool = True,
-    text_rotation: float = 0,
     min_perc: float = 0.05,
-):
+    draw_higher_lower: bool = True,
+) -> plt.Figure:
     """
     Draw the force plot.
     Args:
-        interaction_value: Interactiovalues ot be plotted
-        feature_names: names of the features
-        figsize: size of the figure
-        show: Whether to show the plot
-        text_rotation: Amount of text rotation
-        min_perc: Define the minimum percentage of the total effect that a feature must contribute to be shown.
-         Defaults to 0.05.
+        interaction_value: The ``InteractionValues`` to be plotted.
+        feature_names: Names of the features to be plotted provided as an array.
+        figsize: The size of the figure.
+        min_perc: Define the minimum percentage of the total effect that a feature must contribute
+            to be shown in the plot. Defaults to 0.05.
 
     Returns: None
 
     """
-    # Turn off interactive plot
-    if show is False:
-        plt.ioff()
+    # turn off interactive plot
+    plt.ioff()
 
-    # Compute overall metrics
+    # compute overall metrics
     base_value = interaction_value.baseline_value
     out_value = np.sum(interaction_value.values)  # Sum of all values with the baseline value
 
-    # Split features into positive and negative values
+    # split features into positive and negative values
+    features_to_names = {i: str(name) for i, name in enumerate(feature_names)}
     pos_features, neg_features, total_pos, total_neg = _split_features(
-        interaction_value.dict_values, {i: name for i, name in enumerate(feature_names)}, out_value
+        interaction_value.dict_values, features_to_names, out_value
     )
 
-    # Define plots
+    # define plots
     offset_text = (np.abs(total_neg) + np.abs(total_pos)) * 0.04
 
     fig, ax = plt.subplots(figsize=figsize)
 
-    # Compute axis limit
+    # compute axis limit
     update_axis_limits(ax, total_pos, pos_features, total_neg, neg_features, base_value, out_value)
 
-    # Add the bars to the plot
+    # add the bars to the plot
     _add_bars(ax, out_value, pos_features, neg_features)
 
-    # Add labels
+    # add labels
     total_effect = np.abs(total_neg) + total_pos
     fig, ax = _add_labels(
         fig,
@@ -529,7 +553,7 @@ def _draw_force_plot(
         offset_text,
         total_effect,
         min_perc=min_perc,
-        text_rotation=text_rotation,
+        text_rotation=0,
     )
 
     fig, ax = _add_labels(
@@ -541,42 +565,63 @@ def _draw_force_plot(
         offset_text,
         total_effect,
         min_perc=min_perc,
-        text_rotation=text_rotation,
+        text_rotation=0,
     )
 
-    # Add label for base value
+    # add higher and lower element
+    if draw_higher_lower:
+        draw_higher_lower_element(out_value, offset_text)
+
+    # add label for base value
     _add_base_value(base_value, ax)
 
-    # Add output label
+    # add output label
     out_names = ""
     _add_output_element(out_names, out_value, ax)
 
-    if show:
-        plt.show()
-    else:
-        return plt.gcf()
+    # fix the whitespace around the plot
+    plt.tight_layout()
+
+    return plt.gcf()
 
 
 def force_plot(
     interaction_values: InteractionValues,
     feature_names: Optional[np.ndarray] = None,
-    show: bool = False,
     abbreviate: bool = True,
+    show: bool = False,
+    figsize: tuple[int, int] = (15, 4),
+    draw_higher_lower: bool = True,
+    min_percentage: float = 0.05,
 ) -> Optional[plt.Figure]:
-    """
-    Draw a force plot.
+    """Draws a force plot for the given interaction values.
+
     Args:
-        interaction_values:
-        feature_names:
-        show:
-        abbreviate:
+        interaction_values: The ``InteractionValues`` to be plotted.
+        feature_names: The names of the features. If ``None``, the features are named by their index.
+        show: Whether to show or return the plot. Defaults to ``False`` and returns the plot.
+        abbreviate: Whether to abbreviate the feature names. Defaults to ``True.``
+        figsize: The size of the figure. Defaults to ``(15, 4)``.
+        draw_higher_lower: Whether to draw the higher and lower indicator. Defaults to ``True``.
+        min_percentage: Define the minimum percentage of the total effect that a feature must contribute
+            to be shown in the plot. Defaults to 0.05.
 
     Returns:
+        plt.Figure: The figure of the plot
 
     """
     if feature_names is None:
-        feature_names = np.array([str(i) for i in range(interaction_values.n_players)])
+        feature_names = [str(i) for i in range(interaction_values.n_players)]
     if abbreviate:
         feature_names = abbreviate_feature_names(feature_names)
-
-    return _draw_force_plot(interaction_values, feature_names, figsize=(20, 3), show=show)
+    feature_names = np.array(feature_names)
+    plot = _draw_force_plot(
+        interaction_values,
+        feature_names,
+        figsize=figsize,
+        draw_higher_lower=draw_higher_lower,
+        min_perc=min_percentage,
+    )
+    if not show:
+        return plot
+    plt.show()
