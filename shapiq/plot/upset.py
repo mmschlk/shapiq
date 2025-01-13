@@ -19,24 +19,24 @@ def upset_plot(
 ) -> Optional[plt.Figure]:
     """Plots the upset plot.
 
-    UpSet plots[1]_ are used to visualize the interactions between features. The plot consists of two
-    parts: the upper part shows the interaction values as bars, and the lower part shows the
-    interactions as a matrix. Originally, the UpSet plot was introduced by Lex et al. [1]_. For a
-    more detailed explanation, see the references or the original
+    UpSet plots[1]_ can be used to visualize the interactions between features. The plot consists of
+    two parts: the upper part shows the interaction values as bars, and the lower part shows the
+    interactions as a matrix. Originally, the UpSet plot was introduced by Lex et al. (2014)[1]_.
+    For a more detailed explanation about the plots, see the references or the original
     [documentation](https://upset.app/).
 
     An example of this plot is shown below.
 
     .. image:: /_static/images/upset_plot.png
-        :width: 500
+        :width: 600
         :align: center
 
     Args:
         interaction_values: The interaction values as an interaction object.
         feature_names: The names of the features. Defaults to ``None``. If ``None``, the features
             will be named with their index.
-        n_interactions: The number of top interactions to plot. Defaults to ``20``. Note this number is
-            completely arbitrary and can be adjusted to the user's needs.
+        n_interactions: The number of top interactions to plot. Defaults to ``20``. Note this number
+            is completely arbitrary and can be adjusted to the user's needs.
         color_matrix: Whether to color the matrix (red for positive values, blue for negative) or
             not (black). Defaults to ``False``.
         all_features: Whether to plot all ``n_players`` features or only the features that are
@@ -49,9 +49,6 @@ def upset_plot(
 
     References:
         .. [1] Alexander Lex, Nils Gehlenborg, Hendrik Strobelt, Romain Vuillemot, Hanspeter Pfister. UpSet: Visualization of Intersecting Sets IEEE Transactions on Visualization and Computer Graphics (InfoVis), 20(12): 1983--1992, doi:10.1109/TVCG.2014.2346248, 2014.
-
-        .. [2] A long test citation that I am testing the docs for how it is rendered in the docs up 
-            at readthedocs and now I am slpitting the line
     """
 
     # prepare data ---------------------------------------------------------------------------------

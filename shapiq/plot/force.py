@@ -1,4 +1,9 @@
-"""Wrapper for the force plot from the ``shap`` package."""
+"""Wrapper for the force plot from the ``shap`` package.
+
+Note:
+    Code and implementation was taken and adapted from the [SHAP package](https://github.com/shap/shap)
+    which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+"""
 
 from typing import Optional
 
@@ -23,17 +28,6 @@ def _create_bars(
     width_separators: float,
     width_bar: float,
 ) -> tuple[list, list]:
-    """
-    Create bars and separators for the plot.
-    Args:
-        out_value: the output value
-        features: names and values of the features to add
-        feature_type: Indicating whether positive or negative features
-        width_separators: width to separate the bars
-        width_bar: width of the bars
-
-    Returns: List of bars and separators
-    """
     rectangle_list = []
     separator_list = []
 
@@ -508,15 +502,22 @@ def _draw_force_plot(
 ) -> plt.Figure:
     """
     Draw the force plot.
+
+    Note:
+        The functionality was taken and adapted from the [SHAP package](https://github.com/shap/shap/blob/master/shap/plots/_force.py)
+        which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+        Do not use this function directly, use the ``force_plot`` function instead.
+
     Args:
-        interaction_value: The ``InteractionValues`` to be plotted.
-        feature_names: Names of the features to be plotted provided as an array.
+        interaction_value: The interaction values to be plotted.
+        feature_names: The names of the features.
         figsize: The size of the figure.
-        min_perc: Define the minimum percentage of the total effect that a feature must contribute
-            to be shown in the plot. Defaults to 0.05.
+        min_perc: minimal percentage of the total effect that a feature must contribute to be shown.
+            Defaults to ``0.05``.
+        draw_higher_lower: Whether to draw the higher and lower indicator. Defaults to ``True``.
 
-    Returns: None
-
+    Returns:
+        The figure of the plot.
     """
     # turn off interactive plot
     plt.ioff()
@@ -609,6 +610,8 @@ def force_plot(
     Returns:
         plt.Figure: The figure of the plot
 
+    References:
+        .. [1] SHAP is available at https://github.com/shap/shap
     """
     if feature_names is None:
         feature_names = [str(i) for i in range(interaction_values.n_players)]
