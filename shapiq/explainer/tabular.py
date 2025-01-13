@@ -49,27 +49,42 @@ AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII", "SV"}
 class TabularExplainer(Explainer):
     """The tabular explainer as the main interface for the shapiq package.
 
-    The ``TabularExplainer`` class is the main interface for the ``shapiq`` package. It can be used
-    to explain the predictions of a model by estimating the Shapley interaction values.
+    The ``TabularExplainer`` class is the main interface for the ``shapiq`` package and tabular
+    data. It can be used to explain the predictions of any model by estimating the Shapley
+    interaction values.
 
     Args:
         model: The model to be explained as a callable function expecting data points as input and
             returning 1-dimensional predictions.
+
         data: A background dataset to be used for imputation.
+
         class_index: The class index of the model to explain. Defaults to ``None``, which will set
             the class index to ``1`` per default for classification models and is ignored for
             regression models.
+
         imputer: Either an object of class Imputer or a string from ``["marginal", "conditional"]``.
             Defaults to ``"marginal"``, which innitializes the default MarginalImputer.
-        approximator: An approximator object to use for the explainer. Defaults to ``"auto"``, which will
-            automatically choose the approximator based on the number of features and the number of
-            samples in the background data.
-        index: Type of Shapley interaction index to use. Must be one of ``"SII"`` (Shapley Interaction Index),
-            ``"k-SII"`` (k-Shapley Interaction Index), ``"STII"`` (Shapley-Taylor Interaction Index),
-            ``"FSII"`` (Faithful Shapley Interaction Index), or ``"SV"`` (Shapley Value) for ``max_order=1``.
-            Defaults to ``"k-SII"``.
-        max_order: The maximum interaction order to be computed. Defaults to ``2``.
-        random_state: The random state to initialize Imputer and Approximator with. Defaults to ``None``.
+
+        approximator: An approximator object to use for the explainer. Defaults to ``"auto"``
+            which will automatically choose the approximator based on the number of features and
+            the desired index.
+                - for index ``"SV"``: :class:`~shapiq.approximator.KernelSHAP`
+                - for index ``"SII"`` or ``"k-SII"``: :class:`~shapiq.approximator.KernelSHAPIQ`
+                - for index ``"FSII"``: :class:`~shapiq.approximator.RegressionFSII`
+                - for index ``"STII"``: :class:`~shapiq.approximator.SVARMIQ`
+
+        index: Type of Shapley interaction index to use. Must be one of ``"SII"`` (Shapley
+            Interaction Index), ``"k-SII"`` (k-Shapley Interaction Index), ``"STII"``
+            (Shapley-Taylor Interaction Index), ``"FSII"`` (Faithful Shapley Interaction Index), or
+            ``"SV"`` (Shapley Value) for ``max_order=1``. Defaults to ``"k-SII"``.
+
+        max_order: The maximum interaction order to be computed. Defaults to ``2``. Set to ``1`` for
+            no interactions (single feature importance).
+
+        random_state: The random state to initialize Imputer and Approximator with. Defaults to
+            ``None``.
+
         **kwargs: Additional keyword-only arguments passed to the imputer.
 
     Attributes:
@@ -92,7 +107,12 @@ class TabularExplainer(Explainer):
         random_state: Optional[int] = None,
         **kwargs,
     ) -> None:
-        from shapiq.games.imputer import BaselineImputer, ConditionalImputer, MarginalImputer
+        from shapiq.games.imputer import (
+            BaselineImputer,
+            ConditionalImputer,
+            MarginalImputer,
+            TabPFNImputer,
+        )
 
         if index not in AVAILABLE_INDICES:
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
@@ -116,12 +136,14 @@ class TabularExplainer(Explainer):
             isinstance(imputer, MarginalImputer)
             or isinstance(imputer, ConditionalImputer)
             or isinstance(imputer, BaselineImputer)
+            or isinstance(imputer, TabPFNImputer)
         ):
             self._imputer = imputer
         else:
             raise ValueError(
                 f"Invalid imputer {imputer}. "
-                f'Must be one of ["marginal", "conditional"], or a valid Imputer object.'
+                f'Must be one of ["marginal", "baseline", "conditional"], or a valid Imputer '
+                f"object."
             )
         self._n_features: int = self.data.shape[1]
 
@@ -178,7 +200,8 @@ class TabularExplainer(Explainer):
             if max_order == 1:
                 if index != "SV":
                     warnings.warn(
-                        "`max_order=1` but `index != 'SV'`, setting `index = 'SV'`. Using the KernelSHAP approximator."
+                        "`max_order=1` but `index != 'SV'`, setting `index = 'SV'`. "
+                        "Using the KernelSHAP approximator."
                     )
                     self.index = "SV"
                 return KernelSHAP(
@@ -188,7 +211,8 @@ class TabularExplainer(Explainer):
             elif index == "SV":
                 if max_order != 1:
                     warnings.warn(
-                        "`index='SV'` but `max_order != 1`, setting `max_order = 1`. Using the KernelSHAP approximator."
+                        "`index='SV'` but `max_order != 1`, setting `max_order = 1`. "
+                        "Using the KernelSHAP approximator."
                     )
                     self._max_order = 1
                 return KernelSHAP(
