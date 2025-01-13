@@ -32,7 +32,7 @@ def upset_plot(
         :align: center
 
     Args:
-        interaction_values: The interaction values as an interaction object.
+        interaction_values: The interaction values as an ``InteractionValues`` object.
         feature_names: The names of the features. Defaults to ``None``. If ``None``, the features
             will be named with their index.
         n_interactions: The number of top interactions to plot. Defaults to ``20``. Note this number
