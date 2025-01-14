@@ -1,6 +1,9 @@
 ## Changelog
 
 ### v1.1.2 (2025-01-13)
+- adds ``shapiq.TabPFNExplainer`` as a specialized version of the ``shapiq.TabularExplainer`` which offers a streamlined variant of the explainer for the TabPFN model [#301](https://github.com/mmschlk/shapiq/issues/301)
+- handles ``explainer.explain()`` now through a common interface for all explainer classes which now need to implement a ``explain_function()`` method
+- adds the baseline_value into the InteractionValues object's value storage for the ``()`` interaction if ``min_order=0`` (default usually) for all indices that are not ``SII```(SII has another baseline value) such that the values are efficient (sum up to the model prediction) without the awkward handling of the baseline_value attribute
 - renames ``game_fun`` parameter in ``shapiq.ExactComputer`` to ``game`` [#297](https://github.com/mmschlk/shapiq/issues/297)
 - adds a TabPFN example notebook to the documentation
 - removes warning when class_index is not provided in explainers [#298](https://github.com/mmschlk/shapiq/issues/298)
