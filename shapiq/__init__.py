@@ -39,14 +39,14 @@ from .benchmark import (
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 
 # explainer classes
-from .explainer import Explainer, TabularExplainer, TreeExplainer
+from .explainer import Explainer, TabPFNExplainer, TabularExplainer, TreeExplainer
 
 # exact computer classes
 from .game_theory.exact import ExactComputer
 
 # game classes
 # imputer classes
-from .games import BaselineImputer, ConditionalImputer, Game, MarginalImputer
+from .games import BaselineImputer, ConditionalImputer, Game, MarginalImputer, TabPFNImputer
 
 # base classes
 from .interaction_values import InteractionValues
@@ -97,10 +97,12 @@ __all__ = [
     "Explainer",
     "TabularExplainer",
     "TreeExplainer",
+    "TabPFNExplainer",
     # imputers
     "MarginalImputer",
     "BaselineImputer",
     "ConditionalImputer",
+    "TabPFNImputer",
     # plots
     "network_plot",
     "stacked_bar_plot",

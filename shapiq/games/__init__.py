@@ -2,8 +2,8 @@
 
 # from . import benchmark  # not imported here to avoid circular imports and long import times
 from .base import Game
-from .imputer import BaselineImputer, ConditionalImputer, MarginalImputer
+from .imputer import BaselineImputer, ConditionalImputer, MarginalImputer, TabPFNImputer
 
-__all__ = ["Game", "MarginalImputer", "ConditionalImputer", "BaselineImputer"]
+__all__ = ["Game", "MarginalImputer", "ConditionalImputer", "BaselineImputer", "TabPFNImputer"]
 
 # Path: shapiq/games/__init__.py

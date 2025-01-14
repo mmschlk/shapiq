@@ -1,6 +1,7 @@
 """The base Explainer classes for the shapiq package."""
 
 from typing import Optional
+from warnings import warn
 
 import numpy as np
 
@@ -32,24 +33,14 @@ class Explainer:
     ) -> None:
 
         self._model_class = print_class(model)
-        self._predict_function, self._model_type = get_predict_function_and_model_type(
+        self._shapiq_predict_function, self._model_type = get_predict_function_and_model_type(
             model, self._model_class, class_index
         )
         self.model = model
 
         if data is not None:
-            if not isinstance(data, np.ndarray):
-                raise TypeError("`data` must be a NumPy array.")
-            try:
-                pred = self.predict(data)
-                if isinstance(pred, np.ndarray):
-                    if len(pred.shape) > 1:
-                        raise ValueError()
-                else:
-                    raise ValueError()
-            except Exception as e:
-                print(f"Error: The `data` provided is not compatible with the model. {e}")
-                pass
+            if self._model_type != "tabpfn":
+                self._validate_data(data)
         self.data = data
 
         # not super()
@@ -58,6 +49,37 @@ class Explainer:
                 _explainer = get_explainers()[self._model_type]
                 self.__class__ = _explainer
                 _explainer.__init__(self, model=model, data=data, class_index=class_index, **kwargs)
+
+    def _validate_data(self, data: np.ndarray, raise_error: bool = False) -> None:
+        """Validate the data for compatibility with the model.
+
+        Args:
+            data: A 2-dimensional matrix of inputs to be explained.
+            raise_error: Whether to raise an error if the data is not compatible with the model or
+                only print a warning. Defaults to ``False``.
+
+        Raises:
+            TypeError: If the data is not a NumPy array.
+        """
+        message = "The `data` and the model must be compatible."
+        if not isinstance(data, np.ndarray):
+            message += " The `data` must be a NumPy array."
+            raise TypeError(message)
+        try:
+            # TODO (mmschlk): This can take a long time for large datasets and slow models
+            pred = self.predict(data)
+            if isinstance(pred, np.ndarray):
+                if len(pred.shape) > 1:
+                    message += " The model's prediction must be a 1-dimensional array."
+                    raise ValueError()
+            else:
+                message += " The model's prediction must be a NumPy array."
+                raise ValueError()
+        except Exception as e:
+            if raise_error:
+                raise ValueError(message) from e
+            else:
+                warn(message)
 
     def explain(self, x: np.ndarray) -> InteractionValues:
         """Explain the model's prediction in terms of interaction values.
@@ -104,4 +126,4 @@ class Explainer:
         Args:
             x: An instance/point/sample/observation to be explained.
         """
-        return self._predict_function(self.model, x)
+        return self._shapiq_predict_function(self.model, x)

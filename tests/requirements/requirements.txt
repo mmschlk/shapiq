@@ -21,3 +21,4 @@ requests==2.32.3
 lightgbm==4.5.0
 tf-keras==2.18.0
 tensorflow==2.18.0
+tabpfn==2.0.3

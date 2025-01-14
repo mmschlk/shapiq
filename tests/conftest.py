@@ -11,7 +11,9 @@ from PIL import Image
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import IsolationForest, RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from tabpfn import TabPFNClassifier, TabPFNRegressor
 
 NR_FEATURES = 7
 
@@ -48,6 +50,26 @@ def cooking_game():
             return np.array(output)
 
     return CookingGame()
+
+
+@pytest.fixture
+def tabpfn_classification_problem() -> tuple[TabPFNClassifier, np.ndarray, np.ndarray, np.ndarray]:
+    """Returns a very simple tabpfn classifier and dataset."""
+    data, labels = make_classification(n_samples=10, n_features=3, random_state=42, n_redundant=1)
+    data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
+    model = TabPFNClassifier()
+    model.fit(data, labels)
+    return model, data, labels, x_test
+
+
+@pytest.fixture
+def tabpfn_regression_problem() -> tuple[TabPFNRegressor, np.ndarray, np.ndarray, np.ndarray]:
+    """Returns a very simple tabpfn regressor and dataset."""
+    data, labels = make_regression(n_samples=10, n_features=3, random_state=42)
+    data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
+    model = TabPFNRegressor()
+    model.fit(data, labels)
+    return model, data, labels, x_test
 
 
 @pytest.fixture

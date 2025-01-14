@@ -2,6 +2,7 @@
 
 import warnings
 from typing import Optional, Union
+from warnings import warn
 
 import numpy as np
 
@@ -105,6 +106,7 @@ class TabularExplainer(Explainer):
         index: str = "k-SII",
         max_order: int = 2,
         random_state: Optional[int] = None,
+        verbose: bool = False,
         **kwargs,
     ) -> None:
         from shapiq.games.imputer import (
@@ -118,6 +120,16 @@ class TabularExplainer(Explainer):
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
 
         super().__init__(model, data, class_index)
+
+        # get class for self
+        class_name = self.__class__.__name__
+        if self._model_type == "tabpfn" and class_name == "TabularExplainer":
+            warn(
+                "You are using a TabPFN model with the ``shapiq.TabularExplainer`` directly. This "
+                "is not recommended as it uses missing value imputation and not contextualization. "
+                "Consider using the ``shapiq.TabPFNExplainer`` instead. For more information see "
+                "the documentation and the example notebooks."
+            )
 
         self._random_state = random_state
         if imputer == "marginal":
@@ -146,6 +158,7 @@ class TabularExplainer(Explainer):
                 f"object."
             )
         self._n_features: int = self.data.shape[1]
+        self._imputer.verbose = verbose  # set the verbose flag for the imputer
 
         self.index = index
         self._max_order: int = max_order
