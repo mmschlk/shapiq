@@ -14,7 +14,10 @@ class Explainer:
     """The main Explainer class for a simpler user interface.
 
     shapiq.Explainer is a simplified interface for the ``shapiq`` package. It detects between
-    TabularExplainer and TreeExplainer based on the model class.
+    :class:`~shapiq.explainer.tabular.TabularExplainer`,
+    :class:`~shapiq.explainer.tree.TreeExplainer`,
+    and :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. For a detailed description of the
+    different explainers, see the respective classes.
 
     Args:
         model: The model object to be explained.

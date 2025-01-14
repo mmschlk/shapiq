@@ -35,7 +35,8 @@ class TabPFNExplainer(TabularExplainer):
                 - ``"k-SII"``: k-Shapley Interaction Index
                 - ``"FSII"``: Faithful Shapley Interaction Index
                 - ``"STII"``: Shapley Taylor Interaction Index
-                - ``"SII"``: Shapley Interaction Index
+                - ``"SII"``: Shapley Interaction Index (not recommended for XAI since the values do
+                    not sum up to the prediction)
 
         x_test: An optional test data set to compute the model's empty prediction (average
             prediction) on. If no test data and ``empty_prediction`` is set to ``None`` the last
@@ -95,6 +96,9 @@ class TabPFNExplainer(TabularExplainer):
             sections = [int(0.8 * n_samples)]
             x_train, x_test = np.split(data, sections)
             y_train, _ = np.split(labels, sections)
+
+        if x_test is None:
+            x_test = x_train  # is not used in the TabPFNImputer if empty_prediction is set
 
         imputer = TabPFNImputer(
             model=model,

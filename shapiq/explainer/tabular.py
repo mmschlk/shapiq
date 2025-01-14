@@ -75,10 +75,15 @@ class TabularExplainer(Explainer):
                 - for index ``"FSII"``: :class:`~shapiq.approximator.RegressionFSII`
                 - for index ``"STII"``: :class:`~shapiq.approximator.SVARMIQ`
 
-        index: Type of Shapley interaction index to use. Must be one of ``"SII"`` (Shapley
-            Interaction Index), ``"k-SII"`` (k-Shapley Interaction Index), ``"STII"``
-            (Shapley-Taylor Interaction Index), ``"FSII"`` (Faithful Shapley Interaction Index), or
-            ``"SV"`` (Shapley Value) for ``max_order=1``. Defaults to ``"k-SII"``.
+        index: The index to explain the model with. Defaults to ``"k-SII"`` which computes the
+            k-Shapley Interaction Index. If ``max_order`` is set to 1, this corresponds to the
+            Shapley value (``index="SV"``). Options are:
+                - ``"SV"``: Shapley value
+                - ``"k-SII"``: k-Shapley Interaction Index
+                - ``"FSII"``: Faithful Shapley Interaction Index
+                - ``"STII"``: Shapley Taylor Interaction Index
+                - ``"SII"``: Shapley Interaction Index (not recommended for XAI since the values do
+                    not sum up to the prediction)
 
         max_order: The maximum interaction order to be computed. Defaults to ``2``. Set to ``1`` for
             no interactions (single feature importance).
