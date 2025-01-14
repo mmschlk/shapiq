@@ -34,7 +34,7 @@ def sentence_plot(
     An example of the plot is shown below.
 
     .. image:: /_static/sentence_plot_example.png
-        :width: 300
+        :width: 400
         :align: center
 
     Args:

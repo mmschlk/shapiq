@@ -8,8 +8,10 @@ from ._base import Regression
 
 
 class RegressionFSII(Regression):
-    """Estimates the FSII values using KernelSHAP. The Algorithm is described
-    in `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
+    """Estimates the FSII values using KernelSHAP.
+
+    The Faithful KernelSHAP regression is described in Tsai et al. (2023)[1]_. The method estimates
+    the Faithful Shapley interaction index (FSII).
 
     Args:
         n: The number of players.
@@ -21,13 +23,16 @@ class RegressionFSII(Regression):
             of a certain size. Defaults to ``None``.
         random_state: The random state of the estimator. Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from ``0`` to ``n - 1``).
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For the regression estimator, min_order
-            is equal to ``1``.
-        iteration_cost: The cost of a single iteration of the regression SII.
+    See Also:
+        - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
+            approximator for estimating the Shapley values.
+        - :class:`~shapiq.approximator.regression.kernelshapiq.KernelSHAPIQ`: The KernelSHAPIQ
+            approximator for estimating the Shapley interaction index (SII) and the
+            k-Shapley interaction index (k-SII).
+
+    References:
+        .. [1] Tsai, C.-P., Yeh, C.-K., and Ravikumar, P. (2023). In Journal of Machine Learning Research 24(94), pp. 1--42. url: http://jmlr.org/papers/v24/22-0202.html
+
     """
 
     def __init__(

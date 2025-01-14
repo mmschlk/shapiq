@@ -1,4 +1,9 @@
-"""Wrapper for the waterfall plot from the ``shap`` package."""
+"""Wrapper for the waterfall plot from the ``shap`` package.
+
+Note:
+    Code and implementation was taken and adapted from the [SHAP package](https://github.com/shap/shap)
+    which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+"""
 
 from typing import Optional
 
@@ -16,17 +21,22 @@ __all__ = ["waterfall_plot"]
 def _draw_waterfall_plot(
     values: np.ndarray, base_values: float, feature_names: list[str], max_display=10, show=True
 ) -> Optional[plt.Axes]:
-    """
-    Create a waterfall plot idential to SHAP waterfall plot (https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/waterfall.html).
+    """The waterfall plot from the SHAP package.
+
+    Note:
+        This function was taken and adapted from the [SHAP package](https://github.com/shap/shap/blob/master/shap/plots/_waterfall.py)
+        which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+        Do not use this function directly, use the ``waterfall_plot`` function instead.
+
     Args:
-        values: the explanation values
-        base_values: the base value of the game
-        feature_names: the names of the features
-        max_display: the maximum number of features to display
-        show: whether to show the plot
+        values: The values to plot.
+        base_values: The base value.
+        feature_names: The names of the features.
+        max_display: The maximum number of features to display.
+        show: Whether to show the plot.
 
-    Returns: the plot if show is False
-
+    Returns:
+        The plot if ``show`` is ``False``.
     """
     # Turn off interactive plot
     if show is False:
@@ -331,12 +341,21 @@ def waterfall_plot(
 ) -> Optional[plt.Axes]:
     """Draws a waterfall plot with the interaction values.
 
+    The waterfall plot shows the individual contributions of the features to the interaction values.
+    The plot is based on the waterfall plot from the SHAP[1]_ package.
+
     Args:
         interaction_values: The interaction values as an interaction object.
         feature_names: The names of the features. Defaults to ``None``.
         show: Whether to show the plot. Defaults to ``False``.
         max_display: The maximum number of interactions to display. Defaults to ``10``.
         abbreviate: Whether to abbreviate the feature names. Defaults to ``True``.
+
+    Returns:
+        The plot if ``show`` is ``False``.
+
+    References:
+        .. [1] SHAP is available at https://github.com/shap/shap
     """
 
     if feature_names is None:

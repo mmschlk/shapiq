@@ -196,7 +196,8 @@ def _draw_explanation_nodes(
         graph: The graph to draw the nodes on.
         nodes: The nodes to draw. If ``None``, all nodes are drawn. Defaults to ``None``.
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
-        node_area_scaling: TODO add docstring.
+        node_area_scaling: Whether to scale the node sizes based on the area of the nodes (``True``)
+            or the radius of the nodes (``False``). Defaults to ``False``.
     """
     for node in graph.nodes:
         if isinstance(node, tuple):
@@ -336,7 +337,8 @@ def si_graph_plot(
     An explanation graph is an undirected graph where the nodes represent players and the edges
     represent interactions between the players. The size of the nodes and edges represent the
     strength of the interaction values. The color of the edges represents the sign of the
-    interaction values.
+    interaction values (red for positive and blue for negative). The SI-graph plot is presented in
+    Muschalik et al. (2024)[1]_.
 
     Args:
         interaction_values: The interaction values to plot.
@@ -376,11 +378,15 @@ def si_graph_plot(
         interaction_direction: The sign of the interaction values to plot. If ``None``, all
             interactions are plotted. Possible values are ``"positive"`` and
             ``"negative"``. Defaults to ``None``.
-        node_area_scaling: TODO add docstring.
+        node_area_scaling: Whether to scale the node sizes based on the area of the nodes (``True``)
+             or the radius of the nodes (``False``). Defaults to ``False``.
         show: Whether to show or return the plot. Defaults to ``False``.
 
     Returns:
-        The figure and axis of the plot if ``show`` is ``True``. Otherwise, ``None``.
+        The figure and axis of the plot if ``show`` is ``False``. Otherwise, ``None``.
+
+    References:
+        .. [1] Muschalik, M., Baniecki, H., Fumagalli, F., Kolpaczki, P., Hammer, B., and Hüllermeier, E. (2024). shapiq: Shapley Interactions for Machine Learning. In: The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track. url: https://openreview.net/forum?id=knxGmi6SJi#discussion.
     """
 
     normal_node_size = NORMAL_NODE_SIZE * node_size_scaling

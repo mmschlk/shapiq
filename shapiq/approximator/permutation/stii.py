@@ -20,14 +20,14 @@ class PermutationSamplingSTII(Approximator):
         random_state: The random state to use for the permutation sampling.
             Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order to approximate.
-        iteration_cost: The cost of a single iteration of the permutation sampling.
+    See Also:
+        - :class:`~shapiq.approximator.permutation.sii.PermutationSamplingSII`: The Permutation
+            Sampling approximator for the SII index
+        - :class:`~shapiq.approximator.permutation.sv.PermutationSamplingSV`: The Permutation
+            Sampling approximator for the SV index
 
     Example:
-        >>> from shapiq.games import DummyGame
+        >>> from shapiq.games.benchmark import DummyGame
         >>> from approximator import PermutationSamplingSTII
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = PermutationSamplingSTII(n=5, max_order=2)
