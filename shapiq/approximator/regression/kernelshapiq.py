@@ -10,9 +10,18 @@ AVAILABLE_INDICES_KERNELSHAPIQ = {"k-SII", "SII"}
 
 
 class KernelSHAPIQ(Regression):
-    """Estimates the SII values using KernelSHAP-IQ.
+    """The KernelSHAP-IQ regression approximator for estimating the Shapley interaction index (SII)
+    and the k-Shapley interaction index (k-SII).
 
-    Algorithm described in `Fumagalli et al. (2024) <https://doi.org/10.48550/arXiv.2405.10852>`_.
+    The KernelSHAP-IQ approximator is described in Fumagalli et al. (2024)[1]_. The method estimates
+    the Shapley interaction index (SII) and the k-Shapley interaction index (k-SII) by solving a
+    weighted regression problem, where the Shapley interaction indices are the coefficients of the
+    regression problem. The estimation happens in subsequent steps, where first the first-order SII
+    values are estimated. Then, the second-order SII values are estimated using the first-order
+    estimations and their residuals. This process is repeated up to the desired interaction order.
+    Another variant of KernelSHAP-IQ is the Inconsistent KernelSHAP-IQ[1]_, which works in a similar
+    way but does not converge to the true SII values, but often provides better estimates for lower
+    computational budgets.
 
     Args:
         n: The number of players.
@@ -22,9 +31,22 @@ class KernelSHAPIQ(Regression):
         pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
             to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to ``None``.
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a
+            coalition of a certain size. Defaults to ``None``.
         random_state: The random state of the estimator. Defaults to ``None``.
+
+    See Also:
+        - :class:`~shapiq.approximator.regression.kernelshapiq.InconsistentKernelSHAPIQ`: The
+            Inconsistent KernelSHAP-IQ approximator for estimating the Shapley interaction index
+            (SII) and the k-Shapley interaction index (k-SII).
+        - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
+            approximator for estimating the Shapley values.
+        - :class:`~shapiq.approximator.regression.fsi.RegressionFSII`: The Faithful KernelSHAP
+            approximator for estimating the Faithful Shapley interaction index (FSII).
+
+    References:
+        .. [1] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., and Hammer, B. (2024). KernelSHAP-IQ: Weighted Least Square Optimization for Shapley Interactions. In Proceedings of the 41 st International Conference on Machine Learning. url: https://openreview.net/forum?id=d5jXW2H4gg
+
     """
 
     def __init__(
@@ -53,8 +75,13 @@ class KernelSHAPIQ(Regression):
 
 
 class InconsistentKernelSHAPIQ(Regression):
-    """Estimates the SII values using Inconsistent KernelSHAP-IQ. Algorithm similar to kADD-SHAP.
-    For details, refer to `Fumagalli et al. (2024) <https://doi.org/10.48550/arXiv.2405.10852>`_.
+    """The Inconsistent KernelSHAP-IQ regression approximator for estimating the Shapley interaction
+    index (SII) and the k-Shapley interaction index (k-SII).
+
+    Inconsistent KernelSHAP-IQ[1]_ is a variant of the KernelSHAP-IQ estimator that does not
+    converge to the true SII values, but often provides better estimates for lower computational
+    budgets. The algorithm is also similar to kADD-SHAP[2]_. For details, we refer to
+    Fumagalli et al. (2024)[1]_.
 
     Args:
         n: The number of players.
@@ -65,6 +92,21 @@ class InconsistentKernelSHAPIQ(Regression):
             be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
             of a certain size. Defaults to ``None``.
         random_state: The random state of the estimator. Defaults to ``None``.
+
+    See Also:
+        - :class:`~shapiq.approximator.regression.kernelshapiq.KernelSHAPIQ`: The KernelSHAPIQ
+            approximator for estimating the Shapley interaction index (SII) and the
+            k-Shapley interaction index (k-SII).
+        - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
+            approximator for estimating the Shapley values.
+        - :class:`~shapiq.approximator.regression.kadd_shap.kADDSHAP`: The kADD-SHAP approximator
+            for estimating the kADD-SHAP values.
+        - :class:`~shapiq.approximator.regression.fsi.RegressionFSII`: The Faithful KernelSHAP
+            approximator for estimating the Faithful Shapley interaction index (FSII).
+
+    References:
+        .. [1] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., and Hammer, B. (2024). KernelSHAP-IQ: Weighted Least Square Optimization for Shapley Interactions. In Proceedings of the 41 st International Conference on Machine Learning. url: https://openreview.net/forum?id=d5jXW2H4gg
+        .. [2] Pelegrina, G. D., Duarte, L. T., Grabisch, M. (2023). A k-additive Choquet integral-based approach to approximate the SHAP values for local interpretability in machine learning. In Artificial Intelligence 325, pp. 104014. doi: https://doi.org/10.1016/j.artint.2023.104014.
     """
 
     def __init__(

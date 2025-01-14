@@ -1,4 +1,9 @@
-"""Wrapper for the bar plot from the ``shap`` package."""
+"""Wrapper for the bar plot from the ``shap`` package.
+
+Note:
+    Code and implementation was taken and adapted from the [SHAP package](https://github.com/shap/shap)
+    which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+"""
 
 from typing import Optional
 
@@ -20,8 +25,21 @@ def _bar(
 ) -> plt.Axes:
     """Create a bar plot of a set of SHAP values.
 
-    This is a modified version of the bar plot from the SHAP package. The original code can be found
-    at https://github.com/shap/shap.
+    Note:
+        This function was taken and adapted from the [SHAP package](https://github.com/shap/shap/blob/master/shap/plots/_bar.py)
+        which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+        Do not use this function directly, use the ``bar_plot`` function instead.
+
+    Args:
+        values: The explanation values to plot as a 2D array. Each row should be a different group
+            of values to plot. The columns are the feature values.
+        feature_names: The names of the features to display.
+        max_display: The maximum number of features to display. Defaults to ``10``.
+        ax: The axis to plot on. If ``None``, a new figure and axis is created. Defaults to
+            ``None``.
+
+    Returns:
+        The axis of the plot.
     """
     # determine how many top features we will plot
     num_features = len(values[0])
@@ -165,9 +183,10 @@ def bar_plot(
     max_display: Optional[int] = 10,
     global_plot: bool = True,
 ) -> Optional[plt.Axes]:
-    """Draws interaction values on a bar plot.
+    """Draws interaction values as a SHAP bar plot[1]_.
 
-    Requires the ``shap`` Python package to be installed.
+    The function draws the interaction values on a bar plot. The interaction values can be
+    aggregated into a global explanation or plotted separately.
 
     Args:
         list_of_interaction_values: A list containing InteractionValues objects.
@@ -182,6 +201,13 @@ def bar_plot(
             into a global explanation (``True``) or to plot them as separate bars (``False``).
             Defaults to ``True``. If only one InteractionValues object is provided, this parameter
             is ignored.
+
+    Returns:
+        If ``show`` is ``False``, the function returns the axis of the plot. Otherwise, it returns
+        ``None``.
+
+    References:
+        .. [1] SHAP is available at https://github.com/shap/shap
     """
     n_players = list_of_interaction_values[0].n_players
 

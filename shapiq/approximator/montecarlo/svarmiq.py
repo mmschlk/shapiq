@@ -6,9 +6,12 @@ from ._base import MonteCarlo
 
 
 class SVARMIQ(MonteCarlo):
-    """SVARM-IQ approximator uses standard form of Shapley interactions.
-    SVARM-IQ utilizes MonteCarlo approximation with both stratification strategies.
-    For details, refer to `Kolpaczki et al. (2024) <https://doi.org/10.48550/arXiv.2401.13371>`_.
+    """The SVARM-IQ[1]_ approximator for Shapley interactions.
+
+    SVARM-IQ utilizes MonteCarlo approximation with two stratification strategies. SVARM-IQ is a
+    generalization of the SVARM algorithm[2]_ and can approximate any-order Shapley interactions
+    efficiently. For details about the algorithm see the original paper by Kolpaczki et al.
+    (2024)[1]_.
 
     Args:
         n: The number of players.
@@ -18,17 +21,13 @@ class SVARMIQ(MonteCarlo):
         pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
             to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to `None`.
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a
+            coalition of a certain size. Defaults to ``None``.
 
+    References:
+        .. [1] Kolpaczki, P., Muschalik M., Fumagalli, F., Hammer, B., and Hüllermeier, E., (2024). SVARM-IQ: Efficient Approximation of Any-order Shapley Interactions through Stratification. Proceedings of The 27th International Conference on Artificial Intelligence and Statistics, PMLR 238:3520-3528. url: https://proceedings.mlr.press/v238/kolpaczki24a
 
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from ``0`` to ``n - 1``).
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For the regression estimator, ``min_order``
-            is equal to ``1``.
-        iteration_cost: The cost of a single iteration of the regression SII.
+        .. [2] Kolpaczki, P., Bengs, V., Muschalik, M., & Hüllermeier, E. (2024). Approximating the Shapley Value without Marginal Contributions. Proceedings of the AAAI Conference on Artificial Intelligence, 38(12), 13246-13255. https://doi.org/10.1609/aaai.v38i12.29225
     """
 
     def __init__(
@@ -55,9 +54,10 @@ class SVARMIQ(MonteCarlo):
 
 
 class SVARM(SVARMIQ):
-    """The SVARM approximator for estimating the Shapley value (SV).
+    """The SVARM[1]_ approximator for estimating the Shapley value (SV).
 
-    For details, refer to `Kolpaczki et al. (2024) <https://doi.org/10.48550/arXiv.2302.00736>`_.
+    SVARM is a MonteCarlo approximation algorithm that estimates the Shapley value. For details
+    about the algorithm see the original paper by Kolpaczki et al. (2024)[1]_.
 
     Args:
         n: The number of players.
@@ -65,16 +65,11 @@ class SVARM(SVARMIQ):
         pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
             to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to `None`.
+            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a
+            coalition of a certain size. Defaults to `None`.
 
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from ``0`` to ``n - 1``).
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For the regression estimator, ``min_order``
-            is equal to ``1``.
-        iteration_cost: The cost of a single iteration of the regression SII.
+    References:
+        .. [1] Kolpaczki, P., Bengs, V., Muschalik, M., & Hüllermeier, E. (2024). Approximating the Shapley Value without Marginal Contributions. Proceedings of the AAAI Conference on Artificial Intelligence, 38(12), 13246-13255. https://doi.org/10.1609/aaai.v38i12.29225
     """
 
     def __init__(
