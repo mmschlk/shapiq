@@ -169,8 +169,8 @@ def test_explain(dt_model, data, index, budget, max_order, imputer):
     # test for efficiency
     if index in ("FSII", "k-SII"):
         prediction = float(model_function(x)[0])
-        sum_of_values = float(np.sum(interaction_values.values) + interaction_values.baseline_value)
-        assert interaction_values[()] == 0.0
+        sum_of_values = float(np.sum(interaction_values.values))
+        assert pytest.approx(interaction_values[()]) == interaction_values.baseline_value
         assert pytest.approx(sum_of_values, 0.01) == prediction
 
 

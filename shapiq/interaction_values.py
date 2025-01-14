@@ -80,7 +80,19 @@ class InteractionValues:
             )
 
         if not isinstance(self.baseline_value, (int, float)):
-            raise TypeError("Baseline value must be provided as a number.")
+            raise TypeError(
+                f"Baseline value must be provided as a number. Got {self.baseline_value}."
+            )
+
+        # check if () is in the interaction_lookup if min_order is 0 -> add it to the end
+        if self.min_order == 0 and () not in self.interaction_lookup:
+            self.interaction_lookup[()] = len(self.interaction_lookup)
+            self.values = np.concatenate((self.values, np.array([self.baseline_value])))
+
+        # update the baseline value in the values vector if index is not SII
+        # # TODO: this might be a good idea check if this is okay to do
+        # if self.index != "SII" and self.baseline_value != self.values[self.interaction_lookup[()]]:
+        #     self.values[self.interaction_lookup[()]] = self.baseline_value
 
     @property
     def dict_values(self) -> dict[tuple[int, ...], float]:
@@ -225,6 +237,28 @@ class InteractionValues:
             return float(self.values[self.interaction_lookup[item]])
         except KeyError:
             return 0.0
+
+    def __setitem__(self, item: Union[int, tuple[int, ...]], value: float) -> None:
+        """Sets the score for the given interaction.
+
+        Args:
+            item: The interaction as a tuple of integers for which to set the score. If ``item`` is an
+                integer it serves as the index to the values vector.
+            value: The value to set for the interaction.
+
+        Raises:
+            KeyError: If the interaction is not found in the InteractionValues object.
+        """
+        try:
+            if isinstance(item, int):
+                self.values[item] = value
+            else:
+                item = tuple(sorted(item))
+                self.values[self.interaction_lookup[item]] = value
+        except Exception as e:
+            raise KeyError(
+                f"Interaction {item} not found in the InteractionValues. Unable to set a value."
+            ) from e
 
     def __eq__(self, other: object) -> bool:
         """Checks if two InteractionValues objects are equal.

@@ -164,7 +164,7 @@ class TabularExplainer(Explainer):
         self._max_order: int = max_order
         self._approximator = self._init_approximator(approximator, self.index, self._max_order)
 
-    def explain(
+    def explain_function(
         self, x: np.ndarray, budget: Optional[int] = None, random_state: Optional[int] = None
     ) -> InteractionValues:
         """Explains the model's predictions.

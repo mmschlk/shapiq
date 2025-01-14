@@ -1,5 +1,6 @@
 """The base Explainer classes for the shapiq package."""
 
+from abc import abstractmethod
 from typing import Optional
 from warnings import warn
 
@@ -81,13 +82,35 @@ class Explainer:
             else:
                 warn(message)
 
-    def explain(self, x: np.ndarray) -> InteractionValues:
-        """Explain the model's prediction in terms of interaction values.
+    def explain(self, x: np.ndarray, *args, **kwargs) -> InteractionValues:
+        """Explain a single prediction in terms of interaction values.
 
         Args:
-            x: An instance/point/sample/observation to be explained.
+            x: A numpy array of a data point to be explained.
+            *args: Additional positional arguments passed to the explainer.
+            **kwargs: Additional keyword-only arguments passed to the explainer.
+
+        Returns:
+            The interaction values of the prediction.
         """
-        return {}
+        explanation = self.explain_function(x=x, *args, **kwargs)
+        if explanation.min_order == 0:
+            explanation[()] = explanation.baseline_value
+        return explanation
+
+    @abstractmethod
+    def explain_function(self, x: np.ndarray, *args, **kwargs) -> InteractionValues:
+        """Explain a single prediction in terms of interaction values.
+
+        Args:
+            x: A numpy array of a data point to be explained.
+            *args: Additional positional arguments passed to the explainer.
+            **kwargs: Additional keyword-only arguments passed to the explainer.
+
+        Returns:
+            The interaction values of the prediction.
+        """
+        raise NotImplementedError("The method `explain` must be implemented in a subclass.")
 
     def explain_X(
         self, X: np.ndarray, n_jobs=None, random_state=None, **kwargs
