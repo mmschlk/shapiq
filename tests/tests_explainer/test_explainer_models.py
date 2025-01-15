@@ -17,7 +17,7 @@ def test_torch_reg(torch_reg_model, background_reg_data):
     explainer = Explainer(model=torch_reg_model, data=background_reg_data)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction == pytest.approx(sum_of_values, rel=0.01)
 
 
@@ -32,13 +32,13 @@ def test_torch_clf(torch_clf_model, background_clf_data):
     explainer = Explainer(model=torch_clf_model, data=background_clf_data, class_index=2)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[2] == pytest.approx(sum_of_values, rel=0.001)
 
     explainer = Explainer(model=torch_clf_model, data=background_clf_data, class_index=0)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[0] == pytest.approx(sum_of_values, rel=0.001)
 
 
@@ -51,13 +51,13 @@ def test_sklearn_clf_tree(dt_clf_model, background_clf_data):
     explainer = TabularExplainer(model=dt_clf_model, data=background_clf_data, class_index=2)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[2] == pytest.approx(sum_of_values, abs=0.001)
 
     explainer = TabularExplainer(model=dt_clf_model, data=background_clf_data, class_index=0)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[0] == pytest.approx(sum_of_values, abs=0.001)
 
     # do the same with the bare explainer (only for class_label=2)
@@ -78,7 +78,7 @@ def test_sklearn_reg_tree(dt_reg_model, background_reg_data):
     explainer = TabularExplainer(model=dt_reg_model, data=background_reg_data)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction == pytest.approx(sum_of_values, abs=0.001)
 
     # do the same with the bare explainer
@@ -99,13 +99,13 @@ def test_sklearn_clf_forest(rf_clf_model, background_clf_data):
     explainer = TabularExplainer(model=rf_clf_model, data=background_clf_data, class_index=2)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[2] == pytest.approx(sum_of_values, rel=0.001)
 
     explainer = TabularExplainer(model=rf_clf_model, data=background_clf_data, class_index=0)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[0] == pytest.approx(sum_of_values, rel=0.001)
 
     # do the same with the bare explainer (only for class_label=2)
@@ -125,14 +125,14 @@ def test_sklearn_reg_forest(rf_reg_model, background_reg_data):
     explainer = TabularExplainer(model=rf_reg_model, data=background_reg_data)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction == pytest.approx(sum_of_values)
 
     # do the same with the bare explainer
     explainer = Explainer(model=rf_reg_model, data=background_reg_data)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction == pytest.approx(sum_of_values, rel=0.01)
 
 
@@ -145,20 +145,20 @@ def test_sklearn_clf_logistic_regression(lr_clf_model, background_clf_data):
     explainer = TabularExplainer(model=lr_clf_model, data=background_clf_data, class_index=2)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[2] == pytest.approx(sum_of_values)
 
     explainer = TabularExplainer(model=lr_clf_model, data=background_clf_data, class_index=0)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[0] == pytest.approx(sum_of_values)
 
     # do the same with the bare explainer (only for class_label=2)
     explainer = Explainer(model=lr_clf_model, data=background_clf_data, class_index=2)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[2] == pytest.approx(sum_of_values)
 
 
@@ -171,14 +171,14 @@ def test_sklearn_reg_linear_regression(lr_reg_model, background_reg_data):
     explainer = TabularExplainer(model=lr_reg_model, data=background_reg_data)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction == pytest.approx(sum_of_values)
 
     # do the same with the bare explainer
     explainer = Explainer(model=lr_reg_model, data=background_reg_data)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction == pytest.approx(sum_of_values)
 
 
@@ -191,7 +191,7 @@ def test_lightgbm_reg(lightgbm_reg_model, background_reg_data):
     explainer = TabularExplainer(model=lightgbm_reg_model, data=background_reg_data)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction == pytest.approx(sum_of_values)
 
     # do the same with the bare explainer
@@ -212,13 +212,13 @@ def test_lightgbm_clf(lightgbm_clf_model, background_clf_data):
     explainer = TabularExplainer(model=lightgbm_clf_model, data=background_clf_data, class_index=2)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[2] == pytest.approx(sum_of_values, rel=0.001)
 
     explainer = TabularExplainer(model=lightgbm_clf_model, data=background_clf_data, class_index=0)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert prediction[0] == pytest.approx(sum_of_values, rel=0.001)
 
     # do the same with the bare explainer (only for class_label=2)
@@ -241,7 +241,7 @@ def test_isoforest_clf(if_clf_model, if_clf_dataset):
     explainer = TabularExplainer(model=if_clf_model, data=x_data, class_index=2)
     values = explainer.explain(x_explain)
     assert isinstance(values, InteractionValues)
-    sum_of_values = sum(values.values) + values.baseline_value
+    sum_of_values = sum(values.values)
     assert pytest.approx(sum_of_values, abs=0.001) == prediction
 
     # do the same with the bare explainer

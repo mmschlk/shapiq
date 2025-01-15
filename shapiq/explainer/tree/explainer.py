@@ -75,7 +75,16 @@ class TreeExplainer(Explainer):
         ]
         self.baseline_value = self._compute_baseline_value()
 
-    def explain(self, x: np.ndarray) -> InteractionValues:
+    def explain_function(self, x: np.ndarray, **kwargs) -> InteractionValues:
+        """Computes the Shapley Interaction values for a single instance.
+
+        Args:
+            x: The instance to explain as a 1-dimensional array.
+            **kwargs: Additional keyword arguments are ignored.
+
+        Returns:
+            The interaction values for the instance.
+        """
         if len(x.shape) != 1:
             raise TypeError("explain expects a single instance, not a batch.")
         # run treeshapiq for all trees

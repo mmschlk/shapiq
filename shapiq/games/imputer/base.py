@@ -15,14 +15,22 @@ class Imputer(Game):
     Args:
         model: The model to explain as a callable function expecting a data points as input and
             returning the model's predictions.
+
         data: The background data to use for the explainer as a 2-dimensional array
             with shape ``(n_samples, n_features)``.
+
         x: The explanation point to use the imputer on either as a 2-dimensional array with
             shape ``(1, n_features)`` or as a vector with shape ``(n_features,)``.
+
         sample_size: The number of samples to draw from the background data. Defaults to ``100`` but
             can is usually overwritten in the subclasses.
+
         categorical_features: A list of indices of the categorical features in the background data.
+
         random_state: The random state to use for sampling. Defaults to ``None``.
+
+        verbose: A flag to enable verbose imputation, which will print a progress bar for model
+            evaluation. Note that this can slow down the imputation process. Defaults to ``False``.
 
     Attributes:
         n_features: The number of features in the data (equals the number of players in the game).
@@ -45,11 +53,15 @@ class Imputer(Game):
         sample_size: int = 100,
         categorical_features: list[int] = None,
         random_state: Optional[int] = None,
+        verbose: bool = False,
     ) -> None:
         if callable(model) and not hasattr(model, "_predict_function"):
             self._predict_function = utils.predict_callable
-        else:  # shapiq.Explainer adds a predict function to the model to make it callable
-            self._predict_function = model._predict_function
+        # shapiq.Explainer adds a _shapiq_predict_function to the model to make it callable
+        elif hasattr(model, "_shapiq_predict_function"):
+            self._predict_function = model._shapiq_predict_function
+        else:
+            raise ValueError("The model must be callable or have a predict function.")
         self.model = model
         # check if data is a vector
         if data.ndim == 1:
@@ -69,7 +81,7 @@ class Imputer(Game):
 
         # init the game
         # developer note: the normalization_value needs to be set in the subclass
-        super().__init__(n_players=self.n_features, normalize=False)
+        super().__init__(n_players=self.n_features, normalize=False, verbose=verbose)
 
     @property
     def x(self) -> Optional[np.ndarray]:

@@ -112,6 +112,18 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values[0] == interaction_values.values[0]
     assert interaction_values[-1] == interaction_values.values[-1]
 
+    # check setitem
+    interaction_values[(0,)] = 999_999
+    assert interaction_values[(0,)] == 999_999
+
+    # check setitem with integer as input
+    interaction_values[0] = 111_111
+    assert interaction_values[0] == 111_111
+
+    # check setitem raises error for invalid interaction
+    with pytest.raises(KeyError):
+        interaction_values[(100, 101)] = 0
+
     # test __len__
     assert len(interaction_values) == len(interaction_values.values)
 
