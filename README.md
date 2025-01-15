@@ -126,23 +126,27 @@ The pseudo-code above can produce the following plot (here also an image is adde
   <img width="500px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/network_example2.png" alt="network_plot_example">
 </p>
 
-### Explain models not supported by SHAP
+### Explain TabPFN
 
-With ``shapiq`` you can also explain models that are not supported by SHAP.
-For example, you can explain [TabPFN](https://github.com/PriorLabs/TabPFN) by making use of the _remove-and-recontextualize_ explanation paradigm implemented in ``shapiq.TabPFNExplainer``.
+With ``shapiq`` you can also [``TabPFN``](https://github.com/PriorLabs/TabPFN) by making use of the _remove-and-recontextualize_ explanation paradigm implemented in ``shapiq.TabPFNExplainer``.
 
 ```python
 import tabpfn, shapiq
-X, y = ...  # load your dataata
-model = tabpfn.TabPFNClassifier()
-model.fit(X, y)
-explainer = shapiq.TabPFNExplainer(model=model, data=X, labels=y, index="FSII")
-faithful_shapley_values = explainer.explain(X[0])
-faithful_shapley_values.plot_force()
+data, labels = ...                    # load your data
+model = tabpfn.TabPFNClassifier()     # get TabPFN
+model.fit(data, labels)               # "fit" TabPFN (optional)
+explainer = shapiq.TabPFNExplainer(   # setup the explainer
+    model=model,
+    data=data,
+    labels=labels,
+    index="FSII"
+)
+fsii_values = explainer.explain(X[0])  # explain with Faithful Shapley values
+fsii_values.plot_force()               # plot the force plot
 ```
 
 <p align="center">
-  <img width="700px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/fsii_tabpfn_force_plot_example.png" alt="Force Plot of FSII values as derived from the example tabpfn notebook">
+  <img width="800px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/fsii_tabpfn_force_plot_example.png" alt="Force Plot of FSII values as derived from the example tabpfn notebook">
 </p>
 
 
