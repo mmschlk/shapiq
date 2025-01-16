@@ -1,5 +1,6 @@
 # shapiq: Shapley Interactions for Machine Learning <img src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/logo/logo_shapiq_light.svg" alt="shapiq_logo" align="right" height="250px"/>
 
+[![PyPI version](https://badge.fury.io/py/shapiq.svg)](https://badge.fury.io/py/shapiq)
 [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 [![Coverage Status](https://coveralls.io/repos/github/mmschlk/shapiq/badge.svg?branch=main)](https://coveralls.io/github/mmschlk/shapiq?branch=main)
 [![Tests](https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml)
