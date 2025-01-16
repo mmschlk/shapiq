@@ -2,7 +2,7 @@
 the well established Shapley value and its generalization to interaction.
 """
 
-__version__ = "1.0.1.9001"
+__version__ = "1.2.0"
 
 # approximator classes
 from .approximator import (
@@ -38,14 +38,15 @@ from .benchmark import (
 # dataset functions
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 
-# exact computer classes
-from .exact import ExactComputer
-
 # explainer classes
-from .explainer import Explainer, TabularExplainer, TreeExplainer
+from .explainer import Explainer, TabPFNExplainer, TabularExplainer, TreeExplainer
+
+# exact computer classes
+from .game_theory.exact import ExactComputer
 
 # game classes
-from .games import ConditionalImputer, Game, MarginalImputer
+# imputer classes
+from .games import BaselineImputer, ConditionalImputer, Game, MarginalImputer, TabPFNImputer
 
 # base classes
 from .interaction_values import InteractionValues
@@ -55,8 +56,10 @@ from .plot import (
     bar_plot,
     force_plot,
     network_plot,
+    sentence_plot,
     si_graph_plot,
     stacked_bar_plot,
+    upset_plot,
     waterfall_plot,
 )
 
@@ -94,9 +97,12 @@ __all__ = [
     "Explainer",
     "TabularExplainer",
     "TreeExplainer",
+    "TabPFNExplainer",
     # imputers
     "MarginalImputer",
+    "BaselineImputer",
     "ConditionalImputer",
+    "TabPFNImputer",
     # plots
     "network_plot",
     "stacked_bar_plot",
@@ -104,6 +110,8 @@ __all__ = [
     "bar_plot",
     "si_graph_plot",
     "waterfall_plot",
+    "sentence_plot",
+    "upset_plot",
     # public utils
     "powerset",
     "get_explicit_subsets",

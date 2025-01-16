@@ -43,9 +43,9 @@ def test_imputer():
     imputer = concreter(Imputer)(model, data)
     assert imputer.model == model
     assert np.all(imputer.data == data)
-    assert imputer._n_features == 3
+    assert imputer.n_features == 3
     assert imputer._cat_features == []
-    assert imputer._random_state is None
+    assert imputer.random_state is None
     assert imputer._rng is not None
 
     with pytest.raises(NotImplementedError):

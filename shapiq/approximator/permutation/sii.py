@@ -20,13 +20,11 @@ class PermutationSamplingSII(Approximator):
             to the specified order (``False``, default).
         random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        max_order: The interaction order of the approximation.
-        top_order: Whether to approximate only the top order interactions (``True``) or all orders up
-            to the specified order (``False``).
-        min_order: The minimum order to approximate.
-        iteration_cost: The cost of a single iteration of the permutation sampling.
+    See Also:
+        - :class:`~shapiq.approximator.permutation.stii.PermutationSamplingSTII`: The Permutation
+            Sampling approximator for the STII index
+        - :class:`~shapiq.approximator.permutation.sv.PermutationSamplingSV`: The Permutation
+            Sampling approximator for the SV index
     """
 
     def __init__(

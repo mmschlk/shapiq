@@ -5,9 +5,9 @@ from typing import Optional
 
 import numpy as np
 
-from shapiq.approximator.sampling import CoalitionSampler
-from shapiq.games.imputer.base import Imputer
-from shapiq.utils.modules import check_import_module
+from ...approximator.sampling import CoalitionSampler
+from ...utils.modules import check_import_module
+from .base import Imputer
 
 
 class ConditionalImputer(Imputer):
@@ -36,8 +36,6 @@ class ConditionalImputer(Imputer):
         random_state: The random state to use for sampling. Defaults to ``None``.
 
     Attributes:
-        replacement_data: The data to use for imputation. Either samples from the background data
-            or the mean/median of the background data.
         empty_prediction: The model's prediction on an empty data point (all features missing).
     """
 
@@ -45,32 +43,30 @@ class ConditionalImputer(Imputer):
         self,
         model,
         data: np.ndarray,
-        x: np.ndarray = None,
+        x: Optional[np.ndarray] = None,
         sample_size: int = 10,
         conditional_budget: int = 128,
         conditional_threshold: float = 0.05,
         normalize: bool = True,
-        categorical_features: list[int] = None,
+        categorical_features: Optional[list[int]] = None,
         method="generative",
         random_state: Optional[int] = None,
     ) -> None:
-        super().__init__(model, data, categorical_features, random_state)
+        super().__init__(model, data, x, sample_size, categorical_features, random_state)
         if method != "generative":
             raise ValueError("Currently only a generative conditional imputer is implemented.")
         self.method = method
-        self.sample_size = sample_size
         self.conditional_budget = conditional_budget
         self.conditional_threshold = conditional_threshold
         self.init_background(data=data)
-        if x is not None:
-            self.fit(x)
+
         # set empty value and normalization
-        self.empty_prediction: float = self._calc_empty_prediction()
+        self.empty_prediction: float = self.calc_empty_prediction()
         if normalize:
             self.normalization_value = self.empty_prediction
 
     def init_background(self, data: np.ndarray) -> "ConditionalImputer":
-        """Intializes the conditional imputer.
+        """Initializes the conditional imputer.
         Args:
             data: The background data to use for the imputer. The shape of the array must
                 be (n_samples, n_features).
@@ -84,14 +80,15 @@ class ConditionalImputer(Imputer):
         n_features = data.shape[1]
         if self.conditional_budget > 2**n_features:
             warnings.warn(
-                "`conditional_budget` is higher than `2**n_features`; setting `conditional_budget = 2**n_features`"
+                "`conditional_budget` is higher than `2**n_features`; setting "
+                "`conditional_budget = 2**n_features`"
             )
             self.conditional_budget = 2**n_features
         X_tiled = np.repeat(data, repeats=self.conditional_budget, axis=0)
         coalition_sampler = CoalitionSampler(
             n_players=n_features,
             sampling_weights=np.array([1e-7 for _ in range(n_features + 1)]),
-            random_state=self._random_state,
+            random_state=self.random_state,
         )
         coalitions_matrix = []
         for _ in range(data.shape[0]):
@@ -101,23 +98,11 @@ class ConditionalImputer(Imputer):
         # (data.shape[0] * self.conditional_budget, n_features)
         X_masked = X_tiled.copy()
         X_masked[coalitions_matrix] = np.NaN
-        tree_embedder = xgboost.XGBRegressor(random_state=self._random_state)
+        tree_embedder = xgboost.XGBRegressor(random_state=self.random_state)
         tree_embedder.fit(X_masked, X_tiled)
         self._data_embedded = tree_embedder.apply(data)
         self._tree_embedder = tree_embedder
         self._coalition_sampler = coalition_sampler
-        return self
-
-    def fit(self, x: np.ndarray[float]) -> "ConditionalImputer":
-        """Fits the imputer to the explanation point.
-
-        Args:
-            x: The explanation point to use the imputer to.
-
-        Returns:
-            The fitted imputer.
-        """
-        self._x = x
         return self
 
     def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
@@ -140,6 +125,8 @@ class ConditionalImputer(Imputer):
         x_tiled[~coalitions_tiled] = background_data_tiled[~coalitions_tiled]
         predictions = self.predict(x_tiled)
         avg_predictions = predictions.reshape(n_coalitions, -1).mean(axis=1)
+        # insert the better approximate empty prediction for the empty coalitions
+        avg_predictions[~np.any(coalitions, axis=1)] = self.empty_prediction
         return avg_predictions
 
     def _sample_background_data(self) -> np.ndarray:
@@ -149,22 +136,17 @@ class ConditionalImputer(Imputer):
             The sampled replacement values. The shape of the array is (sample_size, n_subsets,
                 n_features).
         """
-        try:
-            x_embedded = self._tree_embedder.apply(self._x)
-        except ValueError:  # not correct shape
-            x_embedded = self._tree_embedder.apply(self._x.reshape(1, -1))
+        x_embedded = self._tree_embedder.apply(self._x)
         distances = hamming_distance(self._data_embedded, x_embedded)
         conditional_data = self.data[
             distances <= np.quantile(distances, self.conditional_threshold)
         ]
         if self.sample_size < conditional_data.shape[0]:
             idc = self._rng.choice(conditional_data.shape[0], size=self.sample_size, replace=False)
-            background_data = conditional_data[idc, :]
-        else:
-            background_data = conditional_data
-        return background_data
+            return conditional_data[idc, :]
+        return conditional_data
 
-    def _calc_empty_prediction(self) -> float:
+    def calc_empty_prediction(self) -> float:
         """Runs the model on empty data points (all features missing) to get the empty prediction.
 
         Returns:
@@ -181,5 +163,5 @@ def hamming_distance(X, x):
     https://en.wikipedia.org/wiki/Hamming_distance
     """
     x_tiled = np.tile(x, (X.shape[0], 1))
-    distances = (X != x_tiled).sum(axis=1)
+    distances = np.sum(X != x_tiled, axis=1)
     return distances

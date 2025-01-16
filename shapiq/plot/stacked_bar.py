@@ -23,12 +23,13 @@ def stacked_bar_plot(
     ylabel: Optional[str] = None,
     show: bool = False,
 ):
-    """Plot the n-SII values for a given instance.
+    """The stacked bar plot interaction scores.
 
     This stacked bar plot can be used to visualize the amount of interaction between the features
-    for a given instance. The n-SII values are plotted as stacked bars with positive and negative
-    parts stacked on top of each other. The colors represent the order of the n-SII values. For a
-    detailed explanation of this plot, refer to `Bordt and von Luxburg (2023) <https://doi.org/10.48550/arXiv.2209.0401>`_.
+    for a given instance. The interaction values are plotted as stacked bars with positive and
+    negative parts stacked on top of each other. The colors represent the order of the
+    interaction values. For a detailed explanation of this plot, we refer to Bordt and von Luxburg
+    (2023)[1]_.
 
     An example of the plot is shown below.
 
@@ -70,6 +71,9 @@ def stacked_bar_plot(
         ...     feature_names=feature_names,
         ... )
         >>> plt.show()
+
+    References:
+        .. [1] Bordt, M., and von Luxburg, U. (2023). From Shapley Values to Generalized Additive Models and back. Proceedings of The 26th International Conference on Artificial Intelligence and Statistics, PMLR 206:709-745. url: https://proceedings.mlr.press/v206/bordt23a.html
     """
     # sanitize inputs
     if max_order is None:
@@ -137,15 +141,11 @@ def stacked_bar_plot(
     )
 
     # set title and labels if not provided
-
-    (
-        axis.set_title(f"n-SII values up to order ${max_order}$")
-        if title is None
-        else axis.set_title(title)
-    )
+    if title is not None:
+        axis.set_title(title)
 
     axis.set_xlabel("features") if xlabel is None else axis.set_xlabel(xlabel)
-    axis.set_ylabel("n-SII values") if ylabel is None else axis.set_ylabel(ylabel)
+    axis.set_ylabel("SI values") if ylabel is None else axis.set_ylabel(ylabel)
 
     plt.tight_layout()
 

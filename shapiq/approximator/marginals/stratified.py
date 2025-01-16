@@ -1,29 +1,31 @@
-"""This module contains the Stratified Sampling approximation method for the Shapley value
-by Maleki et al. (2013). It estimates the Shapley values by sampling random marginal contributions
-grouped by size."""
+"""This module contains the Stratified Sampling approximation method for the Shapley values."""
 
 from typing import Callable, Optional
 
 import numpy as np
 
-from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues
+from ...interaction_values import InteractionValues
+from .._base import Approximator
 
 
 class StratifiedSamplingSV(Approximator):
-    """The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random
+    """The Stratifield Sampling algorithm for estimating the Shapley values.
+
+    The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random
     marginal contributions for each player and each coalition size. The marginal contributions are
     grouped into strata by size. The strata are aggregated for each player after sampling to obtain
-    the final estimate. For more information, see `Maleki et al. (2009) <http://arxiv.org/abs/1306.4265>`_.
+    the final estimate. For more information, see Maleki et al. (2013)[1]_.
 
     Args:
         n: The number of players.
         random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        _grand_coalition_array: The array of players (starting from ``0`` to ``n``).
-        iteration_cost: The cost of a single iteration of the approximator.
+    See Also:
+        - :class:`~shapiq.approximator.montecarlo.svarmiq.SVARM`: The SVARM approximator
+        - :class:`~shapiq.approximator.montecarlo.svarmiq.SVARMIQ`: The SVARMIQ approximator
+
+    References:
+        .. [1] Maleki, S., Tran-Thanh, L., Hines, G., Rahwan, T., and Rogers, A, (2013). Bounding the Estimation Error of Sampling-based Shapley Value Approximation With/Without Stratifying
     """
 
     def __init__(
@@ -42,7 +44,6 @@ class StratifiedSamplingSV(Approximator):
         Args:
             budget: The number of game evaluations for approximation
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``5``.
 
         Returns:
             The estimated interaction values.
@@ -68,7 +69,6 @@ class StratifiedSamplingSV(Approximator):
                     if ((size == 0 or size == self.n - 1) and used_budget < budget) or (
                         size in range(1, self.n - 1) and used_budget + 2 <= budget
                     ):
-                        marginal_con = 0
                         # if coalition size is 0 or n-1, empty or grand coalition value can be reuse
                         if size == 0:
                             coalition = np.zeros(self.n, dtype=bool)
@@ -80,11 +80,13 @@ class StratifiedSamplingSV(Approximator):
                             coalition[player] = False
                             marginal_con = full_value - game(coalition)[0]
                             used_budget += 1
-                        # otherwise both coalitions that make up the marginal contribution have to eb evaluated
+                        # otherwise both coalitions that make up the marginal contribution have
+                        # to eb evaluated
                         else:
                             available_players = list(self._grand_coalition_set)
                             available_players.remove(player)
-                            # draw a subset of the player set without player of size stratum uniformly at random
+                            # draw a subset of the player set without player of size stratum
+                            # uniformly at random
                             coalition_list = list(
                                 self._rng.choice(available_players, size, replace=False)
                             )
@@ -98,7 +100,8 @@ class StratifiedSamplingSV(Approximator):
                         strata[player][size] += marginal_con
                         counts[player][size] += 1
 
-        # aggregate the stratum estimates: divide each stratum sum by its sample number, sum up the means, divide by the number of valid stratum estimates
+        # aggregate the stratum estimates: divide each stratum sum by its sample number, sum up
+        # the means, divide by the number of valid stratum estimates
         strata = np.divide(strata, counts, out=strata, where=counts != 0)
         result = np.sum(strata, axis=1)
         non_zeros = np.count_nonzero(counts, axis=1)

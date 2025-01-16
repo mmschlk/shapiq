@@ -7,8 +7,8 @@ from typing import Any, Optional, Union
 import numpy as np
 import scipy as sp
 
-from ...aggregation import aggregate_interaction_values
-from ...indices import get_computation_index
+from ...game_theory.aggregation import aggregate_interaction_values
+from ...game_theory.indices import get_computation_index
 from ...interaction_values import InteractionValues
 from ...utils.sets import generate_interaction_lookup, powerset
 from .base import EdgeTree, TreeModel
@@ -102,9 +102,13 @@ class TreeSHAPIQ:
         self._edge_tree: EdgeTree = copy.deepcopy(edge_tree)
 
         # compute the empty prediction
-        self.empty_prediction: float = float(
+        computed_empty_prediction = float(
             np.sum(self._edge_tree.empty_predictions[self._tree.leaf_mask])
         )
+        tree_empty_prediction = self._tree.empty_prediction
+        if tree_empty_prediction is None:
+            tree_empty_prediction = computed_empty_prediction
+        self.empty_prediction: float = tree_empty_prediction
 
         # stores the interaction scores up to a given order
         self.subset_ancestors_store: dict = {}

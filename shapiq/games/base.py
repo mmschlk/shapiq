@@ -4,13 +4,13 @@ import os
 import pickle
 import warnings
 from abc import ABC
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from tqdm.auto import tqdm
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
+from ..interaction_values import InteractionValues
+from ..utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
 
 
 class Game(ABC):
@@ -94,6 +94,7 @@ class Game(ABC):
         normalization_value: Optional[float] = None,
         path_to_values: Optional[str] = None,
         verbose: bool = False,
+        player_names: Optional[list[str]] = None,
         *args,
         **kwargs,
     ) -> None:
@@ -130,10 +131,20 @@ class Game(ABC):
         if path_to_values is not None:
             self.load_values(path_to_values, precomputed=True)
             self.game_id = path_to_values.split(os.path.sep)[-1].split(".")[0]
+            # if game should not be normalized, reset normalization value to 0
+            if not normalize and self.normalization_value != 0:
+                self.normalization_value = 0.0
 
         # define some handy coalition variables
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)
         self.grand_coalition = np.ones(self.n_players, dtype=bool)
+        self._empty_coalition_value_property = None
+        self._grand_coalition_value_property = None
+
+        # define player_names
+        self.player_name_lookup: dict[str, int] = (
+            {name: i for i, name in enumerate(player_names)} if player_names is not None else None
+        )
 
         self.verbose = verbose
 
@@ -149,7 +160,7 @@ class Game(ABC):
 
     @property
     def normalize(self) -> bool:
-        """Indication whether the game values are normalized."""
+        """Indication whether the game values are getting normalized."""
         return self.normalization_value != 0
 
     @property
@@ -157,7 +168,101 @@ class Game(ABC):
         """Checks if the game is normalized/centered."""
         return self(self.empty_coalition) == 0
 
-    def __call__(self, coalitions: np.ndarray, verbose: bool = False) -> np.ndarray:
+    def _check_coalitions(
+        self,
+        coalitions: Union[
+            np.ndarray,
+            list[tuple[int, ...]],
+            list[tuple[str, ...]],
+            tuple[int, ...],
+            tuple[str, ...],
+        ],
+    ) -> np.ndarray:
+        """Validates the coalitions and convert them to one-hot encoding.
+
+        Check if the coalitions are in the correct format and convert them to one-hot encoding.
+        The format may either be a numpy array containg the coalitions in one-hot encoding or a
+        list of tuples with integers or strings.
+
+        Args:
+            coalitions: The coalitions to convert to one-hot encoding.
+        Returns:
+            np.ndarray: The coalitions in the correct format
+
+        Raises:
+            TypeError: If the coalitions are not in the correct format.
+
+        Examples:
+            >>> coalitions = np.asarray([[1, 0, 0, 0], [0, 1, 1, 0]])
+            >>> coalitions = [(0, 1), (1, 2)]
+            >>> coalitions = [()]
+            >>> coalitions = [(0, 1), (1, 2), (0, 1, 2)]
+            if player_name_lookup is not None:
+            >>> coalitions = [("Alice", "Bob"), ("Bob", "Charlie")]
+            Wrong format:
+            >>> coalitions = [1, 0, 0, 0]
+            >>> coalitions = [(1, "Alice")]
+            >>> coalitions = np.array([1, -1, 2])
+        """
+        error_message = (
+            "List may only contain tuples of integers or strings. The tuples are not allowed to "
+            "have heterogeneous types. See the docs for correct format of coalitions. If strings "
+            "are used, the player_name_lookup has to be provided during initialization."
+        )
+        # check for array input and do validation
+        if isinstance(coalitions, np.ndarray):
+            if len(coalitions) == 0:  # check that coalition is contained in array
+                raise TypeError("The array of coalitions is empty.")
+            if coalitions.ndim == 1:  # check if single coalition is correctly given
+                if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
+                    raise TypeError(
+                        "The array of coalitions is not correctly formatted."
+                        f"It should have a length of {self.n_players}"
+                    )
+                coalitions = coalitions.reshape((1, self.n_players))
+            if coalitions.shape[1] != self.n_players:  # check if players match
+                raise TypeError(
+                    f"Number of players in the coalitions ({coalitions.shape[1]}) does not match "
+                    f"the number of players in the game ({self.n_players})."
+                )
+            # TODO maybe remove this, as it might increase runtime unnecessarily
+            # check that values of numpy array are either 0 or 1
+            if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
+                raise TypeError("The values in the array of coalitions are not binary.")
+            return coalitions
+        # try for list of tuples
+        if isinstance(coalitions, tuple):
+            coalitions = [coalitions]
+        try:
+            # convert list of tuples to one-hot encoding
+            coalitions = transform_coalitions_to_array(coalitions, self.n_players)
+            return coalitions
+        except (IndexError, TypeError):
+            pass
+        # assuming str input
+        if self.player_name_lookup is None:
+            raise ValueError("Player names are not provided. Cannot convert string to integer.")
+        try:
+            coalitions_from_str = []
+            for coalition in coalitions:
+                coal_indices = sorted([self.player_name_lookup[player] for player in coalition])
+                coalitions_from_str.append(tuple(coal_indices))
+            coalitions = transform_coalitions_to_array(coalitions_from_str, self.n_players)
+            return coalitions
+        except Exception as error:
+            raise TypeError(error_message) from error
+
+    def __call__(
+        self,
+        coalitions: Union[
+            np.ndarray,
+            list[tuple[int, ...]],
+            list[tuple[str, ...]],
+            tuple[int, ...],
+            tuple[str, ...],
+        ],
+        verbose: bool = False,
+    ) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
         value function.
 
@@ -168,12 +273,8 @@ class Game(ABC):
         Returns:
             The values of the coalitions.
         """
-        # check if coalitions are correct dimensions
-        if coalitions.ndim == 1:
-            coalitions = coalitions.reshape((1, self.n_players))
-
+        coalitions = self._check_coalitions(coalitions)  # validate and convert input coalitions
         verbose = verbose or self.verbose
-
         if not self.precomputed and not verbose:
             values = self.value_function(coalitions)
         elif not self.precomputed and verbose:
@@ -185,7 +286,6 @@ class Game(ABC):
                 values[i] = self.value_function(coalition)[0]
         else:
             values = self._lookup_coalitions(coalitions)  # lookup the values present in the storage
-
         return values - self.normalization_value
 
     def _lookup_coalitions(self, coalitions: np.ndarray) -> np.ndarray:
@@ -194,7 +294,13 @@ class Game(ABC):
         for i, coalition in enumerate(coalitions):
             # convert one-hot vector to tuple
             coalition_tuple = tuple(np.where(coalition)[0])
-            values[i] = self.value_storage[self.coalition_lookup[coalition_tuple]]
+            try:
+                values[i] = self.value_storage[self.coalition_lookup[coalition_tuple]]
+            except KeyError as error:
+                raise KeyError(
+                    f"The coalition {coalition_tuple} is not stored in the game. "
+                    f"Are all values pre-computed?"
+                ) from error
         return values
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
@@ -375,7 +481,7 @@ class Game(ABC):
         Returns:
             InteractionValues: The exact interaction values.
         """
-        from ..exact import ExactComputer
+        from shapiq.game_theory.exact import ExactComputer
 
         # raise warning if the game is not precomputed and n_players > 16
         if not self.precomputed and self.n_players > 16:
@@ -384,7 +490,7 @@ class Game(ABC):
                 "Computing the exact interaction values via brute force may take a long time."
             )
 
-        exact_computer = ExactComputer(self.n_players, game_fun=self)
+        exact_computer = ExactComputer(self.n_players, game=self)
         return exact_computer(index=index, order=order)
 
     @property
@@ -404,3 +510,36 @@ class Game(ABC):
                 break
             parent = parent.__base__
         return "_".join(class_names)
+
+    @property
+    def empty_coalition_value(self) -> float:
+        """Return the value of the empty coalition."""
+        if self._empty_coalition_value_property is None:
+            self._empty_coalition_value_property = float(self(self.empty_coalition))
+        return self._empty_coalition_value_property
+
+    @property
+    def grand_coalition_value(self) -> float:
+        """Return the value of the grand coalition."""
+        if self._grand_coalition_value_property is None:
+            self._grand_coalition_value_property = float(self(self.grand_coalition))
+        return self._grand_coalition_value_property
+
+    def __getitem__(self, item: tuple[int, ...]):
+        """Return the value of the given coalition. Only retrieves precomputed/store values.
+
+        Args:
+            item: The coalition to evaluate.
+
+        Returns:
+            The value of the coalition
+
+        Raises:
+            KeyError: If the coalition is not stored in the game.
+        """
+        try:
+            return self.value_storage[self.coalition_lookup[tuple(sorted(item))]]
+        except (KeyError, IndexError) as error:
+            raise KeyError(
+                f"The coalition {item} is not stored in the game. Is it precomputed?"
+            ) from error

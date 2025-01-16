@@ -7,7 +7,7 @@ from typing import Optional
 import numpy as np
 from scipy.special import binom
 
-from shapiq.utils.sets import powerset
+from ..utils.sets import powerset
 
 
 class CoalitionSampler:

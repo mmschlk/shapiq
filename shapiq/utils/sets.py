@@ -218,7 +218,7 @@ def generate_interaction_lookup(
 
 
 def transform_coalitions_to_array(
-    coalitions: Collection[tuple[int]], n_players: Optional[int] = None
+    coalitions: Collection[tuple[int, ...]], n_players: Optional[int] = None
 ) -> np.ndarray:
     """Transforms a collection of coalitions to a binary array (one-hot encodings).
 

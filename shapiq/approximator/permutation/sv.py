@@ -1,29 +1,33 @@
-"""This module contains the permutation sampling approximation method for the Shapley value (SV).
-It estimates the Shapley values by sampling random permutations of the player set
-and extracting all marginal contributions from each permutation."""
+"""This module contains the permutation sampling approximation method for the Shapley value (SV)."""
 
 from typing import Callable, Optional
 
 import numpy as np
 
-from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues
+from ...interaction_values import InteractionValues
+from .._base import Approximator
 
 
 class PermutationSamplingSV(Approximator):
-    """The  Permutation Sampling algorithm ApproShapley estimates the Shapley values by
-    sampling random permutations of the player set and extracting all marginal contributions
-    from each permutation. For details, refer to `Castro et al. (2009) <https://doi.org/10.1016/j.cor.2008.04.004>`_.
+    """The Permutation Sampling algorithm for estimating the Shapley values.
+
+    Permutation Sampling [1]_ (also known as ApproShapley) estimates the Shapley values by drawing
+    random permutations of the player set and extracting all marginal contributions from each
+    permutation. For details, see Castro et al. (2009)[1]_.
 
     Args:
         n: The number of players.
         random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from ``0`` to ``n - 1``).
-        _grand_coalition_array: The array of players (starting from ``0`` to ``n``).
-        iteration_cost: The cost of a single iteration of the approximator.
+    See Also:
+        - :class:`~shapiq.approximator.permutation.sii.PermutationSamplingSII`: The Permutation
+            Sampling approximator for the SII index
+        - :class:`~shapiq.approximator.permutation.stii.PermutationSamplingSTII`: The Permutation
+            Sampling approximator for the STII index
+
+    References:
+        .. [1] Castro, J., Gómez, D., and Tejada, J. (2009) Polynomial calculation of the Shapley value based on sampling. In Computers & Operations Research 36(5), 1726-1730. doi: https://doi.org/10.1016/j.cor.2008.04.004
+
     """
 
     def __init__(

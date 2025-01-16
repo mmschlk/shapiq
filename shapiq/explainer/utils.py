@@ -1,8 +1,18 @@
 """This module contains utility functions for the explainer module."""
 
 import re
-import warnings
-from typing import Any
+from typing import Any, Callable, Optional, TypeVar
+
+import numpy as np
+
+WARNING_NO_CLASS_INDEX = (
+    "No class_index provided. "
+    "Explaining the 2nd '1' class for classification models. "
+    "Please provide the class_index to explain a different class. "
+    "Disregard this warning for regression models."
+)
+
+ModelType = TypeVar("ModelType")
 
 
 def get_explainers() -> dict[str, Any]:
@@ -11,17 +21,44 @@ def get_explainers() -> dict[str, Any]:
     Returns:
         A dictionary of all available explainer classes.
     """
+    from shapiq.explainer.tabpfn import TabPFNExplainer
     from shapiq.explainer.tabular import TabularExplainer
     from shapiq.explainer.tree.explainer import TreeExplainer
 
-    return {"tabular": TabularExplainer, "tree": TreeExplainer}
+    return {"tabular": TabularExplainer, "tree": TreeExplainer, "tabpfn": TabPFNExplainer}
 
 
-def get_predict_function_and_model_type(model, model_class):
+def get_predict_function_and_model_type(
+    model: ModelType,
+    model_class: Optional[str] = None,
+    class_index: Optional[int] = None,
+) -> tuple[Callable[[ModelType, np.ndarray], np.ndarray], str]:
+    """Get the predict function and model type for a given model.
+
+    The prediction function is used in the explainer to predict the model's output for a given data
+    point. The function has the following signature: ``predict_function(model, data)``.
+
+    Args:
+        model: The model to explain. Can be any model object or callable function. We try to infer
+            the model type from the model object.
+
+        model_class: The class of the model. as a string. If not provided, it will be inferred from
+            the model object.
+
+        class_index: The class index of the model to explain. Defaults to ``None``, which will set
+            the class index to ``1`` per default for classification models and is ignored for
+            regression models.
+
+    Returns:
+        A tuple of the predict function and the model type.
+    """
     from . import tree
 
-    _predict_function = None
+    if model_class is None:
+        model_class = print_class(model)
+
     _model_type = "tabular"  # default
+    _predict_function = None
 
     if callable(model):
         _predict_function = predict_callable
@@ -38,6 +75,8 @@ def get_predict_function_and_model_type(model, model_class):
         "sklearn.ensemble._forest.ExtraTreesClassifier",
         "sklearn.ensemble.RandomForestRegressor",
         "sklearn.ensemble._forest.RandomForestRegressor",
+        "sklearn.ensemble.IsolationForest",
+        "sklearn.ensemble._iforest.IsolationForest",
     ]:
         _model_type = "tree"
 
@@ -59,7 +98,15 @@ def get_predict_function_and_model_type(model, model_class):
     ]:
         _model_type = "tree"
 
-    # TODO: torch.Sequential
+    # pytorch
+    if model_class in [
+        "torch.nn.modules.container.Sequential",
+        "torch.nn.modules.module.Module",
+        "torch.nn.modules.container.ModuleList",
+        "torch.nn.modules.container.ModuleDict",
+    ]:
+        _model_type = "tabular"
+        _predict_function = predict_torch
 
     # tensorflow
     if model_class in [
@@ -72,23 +119,25 @@ def get_predict_function_and_model_type(model, model_class):
         "keras.src.models.sequential.Sequential",
     ]:
         _model_type = "tabular"
-        if model.output_shape[1] == 1:
-            _predict_function = predict_tf_single
-        elif model.output_shape[1] == 2:
-            _predict_function = predict_tf_binary
-        else:
-            _predict_function = predict_tf_first
-            warnings.warn(
-                "Tensorflow: Output shape of the model greater than 2. Explaining the 1st '0' class."
-            )
+        _predict_function = predict_tensorflow
+
+    if model_class in [
+        "tabpfn.classifier.TabPFNClassifier",
+        "tabpfn.regressor.TabPFNRegressor",
+    ]:
+        _model_type = "tabpfn"
 
     # default extraction (sklearn api)
     if _predict_function is None and hasattr(model, "predict_proba"):
-        _predict_function = predict_proba_default
+        _predict_function = predict_proba
     elif _predict_function is None and hasattr(model, "predict"):
-        _predict_function = predict_default
+        _predict_function = predict
+    # extraction for tree models
     elif isinstance(model, tree.TreeModel):  # test scenario
         _predict_function = model.compute_empty_prediction
+        _model_type = "tree"
+    elif isinstance(model, list) and all([isinstance(m, tree.TreeModel) for m in model]):
+        _predict_function = model[0].compute_empty_prediction
         _model_type = "tree"
     elif _predict_function is None:
         raise TypeError(
@@ -98,39 +147,56 @@ def get_predict_function_and_model_type(model, model_class):
             f'{", ".join(print_classes_nicely(get_explainers()))}'
         )
 
-    return _predict_function, _model_type
+    if class_index is None:
+        class_index = 1
+
+    def _predict_function_with_class_index(model: ModelType, data: np.ndarray) -> np.ndarray:
+        """A wrapper prediction function to retrieve class_index predictions for classifiers.
+        Regression models are not affected by this function.
+
+        Args:
+            model: The model to predict with.
+            data: The data to predict on.
+
+        Returns:
+            The model's prediction for the given data point as a vector.
+        """
+        predictions = _predict_function(model, data)
+        if predictions.ndim == 1:
+            return predictions
+        elif predictions.shape[1] == 1:
+            return predictions[:, 0]
+        return predictions[:, class_index]
+
+    return _predict_function_with_class_index, _model_type
 
 
-def predict_callable(m, d):
-    return m(d)
+def predict_callable(model: ModelType, data: np.ndarray) -> np.ndarray:
+    return model(data)
 
 
-def predict_default(m, d):
-    return m.predict(d)
+def predict(model: ModelType, data: np.ndarray) -> np.ndarray:
+    return model.predict(data)
 
 
-def predict_proba_default(m, d):
-    return m.predict_proba(d)[:, 1]
+def predict_proba(model: ModelType, data: np.ndarray) -> np.ndarray:
+    return model.predict_proba(data)
 
 
-def predict_xgboost(m, d):
+def predict_xgboost(model: ModelType, data: np.ndarray) -> np.ndarray:
     from xgboost import DMatrix
 
-    return m.predict(DMatrix(d))
+    return model.predict(DMatrix(data))
 
 
-def predict_tf_single(m, d):
-    return m.predict(d, verbose=0).reshape(
-        -1,
-    )
+def predict_tensorflow(model: ModelType, data: np.ndarray) -> np.ndarray:
+    return model.predict(data, verbose=0)
 
 
-def predict_tf_binary(m, d):
-    return m.predict(d, verbose=0)[:, 1]
+def predict_torch(model: ModelType, data: np.ndarray) -> np.ndarray:
+    import torch
 
-
-def predict_tf_first(m, d):
-    return m.predict(d, verbose=0)[:, 0]
+    return model(torch.from_numpy(data).float()).detach().numpy()
 
 
 def print_classes_nicely(obj):

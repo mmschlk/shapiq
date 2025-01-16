@@ -8,9 +8,12 @@ from ._base import MonteCarlo
 
 
 class SHAPIQ(MonteCarlo):
-    """SHAP-IQ approximator uses standard form of Shapley interactions.
-    This is the default method from MonteCarlo approximator with no stratification.
-    For details, refer to `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
+    """SHAP-IQ approximator for estimating Shapley interactions.
+
+    The SHAP-IQ estimator[1]_ is a MonteCarlo approximation algorithm that estimates Shapley
+    interactions. It is the default method from MonteCarlo approximator with no stratification.
+    For details, see the original paper by Fumagalli et al. (2023)[1]_. SHAP-IQ can be seen as
+    a generalization of the Unbiased KernelSHAP method[2]_ for any-order Shapley interactions.
 
     Args:
         n: The number of players.
@@ -24,13 +27,24 @@ class SHAPIQ(MonteCarlo):
             to ``False``.
         random_state: The random state of the estimator. Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from ``0`` to ``n - 1``).
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For the regression estimator, min_order
-            is equal to ``1``.
-        iteration_cost: The cost of a single iteration of the regression SII.
+    Examples:
+        >>> from shapiq.games.benchmark import DummyGame
+        >>> from shapiq import SHAPIQ
+        >>> game = DummyGame(n=5, interaction=(1, 2))
+        >>> approximator = SHAPIQ(game.n_players, max_order=2, index="k-SII")
+        >>> approximator.approximate(budget=20, game=game)
+        InteractionValues(
+            index=k-SII, order=2, estimated=True, estimation_budget=20
+        )
+
+    See Also:
+        - :class:`~shapiq.approximator.montecarlo.shapiq.UnbiasedKernelSHAP`: The Unbiased
+        KernelSHAP approximator.
+
+    References:
+        .. [1] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., (2023). SHAP-IQ: Unified Approximation of any-order Shapley Interactions. In Thirty-seventh Conference on Neural Information Processing Systems. url: https://openreview.net/forum?id=IEMLNF4gK4
+
+        .. [2] Covert, I., and Lee, S.-I. (2021). Improving KernelSHAP: Practical Shapley Value Estimation via Linear Regression. In Proceedings of The 24th International Conference on Artificial Intelligence and Statistics, PMLR 130:3457-3465. url: https://proceedings.mlr.press/v130/covert21a.html
     """
 
     def __init__(
@@ -59,10 +73,10 @@ class SHAPIQ(MonteCarlo):
 class UnbiasedKernelSHAP(SHAPIQ):
     """The Unbiased KernelSHAP approximator for estimating the Shapley value (SV).
 
-    The Unbiased KernelSHAP estimator is a variant of the KernelSHAP estimator (though deeply
-    different). Unbiased KernelSHAP was proposed by `Covert and Lee (2021) <https://doi.org/10.48550/arXiv.2012.01536>`_
-    as an unbiased version of KernelSHAP. `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_,
-    shown that Unbiased KernelSHAP is a more specific variant of the ShapIQ approximation method (Theorem 4.5).
+    The Unbiased KernelSHAP estimator[1]_ is a variant of the KernelSHAP estimator (though deeply
+    different). Unbiased KernelSHAP was proposed by Covert and Lee (2021)[1]_ as an unbiased
+    version of KernelSHAP. In Fumagalli et al. (2023)[2]_ it was shown that Unbiased KernelSHAP is
+    a more specific variant of the SHAP-IQ approximation method (Theorem 4.5).
 
     Args:
         n: The number of players.
@@ -78,9 +92,9 @@ class UnbiasedKernelSHAP(SHAPIQ):
         >>> from shapiq.approximator import UnbiasedKernelSHAP
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = UnbiasedKernelSHAP(n=5)
-        >>> approximator.approximate(budget=100, game=game)
+        >>> approximator.approximate(budget=20, game=game)
         InteractionValues(
-            index=SV, order=1, estimated=False, estimation_budget=32,
+            index=SV, order=1, estimated=True, estimation_budget=20,
             values={
                 (0,): 0.2,
                 (1,): 0.7,
@@ -89,6 +103,14 @@ class UnbiasedKernelSHAP(SHAPIQ):
                 (4,): 0.2,
             }
         )
+
+    See Also:
+        - :class:`~shapiq.approximator.montecarlo.shapiq.SHAPIQ`: The SHAPIQ approximator.
+
+    References:
+        .. [1] Covert, I., and Lee, S.-I. (2021). Improving KernelSHAP: Practical Shapley Value Estimation via Linear Regression. In Proceedings of The 24th International Conference on Artificial Intelligence and Statistics, PMLR 130:3457-3465. url: https://proceedings.mlr.press/v130/covert21a.html
+
+        .. [2] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., (2023). SHAP-IQ: Unified Approximation of any-order Shapley Interactions. In Thirty-seventh Conference on Neural Information Processing Systems. url: https://openreview.net/forum?id=IEMLNF4gK4
     """
 
     def __init__(

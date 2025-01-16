@@ -9,9 +9,8 @@ import networkx as nx
 import numpy as np
 from PIL import Image
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
-
+from ..interaction_values import InteractionValues
+from ..utils import powerset
 from ._config import BLUE, LINES, NEUTRAL, RED, get_color
 
 __all__ = ["network_plot"]
@@ -31,13 +30,14 @@ def network_plot(
     center_text: Optional[str] = None,
     show: bool = False,
 ) -> Optional[tuple[plt.Figure, plt.Axes]]:
-    """Draws the interaction network.
+    """Draws the interaction network plot[1]_.
 
     An interaction network is a graph where the nodes represent the features and the edges represent
     the interactions. The edge width is proportional to the interaction value. The color of the edge
     is red if the interaction value is positive and blue if the interaction value is negative. The
-    interaction values should be derived from the n-Shapley interaction index (n-SII). Below is an
-    example of an interaction network with an image in the center.
+    network plot has been used to visualize local Shapley interaction values[1]_ and is a variation
+    of the graph plots presented by Inglis et al. (2022)[2]_. Below is an example of an interaction
+    network with an image in the center.
 
     .. image:: /_static/network_example.png
         :width: 400
@@ -65,6 +65,11 @@ def network_plot(
 
     Returns:
         The figure and the axis containing the plot if ``show=False``.
+
+    References:
+        .. [1] Muschalik, M., Fumagalli, F., Hammer, B., & Hüllermeier, E. (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
+
+        .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766–778.
     """
     fig, axis = plt.subplots(figsize=(6, 6))
     axis.axis("off")

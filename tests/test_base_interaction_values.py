@@ -6,7 +6,7 @@ from copy import copy, deepcopy
 import numpy as np
 import pytest
 
-from shapiq.interaction_values import InteractionValues
+from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 from shapiq.utils import powerset
 
 
@@ -111,6 +111,18 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     # test getitem with integer as input
     assert interaction_values[0] == interaction_values.values[0]
     assert interaction_values[-1] == interaction_values.values[-1]
+
+    # check setitem
+    interaction_values[(0,)] = 999_999
+    assert interaction_values[(0,)] == 999_999
+
+    # check setitem with integer as input
+    interaction_values[0] = 111_111
+    assert interaction_values[0] == 111_111
+
+    # check setitem raises error for invalid interaction
+    with pytest.raises(KeyError):
+        interaction_values[(100, 101)] = 0
 
     # test __len__
     assert len(interaction_values) == len(interaction_values.values)
@@ -587,3 +599,142 @@ def test_plot():
         _ = interaction_values.plot_network(feature_names=["a" for _ in range(n)])
     _ = interaction_values.plot_stacked_bar()
     _ = interaction_values.plot_stacked_bar(feature_names=["a" for _ in range(n)])
+
+
+def test_subset():
+    n = 5
+    min_order = 1
+    max_order = 3
+    values = np.random.rand(2**n - 1)
+    interaction_lookup = {
+        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    }
+    interaction_values = InteractionValues(
+        values=values,
+        index=None,
+        max_order=max_order,
+        n_players=n,
+        min_order=min_order,
+        interaction_lookup=interaction_lookup,
+        estimated=False,
+        estimation_budget=0,
+        baseline_value=0.0,
+    )
+
+    subset_players = [0, 1, 2]
+    subset_interaction_values = interaction_values.get_subset(subset_players)
+
+    assert subset_interaction_values.n_players == n - len(subset_players)
+    assert all(
+        all(p in subset_players for p in key)
+        for key in subset_interaction_values.interaction_lookup.keys()
+    )
+    assert len(subset_interaction_values.values) == len(
+        subset_interaction_values.interaction_lookup
+    )
+    assert interaction_values.baseline_value == subset_interaction_values.baseline_value
+    assert subset_interaction_values.min_order == interaction_values.min_order
+    assert subset_interaction_values.max_order == interaction_values.max_order
+    assert subset_interaction_values.estimated == interaction_values.estimated
+    assert subset_interaction_values.estimation_budget == interaction_values.estimation_budget
+    assert subset_interaction_values.index == interaction_values.index
+
+
+@pytest.mark.parametrize("aggregation", ["sum", "mean", "median", "max", "min"])
+def test_aggregation(aggregation):
+
+    n_objects = 3
+
+    n, min_order, max_order = 5, 1, 3
+    interaction_values_list = []
+    for _ in range(n_objects):
+        values = np.random.rand(2**n - 1)
+        interaction_lookup = {
+            interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+        }
+        interaction_values = InteractionValues(
+            values=values,
+            index="SII",
+            max_order=max_order,
+            n_players=n,
+            min_order=min_order,
+            interaction_lookup=interaction_lookup,
+            estimated=False,
+            estimation_budget=0,
+            baseline_value=0.0,
+        )
+        interaction_values_list.append(interaction_values)
+
+    aggregated_interaction_values = aggregate_interaction_values(
+        interaction_values_list, aggregation=aggregation
+    )
+
+    assert isinstance(aggregated_interaction_values, InteractionValues)
+    assert aggregated_interaction_values.index == "SII"
+    assert aggregated_interaction_values.n_players == n
+    assert aggregated_interaction_values.min_order == min_order
+    assert aggregated_interaction_values.max_order == max_order
+
+    # check that all interactions are equal to the expected value
+    for interaction in powerset(range(n), 1, n):
+        aggregated_value = np.array(
+            [interaction_values[interaction] for interaction_values in interaction_values_list]
+        )
+        if aggregation == "sum":
+            expected_value = np.sum(aggregated_value)
+        elif aggregation == "mean":
+            expected_value = np.mean(aggregated_value)
+        elif aggregation == "median":
+            expected_value = np.median(aggregated_value)
+        elif aggregation == "max":
+            expected_value = np.max(aggregated_value)
+        elif aggregation == "min":
+            expected_value = np.min(aggregated_value)
+        assert aggregated_interaction_values[interaction] == expected_value
+
+    # test aggregate from InteractionValues object
+    aggregated_from_object = interaction_values_list[0].aggregate(
+        aggregation=aggregation, others=interaction_values_list[1:]
+    )
+    assert isinstance(aggregated_from_object, InteractionValues)
+    assert aggregated_from_object == aggregated_interaction_values  # same values
+    assert aggregated_from_object is not aggregated_interaction_values  # but different objects
+
+
+def test_docs_aggregation_function():
+    """Tests the aggregation function in the InteractionValues dataclass like in the docs."""
+
+    iv1 = InteractionValues(
+        values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        index="SII",
+        n_players=3,
+        min_order=1,
+        max_order=2,
+        interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+        baseline_value=0.0,
+    )
+
+    # this does not contain the (1, 2) interaction (i.e. is 0)
+    iv2 = InteractionValues(
+        values=np.array([0.2, 0.3, 0.4, 0.5, 0.6]),
+        index="SII",
+        n_players=3,
+        min_order=1,
+        max_order=2,
+        interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4},
+        baseline_value=1.0,
+    )
+
+    # test sum
+    aggregated_interaction_values = aggregate_interaction_values([iv1, iv2], aggregation="sum")
+    assert pytest.approx(aggregated_interaction_values[(0,)]) == 0.3
+    assert pytest.approx(aggregated_interaction_values[(1,)]) == 0.5
+    assert pytest.approx(aggregated_interaction_values[(1, 2)]) == 0.6
+    assert pytest.approx(aggregated_interaction_values.baseline_value) == 1.0
+
+    # test mean
+    aggregated_interaction_values = aggregate_interaction_values([iv1, iv2], aggregation="mean")
+    assert pytest.approx(aggregated_interaction_values[(0,)]) == 0.15
+    assert pytest.approx(aggregated_interaction_values[(1,)]) == 0.25
+    assert pytest.approx(aggregated_interaction_values[(1, 2)]) == 0.3
+    assert pytest.approx(aggregated_interaction_values.baseline_value) == 0.5

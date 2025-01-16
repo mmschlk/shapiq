@@ -11,7 +11,6 @@ ruff==0.6.2
 scikit-image==0.24.0
 scikit-learn==1.5.1
 scipy==1.13.0
-shap==0.46.0
 tqdm==4.66.5
 torch==2.4.0
 torchvision==0.19.0
@@ -19,3 +18,7 @@ transformers==4.44.2
 xgboost==2.1.1
 numpy==1.26.4
 requests==2.32.3
+lightgbm==4.5.0
+tf-keras==2.18.0
+tensorflow==2.18.0
+tabpfn==2.0.3; python_version <= '3.11'
