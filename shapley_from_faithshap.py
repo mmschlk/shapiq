@@ -15,11 +15,11 @@ from shapiq.utils import powerset
 if __name__ == "__main__":
     # read these values from the configuration file / or the printed benchmark configurations
     # game_identifier = "SentimentAnalysisLocalXAI"  # explains the sentiment of a sentence
-    # game_identifier = "ImageClassifierLocalXAI"
-    game_identifier = "SOUM"
+    game_identifier = "ImageClassifierLocalXAI"
+    # game_identifier = "SOUM"
     config_id = 1
     n_player_id = 0
-    n_games = 10
+    n_games = 3
 
     games = load_games_from_configuration(
         game_class=game_identifier, n_player_id=n_player_id, config_id=config_id, n_games=n_games
@@ -33,26 +33,22 @@ if __name__ == "__main__":
     order = 1
     save_path = "sv_benchmark_results.json"
 
-    gax_interactions_individuals = {}
+    gax_interactions = {}
     N = set(range(n_players))
-
     pos = 0
     for S in powerset(N, max_size=2):
-        gax_interactions_individuals[S] = pos
+        gax_interactions[S] = pos
         pos += 1
         S_complement = tuple(sorted(N - set(S)))
-        gax_interactions_individuals[S_complement] = pos
+        gax_interactions[S_complement] = pos
         pos += 1
-    shapleyGAX_individuals = ShapleyGAX(n=n_players, gax_interactions=gax_interactions_individuals)
 
     sv_approximators = [
         KernelSHAP(n=n_players, random_state=42),
         SVARM(n=n_players, random_state=42),
         # PermutationSamplingSV(n=n_players, random_state=42),
-        shapleyGAX_individuals,
+        ShapleyGAX(n=n_players, gax_interactions=gax_interactions),
         kADDSHAP(n=n_players, random_state=42, max_order=2),
-        # symSHAP(n=n_players, random_state=42, max_order=2),
-        # FaithSHAP(n=n_players, random_state=42, max_order=2, mirrored=True),
     ]
 
     results = run_benchmark(
