@@ -1,4 +1,4 @@
-"""This module contains the symSHAP approximator to compute SV and FSII"""
+"""This module contains the Faithful Shapley-GAX approximator to compute the SV"""
 
 import warnings
 from typing import Callable, Optional
@@ -11,13 +11,13 @@ from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
 
-class symSHAP(Approximator):
-    """Estimates the FSII of order max_order and computes explanations of order output_order`_.
+class ShapleyGAX(Approximator):
+    """Estimates the Faithful Shapley-GAX using pre-defined interactions and computes the SV`_.
 
     Args:
         n: The number of players.
         output_order: The order of the explanation that is output.
-        max_order: The interaction order of the approximation. Defaults to ``2``.
+        interaction_lookup: A dictionary containing all interactions and their ordering.
         pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
             to ``False``.
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
@@ -37,7 +37,7 @@ class symSHAP(Approximator):
     def __init__(
         self,
         n: int,
-        max_order: int = None,
+        gax_interactions: dict = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,
         random_state: Optional[int] = None,
@@ -45,22 +45,28 @@ class symSHAP(Approximator):
         super().__init__(
             n,
             min_order=0,
-            max_order=max_order,
-            index="FSII",
+            max_order=1,
+            index="SV",
             top_order=False,
             random_state=random_state,
             pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,
         )
 
-    def _init_kernel_weights(self, interaction_size: int) -> np.ndarray:
+        self.gax_interactions = gax_interactions
+        # Verify gax_interactions
+        for i in self._grand_coalition_set:
+            if (i,) not in gax_interactions:
+                raise ValueError("Shapley-GAX requires all main effects in the interaction lookup.")
+        # Extend interaction_lookup with pre-defined interactions
+        for S, pos in gax_interactions.items():
+            self.interaction_lookup[S] = pos
+
+    def _init_kernel_weights(self) -> np.ndarray:
         """Initializes the kernel weights for the regression in KernelSHAP-IQ.
 
         The kernel weights are of size n + 1 and indexed by the size of the coalition. The kernel
-        weights depend on the size of the interactions and are set to a large number for the edges.
-
-        Args:
-            interaction_size: The size of the interaction.
+        weights are set to a large number for the empty coalition and grand coalition.
 
         Returns:
             The weights for sampling subsets of size s in shape (n + 1,).
@@ -68,12 +74,12 @@ class symSHAP(Approximator):
         # vector that determines the kernel weights for KernelSHAPIQ
         weight_vector = np.zeros(shape=self.n + 1)
         for coalition_size in range(0, self.n + 1):
-            if (coalition_size < interaction_size) or (coalition_size > self.n - interaction_size):
+            if (coalition_size < 1) or (coalition_size > self.n - 1):
+                # Constraints
                 weight_vector[coalition_size] = self._big_M
             else:
                 weight_vector[coalition_size] = 1 / (
-                    (self.n - 2 * interaction_size + 1)
-                    * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
+                    (self.n - 1) * binom(self.n - 2, coalition_size - 1)
                 )
         kernel_weight = weight_vector
         return kernel_weight
@@ -100,9 +106,7 @@ class symSHAP(Approximator):
         """
 
         # initialize the kernel weights
-        kernel_weights_dict = {}
-        for interaction_size in range(1, self.max_order + 1):
-            kernel_weights_dict[interaction_size] = self._init_kernel_weights(interaction_size)
+        kernel_weights = self._init_kernel_weights()
 
         # get the coalitions
         self._sampler.sample(budget)
@@ -111,12 +115,14 @@ class symSHAP(Approximator):
         game_values = game(self._sampler.coalitions_matrix)
 
         shapley_interactions_values = self.regression_routine(
-            kernel_weights=kernel_weights_dict[1],
+            kernel_weights=kernel_weights,
             game_values=game_values,
         )
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
-        fsii_output_order = self._transform_fsii(shapley_interactions_values)
+        # test = self._transform_moebius_to_interactions(shapley_interactions_values)
+        # test2 = self._transform_interactions_to_moebius(test)
+        fsii_output_order = self._transform_fsii_to_shap(shapley_interactions_values)
 
         return self._finalize_result(
             result=fsii_output_order, baseline_value=baseline_value, budget=budget
@@ -149,24 +155,19 @@ class symSHAP(Approximator):
         sampling_adjustment_weights = sampling_adjustment_weights
 
         empty_coalition_value = float(game_values[coalitions_size == 0][0])
-        regression_response = game_values - empty_coalition_value
-        regression_coefficient_weight = self._get_regression_coefficient_weights(
-            max_order=self.max_order
-        )
-        n_interactions = np.sum(
-            [int(binom(self.n, interaction_size)) for interaction_size in range(self.max_order + 1)]
-        )
+        regression_response = game_values  # - empty_coalition_value
+
+        n_interactions = len(self.interaction_lookup)
+
         regression_matrix = np.zeros((np.shape(coalitions_matrix)[0], n_interactions))
 
         for coalition_pos, coalition in enumerate(coalitions_matrix):
-            for interaction_pos, interaction in enumerate(
-                powerset(self._grand_coalition_set, max_size=self.max_order)
-            ):
+            for interaction, interaction_pos in self.interaction_lookup.items():
                 interaction_size = len(interaction)
                 intersection_size = np.sum(coalition[list(interaction)])
-                regression_matrix[coalition_pos, interaction_pos] = regression_coefficient_weight[
-                    interaction_size, intersection_size
-                ]
+                regression_matrix[coalition_pos, interaction_pos] = int(
+                    interaction_size == intersection_size
+                )
 
         # Regression weights adjusted by sampling weights
         regression_weights = kernel_weights[coalitions_size] * sampling_adjustment_weights
@@ -224,23 +225,28 @@ class symSHAP(Approximator):
 
         return shapley_interactions_values.astype(dtype=float)
 
-    def _get_regression_coefficient_weights(self, max_order: int) -> np.ndarray:
-        """Pre-computes the regression coefficient weights based on the index and the max_order.
-        Bernoulli weights for SII and kADD-SHAP. Binary weights for FSI.
+    def _transform_moebius_to_interactions(self, input_values, max_order):
+        transformed_values = np.zeros_like(input_values)
+        for S, S_pos in self.gax_interactions.items():
+            for S_tilde, S_tilde_pos in self.gax_interactions.items():
+                if set(S).issubset(S_tilde):
+                    S_tilde_effect = input_values[S_tilde_pos]
+                    # normalization with bernoulli numbers
+                    transformed_values[S_pos] += S_tilde_effect / (len(S_tilde) - len(S) + 1)
+        return transformed_values
 
-           Args:
-                max_order: The highest interaction size considered
-                index: The interaction index
-
-           Returns:
-               An array of the regression coefficient weights.
-        """
-        # Default weights for FSII
-        weights = np.zeros((max_order + 1, max_order + 1))
-        for interaction_size in range(1, max_order + 1):
-            # 1 if interaction is fully contained, else 0.
-            weights[interaction_size, interaction_size] = 1
-        return weights
+    def _transform_interactions_to_moebius(self, input_values):
+        transformed_values = np.zeros_like(input_values)
+        bernoulli_numbers = bernoulli(self.n)  # all subsets S with 1 <= |S| <= n
+        for S, S_pos in self.gax_interactions.items():
+            for S_tilde, S_tilde_pos in self.gax_interactions.items():
+                if set(S).issubset(S_tilde):
+                    S_tilde_effect = input_values[S_tilde_pos]
+                    # normalization with bernoulli numbers
+                    transformed_values[S_pos] += (
+                        bernoulli_numbers[len(S_tilde) - len(S)] * S_tilde_effect
+                    )
+        return transformed_values
 
     def _transform_fsii(self, input_values):
         transformed_values = np.zeros_like(input_values)
@@ -262,4 +268,13 @@ class symSHAP(Approximator):
                 # normalization with bernoulli numbers
                 S_effect -= bernoulli_numbers[len(S_tilde) - subset_size] * S_tilde_effect
             transformed_values[S_pos] = S_effect
+        return transformed_values
+
+    def _transform_fsii_to_shap(self, input_values):
+        transformed_values = np.zeros_like(input_values)
+        for interaction, interaction_pos in self.interaction_lookup.items():
+            for i in interaction:
+                transformed_values[self.interaction_lookup[(i,)]] += input_values[
+                    interaction_pos
+                ] / len(interaction)
         return transformed_values

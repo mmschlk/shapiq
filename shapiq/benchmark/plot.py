@@ -33,7 +33,7 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     # misc SV
     "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
     "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
-    "FaithSHAP": {"color": "#721817", "marker": "o"},
+    "ShapleyGAX": {"color": "#721817", "marker": "o"},
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
@@ -309,9 +309,9 @@ def plot_approximation_quality(
         ax.set_ylim(METRICS_LIMITS[metric])
 
     # add %model calls to the x-axis as a secondary axis
-    _set_x_axis_ticks(
-        ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
-    )
+    # _set_x_axis_ticks(
+    #    ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
+    # )
 
     if remove_spines:
         ax.spines["top"].set_visible(False)
