@@ -37,7 +37,7 @@ class ShapleyGAX(Approximator):
     def __init__(
         self,
         n: int,
-        gax_interactions: dict = None,
+        explanation_basis: dict = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,
         random_state: Optional[int] = None,
@@ -53,13 +53,13 @@ class ShapleyGAX(Approximator):
             sampling_weights=sampling_weights,
         )
 
-        self.gax_interactions = gax_interactions
+        self.gax_interactions = explanation_basis
         # Verify gax_interactions
         for i in self._grand_coalition_set:
-            if (i,) not in gax_interactions:
+            if (i,) not in explanation_basis:
                 raise ValueError("Shapley-GAX requires all main effects in the interaction lookup.")
         # Extend interaction_lookup with pre-defined interactions
-        for S, pos in gax_interactions.items():
+        for S, pos in explanation_basis.items():
             self.interaction_lookup[S] = pos
 
     def _init_kernel_weights(self) -> np.ndarray:
