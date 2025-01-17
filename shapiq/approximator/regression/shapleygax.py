@@ -1,5 +1,6 @@
 """This module contains the Faithful Shapley-GAX approximator to compute the SV"""
 
+import random
 import warnings
 from typing import Callable, Optional
 
@@ -9,6 +10,78 @@ from scipy.special import bernoulli, binom
 from shapiq.approximator._base import Approximator
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
+
+
+class ExplanationBasisGenerator:
+    def __init__(self, N):
+        self.N = N
+        self.n = len(N)
+
+    def generate_kadd_explanation_basis(self, max_order):
+        explanation_basis = {}
+        pos = 0
+        for S in powerset(self.N, max_size=max_order):
+            explanation_basis[S] = pos
+            pos += 1
+
+        return explanation_basis
+
+    def generate_ksym_explanation_basis(self, max_order):
+        explanation_basis = {}
+        pos = 0
+        for S in powerset(self.N, max_size=max_order):
+            explanation_basis[S] = pos
+            pos += 1
+            S_complement = tuple(sorted(self.N - set(S)))
+            explanation_basis[S_complement] = pos
+            pos += 1
+        return explanation_basis
+
+    def generate_prior_explanation_basis(self, Q_prior):
+        explanation_basis = {}
+        pos = 0
+        for S in Q_prior:
+            explanation_basis[S] = pos
+            pos += 1
+        return explanation_basis
+
+    def generate_stochastic_explanation_basis(self, n_explanation_terms, conjugate=False):
+        explanation_basis = {}
+        S_size = 0
+        S_pos = 0
+        n_explanation_terms = min(n_explanation_terms, 2**self.n)
+        while S_pos < n_explanation_terms:
+            n_interactions_size_s = binom(self.n, S_size)
+            if conjugate and S_size < self.n / 2:
+                n_interactions_size_s *= 2
+            if n_interactions_size_s <= n_explanation_terms - S_pos:
+                # If enough explanation terms remain, then compute all of this size
+                for S in powerset(self.N, min_size=S_size, max_size=S_size):
+                    explanation_basis[S] = S_pos
+                    S_pos += 1
+                    if conjugate and S_size < self.n / 2:
+                        S_complement = tuple(sorted(self.N - set(S)))
+                        explanation_basis[S_complement] = S_pos
+                        S_pos += 1
+            else:
+                # Otherwise sample randomly from permutations
+                pi = list(self.N)
+                random.shuffle(pi)
+                while S_pos < n_explanation_terms:
+                    if len(pi) < S_size:
+                        pi = list(self.N)
+                        random.shuffle(pi)
+                    S_candidate = tuple(sorted(pi[:S_size]))
+                    if S_candidate not in explanation_basis:
+                        explanation_basis[S_candidate] = S_pos
+                        S_pos += 1
+                        if conjugate and S_size < self.n / 2:
+                            S_candidate_complement = tuple(sorted(self.N - set(S_candidate)))
+                            explanation_basis[S_candidate_complement] = S_pos
+                            S_pos += 1
+                    pi = pi[S_size:]
+            S_size += 1  # proceed with next size
+        return explanation_basis
 
 
 class ShapleyGAX(Approximator):

@@ -17,7 +17,7 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     # permutation sampling
     "PermutationSamplingSII": {"color": "#7d53de", "marker": "o"},
     "PermutationSamplingSTII": {"color": "#7d53de", "marker": "o"},
-    "PermutationSamplingSV": {"color": "#7d53de", "marker": "o"},
+    "PermutationSamplingSV": {"color": "darkgrey", "marker": "o"},
     # KernelSHAP-IQ
     "KernelSHAP": {"color": "#ff6f00", "marker": "o"},
     "KernelSHAPIQ": {"color": "#ff6f00", "marker": "o"},
@@ -26,14 +26,19 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "kADDSHAP": {"color": "#ffba08", "marker": "o"},
     # SVARM-based
     "SVARMIQ": {"color": "#00b4d8", "marker": "o"},
-    "SVARM": {"color": "#00b4d8", "marker": "o"},
+    "SVARM": {"color": "grey", "marker": "o"},
     # shapiq
     "SHAPIQ": {"color": "#ef27a6", "marker": "o"},
     "UnbiasedKernelSHAP": {"color": "#ef27a6", "marker": "o"},
     # misc SV
     "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
     "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
-    "ShapleyGAX": {"color": "#721817", "marker": "o"},
+    "1-Add.": {"color": "black", "marker": "o"},
+    "2-Add.": {"color": "#ffba08", "marker": "o"},
+    "1-Conj.": {"color": "#00b4d8", "marker": "o"},
+    "2-Conj.": {"color": "#7d53de", "marker": "o"},
+    "150-Stoch.": {"color": "#ff6f00", "marker": "o"},
+    "250-Stoch.": {"color": "#ef27a6", "marker": "o"},
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
@@ -44,12 +49,12 @@ LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
 
-LOG_SCALE_MAX = 1e2
-LOG_SCALE_MIN = 1e-7
+LOG_SCALE_MAX = 1e-4
+LOG_SCALE_MIN = 1e-6
 
 METRICS_LIMITS = {
-    "Precision@10": (0, 1),
-    "Precision@5": (0, 1),
+    "Precision@10": (0.8, 1),
+    "Precision@5": (0.8, 1),
     "KendallTau": (-1, 1),
     "KendallTau@5": (-1, 1),
     "KendallTau@10": (-1, 1),

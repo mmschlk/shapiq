@@ -219,6 +219,10 @@ def _run_benchmark(args) -> dict[str, Union[str, int, float, InteractionValues]]
     """
     iteration, approximator, game, gt_value, budget = args
     estimates = copy.deepcopy(approximator.approximate(budget=budget, game=game))
+    try:
+        name = approximator.name
+    except AttributeError:
+        name = approximator.__class__.__name__
     result = {
         "iteration": iteration,
         "game_name": game.game_name,
@@ -226,7 +230,7 @@ def _run_benchmark(args) -> dict[str, Union[str, int, float, InteractionValues]]
         "n_players": game.n_players,
         "budget": budget,
         "budget_relative": round(budget / (2**game.n_players), 6),
-        "approximator": approximator.__class__.__name__,
+        "approximator": name,
         "estimates_values": estimates.dict_values,
         "used_budget": estimates.estimation_budget,
         "estimated": estimates.estimated,
