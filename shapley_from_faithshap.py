@@ -14,12 +14,12 @@ from shapiq.utils import powerset
 
 if __name__ == "__main__":
     # read these values from the configuration file / or the printed benchmark configurations
-    # game_identifier = "SentimentAnalysisLocalXAI"  # explains the sentiment of a sentence
-    game_identifier = "ImageClassifierLocalXAI"
+    game_identifier = "SentimentAnalysisLocalXAI"  # explains the sentiment of a sentence
+    # game_identifier = "ImageClassifierLocalXAI"
     # game_identifier = "SOUM"
     config_id = 1
     n_player_id = 0
-    n_games = 3
+    n_games = 2
 
     games = load_games_from_configuration(
         game_class=game_identifier, n_player_id=n_player_id, config_id=config_id, n_games=n_games
@@ -33,21 +33,21 @@ if __name__ == "__main__":
     order = 1
     save_path = "sv_benchmark_results.json"
 
-    gax_interactions = {}
+    explanation_basis = {}
     N = set(range(n_players))
     pos = 0
     for S in powerset(N, max_size=2):
-        gax_interactions[S] = pos
+        explanation_basis[S] = pos
         pos += 1
         S_complement = tuple(sorted(N - set(S)))
-        gax_interactions[S_complement] = pos
+        explanation_basis[S_complement] = pos
         pos += 1
 
     sv_approximators = [
         KernelSHAP(n=n_players, random_state=42),
         SVARM(n=n_players, random_state=42),
         # PermutationSamplingSV(n=n_players, random_state=42),
-        ShapleyGAX(n=n_players, gax_interactions=gax_interactions),
+        ShapleyGAX(n=n_players, explanation_basis=explanation_basis),
         kADDSHAP(n=n_players, random_state=42, max_order=2),
     ]
 
