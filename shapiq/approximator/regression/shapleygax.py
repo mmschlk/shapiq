@@ -193,8 +193,6 @@ class ShapleyGAX(Approximator):
         )
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
-        # test = self._transform_moebius_to_interactions(shapley_interactions_values)
-        # test2 = self._transform_interactions_to_moebius(test)
         fsii_output_order = self._transform_fsii_to_shap(shapley_interactions_values)
 
         return self._finalize_result(

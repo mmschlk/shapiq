@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 from shapiq.approximator.regression.shapleygax import ExplanationBasisGenerator, ShapleyGAX
 
@@ -29,22 +30,22 @@ if __name__ == "__main__":
     # get the index and order
     index = "SV"
     order = 1
-    save_path = "variablesbudgetratio_" + game_identifier + ".json"
+    save_path = "interactionanalysis_" + game_identifier + ".json"
 
-    budget_steps = [1000, 1500, 2000, 3000, 4000, 6000, 8000, 10000]
-    variables_budget_ratio = [0.02, 0.05, 0.075, 0.1, 0.15, 0.2, 0.5, 0.75, 1]
+    budget_steps = np.arange(1000, 2**n_players, 500)
+    budget_steps = np.hstack((budget_steps, [2**n_players]))
+    n_explanations = [n_players + 1, 20, 50, 100, 250, 500, 1000, 2000, 4000, 8000, 2**n_players]
 
     sv_approximators = []
     basis_gen = ExplanationBasisGenerator(N)
-    for budget in budget_steps:
-        for ratio in variables_budget_ratio:
-            n_explanation_terms = int(ratio * budget)
-            explanation_basis = basis_gen.generate_stochastic_explanation_basis(
-                n_explanation_terms=n_explanation_terms
-            )
-            computer = ShapleyGAX(n=n_players, explanation_basis=explanation_basis)
-            computer.name = str(f"{ratio * 100}%" + "-Stoch.")
-            sv_approximators.append(computer)
+    # for budget in budget_steps:
+    for n_explanation_terms in n_explanations:
+        explanation_basis = basis_gen.generate_stochastic_explanation_basis(
+            n_explanation_terms=n_explanation_terms
+        )
+        computer = ShapleyGAX(n=n_players, explanation_basis=explanation_basis)
+        computer.name = str(f"{n_explanation_terms}" + "-Stoch.")
+        sv_approximators.append(computer)
 
     results = run_benchmark(
         index=index,
@@ -59,5 +60,5 @@ if __name__ == "__main__":
     )
 
     plt.figure()
-    plot_approximation_quality(results, metric="Precision@10", log_scale_y=True)
+    plot_approximation_quality(results, metric="MSE", log_scale_y=True)
     plt.show()

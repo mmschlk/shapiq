@@ -39,6 +39,15 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "2-Conj.": {"color": "#7d53de", "marker": "o"},
     "150-Stoch.": {"color": "#ff6f00", "marker": "o"},
     "250-Stoch.": {"color": "#ef27a6", "marker": "o"},
+    "2.0%-Stoch.": {"color": "#03045E", "marker": "o"},
+    "5.0%-Stoch.": {"color": "#023E8A", "marker": "o"},
+    "7.5%-Stoch.": {"color": "#0077B6", "marker": "o"},
+    "10.0%-Stoch.": {"color": "#0096C7", "marker": "o"},
+    "15.0%-Stoch.": {"color": "#00B4D8", "marker": "o"},
+    "20.0%-Stoch.": {"color": "#48CAE4", "marker": "o"},
+    "50.0%-Stoch.": {"color": "#90e0ef", "marker": "o"},
+    "75.0%-Stoch.": {"color": "#ade8f4", "marker": "o"},
+    "100%-Stoch.": {"color": "#caf0f8", "marker": "o"},
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
