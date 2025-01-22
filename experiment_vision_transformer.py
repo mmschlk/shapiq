@@ -1,19 +1,22 @@
 """This script computes "ground truth" Shapley values for the vision transformer by running
 KernelSHAP on the vision transformer model with a budget of 1_000_000 estimations."""
 
+import copy
 import os
 from pathlib import Path
 from warnings import warn
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn.functional as F
 from PIL import Image
 from tqdm import tqdm
-from transformers import ViTForImageClassification, ViTImageProcessor
 
 import shapiq
-from experiment_utils import pre_compute_model_values
+from experiment_utils import make_file_paths, pre_compute_model_values
+from shapiq.approximator.regression.shapleygax import ExplanationBasisGenerator, ShapleyGAX
+from shapiq.benchmark.metrics import get_all_metrics
 
 RANDOM_SEED = 42
 
@@ -55,6 +58,7 @@ class MaskedDataset(torch.utils.data.Dataset):
 class VisionTransformerGame(shapiq.Game):
 
     def __init__(self, x_explain_path: str, verbose: bool = True, class_id: int = None):
+        from transformers import ViTForImageClassification, ViTImageProcessor
 
         from shapiq.games.benchmark._setup._vit_setup import NORM_BIAS, NORM_WEIGHT
 
@@ -182,6 +186,8 @@ def validate_embeddings_are_positional():
         - The embeddings of the first patch should be the same for both images (second "token").
         - The embeddings of the remaining patches should be different for both images.
     """
+    from transformers import ViTForImageClassification, ViTImageProcessor
+
     # get the images
     test_image = os.path.join("images", "dog_example.jpg")
     test_image = Image.open(test_image)
@@ -230,37 +236,188 @@ def validate_embeddings_are_positional():
             assert not np.allclose(original_patch_embedding, random_patch_embedding)
 
 
+def _run_approximation(
+    approximator: shapiq.approximator._base.Approximator,
+    game: shapiq.Game,
+    gt_sv: shapiq.InteractionValues,
+    budget: int,
+    name: str,
+    image_name: str,
+    print_estimate: bool = False,
+) -> dict:
+    """Run the approximation and return the metrics."""
+    estimate = approximator.approximate(budget=budget, game=game)
+    if print_estimate:
+        print(estimate)
+    gt_sv, estimate = gt_sv.get_n_order(order=1), estimate.get_n_order(order=1)
+    name = name if name is not None else approximator.__class__.__name__
+    metrics: dict = get_all_metrics(ground_truth=gt_sv, estimated=estimate)
+    metrics["approximator"] = name
+    metrics["budget"] = budget
+    metrics["image_name"] = image_name
+    print(metrics)
+    return metrics
+
+
+def approximate(
+    approx_to_use: list[str],
+    budgets: list[int],
+    n_samples: int,
+) -> None:
+    # get all available images
+    image_dir = Path(__file__).parent / "images"
+    available_images = list(image_dir.glob("*ILSVRC2012_val*"))
+    print("Available images:", available_images)
+
+    results_file_name = "".join(approx_to_use) + "_results_vit.csv"
+
+    # select a subset of images
+    image_names = [f"{image.stem}{image.suffix}" for image in available_images]
+    image_names = image_names[:n_samples]
+
+    results = []
+    for i, image_name in enumerate(image_names, start=1):
+        print(f"Processing image {i}/{len(image_names)}: {image_name}\n")
+        _, ground_truth_name = make_file_paths(image_name, budget=1_000_000, experiment="vit")
+        gt_sv = shapiq.InteractionValues.load_interaction_values(path=ground_truth_name)
+        print("Ground Truth", gt_sv)
+
+        # setup the game
+        game = VisionTransformerGame(
+            x_explain_path=os.path.join("images", image_name),
+            verbose=True,
+        )
+
+        for budget in budgets:
+
+            # approximate with kernel shap ---------------------------------------------------------
+            if "KernelSHAP" in approx_to_use:
+                name = "KernelSHAP"
+                basis_gen = ExplanationBasisGenerator(N=set(range(game.n_players)))
+                explanation_basis = basis_gen.generate_kadd_explanation_basis(1)
+                approximator = ShapleyGAX(
+                    n=game.n_players, random_state=RANDOM_SEED, explanation_basis=explanation_basis
+                )
+                result = _run_approximation(
+                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                )
+                results.append(copy.deepcopy(result))
+
+            # approximate with shapley gax with 500 conjugate --------------------------------------
+            if "ShapleyGAX (400)" in approx_to_use:
+                name = "ShapleyGAX (400)"
+                basis_gen = ExplanationBasisGenerator(N=set(range(game.n_players)))
+                explanation_basis = basis_gen.generate_stochastic_explanation_basis(
+                    400, conjugate=False
+                )
+                approximator = ShapleyGAX(
+                    n=game.n_players, random_state=RANDOM_SEED, explanation_basis=explanation_basis
+                )
+                result = _run_approximation(
+                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                )
+                results.append(copy.deepcopy(result))
+
+            # approximate with shapley gax with 500 ------------------------------------------------
+            if "ShapleyGAX (500)" in approx_to_use:
+                name = "ShapleyGAX (500)"
+                basis_gen = ExplanationBasisGenerator(N=set(range(game.n_players)))
+                explanation_basis = basis_gen.generate_stochastic_explanation_basis(
+                    500, conjugate=False
+                )
+                approximator = ShapleyGAX(
+                    n=game.n_players, random_state=RANDOM_SEED, explanation_basis=explanation_basis
+                )
+                result = _run_approximation(
+                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                )
+                results.append(copy.deepcopy(result))
+
+            # approximate with permutation sampling ------------------------------------------------
+            if "PermutationSamplingSV" in approx_to_use:
+                name = "PermutationSamplingSV"
+                approximator = shapiq.PermutationSamplingSV(
+                    n=game.n_players, random_state=RANDOM_SEED
+                )
+                result = _run_approximation(
+                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                )
+                results.append(copy.deepcopy(result))
+
+            # approximate with SVARM ---------------------------------------------------------------
+            if "SVARM" in approx_to_use:
+                name = "SVARM"
+                approximator = shapiq.SVARM(n=game.n_players, random_state=RANDOM_SEED)
+                result = _run_approximation(
+                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                )
+                results.append(copy.deepcopy(result))
+
+            results_df = pd.DataFrame(results)
+            results_df.to_csv(results_file_name, index=False)
+
+    # save the results
+    results_df = pd.DataFrame(results)
+    results_df.to_csv(results_file_name, index=False)
+
+
 if __name__ == "__main__":
 
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # set to 0 or 1 for selecting the GPU
+    print("CUDA device:", os.environ["CUDA_VISIBLE_DEVICES"])
 
     validate_embeddings = False  # set to True to run the validation test
+    pre_compute_ground_truth = False  # set to True to pre-compute the ground truth values
+    approximate_values = True
 
     if validate_embeddings:
         validate_embeddings_are_positional()
         print("Validation test passed.")
 
-    images_to_compute_dir = Path(__file__).parent / "images"
-    # grab all files jpg, JPG, jpeg, JPEG, png, PNG
-    images_to_compute = list(images_to_compute_dir.glob("*.[jJ][pP][gG]*"))
-    images_to_compute += list(images_to_compute_dir.glob("*.[pP][nN][gG]*"))
-    images_to_compute += list(images_to_compute_dir.glob("*.[jJ][pP][eE][gG]*"))
+    if pre_compute_ground_truth:
+        images_to_compute_dir = Path(__file__).parent / "images"
+        # grab all files jpg, JPG, jpeg, JPEG, png, PNG
+        images_to_compute = list(images_to_compute_dir.glob("*.[jJ][pP][gG]*"))
+        images_to_compute += list(images_to_compute_dir.glob("*.[pP][nN][gG]*"))
+        images_to_compute += list(images_to_compute_dir.glob("*.[jJ][pP][eE][gG]*"))
 
-    # pre-compute all that do not exist yet in the results directory
-    for image_path in images_to_compute:
-        image_name = image_path.stem
-        file_extension = image_path.suffix
-        if image_name == "dog_example":
-            class_id = 207
-        elif image_name == "dog_example_guitar":
-            class_id = 402
-        elif image_name == "dog_example_plectrum":
-            class_id = 714
-        else:
-            class_id = None
+        # for cuda 1 reverse the order of the images
+        if os.environ["CUDA_VISIBLE_DEVICES"] == "1":
+            images_to_compute = images_to_compute[::-1]
 
-        image_name = f"{image_name}{file_extension}"
+        print("Images to compute:", images_to_compute)
+        print(f"Cuda device: {os.environ['CUDA_VISIBLE_DEVICES']}")
 
-        pre_compute_model_values(
-            image_name=image_name, experiment="vit", class_id=class_id, recompute_if_exists=False
+        # pre-compute all that do not exist yet in the results directory
+        for image_path in images_to_compute:
+            image_name = image_path.stem
+            file_extension = image_path.suffix
+            if image_name == "dog_example":
+                class_id = 207
+            elif image_name == "dog_example_guitar":
+                class_id = 402
+            elif image_name == "dog_example_plectrum":
+                class_id = 714
+            else:
+                class_id = None
+            image_name = f"{image_name}{file_extension}"
+            pre_compute_model_values(
+                image_name=image_name,
+                experiment="vit",
+                class_id=class_id,
+                recompute_if_exists=False,
+            )
+
+    if approximate_values:
+        approximate(
+            approx_to_use=[
+                "KernelSHAP",
+                "ShapleyGAX (500)",
+                "ShapleyGAX (400)",
+                "ShapleyGAX (600)",
+                "PermutationSamplingSV",
+                # "SVARM",
+            ],
+            n_samples=20,
+            budgets=[10_000, 15_000, 20_000, 25_000, 30_000],
         )

@@ -142,6 +142,41 @@ def compute_precision_at_k(
     return precision_at_k
 
 
+def compute_spearmans_correlation(
+    ground_truth: InteractionValues, estimated: InteractionValues, k: int = None
+) -> float:
+    """Compute the Spearman's correlation between two interaction values.
+
+    Args:
+        ground_truth: The ground truth interaction values.
+        estimated: The estimated interaction values.
+        k: The top-k ground truth values to consider. Defaults to `None`, which considers all
+            interactions.
+
+    Returns:
+        The Spearman's correlation between the ground truth and estimated interaction values.
+    """
+    # get the interactions as a sorted array
+    gt_values, estimated_values = [], []
+    for interaction in powerset(
+        range(ground_truth.n_players),
+        min_size=ground_truth.min_order,
+        max_size=ground_truth.max_order,
+    ):
+        gt_values.append(ground_truth[interaction])
+        estimated_values.append(estimated[interaction])
+    # array conversion
+    gt_values, estimated_values = np.array(gt_values), np.array(estimated_values)
+    # sort the values
+    gt_indices, estimated_indices = np.argsort(gt_values), np.argsort(estimated_values)
+    if k is not None:
+        gt_indices, estimated_indices = gt_indices[:k], estimated_indices[:k]
+    # compute the Spearman's correlation
+    correlation = np.corrcoef(gt_indices, estimated_indices)[0, 1]
+    correlation = float(correlation)
+    return correlation
+
+
 def get_all_metrics(
     ground_truth: InteractionValues,
     estimated: InteractionValues,
@@ -168,6 +203,12 @@ def get_all_metrics(
         order_indicator + "KendallTau": compute_kendall_tau(ground_truth, estimated),
         order_indicator + "KendallTau@10": compute_kendall_tau(ground_truth, estimated, k=10),
         order_indicator + "KendallTau@50": compute_kendall_tau(ground_truth, estimated, k=50),
+        order_indicator
+        + "SpearmanCorrelation": compute_spearmans_correlation(ground_truth, estimated),
+        order_indicator
+        + "SpearmanCorrelation@10": compute_spearmans_correlation(ground_truth, estimated, k=10),
+        order_indicator
+        + "SpearmanCorrelation@50": compute_spearmans_correlation(ground_truth, estimated, k=50),
     }
 
     # get diff metrics

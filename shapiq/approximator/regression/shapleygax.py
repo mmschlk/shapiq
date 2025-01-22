@@ -13,7 +13,7 @@ from shapiq.utils.sets import powerset
 
 
 class ExplanationBasisGenerator:
-    def __init__(self, N):
+    def __init__(self, N: set):
         self.N = N
         self.n = len(N)
 

@@ -35,7 +35,7 @@ if __name__ == "__main__":
     basis_gen = ExplanationBasisGenerator(N)
 
     explanation_add = basis_gen.generate_kadd_explanation_basis(max_order=1)
-    explanation_kconj_1 = basis_gen.generate_kadd_explanation_basis(max_order=1)
+    explanation_kconj_1 = basis_gen.generate_ksym_explanation_basis(max_order=1)
     explanation_kadd_2 = basis_gen.generate_kadd_explanation_basis(max_order=2)
     explanation_kconj_2 = basis_gen.generate_ksym_explanation_basis(max_order=2)
     explanation_stoch_150 = basis_gen.generate_stochastic_explanation_basis(
