@@ -319,12 +319,24 @@ def approximate(
                 results.append(copy.deepcopy(result))
 
             # approximate with shapley gax with 500 ------------------------------------------------
-            if "ShapleyGAX (500)" in approx_to_use:
-                name = "ShapleyGAX (500)"
+            if "ShapleyGAX (600)" in approx_to_use:
+                name = "ShapleyGAX (600)"
                 basis_gen = ExplanationBasisGenerator(N=set(range(game.n_players)))
                 explanation_basis = basis_gen.generate_stochastic_explanation_basis(
-                    500, conjugate=False
+                    600, conjugate=False
                 )
+                approximator = ShapleyGAX(
+                    n=game.n_players, random_state=RANDOM_SEED, explanation_basis=explanation_basis
+                )
+                result = _run_approximation(
+                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                )
+                results.append(copy.deepcopy(result))
+
+            if "ShapleyGAX (2add)" in approx_to_use:
+                name = "ShapleyGAX (2add)"
+                basis_gen = ExplanationBasisGenerator(N=set(range(game.n_players)))
+                explanation_basis = basis_gen.generate_kadd_explanation_basis(2)
                 approximator = ShapleyGAX(
                     n=game.n_players, random_state=RANDOM_SEED, explanation_basis=explanation_basis
                 )
@@ -412,9 +424,9 @@ if __name__ == "__main__":
         approximate(
             approx_to_use=[
                 "KernelSHAP",
-                "ShapleyGAX (500)",
                 "ShapleyGAX (400)",
                 "ShapleyGAX (600)",
+                # "ShapleyGAX (2add)",
                 "PermutationSamplingSV",
                 # "SVARM",
             ],
