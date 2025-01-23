@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # get the index and order
     index = "SV"
     order = 1
-    save_path = "approximation_" + game_identifier + ".json"
+    save_path = "approximation_l1_" + game_identifier + ".json"
 
     basis_gen = ExplanationBasisGenerator(N)
 
@@ -82,5 +82,5 @@ if __name__ == "__main__":
     )
 
     plt.figure()
-    plot_approximation_quality(results, metric="Precision@5", log_scale_y=True)
+    plot_approximation_quality(results, metric="MSE", log_scale_y=True)
     plt.show()

@@ -38,7 +38,16 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "1-Conj.": {"color": "#00b4d8", "marker": "o"},
     "2-Conj.": {"color": "#7d53de", "marker": "o"},
     "150-Stoch.": {"color": "#ff6f00", "marker": "o"},
-    "250-Stoch.": {"color": "#ef27a6", "marker": "o"},
+    "15-Stoch.": {"color": "#03045E", "marker": "o"},
+    "20-Stoch.": {"color": "#023E8A", "marker": "o"},
+    "50-Stoch.": {"color": "#0077B6", "marker": "o"},
+    "100-Stoch.": {"color": "#0096C7", "marker": "o"},
+    "250-Stoch.": {"color": "#00B4D8", "marker": "o"},
+    "500-Stoch.": {"color": "#48CAE4", "marker": "o"},
+    "1000-Stoch.": {"color": "#90e0ef", "marker": "o"},
+    "2000-Stoch.": {"color": "#ade8f4", "marker": "o"},
+    "16384-Stoch.": {"color": "#caf0f8", "marker": "o"},
+    "256-Stoch.": {"color": "#48CAE4", "marker": "o"},
     "2.0%-Stoch.": {"color": "#03045E", "marker": "o"},
     "5.0%-Stoch.": {"color": "#023E8A", "marker": "o"},
     "7.5%-Stoch.": {"color": "#0077B6", "marker": "o"},
@@ -58,7 +67,7 @@ LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
 
-LOG_SCALE_MAX = 1e-4
+LOG_SCALE_MAX = 1e-3
 LOG_SCALE_MIN = 1e-6
 
 METRICS_LIMITS = {

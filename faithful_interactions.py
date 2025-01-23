@@ -1,4 +1,5 @@
 import copy
+import math
 from typing import Optional
 
 import numpy as np
@@ -376,3 +377,45 @@ def sum6(n, k):
 print(sum1(n_players, 3), sum2(n_players, 3), sum3(n_players, 3), sum4(n_players, 3))
 
 print(sum6(n_players, 7))
+
+
+def fsii_sum0(n, t, k):
+    val = 0
+    i = 0
+    T = tuple([q for q in range(t)])
+    for S in powerset(N, min_size=1, max_size=k):
+        s = len(S)
+        if i in S and set(S).issubset(set(T)) and set(S) != set(T):
+            val += (
+                (-1) ** (k - s) * binom(k, s) / (k + s) * binom(t - 1, k) / binom(t + k - 1, k + s)
+            )
+    return val
+
+
+def fsii_sum1(n, t, k):
+    val = 0
+    for s in range(1, k + 1):
+        val += binom(t - 1, k) * (
+            (-1) ** (k - s) * binom(k, s) / (k + s) * binom(t - 1, s - 1) / binom(t + k - 1, k + s)
+        )
+    return val
+
+
+def fsii_sum2(n, t, k):
+    val = 0
+    for s in range(1, k + 1):
+        val += binom(t - 1, k) * (
+            (-1) ** (k - s)
+            * binom(k, s)
+            * binom(k + s - 1, s - 1)
+            * math.factorial(k)
+            / (t - s)
+            * math.factorial(t - 1)
+            / math.factorial(t + k - 1)
+        )
+    return val
+
+
+print(fsii_sum0(n_players, 7, 4))
+print(fsii_sum1(n_players, 7, 4))
+print(fsii_sum2(n_players, 7, 4))

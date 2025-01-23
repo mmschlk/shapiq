@@ -12,12 +12,13 @@ from shapiq.benchmark import (
 
 if __name__ == "__main__":
     # read these values from the configuration file / or the printed benchmark configurations
-    game_identifier = "SentimentAnalysisLocalXAI"  # explains the sentiment of a sentence
+    # game_identifier = "SentimentAnalysisLocalXAI"  # explains the sentiment of a sentence
     # game_identifier = "ImageClassifierLocalXAI"
     # game_identifier = "SOUM"
+    game_identifier = "SentimentAnalysisLocalXAI"
     config_id = 1
     n_player_id = 0
-    n_games = 10
+    n_games = 5
 
     games = load_games_from_configuration(
         game_class=game_identifier, n_player_id=n_player_id, config_id=config_id, n_games=n_games
@@ -32,9 +33,21 @@ if __name__ == "__main__":
     order = 1
     save_path = "interactionanalysis_" + game_identifier + ".json"
 
-    budget_steps = np.arange(1000, 2**n_players, 500)
+    budget_steps = np.arange(1000, 10000, 1000)
     budget_steps = np.hstack((budget_steps, [2**n_players]))
-    n_explanations = [n_players + 1, 20, 50, 100, 250, 500, 1000, 2000, 4000, 8000, 2**n_players]
+    n_explanations = [
+        n_players + 1,
+        20,
+        50,
+        100,
+        250,
+        500,
+        1000,
+        2000,
+        # 4000,
+        # 8000,
+        2**n_players,
+    ]
 
     sv_approximators = []
     basis_gen = ExplanationBasisGenerator(N)

@@ -59,7 +59,7 @@ if __name__ == "__main__":
         save_path=save_path,
         # alternatively, you can set also max_budget (e.g. 10_000) and budget_step to 0.05 (in percentage of max_budget)
         budget_steps=[750, 1000, 1500, 2000, 3000, 4000, 6000, 8000],
-        rerun_if_exists=True,  # if True, the benchmark will rerun the approximators even if the results file exists
+        rerun_if_exists=False,  # if True, the benchmark will rerun the approximators even if the results file exists
         n_jobs=6,  # number of parallel jobs
     )
 

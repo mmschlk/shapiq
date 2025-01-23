@@ -6,6 +6,7 @@ from typing import Callable, Optional
 
 import numpy as np
 from scipy.special import bernoulli, binom
+from sklearn.linear_model import LassoLarsIC
 
 from shapiq.approximator._base import Approximator
 from shapiq.interaction_values import InteractionValues
@@ -226,7 +227,7 @@ class ShapleyGAX(Approximator):
         sampling_adjustment_weights = sampling_adjustment_weights
 
         empty_coalition_value = float(game_values[coalitions_size == 0][0])
-        regression_response = game_values  # - empty_coalition_value
+        regression_response = game_values - empty_coalition_value
 
         n_interactions = len(self.interaction_lookup)
 
@@ -257,6 +258,7 @@ class ShapleyGAX(Approximator):
         regression_matrix: np.ndarray,
         regression_response: np.ndarray,
         regression_weights: np.ndarray,
+        l1: bool = False,
     ) -> np.ndarray[float]:
         """Solves the regression problem using the weighted least squares method. Returns all
         approximated interactions.
@@ -273,26 +275,40 @@ class ShapleyGAX(Approximator):
         # regression weights adjusted by sampling weights
         weighted_regression_matrix = regression_weights[:, None] * regression_matrix
 
-        try:
-            # try solving via solve function
-            shapley_interactions_values = np.linalg.solve(
-                regression_matrix.T @ weighted_regression_matrix,
-                weighted_regression_matrix.T @ regression_response,
-            )
-        except np.linalg.LinAlgError:
-            # solve WLSQ via lstsq function and throw warning
+        if l1:
             regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
             regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
             regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
-            warnings.warn(
-                UserWarning(
-                    "Linear regression equation is singular, a least squares solutions is used "
-                    "instead.\n"
-                )
+            shapley_interactions_values = (
+                LassoLarsIC(criterion="aic").fit(regression_lhs, regression_rhs).coef_
             )
-            shapley_interactions_values = np.linalg.lstsq(
-                regression_lhs, regression_rhs, rcond=None
-            )[0]
+            # shapley_interactions_values = (
+            #    LassoLars().fit(regression_lhs, regression_rhs).coef_
+            # )
+            # shapley_interactions_values = (
+            #    Lasso().fit(regression_lhs, regression_rhs).coef_
+            # )
+        else:
+            try:
+                # try solving via solve function
+                shapley_interactions_values = np.linalg.solve(
+                    regression_matrix.T @ weighted_regression_matrix,
+                    weighted_regression_matrix.T @ regression_response,
+                )
+            except np.linalg.LinAlgError:
+                # solve WLSQ via lstsq function and throw warning
+                regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
+                regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
+                regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
+                warnings.warn(
+                    UserWarning(
+                        "Linear regression equation is singular, a least squares solutions is used "
+                        "instead.\n"
+                    )
+                )
+                shapley_interactions_values = np.linalg.lstsq(
+                    regression_lhs, regression_rhs, rcond=None
+                )[0]
 
         return shapley_interactions_values.astype(dtype=float)
 
