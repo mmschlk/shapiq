@@ -269,7 +269,9 @@ def approximate(
     available_images = list(image_dir.glob("*ILSVRC2012_val*"))
     print("Available images:", available_images)
 
-    results_file_name = "".join(approx_to_use) + "_results_vit.csv"
+    budgets_str = "_".join([str(b)[0:2] for b in budgets])
+    results_file_name = "".join(approx_to_use) + budgets_str +"_results_vit.csv"
+    print("Files will be saved to:", results_file_name)
 
     # select a subset of images
     image_names = [f"{image.stem}{image.suffix}" for image in available_images]
@@ -426,10 +428,10 @@ if __name__ == "__main__":
                 "KernelSHAP",
                 "ShapleyGAX (400)",
                 "ShapleyGAX (600)",
-                # "ShapleyGAX (2add)",
+                "ShapleyGAX (2add)",
                 "PermutationSamplingSV",
                 # "SVARM",
             ],
             n_samples=20,
-            budgets=[10_000, 15_000, 20_000, 25_000, 30_000],
+            budgets=[35_000],
         )

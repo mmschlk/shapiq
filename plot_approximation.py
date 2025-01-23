@@ -11,14 +11,17 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 if __name__ == "__main__":
 
-    metric = "SpearmanCorrelation@50"
+    metric = "SpearmanCorrelation"
 
     # get data
-    data_path = os.path.join(DATA_DIR, "results_vit.csv")
+    file_name = "results_vit_new.csv"
+    data_path = os.path.join(DATA_DIR, file_name)
     df = pd.read_csv(data_path)
 
     # drop "image_name" column
+    n_images = df["image_name"].nunique()
     df = df.drop(columns=["image_name"])
+
     all_columns = list(df.columns)
     all_metrics = [col for col in all_columns if col not in ["approximator", "budget"]]
     print("All available metrics: ", all_metrics)
@@ -34,8 +37,11 @@ if __name__ == "__main__":
         df_approx = df_agg[df_agg["approximator"] == approximator]
         x_val = df_approx["budget"].values
         y_val = df_approx[metric].values
-        plt.scatter(x_val, y_val, label=approximator)
+        plt.plot(x_val, y_val, label=approximator)
     plt.xlabel("Budget")
     plt.ylabel(metric)
     plt.legend()
+    plt.title(file_name +  f" (n: {n_images})")
+    # plt.ylim(0, 0.03)
+
     plt.show()
