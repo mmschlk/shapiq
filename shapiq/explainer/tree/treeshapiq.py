@@ -409,7 +409,7 @@ class TreeSHAPIQ:
             self.subset_ancestors_store[order] = subset_ancestors
 
             # If the tree has only one feature, we assign a default value of 0
-            if self._n_features_in_tree == 1:
+            if self.n_interpolation_size == 1:
                 self.D_store[order] = np.array([0])
             else:
                 self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
