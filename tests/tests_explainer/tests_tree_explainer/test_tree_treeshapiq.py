@@ -133,6 +133,7 @@ def test_edge_case_params():
     with pytest.raises(ValueError):
         _ = TreeSHAPIQ(model=tree_model, max_order=0)
 
+
 def test_no_bug_with_one_feature_tree():
     # create the dataset
     X = np.array(
