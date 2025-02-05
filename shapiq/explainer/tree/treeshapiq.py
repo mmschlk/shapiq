@@ -407,7 +407,13 @@ class TreeSHAPIQ:
                 interaction_order=order, n_features=self._n_features_in_tree
             )
             self.subset_ancestors_store[order] = subset_ancestors
-            self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
+
+            # If the tree has only one feature, we assign a default value of 0
+            if self.n_interpolation_size == 1:
+                self.D_store[order] = np.array([0])
+            else:
+                self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
+
             self.D_powers_store[order] = self._cache(self.D_store[order])
             if self._index in ("SV", "SII", "k-SII"):
                 self.Ns_store[order] = self._get_N(self.D_store[order])
