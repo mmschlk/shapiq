@@ -7,7 +7,6 @@ import pytest
 from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
 
 
-@pytest.mark.skipif(sys.version_info > (3, 11), reason="requires python3.11 or lower")
 def test_tabpfn_explainer_clf(tabpfn_classification_problem):
     """Test the TabPFNExplainer class for classification problems."""
     import tabpfn
@@ -34,7 +33,6 @@ def test_tabpfn_explainer_clf(tabpfn_classification_problem):
         assert isinstance(explainer, TabularExplainer)
 
 
-@pytest.mark.skipif(sys.version_info > (3, 11), reason="requires python3.11 or lower")
 def test_tabpfn_explainer_reg(tabpfn_regression_problem):
     """Test the TabPFNExplainer class for regression problems."""
     import tabpfn
