@@ -1,7 +1,5 @@
 """This test module tests the tabpfn imputer object."""
 
-import sys
-
 import numpy as np
 import pytest
 

@@ -1,7 +1,5 @@
 """This test module tests the TabPFNExplainer object."""
 
-import sys
-
 import pytest
 
 from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
