@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from shapiq.explainer.tree import TreeModel, TreeSHAPIQ, TreeExplainer
+from shapiq.explainer.tree import TreeExplainer, TreeModel, TreeSHAPIQ
 
 
 def test_init(dt_clf_model, background_clf_data):
