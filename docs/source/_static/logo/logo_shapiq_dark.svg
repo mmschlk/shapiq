@@ -2,10 +2,9 @@
 <svg
    version="1.1"
    width="280"
-   height="386"
-   viewBox="-0.5 -0.5 280 386"
+   height="360"
+   viewBox="-0.5 -0.5 280 360"
    id="svg27"
-   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns:xhtml="http://www.w3.org/1999/xhtml">
@@ -13,15 +12,6 @@
      id="defs1" />
   <g
      id="g26">
-    <rect
-       x="49.48"
-       y="325"
-       width="180.03"
-       height="60"
-       fill="none"
-       stroke="none"
-       pointer-events="all"
-       id="rect1" />
     <g
        transform="translate(-0.5,-12.5)"
        id="g1">
@@ -52,27 +42,27 @@
         </foreignObject>
       </switch>
       <text
-         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fafafa;fill-opacity:1"
+         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fefefe;fill-opacity:1"
          x="59.827148"
          y="366"
          id="text34">S</text>
       <text
-         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fafafa;fill-opacity:1"
+         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fefefe;fill-opacity:1"
          x="85.172852"
          y="366"
          id="text33">H</text>
       <text
-         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fafafa;fill-opacity:1"
+         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fefefe;fill-opacity:1"
          x="112.61523"
          y="366"
          id="text32">A</text>
       <text
-         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fafafa;fill-opacity:1"
+         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fefefe;fill-opacity:1"
          x="140.05762"
          y="366"
          id="text31">P</text>
       <text
-         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fafafa;fill-opacity:1"
+         style="font-weight:bold;font-size:38px;font-family:Helvetica;fill:#fefefe;fill-opacity:1"
          x="165.40332"
          y="366"
          id="text30">-</text>
@@ -97,7 +87,7 @@
          stroke-miterlimit="10"
          pointer-events="all"
          id="path1"
-         style="stroke:#4c4c4c;stroke-width:0.987218;stroke-opacity:1" />
+         style="stroke:#444444;stroke-width:0.987218;stroke-opacity:1" />
       <circle
          cx="-39.520393"
          cy="138.20732"
@@ -412,22 +402,4 @@
          style="stroke-width:0.987218" />
     </g>
   </g>
-  <switch
-     id="switch27">
-    <g
-       requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"
-       id="g27" />
-    <a
-       transform="translate(0,-5)"
-       xlink:href="https://www.diagrams.net/doc/faq/svg-export-text-problems"
-       target="_blank"
-       id="a27">
-      <text
-         text-anchor="middle"
-         font-size="10px"
-         x="50%"
-         y="100%"
-         id="text27">Text is not SVG - cannot display</text>
-    </a>
-  </switch>
 </svg>
