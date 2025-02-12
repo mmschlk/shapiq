@@ -311,6 +311,29 @@ def test_sum():
     assert np.isclose(sum(interaction_values), np.sum(interaction_values.values))
 
 
+def test_abs():
+    """Tests the abs method of the InteractionValues dataclass."""
+    index = "SII"
+    n = 5
+    min_order = 1
+    max_order = 2
+    interaction_lookup = {
+        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    }
+    values = (-1) * np.random.rand(len(interaction_lookup))
+    interaction_values = InteractionValues(
+        values=values,
+        index=index,
+        n_players=n,
+        min_order=min_order,
+        max_order=max_order,
+        interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
+    )
+
+    assert np.all(abs(interaction_values).values == abs(interaction_values.values))
+
+
 def test_n_order_transform():
     """Tests the n_order_transform method of the InteractionValues dataclass."""
     index = "SII"

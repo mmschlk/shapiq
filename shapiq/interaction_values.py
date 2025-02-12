@@ -432,6 +432,20 @@ class InteractionValues:
         """Multiplies an InteractionValues object by a scalar."""
         return self.__mul__(other)
 
+    def __abs__(self) -> "InteractionValues":
+        """Returns the absolute values of the InteractionValues object."""
+        return InteractionValues(
+            values=np.abs(self.values),
+            index=self.index,
+            max_order=self.max_order,
+            n_players=self.n_players,
+            min_order=self.min_order,
+            interaction_lookup=self.interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )
+
     def get_n_order_values(self, order: int) -> "np.ndarray":
         """Returns the interaction values of a specific order as a numpy array.
 
