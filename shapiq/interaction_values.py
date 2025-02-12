@@ -738,6 +738,7 @@ class InteractionValues:
         feature_names: Optional[np.ndarray] = None,
         show: bool = True,
         abbreviate: bool = True,
+        contribution_threshold: float = 0.03,
     ) -> Optional[plt.Figure]:
         """Visualize InteractionValues on a force plot.
 
@@ -762,6 +763,7 @@ class InteractionValues:
             feature_names=feature_names,
             show=show,
             abbreviate=abbreviate,
+            min_percentage=contribution_threshold,
         )
 
     def plot_waterfall(
