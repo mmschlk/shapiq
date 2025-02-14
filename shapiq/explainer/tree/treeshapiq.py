@@ -2,7 +2,7 @@
 
 import copy
 from math import factorial
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import scipy as sp
@@ -49,7 +49,7 @@ class TreeSHAPIQ:
 
     def __init__(
         self,
-        model: Union[dict, TreeModel, Any],
+        model: dict | TreeModel | Any,
         max_order: int = 2,
         min_order: int = 1,
         index: str = "k-SII",
@@ -605,7 +605,7 @@ class TreeSHAPIQ:
             )
         return Ns
 
-    def _get_subset_weight_cii(self, t, order) -> Optional[float]:
+    def _get_subset_weight_cii(self, t, order) -> float | None:
         # TODO: add docstring
         if self._index == "STII":
             return self._max_order / (

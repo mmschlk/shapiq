@@ -1,7 +1,6 @@
 """This module contains the sentence plot."""
 
 from collections.abc import Sequence
-from typing import Optional
 
 from matplotlib import pyplot as plt
 from matplotlib.font_manager import FontProperties
@@ -23,12 +22,12 @@ def _get_color_and_alpha(max_value: float, value: float) -> tuple[str, float]:
 def sentence_plot(
     interaction_values: InteractionValues,
     words: Sequence[str],
-    connected_words: Optional[Sequence[tuple[str, str]]] = None,
+    connected_words: Sequence[tuple[str, str]] | None = None,
     chars_per_line: int = 35,
     font_family: str = "sans-serif",
     show: bool = False,
-    max_score: Optional[float] = None,
-) -> Optional[tuple[plt.Figure, plt.Axes]]:
+    max_score: float | None = None,
+) -> tuple[plt.Figure, plt.Axes] | None:
     """Plots the first order effects (attributions) of a sentence or paragraph.
 
     An example of the plot is shown below.

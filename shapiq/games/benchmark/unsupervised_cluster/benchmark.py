@@ -1,7 +1,5 @@
 """This module contains the cluster explanation benchmark games the shapiq package."""
 
-from typing import Optional
-
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 from shapiq.games.benchmark.unsupervised_cluster.base import ClusterExplanation
 
@@ -25,7 +23,7 @@ class AdultCensus(ClusterExplanation):
         cluster_method: str = "kmeans",
         score_method: str = "calinski_harabasz_score",
         normalize: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
 
@@ -70,7 +68,7 @@ class BikeSharing(ClusterExplanation):
         cluster_method: str = "kmeans",
         score_method: str = "calinski_harabasz_score",
         normalize: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
 
@@ -115,7 +113,7 @@ class CaliforniaHousing(ClusterExplanation):
         cluster_method: str = "kmeans",
         score_method: str = "calinski_harabasz_score",
         normalize: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
 

@@ -1,7 +1,7 @@
 """This module contains the TabPFNImputer class, which incorporates the Remove-and-Contextualize
 paradigm of explaining the TabPFN model's predictions."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -52,10 +52,10 @@ class TabPFNImputer(Imputer):
         model: ModelType,
         x_train: np.ndarray,
         y_train: np.ndarray,
-        x_test: Optional[np.ndarray] = None,
-        empty_prediction: Optional[float] = None,
+        x_test: np.ndarray | None = None,
+        empty_prediction: float | None = None,
         verbose: bool = False,
-        predict_function: Optional[Callable[[ModelType, np.ndarray], np.ndarray]] = None,
+        predict_function: Callable[[ModelType, np.ndarray], np.ndarray] | None = None,
     ):
         self.x_train = x_train
         self.y_train = y_train

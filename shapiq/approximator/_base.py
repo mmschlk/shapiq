@@ -2,7 +2,7 @@
 
 import copy
 from abc import ABC, abstractmethod
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -66,8 +66,8 @@ class Approximator(ABC):
         top_order: bool,
         min_order: int = 0,
         pairing_trick: bool = False,
-        sampling_weights: Optional[np.ndarray[float]] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: np.ndarray[float] | None = None,
+        random_state: int | None = None,
     ) -> None:
         # check if index can be approximated
         self.index: str = index
@@ -92,8 +92,8 @@ class Approximator(ABC):
         )
 
         # set up random state and random number generators
-        self._random_state: Optional[int] = random_state
-        self._rng: Optional[np.random.Generator] = np.random.default_rng(seed=self._random_state)
+        self._random_state: int | None = random_state
+        self._rng: np.random.Generator | None = np.random.default_rng(seed=self._random_state)
 
         # set up a coalition sampler
         self._big_M: int = 100_000_000  # large number for sampling weights
@@ -178,8 +178,8 @@ class Approximator(ABC):
         result,
         baseline_value: float,
         *,
-        estimated: Optional[bool] = None,
-        budget: Optional[int] = None,
+        estimated: bool | None = None,
+        budget: int | None = None,
     ) -> InteractionValues:
         """Finalizes the result dictionary.
 
@@ -303,8 +303,8 @@ class Approximator(ABC):
     @staticmethod
     def aggregate_interaction_values(
         base_interactions: InteractionValues,
-        order: Optional[int] = None,
-        player_set: Optional[set[int]] = None,
+        order: int | None = None,
+        player_set: set[int] | None = None,
     ) -> InteractionValues:
         """Aggregates the interaction values.
 

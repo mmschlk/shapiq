@@ -1,7 +1,5 @@
 """This module contains tabular benchmark games for uncertainty explanation."""
 
-from typing import Optional, Union
-
 import numpy as np
 
 from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
@@ -15,11 +13,11 @@ class AdultCensus(UncertaintyExplanation):
         *,
         uncertainty_to_explain: str = "total",
         imputer: str = "marginal",
-        x: Optional[Union[np.ndarray, int]] = None,
+        x: np.ndarray | int | None = None,
         model_name: str = "random_forest",
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
         from sklearn.ensemble import RandomForestClassifier
 

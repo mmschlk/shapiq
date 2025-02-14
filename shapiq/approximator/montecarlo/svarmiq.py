@@ -1,7 +1,5 @@
 """SVARM-IQ approximation."""
 
-from typing import Optional
-
 from ._base import MonteCarlo
 
 
@@ -37,8 +35,8 @@ class SVARMIQ(MonteCarlo):
         index: str = "k-SII",
         top_order: bool = False,
         pairing_trick: bool = False,
-        sampling_weights: Optional[float] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: float | None = None,
+        random_state: int | None = None,
     ):
         super().__init__(
             n,
@@ -75,9 +73,9 @@ class SVARM(SVARMIQ):
     def __init__(
         self,
         n: int,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
         pairing_trick: bool = False,
-        sampling_weights: Optional[float] = None,
+        sampling_weights: float | None = None,
     ):
         super().__init__(
             n,

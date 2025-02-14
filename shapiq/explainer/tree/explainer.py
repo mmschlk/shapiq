@@ -3,7 +3,7 @@ computing any-order Shapley Interactions for tree ensembles."""
 
 import copy
 import warnings
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 
@@ -40,11 +40,11 @@ class TreeExplainer(Explainer):
 
     def __init__(
         self,
-        model: Union[dict, TreeModel, list, Any],
+        model: dict | TreeModel | list | Any,
         max_order: int = 2,
         min_order: int = 1,
         index: str = "k-SII",
-        class_index: Optional[int] = None,
+        class_index: int | None = None,
         **kwargs,
     ) -> None:
 
@@ -67,7 +67,7 @@ class TreeExplainer(Explainer):
 
         self._max_order: int = max_order
         self._min_order: int = min_order
-        self._class_label: Optional[int] = class_index
+        self._class_label: int | None = class_index
 
         # setup explainers for all trees
         self._treeshapiq_explainers: list[TreeSHAPIQ] = [

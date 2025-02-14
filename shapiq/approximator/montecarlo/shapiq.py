@@ -2,8 +2,6 @@
 The Unbiased KernelSHAP method is a variant of KernelSHAP. However, it was shown that Unbiased
 KernelSHAP is a more specific variant of the ShapIQ interaction method."""
 
-from typing import Optional
-
 from ._base import MonteCarlo
 
 
@@ -53,9 +51,9 @@ class SHAPIQ(MonteCarlo):
         max_order: int = 2,
         index: str = "k-SII",
         top_order: bool = False,
-        sampling_weights: Optional[float] = None,
+        sampling_weights: float | None = None,
         pairing_trick: bool = False,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         super().__init__(
             n,
@@ -117,8 +115,8 @@ class UnbiasedKernelSHAP(SHAPIQ):
         self,
         n: int,
         pairing_trick: bool = False,
-        sampling_weights: Optional[float] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: float | None = None,
+        random_state: int | None = None,
     ):
         super().__init__(
             n,

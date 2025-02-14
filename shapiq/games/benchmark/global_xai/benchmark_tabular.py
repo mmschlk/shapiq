@@ -1,7 +1,5 @@
 """This module contains tabular benchmark games for local explanation."""
 
-from typing import Optional
-
 from shapiq.games.benchmark.global_xai.base import GlobalExplanation
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
@@ -33,7 +31,7 @@ class AdultCensus(GlobalExplanation):
         n_samples_empty: int = 200,
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         setup = GameBenchmarkSetup(
@@ -84,7 +82,7 @@ class BikeSharing(GlobalExplanation):
         n_samples_empty: int = 200,
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         setup = GameBenchmarkSetup(
@@ -135,7 +133,7 @@ class CaliforniaHousing(GlobalExplanation):
         n_samples_empty: int = 200,
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         setup = GameBenchmarkSetup(

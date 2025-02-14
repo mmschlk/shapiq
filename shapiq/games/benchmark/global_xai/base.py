@@ -1,7 +1,7 @@
 """This module contains all tabular machine learning games."""
 
 import copy
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -56,7 +56,7 @@ class GlobalExplanation(Game):
         n_samples_eval: int = 10,
         n_samples_empty: int = 200,
         normalize: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
 

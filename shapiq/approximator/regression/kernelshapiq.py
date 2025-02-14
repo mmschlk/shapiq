@@ -1,7 +1,5 @@
 """Regression with Shapley interaction index (SII) approximation."""
 
-from typing import Optional
-
 import numpy as np
 
 from ._base import Regression
@@ -55,8 +53,8 @@ class KernelSHAPIQ(Regression):
         max_order: int = 2,
         index: str = "k-SII",
         pairing_trick: bool = False,
-        sampling_weights: Optional[np.ndarray] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: np.ndarray | None = None,
+        random_state: int | None = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
             raise ValueError(
@@ -115,8 +113,8 @@ class InconsistentKernelSHAPIQ(Regression):
         max_order: int = 2,
         index: str = "k-SII",
         pairing_trick: bool = False,
-        sampling_weights: Optional[np.ndarray] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: np.ndarray | None = None,
+        random_state: int | None = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
             raise ValueError(

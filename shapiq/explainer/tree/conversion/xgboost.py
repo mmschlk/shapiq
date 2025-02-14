@@ -2,10 +2,8 @@
 shapiq."""
 
 import warnings
-from typing import Optional
 
 import numpy as np
-import pandas as pd
 
 from ....utils.types import Model
 from ..base import TreeModel
@@ -13,7 +11,7 @@ from ..base import TreeModel
 
 def convert_xgboost_booster(
     tree_booster: Model,
-    class_label: Optional[int] = None,
+    class_label: int | None = None,
 ) -> list[TreeModel]:
     """Transforms models from the ``xgboost`` package to the format used by ``shapiq``.
 
@@ -50,11 +48,7 @@ def convert_xgboost_booster(
         feature_names = [f"f{i}" for i in range(n_features)]
     convert_feature_str_to_int = {k: v for v, k in enumerate(feature_names)}
     convert_feature_str_to_int["Leaf"] = -2
-    # pandas can't chill https://stackoverflow.com/q/77900971
-    with pd.option_context("future.no_silent_downcasting", True):
-        booster_df.loc[:, "Feature"] = booster_df.loc[:, "Feature"].replace(
-            convert_feature_str_to_int
-        )
+    booster_df.loc[:, "Feature"] = booster_df.loc[:, "Feature"].replace(convert_feature_str_to_int)
 
     if len(booster_df["Tree"].unique()) > tree_booster.num_boosted_rounds():
         # choose only trees for the selected class (xgboost grows n_estimators*n_class trees)
@@ -93,28 +87,26 @@ def _convert_xgboost_tree_as_df(
     """
     convert_node_str_to_int = {k: v for v, k in enumerate(tree_df["ID"])}
 
-    # pandas can't chill https://stackoverflow.com/q/77900971
-    with pd.option_context("future.no_silent_downcasting", True):
-        values = tree_df["Gain"].values * scaling + intercept  # add intercept to all values
-        tree_model = TreeModel(
-            children_left=tree_df["Yes"]
-            .replace(convert_node_str_to_int)
-            .infer_objects(copy=False)
-            .fillna(-1)
-            .astype(int)
-            .values,
-            children_right=tree_df["No"]
-            .replace(convert_node_str_to_int)
-            .infer_objects(copy=False)
-            .fillna(-1)
-            .astype(int)
-            .values,
-            features=tree_df["Feature"].values,
-            thresholds=tree_df["Split"].values,
-            values=values,  # values in non-leaf nodes are not used
-            node_sample_weight=tree_df["Cover"].values,
-            empty_prediction=None,
-            original_output_type=output_type,
-        )
+    values = tree_df["Gain"].values * scaling + intercept  # add intercept to all values
+    tree_model = TreeModel(
+        children_left=tree_df["Yes"]
+        .replace(convert_node_str_to_int)
+        .infer_objects(copy=False)
+        .fillna(-1)
+        .astype(int)
+        .values,
+        children_right=tree_df["No"]
+        .replace(convert_node_str_to_int)
+        .infer_objects(copy=False)
+        .fillna(-1)
+        .astype(int)
+        .values,
+        features=tree_df["Feature"].values,
+        thresholds=tree_df["Split"].values,
+        values=values,  # values in non-leaf nodes are not used
+        node_sample_weight=tree_df["Cover"].values,
+        empty_prediction=None,
+        original_output_type=output_type,
+    )
 
     return tree_model

@@ -2,7 +2,7 @@
 using the (sparse) Möbius representation.."""
 
 import copy
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 from scipy.special import binom
@@ -44,7 +44,7 @@ class MoebiusConverter:
         }
         self.available_indices: set[str] = set(self._index_mapping.keys())
 
-    def __call__(self, index: str, order: Optional[int] = None) -> InteractionValues:
+    def __call__(self, index: str, order: int | None = None) -> InteractionValues:
         """Calls the MoebiusConverter of the specified index or value.
 
         Args:

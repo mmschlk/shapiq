@@ -1,7 +1,7 @@
 """This module contains functions to plot the n_sii stacked bar charts."""
 
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,11 +16,11 @@ from shapiq.interaction_values import InteractionValues
 
 def stacked_bar_plot(
     interaction_values: InteractionValues,
-    feature_names: Optional[list[Any]] = None,
-    max_order: Optional[int] = None,
-    title: Optional[str] = None,
-    xlabel: Optional[str] = None,
-    ylabel: Optional[str] = None,
+    feature_names: list[Any] | None = None,
+    max_order: int | None = None,
+    title: str | None = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
     show: bool = False,
 ):
     """The stacked bar plot interaction scores.

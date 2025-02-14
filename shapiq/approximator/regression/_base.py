@@ -2,7 +2,7 @@
 
 import copy
 import warnings
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 from scipy.special import bernoulli, binom
@@ -42,8 +42,8 @@ class Regression(Approximator):
         index: str,
         sii_consistent: bool = True,
         pairing_trick: bool = False,
-        sampling_weights: Optional[np.ndarray] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: np.ndarray | None = None,
+        random_state: int | None = None,
     ):
         if index not in AVAILABLE_INDICES_REGRESSION:
             raise ValueError(

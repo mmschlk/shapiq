@@ -1,7 +1,5 @@
 """This module contains all benchmark games for the feature selection setting."""
 
-from typing import Optional
-
 from shapiq.games.benchmark.feature_selection.base import FeatureSelection
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
@@ -22,7 +20,7 @@ class AdultCensus(FeatureSelection):
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         setup = GameBenchmarkSetup(
@@ -61,7 +59,7 @@ class BikeSharing(FeatureSelection):
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
@@ -99,7 +97,7 @@ class CaliforniaHousing(FeatureSelection):
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",

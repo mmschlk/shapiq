@@ -1,7 +1,5 @@
 """This module contains tabular benchmark games for local explanation."""
 
-from typing import Optional, Union
-
 import numpy as np
 
 from shapiq.games.benchmark.local_xai.base import LocalExplanation
@@ -28,13 +26,13 @@ class AdultCensus(LocalExplanation):
     def __init__(
         self,
         *,
-        class_to_explain: Optional[int] = None,
-        x: Optional[Union[np.ndarray, int]] = None,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
         model_name: str = "decision_tree",
         imputer: str = "marginal",
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
         # validate the inputs
         if isinstance(class_to_explain, int) and class_to_explain not in [0, 1]:
@@ -90,12 +88,12 @@ class BikeSharing(LocalExplanation):
     def __init__(
         self,
         *,
-        x: Optional[Union[np.ndarray, int]] = None,
+        x: np.ndarray | int | None = None,
         model_name: str = "decision_tree",
         imputer: str = "marginal",
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         self.setup = GameBenchmarkSetup(
@@ -141,12 +139,12 @@ class CaliforniaHousing(LocalExplanation):
     def __init__(
         self,
         *,
-        x: Optional[Union[np.ndarray, int]] = None,
+        x: np.ndarray | int | None = None,
         model_name: str = "decision_tree",
         imputer: str = "marginal",
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         self.setup = GameBenchmarkSetup(

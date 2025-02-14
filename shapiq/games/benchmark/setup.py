@@ -1,7 +1,6 @@
 """This module contains a setup for the tabular benchmark games."""
 
 import copy
-from typing import Optional, Union
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -97,11 +96,11 @@ class GameBenchmarkSetup:
     def __init__(
         self,
         dataset_name: str,
-        model_name: Optional[str] = None,
-        loss_function: Optional[str] = None,
+        model_name: str | None = None,
+        loss_function: str | None = None,
         verbose: bool = True,
         test_size: float = 0.2,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         random_forest_n_estimators: int = 10,
     ) -> None:
         self.random_state = random_state
@@ -144,7 +143,7 @@ class GameBenchmarkSetup:
         self._random_forest_n_estimators = random_forest_n_estimators
 
         # to be set in the model initialization
-        self.model: Optional[Model] = None
+        self.model: Model | None = None
         self.fit_function = None
         self.score_function = None
         self.predict_function = None
@@ -281,7 +280,7 @@ def _accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return accuracy_score(y_true, y_pred)
 
 
-def get_x_explain(x: Optional[Union[np.ndarray, int]], x_set: np.ndarray) -> np.ndarray:
+def get_x_explain(x: np.ndarray | int | None, x_set: np.ndarray) -> np.ndarray:
     """Returns the data point to explain given the input.
 
     Args:

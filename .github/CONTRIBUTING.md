@@ -43,7 +43,7 @@ Next you need a python environment with a supported version of python. We recomm
 Python version `shapiq` supports:
 
 ```sh
-pyenv install 3.9
+pyenv install 3.10
 ```
 
 Then, create a virtual environment and install the development dependencies:

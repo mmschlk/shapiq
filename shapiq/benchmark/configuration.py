@@ -34,7 +34,7 @@ information:
 """
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 from shapiq.approximator import (
     FSII_APPROXIMATORS,
@@ -757,7 +757,7 @@ APPROXIMATION_BENCHMARK_PARAMS.update(
 
 
 def get_game_file_name_from_config(
-    configuration: dict[str, Any], iteration: Optional[int] = None
+    configuration: dict[str, Any], iteration: int | None = None
 ) -> str:
     """Get the file name for the game data with the given configuration and iteration.
 

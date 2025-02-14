@@ -1,6 +1,6 @@
 """This module implements the Permutation Sampling approximator for the SII (and k-SII) index."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -33,7 +33,7 @@ class PermutationSamplingSII(Approximator):
         max_order: int = 2,
         index: str = "SII",
         top_order: bool = False,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         if index not in ["SII", "k-SII"]:
             raise ValueError(f"Invalid index {index}. Must be either 'SII' or 'k-SII'.")
@@ -68,7 +68,7 @@ class PermutationSamplingSII(Approximator):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        batch_size: Optional[int] = 5,
+        batch_size: int | None = 5,
     ) -> InteractionValues:
         """Approximates the interaction values.
 

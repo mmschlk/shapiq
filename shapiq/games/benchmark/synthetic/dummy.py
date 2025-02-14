@@ -2,8 +2,6 @@
 purposes. It returns the size of the coalition divided by the number of players plus an additional
 interaction term."""
 
-from typing import Union
-
 import numpy as np
 
 from shapiq.games.base import Game
@@ -34,7 +32,7 @@ class DummyGame(Game):
         array([0., 0.25 , 1.5, 2])
     """
 
-    def __init__(self, n: int, interaction: Union[set, tuple] = ()):
+    def __init__(self, n: int, interaction: set | tuple = ()):
         self.n = n
         self.N = set(range(self.n))
         self.interaction: tuple = tuple(sorted(interaction))

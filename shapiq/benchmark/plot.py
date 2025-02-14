@@ -1,7 +1,7 @@
 """This module contains the plotting utilities for the benchmark results."""
 
 from collections import defaultdict
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -162,14 +162,14 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
 
 def plot_approximation_quality(
-    data: Optional[pd.DataFrame] = None,
+    data: pd.DataFrame | None = None,
     *,
-    data_path: Optional[str] = None,
+    data_path: str | None = None,
     metric: str = "MSE",
-    orders: Optional[list[Union[int, str]]] = None,
-    approximators: Optional[list[str]] = None,
+    orders: list[int | str] | None = None,
+    approximators: list[str] | None = None,
     aggregation: str = "mean",
-    confidence_metric: Optional[str] = "sem",
+    confidence_metric: str | None = "sem",
     log_scale_y: bool = False,
     log_scale_min: float = LOG_SCALE_MIN,
     log_scale_max: float = LOG_SCALE_MAX,
@@ -421,8 +421,8 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 
 def add_legend(
     axis: plt.Axes,
-    approximators: list[Union[str, Approximator]],
-    orders: Optional[list[Union[int, str]]] = None,
+    approximators: list[str | Approximator],
+    orders: list[int | str] | None = None,
     legend_subtitle: bool = True,
     loc: str = "best",
 ) -> None:

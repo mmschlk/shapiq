@@ -1,7 +1,6 @@
 """Implementation of the baseline imputer."""
 
 import warnings
-from typing import Optional
 
 import numpy as np
 
@@ -55,10 +54,10 @@ class BaselineImputer(Imputer):
         self,
         model,
         data: np.ndarray,
-        x: Optional[np.ndarray] = None,
+        x: np.ndarray | None = None,
         categorical_features: list[int] = None,
         normalize: bool = True,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         super().__init__(model, data, x, 1, categorical_features, random_state)
 

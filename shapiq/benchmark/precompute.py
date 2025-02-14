@@ -2,7 +2,7 @@
 
 import multiprocessing as mp
 import os
-from typing import Any, Optional, Union
+from typing import Any
 
 from tqdm.auto import tqdm
 
@@ -21,7 +21,7 @@ SHAPIQ_DATA_DIR = os.path.join(os.path.dirname(__file__), "precomputed")
 os.makedirs(SHAPIQ_DATA_DIR, exist_ok=True)
 
 
-def get_game_files(game: Union[Game, Game.__class__, str], n_players: int) -> list[str]:
+def get_game_files(game: Game | Game.__class__ | str, n_players: int) -> list[str]:
     """Get the files for the given game and number of players.
 
     Args:
@@ -43,7 +43,7 @@ def get_game_files(game: Union[Game, Game.__class__, str], n_players: int) -> li
 
 
 def pre_compute_and_store(
-    game: Game, save_dir: Optional[str] = None, game_id: Optional[str] = None
+    game: Game, save_dir: str | None = None, game_id: str | None = None
 ) -> str:
     """Pre-compute the values for the given game and store them in a file.
 
@@ -79,9 +79,9 @@ def pre_compute_and_store(
 
 
 def pre_compute_from_configuration(
-    game_class: Union[Game.__class__, str],
-    configuration: Optional[dict[str, Any]] = None,
-    n_iterations: Optional[int] = None,
+    game_class: Game.__class__ | str,
+    configuration: dict[str, Any] | None = None,
+    n_iterations: int | None = None,
     n_player_id: int = 0,
     n_jobs: int = 1,
 ) -> list[str]:
@@ -175,8 +175,8 @@ def pre_compute_from_configuration(
 
 def pre_compute_and_store_from_list(
     games: list[Game],
-    save_dir: Optional[str] = None,
-    game_ids: Optional[list[str]] = None,
+    save_dir: str | None = None,
+    game_ids: list[str] | None = None,
     n_jobs: int = 1,
 ) -> list[str]:
     """Pre-compute the values for the games stored in the given file.

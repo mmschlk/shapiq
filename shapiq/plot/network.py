@@ -2,7 +2,7 @@
 
 import copy
 import math
-from typing import Any, Optional, Union
+from typing import Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -17,19 +17,19 @@ __all__ = ["network_plot"]
 
 
 def network_plot(
-    interaction_values: Optional[InteractionValues] = None,
+    interaction_values: InteractionValues | None = None,
     *,
-    first_order_values: Optional[np.ndarray[float]] = None,
-    second_order_values: Optional[np.ndarray[float]] = None,
-    feature_names: Optional[list[Any]] = None,
-    feature_image_patches: Optional[dict[int, Image.Image]] = None,
-    feature_image_patches_size: Optional[Union[float, dict[int, float]]] = 0.2,
-    center_image: Optional[Image.Image] = None,
-    center_image_size: Optional[float] = 0.6,
+    first_order_values: np.ndarray[float] | None = None,
+    second_order_values: np.ndarray[float] | None = None,
+    feature_names: list[Any] | None = None,
+    feature_image_patches: dict[int, Image.Image] | None = None,
+    feature_image_patches_size: float | dict[int, float] | None = 0.2,
+    center_image: Image.Image | None = None,
+    center_image_size: float | None = 0.6,
     draw_legend: bool = True,
-    center_text: Optional[str] = None,
+    center_text: str | None = None,
     show: bool = False,
-) -> Optional[tuple[plt.Figure, plt.Axes]]:
+) -> tuple[plt.Figure, plt.Axes] | None:
     """Draws the interaction network plot[1]_.
 
     An interaction network is a graph where the nodes represent the features and the edges represent

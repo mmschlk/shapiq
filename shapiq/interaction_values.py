@@ -6,7 +6,6 @@ import os
 import pickle
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Union
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -54,7 +53,7 @@ class InteractionValues:
     baseline_value: float
     interaction_lookup: dict[tuple[int, ...], int] = None
     estimated: bool = True
-    estimation_budget: Optional[int] = None
+    estimation_budget: int | None = None
 
     def __post_init__(self) -> None:
         """Checks if the index is valid."""
@@ -79,7 +78,7 @@ class InteractionValues:
                 self.n_players, self.min_order, self.max_order
             )
 
-        if not isinstance(self.baseline_value, (int, float)):
+        if not isinstance(self.baseline_value, int | float):
             raise TypeError(
                 f"Baseline value must be provided as a number. Got {self.baseline_value}."
             )
@@ -151,7 +150,7 @@ class InteractionValues:
 
     def get_top_k(
         self, k: int, as_interaction_values: bool = True
-    ) -> Union["InteractionValues", tuple[dict, list[tuple]]]:
+    ) -> "InteractionValues | tuple[dict, list[tuple]]":
         """Returns the top k interactions.
 
         Args:
@@ -220,7 +219,7 @@ class InteractionValues:
         """Returns an iterator over the values of the InteractionValues object."""
         return np.nditer(self.values)
 
-    def __getitem__(self, item: Union[int, tuple[int, ...]]) -> float:
+    def __getitem__(self, item: int | tuple[int, ...]) -> float:
         """Returns the score for the given interaction.
 
         Args:
@@ -238,7 +237,7 @@ class InteractionValues:
         except KeyError:
             return 0.0
 
-    def __setitem__(self, item: Union[int, tuple[int, ...]], value: float) -> None:
+    def __setitem__(self, item: int | tuple[int, ...], value: float) -> None:
         """Sets the score for the given interaction.
 
         Args:
@@ -334,7 +333,7 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
-    def __add__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
+    def __add__(self, other: "InteractionValues | int | float") -> "InteractionValues":
         """Adds two InteractionValues objects together or a scalar."""
         n_players, min_order, max_order = self.n_players, self.min_order, self.max_order
         if isinstance(other, InteractionValues):
@@ -370,7 +369,7 @@ class InteractionValues:
                 added_values = self.values + other.values
                 interaction_lookup = self.interaction_lookup
                 baseline_value = self.baseline_value + other.baseline_value
-        elif isinstance(other, (int, float)):
+        elif isinstance(other, int | float):
             added_values = self.values.copy() + other
             interaction_lookup = self.interaction_lookup.copy()
             baseline_value = self.baseline_value + other
@@ -388,7 +387,7 @@ class InteractionValues:
             baseline_value=baseline_value,
         )
 
-    def __radd__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
+    def __radd__(self, other: "InteractionValues | int | float") -> "InteractionValues":
         """Adds two InteractionValues objects together or a scalar."""
         return self.__add__(other)
 
@@ -406,15 +405,15 @@ class InteractionValues:
             baseline_value=-self.baseline_value,
         )
 
-    def __sub__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
+    def __sub__(self, other: "InteractionValues | int | float") -> "InteractionValues":
         """Subtracts two InteractionValues objects or a scalar."""
         return self.__add__(-other)
 
-    def __rsub__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
+    def __rsub__(self, other: "InteractionValues | int| float") -> "InteractionValues":
         """Subtracts two InteractionValues objects or a scalar."""
         return (-self).__add__(other)
 
-    def __mul__(self, other: Union[int, float]) -> "InteractionValues":
+    def __mul__(self, other: int | float) -> "InteractionValues":
         """Multiplies an InteractionValues object by a scalar."""
         return InteractionValues(
             values=self.values * other,
@@ -428,7 +427,7 @@ class InteractionValues:
             baseline_value=self.baseline_value * other,
         )
 
-    def __rmul__(self, other: Union[int, float]) -> "InteractionValues":
+    def __rmul__(self, other: int | float) -> "InteractionValues":
         """Multiplies an InteractionValues object by a scalar."""
         return self.__mul__(other)
 
@@ -463,7 +462,7 @@ class InteractionValues:
         return values
 
     def get_n_order(
-        self, order: int, min_order: Optional[int] = None, max_order: Optional[int] = None
+        self, order: int, min_order: int | None = None, max_order: int | None = None
     ) -> "InteractionValues":
         """Returns the interaction values of a specific order.
 
@@ -684,7 +683,7 @@ class InteractionValues:
         """
         return aggregate_interaction_values([self, *others], aggregation)
 
-    def plot_network(self, show: bool = True, **kwargs) -> Optional[tuple[plt.Figure, plt.Axes]]:
+    def plot_network(self, show: bool = True, **kwargs) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues on a graph.
 
         For arguments, see shapiq.plots.network_plot().
@@ -706,7 +705,7 @@ class InteractionValues:
                 "but requires also 2-order values for the network plot."
             )
 
-    def plot_si_graph(self, show: bool = True, **kwargs) -> Optional[tuple[plt.Figure, plt.Axes]]:
+    def plot_si_graph(self, show: bool = True, **kwargs) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues as a SI graph.
 
         For arguments, see shapiq.plots.si_graph_plot().
@@ -719,9 +718,7 @@ class InteractionValues:
 
         return si_graph_plot(self, show=show, **kwargs)
 
-    def plot_stacked_bar(
-        self, show: bool = True, **kwargs
-    ) -> Optional[tuple[plt.Figure, plt.Axes]]:
+    def plot_stacked_bar(self, show: bool = True, **kwargs) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues on a graph.
 
         For arguments, see shapiq.plots.stacked_bar_plot().
@@ -735,10 +732,10 @@ class InteractionValues:
 
     def plot_force(
         self,
-        feature_names: Optional[np.ndarray] = None,
+        feature_names: np.ndarray | None = None,
         show: bool = True,
         abbreviate: bool = True,
-    ) -> Optional[plt.Figure]:
+    ) -> plt.Figure | None:
         """Visualize InteractionValues on a force plot.
 
         For arguments, see shapiq.plots.force_plot().
@@ -766,11 +763,11 @@ class InteractionValues:
 
     def plot_waterfall(
         self,
-        feature_names: Optional[np.ndarray] = None,
+        feature_names: np.ndarray | None = None,
         show: bool = True,
         abbreviate: bool = True,
         max_display: int = 10,
-    ) -> Optional[plt.Axes]:
+    ) -> plt.Axes | None:
         """Draws interaction values on a waterfall plot.
 
         Note:
@@ -799,7 +796,7 @@ class InteractionValues:
         words: list[str],
         show: bool = True,
         **kwargs,
-    ) -> Optional[tuple[plt.Figure, plt.Axes]]:
+    ) -> tuple[plt.Figure, plt.Axes] | None:
         """Plots the first order effects (attributions) of a sentence or paragraph.
 
         For arguments, see shapiq.plots.sentence_plot().
@@ -812,7 +809,7 @@ class InteractionValues:
 
         return sentence_plot(self, words, show=show, **kwargs)
 
-    def plot_upset(self, show: bool = True, **kwargs) -> Optional[plt.Figure]:
+    def plot_upset(self, show: bool = True, **kwargs) -> plt.Figure | None:
         """Plots the upset plot.
 
         For arguments, see shapiq.plot.upset_plot().

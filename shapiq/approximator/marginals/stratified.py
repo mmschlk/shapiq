@@ -1,6 +1,6 @@
 """This module contains the Stratified Sampling approximation method for the Shapley values."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -31,7 +31,7 @@ class StratifiedSamplingSV(Approximator):
     def __init__(
         self,
         n: int,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         super().__init__(n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = 2

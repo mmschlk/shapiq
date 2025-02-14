@@ -1,7 +1,7 @@
 """This module contains the permutation sampling algorithms to estimate STII scores."""
 
 import warnings
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 import scipy as sp
@@ -54,7 +54,7 @@ class PermutationSamplingSTII(Approximator):
         )
     """
 
-    def __init__(self, n: int, max_order: int, random_state: Optional[int] = None) -> None:
+    def __init__(self, n: int, max_order: int, random_state: int | None = None) -> None:
         super().__init__(
             n=n, max_order=max_order, index="STII", top_order=False, random_state=random_state
         )

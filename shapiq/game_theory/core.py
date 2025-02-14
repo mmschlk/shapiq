@@ -2,7 +2,6 @@
 
 import copy
 import warnings
-from typing import Optional
 
 import numpy as np
 from scipy.optimize import LinearConstraint, minimize
@@ -15,7 +14,7 @@ __all__ = ["egalitarian_least_core"]
 
 def _setup_core_calculations(
     n_players: int, game_values: np.ndarray
-) -> tuple[list[LinearConstraint], list[tuple[Optional[int], Optional[int]]]]:
+) -> tuple[list[LinearConstraint], list[tuple[int | None, int | None]]]:
     """Setup core optimization matrices for scipy.linprog.
 
     Args:

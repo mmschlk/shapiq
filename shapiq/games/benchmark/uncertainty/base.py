@@ -1,7 +1,5 @@
 """This module contains the base class for the uncertainty explanation game."""
 
-from typing import Optional, Union
-
 import numpy as np
 from scipy.stats import entropy
 
@@ -18,10 +16,10 @@ class UncertaintyExplanation(Game):
         *,
         data: np.ndarray,
         model: Model,
-        x: Union[np.ndarray, int] = None,
+        x: np.ndarray | int = None,
         imputer: str = "marginal",
         normalize: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         verbose: bool = False,
         uncertainty_to_explain: str = "total",
     ) -> None:

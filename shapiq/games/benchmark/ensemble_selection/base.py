@@ -1,6 +1,6 @@
 """This module contains the base class for the ensemble selection games."""
 
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 import numpy as np
 from scipy.stats import mode
@@ -59,12 +59,12 @@ class EnsembleSelection(Game):
         y_test: np.ndarray,
         loss_function: Callable[[np.ndarray, np.ndarray], float],
         dataset_type: str = "classification",
-        available_ensemble_members: Optional[list[str]] = None,
-        ensemble_members: Optional[Union[list[str], list[Model]]] = None,
+        available_ensemble_members: list[str] | None = None,
+        ensemble_members: list[str] | list[Model] | None = None,
         n_members: int = 10,
         verbose: bool = True,
         normalize: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         assert dataset_type in ["classification", "regression"], (
@@ -72,7 +72,7 @@ class EnsembleSelection(Game):
             f"['classification', 'regression']."
         )
         self.dataset_type: str = dataset_type
-        self.random_state: Optional[int] = random_state
+        self.random_state: int | None = random_state
         self._rng = np.random.default_rng(seed=random_state)
 
         # set the loss function
@@ -247,7 +247,7 @@ class RandomForestEnsembleSelection(EnsembleSelection):
         dataset_type: str = "classification",
         verbose: bool = True,
         normalize: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
         # check if the random forest is a scikit-learn random forest
         if not isinstance(random_forest, RandomForestClassifier) and not isinstance(

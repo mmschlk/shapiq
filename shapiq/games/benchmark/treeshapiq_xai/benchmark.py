@@ -1,7 +1,5 @@
 """This module contains the TreeSHAPIQ explanation benchmark games."""
 
-from typing import Optional, Union
-
 import numpy as np
 
 from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
@@ -23,12 +21,12 @@ class AdultCensus(TreeSHAPIQXAI):
 
     def __init__(
         self,
-        x: Optional[Union[np.ndarray, int]] = None,
+        x: np.ndarray | int | None = None,
         model_name: str = "decision_tree",
-        class_label: Optional[int] = None,
+        class_label: int | None = None,
         normalize: bool = True,
         verbose: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         # TODO: add xgb to TreeSHAQ-IQ, yet
@@ -71,11 +69,11 @@ class BikeSharing(TreeSHAPIQXAI):
 
     def __init__(
         self,
-        x: Optional[Union[np.ndarray, int]] = None,
+        x: np.ndarray | int | None = None,
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         # TODO: add xgb to TreeSHAQ-IQ, yet
@@ -117,11 +115,11 @@ class CaliforniaHousing(TreeSHAPIQXAI):
 
     def __init__(
         self,
-        x: Optional[Union[np.ndarray, int]] = None,
+        x: np.ndarray | int | None = None,
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
 
         # TODO: add xgb to TreeSHAQ-IQ, yet
@@ -159,7 +157,7 @@ class SynthData(TreeSHAPIQXAI):
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
         from sklearn.datasets import make_classification, make_regression
         from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor

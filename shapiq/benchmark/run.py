@@ -4,7 +4,7 @@ import copy
 import multiprocessing as mp
 import os
 import warnings
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -38,18 +38,16 @@ def run_benchmark(
     index: str,
     order: int,
     games: list[Game],
-    gt_values: Optional[list[InteractionValues]] = None,
-    approximators: Optional[
-        Union[list[Approximator], list[Approximator.__class__], list[str]]
-    ] = None,
-    budget_steps: Optional[list[Union[int]]] = None,
+    gt_values: list[InteractionValues] | None = None,
+    approximators: list[Approximator] | list[Approximator.__class__] | list[str] | None = None,
+    budget_steps: list[int] | None = None,
     budget_step: float = 0.05,
-    max_budget: Optional[int] = None,
+    max_budget: int | None = None,
     n_iterations: int = 1,
     n_jobs: int = 1,
     benchmark_name: str = "benchmark",
     save: bool = True,
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
     rerun_if_exists: bool = False,
 ) -> pd.DataFrame:
     """Run the benchmark for the given approximators and games.
@@ -207,7 +205,7 @@ def run_benchmark(
     return results_df
 
 
-def _run_benchmark(args) -> dict[str, Union[str, int, float, InteractionValues]]:
+def _run_benchmark(args) -> dict[str, str | int | float | InteractionValues]:
     """Run the benchmark for a given set of parameters.
 
     Args:
@@ -272,13 +270,13 @@ def _init_approximator_from_class(
 
 
 def load_benchmark_results(
-    save_path: Optional[str] = None,
-    index: Optional[str] = None,
-    order: Optional[int] = None,
-    game_class: Optional[Union[Game.__class__, str]] = None,
-    game_configuration: Optional[Union[dict[str, Any], int]] = None,
-    game_n_player_id: Optional[int] = None,
-    game_n_games: Optional[int] = None,
+    save_path: str | None = None,
+    index: str | None = None,
+    order: int | None = None,
+    game_class: Game.__class__ | str | None = None,
+    game_configuration: dict[str, Any] | int | None = None,
+    game_n_player_id: int | None = None,
+    game_n_games: int | None = None,
 ) -> tuple[pd.DataFrame, str]:
     """Loads the benchmark results from a JSON file which either specified by the save path or
     the benchmark configuration.
@@ -343,14 +341,12 @@ def run_benchmark_from_configuration(
     index: str,
     order: int,
     *,
-    game_class: Union[Game.__class__, str],
-    game_configuration: Union[dict[str, Any], int] = 1,
+    game_class: Game.__class__ | str,
+    game_configuration: dict[str, Any] | int = 1,
     game_n_player_id: int = 0,
-    game_n_games: Optional[int] = None,
-    approximators: Optional[
-        Union[list[Approximator], list[Approximator.__class__], list[str]]
-    ] = None,
-    max_budget: Optional[int] = None,
+    game_n_games: int | None = None,
+    approximators: list[Approximator] | list[Approximator.__class__] | list[str] | None = None,
+    max_budget: int | None = None,
     n_iterations: int = 1,
     n_jobs: int = 1,
     rerun_if_exists: bool = False,
@@ -452,7 +448,7 @@ def run_benchmark_from_configuration(
 
 
 def _make_benchmark_name(
-    config_id: str, game_class: Union[Game.__class__, str], n_games: int, index: str, order: int
+    config_id: str, game_class: Game.__class__ | str, n_games: int, index: str, order: int
 ) -> str:
     """Make the benchmark name for the given configuration."""
     try:

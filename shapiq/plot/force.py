@@ -5,8 +5,6 @@ Note:
     which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
 """
 
-from typing import Optional
-
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -588,13 +586,13 @@ def _draw_force_plot(
 
 def force_plot(
     interaction_values: InteractionValues,
-    feature_names: Optional[np.ndarray] = None,
+    feature_names: np.ndarray | None = None,
     abbreviate: bool = True,
     show: bool = False,
     figsize: tuple[int, int] = (15, 4),
     draw_higher_lower: bool = True,
     min_percentage: float = 0.05,
-) -> Optional[plt.Figure]:
+) -> plt.Figure | None:
     """Draws a force plot for the given interaction values.
 
     Args:
