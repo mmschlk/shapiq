@@ -1,7 +1,6 @@
 """Base class for all Imputers."""
 
 from abc import abstractmethod
-from typing import Optional
 
 import numpy as np
 
@@ -49,10 +48,10 @@ class Imputer(Game):
         self,
         model,
         data: np.ndarray,
-        x: Optional[np.ndarray] = None,
+        x: np.ndarray | None = None,
         sample_size: int = 100,
         categorical_features: list[int] = None,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
         verbose: bool = False,
     ) -> None:
         if callable(model) and not hasattr(model, "_predict_function"):
@@ -75,7 +74,7 @@ class Imputer(Game):
         self._rng = np.random.default_rng(self.random_state)
 
         # fit x
-        self._x: Optional[np.ndarray] = None  # will be overwritten @ fit
+        self._x: np.ndarray | None = None  # will be overwritten @ fit
         if x is not None:
             self.fit(x)
 
@@ -84,7 +83,7 @@ class Imputer(Game):
         super().__init__(n_players=self.n_features, normalize=False, verbose=verbose)
 
     @property
-    def x(self) -> Optional[np.ndarray]:
+    def x(self) -> np.ndarray | None:
         """Returns the explanation point if it is set."""
         return self._x.copy() if self._x is not None else None
 

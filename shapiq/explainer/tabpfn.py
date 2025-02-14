@@ -1,8 +1,6 @@
 """This module contains the TabPFNExplainer class, which is a class for explaining the predictions
 of a TabPFN model."""
 
-from typing import Optional, Union
-
 import numpy as np
 
 from ..approximator._base import Approximator
@@ -71,10 +69,10 @@ class TabPFNExplainer(TabularExplainer):
         labels: np.ndarray,
         index: str = "k-SII",
         max_order: int = 2,
-        x_test: Optional[np.ndarray] = None,
-        empty_prediction: Optional[float] = None,
-        class_index: Optional[int] = None,
-        approximator: Union[str, Approximator] = "auto",
+        x_test: np.ndarray | None = None,
+        empty_prediction: float | None = None,
+        class_index: int | None = None,
+        approximator: str | Approximator = "auto",
         verbose: bool = False,
     ):
         from ..games.imputer.tabpfn_imputer import TabPFNImputer

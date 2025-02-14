@@ -5,8 +5,6 @@ Note:
     which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
 """
 
-from typing import Optional
-
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +18,7 @@ __all__ = ["waterfall_plot"]
 
 def _draw_waterfall_plot(
     values: np.ndarray, base_values: float, feature_names: list[str], max_display=10, show=True
-) -> Optional[plt.Axes]:
+) -> plt.Axes | None:
     """The waterfall plot from the SHAP package.
 
     Note:
@@ -334,11 +332,11 @@ def _draw_waterfall_plot(
 
 def waterfall_plot(
     interaction_values: InteractionValues,
-    feature_names: Optional[np.ndarray[str]] = None,
+    feature_names: np.ndarray[str] | None = None,
     show: bool = False,
     max_display: int = 10,
     abbreviate: bool = True,
-) -> Optional[plt.Axes]:
+) -> plt.Axes | None:
     """Draws a waterfall plot with the interaction values.
 
     The waterfall plot shows the individual contributions of the features to the interaction values.

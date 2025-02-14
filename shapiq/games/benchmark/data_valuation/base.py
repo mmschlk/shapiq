@@ -1,6 +1,6 @@
 """This module contains the data valuation games for the shapiq benchmark."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -35,7 +35,7 @@ class DataValuation(Game):
         fit_function: Callable[[np.ndarray, np.ndarray], None],
         predict_function: Callable[[np.ndarray], np.ndarray],
         loss_function: Callable[[np.ndarray, np.ndarray], float],
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
         empty_data_value: float = 0.0,

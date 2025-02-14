@@ -1,9 +1,9 @@
 import sys
 from importlib import import_module
-from typing import Any, Union
+from typing import Any
 
 
-def safe_isinstance(obj: Any, class_path_str: Union[str, list[str], tuple[str]]) -> bool:
+def safe_isinstance(obj: Any, class_path_str: str | list[str] | tuple[str]) -> bool:
     """
     Acts as a safe version of isinstance without having to explicitly import packages which may not
     exist in the user's environment. Checks if obj is an instance of type specified by

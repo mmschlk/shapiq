@@ -1,7 +1,6 @@
 """The base Explainer classes for the shapiq package."""
 
 from abc import abstractmethod
-from typing import Optional
 from warnings import warn
 
 import numpy as np
@@ -33,7 +32,7 @@ class Explainer:
     """
 
     def __init__(
-        self, model, data: Optional[np.ndarray] = None, class_index: Optional[int] = None, **kwargs
+        self, model, data: np.ndarray | None = None, class_index: int | None = None, **kwargs
     ) -> None:
 
         self._model_class = print_class(model)

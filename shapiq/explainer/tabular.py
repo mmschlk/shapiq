@@ -1,7 +1,6 @@
 """Tabular Explainer class for the shapiq package."""
 
 import warnings
-from typing import Optional, Union
 from warnings import warn
 
 import numpy as np
@@ -105,12 +104,12 @@ class TabularExplainer(Explainer):
         self,
         model,
         data: np.ndarray,
-        class_index: Optional[int] = None,
+        class_index: int | None = None,
         imputer="marginal",
-        approximator: Union[str, Approximator] = "auto",
+        approximator: str | Approximator = "auto",
         index: str = "k-SII",
         max_order: int = 2,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
         verbose: bool = False,
         **kwargs,
     ) -> None:
@@ -170,7 +169,7 @@ class TabularExplainer(Explainer):
         self._approximator = self._init_approximator(approximator, self.index, self._max_order)
 
     def explain_function(
-        self, x: np.ndarray, budget: Optional[int] = None, random_state: Optional[int] = None
+        self, x: np.ndarray, budget: int | None = None, random_state: int | None = None
     ) -> InteractionValues:
         """Explains the model's predictions.
 
@@ -208,7 +207,7 @@ class TabularExplainer(Explainer):
         return self._imputer.empty_prediction
 
     def _init_approximator(
-        self, approximator: Union[Approximator, str], index: str, max_order: int
+        self, approximator: Approximator | str, index: str, max_order: int
     ) -> Approximator:
 
         if isinstance(approximator, Approximator):  # if the approximator is already given

@@ -1,7 +1,5 @@
 """This module contains the benchmark DatasetValuation games."""
 
-from typing import Optional, Union
-
 from shapiq.games.benchmark.dataset_valuation.base import DatasetValuation
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
@@ -47,8 +45,8 @@ class CaliforniaHousing(DatasetValuation):
         *,
         n_players: int = 10,
         model_name: str = "decision_tree",
-        player_sizes: Optional[Union[list[float], str]] = "increasing",
-        random_state: Optional[int] = 42,
+        player_sizes: list[float] | str | None = "increasing",
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -118,8 +116,8 @@ class BikeSharing(DatasetValuation):
         *,
         n_players: int = 10,
         model_name: str = "decision_tree",
-        player_sizes: Optional[Union[list[float], str]] = "increasing",
-        random_state: Optional[int] = 42,
+        player_sizes: list[float] | str | None = "increasing",
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -189,8 +187,8 @@ class AdultCensus(DatasetValuation):
         *,
         n_players: int = 10,
         model_name: str = "decision_tree",
-        player_sizes: Optional[Union[list[float], str]] = "increasing",
-        random_state: Optional[int] = 42,
+        player_sizes: list[float] | str | None = "increasing",
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:

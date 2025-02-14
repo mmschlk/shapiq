@@ -1,6 +1,6 @@
 """This module contains the permutation sampling approximation method for the Shapley value (SV)."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -33,13 +33,13 @@ class PermutationSamplingSV(Approximator):
     def __init__(
         self,
         n: int,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         super().__init__(n=n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = n - 1
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: Optional[int] = 5
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: int | None = 5
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 

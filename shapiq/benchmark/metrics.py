@@ -2,7 +2,6 @@
 
 import copy
 import warnings
-from typing import Optional
 
 import numpy as np
 from scipy.stats import kendalltau
@@ -145,7 +144,7 @@ def compute_precision_at_k(
 def get_all_metrics(
     ground_truth: InteractionValues,
     estimated: InteractionValues,
-    order_indicator: Optional[str] = None,
+    order_indicator: str | None = None,
 ) -> dict:
     """Get all metrics for the interaction values.
 

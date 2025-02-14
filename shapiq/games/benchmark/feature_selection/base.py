@@ -1,6 +1,7 @@
 """This module contains the metaclass for all FeatureSelection benchmark games."""
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -47,9 +48,9 @@ class FeatureSelection(Game):
         x_test: np.ndarray,
         y_test: np.ndarray,
         fit_function: Callable[[np.ndarray, np.ndarray], Any],
-        score_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
-        predict_function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-        loss_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
+        score_function: Callable[[np.ndarray, np.ndarray], float] | None = None,
+        predict_function: Callable[[np.ndarray], np.ndarray] | None = None,
+        loss_function: Callable[[np.ndarray, np.ndarray], float] | None = None,
         empty_features_value: float = 0.0,
         normalize: bool = True,
         verbose: bool = False,

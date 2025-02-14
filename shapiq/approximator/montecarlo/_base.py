@@ -1,6 +1,6 @@
 """This module contains the Base Regression approximator to compute SII and k-SII of arbitrary max_order."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 from scipy.special import binom, factorial
@@ -41,7 +41,7 @@ class MonteCarlo(Approximator):
         stratify_coalition_size: bool = True,
         stratify_intersection: bool = True,
         top_order: bool = False,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray = None,
     ):

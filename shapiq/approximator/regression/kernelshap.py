@@ -1,7 +1,5 @@
 """This module contains the KernelSHAP regression approximator for estimating the SV."""
 
-from typing import Optional
-
 import numpy as np
 
 from ._base import Regression
@@ -55,8 +53,8 @@ class KernelSHAP(Regression):
         self,
         n: int,
         pairing_trick: bool = False,
-        sampling_weights: Optional[np.ndarray] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: np.ndarray | None = None,
+        random_state: int | None = None,
     ):
         super().__init__(
             n,

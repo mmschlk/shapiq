@@ -1,7 +1,6 @@
 """This module contains the base TreeSHAP-IQ xai game."""
 
 import copy
-from typing import Optional
 
 import numpy as np
 
@@ -28,7 +27,7 @@ class TreeSHAPIQXAI(Game):
         self,
         x: np.ndarray,
         tree_model: Model,
-        class_label: Optional[int] = None,
+        class_label: int | None = None,
         normalize: bool = True,
         verbose: bool = True,
     ) -> None:
