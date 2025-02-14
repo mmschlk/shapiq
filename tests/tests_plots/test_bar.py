@@ -49,3 +49,9 @@ def test_bar_plot(interaction_values_list: list[InteractionValues]):
     assert output is not None
     assert isinstance(output, plt.Axes)
     plt.close("all")
+
+    # test plot_base_value = True
+    output = bar_plot(interaction_values_list, show=False, plot_base_value=True)
+    assert output is not None
+    assert isinstance(output, plt.Axes)
+    plt.close("all")
