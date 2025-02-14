@@ -3,6 +3,7 @@
 from abc import abstractmethod
 from typing import Optional
 from warnings import warn
+from tqdm.auto import tqdm
 
 import numpy as np
 
@@ -142,7 +143,7 @@ class Explainer:
             )
         else:
             ivs = []
-            for i in range(X.shape[0]):
+            for i in tqdm(range(X.shape[0])):
                 ivs.append(self.explain(X[i, :], **kwargs))
         return ivs
 
