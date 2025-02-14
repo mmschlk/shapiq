@@ -432,6 +432,20 @@ class InteractionValues:
         """Multiplies an InteractionValues object by a scalar."""
         return self.__mul__(other)
 
+    def __abs__(self) -> "InteractionValues":
+        """Returns the absolute values of the InteractionValues object."""
+        return InteractionValues(
+            values=np.abs(self.values),
+            index=self.index,
+            max_order=self.max_order,
+            n_players=self.n_players,
+            min_order=self.min_order,
+            interaction_lookup=self.interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )
+
     def get_n_order_values(self, order: int) -> "np.ndarray":
         """Returns the interaction values of a specific order as a numpy array.
 
@@ -738,6 +752,7 @@ class InteractionValues:
         feature_names: Optional[np.ndarray] = None,
         show: bool = True,
         abbreviate: bool = True,
+        contribution_threshold: float = 0.03,
     ) -> Optional[plt.Figure]:
         """Visualize InteractionValues on a force plot.
 
@@ -762,6 +777,7 @@ class InteractionValues:
             feature_names=feature_names,
             show=show,
             abbreviate=abbreviate,
+            min_percentage=contribution_threshold,
         )
 
     def plot_waterfall(
