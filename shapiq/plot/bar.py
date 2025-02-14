@@ -220,7 +220,7 @@ def bar_plot(
         feature_mapping = {i: "F" + str(i) for i in range(n_players)}
 
     # aggregate the interaction values if global_plot is True
-    if global_plot:
+    if global_plot and len(list_of_interaction_values) > 1:
         # The aggregation of the global values will be done on the absolute values
         list_of_interaction_values = [abs(iv) for iv in list_of_interaction_values]
         global_values = aggregate_interaction_values(list_of_interaction_values, aggregation="mean")
