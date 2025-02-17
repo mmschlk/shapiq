@@ -5,6 +5,7 @@ from typing import Optional
 from warnings import warn
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from ..explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
 from ..interaction_values import InteractionValues
@@ -142,7 +143,7 @@ class Explainer:
             )
         else:
             ivs = []
-            for i in range(X.shape[0]):
+            for i in tqdm(range(X.shape[0])):
                 ivs.append(self.explain(X[i, :], **kwargs))
         return ivs
 
