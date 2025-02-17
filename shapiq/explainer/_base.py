@@ -3,9 +3,9 @@
 from abc import abstractmethod
 from typing import Optional
 from warnings import warn
-from tqdm.auto import tqdm
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from ..explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
 from ..interaction_values import InteractionValues

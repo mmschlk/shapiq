@@ -3,6 +3,12 @@
 ### Development
 ...
 
+### v1.2.1 (2025-02-17)
+- fixes bugs regarding plotting [#315](https://github.com/mmschlk/shapiq/issues/315) and [#316](https://github.com/mmschlk/shapiq/issues/316)
+- fixes a bug with TreeExplainer and Trees that consist of only one feature [#286](https://github.com/mmschlk/shapiq/issues/286)
+- fixes SV init with explainer for permutation, svarm, kernelshap, and unbiased kernelshap [#319](https://github.com/mmschlk/shapiq/issues/319)
+- adds a progress bar to `explain_X()` [#324](https://github.com/mmschlk/shapiq/issues/324)
+
 ### v1.2.0 (2025-01-15)
 - adds ``shapiq.TabPFNExplainer`` as a specialized version of the ``shapiq.TabularExplainer`` which offers a streamlined variant of the explainer for the TabPFN model [#301](https://github.com/mmschlk/shapiq/issues/301)
 - handles ``explainer.explain()`` now through a common interface for all explainer classes which now need to implement a ``explain_function()`` method

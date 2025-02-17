@@ -57,7 +57,7 @@ class KernelSHAP(Regression):
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,
         random_state: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             n,
