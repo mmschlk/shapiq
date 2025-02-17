@@ -2,7 +2,7 @@
 the well established Shapley value and its generalization to interaction.
 """
 
-__version__ = "1.2.0.9000"
+__version__ = "1.2.1"
 
 # approximator classes
 from .approximator import (
