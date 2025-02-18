@@ -54,7 +54,7 @@ def _bar(
         cut_feature_values = values[:, feature_order[max_display:]]
         sum_of_remaining = np.sum(cut_feature_values, axis=None)
         index_of_last = feature_order[max_display]
-        values = np.insert(values, index_of_last, sum_of_remaining, axis=1)
+        values[:, index_of_last] = sum_of_remaining
         max_display += 1  # include the sum of the remaining in the display
 
     # get the top features and their names
@@ -180,6 +180,7 @@ def bar_plot(
     abbreviate: bool = True,
     max_display: int | None = 10,
     global_plot: bool = True,
+    plot_base_value: bool = False,
 ) -> plt.Axes | None:
     """Draws interaction values as a SHAP bar plot[1]_.
 
@@ -217,8 +218,10 @@ def bar_plot(
         feature_mapping = {i: "F" + str(i) for i in range(n_players)}
 
     # aggregate the interaction values if global_plot is True
-    if global_plot:
-        global_values = aggregate_interaction_values(list_of_interaction_values)
+    if global_plot and len(list_of_interaction_values) > 1:
+        # The aggregation of the global values will be done on the absolute values
+        list_of_interaction_values = [abs(iv) for iv in list_of_interaction_values]
+        global_values = aggregate_interaction_values(list_of_interaction_values, aggregation="mean")
         values = np.expand_dims(global_values.values, axis=0)
         interaction_list = global_values.interaction_lookup.keys()
     else:  # plot the interaction values separately  (also includes the case of a single object)
@@ -232,6 +235,11 @@ def bar_plot(
             interaction_list.append(interaction)
             for i, iv in enumerate(list_of_interaction_values):
                 values[i, j] = iv[interaction]
+
+    # Include the base value in the plot
+    if not plot_base_value:
+        values = values[:, 1:]
+        interaction_list = list(interaction_list)[1:]
 
     # format the labels
     labels = [format_labels(feature_mapping, interaction) for interaction in interaction_list]

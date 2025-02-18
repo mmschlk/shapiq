@@ -389,8 +389,9 @@ def _split_features(
             pos_features.append([str(value), label])
         elif value < 0:
             neg_features.append([str(value), label])
-    pos_features = sorted(pos_features, key=lambda x: x[0], reverse=True)
-    neg_features = sorted(neg_features, key=lambda x: x[0], reverse=True)
+    # sort feature values descending according to (absolute) features values
+    pos_features = sorted(pos_features, key=lambda x: float(x[0]), reverse=True)
+    neg_features = sorted(neg_features, key=lambda x: float(x[0]), reverse=False)
     pos_features = np.array(pos_features, dtype=object)
     neg_features = np.array(neg_features, dtype=object)
 

@@ -7,6 +7,7 @@ import numpy as np
 
 from ..approximator import (
     SHAPIQ,
+    SVARM,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
     KernelSHAP,
@@ -40,6 +41,13 @@ APPROXIMATOR_CONFIGURATIONS = {
         "FSII": SHAPIQ,
         "k-SII": SHAPIQ,
         "SV": UnbiasedKernelSHAP,
+    },
+    "svarm": {
+        "SII": SVARMIQ,
+        "STII": SVARMIQ,
+        "FSII": SVARMIQ,
+        "k-SII": SVARMIQ,
+        "SV": SVARM,
     },
 }
 

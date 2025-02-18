@@ -6,6 +6,7 @@ import os
 import pickle
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Union
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -150,7 +151,7 @@ class InteractionValues:
 
     def get_top_k(
         self, k: int, as_interaction_values: bool = True
-    ) -> "InteractionValues | tuple[dict, list[tuple]]":
+    ) -> Union["InteractionValues", tuple[dict, list[tuple]]]:
         """Returns the top k interactions.
 
         Args:
@@ -333,7 +334,7 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
-    def __add__(self, other: "InteractionValues | int | float") -> "InteractionValues":
+    def __add__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
         """Adds two InteractionValues objects together or a scalar."""
         n_players, min_order, max_order = self.n_players, self.min_order, self.max_order
         if isinstance(other, InteractionValues):
@@ -387,7 +388,7 @@ class InteractionValues:
             baseline_value=baseline_value,
         )
 
-    def __radd__(self, other: "InteractionValues | int | float") -> "InteractionValues":
+    def __radd__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
         """Adds two InteractionValues objects together or a scalar."""
         return self.__add__(other)
 
@@ -405,11 +406,11 @@ class InteractionValues:
             baseline_value=-self.baseline_value,
         )
 
-    def __sub__(self, other: "InteractionValues | int | float") -> "InteractionValues":
+    def __sub__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
         """Subtracts two InteractionValues objects or a scalar."""
         return self.__add__(-other)
 
-    def __rsub__(self, other: "InteractionValues | int| float") -> "InteractionValues":
+    def __rsub__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
         """Subtracts two InteractionValues objects or a scalar."""
         return (-self).__add__(other)
 
@@ -430,6 +431,20 @@ class InteractionValues:
     def __rmul__(self, other: int | float) -> "InteractionValues":
         """Multiplies an InteractionValues object by a scalar."""
         return self.__mul__(other)
+
+    def __abs__(self) -> "InteractionValues":
+        """Returns the absolute values of the InteractionValues object."""
+        return InteractionValues(
+            values=np.abs(self.values),
+            index=self.index,
+            max_order=self.max_order,
+            n_players=self.n_players,
+            min_order=self.min_order,
+            interaction_lookup=self.interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )
 
     def get_n_order_values(self, order: int) -> "np.ndarray":
         """Returns the interaction values of a specific order as a numpy array.
@@ -735,6 +750,7 @@ class InteractionValues:
         feature_names: np.ndarray | None = None,
         show: bool = True,
         abbreviate: bool = True,
+        contribution_threshold: float = 0.03,
     ) -> plt.Figure | None:
         """Visualize InteractionValues on a force plot.
 
@@ -759,6 +775,7 @@ class InteractionValues:
             feature_names=feature_names,
             show=show,
             abbreviate=abbreviate,
+            min_percentage=contribution_threshold,
         )
 
     def plot_waterfall(

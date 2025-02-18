@@ -117,6 +117,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
         random_state: int | None = None,
+        **kwargs,
     ):
         super().__init__(
             n,
