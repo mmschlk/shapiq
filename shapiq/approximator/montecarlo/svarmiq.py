@@ -78,6 +78,7 @@ class SVARM(SVARMIQ):
         random_state: Optional[int] = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[float] = None,
+        **kwargs,
     ):
         super().__init__(
             n,

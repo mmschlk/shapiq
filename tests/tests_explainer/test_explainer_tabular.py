@@ -28,7 +28,7 @@ def data():
 INDICES = ["SII", "k-SII", "STII", "FSII"]
 MAX_ORDERS = [2, 3]
 IMPUTER = ["marginal", "conditional", "baseline"]
-APPROXIMATOR = ["regression", "montecarlo", "permutation"]
+APPROXIMATOR = ["regression", "montecarlo", "permutation", "svarm"]
 
 
 @pytest.mark.parametrize("index", INDICES)
@@ -219,3 +219,21 @@ def test_against_shap_linear():
     shapiq_values = np.array([values.get_n_order_values(1) for values in shapiq_values])
 
     assert np.allclose(shap_values, shapiq_values, atol=1e-5)
+
+
+@pytest.mark.parametrize("approximator", APPROXIMATOR)
+def test_explain_sv(dt_model, data, approximator):
+    """Tests if init and compute works for SV for different estimators."""
+    model_function = dt_model.predict
+    explainer = TabularExplainer(
+        model=model_function,
+        data=data,
+        random_state=42,
+        index="SV",
+        max_order=1,
+        approximator=approximator,
+    )
+    x = data[0].reshape(1, -1)
+    interaction_values = explainer.explain(x, budget=20)
+    assert interaction_values.index == "SV"
+    assert interaction_values.max_order == 1
