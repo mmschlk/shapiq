@@ -1,4 +1,5 @@
 import inspect
+import sys
 from typing import Any
 from unittest.mock import Mock
 
@@ -7,7 +8,18 @@ import pytest
 
 from shapiq.explainer.tree.validation import SUPPORTED_MODELS
 from shapiq.explainer.utils import get_predict_function_and_model_type
-from tests.conftest import TABULAR_MODEL_FIXTURES, TREE_MODEL_FIXTURES
+from tests.conftest import (
+    TABULAR_MODEL_FIXTURES,
+    TABULAR_TENSORFLOW_MODEL_FIXTURES,
+    TABULAR_TORCH_MODEL_FIXTURES,
+    TREE_MODEL_FIXTURES,
+)
+
+
+def _utils_get_model(model, label, x_data):
+    predict_function, model_type = get_predict_function_and_model_type(model, label)
+    assert predict_function(model, x_data).ndim == 1
+    return predict_function, model_type
 
 
 @pytest.mark.external_libraries
@@ -16,17 +28,40 @@ def test_tabular_get_predict_function_and_model_type(
     model_name, label, background_reg_dataset, request
 ):
     model = request.getfixturevalue(model_name)
-    X, y = background_reg_dataset
-
-    predict_function, model_type = get_predict_function_and_model_type(model, label)
+    x_data, y = background_reg_dataset
+    predict_function, model_type = _utils_get_model(model, label, x_data)
     assert model_type == "tabular"
-    assert predict_function(model, X).ndim == 1
 
     if label == "custom_model":
-        assert np.all(predict_function(model, X) == y)
+        assert np.all(predict_function(model, x_data) == y)
 
     if label == "sklearn.linear_model.LinearRegression":
-        assert np.all(predict_function(model, X) == model.predict(X))
+        assert np.all(predict_function(model, x_data) == model.predict(x_data))
+
+
+@pytest.mark.skipif(
+    not any(pkg in sys.modules for pkg in ["tensorflow"]), reason="Tensorflow is not available."
+)
+@pytest.mark.external_libraries
+@pytest.mark.parametrize("model_name, label", TABULAR_TENSORFLOW_MODEL_FIXTURES)
+def test_tensorflow_get_predict_function_and_model_type(
+    model_name, label, background_reg_dataset, request
+):
+    model = request.getfixturevalue(model_name)
+    x_data, _ = background_reg_dataset
+    predict_function, model_type = _utils_get_model(model, label, x_data)
+    assert model_type == "tabular"
+
+
+@pytest.mark.external_libraries
+@pytest.mark.parametrize("model_name, label", TABULAR_TORCH_MODEL_FIXTURES)
+def test_torch_get_predict_function_and_model_type(
+    model_name, label, background_reg_dataset, request
+):
+    model = request.getfixturevalue(model_name)
+    x_data, _ = background_reg_dataset
+    predict_function, model_type = _utils_get_model(model, label, x_data)
+    assert model_type == "tabular"
 
 
 @pytest.mark.external_libraries
@@ -35,14 +70,12 @@ def test_tree_get_predict_function_and_model_type(
     model_fixture, model_class, background_reg_dataset, request
 ):
     model = request.getfixturevalue(model_fixture)
-    X, y = background_reg_dataset
-
-    predict_function, model_type = get_predict_function_and_model_type(model, model_class)
-    assert predict_function(model, X).ndim == 1
+    x_data, y = background_reg_dataset
+    predict_function, model_type = _utils_get_model(model, model_class, x_data)
     assert model_type == "tree"
 
     if model_class == "sklearn.tree.DecisionTreeRegressor":
-        assert np.all(predict_function(model, X) == model.predict(X))
+        assert np.all(predict_function(model, x_data) == model.predict(x_data))
 
 
 def test_all_supported_tree_models_recognized():

@@ -1,7 +1,8 @@
 """This module contains utility functions for the explainer module."""
 
 import re
-from typing import Any, Callable, Optional, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 import numpy as np
 
@@ -30,8 +31,8 @@ def get_explainers() -> dict[str, Any]:
 
 def get_predict_function_and_model_type(
     model: ModelType,
-    model_class: Optional[str] = None,
-    class_index: Optional[int] = None,
+    model_class: str | None = None,
+    class_index: int | None = None,
 ) -> tuple[Callable[[ModelType, np.ndarray], np.ndarray], str]:
     """Get the predict function and model type for a given model.
 

@@ -1,7 +1,6 @@
 """Implementation of the marginal imputer."""
 
 import warnings
-from typing import Optional
 
 import numpy as np
 
@@ -64,13 +63,13 @@ class MarginalImputer(Imputer):
         self,
         model,
         data: np.ndarray,
-        x: Optional[np.ndarray] = None,
+        x: np.ndarray | None = None,
         sample_replacements: bool = True,
         sample_size: int = 100,
         categorical_features: list[int] = None,
         joint_marginal_distribution: bool = True,
         normalize: bool = True,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         if not sample_replacements:
             warnings.warn(DeprecationWarning(_deprecated_sample_replacements_warning))
@@ -139,7 +138,7 @@ class MarginalImputer(Imputer):
         self.calc_empty_prediction()  # reset the empty prediction to the new background data
         return self
 
-    def _sample_replacement_data(self, sample_size: Optional[int] = None) -> np.ndarray:
+    def _sample_replacement_data(self, sample_size: int | None = None) -> np.ndarray:
         """Samples replacement values from the background data.
 
         Args:

@@ -1,7 +1,6 @@
 """This module contains functions to load datasets."""
 
 import os
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -10,7 +9,11 @@ GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
 # csv files are located next to this file in a folder called "data"
 SHAPIQ_DATASETS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-os.makedirs(SHAPIQ_DATASETS_FOLDER, exist_ok=True)
+
+
+def _create_folder() -> None:
+    """Create the datasets folder if it does not exist."""
+    os.makedirs(SHAPIQ_DATASETS_FOLDER, exist_ok=True)
 
 
 def _try_load(csv_file_name: str) -> pd.DataFrame:
@@ -23,6 +26,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
     Returns:
         The dataset as a pandas DataFrame.
     """
+    _create_folder()
     try:
         return pd.read_csv(os.path.join(SHAPIQ_DATASETS_FOLDER, csv_file_name))
     except FileNotFoundError:
@@ -33,7 +37,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
 
 def load_california_housing(
     to_numpy=False,
-) -> Union[tuple[pd.DataFrame, pd.Series], tuple[np.ndarray, np.ndarray]]:
+) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the California housing dataset.
 
     Args:
@@ -61,7 +65,7 @@ def load_california_housing(
 
 def load_bike_sharing(
     to_numpy=False,
-) -> Union[tuple[pd.DataFrame, pd.Series], tuple[np.ndarray, np.ndarray]]:
+) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the bike-sharing dataset from openml and preprocess it.
 
     Note:
@@ -132,7 +136,7 @@ def load_bike_sharing(
 
 def load_adult_census(
     to_numpy=False,
-) -> Union[tuple[pd.DataFrame, pd.Series], tuple[np.ndarray, np.ndarray]]:
+) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the adult census dataset from the UCI Machine Learning Repository.
 
     Original source: https://archive.ics.uci.edu/ml/datasets/adult

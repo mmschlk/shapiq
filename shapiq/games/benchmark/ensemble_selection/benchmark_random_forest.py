@@ -1,7 +1,5 @@
 """This benchmark module contains the benchmark games for ensemble selection."""
 
-from typing import Optional
-
 from shapiq.games.benchmark.ensemble_selection.base import RandomForestEnsembleSelection
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
@@ -25,7 +23,7 @@ class AdultCensus(RandomForestEnsembleSelection):
         *,
         loss_function: str = "accuracy_score",
         n_members: int = 10,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -70,7 +68,7 @@ class BikeSharing(RandomForestEnsembleSelection):
         *,
         loss_function: str = "r2_score",
         n_members: int = 10,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -115,7 +113,7 @@ class CaliforniaHousing(RandomForestEnsembleSelection):
         *,
         loss_function: str = "r2_score",
         n_members: int = 10,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:

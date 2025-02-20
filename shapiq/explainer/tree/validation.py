@@ -1,6 +1,6 @@
 """Conversion functions for the tree explainer implementation."""
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from shapiq.utils import safe_isinstance
 
@@ -36,9 +36,7 @@ SUPPORTED_MODELS = {
 }
 
 
-def validate_tree_model(
-    model: Any, class_label: Optional[int] = None
-) -> Union[TreeModel, list[TreeModel]]:
+def validate_tree_model(model: Any, class_label: int | None = None) -> TreeModel | list[TreeModel]:
     """Validate the model.
 
     Args:

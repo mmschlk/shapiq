@@ -4,7 +4,6 @@ import os
 import pickle
 import warnings
 from abc import ABC
-from typing import Optional, Union
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -89,12 +88,12 @@ class Game(ABC):
 
     def __init__(
         self,
-        n_players: Optional[int] = None,
+        n_players: int | None = None,
         normalize: bool = True,
-        normalization_value: Optional[float] = None,
-        path_to_values: Optional[str] = None,
+        normalization_value: float | None = None,
+        path_to_values: str | None = None,
         verbose: bool = False,
-        player_names: Optional[list[str]] = None,
+        player_names: list[str] | None = None,
         *args,
         **kwargs,
     ) -> None:
@@ -170,13 +169,13 @@ class Game(ABC):
 
     def _check_coalitions(
         self,
-        coalitions: Union[
-            np.ndarray,
-            list[tuple[int, ...]],
-            list[tuple[str, ...]],
-            tuple[int, ...],
-            tuple[str, ...],
-        ],
+        coalitions: (
+            np.ndarray
+            | list[tuple[int, ...]]
+            | list[tuple[str, ...]]
+            | tuple[int, ...]
+            | tuple[str, ...]
+        ),
     ) -> np.ndarray:
         """Validates the coalitions and convert them to one-hot encoding.
 
@@ -254,13 +253,13 @@ class Game(ABC):
 
     def __call__(
         self,
-        coalitions: Union[
-            np.ndarray,
-            list[tuple[int, ...]],
-            list[tuple[str, ...]],
-            tuple[int, ...],
-            tuple[str, ...],
-        ],
+        coalitions: (
+            np.ndarray
+            | list[tuple[int, ...]]
+            | list[tuple[str, ...]]
+            | tuple[int, ...]
+            | tuple[str, ...]
+        ),
         verbose: bool = False,
     ) -> np.ndarray:
         """Calls the game's value function with the given coalitions and returns the output of the
@@ -318,7 +317,7 @@ class Game(ABC):
         """
         raise NotImplementedError("The value function has to be implemented in inherited classes.")
 
-    def precompute(self, coalitions: Optional[np.ndarray] = None) -> None:
+    def precompute(self, coalitions: np.ndarray | None = None) -> None:
         """Precompute the game values for all or a given set of coalitions.
 
         The pre-computation iterates over the powerset of all coalitions or a given set of

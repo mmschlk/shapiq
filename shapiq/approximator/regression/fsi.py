@@ -1,7 +1,5 @@
 """Regression with Shapley interaction index (SII) approximation."""
 
-from typing import Optional
-
 import numpy as np
 
 from ._base import Regression
@@ -40,8 +38,8 @@ class RegressionFSII(Regression):
         n: int,
         max_order: int = 2,
         pairing_trick: bool = False,
-        sampling_weights: Optional[np.ndarray] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: np.ndarray | None = None,
+        random_state: int | None = None,
     ):
         super().__init__(
             n,

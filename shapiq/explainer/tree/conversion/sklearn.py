@@ -1,8 +1,6 @@
 """Functions for converting scikit-learn decision trees to the format used by
 shapiq."""
 
-from typing import Optional
-
 import numpy as np
 
 from ....utils import safe_isinstance
@@ -12,7 +10,7 @@ from ..base import TreeModel
 
 def convert_sklearn_forest(
     tree_model: Model,
-    class_label: Optional[int] = None,
+    class_label: int | None = None,
 ) -> list[TreeModel]:
     """Transforms a scikit-learn random forest to the format used by shapiq.
 
@@ -32,7 +30,7 @@ def convert_sklearn_forest(
 
 
 def convert_sklearn_tree(
-    tree_model: Model, class_label: Optional[int] = None, scaling: float = 1.0
+    tree_model: Model, class_label: int | None = None, scaling: float = 1.0
 ) -> TreeModel:
     """Convert a scikit-learn decision tree to the format used by shapiq.
 

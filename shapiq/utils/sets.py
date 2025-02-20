@@ -3,7 +3,7 @@
 import copy
 from collections.abc import Collection, Iterable
 from itertools import chain, combinations
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 from scipy.special import binom
@@ -21,7 +21,7 @@ __all__ = [
 
 
 def powerset(
-    iterable: Iterable[Any], min_size: int = 0, max_size: Optional[int] = None
+    iterable: Iterable[Any], min_size: int = 0, max_size: int | None = None
 ) -> Iterable[tuple]:
     """Return a powerset of an iterable as tuples with optional size limits.
 
@@ -51,7 +51,7 @@ def powerset(
     return chain.from_iterable(combinations(s, r) for r in range(max(min_size, 0), max_size + 1))
 
 
-def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], Optional[int]]:
+def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], int | None]:
     """Determines what subset sizes are paired together.
 
     Given an interaction order and the number of players, determines the paired subsets. Paired
@@ -186,7 +186,7 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
 
 
 def generate_interaction_lookup(
-    players: Union[Iterable[Any], int], min_order: int, max_order: Optional[int] = None
+    players: Iterable[Any] | int, min_order: int, max_order: int | None = None
 ) -> dict[tuple[Any], int]:
     """Generates a lookup dictionary for interactions.
 
@@ -218,7 +218,7 @@ def generate_interaction_lookup(
 
 
 def transform_coalitions_to_array(
-    coalitions: Collection[tuple[int, ...]], n_players: Optional[int] = None
+    coalitions: Collection[tuple[int, ...]], n_players: int | None = None
 ) -> np.ndarray:
     """Transforms a collection of coalitions to a binary array (one-hot encodings).
 
@@ -273,7 +273,7 @@ def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int]]:
     return [tuple(np.where(coalition)[0]) for coalition in coalitions]
 
 
-def count_interactions(n: int, max_order: Optional[int] = None, min_order: int = 0) -> int:
+def count_interactions(n: int, max_order: int | None = None, min_order: int = 0) -> int:
     """Counts the number of interactions for a given number of players and maximum order.
 
     Args:

@@ -2,13 +2,12 @@
 
 import re
 from collections.abc import Iterable
-from typing import Union
 
 __all__ = ["abbreviate_feature_names", "format_value", "format_labels"]
 
 
 def format_value(
-    s: Union[float, str],
+    s: float | str,
     format_str: str = "%.2f",
 ) -> str:
     """Strips trailing zeros and uses a unicode minus sign.
