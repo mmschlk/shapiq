@@ -2,7 +2,6 @@
 
 import copy
 import warnings
-from typing import Optional
 
 import numpy as np
 from scipy.special import binom
@@ -76,7 +75,7 @@ class CoalitionSampler:
         n_players: int,
         sampling_weights: np.ndarray,
         pairing_trick: bool = False,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         self.pairing_trick: bool = pairing_trick
 
@@ -115,28 +114,26 @@ class CoalitionSampler:
             if weight == 0 and 0 < size < self.n:
                 self.n_max_coalitions -= int(binom(self.n, size))
                 self._coalitions_to_exclude.extend([size])
-        self.adjusted_sampling_weights: Optional[np.ndarray[float]] = None
+        self.adjusted_sampling_weights: np.ndarray[float] | None = None
 
         # set sample size variables (for border trick)
-        self._coalitions_to_compute: Optional[list[int]] = None  # coalitions to compute
-        self._coalitions_to_sample: Optional[list[int]] = None  # coalitions to sample
+        self._coalitions_to_compute: list[int] | None = None  # coalitions to compute
+        self._coalitions_to_sample: list[int] | None = None  # coalitions to sample
 
         # initialize variables to be computed and stored
-        self.sampled_coalitions_dict: Optional[dict[tuple[int, ...], int]] = None  # coal -> count
-        self.coalitions_per_size: Optional[np.ndarray[int]] = None  # number of coalitions per size
+        self.sampled_coalitions_dict: dict[tuple[int, ...], int] | None = None  # coal -> count
+        self.coalitions_per_size: np.ndarray[int] | None = None  # number of coalitions per size
 
         # variables accessible through properties
-        self._sampled_coalitions_matrix: Optional[np.ndarray[bool]] = None  # coalitions
-        self._sampled_coalitions_counter: Optional[np.ndarray[int]] = None  # coalitions_counter
-        self._sampled_coalitions_size_prob: Optional[np.ndarray[float]] = (
+        self._sampled_coalitions_matrix: np.ndarray[bool] | None = None  # coalitions
+        self._sampled_coalitions_counter: np.ndarray[int] | None = None  # coalitions_counter
+        self._sampled_coalitions_size_prob: np.ndarray[float] | None = (
             None  # coalitions_size_probability
         )
-        self._sampled_coalitions_in_size_prob: Optional[np.ndarray[float]] = (
+        self._sampled_coalitions_in_size_prob: np.ndarray[float] | None = (
             None  # coalitions_in_size_probability
         )
-        self._is_coalition_size_sampled: Optional[np.ndarray[bool]] = (
-            None  # is_coalition_size_sampled
-        )
+        self._is_coalition_size_sampled: np.ndarray[bool] | None = None  # is_coalition_size_sampled
 
     @property
     def n_coalitions(self) -> int:
@@ -272,7 +269,7 @@ class CoalitionSampler:
         return np.sum(self.coalitions_matrix, axis=1)
 
     @property
-    def empty_coalition_index(self) -> Optional[int]:
+    def empty_coalition_index(self) -> int | None:
         """Returns the index of the empty coalition.
 
         Returns:

@@ -5,8 +5,6 @@ Note:
     which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
 """
 
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -20,8 +18,8 @@ __all__ = ["bar_plot"]
 def _bar(
     values: np.ndarray,
     feature_names: np.ndarray,
-    max_display: Optional[int] = 10,
-    ax: Optional[plt.Axes] = None,
+    max_display: int | None = 10,
+    ax: plt.Axes | None = None,
 ) -> plt.Axes:
     """Create a bar plot of a set of SHAP values.
 
@@ -177,13 +175,13 @@ def _bar(
 
 def bar_plot(
     list_of_interaction_values: list[InteractionValues],
-    feature_names: Optional[np.ndarray] = None,
+    feature_names: np.ndarray | None = None,
     show: bool = False,
     abbreviate: bool = True,
-    max_display: Optional[int] = 10,
+    max_display: int | None = 10,
     global_plot: bool = True,
     plot_base_value: bool = False,
-) -> Optional[plt.Axes]:
+) -> plt.Axes | None:
     """Draws interaction values as a SHAP bar plot[1]_.
 
     The function draws the interaction values on a bar plot. The interaction values can be

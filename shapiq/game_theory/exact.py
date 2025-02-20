@@ -3,7 +3,7 @@ like interaction indices or generalized values."""
 
 import copy
 import warnings
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 import numpy as np
 from scipy.special import bernoulli, binom
@@ -57,9 +57,9 @@ class ExactComputer:
         self._elc_stability_subsidy: float = -1
         self._game_is_computed: bool = False
 
-        self._baseline_value: Optional[float] = None
-        self._game_values: Optional[np.ndarray] = None
-        self._coalition_lookup: Optional[dict[tuple[int], int]] = None
+        self._baseline_value: float | None = None
+        self._game_values: np.ndarray | None = None
+        self._coalition_lookup: dict[tuple[int], int] | None = None
 
         if evaluate_game:
             # evaluate the game on the powerset
@@ -309,7 +309,7 @@ class ExactComputer:
         return stii_weights
 
     def _get_discrete_derivative(
-        self, interaction: Union[set[int], tuple[int]], coalition: Union[set[int], tuple[int]]
+        self, interaction: set[int] | tuple[int], coalition: set[int] | tuple[int]
     ) -> float:
         """Computes the discrete derivative of a coalition with respect to an interaction.
 

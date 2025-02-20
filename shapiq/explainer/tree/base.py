@@ -1,7 +1,7 @@
 """The base class for tree model conversion."""
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -56,16 +56,16 @@ class TreeModel:
     thresholds: np.ndarray[float]
     values: np.ndarray[float]
     node_sample_weight: np.ndarray[float]
-    empty_prediction: Optional[float] = None
-    leaf_mask: Optional[np.ndarray[bool]] = None
-    n_features_in_tree: Optional[int] = None
-    max_feature_id: Optional[int] = None
-    feature_ids: Optional[set] = None
-    root_node_id: Optional[int] = None
-    n_nodes: Optional[int] = None
-    nodes: Optional[np.ndarray[int]] = None
-    feature_map_original_internal: Optional[dict[int, int]] = None
-    feature_map_internal_original: Optional[dict[int, int]] = None
+    empty_prediction: float | None = None
+    leaf_mask: np.ndarray[bool] | None = None
+    n_features_in_tree: int | None = None
+    max_feature_id: int | None = None
+    feature_ids: set | None = None
+    root_node_id: int | None = None
+    n_nodes: int | None = None
+    nodes: np.ndarray[int] | None = None
+    feature_map_original_internal: dict[int, int] | None = None
+    feature_map_internal_original: dict[int, int] | None = None
     original_output_type: str = "raw"  # not used at the moment
 
     def __getitem__(self, item) -> Any:
@@ -183,7 +183,7 @@ class EdgeTree:
     max_depth: int
     last_feature_node_in_path: np.ndarray[int]
     interaction_height_store: dict[int, np.ndarray[int]]
-    has_ancestors: Optional[np.ndarray[bool]] = None
+    has_ancestors: np.ndarray[bool] | None = None
 
     def __getitem__(self, item) -> Any:
         return getattr(self, item)

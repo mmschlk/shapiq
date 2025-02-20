@@ -5,7 +5,6 @@ import os
 import random
 import time
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -23,7 +22,7 @@ class OldLookUpGame:
         self,
         data_folder: str,
         n: int,
-        data_id: Union[int, str] = None,
+        data_id: int | str = None,
         used_ids: set = None,
         set_zero: bool = True,
         log_output: bool = False,

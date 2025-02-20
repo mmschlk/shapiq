@@ -1,7 +1,6 @@
 """Implementation of the conditional imputer."""
 
 import warnings
-from typing import Optional
 
 import numpy as np
 
@@ -43,14 +42,14 @@ class ConditionalImputer(Imputer):
         self,
         model,
         data: np.ndarray,
-        x: Optional[np.ndarray] = None,
+        x: np.ndarray | None = None,
         sample_size: int = 10,
         conditional_budget: int = 128,
         conditional_threshold: float = 0.05,
         normalize: bool = True,
-        categorical_features: Optional[list[int]] = None,
+        categorical_features: list[int] | None = None,
         method="generative",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         super().__init__(model, data, x, sample_size, categorical_features, random_state)
         if method != "generative":

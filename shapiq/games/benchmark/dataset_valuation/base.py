@@ -1,6 +1,6 @@
 """This module contains the data valuation games for the shapiq benchmark."""
 
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 import numpy as np
 
@@ -39,17 +39,17 @@ class DatasetValuation(Game):
     def __init__(
         self,
         *,
-        x_train: Union[np.ndarray, list[np.ndarray]],
-        y_train: Union[np.ndarray, list[np.ndarray]],
-        x_test: Optional[np.ndarray] = None,
-        y_test: Optional[np.ndarray] = None,
+        x_train: np.ndarray | list[np.ndarray],
+        y_train: np.ndarray | list[np.ndarray],
+        x_test: np.ndarray | None = None,
+        y_test: np.ndarray | None = None,
         test_size: float = 0.2,
-        fit_function: Optional[Callable[[np.ndarray, np.ndarray], None]] = None,
-        predict_function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-        loss_function: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
+        fit_function: Callable[[np.ndarray, np.ndarray], None] | None = None,
+        predict_function: Callable[[np.ndarray], np.ndarray] | None = None,
+        loss_function: Callable[[np.ndarray, np.ndarray], float] | None = None,
         n_players: int = 10,
-        player_sizes: Optional[Union[list[float], str]] = "uniform",
-        random_state: Optional[int] = 42,
+        player_sizes: list[float] | str | None = "uniform",
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
         empty_data_value: float = 0.0,

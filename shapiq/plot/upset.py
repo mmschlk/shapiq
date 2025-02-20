@@ -1,7 +1,6 @@
 """This module contains the upset plot."""
 
 from collections.abc import Sequence
-from typing import Optional
 
 import matplotlib.pyplot as plt
 
@@ -12,11 +11,11 @@ from ._config import BLUE, RED
 def upset_plot(
     interaction_values: InteractionValues,
     n_interactions: int = 20,
-    feature_names: Optional[Sequence[str]] = None,
+    feature_names: Sequence[str] | None = None,
     color_matrix: bool = False,
     all_features: bool = True,
     show: bool = False,
-) -> Optional[plt.Figure]:
+) -> plt.Figure | None:
     """Plots the upset plot.
 
     UpSet plots[1]_ can be used to visualize the interactions between features. The plot consists of

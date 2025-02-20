@@ -2,7 +2,6 @@
 efficient indices useful for explanations"""
 
 import warnings
-from typing import Optional
 
 import numpy as np
 import scipy as sp
@@ -27,7 +26,7 @@ def _change_index(index: str) -> str:
 
 
 def aggregate_interaction_values(
-    base_interactions: InteractionValues, order: Optional[int] = None
+    base_interactions: InteractionValues, order: int | None = None
 ) -> InteractionValues:
     """Aggregates the basis interaction values into an efficient interaction index.
 

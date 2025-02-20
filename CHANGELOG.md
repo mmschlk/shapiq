@@ -1,7 +1,8 @@
 ## Changelog
 
 ### Development
-...
+- changes python support to 3.10-3.13 [#318](https://github.com/mmschlk/shapiq/pull/318)
+- fixes a bug that prohibited importing shapiq in environments without write access [#326](https://github.com/mmschlk/shapiq/issues/326)
 
 ### v1.2.1 (2025-02-17)
 - fixes bugs regarding plotting [#315](https://github.com/mmschlk/shapiq/issues/315) and [#316](https://github.com/mmschlk/shapiq/issues/316)

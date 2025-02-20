@@ -1,7 +1,6 @@
 """This module contains functions to load datasets."""
 
 import os
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -38,7 +37,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
 
 def load_california_housing(
     to_numpy=False,
-) -> Union[tuple[pd.DataFrame, pd.Series], tuple[np.ndarray, np.ndarray]]:
+) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the California housing dataset.
 
     Args:
@@ -66,7 +65,7 @@ def load_california_housing(
 
 def load_bike_sharing(
     to_numpy=False,
-) -> Union[tuple[pd.DataFrame, pd.Series], tuple[np.ndarray, np.ndarray]]:
+) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the bike-sharing dataset from openml and preprocess it.
 
     Note:
@@ -137,7 +136,7 @@ def load_bike_sharing(
 
 def load_adult_census(
     to_numpy=False,
-) -> Union[tuple[pd.DataFrame, pd.Series], tuple[np.ndarray, np.ndarray]]:
+) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the adult census dataset from the UCI Machine Learning Repository.
 
     Original source: https://archive.ics.uci.edu/ml/datasets/adult

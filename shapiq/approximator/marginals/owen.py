@@ -2,7 +2,7 @@
 Okhrati and Lipani (2020). It estimates the Shapley values in its integral representation by
 sampling random marginal contributions."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -34,7 +34,7 @@ class OwenSamplingSV(Approximator):
         self,
         n: int,
         n_anchor_points: int = 10,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         super().__init__(n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = 2

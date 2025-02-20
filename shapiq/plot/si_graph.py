@@ -1,7 +1,6 @@
 """Module for plotting the explanation graph of interaction values."""
 
 import math
-from typing import Optional, Union
 
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
@@ -155,7 +154,7 @@ def _draw_graph_nodes(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
-    nodes: Optional[list] = None,
+    nodes: list | None = None,
     normal_node_size: float = NORMAL_NODE_SIZE,
 ) -> None:
     """Draws the nodes of the graph as circles with a fixed size.
@@ -184,7 +183,7 @@ def _draw_explanation_nodes(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
-    nodes: Optional[list] = None,
+    nodes: list | None = None,
     normal_node_size: float = NORMAL_NODE_SIZE,
     node_area_scaling: bool = False,
 ) -> None:
@@ -232,7 +231,7 @@ def _draw_graph_edges(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
-    edges: Optional[list[tuple]] = None,
+    edges: list[tuple] | None = None,
     normal_node_size: float = NORMAL_NODE_SIZE,
 ) -> None:
     """Draws black lines between the nodes.
@@ -266,9 +265,7 @@ def _draw_graph_edges(
         ax.add_patch(patch)
 
 
-def _draw_graph_labels(
-    ax: plt.axis, pos: dict, graph: nx.Graph, nodes: Optional[list] = None
-) -> None:
+def _draw_graph_labels(ax: plt.axis, pos: dict, graph: nx.Graph, nodes: list | None = None) -> None:
     """Adds labels to the nodes of the graph.
 
     Args:
@@ -314,24 +311,24 @@ def _adjust_position(
 
 def si_graph_plot(
     interaction_values: InteractionValues,
-    graph: Optional[Union[list[tuple], nx.Graph]] = None,
-    n_interactions: Optional[int] = None,
+    graph: list[tuple] | nx.Graph | None = None,
+    n_interactions: int | None = None,
     draw_threshold: float = 0.0,
     random_seed: int = 42,
     size_factor: float = 1.0,
     plot_explanation: bool = True,
     compactness: float = 1e10,
-    feature_names: Optional[list] = None,
+    feature_names: list | None = None,
     cubic_scaling: bool = False,
-    pos: Optional[dict] = None,
+    pos: dict | None = None,
     node_size_scaling: float = 1.0,
-    min_max_interactions: Optional[tuple[float, float]] = None,
+    min_max_interactions: tuple[float, float] | None = None,
     adjust_node_pos: bool = False,
-    spring_k: Optional[float] = None,
-    interaction_direction: Optional[str] = None,
+    spring_k: float | None = None,
+    interaction_direction: str | None = None,
     node_area_scaling: bool = False,
     show: bool = False,
-) -> Optional[tuple[plt.figure, plt.axis]]:
+) -> tuple[plt.figure, plt.axis] | None:
     """Plots the interaction values as an explanation graph.
 
     An explanation graph is an undirected graph where the nodes represent players and the edges

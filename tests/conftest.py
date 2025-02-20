@@ -504,10 +504,16 @@ def custom_model(background_reg_dataset) -> CustomModel:
 TABULAR_MODEL_FIXTURES = [
     ("custom_model", "custom_model"),
     ("lr_reg_model", "sklearn.linear_model.LinearRegression"),
+    ("lr_clf_model", "sklearn.linear_model.LogisticRegression"),
+]
+
+TABULAR_TENSORFLOW_MODEL_FIXTURES = [
     ("sequential_model_1_class", "tensorflow.python.keras.engine.sequential.Sequential"),
     ("sequential_model_2_classes", "keras.src.models.sequential.Sequential"),
     ("sequential_model_3_classes", "keras.engine.sequential.Sequential"),
-    ("lr_clf_model", "sklearn.linear_model.LogisticRegression"),
+]
+
+TABULAR_TORCH_MODEL_FIXTURES = [
     ("torch_clf_model", "torch.nn.modules.container.Sequential"),
     ("torch_reg_model", "torch.nn.modules.container.Sequential"),
 ]
@@ -523,4 +529,9 @@ TREE_MODEL_FIXTURES = [
     ("dt_reg_model", "sklearn.tree.DecisionTreeRegressor"),
 ]
 
-ALL_MODEL_FIXTURES = TABULAR_MODEL_FIXTURES + TREE_MODEL_FIXTURES
+ALL_MODEL_FIXTURES = (
+    TABULAR_MODEL_FIXTURES
+    + TREE_MODEL_FIXTURES
+    + TABULAR_TENSORFLOW_MODEL_FIXTURES
+    + TABULAR_TORCH_MODEL_FIXTURES
+)
