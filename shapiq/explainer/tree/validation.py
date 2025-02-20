@@ -24,6 +24,8 @@ SUPPORTED_MODELS = {
     "sklearn.ensemble._forest.ExtraTreesClassifier",
     "sklearn.ensemble.RandomForestRegressor",
     "sklearn.ensemble._forest.RandomForestRegressor",
+    "sklearn.ensemble.ExtraTreesRegressor",
+    "sklearn.ensemble._forest.ExtraTreesRegressor",
     "sklearn.ensemble.IsolationForest",
     "sklearn.ensemble._iforest.IsolationForest",
     "lightgbm.sklearn.LGBMRegressor",
@@ -71,6 +73,8 @@ def validate_tree_model(model: Any, class_label: int | None = None) -> TreeModel
         or safe_isinstance(model, "sklearn.ensemble._forest.RandomForestRegressor")
         or safe_isinstance(model, "sklearn.ensemble.RandomForestClassifier")
         or safe_isinstance(model, "sklearn.ensemble._forest.RandomForestClassifier")
+        or safe_isinstance(model, "sklearn.ensemble.ExtraTreesRegressor")
+        or safe_isinstance(model, "sklearn.ensemble._forest.ExtraTreesRegressor")
         or safe_isinstance(model, "sklearn.ensemble.ExtraTreesClassifier")
         or safe_isinstance(model, "sklearn.ensemble._forest.ExtraTreesClassifier")
     ):
