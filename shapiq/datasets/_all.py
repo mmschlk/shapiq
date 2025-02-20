@@ -9,7 +9,11 @@ GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
 # csv files are located next to this file in a folder called "data"
 SHAPIQ_DATASETS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-os.makedirs(SHAPIQ_DATASETS_FOLDER, exist_ok=True)
+
+
+def _create_folder() -> None:
+    """Create the datasets folder if it does not exist."""
+    os.makedirs(SHAPIQ_DATASETS_FOLDER, exist_ok=True)
 
 
 def _try_load(csv_file_name: str) -> pd.DataFrame:
@@ -22,6 +26,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
     Returns:
         The dataset as a pandas DataFrame.
     """
+    _create_folder()
     try:
         return pd.read_csv(os.path.join(SHAPIQ_DATASETS_FOLDER, csv_file_name))
     except FileNotFoundError:
