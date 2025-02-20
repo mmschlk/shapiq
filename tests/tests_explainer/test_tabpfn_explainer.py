@@ -1,10 +1,16 @@
 """This test module tests the TabPFNExplainer object."""
 
+import sys
+
 import pytest
 
 from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
 
 
+@pytest.mark.external_libraries
+@pytest.mark.skipif(
+    not any(pkg in sys.modules for pkg in ["tabpfn"]), reason="TabPFN is not available."
+)
 def test_tabpfn_explainer_clf(tabpfn_classification_problem):
     """Test the TabPFNExplainer class for classification problems."""
     import tabpfn
@@ -31,6 +37,10 @@ def test_tabpfn_explainer_clf(tabpfn_classification_problem):
         assert isinstance(explainer, TabularExplainer)
 
 
+@pytest.mark.external_libraries
+@pytest.mark.skipif(
+    not any(pkg in sys.modules for pkg in ["tabpfn"]), reason="TabPFN is not available."
+)
 def test_tabpfn_explainer_reg(tabpfn_regression_problem):
     """Test the TabPFNExplainer class for regression problems."""
     import tabpfn

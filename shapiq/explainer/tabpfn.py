@@ -116,3 +116,14 @@ class TabPFNExplainer(TabularExplainer):
             index=index,
             max_order=max_order,
         )
+
+    @property
+    def is_available(self) -> bool:
+        """Check if the TabPFN package is available."""
+        import importlib
+
+        try:
+            importlib.import_module("tabpfn")
+            return True
+        except ImportError:
+            return False
