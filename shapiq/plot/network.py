@@ -281,7 +281,7 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
         borderpad=0.5,
         handlelength=1.5,
         title_fontsize=font_size,
-        loc="best",
+        loc="upper left",
     )
 
     # order 2 (lines)
@@ -309,7 +309,7 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
         borderpad=0.5,
         handlelength=1.5,
         title_fontsize=font_size,
-        loc="best",
+        loc="upper right",
     )
 
     axis.add_artist(legend1)
