@@ -3,7 +3,20 @@
 import numpy as np
 import pytest
 
-# Note to developers: If you add a new model fixture, make sure to add it to the
+from .fixtures.models import (
+    TABULAR_MODEL_FIXTURES,
+    TABULAR_TENSORFLOW_MODEL_FIXTURES,
+    TABULAR_TORCH_MODEL_FIXTURES,
+    TREE_MODEL_FIXTURES,
+)
+
+ALL_MODEL_FIXTURES = (
+    TABULAR_MODEL_FIXTURES
+    + TREE_MODEL_FIXTURES
+    + TABULAR_TENSORFLOW_MODEL_FIXTURES
+    + TABULAR_TORCH_MODEL_FIXTURES
+)
+
 
 pytest_plugins = [
     "tests.fixtures.games",

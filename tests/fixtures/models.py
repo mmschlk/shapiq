@@ -40,13 +40,6 @@ TREE_MODEL_FIXTURES = [
     ("dt_reg_model", "sklearn.tree.DecisionTreeRegressor"),
 ]
 
-ALL_MODEL_FIXTURES = (
-    TABULAR_MODEL_FIXTURES
-    + TREE_MODEL_FIXTURES
-    + TABULAR_TENSORFLOW_MODEL_FIXTURES
-    + TABULAR_TORCH_MODEL_FIXTURES
-)
-
 
 class CustomModel:
     def __init__(self, data: tuple[np.ndarray, np.ndarray]):
