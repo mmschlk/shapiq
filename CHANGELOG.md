@@ -1,6 +1,8 @@
 ## Changelog
 
 ### Development
+
+### v1.2.2 (2025-03-11)
 - changes python support to 3.10-3.13 [#318](https://github.com/mmschlk/shapiq/pull/318)
 - fixes a bug that prohibited importing shapiq in environments without write access [#326](https://github.com/mmschlk/shapiq/issues/326)
 - adds `ExtraTreeRegressors` to supported models [#309](https://github.com/mmschlk/shapiq/pull/309)
