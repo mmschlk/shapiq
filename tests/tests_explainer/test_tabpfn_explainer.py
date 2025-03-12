@@ -3,15 +3,14 @@
 import pytest
 
 from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
+from tests.markers import importorskip_tabpfn
 
 
+@importorskip_tabpfn
 @pytest.mark.external_libraries
 def test_tabpfn_explainer_clf(tabpfn_classification_problem):
     """Test the TabPFNExplainer class for classification problems."""
-    try:
-        import tabpfn
-    except ImportError:
-        pytest.skip("TabPFN is not available.")
+    import tabpfn
 
     # setup
     model, data, labels, x_test = tabpfn_classification_problem
@@ -35,13 +34,11 @@ def test_tabpfn_explainer_clf(tabpfn_classification_problem):
         assert isinstance(explainer, TabularExplainer)
 
 
+@importorskip_tabpfn
 @pytest.mark.external_libraries
 def test_tabpfn_explainer_reg(tabpfn_regression_problem):
     """Test the TabPFNExplainer class for regression problems."""
-    try:
-        import tabpfn
-    except ImportError:
-        pytest.skip("TabPFN is not available.")
+    import tabpfn
 
     # setup
     model, data, labels, x_test = tabpfn_regression_problem
