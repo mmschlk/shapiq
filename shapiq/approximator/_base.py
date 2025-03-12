@@ -326,19 +326,3 @@ class Approximator(ABC):
             )
 
         return aggregate_interaction_values(base_interactions, order=order)
-
-    @staticmethod
-    def aggregate_to_one_dimension(
-        interaction_values: InteractionValues,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Aggregates the interaction values to one dimension.
-
-        Args:
-            interaction_values: The interaction values to aggregate.
-
-        Returns:
-            tuple[np.ndarray, np.ndarray]: The positive and negative aggregated values.
-        """
-        from shapiq.game_theory.aggregation import aggregate_to_one_dimension
-
-        return aggregate_to_one_dimension(interaction_values)
