@@ -6,11 +6,15 @@ import pytest
 from shapiq.approximator.sampling import CoalitionSampler
 
 
-def test_basic_functionality():
+@pytest.mark.parametrize("n_players", [5, 10, 50])
+@pytest.mark.parametrize("budget", [10, 100])
+def test_basic_functionality(n_players, budget):
     """This test checks the basic functionality of the CoalitionSampler class."""
 
+    n = n_players
+    expected_budget = min(budget, 2**n)
+
     # test init and default params
-    n = 5
     uniform_sampling_weights = np.ones(n + 1) / (n + 1)  # only empty and full should be complete
     sampler = CoalitionSampler(n, uniform_sampling_weights)
     assert sampler.n == n
@@ -20,26 +24,42 @@ def test_basic_functionality():
     assert sampler.coalitions_counter is None
     assert sampler.coalitions_probability is None
     assert sampler.n_max_coalitions == 2**n
-    # assert sampler.sampled is False
+    assert sampler.n_coalitions == 0
+    assert sampler.empty_coalition_index is None
 
     # test sampling
-    budget = 10
     sampler.sample(budget)
-    assert sampler.coalitions_matrix.shape[0] == budget
-    assert sampler.coalitions_counter.shape[0] == budget
-    assert sampler.coalitions_probability.shape[0] == budget
-    assert sampler.n_coalitions == budget
-    # assert sampler.sampled is True
+
+    # test for correct shape and values
+    assert sampler.coalitions_matrix.shape[0] == expected_budget
+    assert sampler.coalitions_counter.shape[0] == expected_budget
+    assert sampler.coalitions_probability.shape[0] == expected_budget
+    assert sampler.n_coalitions == expected_budget
+    index_empty = np.where(np.sum(sampler.coalitions_matrix, axis=1) == 0)[0][0]  # all rows zero
+    assert sampler.empty_coalition_index == index_empty
+    assert len(sampler.coalitions_size) == expected_budget
+
+    # check for correct data types in properties
+    assert sampler.is_coalition_size_sampled.dtype == bool
+    assert sampler.is_coalition_sampled.dtype == bool
+    assert sampler.sampling_adjustment_weights.dtype == float
+    assert sampler.sampling_size_probabilities.dtype == float
+    assert sampler.coalitions_probability.dtype == float
+    assert sampler.coalitions_size_probability.dtype == float
+    assert sampler.coalitions_in_size_probability.dtype == float
+
+    # check for error if sampling budget is less than two (empty and full)
+    with pytest.raises(ValueError):
+        sampler.sample(1)
 
     # test with pairing
     sampler = CoalitionSampler(n, uniform_sampling_weights, pairing_trick=True)
     assert sampler.pairing_trick is True
     sampler.sample(budget)
-    assert sampler.coalitions_matrix.shape[0] == budget
-    assert sampler.coalitions_counter.shape[0] == budget
-    assert sampler.coalitions_probability.shape[0] == budget
-    assert sampler.n_coalitions == budget
-    # assert sampler.sampled is True
+    assert sampler.coalitions_matrix.shape[0] == expected_budget
+    assert sampler.coalitions_counter.shape[0] == expected_budget
+    assert sampler.coalitions_probability.shape[0] == expected_budget
+    assert sampler.n_coalitions == expected_budget
 
     # test for asymmetric sampling weights and pairing trick
     asymmetric_sampling_weights = np.ones(n + 1) / (n + 1)
@@ -58,13 +78,19 @@ def test_basic_functionality():
         _ = CoalitionSampler(n, np.ones(n))
 
     # test double sampling
-    n_first = 2**n - 2
-    n_second = 2**n - 3
+    n_first = expected_budget
+    n_second = expected_budget - 5
     sampler = CoalitionSampler(n, uniform_sampling_weights, pairing_trick=True)
     sampler.sample(n_first)
     assert sampler.n_coalitions == n_first
     sampler.sample(n_second)
     assert sampler.n_coalitions == n_second
+
+
+def test_user_warning_stalling():
+    """This test checks the warning for sketchy budgets in the CoalitionSampler class."""
+    n = 5
+    uniform_sampling_weights = np.ones(n + 1) / (n + 1)  # only empty and full
 
     # test for warning with sketchy budget (stalling)
     with pytest.warns(UserWarning):
