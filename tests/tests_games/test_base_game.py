@@ -266,3 +266,13 @@ def test_progress_bar():
 
     values = dummy_game(test_coalitions, verbose=True)
     assert len(values) == len(test_coalitions)
+
+
+def test_abstract_game():
+    """Tests the abstract game class."""
+    from tests.utils import get_concrete_class
+
+    n = 6
+    game = get_concrete_class(Game)(n_players=n)
+    with pytest.raises(NotImplementedError):
+        game(np.array([[True for _ in range(n)]]))

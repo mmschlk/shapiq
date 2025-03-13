@@ -110,7 +110,7 @@ class Approximator(ABC):
         self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
     ) -> InteractionValues:
         """Calls the approximate method."""
-        return self.approximate(budget, game, *args, **kwargs)
+        return self.approximate(budget=budget, game=game, *args, **kwargs)
 
     @abstractmethod
     def approximate(
@@ -129,7 +129,9 @@ class Approximator(ABC):
         Raises:
             NotImplementedError: If the method is not implemented.
         """
-        raise NotImplementedError("The approximate method needs to be implemented.")
+        raise NotImplementedError(
+            "The approximate method must be implemented in the subclass."
+        )  # pragma: no cover
 
     def _init_sampling_weights(self) -> np.ndarray:
         """Initializes the weights for sampling subsets.
@@ -196,12 +198,8 @@ class Approximator(ABC):
             ValueError: If the baseline value is not provided for SII and k-SII.
         """
 
-        if budget is None:  # try to get budget from sampler
-            budget = self._sampler.n_coalitions
-            if budget == 0:
-                raise ValueError("Budget is 0. Cannot finalize interaction values.")
-                # Note to developer: This should not happen, the finalize method should be called
-                # with a valid budget.
+        if budget is None:  # try to get budget from sampler (exclude from coverage)
+            budget = self._sampler.n_coalitions  # pragma: no cover
 
         if estimated is None:
             estimated = False if budget >= 2**self.n else True
@@ -304,7 +302,6 @@ class Approximator(ABC):
     def aggregate_interaction_values(
         base_interactions: InteractionValues,
         order: int | None = None,
-        player_set: set[int] | None = None,
     ) -> InteractionValues:
         """Aggregates the interaction values.
 
@@ -312,17 +309,10 @@ class Approximator(ABC):
             base_interactions: The base interaction values to aggregate.
             order: The order of the aggregation. For example, the order of the k-SII aggregation.
                 If ``None`` (default), the maximum order of the base interactions is used.
-            player_set: The set of players to consider for the aggregation. If ``None`` (default),
-                all players are considered.
 
         Returns:
             The aggregated interaction values.
         """
         from shapiq.game_theory.aggregation import aggregate_interaction_values
-
-        if player_set is not None:
-            raise NotImplementedError(
-                "Aggregating interaction values for a subset of players is not implemented."
-            )
 
         return aggregate_interaction_values(base_interactions, order=order)

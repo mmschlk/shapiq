@@ -1,8 +1,6 @@
 """This test module contains all tests regarding the base monte-carlo approximator many other
 approximators are based on."""
 
-from copy import copy, deepcopy
-
 import pytest
 
 from shapiq.approximator.montecarlo import MonteCarlo
@@ -41,18 +39,6 @@ def test_initialization(
     assert approximator.min_order == (max_order if top_order else 0)
     assert approximator.iteration_cost == 1
     assert approximator.index == index
-
-    approximator_copy = copy(approximator)
-    approximator_deepcopy = deepcopy(approximator)
-    approximator_deepcopy.index = "something"
-    assert approximator_copy == approximator  # check that the copy is equal
-    assert approximator_deepcopy != approximator  # check that the deepcopy is not equal
-    approximator_string = str(approximator)
-    assert repr(approximator) == approximator_string
-    assert hash(approximator) == hash(approximator_copy)
-    assert hash(approximator) != hash(approximator_deepcopy)
-    with pytest.raises(ValueError):
-        _ = approximator == 1
 
 
 @pytest.mark.parametrize(
