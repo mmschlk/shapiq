@@ -132,6 +132,8 @@ def aggregate_to_one_dimension(interactions: InteractionValues) -> tuple[np.ndar
     neg_values = np.zeros(shape=(n,), dtype=float)
 
     for interaction in interactions.interaction_lookup.keys():
+        if len(interaction) == 0:
+            continue  # skip the empty set
         interaction_value = interactions[interaction] / len(interaction)  # distribute uniformly
         for player in interaction:
             if interaction_value >= 0:

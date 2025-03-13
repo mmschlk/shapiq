@@ -10,10 +10,6 @@ _too_large_sample_size_warning = (
     "The sample size is larger than the number of data points in the background set. "
     "Reducing the sample size to the number of background samples."
 )
-_deprecated_sample_replacements_warning = (
-    "The 'sample_replacements' argument is deprecated and will be removed in the next release. "
-    "The marginal imputer now always samples from the background data."
-)
 
 
 class MarginalImputer(Imputer):
@@ -64,15 +60,12 @@ class MarginalImputer(Imputer):
         model,
         data: np.ndarray,
         x: np.ndarray | None = None,
-        sample_replacements: bool = True,
         sample_size: int = 100,
         categorical_features: list[int] = None,
         joint_marginal_distribution: bool = True,
         normalize: bool = True,
         random_state: int | None = None,
     ) -> None:
-        if not sample_replacements:
-            warnings.warn(DeprecationWarning(_deprecated_sample_replacements_warning))
         super().__init__(model, data, x, sample_size, categorical_features, random_state)
 
         # setup attributes
@@ -155,10 +148,7 @@ class MarginalImputer(Imputer):
             for feature in range(self.n_features):
                 rng.shuffle(replacement_data[:, feature])
         n_samples = replacement_data.shape[0]
-        if sample_size is None or sample_size == n_samples:
-            return replacement_data
-        if sample_size > n_samples:
-            warnings.warn(UserWarning(_too_large_sample_size_warning))
+        if sample_size is None or sample_size >= n_samples:
             return replacement_data
         # sample replacement values
         replacement_idx = rng.choice(n_samples, size=sample_size, replace=False)
