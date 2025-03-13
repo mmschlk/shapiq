@@ -373,9 +373,7 @@ class Regression(Approximator):
                 # 1 if interaction is fully contained, else 0.
                 weights[interaction_size, interaction_size] = 1
             return weights
-        raise ValueError(
-            f"Index {index} not available in Regression Approximator."
-        )  # pragma: no cover
+        raise ValueError(f"Index {index} not valid in Regression Approximator.")  # pragma: no cover
 
     def _get_bernoulli_weights(self, max_order: int) -> np.ndarray:
         """Pre-computes and array of Bernoulli weights for a given max_order.

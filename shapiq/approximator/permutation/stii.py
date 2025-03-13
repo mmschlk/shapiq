@@ -61,7 +61,12 @@ class PermutationSamplingSTII(Approximator):
         self.iteration_cost: int = self._compute_iteration_cost()
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: int = 1
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        batch_size: int = 1,
+        *args,
+        **kwargs,
     ) -> InteractionValues:
         """Approximates the interaction values.
 
@@ -69,6 +74,7 @@ class PermutationSamplingSTII(Approximator):
             budget: The budget for the approximation.
             game: The game function as a callable that takes a set of players and returns the value.
             batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``1``.
+            args and kwargs: Additional arguments and keyword arguments not used in this method.
 
         Returns:
             InteractionValues: The estimated interaction values.
@@ -107,7 +113,7 @@ class PermutationSamplingSTII(Approximator):
         )
 
         # warn the user if the budget is too small
-        if n_iterations == 0:
+        if n_iterations <= 0:
             warnings.warn(
                 message=f"The budget {budget} is too small to perform a single iteration, which "
                 f"requires {self.iteration_cost + lower_order_cost + 1} evaluations. Consider "
@@ -115,7 +121,7 @@ class PermutationSamplingSTII(Approximator):
                 category=UserWarning,
             )
             return self._finalize_result(
-                result, baseline_value=empty_value, budget=used_budget, estimated=True
+                result, baseline_value=float(empty_value), budget=used_budget, estimated=True
             )
 
         # main permutation sampling loop
@@ -170,7 +176,7 @@ class PermutationSamplingSTII(Approximator):
         result = np.divide(result, counts, out=result, where=counts != 0)
 
         return self._finalize_result(
-            result, baseline_value=empty_value, budget=used_budget, estimated=True
+            result, baseline_value=float(empty_value), budget=used_budget, estimated=True
         )
 
     def _compute_iteration_cost(self) -> int:
@@ -184,8 +190,8 @@ class PermutationSamplingSTII(Approximator):
         return iteration_cost
 
     def _compute_lower_order_sti(
-        self, game: Callable[[np.ndarray], np.ndarray], result: np.ndarray[float]
-    ) -> np.ndarray[float]:
+        self, game: Callable[[np.ndarray], np.ndarray], result: np.ndarray
+    ) -> np.ndarray:
         """Computes all lower order interactions for the STII index up to order ``max_order - 1``.
 
         Args:
@@ -197,7 +203,7 @@ class PermutationSamplingSTII(Approximator):
         """
         # get all game values on the whole powerset of players up to order max_order - 1
         lower_order_sizes = list(range(0, self.max_order))
-        subsets: np.ndarray[bool] = get_explicit_subsets(self.n, lower_order_sizes)
+        subsets = get_explicit_subsets(self.n, lower_order_sizes)
         game_values = game(subsets)
         game_values_lookup = {
             tuple(np.where(subsets[index])[0]): float(game_values[index])

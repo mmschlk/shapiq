@@ -74,4 +74,4 @@ def test_small_budget_warning():
     with pytest.warns(UserWarning):
         _ = approximator.approximate(1, game)  # not even lower_order_cost
     with pytest.warns(UserWarning):
-        _ = approximator.approximate(55, game)  # lower_order_cost but no iteration
+        _ = approximator.approximate(56, game)  # lower_order_cost but no iteration
