@@ -584,10 +584,8 @@ class ExactComputer:
         weight_matrix_sqrt = np.sqrt(np.diag(least_squares_weights))
         coalition_matrix_weighted_sqrt = np.dot(weight_matrix_sqrt, coalition_matrix)
 
-        if index == "FSII":
+        if index in ["FSII", "FBII"]:
             regression_response = self.game_values - self.baseline_value  # normalization
-        elif index == "FBII":
-            regression_response = self.game_values  # no normalization
         else:
             raise ValueError(f"Index {index} not supported.")
 
@@ -605,7 +603,8 @@ class ExactComputer:
             fii_values[0] = baseline_value  # set baseline value
         if index == "FBII":
             # For FBII the empty set is computed
-            baseline_value = fii_values[0]
+            baseline_value = fii_values[0] + self.baseline_value
+            fii_values[0] = baseline_value  # set baseline value
 
         fii = InteractionValues(
             values=fii_values,
@@ -861,13 +860,13 @@ class ExactComputer:
             probabilistic_value = self.base_interaction(index="BII", order=order)
         elif index == "SV":
             probabilistic_value = self.base_interaction(index="SII", order=order)
-            # Change emptyset value of SII to baseline value
-            probabilistic_value.baseline_value = self.baseline_value
-            probabilistic_value.values[probabilistic_value.interaction_lookup[tuple()]] = (
-                self.baseline_value
-            )
         else:
             raise ValueError(f"Index {index} not supported")
+        # Change emptyset to baseline value, due to the definitions of players
+        probabilistic_value.baseline_value = self.baseline_value
+        probabilistic_value.values[probabilistic_value.interaction_lookup[tuple()]] = (
+            self.baseline_value
+        )
         self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
 

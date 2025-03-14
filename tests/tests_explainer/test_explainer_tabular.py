@@ -25,7 +25,7 @@ def data():
     return X
 
 
-INDICES = ["SII", "k-SII", "STII", "FSII"]
+INDICES = ["SII", "k-SII", "STII", "FSII", "FBII"]
 MAX_ORDERS = [2, 3]
 IMPUTER = ["marginal", "conditional", "baseline"]
 APPROXIMATOR = ["regression", "montecarlo", "permutation", "svarm"]
@@ -53,6 +53,8 @@ def test_init_params(dt_model, data, index, max_order, imputer):
     # test defaults
     if index == "FSII":
         assert explainer._approximator.__class__.__name__ == "RegressionFSII"
+    elif index == "FBII":
+        assert explainer._approximator.__class__.__name__ == "RegressionFBII"
     elif index == "SII" or index == "k-SII":
         assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
     else:

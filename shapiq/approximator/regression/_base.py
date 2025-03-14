@@ -79,14 +79,23 @@ class Regression(Approximator):
         """
         # vector that determines the kernel weights for KernelSHAPIQ
         weight_vector = np.zeros(shape=self.n + 1)
-        for coalition_size in range(0, self.n + 1):
-            if (coalition_size < interaction_size) or (coalition_size > self.n - interaction_size):
-                weight_vector[coalition_size] = self._big_M
-            else:
-                weight_vector[coalition_size] = 1 / (
-                    (self.n - 2 * interaction_size + 1)
-                    * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
-                )
+
+        if self.index == "FBII":
+            for coalition_size in range(0, self.n + 1):
+                weight_vector[coalition_size] = 1 / (2**self.n)
+        elif self.index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
+            for coalition_size in range(0, self.n + 1):
+                if (coalition_size < interaction_size) or (
+                    coalition_size > self.n - interaction_size
+                ):
+                    weight_vector[coalition_size] = self._big_M
+                else:
+                    weight_vector[coalition_size] = 1 / (
+                        (self.n - 2 * interaction_size + 1)
+                        * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
+                    )
+        else:
+            raise ValueError(f"Index {self.index} not available for Regression Approximator.")
         kernel_weight = weight_vector
         return kernel_weight
 
@@ -270,7 +279,6 @@ class Regression(Approximator):
         coalitions_matrix = self._sampler.coalitions_matrix
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
         coalitions_size = np.sum(coalitions_matrix, axis=1)
-        sampling_adjustment_weights = sampling_adjustment_weights
 
         empty_coalition_value = float(game_values[coalitions_size == 0][0])
         regression_response = game_values - empty_coalition_value
@@ -300,7 +308,7 @@ class Regression(Approximator):
             regression_weights=regression_weights,
         )
 
-        if index_approximation == "kADD-SHAP":
+        if index_approximation in ["kADD-SHAP", "FBII"]:
             shapley_interactions_values[0] += empty_coalition_value
         else:
             shapley_interactions_values[0] = empty_coalition_value
@@ -366,10 +374,11 @@ class Regression(Approximator):
             weights = self._get_bernoulli_weights(max_order=max_order)
         elif index in ["kADD-SHAP"]:
             weights = self._get_kadd_weights(max_order=max_order)
-        elif index == "FSII":
+        elif index in ["FSII", "FBII"]:
             # Default weights for FSI
             weights = np.zeros((max_order + 1, max_order + 1))
-            for interaction_size in range(1, max_order + 1):
+            # Including the zero interaction size unharmful for FSII, due to \mu(\emptyset)= \infty thus \phi(\emptyset)=0
+            for interaction_size in range(0, max_order + 1):
                 # 1 if interaction is fully contained, else 0.
                 weights[interaction_size, interaction_size] = 1
         else:
