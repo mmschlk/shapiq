@@ -83,7 +83,7 @@ class Regression(Approximator):
         if self.index == "FBII":
             for coalition_size in range(0, self.n + 1):
                 weight_vector[coalition_size] = 1 / (2**self.n)
-        else:
+        elif self.index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
             for coalition_size in range(0, self.n + 1):
                 if (coalition_size < interaction_size) or (
                     coalition_size > self.n - interaction_size
@@ -94,6 +94,8 @@ class Regression(Approximator):
                         (self.n - 2 * interaction_size + 1)
                         * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
                     )
+        else:
+            raise ValueError(f"Index {self.index} not available for Regression Approximator.")
         kernel_weight = weight_vector
         return kernel_weight
 
@@ -306,9 +308,9 @@ class Regression(Approximator):
             regression_weights=regression_weights,
         )
 
-        if index_approximation == "kADD-SHAP":
+        if index_approximation in ["kADD-SHAP", "FBII"]:
             shapley_interactions_values[0] += empty_coalition_value
-        elif index_approximation != "FBII":
+        else:
             shapley_interactions_values[0] = empty_coalition_value
 
         return shapley_interactions_values
