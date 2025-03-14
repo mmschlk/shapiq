@@ -603,7 +603,8 @@ class ExactComputer:
             fii_values[0] = baseline_value  # set baseline value
         if index == "FBII":
             # For FBII the empty set is computed
-            baseline_value = fii_values[0]
+            baseline_value = fii_values[0] + self.baseline_value
+            fii_values[0] = baseline_value  # set baseline value
 
         fii = InteractionValues(
             values=fii_values,
