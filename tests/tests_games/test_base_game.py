@@ -237,6 +237,10 @@ def test_load_and_save():
     with pytest.raises(ValueError):
         dummy_game_loaded.load_values(path + ".npz")
 
+    # Value error if n_players is None and path_to_values is None:
+    with pytest.raises(ValueError):
+        _ = Game(n=None, interaction=(0, 1))
+
     # clean up
     os.remove(path + ".npz")
     assert not os.path.exists(path + ".npz")
@@ -252,6 +256,43 @@ def test_load_and_save():
     # clean up
     os.remove(path)
     assert not os.path.exists(path)
+
+
+def test_save_and_load_with_normalization():
+    """Tests weather games can be saved and loaded with normalization values correctly."""
+    normalization_value = 0.25  # not zero
+    dummy_game_empty_output = 0.0
+
+    game = DummyGame(n=4, interaction=(0, 1))
+    assert not game.normalize  # first not normalized
+    game.normalization_value = normalization_value
+    assert game.normalization_value == normalization_value
+    assert game.normalize  # now normalized
+    assert not game.is_normalized  # the game is being normalized but the empty coalition is not 0
+
+    path = "dummy_game.npz"
+    game.save_values(path)
+
+    try:  # do the testings in a try except block to clean up the file
+        game_loaded = Game(path_to_values=path)
+        assert game_loaded.normalize  # should be normalized
+        assert game_loaded.normalization_value == normalization_value
+        empty_value = game_loaded(game_loaded.empty_coalition)
+        # the output should be the same as the original game with normalization (-0.25)
+        assert empty_value == dummy_game_empty_output - normalization_value
+
+        # load with normalization set to False
+        game_loaded = Game(path_to_values=path, normalize=False)
+        assert not game_loaded.normalize  # should not be normalized
+        assert game_loaded.normalization_value == 0.0
+        empty_value = game_loaded(game_loaded.empty_coalition)
+        # the output should be the same as the original game without normalization (0.0)
+        assert empty_value == dummy_game_empty_output
+    except Exception as e:
+        raise e
+    finally:
+        os.remove(path)
+        assert not os.path.exists(path)
 
 
 def test_progress_bar():
