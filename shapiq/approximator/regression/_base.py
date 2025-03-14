@@ -79,14 +79,21 @@ class Regression(Approximator):
         """
         # vector that determines the kernel weights for KernelSHAPIQ
         weight_vector = np.zeros(shape=self.n + 1)
-        for coalition_size in range(0, self.n + 1):
-            if (coalition_size < interaction_size) or (coalition_size > self.n - interaction_size):
-                weight_vector[coalition_size] = self._big_M
-            else:
-                weight_vector[coalition_size] = 1 / (
-                    (self.n - 2 * interaction_size + 1)
-                    * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
-                )
+
+        if self.index == "FBII":
+            for coalition_size in range(0, self.n + 1):
+                weight_vector[coalition_size] = 1 / (2**self.n)
+        else:
+            for coalition_size in range(0, self.n + 1):
+                if (coalition_size < interaction_size) or (
+                    coalition_size > self.n - interaction_size
+                ):
+                    weight_vector[coalition_size] = self._big_M
+                else:
+                    weight_vector[coalition_size] = 1 / (
+                        (self.n - 2 * interaction_size + 1)
+                        * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
+                    )
         kernel_weight = weight_vector
         return kernel_weight
 
@@ -270,7 +277,6 @@ class Regression(Approximator):
         coalitions_matrix = self._sampler.coalitions_matrix
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
         coalitions_size = np.sum(coalitions_matrix, axis=1)
-        sampling_adjustment_weights = sampling_adjustment_weights
 
         empty_coalition_value = float(game_values[coalitions_size == 0][0])
         regression_response = game_values - empty_coalition_value
@@ -302,7 +308,7 @@ class Regression(Approximator):
 
         if index_approximation == "kADD-SHAP":
             shapley_interactions_values[0] += empty_coalition_value
-        else:
+        elif index_approximation != "FBII":
             shapley_interactions_values[0] = empty_coalition_value
 
         return shapley_interactions_values
@@ -370,6 +376,12 @@ class Regression(Approximator):
             # Default weights for FSI
             weights = np.zeros((max_order + 1, max_order + 1))
             for interaction_size in range(1, max_order + 1):
+                # 1 if interaction is fully contained, else 0.
+                weights[interaction_size, interaction_size] = 1
+        elif index in ["FBII"]:
+            # Default weights for FSI
+            weights = np.zeros((max_order + 1, max_order + 1))
+            for interaction_size in range(0, max_order + 1):
                 # 1 if interaction is fully contained, else 0.
                 weights[interaction_size, interaction_size] = 1
             return weights
