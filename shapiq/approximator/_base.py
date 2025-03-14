@@ -210,7 +210,7 @@ class Approximator(ABC):
         if tuple() in self._interaction_lookup:
             idx = self._interaction_lookup[tuple()]
             empty_value = result[idx]
-            # only for SII empty value is not the baseline value
+            # only for SII and FBII empty value is not the baseline value
             if empty_value != baseline_value and is_empty_value_the_baseline(self.index):
                 result[idx] = baseline_value
 
