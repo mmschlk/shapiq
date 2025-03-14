@@ -47,7 +47,7 @@ def test_approximate_bv_equality(cooking_game):
     n_players = 3
     game = cooking_game
     exact_computer = ExactComputer(n_players, game)
-    banzhaf = exact_computer("BII", order=1)  # basically BV
+    banzhaf = exact_computer("BV")
     fbii_exac = exact_computer("FBII", order=1)
     approximator = RegressionFBII(n=n_players, max_order=1)
 
