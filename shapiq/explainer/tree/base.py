@@ -163,6 +163,27 @@ class TreeModel:
             self.n_features_in_tree = len(new_feature_ids)
             self.max_feature_id = self.n_features_in_tree - 1
 
+    def predict_one(self, x: np.ndarray) -> float:
+        """Predicts the output of a single instance.
+
+        Args:
+            x: The instance to predict as a 1-dimensional array.
+
+        Returns:
+            The prediction of the instance with the tree model.
+        """
+        node = self.root_node_id
+        is_leaf = self.leaf_mask[node]
+        while not is_leaf:
+            feature_id_internal = self.features[node]
+            feature_id_original = self.feature_map_internal_original[feature_id_internal]
+            if x[feature_id_original] <= self.thresholds[node]:
+                node = self.children_left[node]
+            else:
+                node = self.children_right[node]
+            is_leaf = self.leaf_mask[node]
+        return self.values[node]
+
 
 @dataclass
 class EdgeTree:

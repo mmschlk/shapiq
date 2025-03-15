@@ -176,7 +176,7 @@ def test_xgboost_reg(xgb_reg_model, background_reg_data):
 
 
 def test_xgboost_clf(xgb_clf_model, background_clf_data):
-    """Tests the shapiq implementation of TreeSHAP agains SHAP's implementation for XGBoost."""
+    """Tests the shapiq implementation of TreeSHAP against SHAP's implementation for XGBoost."""
 
     explanation_instance = 1
     class_label = 1
@@ -389,3 +389,19 @@ def test_iso_forest_shap(if_clf_model):
 
     assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-6)
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+
+
+def test_xgboost_decision_stumps(background_reg_dataset):
+    """Tests weather you can explain a decision stump with the shapiq implementation."""
+    import xgboost as xgb
+
+    X, y = background_reg_dataset
+    model = xgb.XGBRegressor(random_state=42, n_estimators=20, max_depth=1)
+    model.fit(X, y)
+
+    explainer = TreeExplainer(model=model, max_order=3, index="SII")
+    x_explain = X[0]
+    explanation = explainer.explain(x_explain)
+
+    for value in explanation.values:
+        assert not np.isnan(value)
