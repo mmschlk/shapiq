@@ -391,17 +391,55 @@ def test_iso_forest_shap(if_clf_model):
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
 
-def test_xgboost_decision_stumps(background_reg_dataset):
-    """Tests weather you can explain a decision stump with the shapiq implementation."""
-    import xgboost as xgb
+def test_decision_stumps(background_reg_dataset, background_clf_dataset):
+    """Tests weather you can explain a decision stumps with the shapiq implementation."""
+    from lightgbm import LGBMClassifier, LGBMRegressor
+    from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+    from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+    from xgboost import XGBClassifier, XGBRegressor
 
-    X, y = background_reg_dataset
-    model = xgb.XGBRegressor(random_state=42, n_estimators=20, max_depth=1)
-    model.fit(X, y)
+    models_reg = [
+        LGBMRegressor(random_state=42, n_estimators=20, max_depth=1),
+        XGBRegressor(random_state=42, n_estimators=20, max_depth=1),
+        DecisionTreeRegressor(random_state=42, max_depth=1),
+        RandomForestRegressor(random_state=42, n_estimators=20, max_depth=1),
+    ]
 
-    explainer = TreeExplainer(model=model, max_order=3, index="SII")
-    x_explain = X[0]
-    explanation = explainer.explain(x_explain)
+    models_clf = [
+        LGBMClassifier(random_state=42, n_estimators=20, max_depth=1),
+        XGBClassifier(random_state=42, n_estimators=20, max_depth=1),
+        DecisionTreeClassifier(random_state=42, max_depth=1),
+        RandomForestClassifier(random_state=42, n_estimators=20, max_depth=1),
+    ]
 
-    for value in explanation.values:
-        assert not np.isnan(value)
+    for model in models_reg:
+        X, y = background_reg_dataset
+        model.fit(X, y)
+
+        explainer = TreeExplainer(model=model, max_order=3, index="k-SII")
+        x_explain = X[0]
+        explanation = explainer.explain(x_explain)
+
+        efficiency = sum(explanation.values)
+
+        pred = model.predict(x_explain.reshape(1, -1))
+        assert pred == pytest.approx(efficiency, rel=1e-5)
+
+    for model in models_clf:
+        X, y = background_clf_dataset
+        model.fit(X, y)
+
+        explainer = TreeExplainer(model=model, max_order=1, index="SV", class_index=0)
+        x_explain = X[1]
+        explanation = explainer.explain(x_explain)
+
+        efficiency = sum(explanation.values)
+
+        if isinstance(model, RandomForestClassifier) or isinstance(model, DecisionTreeClassifier):
+            pred = model.predict_proba(x_explain.reshape(1, -1))[0, 0]
+        elif isinstance(model, XGBClassifier):
+            pred = model.predict(x_explain.reshape(1, -1), output_margin=True)[0, 0]
+        else:  # skip lightgbm
+            continue
+
+        assert pred == pytest.approx(efficiency, rel=1e-5)
