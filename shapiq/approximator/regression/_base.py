@@ -362,19 +362,18 @@ class Regression(Approximator):
            Returns:
                An array of the regression coefficient weights.
         """
-        if index in ["SII"]:
-            weights = self._get_bernoulli_weights(max_order=max_order)
-        elif index in ["kADD-SHAP"]:
-            weights = self._get_kadd_weights(max_order=max_order)
+        if index == "SII":
+            return self._get_bernoulli_weights(max_order=max_order)
+        elif index == "kADD-SHAP":
+            return self._get_kadd_weights(max_order=max_order)
         elif index == "FSII":
             # Default weights for FSI
             weights = np.zeros((max_order + 1, max_order + 1))
             for interaction_size in range(1, max_order + 1):
                 # 1 if interaction is fully contained, else 0.
                 weights[interaction_size, interaction_size] = 1
-        else:
-            raise ValueError(f"Index {index} not available for Regression Approximator.")
-        return weights
+            return weights
+        raise ValueError(f"Index {index} not valid in Regression Approximator.")  # pragma: no cover
 
     def _get_bernoulli_weights(self, max_order: int) -> np.ndarray:
         """Pre-computes and array of Bernoulli weights for a given max_order.

@@ -60,10 +60,10 @@ def test_k_one_dim_aggregate():
     efficiency = np.sum(k_sii_estimates.values)
 
     # check one dim transform
-    pos_ksii_values, neg_ksii_values = aggregate_to_one_dimension(k_sii_estimates)
-    assert pos_ksii_values.shape == (n,) and neg_ksii_values.shape == (n,)
-    assert np.all(pos_ksii_values >= 0) and np.all(neg_ksii_values <= 0)
-    sum_of_both = np.sum(pos_ksii_values) + np.sum(neg_ksii_values)
+    pos_values, neg_values = aggregate_to_one_dimension(k_sii_estimates)
+    assert pos_values.shape == (n,) and neg_values.shape == (n,)
+    assert np.all(pos_values >= 0) and np.all(neg_values <= 0)
+    sum_of_both = np.sum(pos_values) + np.sum(neg_values)
 
     assert sum_of_both == pytest.approx(efficiency, 0.01)
     assert sum_of_both != pytest.approx(0.0, 0.01)

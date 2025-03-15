@@ -87,7 +87,6 @@ class LocalExplanation(Game):
                     model=model,
                     data=data,
                     x=self.x,
-                    sample_replacements=False,
                     random_state=random_state,
                     normalize=False,
                 )

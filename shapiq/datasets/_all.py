@@ -59,8 +59,7 @@ def load_california_housing(
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    else:
-        return x_data, y_data
+    return x_data, y_data
 
 
 def load_bike_sharing(
@@ -130,8 +129,7 @@ def load_bike_sharing(
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    else:
-        return x_data, y_data
+    return x_data, y_data
 
 
 def load_adult_census(
@@ -205,5 +203,4 @@ def load_adult_census(
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    else:
-        return x_data, y_data
+    return x_data, y_data

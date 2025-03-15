@@ -1,6 +1,7 @@
 ## Changelog
 
 ### Development
+- removes `sample_replacements` parameter from `MarginalImputer` and removes the DeprecationWarning for it
 
 ### v1.2.2 (2025-03-11)
 - changes python support to 3.10-3.13 [#318](https://github.com/mmschlk/shapiq/pull/318)

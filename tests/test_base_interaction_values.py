@@ -761,3 +761,6 @@ def test_docs_aggregation_function():
     assert pytest.approx(aggregated_interaction_values[(1,)]) == 0.25
     assert pytest.approx(aggregated_interaction_values[(1, 2)]) == 0.3
     assert pytest.approx(aggregated_interaction_values.baseline_value) == 0.5
+
+    with pytest.raises(ValueError):
+        _ = aggregate_interaction_values([iv1, iv2], aggregation="invalid")
