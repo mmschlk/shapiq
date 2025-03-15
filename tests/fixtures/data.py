@@ -1,5 +1,13 @@
-"""This fixtures module contains data fixtures for the tests."""
+"""This fixtures module contains data fixtures for the tests.
 
+Note to developers:
+    This module should only contain fixtures containing data. If you need to creat a model fixture,
+    please use the `models.py` module and import the data fixtures from this module. Further, always
+    use the `copy.deepcopy` function to ensure that the fixtures are not modified during the tests.
+    This is especially important for the data fixtures, as they are used in multiple tests.
+"""
+
+import copy
 import os
 
 import numpy as np
@@ -7,7 +15,13 @@ import pytest
 from PIL import Image
 from sklearn.datasets import make_classification, make_regression
 
-NR_FEATURES = 7  # Number of features for the tabular models
+# normal datasets
+NR_FEATURES = 7
+NR_FEATURES_INFORMATIVE = 7
+
+# small datasets
+NR_FEATURES_SMALL = 3
+NR_FEATURES_SMALL_INFORMATIVE = 2
 
 
 @pytest.fixture
@@ -21,36 +35,21 @@ def if_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
     outliers = rng.uniform(low=-4, high=4, size=(n_outliers, 2))
     X = np.concatenate([cluster_1, cluster_2, outliers])
     y = np.concatenate([np.ones((2 * n_samples), dtype=int), -np.ones((n_outliers), dtype=int)])
-    return X, y
-
-
-@pytest.fixture
-def background_reg_data() -> np.ndarray:
-    """Return a simple background dataset."""
-    X, _ = make_regression(n_samples=100, n_features=7, random_state=42)
-    return X
-
-
-@pytest.fixture
-def background_clf_data() -> np.ndarray:
-    """Return a simple background dataset."""
-    X, _ = make_classification(
-        n_samples=100,
-        n_features=NR_FEATURES,
-        random_state=42,
-        n_classes=3,
-        n_informative=7,
-        n_repeated=0,
-        n_redundant=0,
-    )
-    return X
+    return copy.deepcopy(X), copy.deepcopy(y)
 
 
 @pytest.fixture
 def background_reg_dataset() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple background dataset."""
     X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
-    return X, y
+    return copy.deepcopy(X), copy.deepcopy(y)
+
+
+@pytest.fixture
+def background_reg_data(background_reg_dataset) -> np.ndarray:
+    """Return a simple background dataset."""
+    X, _ = background_reg_dataset
+    return copy.deepcopy(X)
 
 
 @pytest.fixture
@@ -61,11 +60,18 @@ def background_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
         n_features=NR_FEATURES,
         random_state=42,
         n_classes=3,
-        n_informative=7,
+        n_informative=NR_FEATURES_INFORMATIVE,
         n_repeated=0,
         n_redundant=0,
     )
-    return X, y
+    return copy.deepcopy(X), copy.deepcopy(y)
+
+
+@pytest.fixture
+def background_clf_data(background_clf_dataset) -> np.ndarray:
+    """Return a simple background dataset."""
+    X, _ = background_clf_dataset
+    return copy.deepcopy(X)
 
 
 @pytest.fixture
@@ -76,11 +82,33 @@ def background_clf_dataset_binary() -> tuple[np.ndarray, np.ndarray]:
         n_features=NR_FEATURES,
         random_state=42,
         n_classes=2,
-        n_informative=7,
+        n_informative=NR_FEATURES_INFORMATIVE,
         n_repeated=0,
         n_redundant=0,
     )
-    return X, y
+    return copy.deepcopy(X), copy.deepcopy(y)
+
+
+@pytest.fixture
+def background_clf_dataset_binary_small() -> tuple[np.ndarray, np.ndarray]:
+    """Return a simple background dataset."""
+    X, y = make_classification(
+        n_samples=10,
+        n_features=NR_FEATURES_SMALL,
+        random_state=42,
+        n_classes=2,
+        n_informative=NR_FEATURES_SMALL_INFORMATIVE,
+        n_repeated=0,
+        n_redundant=NR_FEATURES_SMALL - NR_FEATURES_SMALL_INFORMATIVE,
+    )
+    return copy.deepcopy(X), copy.deepcopy(y)
+
+
+@pytest.fixture
+def background_reg_dataset_small() -> tuple[np.ndarray, np.ndarray]:
+    """Return a simple background dataset."""
+    X, y = make_regression(n_samples=10, n_features=NR_FEATURES_SMALL, random_state=42)
+    return copy.deepcopy(X), copy.deepcopy(y)
 
 
 @pytest.fixture
@@ -91,4 +119,4 @@ def image_and_path() -> tuple[Image.Image, str]:
         os.path.dirname(os.path.abspath(__file__)), "..", "data", "test_croc.JPEG"
     )
     image = Image.open(path_from_test_root)
-    return image, path_from_test_root
+    return copy.deepcopy(image), copy.deepcopy(path_from_test_root)

@@ -1,8 +1,9 @@
 """This test module contains all tests for bugfixes regarding TreeSHAP-IQ."""
 
 import numpy as np
+import pytest
 
-from shapiq.explainer.tree import TreeModel, TreeSHAPIQ
+from shapiq.explainer.tree import TreeExplainer, TreeModel, TreeSHAPIQ
 
 
 def test_bike_bug():
@@ -241,3 +242,100 @@ def test_bike_bug():
     # if this test runs without an error, the bug is fixed
     assert True
     return
+
+
+def test_xgboost_bug():
+    """Test that xgboost works when not all features are used in the tree."""
+    import xgboost as xgb
+    from sklearn.datasets import make_regression
+
+    n_features_data = 7
+
+    # fit the tree on data that does not use all features
+    X, y = make_regression(random_state=42, n_samples=100, n_features=n_features_data)
+    model = xgb.XGBRegressor(random_state=42, n_estimators=10, max_depth=2)
+    model.fit(X, y)
+
+    # make sure not all features are used in the tree
+    booster = model.get_booster()
+    data_frame = booster.trees_to_dataframe()
+    feature_names = np.setdiff1d(data_frame["Feature"], "Leaf")
+    n_features_in_tree = len(feature_names)
+    assert booster.num_features() == n_features_data
+    assert booster.num_features != n_features_in_tree
+
+    # test the shapiq implementation
+    explainer = TreeExplainer(model=model, max_order=1, index="SV")
+    x_explain = X[0]
+    explanation = explainer.explain(x_explain)
+
+    for value in explanation.values:
+        assert not np.isnan(value)
+
+
+def test_xgb_predicts_with_wrong_leaf_node():
+    """This test illustrates that the predictions of the xgboost model do not perfectly align
+    with the xgboost models internal representation.
+
+    Sometimes the model goes in a wrong direction in the path. This test illustrates this where
+    one datapoint should be predicted with a left leave node but is predicted with the right leave
+    node with the xgboost model. We are parsing the xgboost model and creating our tree model
+    representation, where we correctly predict with the left leave node.
+    """
+
+    from sklearn.datasets import make_regression
+    from xgboost import XGBRegressor
+
+    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
+    model = XGBRegressor(random_state=42, n_estimators=1, max_depth=1)
+    model.fit(X, y)
+    booster = model.get_booster()
+
+    # get the data point
+    x_explain = X[14]
+    x_explain_left = x_explain.copy()
+    x_explain_left[1] = 0.0  # set the feature value to 0.0 which is smaller than even the og. val
+    assert x_explain_left[1] < x_explain[1]  # make sure the value is smaller
+
+    # parse the xgboost model
+    df = booster.trees_to_dataframe()
+    threshold = df[df["Node"] == 0]["Split"].values[0]
+    feature_id = df[df["Node"] == 0]["Feature"].values[0]
+    intercept = model.intercept_[0]
+    prediction_left_df = df[df["Node"] == 1]["Gain"].values[0] + intercept
+    prediction_right_df = df[df["Node"] == 2]["Gain"].values[0] + intercept
+
+    # make sure the xgboost model is using the features we are playing around with
+    assert feature_id == "f1"  # feature 1 is used
+    assert x_explain[1] < threshold  # feature value is < threshold (this instance should go left)
+    assert len(df) == 3  # only 3 nodes in the tree (one decision node and two leaf nodes)
+
+    # get the predictions of the xgboost model
+    prediction_xgb = model.predict(x_explain.reshape(1, -1))
+    prediction_xgb_left = model.predict(x_explain_left.reshape(1, -1))
+    assert prediction_xgb != prediction_xgb_left  # predictions are different
+    # the original prediction is going right not left as it should
+    assert prediction_xgb == prediction_right_df
+    assert prediction_xgb_left == prediction_left_df
+
+    # get our tree model representation
+    tree_explainer = TreeExplainer(model=model, index="SV")
+    tree_model = tree_explainer._treeshapiq_explainers[0]._tree
+    prediction_tree_model = tree_model.predict_one(x_explain)
+    prediction_tree_model_left = tree_model.predict_one(x_explain_left)
+    # predictions of og xgb is different from our tree model
+    # where both instances are correctly predicted to be left
+    assert prediction_xgb != prediction_tree_model
+    assert prediction_tree_model == prediction_left_df
+    assert prediction_tree_model_left == prediction_left_df
+    assert prediction_tree_model != prediction_right_df
+
+    # get the explanation of the tree model
+    sv = tree_explainer.explain(x_explain)
+    efficiency = sum(sv.values)
+    if sv[()] == 0:
+        efficiency += sv.baseline_value
+    # efficiency is correct as the prediction with the tree model and not like the xgb model
+    assert pytest.approx(efficiency) == prediction_tree_model
+    assert pytest.approx(efficiency, rel=0.0001) == prediction_left_df
+    assert not pytest.approx(efficiency, rel=0.0001) == prediction_right_df

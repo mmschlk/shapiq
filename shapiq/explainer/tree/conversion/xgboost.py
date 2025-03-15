@@ -3,8 +3,6 @@ shapiq."""
 
 import warnings
 
-import numpy as np
-
 from ....utils.types import Model
 from ..base import TreeModel
 
@@ -42,10 +40,8 @@ def convert_xgboost_booster(
 
     if tree_booster.feature_names:
         feature_names = tree_booster.feature_names
-    else:
-        # xgboost does not store default feature names
-        n_features = len(np.setdiff1d(np.unique(booster_df["Feature"]), "Leaf"))
-        feature_names = [f"f{i}" for i in range(n_features)]
+    else:  # xgboost does not store default feature names
+        feature_names = [f"f{i}" for i in range(tree_booster.num_features())]
     convert_feature_str_to_int = {k: v for v, k in enumerate(feature_names)}
     convert_feature_str_to_int["Leaf"] = -2
     booster_df.loc[:, "Feature"] = booster_df.loc[:, "Feature"].replace(convert_feature_str_to_int)
