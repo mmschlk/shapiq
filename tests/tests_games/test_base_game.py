@@ -317,3 +317,15 @@ def test_abstract_game():
     game = get_concrete_class(Game)(n_players=n)
     with pytest.raises(NotImplementedError):
         game(np.array([[True for _ in range(n)]]))
+
+
+def test_exact_computer_call():
+    """Tests the call to the exact computer in the game class."""
+
+    game = DummyGame(n=4, interaction=(0, 1))
+
+    index = "SII"
+    order = 2
+    sv = game.exact_values(index=index, order=order)
+    assert sv.index == index
+    assert sv.max_order == order

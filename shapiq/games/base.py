@@ -483,11 +483,11 @@ class Game(ABC):
         from shapiq.game_theory.exact import ExactComputer
 
         # raise warning if the game is not precomputed and n_players > 16
-        if not self.precomputed and self.n_players > 16:
+        if not self.precomputed and self.n_players > 16:  # pragma: no cover
             warnings.warn(
                 "The game is not precomputed and the number of players is greater than 16. "
                 "Computing the exact interaction values via brute force may take a long time."
-            )
+            )  # pragma: no cover
 
         exact_computer = ExactComputer(self.n_players, game=self)
         return exact_computer(index=index, order=order)
