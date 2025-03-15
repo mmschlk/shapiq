@@ -374,17 +374,6 @@ class Regression(Approximator):
             return self._get_bernoulli_weights(max_order=max_order)
         elif index == "kADD-SHAP":
             return self._get_kadd_weights(max_order=max_order)
-        elif index == "FSII":
-            # Default weights for FSI
-            weights = np.zeros((max_order + 1, max_order + 1))
-            for interaction_size in range(1, max_order + 1):
-                # 1 if interaction is fully contained, else 0.
-                weights[interaction_size, interaction_size] = 1
-        elif index in ["FBII"]:
-        if index in ["SII"]:
-            weights = self._get_bernoulli_weights(max_order=max_order)
-        elif index in ["kADD-SHAP"]:
-            weights = self._get_kadd_weights(max_order=max_order)
         elif index in ["FSII", "FBII"]:
             # Default weights for FSI
             weights = np.zeros((max_order + 1, max_order + 1))
