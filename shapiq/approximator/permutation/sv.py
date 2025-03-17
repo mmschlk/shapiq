@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
 from .._base import Approximator
 
 
@@ -64,8 +64,17 @@ class PermutationSamplingSV(Approximator):
             interaction_index = self._interaction_lookup[self._grand_coalition_tuple]
             result[interaction_index] = full_val - empty_val
             counts[interaction_index] = 1
-            return self._finalize_result(
-                result, baseline_value=empty_val, budget=used_budget, estimated=True
+            return finalize_to_valid_interaction_values(
+                result,
+                interaction_lookup=self._interaction_lookup,
+                baseline_value=empty_val,
+                budget=used_budget,
+                estimated=True,
+                min_order=self.min_order,
+                max_order=self.max_order,
+                n_players=self.n,
+                index=self.index,
+                approximation_index=self.approximation_index,
             )
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
@@ -123,6 +132,15 @@ class PermutationSamplingSV(Approximator):
                 coalition_index += 1
 
         result = np.divide(result, counts, out=result, where=counts != 0)
-        return self._finalize_result(
-            result, baseline_value=empty_val, budget=used_budget, estimated=True
+        return finalize_to_valid_interaction_values(
+            result,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_val,
+            budget=used_budget,
+            estimated=True,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            index=self.index,
+            approximation_index=self.approximation_index,
         )

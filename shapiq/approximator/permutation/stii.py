@@ -6,7 +6,7 @@ from collections.abc import Callable
 import numpy as np
 import scipy as sp
 
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
 from ...utils import get_explicit_subsets, powerset
 from .._base import Approximator
 
@@ -100,8 +100,17 @@ class PermutationSamplingSTII(Approximator):
                 f"increasing the budget.",
                 category=UserWarning,
             )
-            return self._finalize_result(
-                result, baseline_value=0.0, budget=used_budget, estimated=True
+            return finalize_to_valid_interaction_values(
+                result,
+                self.interaction_lookup,
+                baseline_value=0.0,
+                budget=used_budget,
+                estimated=True,
+                min_order=self.min_order,
+                max_order=self.max_order,
+                n_players=self.n,
+                index=self.index,
+                approximation_index=self.approximation_index,
             )
 
         empty_value = game(np.zeros(self.n, dtype=bool))[0]
@@ -120,8 +129,17 @@ class PermutationSamplingSTII(Approximator):
                 f"increasing the budget.",
                 category=UserWarning,
             )
-            return self._finalize_result(
-                result, baseline_value=float(empty_value), budget=used_budget, estimated=True
+            return finalize_to_valid_interaction_values(
+                result,
+                interaction_lookup=self._interaction_lookup,
+                baseline_value=empty_value,
+                budget=used_budget,
+                estimated=True,
+                min_order=self.min_order,
+                max_order=self.max_order,
+                n_players=self.n,
+                index=self.index,
+                approximation_index=self.approximation_index,
             )
 
         # main permutation sampling loop
@@ -175,8 +193,17 @@ class PermutationSamplingSTII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        return self._finalize_result(
-            result, baseline_value=float(empty_value), budget=used_budget, estimated=True
+        return finalize_to_valid_interaction_values(
+            result,
+            self.interaction_lookup,
+            baseline_value=float(empty_value),
+            budget=used_budget,
+            estimated=True,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            index=self.index,
+            approximation_index=self.approximation_index,
         )
 
     def _compute_iteration_cost(self) -> int:

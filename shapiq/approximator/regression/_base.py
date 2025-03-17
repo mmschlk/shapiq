@@ -8,7 +8,7 @@ import numpy as np
 from scipy.special import bernoulli, binom
 
 from ...game_theory.indices import AVAILABLE_INDICES_REGRESSION
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
 from ...utils.sets import powerset
 from .._base import Approximator
 
@@ -148,8 +148,16 @@ class Regression(Approximator):
 
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
-        return self._finalize_result(
-            result=shapley_interactions_values, baseline_value=baseline_value, budget=budget
+        return finalize_to_valid_interaction_values(
+            result=shapley_interactions_values,
+            interaction_lookup=self.interaction_lookup,
+            baseline_value=baseline_value,
+            budget=budget,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            index=self.index,
+            approximation_index=index_approximation,
         )
 
     def kernel_shap_iq_routine(

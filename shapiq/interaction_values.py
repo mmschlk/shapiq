@@ -12,10 +12,14 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 
+import shapiq
+
 from .game_theory.indices import (
     ALL_AVAILABLE_INDICES,
     index_generalizes_bv,
     index_generalizes_sv,
+    is_empty_value_the_baseline,
+    is_index_aggregated,
 )
 from .utils.sets import count_interactions, generate_interaction_lookup, powerset
 
@@ -89,10 +93,9 @@ class InteractionValues:
             self.interaction_lookup[()] = len(self.interaction_lookup)
             self.values = np.concatenate((self.values, np.array([self.baseline_value])))
 
-        # update the baseline value in the values vector if index is not SII
-        # # TODO: this might be a good idea check if this is okay to do
-        # if self.index != "SII" and self.baseline_value != self.values[self.interaction_lookup[()]]:
-        #     self.values[self.interaction_lookup[()]] = self.baseline_value
+        # check if the baseline value is appropriate for the index
+        if is_empty_value_the_baseline(self.index) and self.min_order == 0:
+            self.values[self.interaction_lookup[()]] = self.baseline_value
 
     @property
     def dict_values(self) -> dict[tuple[int, ...], float]:
@@ -937,3 +940,55 @@ def aggregate_interaction_values(
         estimation_budget=None,
         baseline_value=baseline_value,
     )
+
+
+def finalize_to_valid_interaction_values(
+    result: np.ndarray,
+    interaction_lookup: dict[tuple[int], int],
+    baseline_value: float,
+    budget: int,
+    min_order: int,
+    max_order: int,
+    n_players: int,
+    index: str,
+    approximation_index: str | None = None,
+    estimated: bool | None = None,
+) -> "InteractionValues":
+    """Finalizes the result dictionary.
+
+    Args:
+        result: Interaction values.
+        baseline_value: Baseline value.
+        estimated: Whether interaction values were estimated.
+        budget: The budget for the approximation.
+
+    Returns:
+        The interaction values.
+
+    Raises:
+        ValueError: If the baseline value is not provided for SII and k-SII.
+    """
+
+    if estimated is None:
+        estimated = budget < 2**n_players
+
+    if approximation_index is None:
+        approximation_index = index
+
+    interactions = InteractionValues(
+        values=result,
+        estimated=estimated,
+        estimation_budget=budget,
+        index=approximation_index,  # can be different from self.index
+        min_order=min_order,
+        max_order=max_order,
+        n_players=n_players,
+        interaction_lookup=copy.deepcopy(interaction_lookup),
+        baseline_value=baseline_value,
+    )
+
+    # if index needs to be aggregated. interactions than as a new index.
+    if is_index_aggregated(index):
+        interactions = shapiq.game_theory.aggregate_base_interaction(interactions)
+
+    return interactions

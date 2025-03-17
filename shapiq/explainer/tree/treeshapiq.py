@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import scipy as sp
 
-from ...game_theory.aggregation import aggregate_interaction_values
+from ...game_theory import aggregate_base_interaction
 from ...game_theory.indices import get_computation_index
 from ...interaction_values import InteractionValues
 from ...utils.sets import generate_interaction_lookup, powerset
@@ -164,7 +164,7 @@ class TreeSHAPIQ:
         )
 
         if self._base_index != self._index:
-            shapley_interaction_values = aggregate_interaction_values(shapley_interaction_values)
+            shapley_interaction_values = aggregate_base_interaction(shapley_interaction_values)
 
         return shapley_interaction_values
 

@@ -256,7 +256,7 @@ def is_index_aggregated(index: str) -> bool:
 
 def is_empty_value_the_baseline(index: str) -> bool:
     """Checks if the empty value stored in the interaction values is the baseline value. This is
-    only not the case for the Shapley Interaction Index.
+    only not the case for the Shapley Interaction Index and Banzhaf values.
 
     Args:
         index: The interaction index.
@@ -272,4 +272,4 @@ def is_empty_value_the_baseline(index: str) -> bool:
         >>> is_empty_value_the_baseline("k-SII")
         True
     """
-    return index not in ["SII", "FBII"]
+    return index not in ["SII", "FBII", "BII", "BV"]

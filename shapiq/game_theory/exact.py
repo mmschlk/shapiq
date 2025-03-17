@@ -492,9 +492,9 @@ class ExactComputer:
         Returns:
             InteractionValues object containing transformed base_interactions
         """
-        from .aggregation import aggregate_interaction_values
+        from .aggregation import aggregate_base_interaction
 
-        transformed_interactions = aggregate_interaction_values(base_interactions, order)
+        transformed_interactions = aggregate_base_interaction(base_interactions, order)
         return copy.deepcopy(transformed_interactions)
 
     def compute_stii(self, order: int) -> InteractionValues:

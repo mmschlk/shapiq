@@ -82,9 +82,9 @@ class MoebiusConverter:
         Returns:
             InteractionValues object containing transformed base_interactions
         """
-        from .aggregation import aggregate_interaction_values
+        from .aggregation import aggregate_base_interaction
 
-        aggregated_interactions = aggregate_interaction_values(base_interactions, order)
+        aggregated_interactions = aggregate_base_interaction(base_interactions, order)
         return copy.copy(aggregated_interactions)
 
     def moebius_to_base_interaction(self, index: str, order: int):

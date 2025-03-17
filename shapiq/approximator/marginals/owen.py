@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
 from .._base import Approximator
 
 
@@ -101,8 +101,17 @@ class OwenSamplingSV(Approximator):
             idx = self._interaction_lookup[(player,)]
             result_to_finalize[idx] = result[player]
 
-        return self._finalize_result(
-            result_to_finalize, baseline_value=empty_value, budget=used_budget, estimated=True
+        return finalize_to_valid_interaction_values(
+            result_to_finalize,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_value,
+            budget=used_budget,
+            estimated=True,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            index=self.index,
+            approximation_index=self.approximation_index,
         )
 
     @staticmethod
