@@ -4,6 +4,7 @@
 - removes `sample_replacements` parameter from `MarginalImputer` and removes the DeprecationWarning for it
 - adds a trivial computation to `TreeSHAP-IQ` for trees that use only one feature in the tree (this works for decision stumps or trees splitting on only one feature multiple times). In such trees, the computation is trivial as the whole effect of $\nu(N) - \nu(\emptyset)$ is all on the main effect of the single feature and there is no interaction effect. This expands on the fix in v1.2.1 [#286](https://github.com/mmschlk/shapiq/issues/286).
 - fixes a bug with xgboost where feature names where trees that did not contain all features would lead `TreeExplainer` to fail
+- fixes a bug with `stacked_bar_plot` where the higher order interactions were inflated by the lower order interactions, thus wrongly showing the higher order interactions as higher than they are
 
 ### v1.2.2 (2025-03-11)
 - changes python support to 3.10-3.13 [#318](https://github.com/mmschlk/shapiq/pull/318)

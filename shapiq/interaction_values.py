@@ -469,7 +469,7 @@ class InteractionValues:
             raise ValueError("Order must be greater or equal to 1.")
         values_shape = tuple([self.n_players] * order)
         values = np.zeros(values_shape, dtype=float)
-        for interaction in powerset(range(self.n_players), min_size=1, max_size=order):
+        for interaction in powerset(range(self.n_players), min_size=order, max_size=order):
             # get all orderings of the interaction (e.g. (0, 1) and (1, 0) for interaction (0, 1))
             for perm in permutations(interaction):
                 values[perm] = self[interaction]
