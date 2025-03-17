@@ -5,53 +5,10 @@ from warnings import warn
 
 import numpy as np
 
-from ..approximator import (
-    SHAPIQ,
-    SVARM,
-    SVARMIQ,
-    InconsistentKernelSHAPIQ,
-    KernelSHAP,
-    KernelSHAPIQ,
-    PermutationSamplingSII,
-    PermutationSamplingSTII,
-    PermutationSamplingSV,
-    RegressionFSII,
-    UnbiasedKernelSHAP,
-)
 from ..approximator._base import Approximator
-from ..explainer._base import Explainer
 from ..interaction_values import InteractionValues
-
-APPROXIMATOR_CONFIGURATIONS = {
-    "regression": {
-        "SII": InconsistentKernelSHAPIQ,
-        "FSII": RegressionFSII,
-        "k-SII": InconsistentKernelSHAPIQ,
-        "SV": KernelSHAP,
-    },
-    "permutation": {
-        "SII": PermutationSamplingSII,
-        "STII": PermutationSamplingSTII,
-        "k-SII": PermutationSamplingSII,
-        "SV": PermutationSamplingSV,
-    },
-    "montecarlo": {
-        "SII": SHAPIQ,
-        "STII": SHAPIQ,
-        "FSII": SHAPIQ,
-        "k-SII": SHAPIQ,
-        "SV": UnbiasedKernelSHAP,
-    },
-    "svarm": {
-        "SII": SVARMIQ,
-        "STII": SVARMIQ,
-        "FSII": SVARMIQ,
-        "k-SII": SVARMIQ,
-        "SV": SVARM,
-    },
-}
-
-AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII", "SV"}
+from ._base import Explainer
+from .setup import AVAILABLE_INDICES, setup_approximator
 
 
 class TabularExplainer(Explainer):
@@ -131,7 +88,15 @@ class TabularExplainer(Explainer):
         if index not in AVAILABLE_INDICES:
             raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
 
-        super().__init__(model, data, class_index)
+        super().__init__(
+            model,
+            data,
+            class_index,
+            random_state=random_state,
+            index=index,
+            max_order=max_order,
+            verbose=verbose,
+        )
 
         # get class for self
         class_name = self.__class__.__name__
@@ -143,7 +108,6 @@ class TabularExplainer(Explainer):
                 "the documentation and the example notebooks."
             )
 
-        self._random_state = random_state
         if imputer == "marginal":
             self._imputer = MarginalImputer(
                 self.predict, self.data, random_state=random_state, **kwargs
@@ -170,11 +134,14 @@ class TabularExplainer(Explainer):
                 f"object."
             )
         self._n_features: int = self.data.shape[1]
-        self._imputer.verbose = verbose  # set the verbose flag for the imputer
-
-        self.index = index
-        self._max_order: int = max_order
-        self._approximator = self._init_approximator(approximator, self.index, self._max_order)
+        self._imputer.verbose = self.verbose  # set the verbose flag for the imputer
+        self._approximator = setup_approximator(
+            approximator,
+            index=self.index,
+            max_order=self.max_order,
+            n_players=self._n_features,
+            random_state=self._random_state,
+        )
 
     def explain_function(
         self, x: np.ndarray, budget: int | None = None, random_state: int | None = None
@@ -213,66 +180,3 @@ class TabularExplainer(Explainer):
     def baseline_value(self) -> float:
         """Returns the baseline value of the explainer."""
         return self._imputer.empty_prediction
-
-    def _init_approximator(
-        self, approximator: Approximator | str, index: str, max_order: int
-    ) -> Approximator:
-
-        if isinstance(approximator, Approximator):  # if the approximator is already given
-            return approximator
-
-        if approximator == "auto":
-            if max_order == 1:
-                if index != "SV":
-                    warnings.warn(
-                        "`max_order=1` but `index != 'SV'`, setting `index = 'SV'`. "
-                        "Using the KernelSHAP approximator."
-                    )
-                    self.index = "SV"
-                return KernelSHAP(
-                    n=self._n_features,
-                    random_state=self._random_state,
-                )
-            elif index == "SV":
-                if max_order != 1:
-                    warnings.warn(
-                        "`index='SV'` but `max_order != 1`, setting `max_order = 1`. "
-                        "Using the KernelSHAP approximator."
-                    )
-                    self._max_order = 1
-                return KernelSHAP(
-                    n=self._n_features,
-                    random_state=self._random_state,
-                )
-            elif index == "FSII":
-                return RegressionFSII(
-                    n=self._n_features,
-                    max_order=max_order,
-                    random_state=self._random_state,
-                )
-            elif index == "SII" or index == "k-SII":
-                return KernelSHAPIQ(
-                    n=self._n_features,
-                    max_order=max_order,
-                    random_state=self._random_state,
-                    index=index,
-                )
-            else:
-                return SVARMIQ(
-                    n=self._n_features,
-                    max_order=max_order,
-                    top_order=False,
-                    random_state=self._random_state,
-                    index=index,
-                )
-        # assume that the approximator is a string
-        try:
-            approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
-        except KeyError:
-            raise ValueError(
-                f"Invalid approximator `{approximator}` or index `{index}`. "
-                f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}."
-            )
-        # initialize the approximator class with params
-        init_approximator = approximator(n=self._n_features, max_order=max_order)
-        return init_approximator

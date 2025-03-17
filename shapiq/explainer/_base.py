@@ -8,6 +8,7 @@ from tqdm.auto import tqdm
 
 from ..explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
 from ..interaction_values import InteractionValues
+from .setup import validate_index, validate_max_order
 
 
 class Explainer:
@@ -33,21 +34,37 @@ class Explainer:
     """
 
     def __init__(
-        self, model, data: np.ndarray | None = None, class_index: int | None = None, **kwargs
+        self,
+        model,
+        data: np.ndarray | None = None,
+        class_index: int | None = None,
+        index: str = "k-SII",
+        max_order: int = 2,
+        random_state: int | None = None,
+        verbose: bool = False,
+        **kwargs,
     ) -> None:
 
+        # validate index/max_order and set some useful attributes
+        self.index = validate_index(index, max_order)
+        self.max_order = validate_max_order(index, max_order)
+        self._random_state = random_state
+        self.verbose = verbose
+
+        # validate the model and data
         self._model_class = print_class(model)
         self._shapiq_predict_function, self._model_type = get_predict_function_and_model_type(
             model, self._model_class, class_index
         )
         self.model = model
 
+        # validate and set the data
         if data is not None:
             if self._model_type != "tabpfn":
                 self._validate_data(data)
         self.data = data
 
-        # not super()
+        # if the class is Explainer, set the class to the respective child explainer and init it
         if self.__class__ is Explainer:
             if self._model_type in list(get_explainers()):
                 _explainer = get_explainers()[self._model_type]

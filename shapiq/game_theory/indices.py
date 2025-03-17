@@ -55,7 +55,7 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     "k-SII": {
         "name": "k-Shapley Interaction Index",
         "source": "https://proceedings.mlr.press/v206/bordt23a.html",
-        "generalizes": "SII",
+        "generalizes": "SV",  # TODO: was SII first, check if it breaks something
     },
     "STII": {
         "name": "Shapley-Taylor Interaction Index",
@@ -140,6 +140,7 @@ AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = (
 )
 
 
+# TODO: add tests which checks this
 def index_generalizes_sv(index: str) -> bool:
     """Checks if the given index generalizes the Shapley Value.
 
