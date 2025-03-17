@@ -9,6 +9,7 @@ from .. import InteractionValues
 from ..approximator import Approximator
 from ..games.base import Game
 from ._base import Explainer
+from .setup import setup_approximator
 
 
 class GameExplainer(Explainer):
@@ -48,9 +49,25 @@ class GameExplainer(Explainer):
                 )
         self.n_players = n_players
 
-        self._approximator = self._init_approximator(approximator, self.index, self._max_order)
+        super().__init__(
+            model=None,
+            data=None,
+            class_index=None,
+            index=index,
+            max_order=max_order,
+            random_state=random_state,
+            verbose=verbose,
+        )
 
-        super().__init__(**kwargs)
+        self._approximator = setup_approximator(
+            approximator,
+            index=self.index,
+            max_order=self.max_order,
+            n_players=self.n_players,
+            random_state=self._random_state,
+        )
 
     def explain_function(self, *args, **kwargs) -> InteractionValues:
         """Explain the game function."""
+        NotImplementedError
+        # approximation = self._approximator(game=self.game, budget=budget)

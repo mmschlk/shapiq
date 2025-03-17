@@ -110,15 +110,15 @@ class TabularExplainer(Explainer):
 
         if imputer == "marginal":
             self._imputer = MarginalImputer(
-                self.predict, self.data, random_state=random_state, **kwargs
+                self.predict, self.data, random_state=self._random_state, **kwargs
             )
         elif imputer == "conditional":
             self._imputer = ConditionalImputer(
-                self.predict, self.data, random_state=random_state, **kwargs
+                self.predict, self.data, random_state=self._random_state, **kwargs
             )
         elif imputer == "baseline":
             self._imputer = BaselineImputer(
-                self.predict, self.data, random_state=random_state, **kwargs
+                self.predict, self.data, random_state=self._random_state, **kwargs
             )
         elif (
             isinstance(imputer, MarginalImputer)

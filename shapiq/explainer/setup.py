@@ -85,7 +85,19 @@ def setup_approximator(
     n_players: int,
     random_state: int | None = None,
 ) -> Approximator:
-    """Setup the approximator for the explainer based on the selected index and order."""
+    """Setup the approximator for the explainer based on the selected index and order.
+
+    Args:
+        approximator: The approximator to be used. If ``"auto"``, the approximator is selected based
+            on the index and max_order.
+        index: The index to be used for the approximator.
+        max_order: The maximum order of interactions to be computed.
+        n_players: The number of players in the game.
+        random_state: The random state to initialize the approximator with.
+
+    Returns:
+        The initialized approximator.
+    """
 
     if isinstance(approximator, Approximator):  # if the approximator is already given
         return approximator
