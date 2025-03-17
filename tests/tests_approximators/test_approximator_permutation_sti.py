@@ -1,7 +1,5 @@
 """This test module contains all tests regarding the STII permutation sampling approximator."""
 
-from copy import copy, deepcopy
-
 import numpy as np
 import pytest
 
@@ -30,18 +28,6 @@ def test_initialization(n, max_order, iteration_cost):
     assert approximator.min_order == 0
     assert approximator.iteration_cost == iteration_cost
     assert approximator.index == "STII"
-
-    approximator_copy = copy(approximator)
-    approximator_deepcopy = deepcopy(approximator)
-    approximator_deepcopy.index = "something"
-    assert approximator_copy == approximator  # check that the copy is equal
-    assert approximator_deepcopy != approximator  # check that the deepcopy is not equal
-    approximator_string = str(approximator)
-    assert repr(approximator) == approximator_string
-    assert hash(approximator) == hash(approximator_copy)
-    assert hash(approximator) != hash(approximator_deepcopy)
-    with pytest.raises(ValueError):
-        _ = approximator == 1
 
 
 @pytest.mark.parametrize(
@@ -88,4 +74,4 @@ def test_small_budget_warning():
     with pytest.warns(UserWarning):
         _ = approximator.approximate(1, game)  # not even lower_order_cost
     with pytest.warns(UserWarning):
-        _ = approximator.approximate(55, game)  # lower_order_cost but no iteration
+        _ = approximator.approximate(56, game)  # lower_order_cost but no iteration

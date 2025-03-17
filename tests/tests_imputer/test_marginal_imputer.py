@@ -121,11 +121,11 @@ def test_raise_warning():
     # get np data set of 10 rows and 3 columns of random numbers
     data = np.random.rand(10, 3)
 
-    with pytest.warns(DeprecationWarning):
+    with pytest.warns(UserWarning):
         _ = MarginalImputer(
             model=model,
             data=data,
-            sample_replacements=False,  # deprecated
-            sample_size=10,
+            sample_size=100,
             random_state=42,
+            joint_marginal_distribution=False,
         )

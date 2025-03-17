@@ -41,13 +41,14 @@ class OwenSamplingSV(Approximator):
         self.n_anchor_points = n_anchor_points
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray]
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
     ) -> InteractionValues:
         """Approximates the Shapley values using Owen Sampling.
 
         Args:
             budget: The number of game evaluations for approximation
             game: The game function as a callable that takes a set of players and returns the value.
+            args and kwargs: Additional arguments and keyword arguments not used in this method.
 
         Returns:
             The estimated interaction values.
@@ -105,11 +106,21 @@ class OwenSamplingSV(Approximator):
         )
 
     @staticmethod
-    def get_anchor_points(m: int):
-        if m <= 0:
-            raise ValueError("The number of anchor points needs to be greater than 0.")
+    def get_anchor_points(n_anchor_points: int):
+        """Returns the anchor points for the Owen Sampling approximation.
 
-        if m == 1:
+        Args:
+            n_anchor_points: The number of anchor points.
+
+        Returns:
+            An array of anchor points.
+
+        Raises:
+            ValueError: If the number of anchor points is less than or equal to 0.
+        """
+        if n_anchor_points <= 0:
+            raise ValueError("The number of anchor points needs to be greater than 0.")
+        elif n_anchor_points == 1:
             return np.array([0.5])
         else:
-            return np.linspace(0.0, 1.0, num=m)
+            return np.linspace(0.0, 1.0, num=n_anchor_points)

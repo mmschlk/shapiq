@@ -58,17 +58,13 @@ def safe_isinstance(obj: Any, class_path_str: str | list[str] | tuple[str]) -> b
     return False
 
 
-def check_import_module(name=None, functionality=None):
+def check_import_module(name: str, functionality: str = None):
     """check if the optional dependency is available"""
-    if name is not None:
-        try:
-            import_module(name)
-        except ImportError:
-            raise ImportError(
-                "Missing optional dependency '"
-                + name
-                + "'. "
-                + ("Install '" + name + "' for " + functionality + ". ")
-                if functionality
-                else "" + "Use pip or conda to install '" + name + "'."
-            )
+    try:
+        import_module(name)
+    except ImportError:
+        message = f"Missing optional dependency '{name}'. Install '{name}'"
+        if functionality:
+            message += f" for {functionality}"
+        message += f". Use pip or conda to install '{name}'."
+        raise ImportError(message)

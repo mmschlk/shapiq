@@ -275,8 +275,11 @@ class CoalitionSampler:
         Returns:
             The index of the empty coalition or ``None`` if the empty coalition was not sampled.
         """
-        if self.coalitions_per_size[0] >= 1:
-            return int(np.where(self.coalitions_size == 0)[0][0])
+        try:
+            if self.coalitions_per_size[0] >= 1:
+                return int(np.where(self.coalitions_size == 0)[0][0])
+        except TypeError:
+            pass
         return None
 
     def execute_border_trick(self, sampling_budget: int) -> int:

@@ -114,28 +114,31 @@ def aggregate_interaction_values(
 
 
 def aggregate_to_one_dimension(interactions: InteractionValues) -> tuple[np.ndarray, np.ndarray]:
-    """Converts the interaction values to positive and negative one-dimensional values.
+    """Flattens the higher-order interaction values to positive and negative one-dimensional values.
+
+    The aggregation summarizes all higher-order interaction in the positive and negative
+    one-dimensional values for each player. The aggregation is done by distributing the interaction
+    scores uniformly to all players in the interaction. For example, the interaction value 5 of
+    the interaction `(1, 2)` is distributed to player 1 and player 2 as 2.5 each.
 
     Args:
         interactions: The interaction values to convert.
 
     Returns:
-        The positive and negative one-dimensional values for each player. Both arrays have the shape
-            `(n,)` where `n` is the number of players.
+        The positive and negative interaction values as a 1-dimensional array for each player.
     """
-
-    max_order = interactions.max_order
-    min_order = max(interactions.min_order, 1)
     n = interactions.n_players
-
     pos_values = np.zeros(shape=(n,), dtype=float)
     neg_values = np.zeros(shape=(n,), dtype=float)
 
-    for interaction in powerset(set(range(n)), min_size=min_order, max_size=max_order):
+    for interaction in interactions.interaction_lookup.keys():
+        if len(interaction) == 0:
+            continue  # skip the empty set
         interaction_value = interactions[interaction] / len(interaction)  # distribute uniformly
         for player in interaction:
             if interaction_value >= 0:
                 pos_values[player] += interaction_value
             else:
                 neg_values[player] += interaction_value
+
     return pos_values, neg_values

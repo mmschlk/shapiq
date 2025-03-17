@@ -3,7 +3,8 @@
 import pytest
 
 try:
-    import tabpfn  # noqa
+    # marker if the tabpfn library is installed
+    import tabpfn  # noqa: F401
 
     importorskip_tabpfn = pytest.mark.skipif(False, reason="tabpfn is installed")
 except ImportError:
