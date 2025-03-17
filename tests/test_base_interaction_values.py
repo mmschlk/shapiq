@@ -624,8 +624,10 @@ def test_plot():
     _ = interaction_values.plot_stacked_bar(feature_names=["a" for _ in range(n)])
 
 
-def test_subset():
-    n = 5
+@pytest.mark.parametrize("subset_players", [[0, 1], [0, 1, 3, 4]])
+def test_subset(subset_players):
+    """Test Subset function"""
+    n = 7
     min_order = 1
     max_order = 3
     values = np.random.rand(2**n - 1)
@@ -634,7 +636,7 @@ def test_subset():
     }
     interaction_values = InteractionValues(
         values=values,
-        index=None,
+        index="SII",
         max_order=max_order,
         n_players=n,
         min_order=min_order,
@@ -644,10 +646,10 @@ def test_subset():
         baseline_value=0.0,
     )
 
-    subset_players = [0, 1, 2]
+    n_players_in_subset = len(subset_players)
     subset_interaction_values = interaction_values.get_subset(subset_players)
 
-    assert subset_interaction_values.n_players == n - len(subset_players)
+    assert subset_interaction_values.n_players == n - n_players_in_subset
     assert all(
         all(p in subset_players for p in key)
         for key in subset_interaction_values.interaction_lookup.keys()
@@ -661,6 +663,12 @@ def test_subset():
     assert subset_interaction_values.estimated == interaction_values.estimated
     assert subset_interaction_values.estimation_budget == interaction_values.estimation_budget
     assert subset_interaction_values.index == interaction_values.index
+
+    # check that all values are correct
+    for interaction in powerset(subset_players, max_size=max_order, min_size=min_order):
+        old_value = interaction_values[interaction]
+        new_value = subset_interaction_values[interaction]
+        assert old_value == new_value
 
 
 @pytest.mark.parametrize("aggregation", ["sum", "mean", "median", "max", "min"])
