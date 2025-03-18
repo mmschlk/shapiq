@@ -8,7 +8,7 @@ from collections.abc import Callable
 import numpy as np
 from scipy.special import bernoulli, binom
 
-from ..interaction_values import InteractionValues
+from ..interaction_values import InteractionValues, finalize_to_valid_interaction_values
 from ..utils import powerset
 from .indices import ALL_AVAILABLE_CONCEPTS
 
@@ -125,7 +125,8 @@ class ExactComputer:
         elif index in self.available_indices:
             computation_function = self._index_mapping[index]
             computed_index: InteractionValues = computation_function(index=index, order=order)
-            computed_index.baseline_value = self.baseline_value
+            computed_index = finalize_to_valid_interaction_values(computed_index)
+
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
@@ -210,6 +211,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
+        interaction_values = finalize_to_valid_interaction_values(interaction_values)
         self._computed[("Moebius", self.n)] = copy.deepcopy(interaction_values)
         return copy.deepcopy(interaction_values)
 
@@ -423,6 +425,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
+        base_interaction = finalize_to_valid_interaction_values(base_interaction)
         self._computed[(index, order)] = copy.deepcopy(base_interaction)
         return copy.deepcopy(base_interaction)
 
@@ -477,6 +480,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
+        base_generalized_values = finalize_to_valid_interaction_values(base_generalized_values)
         self._computed[(index, order)] = copy.deepcopy(base_generalized_values)
         return copy.deepcopy(base_generalized_values)
 
@@ -768,6 +772,9 @@ class ExactComputer:
         """
         if index == "JointSV":
             shapley_generalized_value = self.compute_joint_sv(order)
+            shapley_generalized_value = finalize_to_valid_interaction_values(
+                shapley_generalized_value
+            )
             self._computed[(index, order)] = shapley_generalized_value
             return copy.copy(shapley_generalized_value)
         else:
@@ -796,7 +803,6 @@ class ExactComputer:
         """
         if index == "k-SII":
             sii = self.base_interaction("SII", order)
-            self._computed[("SII", order)] = sii  # nice
             shapley_interaction = self.base_aggregation(sii, order)
         elif index == "STII":
             shapley_interaction = self.compute_stii(order)
@@ -806,7 +812,7 @@ class ExactComputer:
             shapley_interaction = self.compute_kadd_shap(order)
         else:
             raise ValueError(f"Index {index} not supported")
-
+        shapley_interaction = finalize_to_valid_interaction_values(shapley_interaction)
         self._computed[(index, order)] = shapley_interaction
         return copy.copy(shapley_interaction)
 
@@ -829,6 +835,7 @@ class ExactComputer:
 
         """
         base_interaction = self.base_interaction(index, order)
+        base_interaction = finalize_to_valid_interaction_values(base_interaction)
         self._computed[(index, order)] = base_interaction
         return copy.copy(base_interaction)
 

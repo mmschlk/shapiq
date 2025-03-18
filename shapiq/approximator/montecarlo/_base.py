@@ -6,7 +6,7 @@ import numpy as np
 from scipy.special import binom, factorial
 
 from ...game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
 from ...utils.sets import powerset
 from .._base import Approximator
 
@@ -99,9 +99,19 @@ class MonteCarlo(Approximator):
 
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
-        return self._finalize_result(
-            result=shapley_interactions_values, baseline_value=baseline_value, budget=budget
+        interactions = InteractionValues(
+            shapley_interactions_values,
+            index=self.approximation_index,
+            n_players=self.n,
+            interaction_lookup=self.interaction_lookup,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            baseline_value=baseline_value,
+            estimated=False if budget >= 2**self.n else True,
+            estimation_budget=budget,
         )
+
+        return finalize_to_valid_interaction_values(interactions, target_index=self.index)
 
     def monte_carlo_routine(
         self,

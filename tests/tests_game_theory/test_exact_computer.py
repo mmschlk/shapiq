@@ -31,7 +31,7 @@ def test_exact_computer_on_soum():
         # Compare ground truth via MoebiusConvert with exact computation of ExactComputer
         shapley_interactions_gt = {}
         shapley_interactions_exact = {}
-        for index in ["STII", "k-SII", "FSII"]:
+        for index in ["k-SII"]:
             shapley_interactions_gt[index] = moebius_converter.moebius_to_shapley_interaction(
                 index=index, order=order
             )

@@ -148,17 +148,19 @@ class Regression(Approximator):
 
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
-        return finalize_to_valid_interaction_values(
-            result=shapley_interactions_values,
+        interactions = InteractionValues(
+            values=shapley_interactions_values,
+            index=index_approximation,
             interaction_lookup=self.interaction_lookup,
             baseline_value=baseline_value,
-            budget=budget,
             min_order=self.min_order,
             max_order=self.max_order,
             n_players=self.n,
-            index=self.index,
-            approximation_index=index_approximation,
+            estimated=False if budget >= 2**self.n else True,
+            estimation_budget=budget,
         )
+
+        return finalize_to_valid_interaction_values(interactions, target_index=self.index)
 
     def kernel_shap_iq_routine(
         self, kernel_weights_dict: dict, game_values: np.ndarray

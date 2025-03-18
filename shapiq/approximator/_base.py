@@ -1,6 +1,5 @@
 """This module contains the base approximator classes for the shapiq package."""
 
-import copy
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 
@@ -10,8 +9,6 @@ from ..approximator.sampling import CoalitionSampler
 from ..game_theory.indices import (
     AVAILABLE_INDICES_FOR_APPROXIMATION,
     get_computation_index,
-    is_empty_value_the_baseline,
-    is_index_aggregated,
 )
 from ..interaction_values import InteractionValues
 from ..utils.sets import generate_interaction_lookup
@@ -174,61 +171,6 @@ class Approximator(ABC):
             The iterator.
         """
         return range(self.min_order, self.max_order + 1)
-
-    def _finalize_result(
-        self,
-        result,
-        baseline_value: float,
-        *,
-        estimated: bool | None = None,
-        budget: int | None = None,
-    ) -> InteractionValues:
-        """Finalizes the result dictionary.
-
-        Args:
-            result: Interaction values.
-            baseline_value: Baseline value.
-            estimated: Whether interaction values were estimated.
-            budget: The budget for the approximation.
-
-        Returns:
-            The interaction values.
-
-        Raises:
-            ValueError: If the baseline value is not provided for SII and k-SII.
-        """
-
-        if budget is None:  # try to get budget from sampler (exclude from coverage)
-            budget = self._sampler.n_coalitions  # pragma: no cover
-
-        if estimated is None:
-            estimated = False if budget >= 2**self.n else True
-
-        # set empty value as baseline value if necessary
-        if tuple() in self._interaction_lookup:
-            idx = self._interaction_lookup[tuple()]
-            empty_value = result[idx]
-            # only for SII and FBII empty value is not the baseline value
-            if empty_value != baseline_value and is_empty_value_the_baseline(self.index):
-                result[idx] = baseline_value
-
-        interactions = InteractionValues(
-            values=result,
-            estimated=estimated,
-            estimation_budget=budget,
-            index=self.approximation_index,  # can be different from self.index
-            min_order=self.min_order,
-            max_order=self.max_order,
-            n_players=self.n,
-            interaction_lookup=copy.deepcopy(self.interaction_lookup),
-            baseline_value=baseline_value,
-        )
-
-        # if index needs to be aggregated
-        if is_index_aggregated(self.index):
-            interactions = self.aggregate_interaction_values(interactions)
-
-        return interactions
 
     @staticmethod
     def _calc_iteration_count(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:

@@ -100,18 +100,20 @@ class PermutationSamplingSTII(Approximator):
                 f"increasing the budget.",
                 category=UserWarning,
             )
-            return finalize_to_valid_interaction_values(
-                result,
-                self.interaction_lookup,
+
+            interactions = InteractionValues(
+                n_players=self.n,
+                values=result,
+                index=self.approximation_index,
+                interaction_lookup=self._interaction_lookup,
                 baseline_value=0.0,
-                budget=used_budget,
-                estimated=True,
                 min_order=self.min_order,
                 max_order=self.max_order,
-                n_players=self.n,
-                index=self.index,
-                approximation_index=self.approximation_index,
+                estimated=True,
+                estimation_budget=used_budget,
             )
+
+            return finalize_to_valid_interaction_values(interactions, target_index=self.index)
 
         empty_value = game(np.zeros(self.n, dtype=bool))[0]
         used_budget += 1
@@ -129,18 +131,20 @@ class PermutationSamplingSTII(Approximator):
                 f"increasing the budget.",
                 category=UserWarning,
             )
-            return finalize_to_valid_interaction_values(
-                result,
+
+            interactions = InteractionValues(
+                n_players=self.n,
+                values=result,
+                index=self.approximation_index,
                 interaction_lookup=self._interaction_lookup,
                 baseline_value=empty_value,
-                budget=used_budget,
-                estimated=True,
                 min_order=self.min_order,
                 max_order=self.max_order,
-                n_players=self.n,
-                index=self.index,
-                approximation_index=self.approximation_index,
+                estimated=True,
+                estimation_budget=used_budget,
             )
+
+            return finalize_to_valid_interaction_values(interactions, target_index=self.index)
 
         # main permutation sampling loop
         for iteration in range(1, n_iterations + 1):
@@ -193,18 +197,18 @@ class PermutationSamplingSTII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        return finalize_to_valid_interaction_values(
-            result,
-            self.interaction_lookup,
-            baseline_value=float(empty_value),
-            budget=used_budget,
-            estimated=True,
+        interactions = InteractionValues(
+            n_players=self.n,
+            values=result,
+            index=self.approximation_index,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_value,
             min_order=self.min_order,
             max_order=self.max_order,
-            n_players=self.n,
-            index=self.index,
-            approximation_index=self.approximation_index,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+        return finalize_to_valid_interaction_values(interactions, target_index=self.index)
 
     def _compute_iteration_cost(self) -> int:
         """Computes the cost of performing a single iteration of the permutation sampling given
