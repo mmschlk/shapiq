@@ -6,6 +6,7 @@
 - fixes a bug with xgboost where feature names where trees that did not contain all features would lead `TreeExplainer` to fail
 - fixes a bug with `stacked_bar_plot` where the higher order interactions were inflated by the lower order interactions, thus wrongly showing the higher order interactions as higher than they are
 - fixes a bug where `InteractionValues.get_subset()` returns a faulty `coalition_lookup` dictionary pointing to indices outside the subset of players [#336](https://github.com/mmschlk/shapiq/issues/336)
+- adds a `RandomGame` class as part of `shapiq.games.benchmark` which always returns a random vector of integers between 0 and 100.
 
 ### v1.2.2 (2025-03-11)
 - changes python support to 3.10-3.13 [#318](https://github.com/mmschlk/shapiq/pull/318)

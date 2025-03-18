@@ -47,6 +47,7 @@ from .local_xai.benchmark_tabular import CaliforniaHousing as CaliforniaHousingL
 
 # synthetic games
 from .synthetic.dummy import DummyGame
+from .synthetic.random import RandomGame
 from .synthetic.soum import SOUM, UnanimityGame
 
 # treeshap-iq explanation games
@@ -133,4 +134,5 @@ __all__ = [
     "DummyGame",
     "SOUM",
     "UnanimityGame",
+    "RandomGame",
 ]
