@@ -138,7 +138,7 @@ class TabularExplainer(Explainer):
         self._approximator = setup_approximator(
             approximator,
             index=self.index,
-            max_order=self.max_order,
+            max_order=self._max_order,
             n_players=self._n_features,
             random_state=self._random_state,
         )

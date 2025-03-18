@@ -46,7 +46,7 @@ class Explainer:
 
         # validate index/max_order and set some useful attributes
         self.index = validate_index(index, max_order)
-        self.max_order = validate_max_order(index, max_order)  # todo maybe private
+        self._max_order = validate_max_order(index, max_order)  # todo maybe private
         self._random_state = random_state
         self.verbose = verbose
 

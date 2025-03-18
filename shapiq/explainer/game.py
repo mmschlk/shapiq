@@ -51,7 +51,7 @@ class GameExplainer(Explainer):
         self.n_players = n_players
 
         super().__init__(
-            model=None,
+            model=game,
             data=None,
             class_index=None,
             index=index,
@@ -63,7 +63,7 @@ class GameExplainer(Explainer):
         self._approximator = setup_approximator(
             approximator,
             index=self.index,
-            max_order=self.max_order,
+            max_order=self._max_order,
             n_players=self.n_players,
             random_state=self._random_state,
         )
