@@ -60,7 +60,7 @@ if __name__ == "__main__":
     # single benchmark
     do_single_bench = True
     if do_single_bench:
-        time_approximation(approx_class=RegressionFSII, n_players=50, budget=100_000, order=2)
+        time_approximation(approx_class=RegressionFSII, n_players=50, budget=20_000, order=2)
 
     # runtime experiment
     do_runtime = False

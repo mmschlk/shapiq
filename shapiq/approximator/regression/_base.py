@@ -346,18 +346,27 @@ class Regression(Approximator):
         # regression weights adjusted by sampling weights
         # weighted_regression_matrix = regression_weights[:, None] * regression_matrix
 
-        regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
-        regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
-        regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
-        shapley_interactions_values = (
-            LassoLarsIC(criterion="aic").fit(regression_lhs, regression_rhs).coef_
-        )
-        # shapley_interactions_values = (
-        #    LassoLars().fit(regression_lhs, regression_rhs).coef_
-        # )
-        # shapley_interactions_values = (
-        #    Lasso().fit(regression_lhs, regression_rhs).coef_
-        # )
+        try:
+            regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
+            regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
+            regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
+            shapley_interactions_values = (
+                LassoLarsIC(criterion="aic").fit(regression_lhs, regression_rhs).coef_
+            )
+            # shapley_interactions_values = (
+            #    LassoLars().fit(regression_lhs, regression_rhs).coef_
+            # )
+            # shapley_interactions_values = (
+            #    Lasso().fit(regression_lhs, regression_rhs).coef_
+            # )
+        except Exception as e:
+            print(e)
+            regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
+            regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
+            regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
+            shapley_interactions_values = np.linalg.lstsq(
+                regression_lhs, regression_rhs, rcond=None
+            )[0]
 
         return shapley_interactions_values.astype(dtype=float)
 
