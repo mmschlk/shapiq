@@ -1,14 +1,13 @@
 """The base Explainer classes for the shapiq package."""
 
 from abc import abstractmethod
-from warnings import warn
 
 import numpy as np
 from tqdm.auto import tqdm
 
 from ..explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
 from ..interaction_values import InteractionValues
-from .setup import validate_index, validate_max_order
+from .validation import set_random_state, validate_data, validate_index, validate_max_order
 
 
 class Explainer:
@@ -61,7 +60,7 @@ class Explainer:
         # validate and set the data
         if data is not None:
             if self._model_type != "tabpfn":
-                self._validate_data(data)
+                validate_data(data, predict_function=self.predict)
         self.data = data
 
         # if the class is Explainer, set the class to the respective child explainer and init it
@@ -70,37 +69,6 @@ class Explainer:
                 _explainer = get_explainers()[self._model_type]
                 self.__class__ = _explainer
                 _explainer.__init__(self, model=model, data=data, class_index=class_index, **kwargs)
-
-    def _validate_data(self, data: np.ndarray, raise_error: bool = False) -> None:
-        """Validate the data for compatibility with the model.
-
-        Args:
-            data: A 2-dimensional matrix of inputs to be explained.
-            raise_error: Whether to raise an error if the data is not compatible with the model or
-                only print a warning. Defaults to ``False``.
-
-        Raises:
-            TypeError: If the data is not a NumPy array.
-        """
-        message = "The `data` and the model must be compatible."
-        if not isinstance(data, np.ndarray):
-            message += " The `data` must be a NumPy array."
-            raise TypeError(message)
-        try:
-            # TODO (mmschlk): This can take a long time for large datasets and slow models
-            pred = self.predict(data)
-            if isinstance(pred, np.ndarray):
-                if len(pred.shape) > 1:
-                    message += " The model's prediction must be a 1-dimensional array."
-                    raise ValueError()
-            else:
-                message += " The model's prediction must be a NumPy array."
-                raise ValueError()
-        except Exception as e:
-            if raise_error:
-                raise ValueError(message) from e
-            else:
-                warn(message)
 
     def explain(self, x: np.ndarray, *args, **kwargs) -> InteractionValues:
         """Explain a single prediction in terms of interaction values.
@@ -119,37 +87,43 @@ class Explainer:
         return explanation
 
     @abstractmethod
-    def explain_function(self, x: np.ndarray, *args, **kwargs) -> InteractionValues:
+    def explain_function(
+        self,
+        x: np.ndarray,
+        budget: int | None = None,
+        random_state: int | None = None,
+        *args,
+        **kwargs,
+    ) -> InteractionValues:
         """Explain a single prediction in terms of interaction values.
 
         Args:
             x: A numpy array of a data point to be explained.
+            budget: The budget to use for the approximation. Defaults to `None`, which will
+                set the budget to 2**n_features based on the number of features.
+            random_state: The random state to re-initialize Imputer and Approximator with.
+                Defaults to ``None``.
             *args: Additional positional arguments passed to the explainer.
             **kwargs: Additional keyword-only arguments passed to the explainer.
 
         Returns:
             The interaction values of the prediction.
         """
-        raise NotImplementedError("The method `explain` must be implemented in a subclass.")
+        raise NotImplementedError("`explain_function` must be implemented in a subclass.")
 
     def explain_X(
-        self, X: np.ndarray, n_jobs=None, random_state=None, **kwargs
+        self, X: np.ndarray, n_jobs: int | None = None, random_state: int | None = None, **kwargs
     ) -> list[InteractionValues]:
         """Explain multiple predictions in terms of interaction values.
 
         Args:
             X: A 2-dimensional matrix of inputs to be explained.
             n_jobs: Number of jobs for ``joblib.Parallel``.
-            random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
+            random_state: The random state to re-initialize Imputer and Approximator with.
+            Defaults to ``None``.
         """
         assert len(X.shape) == 2
-        if random_state is not None:
-            if hasattr(self, "_imputer"):
-                self._imputer._rng = np.random.default_rng(random_state)
-            if hasattr(self, "_approximator"):
-                self._approximator._rng = np.random.default_rng(random_state)
-                if hasattr(self._approximator, "_sampler"):
-                    self._approximator._sampler._rng = np.random.default_rng(random_state)
+        set_random_state(random_state, self)
         if n_jobs:
             import joblib
 
@@ -168,5 +142,8 @@ class Explainer:
 
         Args:
             x: An instance/point/sample/observation to be explained.
+
+        Returns:
+            The prediction of the model.
         """
         return self._shapiq_predict_function(self.model, x)

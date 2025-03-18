@@ -1,8 +1,6 @@
 """This module contains the selection functionality for setting up the proper approximators for the
 selected index, order in the explainer."""
 
-import warnings
-
 from ..approximator import (
     SHAPIQ,
     SVARM,
@@ -17,7 +15,6 @@ from ..approximator import (
     UnbiasedKernelSHAP,
 )
 from ..approximator._base import Approximator
-from ..game_theory.indices import index_generalizes_bv, index_generalizes_sv
 
 APPROXIMATOR_CONFIGURATIONS = {
     "regression": {
@@ -49,32 +46,6 @@ APPROXIMATOR_CONFIGURATIONS = {
 }
 
 AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII", "SV"}
-
-
-def validate_index(index: str, max_order: int) -> str:
-    """Validate the index and max_order combination."""
-    if max_order == 1 and index_generalizes_sv(index):
-        warnings.warn(
-            f"`max_order=1` but index `{index}` generalizes `SV`, setting `index = 'SV'`."
-        )
-        return "SV"
-    if max_order == 1 and index_generalizes_bv(index):
-        warnings.warn(
-            f"`max_order=1` but index `{index}` generalizes `BV`, setting `index = 'BV'`."
-        )
-        return "BV"
-    return index
-
-
-def validate_max_order(index: str, max_order: int) -> int:
-    """Validate the max_order for the selected index."""
-    if max_order > 1 and index == "SV":
-        warnings.warn(f"`max_order > 1` but index `{index}` is `SV`, setting `max_order = 1`.")
-        return 1
-    if max_order > 1 and index == "BV":
-        warnings.warn(f"`max_order > 1` but index `{index}` is `BV`, setting `max_order = 1`.")
-        return 1
-    return max_order
 
 
 # TODO: add test wich is parametarized with all possible combinations and also checks for random_state

@@ -1,6 +1,5 @@
 """Tabular Explainer class for the shapiq package."""
 
-import warnings
 from warnings import warn
 
 import numpy as np
@@ -9,6 +8,7 @@ from ..approximator._base import Approximator
 from ..interaction_values import InteractionValues
 from ._base import Explainer
 from .setup import AVAILABLE_INDICES, setup_approximator
+from .validation import set_random_state, validate_budget
 
 
 class TabularExplainer(Explainer):
@@ -144,7 +144,12 @@ class TabularExplainer(Explainer):
         )
 
     def explain_function(
-        self, x: np.ndarray, budget: int | None = None, random_state: int | None = None
+        self,
+        x: np.ndarray,
+        budget: int | None = None,
+        random_state: int | None = None,
+        *args,
+        **kwargs,
     ) -> InteractionValues:
         """Explains the model's predictions.
 
@@ -155,17 +160,8 @@ class TabularExplainer(Explainer):
                 set the budget to 2**n_features based on the number of features.
             random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
         """
-        if budget is None:
-            budget = 2**self._n_features
-            if budget > 2048:
-                warnings.warn(
-                    f"Using the budget of 2**n_features={budget}, which might take long\
-                              to compute. Set the `budget` parameter to suppress this warning."
-                )
-        if random_state is not None:
-            self._imputer._rng = np.random.default_rng(random_state)
-            self._approximator._rng = np.random.default_rng(random_state)
-            self._approximator._sampler._rng = np.random.default_rng(random_state)
+        budget = validate_budget(budget, n_players=self._n_features)
+        set_random_state(random_state, object_with_rng=self)
 
         # initialize the imputer with the explanation point
         imputer = self._imputer.fit(x)

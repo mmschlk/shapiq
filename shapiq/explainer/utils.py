@@ -22,11 +22,17 @@ def get_explainers() -> dict[str, Any]:
     Returns:
         A dictionary of all available explainer classes.
     """
+    from shapiq.explainer.game import GameExplainer
     from shapiq.explainer.tabpfn import TabPFNExplainer
     from shapiq.explainer.tabular import TabularExplainer
     from shapiq.explainer.tree.explainer import TreeExplainer
 
-    return {"tabular": TabularExplainer, "tree": TreeExplainer, "tabpfn": TabPFNExplainer}
+    return {
+        "tabular": TabularExplainer,
+        "tree": TreeExplainer,
+        "tabpfn": TabPFNExplainer,
+        "game": GameExplainer,
+    }
 
 
 def get_predict_function_and_model_type(
@@ -53,6 +59,7 @@ def get_predict_function_and_model_type(
     Returns:
         A tuple of the predict function and the model type.
     """
+    from ..games.base import Game
     from . import tree
 
     if model_class is None:
@@ -60,6 +67,12 @@ def get_predict_function_and_model_type(
 
     _model_type = "tabular"  # default
     _predict_function = None
+
+    # TODO: this should also work for subclasses of Game
+    if isinstance(model, Game) or model_class == "shapiq.games.base.Game":
+        _predict_function = RuntimeError("Games cannot be used for prediction.")
+        _model_type = "game"
+        return _predict_function, _model_type  # noqa
 
     if callable(model):
         _predict_function = predict_callable

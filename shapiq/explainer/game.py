@@ -10,6 +10,7 @@ from ..approximator import Approximator
 from ..games.base import Game
 from ._base import Explainer
 from .setup import setup_approximator
+from .validation import set_random_state, validate_budget
 
 
 class GameExplainer(Explainer):
@@ -67,7 +68,11 @@ class GameExplainer(Explainer):
             random_state=self._random_state,
         )
 
-    def explain_function(self, *args, **kwargs) -> InteractionValues:
+    def explain_function(
+        self, budget: int | None = None, random_state: int | None = None, *args, **kwargs
+    ) -> InteractionValues:
         """Explain the game function."""
-        NotImplementedError
-        # approximation = self._approximator(game=self.game, budget=budget)
+        budget = validate_budget(budget, n_players=self.n_players)
+        set_random_state(random_state, object_with_rng=self)
+        approximation = self._approximator(game=self.game, budget=budget)
+        return approximation
