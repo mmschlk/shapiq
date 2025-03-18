@@ -1,5 +1,4 @@
-"""This module contains the Random Game which always returns a random vector of integers between
-0 and 100."""
+"""This module contains the Random Game which returns a random vector of integers between 0 and 100."""
 
 import numpy as np
 
@@ -11,11 +10,13 @@ class RandomGame(Game):
 
     Args:
         n: The number of players.
+        random_state: The random state for the random number generator.
     """
 
-    def __init__(self, n: int):
+    def __init__(self, n: int, random_state: int | None = None):
         self.n = n
-        # init base game class
+        self.random_state = random_state
+        self.rng = np.random.default_rng(random_state)
         super().__init__(n, normalize=False)
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
@@ -27,4 +28,6 @@ class RandomGame(Game):
         Returns:
             A random vector of integers between 0 and 100.
         """
-        return np.random.randint(0, 101, size=coalitions.shape[0])
+        if self.random_state is not None:
+            self.rng = np.random.default_rng(self.random_state)
+        return self.rng.integers(0, 101, size=coalitions.shape[0])
