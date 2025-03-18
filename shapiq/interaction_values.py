@@ -12,10 +12,14 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 
+import shapiq
+
 from .game_theory.indices import (
     ALL_AVAILABLE_INDICES,
     index_generalizes_bv,
     index_generalizes_sv,
+    is_empty_value_the_baseline,
+    is_index_aggregated,
 )
 from .utils.sets import count_interactions, generate_interaction_lookup, powerset
 
@@ -88,11 +92,6 @@ class InteractionValues:
         if self.min_order == 0 and () not in self.interaction_lookup:
             self.interaction_lookup[()] = len(self.interaction_lookup)
             self.values = np.concatenate((self.values, np.array([self.baseline_value])))
-
-        # update the baseline value in the values vector if index is not SII
-        # # TODO: this might be a good idea check if this is okay to do
-        # if self.index != "SII" and self.baseline_value != self.values[self.interaction_lookup[()]]:
-        #     self.values[self.interaction_lookup[()]] = self.baseline_value
 
     @property
     def dict_values(self) -> dict[tuple[int, ...], float]:
@@ -937,3 +936,42 @@ def aggregate_interaction_values(
         estimation_budget=None,
         baseline_value=baseline_value,
     )
+
+
+def finalize_to_valid_interaction_values(
+    interactions: InteractionValues,
+    target_index: str | None = None,
+) -> "InteractionValues":
+    """Finalizes the Interactionvalue to be interpretable.
+        In particular the baseline will represent the reference point for interpretationt.
+    Args:
+        interactions: The InteractionValues to finalize.
+        target_index: The index to which the InteractionValues should be finalized. Defaults to
+            ``None`` which means that the InteractionValues are finalized to the index of the
+            InteractionValues object.
+    Returns:
+        The interaction values.
+
+    Raises:
+        ValueError: If the baseline value is not provided for SII and k-SII.
+    """
+
+    if target_index is None:
+        target_index = interactions.index
+
+    # if index needs to be aggregated. interactions than as a new index.
+    if is_index_aggregated(target_index) and target_index != interactions.index:
+        interactions = shapiq.game_theory.aggregate_base_interaction(interactions)
+
+    # set empty value as baseline value if necessary
+    if tuple() in interactions.interaction_lookup:
+        idx = interactions.interaction_lookup[tuple()]
+        empty_value = interactions[idx]
+        if empty_value != interactions.baseline_value and interactions.index != "SII":
+            # We will equal them according to the theory of the index, disregarding SII as the inequality is needed for aggregation.
+            if is_empty_value_the_baseline(interactions.index):
+                interactions[idx] = interactions.baseline_value
+            else:
+                interactions.baseline_value = interactions[idx]
+
+    return interactions
