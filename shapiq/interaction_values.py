@@ -544,11 +544,16 @@ class InteractionValues:
             {(1,): 0.2}
         """
         keys = self.interaction_lookup.keys()
-        idx = [i for i, key in enumerate(keys) if all(p in players for p in key)]
+        idx, keys_in_subset = [], []
+        for i, key in enumerate(keys):
+            if all(p in players for p in key):
+                idx.append(i)
+                keys_in_subset.append(key)
         new_values = self.values[idx]
-        new_interaction_lookup = {
-            key: self.interaction_lookup[key] for i, key in enumerate(keys) if i in idx
-        }
+        new_interaction_lookup = {}
+        for index, key in enumerate(keys_in_subset):
+            new_interaction_lookup[key] = index
+
         n_players = self.n_players - len(players)
 
         return InteractionValues(
