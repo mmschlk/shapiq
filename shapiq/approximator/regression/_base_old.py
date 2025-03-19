@@ -1,6 +1,7 @@
 """This module contains the Base Regression approximator to compute SII and k-SII of arbitrary max_order."""
 
 import copy
+import time
 from collections.abc import Callable
 
 import numpy as np
@@ -276,6 +277,9 @@ class Regression(Approximator):
         regression_coefficient_weight = self._get_regression_coefficient_weights(
             max_order=self.max_order, index=index_approximation
         )
+
+        start_time = time.time()
+        # begin old version ------------------------------------------------------------------------
         n_interactions = np.sum(
             [int(binom(self.n, interaction_size)) for interaction_size in range(self.max_order + 1)]
         )
@@ -290,9 +294,12 @@ class Regression(Approximator):
                 regression_matrix[coalition_pos, interaction_pos] = regression_coefficient_weight[
                     interaction_size, intersection_size
                 ]
-
         # Regression weights adjusted by sampling weights
         regression_weights = kernel_weights[coalitions_size] * sampling_adjustment_weights
+        # end old version ------------------------------------------------------------------------
+        end_time = time.time()
+        print(f"Old version: {end_time - start_time}")
+
         shapley_interactions_values = self._solve_regression(
             regression_matrix=regression_matrix,
             regression_response=regression_response,

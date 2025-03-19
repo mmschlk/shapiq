@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ._base import Regression
+from ._base_old import Regression
 
 
 class RegressionFSII(Regression):
