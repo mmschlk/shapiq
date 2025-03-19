@@ -1,9 +1,11 @@
 """This module contains the base approximator classes for the shapiq package."""
 
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 import numpy as np
+from scipy.special import binom
 
 from ..approximator.sampling import CoalitionSampler
 from ..game_theory.indices import (
@@ -140,13 +142,29 @@ class Approximator(ABC):
             The weights for sampling subsets of size ``s`` in shape ``(n + 1,)``.
         """
         weight_vector = np.zeros(shape=self.n + 1)
-        for coalition_size in range(0, self.n + 1):
-            if (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
-                # prioritize these subsets
-                weight_vector[coalition_size] = self._big_M
-            else:
-                # KernelSHAP sampling weights
-                weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
+        if self.index in ["FBII"]:
+
+            try:
+                for coalition_size in range(0, self.n + 1):
+                    weight_vector[coalition_size] = binom(self.n, coalition_size) / 2**self.n
+            except OverflowError:
+                for coalition_size in range(0, self.n + 1):
+                    weight_vector[coalition_size] = (
+                        1
+                        / np.sqrt(2 * np.pi * 0.5)
+                        * np.exp(-(coalition_size - self.n / 2) * +2 / (self.n / 2))
+                    )
+                warnings.warn(
+                    "The weights are approximated for n > 1000. While this is very close to the truth for sets for size in the region n/2, the approximation is not exact for size n or 0."
+                )
+        else:
+            for coalition_size in range(0, self.n + 1):
+                if (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
+                    # prioritize these subsets
+                    weight_vector[coalition_size] = self._big_M
+                else:
+                    # KernelSHAP sampling weights
+                    weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
         sampling_weight = weight_vector / np.sum(weight_vector)
         return sampling_weight
 

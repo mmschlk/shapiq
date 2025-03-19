@@ -8,6 +8,7 @@ from scipy.special import binom
 
 from shapiq import ExactComputer, Game
 from shapiq.approximator import RegressionFBII
+from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
@@ -40,6 +41,24 @@ def test_initialization(n, max_order):
     assert repr(approximator) == approximator_string
     assert hash(approximator) == hash(approximator_copy)
     assert hash(approximator) != hash(approximator_deepcopy)
+
+
+def test_extreme_weight_initialisation():
+    """Tests if the attributes and properties of approximators are set correctly."""
+
+    # In local tests this number still did not trigger an OverflowError
+    n_players = 1000
+    game = DummyGame(n=n_players, interaction=(1, 2))
+    approximator = RegressionFBII(n=game.n_players, max_order=1, random_state=42)
+    approximator.approximate(200, game)
+
+    # This should trigger a warning
+    n_players = 2000
+    game = DummyGame(n=n_players, interaction=(1, 2))
+    with pytest.warns(UserWarning):
+        # We approximate weights very extreme
+        approximator = RegressionFBII(n=game.n_players, max_order=1, random_state=42)
+        approximator.approximate(200, game)
 
 
 def test_approximate_bv_equality(cooking_game):
