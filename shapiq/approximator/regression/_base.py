@@ -2,11 +2,11 @@
 
 import copy
 import time
+import warnings
 from collections.abc import Callable
 
 import numpy as np
 from scipy.special import bernoulli, binom
-from sklearn.linear_model import lars_path
 
 from ...game_theory.indices import AVAILABLE_INDICES_REGRESSION
 from ...interaction_values import InteractionValues
@@ -204,7 +204,7 @@ class Regression(Approximator):
 
             if interaction_size <= 2:
                 # get \phi_i via solving the regression problem
-                sii_values_current_size = self._solve_regression(
+                sii_values_current_size = solve_regression(
                     regression_matrix=regression_matrix,
                     regression_response=residual_game_values[interaction_size],
                     regression_weights=regression_weights,
@@ -228,7 +228,7 @@ class Regression(Approximator):
                 game_values_plus[ground_truth_weights_indicator] = 0
 
                 # get \phi_i via solving the regression problem
-                sii_values_current_size_plus = self._solve_regression(
+                sii_values_current_size_plus = solve_regression(
                     regression_matrix=regression_matrix,
                     regression_response=game_values_plus,
                     regression_weights=regression_weights,
@@ -273,14 +273,11 @@ class Regression(Approximator):
         sampling_adjustment_weights = sampling_adjustment_weights
 
         empty_coalition_value = float(game_values[np.sum(coalitions_matrix, axis=1) == 0][0])
-        grand_coalition_value = float(game_values[np.sum(coalitions_matrix, axis=1) == self.n][0])
+        # grand_coalition_value = float(game_values[np.sum(coalitions_matrix, axis=1) == self.n][0])
         regression_response = game_values - empty_coalition_value
         regression_coefficient_weight = self._get_regression_coefficient_weights(
             max_order=self.max_order, index=index_approximation
         )
-        # n_interactions = np.sum(
-        #     [int(binom(self.n, interaction_size)) for interaction_size in range(self.max_order + 1)]
-        # )
 
         start_time = time.time()
         regression_matrix, regression_weights = _get_regression_matrix(
@@ -294,40 +291,11 @@ class Regression(Approximator):
         end_time = time.time()
         print(f"New version: {end_time - start_time}")
 
-        # end_time = time.time()
-        # print(f"New version: {end_time - start_time}")
-        # start_time = time.time()
-        # # begin old version ------------------------------------------------------------------------
-        # regression_matrix_old = np.zeros((np.shape(coalitions_matrix)[0], n_interactions))
-        # for coalition_pos, coalition in enumerate(coalitions_matrix):
-        #     for interaction_pos, interaction in enumerate(
-        #         powerset(self._grand_coalition_set, max_size=self.max_order)
-        #     ):
-        #         interaction_size = len(interaction)
-        #         intersection_size = np.sum(coalition[list(interaction)])
-        #         regression_matrix_old[coalition_pos, interaction_pos] = regression_coefficient_weight[
-        #             interaction_size, intersection_size
-        #         ]
-        # regression_weights_old = kernel_weights[coalitions_size] * sampling_adjustment_weights
-        # end_time = time.time()
-        # print(f"Old version: {end_time - start_time}")
-
         # compute old ------------------------------------------------------------------------------
-        # shapley_interactions_values = self._solve_regression(
-        #     regression_matrix=regression_matrix,
-        #     regression_response=regression_response,
-        #     regression_weights=regression_weights,
-        # )
-
-        # compute with projected sgd ---------------------------------------------------------------
-        print("Compute with projected sgd")
-        shapley_interactions_values = solve_with_projected_sgd(
+        shapley_interactions_values = solve_regression(
             regression_matrix=regression_matrix,
             regression_response=regression_response,
             regression_weights=regression_weights,
-            empty_coalition_value=empty_coalition_value,
-            grand_coalition_value=grand_coalition_value,
-            step=0.001,
         )
 
         if index_approximation == "kADD-SHAP":
@@ -336,96 +304,6 @@ class Regression(Approximator):
             shapley_interactions_values[0] = empty_coalition_value
 
         return shapley_interactions_values
-
-    @staticmethod
-    def _solve_regression(
-        regression_matrix: np.ndarray,
-        regression_response: np.ndarray,
-        regression_weights: np.ndarray,
-    ) -> np.ndarray[float]:
-        """Solves the regression problem using the weighted least squares method. Returns all
-        approximated interactions.
-
-        Args:
-            regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
-                Depends on the index.
-            regression_response: The response vector for each coalition.
-            regression_weights: The weights for the regression problem for each coalition.
-
-        Returns:
-            The solution to the regression problem.
-        """
-        # regression weights adjusted by sampling weights
-        # weighted_regression_matrix = regression_weights[:, None] * regression_matrix
-
-        try:
-            regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
-            regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
-            regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
-            # shapley_interactions_values = (
-            #     LassoLarsIC(criterion="aic").fit(regression_lhs, regression_rhs).coef_
-            # )
-            shapley_interactions_values = lars_path(regression_lhs, regression_rhs, max_iter=10)[1]
-            # shapley_interactions_values = (
-            #    LassoLars().fit(regression_lhs, regression_rhs).coef_
-            # )
-            # shapley_interactions_values = (
-            #    Lasso().fit(regression_lhs, regression_rhs).coef_
-            # )
-        except Exception as e:
-            print(e)
-            regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
-            regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
-            regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
-            shapley_interactions_values = np.linalg.lstsq(
-                regression_lhs, regression_rhs, rcond=None
-            )[0]
-
-        return shapley_interactions_values.astype(dtype=float)
-
-    @staticmethod
-    def _solve_regression_old(
-        regression_matrix: np.ndarray,
-        regression_response: np.ndarray,
-        regression_weights: np.ndarray,
-    ) -> np.ndarray[float]:
-        """Solves the regression problem using the weighted least squares method. Returns all
-        approximated interactions.
-
-        Args:
-            regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
-                Depends on the index.
-            regression_response: The response vector for each coalition.
-            regression_weights: The weights for the regression problem for each coalition.
-
-        Returns:
-            The solution to the regression problem.
-        """
-        # regression weights adjusted by sampling weights
-        # weighted_regression_matrix = regression_weights[:, None] * regression_matrix
-
-        # try:
-        #     # try solving via solve function
-        #     shapley_interactions_values = np.linalg.solve(
-        #         regression_matrix.T @ weighted_regression_matrix,
-        #         weighted_regression_matrix.T @ regression_response,
-        #     )
-        # except np.linalg.LinAlgError:
-
-        # solve WLSQ via lstsq function and throw warning
-        regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
-        regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
-        regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
-        # warnings.warn(
-        #     UserWarning(
-        #         "Linear regression equation is singular, a least squares solutions is used "
-        #         "instead.\n"
-        #     )
-        # )
-
-        shapley_interactions_values = np.linalg.lstsq(regression_lhs, regression_rhs, rcond=None)[0]
-
-        return shapley_interactions_values.astype(dtype=float)
 
     def _get_regression_coefficient_weights(self, max_order: int, index: str) -> np.ndarray:
         """Pre-computes the regression coefficient weights based on the index and the max_order.
@@ -636,83 +514,217 @@ def _get_regression_matrix(
     return regression_matrix, regression_weights
 
 
-def projection_step(phi: np.ndarray, total: float) -> np.ndarray:
-    """
-    Perform a projection step to adjust Shapley interactions.
+# def projection_step(phi: np.ndarray, total: float) -> np.ndarray:
+#     """
+#     Perform a projection step to adjust Shapley interactions.
+#
+#     Args:
+#         phi: Current estimate of Shapley interactions.
+#         total: Total contribution of all players (grand - empty coalition value).
+#
+#     Returns:
+#         np.ndarray: Adjusted Shapley interactions.
+#     """
+#     return phi - (np.sum(phi, axis=0) - total) / len(phi)
+#
+#
+# # TODO incorpoarte this into regression class
+# def solve_with_projected_sgd(
+#     regression_matrix: np.ndarray,
+#     regression_response: np.ndarray,
+#     regression_weights: np.ndarray,
+#     empty_coalition_value: float,
+#     grand_coalition_value: float,
+#     mini_batch_size: int = 10,
+#     max_iterations: int = 100,
+#     step: float = 0.001,
+# ) -> np.ndarray:
+#     """Solves the estimation of the shapley values and shapley interactions with a projected SGD.
+#
+#     Args:
+#         regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
+#             Depends on the index.
+#         regression_response: The response vector for each coalition.
+#         regression_weights: The weights for the regression problem for each coalition.
+#         empty_coalition_value: The value of the empty coalition.
+#         grand_coalition_value: The total value of the grand coalition.
+#         mini_batch_size: The size of the mini-batch.
+#         max_iterations: The maximum number of iterations.
+#         step: The step size (learning rate) for the SGD.
+#
+#         Returns:
+#             The solution to the regression problem.
+#     """
+#     print("Using Projected SGD")
+#
+#     n_interactions = regression_matrix.shape[1]
+#     total = grand_coalition_value - empty_coalition_value
+#     shapley_interactions = np.zeros((n_interactions, 1), dtype=float)
+#     shapley_interactions = projection_step(shapley_interactions, total)  # not float?
+#     shapley_interactions_history = []
+#     regression_response = regression_response.reshape(len(regression_response), 1)
+#     regression_response -= empty_coalition_value
+#
+#     for it in range(max_iterations):
+#         x_batch = regression_matrix[it * mini_batch_size : (it + 1) * mini_batch_size]
+#         y_batch = regression_response[it * mini_batch_size : (it + 1) * mini_batch_size]
+#         assert x_batch.shape[0] == y_batch.shape[0], "x_batch and y_batch must have the same size"
+#         if x_batch.shape[0] != mini_batch_size:
+#             break
+#
+#         # calculate the gradient
+#         residual = x_batch.dot(shapley_interactions) - y_batch
+#         gradient = x_batch[:, :, None] * residual[:, None, :]
+#
+#         # multiply with the weights
+#
+#         # average the gradient
+#         gradient = np.mean(gradient, axis=0)
+#
+#         # update the shapley interactions
+#         shapley_interactions = shapley_interactions - step * gradient
+#
+#         # projection step
+#         shapley_interactions = projection_step(shapley_interactions, grand_coalition_value)
+#
+#         # update the history
+#         shapley_interactions_history.append(shapley_interactions)
+#
+#     # flatten shapley_interactions
+#     shapley_interactions = shapley_interactions.flatten()
+#     return shapley_interactions
 
-    Args:
-        phi: Current estimate of Shapley interactions.
-        total: Total contribution of all players (grand - empty coalition value).
 
-    Returns:
-        np.ndarray: Adjusted Shapley interactions.
-    """
-    return phi - (np.sum(phi, axis=0) - total) / len(phi)
+# def solve_regression_lasso(
+#     regression_matrix: np.ndarray,
+#     regression_response: np.ndarray,
+#     regression_weights: np.ndarray,
+# ) -> np.ndarray[float]:
+#     """Solves the regression problem using the weighted least squares method. Returns all
+#     approximated interactions.
+#
+#     Args:
+#         regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
+#             Depends on the index.
+#         regression_response: The response vector for each coalition.
+#         regression_weights: The weights for the regression problem for each coalition.
+#
+#     Returns:
+#         The solution to the regression problem.
+#     """
+#     print("Using Lasso")
+#     regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
+#     regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
+#     regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
+#     shapley_interactions_values = (
+#         LassoLarsIC(criterion="aic").fit(regression_lhs, regression_rhs).coef_
+#     )
+#     # shapley_interactions_values = lars_path(regression_lhs, regression_rhs, max_iter=10)[1]
+#     # shapley_interactions_values = (
+#     #    LassoLars().fit(regression_lhs, regression_rhs).coef_
+#     # )
+#     # shapley_interactions_values = (
+#     #    Lasso().fit(regression_lhs, regression_rhs).coef_
+#     # )
+#
+#     return shapley_interactions_values.astype(dtype=float)
 
 
-def solve_with_projected_sgd(
+def solve_regression(
     regression_matrix: np.ndarray,
     regression_response: np.ndarray,
     regression_weights: np.ndarray,
-    empty_coalition_value: float,
-    grand_coalition_value: float,
-    mini_batch_size: int = 10,
-    max_iterations: int = 100,
-    step: float = 0.001,
-) -> np.ndarray:
-    """Solves the estimation of the shapley values and shapley interactions with a projected SGD.
+) -> np.ndarray[float]:
+    """Solves the regression problem using the weighted least squares method. Returns all
+    approximated interactions.
 
     Args:
         regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
             Depends on the index.
         regression_response: The response vector for each coalition.
         regression_weights: The weights for the regression problem for each coalition.
-        empty_coalition_value: The value of the empty coalition.
-        grand_coalition_value: The total value of the grand coalition.
-        mini_batch_size: The size of the mini-batch.
-        max_iterations: The maximum number of iterations.
-        step: The step size (learning rate) for the SGD.
 
-        Returns:
-            The solution to the regression problem.
+    Returns:
+        The solution to the regression problem.
     """
+    print("Using numpy solve and lstsq")
+    try:
+        # try solving via solve function  -> very quick if possible
+        weighted_regression_matrix = regression_weights[:, None] * regression_matrix
+        shapley_interactions_values = np.linalg.solve(
+            regression_matrix.T @ weighted_regression_matrix,
+            weighted_regression_matrix.T @ regression_response,
+        )
+    except np.linalg.LinAlgError:
+        # solve WLSQ via lstsq function and throw warning
+        warnings.warn(
+            UserWarning(
+                "Linear regression equation is singular, a least squares solutions is used "
+                "instead. Note this may be slow and use a lot of memory.\n"
+            )
+        )
+        regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
+        regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
+        regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
+        shapley_interactions_values = np.linalg.lstsq(regression_lhs, regression_rhs, rcond=None)[0]
 
-    n_interactions = regression_matrix.shape[1]
+    return shapley_interactions_values
 
-    total = grand_coalition_value - empty_coalition_value
 
-    shapley_interactions = np.zeros((n_interactions, 1), dtype=float)
-    shapley_interactions = projection_step(shapley_interactions, total)  # not float?
-    shapley_interactions_history = []
-
-    regression_response = regression_response.reshape(len(regression_response), 1)
-    regression_response -= empty_coalition_value
-
-    for it in range(max_iterations):
-        x_batch = regression_matrix[it * mini_batch_size : (it + 1) * mini_batch_size]
-        y_batch = regression_response[it * mini_batch_size : (it + 1) * mini_batch_size]
-        assert x_batch.shape[0] == y_batch.shape[0], "x_batch and y_batch must have the same size"
-        if x_batch.shape[0] != mini_batch_size:
-            break
-
-        # calculate the gradient
-        residual = x_batch.dot(shapley_interactions) - y_batch
-        gradient = x_batch[:, :, None] * residual[:, None, :]
-
-        # multiply with the weights
-
-        # average the gradient
-        gradient = np.mean(gradient, axis=0)
-
-        # update the shapley interactions
-        shapley_interactions = shapley_interactions - step * gradient
-
-        # projection step
-        shapley_interactions = projection_step(shapley_interactions, grand_coalition_value)
-
-        # update the history
-        shapley_interactions_history.append(shapley_interactions)
-
-    # flatten shapley_interactions
-    shapley_interactions = shapley_interactions.flatten()
-    return shapley_interactions
+# def solve_regression_online(
+#     regression_matrix: np.ndarray,
+#     regression_response: np.ndarray,
+#     regression_weights: np.ndarray,
+#     batch_size: int = 1000,
+#     max_iter: int = 1000,
+# ) -> np.ndarray:
+#     """Solves the regression problem using online learning with weighted least squares.
+#
+#     Args:
+#         regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
+#         regression_response: The response vector for each coalition.
+#         regression_weights: The weights for the regression problem for each coalition.
+#         batch_size: Number of samples per batch for online learning.
+#         max_iter: Maximum number of passes through the data.
+#
+#     Returns:
+#         The solution to the regression problem.
+#     """
+#     print("Using online SGDRegressor for weighted least squares")
+#
+#     n_samples, n_features = regression_matrix.shape
+#     model = SGDRegressor(
+#         fit_intercept=False,  # No intercept, matches lstsq behavior
+#         max_iter=max_iter,
+#         learning_rate="optimal",
+#         penalty=None  # No regularization to mimic exact least squares
+#     )
+#
+#     try:
+#         for i in range(0, n_samples, batch_size):
+#             # Extract mini-batch
+#             X_batch = regression_matrix[i:i+batch_size]
+#             y_batch = regression_response[i:i+batch_size]
+#             weights_batch = regression_weights[i:i+batch_size]
+#
+#             if X_batch.shape[0] == 0:  # Skip if empty
+#                 continue
+#
+#             # Apply weights
+#             sqrt_weights = np.sqrt(weights_batch)
+#             X_weighted = X_batch * sqrt_weights[:, np.newaxis]
+#             y_weighted = y_batch * sqrt_weights
+#
+#             # Incrementally fit model
+#             model.partial_fit(X_weighted, y_weighted)
+#
+#         # Return learned coefficients
+#         return model.coef_
+#
+#     except Exception as e:
+#         warnings.warn(
+#             UserWarning(
+#                 f"Online regression failed: {e}. Consider reducing batch size or using a distributed method."
+#             )
+#         )
+#         return np.zeros(n_features)
