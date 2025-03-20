@@ -77,6 +77,7 @@ __all__ = [
     "OwenSamplingSV",
     "KernelSHAP",
     "RegressionFSII",
+    "RegressionFBII",
     "KernelSHAPIQ",
     "InconsistentKernelSHAPIQ",
     "SHAPIQ",
