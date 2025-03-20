@@ -7,6 +7,8 @@ from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
 from .regression import InconsistentKernelSHAPIQ, KernelSHAP, KernelSHAPIQ, RegressionFSII, kADDSHAP
+#TODO JK: Add the new approximator to the list
+
 
 # contains all SV approximators
 SV_APPROXIMATORS: list[Approximator.__class__] = [

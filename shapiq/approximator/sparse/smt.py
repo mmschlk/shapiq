@@ -1,11 +1,10 @@
 from ._base import Sparse
 
 
-class SPEX(Sparse):
-    """SPEX (SParse EXplainer) via Fourier transform sampling.
+class SMT(Sparse):
+    """Sparse Mobius Transform (SMT)
 
-       An approximator for cardinal interaction indices using Fourier transform sampling
-       to efficiently compute sparse higher-order interactions.
+       An approximator for computing the Shapley interaction indices when the Mobius transform is sparse.
 
        Parameters
        ----------
@@ -14,7 +13,7 @@ class SPEX(Sparse):
        max_order : int, default=2
            Maximum interaction order to consider.
        index : str
-           The Shapley interaction index type to use. Defaults to "FBII"
+           The Shapley interaction index type to use. Defaults to "STII".
        top_order : bool, default=False
            If True, only reports interactions of order `max_order`.
        sampling_weights : float, optional
@@ -24,15 +23,15 @@ class SPEX(Sparse):
 
        References
        ----------
-           .. [1] Kang, J.S., Butler, L., Agarwal. A., Erginbas, Y.E., Pedarsani, R., Ramchandran, K., Yu, Bin (2025).
-              "SPEX: Scaling Feature Interaction Explanations for LLMs"
-              https://arxiv.org/abs/2502.13870
+           .. [1] Kang, J.S., Erginbas, Y.E., Butler, L.,  Pedarsani, R., Ramchandran, K. (2024).
+              "Learning to Understand: Identifying Interactions via the Möbius Transform"
+              https://arxiv.org/abs/2402.02631
        """
     def __init__(
         self,
         n: int,
         max_order: int = 2,
-        index: str = "FBII",
+        index: str = "STII",
         top_order: bool = False,
         sampling_weights: float | None = None,
         random_state: int | None = None,
@@ -44,5 +43,5 @@ class SPEX(Sparse):
             top_order=top_order,
             random_state=random_state,
             sampling_weights=sampling_weights,
-            transform_type='fourier'
+            transform_type='mobius'
         )
