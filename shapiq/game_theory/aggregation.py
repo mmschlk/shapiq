@@ -25,7 +25,7 @@ def _change_index(index: str) -> str:
     return new_index
 
 
-def aggregate_interaction_values(
+def aggregate_base_interaction(
     base_interactions: InteractionValues, order: int | None = None
 ) -> InteractionValues:
     """Aggregates the basis interaction values into an efficient interaction index.
@@ -55,7 +55,7 @@ def aggregate_interaction_values(
         ...     min_order=0,
         ...     max_order=2,
         ... )
-        >>> k_sii_values = aggregate_interaction_values(sii_values)
+        >>> k_sii_values = aggregate_base_interaction(sii_values)
         >>> k_sii_values.index
         'k-SII'
         >>> k_sii_values.baseline_value

@@ -119,8 +119,8 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
 
 ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 
-AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII"}
-AVAILABLE_INDICES_MONTE_CARLO = {"k-SII", "SII", "STII", "FSII", "SV", "CHII", "BII"}
+AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII", "FBII"}
+AVAILABLE_INDICES_MONTE_CARLO = {"k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII"}
 
 AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = (
     {
@@ -256,7 +256,7 @@ def is_index_aggregated(index: str) -> bool:
 
 def is_empty_value_the_baseline(index: str) -> bool:
     """Checks if the empty value stored in the interaction values is the baseline value. This is
-    only not the case for the Shapley Interaction Index.
+    only not the case for the Shapley Interaction Index and Banzhaf values.
 
     Args:
         index: The interaction index.
@@ -272,4 +272,4 @@ def is_empty_value_the_baseline(index: str) -> bool:
         >>> is_empty_value_the_baseline("k-SII")
         True
     """
-    return index != "SII"
+    return index not in ["SII", "FBII", "BII", "BV"]

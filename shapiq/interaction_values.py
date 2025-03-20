@@ -16,6 +16,8 @@ from .game_theory.indices import (
     ALL_AVAILABLE_INDICES,
     index_generalizes_bv,
     index_generalizes_sv,
+    is_empty_value_the_baseline,
+    is_index_aggregated,
 )
 from .utils.sets import count_interactions, generate_interaction_lookup, powerset
 
@@ -88,11 +90,6 @@ class InteractionValues:
         if self.min_order == 0 and () not in self.interaction_lookup:
             self.interaction_lookup[()] = len(self.interaction_lookup)
             self.values = np.concatenate((self.values, np.array([self.baseline_value])))
-
-        # update the baseline value in the values vector if index is not SII
-        # # TODO: this might be a good idea check if this is okay to do
-        # if self.index != "SII" and self.baseline_value != self.values[self.interaction_lookup[()]]:
-        #     self.values[self.interaction_lookup[()]] = self.baseline_value
 
     @property
     def dict_values(self) -> dict[tuple[int, ...], float]:
@@ -942,3 +939,63 @@ def aggregate_interaction_values(
         estimation_budget=None,
         baseline_value=baseline_value,
     )
+
+
+def finalize_computed_interactions(
+    interactions: InteractionValues,
+    target_index: str | None = None,
+) -> "InteractionValues":
+    """Finalizes computed InteractionValues to be interpretable.
+
+    This function takes care of the following:
+        - Aggregates the interactions if necessary. (e.g. from SII to k-SII)
+        - Adjusts the baseline and empty value if necessary. (e.g. for Shapley indices the baseline
+            value is the prediction of the model without any features - also called empty value, for
+            Banzhaf the baseline value is not the empty prediction as Banzhaf does not fulfill the
+            efficiency property)
+
+    Args:
+        interactions: The InteractionValues to finalize.
+        target_index: The index to which the InteractionValues should be finalized. Defaults to
+            ``None`` which means that the InteractionValues are finalized to the index of the
+            InteractionValues object.
+
+    Returns:
+        The interaction values.
+
+    Note:
+        If you develop new approximators and computation methods, you should finalize the
+        InteractionValues object before returning it to the user.
+
+    Raises:
+        ValueError: If the baseline value is not provided for SII and k-SII.
+    """
+    from .game_theory.aggregation import aggregate_base_interaction
+
+    if target_index is None:
+        target_index = interactions.index
+
+    # aggregate the interactions if necessary
+    if is_index_aggregated(target_index) and target_index != interactions.index:
+        interactions = aggregate_base_interaction(interactions)
+
+    # adjust the baseline and empty value if necessary
+    if tuple() in interactions.interaction_lookup:
+        idx = interactions.interaction_lookup[tuple()]
+        empty_value = interactions[idx]
+        if empty_value != interactions.baseline_value and interactions.index != "SII":
+            if is_empty_value_the_baseline(interactions.index):
+                # insert the empty value given in baseline into the values
+                interactions[idx] = interactions.baseline_value
+            else:  # manually set baseline to the empty value
+                interactions.baseline_value = interactions[idx]
+    # empty not in interactions but min_order is 0 (should be in the interactions)
+    elif interactions.min_order == 0:
+        # TODO: this might not be what we really want to do always ... what if empty and baseline
+        # are different?
+        interactions.interaction_lookup[tuple()] = len(interactions.interaction_lookup)
+        interactions.values = np.concatenate(
+            (interactions.values, np.array([interactions.baseline_value]))
+        )
+
+    return interactions

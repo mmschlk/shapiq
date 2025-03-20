@@ -19,11 +19,11 @@ def test_decision_tree_classifier(dt_clf_model, background_clf_data):
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
     # check init with class label
-    _ = TreeExplainer(model=dt_clf_model, max_order=2, min_order=1, class_index=0)
+    _ = TreeExplainer(model=dt_clf_model, max_order=2, min_order=0, class_index=0)
 
     assert True
 
-    explainer = _ = TreeExplainer(model=dt_clf_model, max_order=1, min_order=1, class_index=1)
+    explainer = _ = TreeExplainer(model=dt_clf_model, max_order=1, min_order=0, class_index=1)
     explanation = explainer.explain(x_explain)
 
     # compare baseline_value with empty_predictions
@@ -83,7 +83,7 @@ def test_random_forest_classification(rf_clf_model, background_clf_data):
     """Test TreeExplainer with a simple decision tree regressor."""
     class_label = 0
     explainer = TreeExplainer(
-        model=rf_clf_model, max_order=1, min_order=1, index="SV", class_index=class_label
+        model=rf_clf_model, max_order=1, min_order=0, index="SV", class_index=class_label
     )
 
     x_explain = background_clf_data[0]
@@ -429,7 +429,7 @@ def test_decision_stumps(background_reg_dataset, background_clf_dataset):
         X, y = background_clf_dataset
         model.fit(X, y)
 
-        explainer = TreeExplainer(model=model, max_order=1, index="SV", class_index=0)
+        explainer = TreeExplainer(model=model, max_order=3, index="k-SII", class_index=0)
         x_explain = X[1]
         explanation = explainer.explain(x_explain)
 

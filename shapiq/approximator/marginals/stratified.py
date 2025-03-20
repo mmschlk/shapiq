@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from .._base import Approximator
 
 
@@ -37,13 +37,14 @@ class StratifiedSamplingSV(Approximator):
         self.iteration_cost: int = 2
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray]
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
         Args:
             budget: The number of game evaluations for approximation
             game: The game function as a callable that takes a set of players and returns the value.
+            *args and **kwargs: Additional arguments not used.
 
         Returns:
             The estimated interaction values.
@@ -114,6 +115,16 @@ class StratifiedSamplingSV(Approximator):
             idx = self._interaction_lookup[(player,)]
             result_to_finalize[idx] = result[player]
 
-        return self._finalize_result(
-            result_to_finalize, baseline_value=empty_value, budget=used_budget, estimated=True
+        interactions = InteractionValues(
+            n_players=self.n,
+            values=result_to_finalize,
+            index=self.approximation_index,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=float(empty_value),
+            min_order=self.min_order,
+            max_order=self.max_order,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+
+        return finalize_computed_interactions(interactions, target_index=self.index)

@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from .._base import Approximator
 
 
@@ -64,9 +64,20 @@ class PermutationSamplingSV(Approximator):
             interaction_index = self._interaction_lookup[self._grand_coalition_tuple]
             result[interaction_index] = full_val - empty_val
             counts[interaction_index] = 1
-            return self._finalize_result(
-                result, baseline_value=empty_val, budget=used_budget, estimated=True
+
+            interactions = InteractionValues(
+                values=result,
+                interaction_lookup=self._interaction_lookup,
+                baseline_value=empty_val,
+                min_order=self.min_order,
+                max_order=self.max_order,
+                n_players=self.n,
+                index=self.approximation_index,
+                estimated=True,
+                estimation_budget=used_budget,
             )
+
+            return finalize_computed_interactions(interactions, target_index=self.index)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
@@ -123,6 +134,17 @@ class PermutationSamplingSV(Approximator):
                 coalition_index += 1
 
         result = np.divide(result, counts, out=result, where=counts != 0)
-        return self._finalize_result(
-            result, baseline_value=empty_val, budget=used_budget, estimated=True
+
+        interactions = InteractionValues(
+            values=result,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_val,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            index=self.approximation_index,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+
+        return finalize_computed_interactions(interactions, target_index=self.index)

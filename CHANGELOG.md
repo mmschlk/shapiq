@@ -6,6 +6,8 @@
 - fixes a bug with xgboost where feature names where trees that did not contain all features would lead `TreeExplainer` to fail
 - fixes a bug with `stacked_bar_plot` where the higher order interactions were inflated by the lower order interactions, thus wrongly showing the higher order interactions as higher than they are
 - fixes a bug where `InteractionValues.get_subset()` returns a faulty `coalition_lookup` dictionary pointing to indices outside the subset of players [#336](https://github.com/mmschlk/shapiq/issues/336)
+- updates default value of `TreeExplainer`'s `min_order` parameter from 1 to 0 to include the baseline value in the interaction values as per default
+- adds the `RegressionFBII` approximator to estimate Faithful Banzhaf interactions via least squares regression [#333](https://github.com/mmschlk/shapiq/pull/333). Additionally, FBII support was introduced in TabularExplainer and MonteCarlo-Approximator.
 
 ### v1.2.2 (2025-03-11)
 - changes python support to 3.10-3.13 [#318](https://github.com/mmschlk/shapiq/pull/318)
