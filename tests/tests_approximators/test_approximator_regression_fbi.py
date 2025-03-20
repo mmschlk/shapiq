@@ -4,9 +4,8 @@ from copy import copy, deepcopy
 
 import numpy as np
 import pytest
-from scipy.special import binom
 
-from shapiq import ExactComputer, Game
+from shapiq import ExactComputer
 from shapiq.approximator import RegressionFBII
 from shapiq.games.benchmark import DummyGame
 
@@ -77,33 +76,15 @@ def test_approximate_bv_equality(cooking_game):
     assert np.allclose(banzhaf.values[1:], fbii_approx.values[1:], atol=1e-2)
 
 
-def test_approximate_fbii():
-    """Tests the approximation of the RegressionFBII approximator to be equal to the results from http://jmlr.org/papers/v24/22-0202.html."""
-
-    class PaperGame(Game):
-        """A game with 11 players, where each coalition must contain at least 2 players and with probability 0.1 of two players not cooperating."""
-
-        def __init__(self):
-            super().__init__(
-                n_players=11,
-                player_names=None,  # Optional list of names
-                normalization_value=0,  # 0
-            )
-
-        def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-            """Defines the worth of a coalition as a lookup in the characteristic function."""
-            output = [
-                sum(coalition) - 0.1 * binom(sum(coalition), 2) if sum(coalition) > 1 else 0
-                for coalition in coalitions
-            ]
-            return np.array(output)
+def test_approximate_fbii(paper_game):
+    """Tests the approximation of the RegressionFBII approximator to be equal to the results from
+    http://jmlr.org/papers/v24/22-0202.html.
+    """
 
     n_players = 11
-    game = PaperGame()
+    game = paper_game
     approximator = RegressionFBII(n=n_players, max_order=2)
     banzhaf_fbii = approximator.approximate(budget=2**n_players, game=game)
-    #
 
     assert np.allclose(np.round(banzhaf_fbii.values[1:12], 2), 1.08, atol=1e-4)
-
     assert np.allclose(banzhaf_fbii.values[12:], -0.113, atol=1e-2)

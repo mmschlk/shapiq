@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from ...utils.sets import powerset
 from .._base import Approximator
 
@@ -155,4 +155,4 @@ class PermutationSamplingSII(Approximator):
             estimation_budget=used_budget,
         )
 
-        return finalize_to_valid_interaction_values(interactions, target_index=self.index)
+        return finalize_computed_interactions(interactions, target_index=self.index)

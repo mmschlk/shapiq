@@ -6,7 +6,7 @@ from collections.abc import Callable
 import numpy as np
 import scipy as sp
 
-from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from ...utils import get_explicit_subsets, powerset
 from .._base import Approximator
 
@@ -113,7 +113,7 @@ class PermutationSamplingSTII(Approximator):
                 estimation_budget=used_budget,
             )
 
-            return finalize_to_valid_interaction_values(interactions, target_index=self.index)
+            return finalize_computed_interactions(interactions, target_index=self.index)
 
         empty_value = game(np.zeros(self.n, dtype=bool))[0]
         used_budget += 1
@@ -144,7 +144,7 @@ class PermutationSamplingSTII(Approximator):
                 estimation_budget=used_budget,
             )
 
-            return finalize_to_valid_interaction_values(interactions, target_index=self.index)
+            return finalize_computed_interactions(interactions, target_index=self.index)
 
         # main permutation sampling loop
         for iteration in range(1, n_iterations + 1):
@@ -208,7 +208,7 @@ class PermutationSamplingSTII(Approximator):
             estimated=True,
             estimation_budget=used_budget,
         )
-        return finalize_to_valid_interaction_values(interactions, target_index=self.index)
+        return finalize_computed_interactions(interactions, target_index=self.index)
 
     def _compute_iteration_cost(self) -> int:
         """Computes the cost of performing a single iteration of the permutation sampling given

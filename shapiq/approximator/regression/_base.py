@@ -8,7 +8,7 @@ import numpy as np
 from scipy.special import bernoulli, binom
 
 from ...game_theory.indices import AVAILABLE_INDICES_REGRESSION
-from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from ...utils.sets import powerset
 from .._base import Approximator
 
@@ -77,12 +77,12 @@ class Regression(Approximator):
         Returns:
             The weights for sampling subsets of size s in shape (n + 1,).
         """
-        # vector that determines the kernel weights for KernelSHAPIQ
+        # vector that determines the kernel weights for the regression
         weight_vector = np.zeros(shape=self.n + 1)
-
         if self.index == "FBII":
             for coalition_size in range(0, self.n + 1):
                 weight_vector[coalition_size] = 1 / (2**self.n)
+            return weight_vector
         elif self.index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
             for coalition_size in range(0, self.n + 1):
                 if (coalition_size < interaction_size) or (
@@ -94,27 +94,32 @@ class Regression(Approximator):
                         (self.n - 2 * interaction_size + 1)
                         * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
                     )
-        else:
-            raise ValueError(f"Index {self.index} not available for Regression Approximator.")
-        kernel_weight = weight_vector
-        return kernel_weight
+            return weight_vector
+        raise ValueError(
+            f"Index {self.index} not available for Regression Approximator."
+        )  # pragma: no cover
 
     def approximate(
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
+        *args,
+        **kwargs,
     ) -> InteractionValues:
         """The main approximation routine for the regression approximators.
+
         The regression estimators approximate Shapley Interactions based on a representation as a
         weighted least-square (WLSQ) problem. The regression approximator first approximates the
         objective of the WLSQ problem by Monte Carlo sampling and then computes an exact WLSQ
         solution based on the approximated objective. This approximation is an extension of
         KernelSHAP with different variants of kernel weights and regression settings.
-        For details on KernelSHAP, refer to `Lundberg and Lee (2017) <https://doi.org/10.48550/arXiv.1705.07874>`_.
+        For details on KernelSHAP, refer to
+        `Lundberg and Lee (2017) <https://doi.org/10.48550/arXiv.1705.07874>`_.
 
         Args:
             budget: The budget of the approximation.
             game: The game to be approximated.
+            *args and **kwargs: Additional arguments not used.
 
         Returns:
             The `InteractionValues` object containing the estimated interaction values.
@@ -160,7 +165,7 @@ class Regression(Approximator):
             estimation_budget=budget,
         )
 
-        return finalize_to_valid_interaction_values(interactions, target_index=self.index)
+        return finalize_computed_interactions(interactions, target_index=self.index)
 
     def kernel_shap_iq_routine(
         self, kernel_weights_dict: dict, game_values: np.ndarray

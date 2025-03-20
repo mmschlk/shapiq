@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from .._base import Approximator
 
 
@@ -77,7 +77,7 @@ class PermutationSamplingSV(Approximator):
                 estimation_budget=used_budget,
             )
 
-            return finalize_to_valid_interaction_values(interactions, target_index=self.index)
+            return finalize_computed_interactions(interactions, target_index=self.index)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
@@ -147,4 +147,4 @@ class PermutationSamplingSV(Approximator):
             estimation_budget=used_budget,
         )
 
-        return finalize_to_valid_interaction_values(interactions, target_index=self.index)
+        return finalize_computed_interactions(interactions, target_index=self.index)

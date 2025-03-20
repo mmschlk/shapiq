@@ -6,7 +6,7 @@ import numpy as np
 from scipy.special import binom, factorial
 
 from ...game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
-from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from ...utils.sets import powerset
 from .._base import Approximator
 
@@ -111,7 +111,7 @@ class MonteCarlo(Approximator):
             estimation_budget=budget,
         )
 
-        return finalize_to_valid_interaction_values(interactions, target_index=self.index)
+        return finalize_computed_interactions(interactions, target_index=self.index)
 
     def monte_carlo_routine(
         self,
@@ -396,8 +396,7 @@ class MonteCarlo(Approximator):
         """
         if interaction_size == self.max_order:
             return self.max_order / (self.n * binom(self.n - 1, coalition_size))
-        else:
-            return 1.0 * (coalition_size == 0)
+        return 1.0 * (coalition_size == 0)
 
     def _fsii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Returns the FSII discrete derivative weight given the coalition size and interaction
@@ -421,10 +420,9 @@ class MonteCarlo(Approximator):
                 * factorial(coalition_size + self.max_order - 1)
                 / factorial(self.n + self.max_order - 1)
             )
-        else:
-            raise ValueError("Lower order interactions are not supported.")
+        raise ValueError(f"Lower order interactions are not supported for {self.index}.")
 
-    def _fbii_weight(self, coalition_size: int, interaction_size: int) -> float:
+    def _fbii_weight(self, interaction_size: int) -> float:
         """Returns the FSII discrete derivative weight given the coalition size and interaction
         size.
 
@@ -432,7 +430,6 @@ class MonteCarlo(Approximator):
         `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
 
         Args:
-            coalition_size: The size of the subset.
             interaction_size: The size of the interaction.
 
         Returns:
@@ -440,8 +437,7 @@ class MonteCarlo(Approximator):
         """
         if interaction_size == self.max_order:
             return 1 / 2 ** (self.n - interaction_size)
-        else:
-            raise ValueError("Lower order interactions are not supported.")
+        raise ValueError(f"Lower order interactions are not supported for {self.index}.")
 
     def _weight(self, index: str, coalition_size: int, interaction_size: int) -> float:
         """Returns the weight for each interaction type given coalition and interaction size.
@@ -459,7 +455,7 @@ class MonteCarlo(Approximator):
         elif index == "FSII":
             return self._fsii_weight(coalition_size, interaction_size)
         elif index == "FBII":
-            return self._fbii_weight(coalition_size, interaction_size)
+            return self._fbii_weight(interaction_size)
         elif index in ["SII", "SV"]:
             return self._sii_weight(coalition_size, interaction_size)
         elif index == "BII":

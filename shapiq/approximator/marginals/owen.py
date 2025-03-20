@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues, finalize_to_valid_interaction_values
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from .._base import Approximator
 
 
@@ -113,7 +113,7 @@ class OwenSamplingSV(Approximator):
             estimation_budget=used_budget,
         )
 
-        return finalize_to_valid_interaction_values(
+        return finalize_computed_interactions(
             interaction,
             target_index=self.index,
         )
