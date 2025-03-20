@@ -8,6 +8,8 @@
 - fixes a bug where `InteractionValues.get_subset()` returns a faulty `coalition_lookup` dictionary pointing to indices outside the subset of players [#336](https://github.com/mmschlk/shapiq/issues/336)
 - updates default value of `TreeExplainer`'s `min_order` parameter from 1 to 0 to include the baseline value in the interaction values as per default
 - adds the `RegressionFBII` approximator to estimate Faithful Banzhaf interactions via least squares regression [#333](https://github.com/mmschlk/shapiq/pull/333). Additionally, FBII support was introduced in TabularExplainer and MonteCarlo-Approximator.
+- adds a `RandomGame` class as part of `shapiq.games.benchmark` which always returns a random vector of integers between 0 and 100.
+- substantially improves the runtime of all `Regression` approximators by a) a faster pre-computation of the regression matrices and b) a faster computation of the weighted least squares regression [#340](https://github.com/mmschlk/shapiq/issues/340)
 
 ### v1.2.2 (2025-03-11)
 - changes python support to 3.10-3.13 [#318](https://github.com/mmschlk/shapiq/pull/318)
