@@ -989,5 +989,13 @@ def finalize_computed_interactions(
                 interactions[idx] = interactions.baseline_value
             else:  # manually set baseline to the empty value
                 interactions.baseline_value = interactions[idx]
+    # empty not in interactions but min_order is 0 (should be in the interactions)
+    elif interactions.min_order == 0:
+        # TODO: this might not be what we really want to do always ... what if empty and baseline
+        # are different?
+        interactions.interaction_lookup[tuple()] = len(interactions.interaction_lookup)
+        interactions.values = np.concatenate(
+            (interactions.values, np.array([interactions.baseline_value]))
+        )
 
     return interactions

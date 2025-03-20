@@ -21,7 +21,7 @@ from ..approximator import (
 )
 from ..approximator._base import Approximator
 from ..explainer._base import Explainer
-from ..interaction_values import InteractionValues
+from ..interaction_values import InteractionValues, finalize_computed_interactions
 
 APPROXIMATOR_CONFIGURATIONS = {
     "regression": {
@@ -210,6 +210,9 @@ class TabularExplainer(Explainer):
         # explain
         interaction_values = self._approximator(budget=budget, game=imputer)
         interaction_values.baseline_value = self.baseline_value
+        interaction_values = finalize_computed_interactions(
+            interaction_values, target_index=self.index
+        )
 
         return interaction_values
 

@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from .._base import Explainer
 from .treeshapiq import TreeModel, TreeSHAPIQ
 from .validation import validate_tree_model
@@ -42,7 +42,7 @@ class TreeExplainer(Explainer):
         self,
         model: dict | TreeModel | list | Any,
         max_order: int = 2,
-        min_order: int = 1,
+        min_order: int = 0,
         index: str = "k-SII",
         class_index: int | None = None,
         **kwargs,
@@ -56,6 +56,7 @@ class TreeExplainer(Explainer):
         elif max_order == 1 and index != "SV":
             warnings.warn("For max_order=1 the index is set to 'SV'.")
             index = "SV"
+        self.index = index
 
         # validate and parse model
         validated_model = validate_tree_model(model, class_label=class_index)
@@ -98,6 +99,15 @@ class TreeExplainer(Explainer):
         if len(interaction_values) > 1:
             for i in range(1, len(interaction_values)):
                 final_explanation += interaction_values[i]
+
+        if self._min_order == 0 and final_explanation.min_order == 1:
+            final_explanation.min_order = 0
+            final_explanation = finalize_computed_interactions(
+                final_explanation, target_index=self.index
+            )
+        final_explanation = finalize_computed_interactions(
+            final_explanation, target_index=self.index
+        )
         return final_explanation
 
     def _compute_baseline_value(self) -> float:

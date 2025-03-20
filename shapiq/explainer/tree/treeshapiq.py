@@ -7,9 +7,8 @@ from typing import Any
 import numpy as np
 import scipy as sp
 
-from ...game_theory import aggregate_base_interaction
 from ...game_theory.indices import get_computation_index
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from ...utils.sets import generate_interaction_lookup, powerset
 from .base import EdgeTree, TreeModel
 from .conversion.edges import create_edge_tree
@@ -174,9 +173,9 @@ class TreeSHAPIQ:
             baseline_value=self.empty_prediction,
         )
 
-        if self._base_index != self._index:
-            shapley_interaction_values = aggregate_base_interaction(shapley_interaction_values)
-
+        shapley_interaction_values = finalize_computed_interactions(
+            shapley_interaction_values, target_index=self._index
+        )
         return shapley_interaction_values
 
     def _compute_trivial_shapley_interaction_values(self, x) -> np.ndarray:
