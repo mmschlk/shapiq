@@ -2,7 +2,6 @@
 
 import copy
 import time
-import warnings
 from collections.abc import Callable
 
 import numpy as np
@@ -229,9 +228,9 @@ class Regression(Approximator):
             if interaction_size <= 2:
                 # get \phi_i via solving the regression problem
                 sii_values_current_size = solve_regression(
-                    regression_matrix=regression_matrix,
-                    regression_response=residual_game_values[interaction_size],
-                    regression_weights=regression_weights,
+                    X=regression_matrix,
+                    y=residual_game_values[interaction_size],
+                    kernel_weights=regression_weights,
                 )
             else:
                 # for order > 2 use ground truth weights for sizes < interaction_size and > n -
@@ -253,9 +252,9 @@ class Regression(Approximator):
 
                 # get \phi_i via solving the regression problem
                 sii_values_current_size_plus = solve_regression(
-                    regression_matrix=regression_matrix,
-                    regression_response=game_values_plus,
-                    regression_weights=regression_weights,
+                    X=regression_matrix,
+                    y=game_values_plus,
+                    kernel_weights=regression_weights,
                 )
 
                 sii_values_current_size = (
@@ -317,9 +316,9 @@ class Regression(Approximator):
 
         # compute old ------------------------------------------------------------------------------
         shapley_interactions_values = solve_regression(
-            regression_matrix=regression_matrix,
-            regression_response=regression_response,
-            regression_weights=regression_weights,
+            X=regression_matrix,
+            y=regression_response,
+            kernel_weights=regression_weights,
         )
 
         if index_approximation in ["kADD-SHAP", "FBII"]:
@@ -656,10 +655,10 @@ def _get_regression_matrix(
 
 
 def solve_regression(
-    regression_matrix: np.ndarray,
-    regression_response: np.ndarray,
-    regression_weights: np.ndarray,
-) -> np.ndarray[float]:
+    X: np.ndarray,
+    y: np.ndarray,
+    kernel_weights: np.ndarray,
+) -> np.ndarray:
     """Solves the regression problem using the weighted least squares method. Returns all
     approximated interactions.
 
@@ -672,27 +671,16 @@ def solve_regression(
     Returns:
         The solution to the regression problem.
     """
-    print("Using numpy solve and lstsq")
     try:
-        # try solving via solve function  -> very quick if possible
-        weighted_regression_matrix = regression_weights[:, None] * regression_matrix
-        shapley_interactions_values = np.linalg.solve(
-            regression_matrix.T @ weighted_regression_matrix,
-            weighted_regression_matrix.T @ regression_response,
-        )
+        # try solving via solve function
+        WX = kernel_weights[:, np.newaxis] * X
+        shapley_interactions_values = np.linalg.solve(X.T @ WX, WX.T @ y)
     except np.linalg.LinAlgError:
         # solve WLSQ via lstsq function and throw warning
-        warnings.warn(
-            UserWarning(
-                "Linear regression equation is singular, a least squares solutions is used "
-                "instead. Note this may be slow and use a lot of memory.\n"
-            )
-        )
-        regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
-        regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
-        regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
-        shapley_interactions_values = np.linalg.lstsq(regression_lhs, regression_rhs, rcond=None)[0]
-
+        sqrt_weights = np.sqrt(kernel_weights)
+        X = X * sqrt_weights[:, np.newaxis]
+        y = y * sqrt_weights
+        shapley_interactions_values = np.linalg.lstsq(X, y, rcond=None)[0]
     return shapley_interactions_values
 
 
