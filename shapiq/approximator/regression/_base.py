@@ -9,7 +9,7 @@ import numpy as np
 from scipy.special import bernoulli, binom
 
 from ...game_theory.indices import AVAILABLE_INDICES_REGRESSION
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from ...utils.sets import powerset
 from .._base import Approximator
 
@@ -78,35 +78,49 @@ class Regression(Approximator):
         Returns:
             The weights for sampling subsets of size s in shape (n + 1,).
         """
-        # vector that determines the kernel weights for KernelSHAPIQ
+        # vector that determines the kernel weights for the regression
         weight_vector = np.zeros(shape=self.n + 1)
-        for coalition_size in range(0, self.n + 1):
-            if (coalition_size < interaction_size) or (coalition_size > self.n - interaction_size):
-                weight_vector[coalition_size] = self._big_M
-            else:
-                weight_vector[coalition_size] = 1 / (
-                    (self.n - 2 * interaction_size + 1)
-                    * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
-                )
-        kernel_weight = weight_vector
-        return kernel_weight
+        if self.index == "FBII":
+            for coalition_size in range(0, self.n + 1):
+                weight_vector[coalition_size] = 1 / (2**self.n)
+            return weight_vector
+        elif self.index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
+            for coalition_size in range(0, self.n + 1):
+                if (coalition_size < interaction_size) or (
+                    coalition_size > self.n - interaction_size
+                ):
+                    weight_vector[coalition_size] = self._big_M
+                else:
+                    weight_vector[coalition_size] = 1 / (
+                        (self.n - 2 * interaction_size + 1)
+                        * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
+                    )
+            return weight_vector
+        raise ValueError(
+            f"Index {self.index} not available for Regression Approximator."
+        )  # pragma: no cover
 
     def approximate(
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
+        *args,
+        **kwargs,
     ) -> InteractionValues:
         """The main approximation routine for the regression approximators.
+
         The regression estimators approximate Shapley Interactions based on a representation as a
         weighted least-square (WLSQ) problem. The regression approximator first approximates the
         objective of the WLSQ problem by Monte Carlo sampling and then computes an exact WLSQ
         solution based on the approximated objective. This approximation is an extension of
         KernelSHAP with different variants of kernel weights and regression settings.
-        For details on KernelSHAP, refer to `Lundberg and Lee (2017) <https://doi.org/10.48550/arXiv.1705.07874>`_.
+        For details on KernelSHAP, refer to
+        `Lundberg and Lee (2017) <https://doi.org/10.48550/arXiv.1705.07874>`_.
 
         Args:
             budget: The budget of the approximation.
             game: The game to be approximated.
+            *args and **kwargs: Additional arguments not used.
 
         Returns:
             The `InteractionValues` object containing the estimated interaction values.
@@ -140,9 +154,19 @@ class Regression(Approximator):
 
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
-        return self._finalize_result(
-            result=shapley_interactions_values, baseline_value=baseline_value, budget=budget
+        interactions = InteractionValues(
+            values=shapley_interactions_values,
+            index=index_approximation,
+            interaction_lookup=self.interaction_lookup,
+            baseline_value=baseline_value,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            estimated=False if budget >= 2**self.n else True,
+            estimation_budget=budget,
         )
+
+        return finalize_computed_interactions(interactions, target_index=self.index)
 
     def kernel_shap_iq_routine(
         self, kernel_weights_dict: dict, game_values: np.ndarray
@@ -270,7 +294,7 @@ class Regression(Approximator):
 
         coalitions_matrix = self._sampler.coalitions_matrix
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
-        sampling_adjustment_weights = sampling_adjustment_weights
+        # coalitions_size = np.sum(coalitions_matrix, axis=1)
 
         empty_coalition_value = float(game_values[np.sum(coalitions_matrix, axis=1) == 0][0])
         # grand_coalition_value = float(game_values[np.sum(coalitions_matrix, axis=1) == self.n][0])
@@ -298,7 +322,7 @@ class Regression(Approximator):
             regression_weights=regression_weights,
         )
 
-        if index_approximation == "kADD-SHAP":
+        if index_approximation in ["kADD-SHAP", "FBII"]:
             shapley_interactions_values[0] += empty_coalition_value
         else:
             shapley_interactions_values[0] = empty_coalition_value
@@ -320,10 +344,11 @@ class Regression(Approximator):
             return self._get_bernoulli_weights(max_order=max_order)
         elif index == "kADD-SHAP":
             return self._get_kadd_weights(max_order=max_order)
-        elif index == "FSII":
+        elif index in ["FSII", "FBII"]:
             # Default weights for FSI
             weights = np.zeros((max_order + 1, max_order + 1))
-            for interaction_size in range(1, max_order + 1):
+            # Including the zero interaction size unharmful for FSII, due to \mu(\emptyset)= \infty thus \phi(\emptyset)=0
+            for interaction_size in range(0, max_order + 1):
                 # 1 if interaction is fully contained, else 0.
                 weights[interaction_size, interaction_size] = 1
             return weights

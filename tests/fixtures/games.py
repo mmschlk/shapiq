@@ -6,11 +6,10 @@ import pytest
 
 @pytest.fixture
 def cooking_game():
-    import shapiq
+    """Return the cooking game object."""
+    from shapiq.games.base import Game
 
-    """Return a simple game object."""
-
-    class CookingGame(shapiq.Game):
+    class CookingGame(Game):
         def __init__(self):
             self.characteristic_function = {
                 (): 10,
@@ -37,3 +36,31 @@ def cooking_game():
             return np.array(output)
 
     return CookingGame()
+
+
+@pytest.fixture
+def paper_game():
+    """Return a simple game object."""
+    from scipy.special import binom
+
+    from shapiq.games.base import Game
+
+    class PaperGame(Game):
+        """A game with 11 players, where each coalition must contain at least 2 players and with probability 0.1 of two players not cooperating."""
+
+        def __init__(self):
+            super().__init__(
+                n_players=11,
+                player_names=None,  # Optional list of names
+                normalization_value=0,  # 0
+            )
+
+        def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+            """Defines the worth of a coalition as a lookup in the characteristic function."""
+            output = [
+                sum(coalition) - 0.1 * binom(sum(coalition), 2) if sum(coalition) > 1 else 0
+                for coalition in coalitions
+            ]
+            return np.array(output)
+
+    return PaperGame()

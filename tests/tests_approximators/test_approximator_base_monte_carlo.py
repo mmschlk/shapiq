@@ -14,6 +14,7 @@ from shapiq.interaction_values import InteractionValues
         (7, 2, "SII", False, True, False),
         (7, 2, "wrong_index", False, False, True),
         (7, 2, "FSII", True, False, False),
+        (7, 2, "FBII", True, False, False),
     ],
 )
 def test_initialization(
@@ -49,6 +50,12 @@ def test_initialization(
         _ = approximator._fsii_weight(interaction_size=max_order, coalition_size=0)  # no error
         with pytest.raises(ValueError):  # FSII weights only defined for top order
             approximator._fsii_weight(interaction_size=max_order - 1, coalition_size=0)  # error
+
+    if index == "FBII":
+        max_order = approximator.max_order
+        _ = approximator._fbii_weight(interaction_size=max_order)
+        with pytest.raises(ValueError):
+            approximator._fbii_weight(interaction_size=max_order - 1)
 
 
 @pytest.mark.parametrize(
