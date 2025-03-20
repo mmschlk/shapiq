@@ -1,7 +1,6 @@
 """This module contains the Base Regression approximator to compute SII and k-SII of arbitrary max_order."""
 
 import copy
-import time
 from collections.abc import Callable
 
 import numpy as np
@@ -203,27 +202,22 @@ class Regression(Approximator):
         )
 
         # iterate over the interaction sizes and compute the sii values via the WLSQ regression
+        idx_order = 1  # start of by excluding the empty coalition
         for interaction_size in range(1, self.max_order + 1):
-            regression_matrix = np.zeros(
-                (np.shape(coalitions_matrix)[0], int(binom(self.n, interaction_size)))
+            # this may be further optimized by precomputing the regression matrix
+            # for multiple weights currently, it is computed for each interaction size
+            # however, the computation is not really a bottleneck anymore
+            regression_matrix, regression_weights = _get_regression_matrices(
+                kernel_weights=kernel_weights_dict[interaction_size],
+                regression_coefficient_weight=regression_coefficient_weight,
+                sampling_adjustment_weights=sampling_adjustment_weights,
+                coalitions_matrix=coalitions_matrix,
+                max_order=self.max_order,
+                n=self.n,
             )
-            for coalition_pos, coalition in enumerate(coalitions_matrix):
-                for interaction_pos, interaction in enumerate(
-                    powerset(
-                        self._grand_coalition_set,
-                        min_size=interaction_size,
-                        max_size=interaction_size,
-                    )
-                ):
-                    intersection_size = np.sum(coalition[list(interaction)])
-                    regression_matrix[coalition_pos, interaction_pos] = (
-                        regression_coefficient_weight[interaction_size, intersection_size]
-                    )
-
-            # Regression weights adjusted by sampling weights
-            regression_weights = (
-                kernel_weights_dict[interaction_size][coalitions_size] * sampling_adjustment_weights
-            )
+            n_interactions = int(binom(self.n, interaction_size))
+            regression_matrix = regression_matrix[:, idx_order : idx_order + n_interactions]
+            idx_order += n_interactions
 
             if interaction_size <= 2:
                 # get \phi_i via solving the regression problem
@@ -290,20 +284,15 @@ class Regression(Approximator):
         Returns:
             A numpy array of the approximated interaction values.
         """
-
         coalitions_matrix = self._sampler.coalitions_matrix
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
-        # coalitions_size = np.sum(coalitions_matrix, axis=1)
-
         empty_coalition_value = float(game_values[np.sum(coalitions_matrix, axis=1) == 0][0])
-        # grand_coalition_value = float(game_values[np.sum(coalitions_matrix, axis=1) == self.n][0])
         regression_response = game_values - empty_coalition_value
         regression_coefficient_weight = self._get_regression_coefficient_weights(
             max_order=self.max_order, index=index_approximation
         )
 
-        start_time = time.time()
-        regression_matrix, regression_weights = _get_regression_matrix(
+        regression_matrix, regression_weights = _get_regression_matrices(
             kernel_weights=kernel_weights,
             regression_coefficient_weight=regression_coefficient_weight,
             sampling_adjustment_weights=sampling_adjustment_weights,
@@ -311,10 +300,7 @@ class Regression(Approximator):
             max_order=self.max_order,
             n=self.n,
         )
-        end_time = time.time()
-        print(f"New version: {end_time - start_time}")
 
-        # compute old ------------------------------------------------------------------------------
         shapley_interactions_values = solve_regression(
             X=regression_matrix,
             y=regression_response,
@@ -485,9 +471,9 @@ class Regression(Approximator):
             its intersection size.
 
         Args:
-            coalition_size: The size of the coalition
-            interaction_size: The size of the interaction
-            intersection_size: The size of the intersection  TODO add more details here what intersection size is
+            coalition_size: The size of the coalition.
+            interaction_size: The size of the interaction.
+            intersection_size: The size of the intersection of the coalition and the interaction.
 
         Returns:
             The ground truth SII weight
@@ -498,7 +484,7 @@ class Regression(Approximator):
         )
 
 
-def _get_regression_matrix(
+def _get_regression_matrices(
     kernel_weights: np.ndarray,
     regression_coefficient_weight: np.ndarray,
     sampling_adjustment_weights: np.ndarray,
@@ -506,7 +492,19 @@ def _get_regression_matrix(
     max_order: int,
     n: int,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Implements the new version of the regression matrix computation."""
+    """Constructs the regression matrix and regression weights for the regression problem.
+
+    Args:
+        kernel_weights: The weights for the regression problem for each coalition.
+        regression_coefficient_weight: The weights for the regression coefficients.
+        sampling_adjustment_weights: The weights for the sampling procedure.
+        coalitions_matrix: The coalitions matrix.
+        max_order: The maximum order of the approximation.
+        n: The number of players.
+
+    Returns:
+        A tuple containing the regression matrix and the regression weights.
+    """
     # Step 1: Precompute interactions masks
     interaction_masks = []
     interaction_sizes = []
@@ -521,152 +519,29 @@ def _get_regression_matrix(
     interaction_masks = np.array(interaction_masks).T  # Shape: (n, n_interactions)
     interaction_sizes = np.array(interaction_sizes)  # Shape: (n_interactions,)
 
-    # Step 2: Compute intersection sizes via matrix multiplication
-    # Shape (n_coalitions, n_interactions)
+    # compute intersection sizes via matrix multiplication
     intersection_sizes = coalitions_matrix @ interaction_masks
 
-    # Step 3: Use intersection sizes and interaction sizes to index regression_coefficient_weight
-    # We use advanced numpy indexing here for fast assignment
+    # use intersection sizes and interaction sizes to index regression_coefficient_weight
     regression_matrix = regression_coefficient_weight[interaction_sizes, intersection_sizes]
 
-    # Step 4: Compute regression weights
+    # compute regression weights
     regression_weights = kernel_weights[np.sum(coalitions_matrix, axis=1)]
 
-    # Step 5: Adjust regression weights with the sampling weights
+    # adjust regression weights with the sampling weights
     regression_weights *= sampling_adjustment_weights
 
     return regression_matrix, regression_weights
 
 
-# def projection_step(phi: np.ndarray, total: float) -> np.ndarray:
-#     """
-#     Perform a projection step to adjust Shapley interactions.
-#
-#     Args:
-#         phi: Current estimate of Shapley interactions.
-#         total: Total contribution of all players (grand - empty coalition value).
-#
-#     Returns:
-#         np.ndarray: Adjusted Shapley interactions.
-#     """
-#     return phi - (np.sum(phi, axis=0) - total) / len(phi)
-#
-#
-# # TODO incorpoarte this into regression class
-# def solve_with_projected_sgd(
-#     regression_matrix: np.ndarray,
-#     regression_response: np.ndarray,
-#     regression_weights: np.ndarray,
-#     empty_coalition_value: float,
-#     grand_coalition_value: float,
-#     mini_batch_size: int = 10,
-#     max_iterations: int = 100,
-#     step: float = 0.001,
-# ) -> np.ndarray:
-#     """Solves the estimation of the shapley values and shapley interactions with a projected SGD.
-#
-#     Args:
-#         regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
-#             Depends on the index.
-#         regression_response: The response vector for each coalition.
-#         regression_weights: The weights for the regression problem for each coalition.
-#         empty_coalition_value: The value of the empty coalition.
-#         grand_coalition_value: The total value of the grand coalition.
-#         mini_batch_size: The size of the mini-batch.
-#         max_iterations: The maximum number of iterations.
-#         step: The step size (learning rate) for the SGD.
-#
-#         Returns:
-#             The solution to the regression problem.
-#     """
-#     print("Using Projected SGD")
-#
-#     n_interactions = regression_matrix.shape[1]
-#     total = grand_coalition_value - empty_coalition_value
-#     shapley_interactions = np.zeros((n_interactions, 1), dtype=float)
-#     shapley_interactions = projection_step(shapley_interactions, total)  # not float?
-#     shapley_interactions_history = []
-#     regression_response = regression_response.reshape(len(regression_response), 1)
-#     regression_response -= empty_coalition_value
-#
-#     for it in range(max_iterations):
-#         x_batch = regression_matrix[it * mini_batch_size : (it + 1) * mini_batch_size]
-#         y_batch = regression_response[it * mini_batch_size : (it + 1) * mini_batch_size]
-#         assert x_batch.shape[0] == y_batch.shape[0], "x_batch and y_batch must have the same size"
-#         if x_batch.shape[0] != mini_batch_size:
-#             break
-#
-#         # calculate the gradient
-#         residual = x_batch.dot(shapley_interactions) - y_batch
-#         gradient = x_batch[:, :, None] * residual[:, None, :]
-#
-#         # multiply with the weights
-#
-#         # average the gradient
-#         gradient = np.mean(gradient, axis=0)
-#
-#         # update the shapley interactions
-#         shapley_interactions = shapley_interactions - step * gradient
-#
-#         # projection step
-#         shapley_interactions = projection_step(shapley_interactions, grand_coalition_value)
-#
-#         # update the history
-#         shapley_interactions_history.append(shapley_interactions)
-#
-#     # flatten shapley_interactions
-#     shapley_interactions = shapley_interactions.flatten()
-#     return shapley_interactions
-
-
-# def solve_regression_lasso(
-#     regression_matrix: np.ndarray,
-#     regression_response: np.ndarray,
-#     regression_weights: np.ndarray,
-# ) -> np.ndarray[float]:
-#     """Solves the regression problem using the weighted least squares method. Returns all
-#     approximated interactions.
-#
-#     Args:
-#         regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
-#             Depends on the index.
-#         regression_response: The response vector for each coalition.
-#         regression_weights: The weights for the regression problem for each coalition.
-#
-#     Returns:
-#         The solution to the regression problem.
-#     """
-#     print("Using Lasso")
-#     regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
-#     regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
-#     regression_rhs = np.dot(regression_weights_sqrt_matrix, regression_response)
-#     shapley_interactions_values = (
-#         LassoLarsIC(criterion="aic").fit(regression_lhs, regression_rhs).coef_
-#     )
-#     # shapley_interactions_values = lars_path(regression_lhs, regression_rhs, max_iter=10)[1]
-#     # shapley_interactions_values = (
-#     #    LassoLars().fit(regression_lhs, regression_rhs).coef_
-#     # )
-#     # shapley_interactions_values = (
-#     #    Lasso().fit(regression_lhs, regression_rhs).coef_
-#     # )
-#
-#     return shapley_interactions_values.astype(dtype=float)
-
-
-def solve_regression(
-    X: np.ndarray,
-    y: np.ndarray,
-    kernel_weights: np.ndarray,
-) -> np.ndarray:
+def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: np.ndarray) -> np.ndarray:
     """Solves the regression problem using the weighted least squares method. Returns all
     approximated interactions.
 
     Args:
-        regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
-            Depends on the index.
-        regression_response: The response vector for each coalition.
-        regression_weights: The weights for the regression problem for each coalition.
+        X: The regression matrix of shape ``[n_coalitions, n_interactions]``.
+        y: The response vector for each coalition of shape ``[n_coalitions]``.
+        kernel_weights: The weights for the regression problem for each coalition.
 
     Returns:
         The solution to the regression problem.
@@ -674,70 +549,11 @@ def solve_regression(
     try:
         # try solving via solve function
         WX = kernel_weights[:, np.newaxis] * X
-        shapley_interactions_values = np.linalg.solve(X.T @ WX, WX.T @ y)
+        phi = np.linalg.solve(X.T @ WX, WX.T @ y)
     except np.linalg.LinAlgError:
         # solve WLSQ via lstsq function and throw warning
-        sqrt_weights = np.sqrt(kernel_weights)
-        X = X * sqrt_weights[:, np.newaxis]
-        y = y * sqrt_weights
-        shapley_interactions_values = np.linalg.lstsq(X, y, rcond=None)[0]
-    return shapley_interactions_values
-
-
-# def solve_regression_online(
-#     regression_matrix: np.ndarray,
-#     regression_response: np.ndarray,
-#     regression_weights: np.ndarray,
-#     batch_size: int = 1000,
-#     max_iter: int = 1000,
-# ) -> np.ndarray:
-#     """Solves the regression problem using online learning with weighted least squares.
-#
-#     Args:
-#         regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
-#         regression_response: The response vector for each coalition.
-#         regression_weights: The weights for the regression problem for each coalition.
-#         batch_size: Number of samples per batch for online learning.
-#         max_iter: Maximum number of passes through the data.
-#
-#     Returns:
-#         The solution to the regression problem.
-#     """
-#     print("Using online SGDRegressor for weighted least squares")
-#
-#     n_samples, n_features = regression_matrix.shape
-#     model = SGDRegressor(
-#         fit_intercept=False,  # No intercept, matches lstsq behavior
-#         max_iter=max_iter,
-#         learning_rate="optimal",
-#         penalty=None  # No regularization to mimic exact least squares
-#     )
-#
-#     try:
-#         for i in range(0, n_samples, batch_size):
-#             # Extract mini-batch
-#             X_batch = regression_matrix[i:i+batch_size]
-#             y_batch = regression_response[i:i+batch_size]
-#             weights_batch = regression_weights[i:i+batch_size]
-#
-#             if X_batch.shape[0] == 0:  # Skip if empty
-#                 continue
-#
-#             # Apply weights
-#             sqrt_weights = np.sqrt(weights_batch)
-#             X_weighted = X_batch * sqrt_weights[:, np.newaxis]
-#             y_weighted = y_batch * sqrt_weights
-#
-#             # Incrementally fit model
-#             model.partial_fit(X_weighted, y_weighted)
-#
-#         # Return learned coefficients
-#         return model.coef_
-#
-#     except Exception as e:
-#         warnings.warn(
-#             UserWarning(
-#                 f"Online regression failed: {e}. Consider reducing batch size or using a distributed method."
-#             )
-#         )
-#         return np.zeros(n_features)
+        W_sqrt = np.sqrt(kernel_weights)
+        X = W_sqrt[:, np.newaxis] * X
+        y = W_sqrt * y
+        phi = np.linalg.lstsq(X, y, rcond=None)[0]
+    return phi

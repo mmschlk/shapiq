@@ -1,7 +1,7 @@
 import numpy as np
 
 # from ian_code import ShapleySGD
-from shapiq import RegressionFSII
+from shapiq import KernelSHAPIQ
 
 if __name__ == "__main__":
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     #
 
     n_players = 12
-    order = 1
+    order = 2
 
     # setup model
     weights = np.array([0.1 * i for i in range(n_players)])
@@ -53,14 +53,15 @@ if __name__ == "__main__":
 
     # compute with exact fsii
     if n_players < 13:
-        from shapiq import ExactComputer, RegressionFSII
+        from shapiq import ExactComputer
 
         computer = ExactComputer(n_players=n_players, game=linear_model, evaluate_game=True)
         fsii = computer(index="FSII", order=order)
         print(fsii)
 
     # compute with regression fsii
-    two_fsii = RegressionFSII(
+    two_fsii = KernelSHAPIQ(
+        index="k-SII",
         max_order=order,
         n=n_players,
     )
