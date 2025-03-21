@@ -97,9 +97,9 @@ class ConditionalImputer(Imputer):
         # (data.shape[0] * self.conditional_budget, n_features)
         X_masked = X_tiled.copy()
         try:
-            X_masked[coalitions_matrix] = np.NaN
+            X_masked[coalitions_matrix] = np.NaN  # old numpy version
         except AttributeError:  # interim solution since numpy changed
-            X_masked[coalitions_matrix] = np.nan
+            X_masked[coalitions_matrix] = np.nan  # new numpy version
         tree_embedder = xgboost.XGBRegressor(random_state=self.random_state)
         tree_embedder.fit(X_masked, X_tiled)
         self._data_embedded = tree_embedder.apply(data)
