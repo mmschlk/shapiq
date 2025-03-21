@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -32,7 +32,6 @@ maintainers = [
 license = { file = "LICENSE" }
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
@@ -58,6 +57,9 @@ keywords = [
     "shapley values",
     "feature interaction",
 ]
+
+[tool.setuptools.packages.find]
+where = "."
 
 [project.urls]
 documentation = "https://shapiq.readthedocs.io"
