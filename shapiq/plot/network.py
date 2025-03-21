@@ -15,8 +15,73 @@ from ._config import BLUE, LINES, NEUTRAL, RED, get_color
 
 __all__ = ["network_plot"]
 
-
 def network_plot(
+        interaction_values: InteractionValues | None = None,
+        *,
+        first_order_values: np.ndarray[float] | None = None,
+        second_order_values: np.ndarray[float] | None = None,
+        feature_names: list[Any] | None = None,
+        feature_image_patches: dict[int, Image.Image] | None = None,
+        feature_image_patches_size: float | dict[int, float] | None = 0.2,
+        center_image: Image.Image | None = None,
+        center_image_size: float | None = 0.6,
+        draw_legend: bool = True,
+        center_text: str | None = None,
+        show: bool = False,
+) -> tuple[plt.Figure, plt.Axes] | None:
+    """Draws the interaction network plot[1]_.
+
+    An interaction network is a graph where the nodes represent the features and the edges represent
+    the interactions. The edge width is proportional to the interaction value. The color of the edge
+    is red if the interaction value is positive and blue if the interaction value is negative. The
+    network plot has been used to visualize local Shapley interaction values[1]_ and is a variation
+    of the graph plots presented by Inglis et al. (2022)[2]_. Below is an example of an interaction
+    network with an image in the center.
+
+    .. image:: /_static/network_example.png
+        :width: 400
+        :align: center
+
+    Args:
+        interaction_values: The interaction values as an interaction object.
+        first_order_values: The first order n-SII values of shape ``(n_features,)``.
+        second_order_values: The second order n-SII values of shape ``(n_features, n_features)``. The
+            diagonal values are ignored. Only the upper triangular values are used.
+        feature_names: The feature names used for plotting. If no feature names are provided, the
+            feature indices are used instead. Defaults to ``None``.
+        feature_image_patches: A dictionary containing the image patches to be displayed instead of
+            the feature labels in the network. The keys are the feature indices and the values are
+            the feature images. Defaults to ``None``.
+        feature_image_patches_size: The size of the feature image patches. If a dictionary is
+            provided, the keys are the feature indices and the values are the feature image patch.
+            Defaults to ``0.2``.
+        center_image: The image to be displayed in the center of the network. Defaults to ``None``.
+        center_image_size: The size of the center image. Defaults to ``0.6``.
+        draw_legend: Whether to draw the legend. Defaults to ``True``.
+        center_text: The text to be displayed in the center of the network. Defaults to ``None``.
+        show: Whether to show the plot. Defaults to ``False``. If ``False``, the figure and the axis
+            containing the plot are returned, otherwise ``None``.
+
+    Returns:
+        The figure and the axis containing the plot if ``show=False``.
+
+    References:
+        .. [1] Muschalik, M., Fumagalli, F., Hammer, B., & Hüllermeier, E. (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
+
+        .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766–778.
+    """
+    from . import si_graph_plot
+    fig, ax = si_graph_plot(interaction_values=interaction_values, feature_names=feature_names,
+                            feature_image_patches=feature_image_patches, feature_image_patches_size=feature_image_patches_size,
+                            center_image=center_image, center_image_size=center_image_size,
+                            show=False,
+                            min_max_order=(1,2)
+                            )
+    if not show:
+        return fig, ax
+    plt.show()
+
+def network_plot_old(
     interaction_values: InteractionValues | None = None,
     *,
     first_order_values: np.ndarray[float] | None = None,
