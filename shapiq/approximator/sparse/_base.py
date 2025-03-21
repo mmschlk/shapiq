@@ -69,7 +69,7 @@ class Sparse(Approximator):
 
 
 
-    def _compute_b(self, budget: int, transform_type: str) -> int:
+    def _compute_b(self, budget: int) -> int:
         """Computes the budget for the approximation.
 
         Args:
@@ -164,3 +164,63 @@ class Sparse(Approximator):
         }
         return {tuple(np.nonzero(key)[0]): np.real(value) for key, value in
                             sparse_moebius_transform(signal, **smt_args).items()}
+
+    #####################################################################
+    # These functions will be replaced in the next release of sparse-transform
+    #####################################################################
+
+    @staticmethod
+    def get_number_of_samples(n, b, t, q, query_args):
+        """
+        Computes the number of vector-wise calls to self.func for the given query_args, n, t, and b.
+        """
+        num_subsample = query_args.get("num_subsample", 1)
+        num_rows_per_D = SubsampledSignal._get_delay_overhead(n, t, query_args)
+        samples_per_row = q ** b
+        total_samples = num_subsample * num_rows_per_D * samples_per_row  # upper bound
+        return total_samples
+
+    @staticmethod
+    def get_b_for_sample_budget(budget, n, t, q, query_args):
+        """
+        Find the maximum value of b that fits within the given sample budget.
+
+        Parameters:
+        budget (int): The maximum number of samples allowed.
+        n (int): Number of rows.
+        t (int): Error parameter.
+        q (int): Base of the transform.
+        query_args (dict): Additional query arguments.
+
+        Returns:
+        int: The maximum value of b that keeps the total samples within budget.
+        """
+        num_subsample = query_args.get("num_subsample", 1)
+        num_rows_per_D = SubsampledSignal._get_delay_overhead(n, t, query_args)
+        largest_b = np.floor(np.log(budget / (num_rows_per_D * num_subsample)) / np.log(q))
+        return int(largest_b)
+
+    @staticmethod
+    def _get_delay_overhead(n, t, query_args):  # TODO depends on q in general
+        """
+        Returns the overhead of the delays in terms of the number of samples
+        """
+        delays_method_source = query_args.get("delays_method_source", "identity")
+        if delays_method_source == "identity":
+            num_rows_per_D = n + 1
+        elif delays_method_source == "joint-coded":
+            from sparse_transform.qsft.codes.BCH import BCH
+            nc, kc = BCH.parameter_search(n, t)
+            num_rows_per_D = nc - kc + 1  # BCH parity length + 1 (for zero row)
+        elif delays_method_source == "random":
+            # For random delays, the number is specified or defaulted
+            num_rows_per_D = query_args.get("num_delays", n)
+        else:
+            # For other delay methods, assume default behavior
+            num_rows_per_D = n + 1
+
+        if query_args.get("delays_method_channel") == "nso":
+            num_repeat = query_args.get("num_repeat", 1)
+        else:
+            num_repeat = 1
+        return num_rows_per_D * num_repeat
