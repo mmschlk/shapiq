@@ -1,9 +1,106 @@
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "shapiq"
+dynamic = ["version", "readme"]
+description = "Shapley Interactions for Machine Learning"
+requires-python = ">=3.10"
+dependencies = [
+    # core
+    "numpy",
+    "scipy",
+    "pandas",
+    "scikit-learn",
+    "tqdm",
+    "requests",
+    # plotting
+    "matplotlib",
+    "networkx",
+    "colour",
+]
+authors = [
+    {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
+    {name = "Hubert Baniecki"},
+    {name = "Fabian Fumagalli"},
+]
+maintainers = [
+    {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: Unix',
+    'Operating System :: MacOS',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+]
+keywords = [
+    "python",
+    "machine learning",
+    "interpretable machine learning",
+    "shap",
+    "xai",
+    "explainable ai",
+    "interaction",
+    "shapley interactions",
+    "shapley values",
+    "feature interaction",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shapiq*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "shapiq.__version__"}
+readme = {file = ["README.md", "CHANGELOG.md"]}
+
+[project.urls]
+documentation = "https://shapiq.readthedocs.io"
+source = "https://github.com/mmschlk/shapiq"
+tracker = "https://github.com/mmschlk/shapiq/issues"
+changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = [
+    # Lint/format
+    "pre-commit",
+    "ruff",
+    # "mypy",  # TODO: incorporate mypy
+    # Test
+    "pytest",
+    "coverage",
+    "build",
+    "twine",
+]
+
+doc = [
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx_rtd_theme",
+    "sphinx_toolbox",
+    # "myst_nb",
+    "nbsphinx",  # for rendering jupyter notebooks
+    "pandoc",  # for rendering jupyter notebooks
+    "furo",  # theme of the docs
+    "sphinx-copybutton",  # easier copy-pasting of code snippets from docs
+    "myst-parser",  # parse md and rst files
+]
+
 [tool.pytest.ini_options]
-testpaths = "tests"
+testpaths = ["tests"]
+minversion = "8.0"
+
 
 [tool.black]
 line-length = 100
@@ -14,3 +111,12 @@ lint.select = ["E", "F", "I", "UP"]  # https://beta.ruff.rs/docs/rules/
 lint.ignore = ["E501"]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint.isort]
+known-first-party = ["shapiq"]
+extra-standard-library = ["typing_extensions"]
+combine-as-imports = true
+force-wrap-aliases = true
+
+[tool.uv.workspace]
+members = ["shapiq/shapiq"]

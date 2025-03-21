@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use ``shapiq`` and enjoy it, please consider citing our paper or consider starring this repository."
+authors:
+  - family-names: Muschalik
+    given-names: Maximilian
+  - family-names: Baniecki
+    given-names: Hubert
+  - family-names: Fumagalli
+    given-names: Fabian
+  - family-names: Kolpaczki
+    given-names: Patrick
+  - family-names: Hammer
+    given-names: Barbara
+  - family-names: H\"ullermeier
+    given-names: Eyke
+title: 'shapiq: Shapley Interactions for Machine Learning'
+version: 1.2.0
+url: https://openreview.net/forum?id=knxGmi6SJi
+date-released: '2024-11-15'
+preferred-citation:
+  authors:
+  - family-names: Muschalik
+    given-names: Maximilian
+  - family-names: Baniecki
+    given-names: Hubert
+  - family-names: Fumagalli
+    given-names: Fabian
+  - family-names: Kolpaczki
+    given-names: Patrick
+  - family-names: Hammer
+    given-names: Barbara
+  - family-names: H\"ullermeier
+    given-names: Eyke
+  title: 'shapiq: Shapley Interactions for Machine Learning'
+  url: https://openreview.net/forum?id=knxGmi6SJi
+  type: conference-paper
+  year: '2024'
+  collection-title: The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track
+  conference: {}
+  publisher: {}
