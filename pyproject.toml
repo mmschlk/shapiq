@@ -62,7 +62,7 @@ where = ["."]
 include = ["shapiq*"]
 
 [tool.setuptools.dynamic]
-version = {attr = "mymodule.__version__"}
+version = {attr = "shapiq.__version__"}
 readme = {file = ["README.md", "CHANGELOG.md"]}
 
 [project.urls]
