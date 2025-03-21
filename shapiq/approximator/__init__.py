@@ -7,7 +7,8 @@ from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
 from .regression import InconsistentKernelSHAPIQ, KernelSHAP, KernelSHAPIQ, RegressionFSII, kADDSHAP
-#TODO JK: Add the new approximator to the list
+from .sparse import SPEX
+#TODO JK: Check if addition of SPEX is okay
 
 
 # contains all SV approximators
@@ -19,6 +20,7 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     PermutationSamplingSV,
     KernelSHAP,
     kADDSHAP,
+    SPEX
 ]
 
 # contains all SI approximators
@@ -39,6 +41,7 @@ SII_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
+    SPEX,
 ]
 
 # contains all approximators that can be used for STII
@@ -48,6 +51,7 @@ STII_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
+    SPEX,
 ]
 
 # contains all approximators that can be used for FSII
@@ -57,6 +61,7 @@ FSII_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
+    SPEX,
 ]
 
 __all__ = [
@@ -73,6 +78,7 @@ __all__ = [
     "SVARM",
     "SVARMIQ",
     "kADDSHAP",
+    "SPEX",
     "UnbiasedKernelSHAP",
     "SV_APPROXIMATORS",
     "SI_APPROXIMATORS",
