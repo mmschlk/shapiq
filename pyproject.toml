@@ -58,8 +58,9 @@ keywords = [
     "feature interaction",
 ]
 
-[tool.setuptools]
-packages = ["shapiq"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shapiq*"]
 
 [project.urls]
 documentation = "https://shapiq.readthedocs.io"
