@@ -7,6 +7,7 @@ import matplotlib.path as mpath
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
+from PIL import Image
 
 from ..interaction_values import InteractionValues
 from ._config import get_color
@@ -15,7 +16,7 @@ NORMAL_NODE_SIZE = 0.125  # 0.125
 BASE_ALPHA_VALUE = 1.0  # the transparency level for the highest interaction
 BASE_SIZE = 0.05  # the size of the highest interaction edge (with scale factor 1)
 ADJUST_NODE_ALPHA = True
-
+LABEL_OFFSET = 0.07
 
 __all__ = ["si_graph_plot"]
 
@@ -265,7 +266,8 @@ def _draw_graph_edges(
         ax.add_patch(patch)
 
 
-def _draw_graph_labels(ax: plt.axis, pos: dict, graph: nx.Graph, nodes: list | None = None) -> None:
+def _draw_graph_labels(ax: plt.axis, pos: dict, graph: nx.Graph, nodes: list | None = None,
+                       normal_node_size = 1.0, plot_white_nodes = False) -> None:
     """Adds labels to the nodes of the graph.
 
     Args:
@@ -279,15 +281,52 @@ def _draw_graph_labels(ax: plt.axis, pos: dict, graph: nx.Graph, nodes: list | N
             continue
         label = graph.nodes.get(node)["label"]
         position = pos[node]
+        if plot_white_nodes:
+            offset = (0,0)
+        else:
+            # offset so the text is next to the node
+            offset_norm = np.sqrt(position[0]**2 + position[1]**2)
+            offset = (LABEL_OFFSET+normal_node_size)*position[0]/offset_norm, (LABEL_OFFSET+normal_node_size)*position[1]/offset_norm
         ax.text(
-            position[0],
-            position[1],
+            position[0]+offset[0],
+            position[1]+offset[1],
             label,
             fontsize=plt.rcParams["font.size"] + 1,
             ha="center",
             va="center",
             color="black",
         )
+
+def _draw_feature_images(
+        ax: plt.axis,
+        pos: dict,
+        graph: nx.Graph,
+        feature_image_patches: dict[int, Image.Image],
+        patch_size: float,
+        scale: float,
+    ) -> None:
+    """Draws the feature images.
+
+    Args:
+        ax: The axis to draw the edges on.
+        pos: The positions of the nodes.
+        graph: The graph to draw the edges on.
+        feature_image_patches: a dict that stores the images for the players
+        patch_size: The size of the feature images.
+        scale: scale factor determined by the plots width
+    """
+    extend = scale * patch_size / 2
+    for node in graph.nodes:
+        if node < len(feature_image_patches):
+            image = feature_image_patches[node]
+            position = pos[node]
+            offset_norm = np.sqrt(position[0]**2 + position[1]**2)
+            # 1.55 -> bit more than sqrt(2) to position the middle of the image
+            offset = 1.55*patch_size*position[0]/offset_norm, 1.55*patch_size*position[1]/offset_norm
+            # x and y are the middle of the image
+            x, y = position[0]+offset[0], position[1]+offset[1]
+            ax.imshow(image, extent=(x - extend, x + extend, y - extend, y + extend))
+
 
 
 def _adjust_position(
@@ -311,23 +350,30 @@ def _adjust_position(
 
 def si_graph_plot(
     interaction_values: InteractionValues,
-    graph: list[tuple] | nx.Graph | None = None,
+    *,
+    show: bool = False,
+    random_seed: int = 42,
     n_interactions: int | None = None,
     draw_threshold: float = 0.0,
-    random_seed: int = 42,
+    interaction_direction: str | None = None,
     size_factor: float = 1.0,
-    plot_explanation: bool = True,
-    compactness: float = 1e10,
-    feature_names: list | None = None,
     cubic_scaling: bool = False,
-    pos: dict | None = None,
     node_size_scaling: float = 1.0,
+    feature_names: list | None = None,
+    graph: list[tuple] | nx.Graph | None = None,
+    plot_original_nodes: bool = False,
+    plot_explanation: bool = True,
     min_max_interactions: tuple[float, float] | None = None,
+    pos: dict | None = None,
     adjust_node_pos: bool = False,
     spring_k: float | None = None,
-    interaction_direction: str | None = None,
+    compactness: float = 1e10,
     node_area_scaling: bool = False,
-    show: bool = False,
+    feature_image_patches: dict[int, Image.Image] | None = None,
+    feature_image_patches_size: float | None = 0.2,
+    center_image: Image.Image | None = None,
+    center_image_size: float | None = 0.6,
+    min_max_order: tuple[int, int] = (1, -1)
 ) -> tuple[plt.figure, plt.axis] | None:
     """Plots the interaction values as an explanation graph.
 
@@ -354,7 +400,7 @@ def si_graph_plot(
             ``True``.
         compactness: A scaling factor for the underlying spring layout. A higher compactness value
             will move the interactions closer to the graph nodes. If your graph looks weird, try
-            adjusting this value, e.g. ``[0.1, 1.0, 10.0, 100.0, 1000.0]``. Defaults to ``1.0``.
+            adjusting this value, e.g. ``[0.1, 1.0, 10.0, 100.0, 1000.0]``. Defaults to ``1e10``.
         feature_names: A list of feature names to use for the nodes in the graph. If ``None``,
             the feature indices are used instead. Defaults to ``None``.
         cubic_scaling: Whether to scale the size of explanations cubically (``True``) or linearly
@@ -364,7 +410,7 @@ def si_graph_plot(
             position the nodes. Defaults to ``None``.
         node_size_scaling: The scaling factor for the node sizes. This can be used to make the nodes
             larger or smaller depending on how the graph looks. Defaults to ``1.0`` (no scaling).
-            Negative values will make the nodes smaller, positive values will make the nodes larger.
+            Values between ``0.0`` and ``1.0`` will make the nodes smaller, higher values will make the nodes larger.
         min_max_interactions: The minimum and maximum interaction values to use for scaling the
             interactions as a tuple ``(min, max)``. If ``None``, the minimum and maximum interaction
             values are used. Defaults to ``None``.
@@ -378,7 +424,11 @@ def si_graph_plot(
         node_area_scaling: Whether to scale the node sizes based on the area of the nodes (``True``)
              or the radius of the nodes (``False``). Defaults to ``False``.
         show: Whether to show or return the plot. Defaults to ``False``.
-
+        min_max_order: Only show interactions of min <= size <= max. First order interactions are always shown.
+            To use maximum order of interaction values, set max to -1. Defaults to ``(1, -1)``.
+        plot_original_nodes: If set to ``True``, nodes are shown as white circles with the label inside,
+            large first-order-effects appear as halos around the node. Set to ``False``, only the explanation nodes are
+             shown, their labels next to them. Defaults to ``False``.
     Returns:
         The figure and axis of the plot if ``show`` is ``False``. Otherwise, ``None``.
 
@@ -414,7 +464,8 @@ def si_graph_plot(
             graph_nodes.extend([edge[0], edge[1]])
     else:  # graph is considered None
         original_graph = nx.Graph()
-        graph_nodes = list(range(interaction_values.n_players))
+        graph_nodes = list(set([interaction[0] for interaction in interaction_values.interaction_lookup.keys()
+                                if len(interaction) == 1]))
         for node in graph_nodes:
             node_label = label_mapping.get(node, node) if label_mapping is not None else node
             original_graph.add_node(node, label=node_label)
@@ -423,11 +474,16 @@ def si_graph_plot(
         # get the top n interactions
         interaction_values = interaction_values.get_top_k(n_interactions)
 
-    # get the interactions to plot (sufficiently large)
+    min_order, max_order = min_max_order
+    min_order = max(1, min_order)
+    if max_order == -1: max_order = interaction_values.max_order
+
+    # get the interactions to plot (sufficiently large, right order)
     interactions_to_plot = {}
     min_interaction, max_interaction = 1e10, 0.0
     for interaction, interaction_pos in interaction_values.interaction_lookup.items():
-        if len(interaction) == 0:
+        if ((len(interaction) < min_order or len(interaction) > max_order)
+                and len(interaction) != 1):
             continue
         interaction_value = interaction_values.values[interaction_pos]
         min_interaction = min(abs(interaction_value), min_interaction)
@@ -483,7 +539,7 @@ def si_graph_plot(
         pos = nx.spring_layout(original_graph, seed=random_seed, k=spring_k)
         pos = nx.kamada_kawai_layout(original_graph, scale=1.0, pos=pos)
     else:
-        # pos is given but we need to scale the positions potentially
+        # pos is given, but we need to scale the positions potentially
         min_pos = np.min(list(pos.values()), axis=0)
         max_pos = np.max(list(pos.values()), axis=0)
         pos = {node: (pos[node] - min_pos) / (max_pos - min_pos) for node in pos}
@@ -511,9 +567,28 @@ def si_graph_plot(
         )
 
     # add the original graph structure on top
-    _draw_graph_nodes(ax, pos, original_graph, normal_node_size=normal_node_size)
+    if plot_original_nodes or not plot_explanation:
+        _draw_graph_nodes(ax, pos, original_graph, normal_node_size=normal_node_size)
     _draw_graph_edges(ax, pos, original_graph, normal_node_size=normal_node_size)
-    _draw_graph_labels(ax, pos, original_graph)
+
+    # add images
+    if (center_image is not None) or feature_image_patches is not None:
+        # for scaling and to reset the image size after imshow()
+        x_min, x_max = ax.get_xlim()
+        img_scale = (x_max - x_min)
+        if center_image is not None:
+            extend = center_image_size * img_scale / 2
+            ax.imshow(center_image, extent=( -extend, extend, -extend, extend), aspect='auto')
+        if feature_image_patches is not None:
+            _draw_feature_images(ax, pos, original_graph, feature_image_patches, feature_image_patches_size, img_scale)
+            x_min -= img_scale * feature_image_patches_size
+            x_max += img_scale * feature_image_patches_size
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(x_min, x_max)
+
+    if feature_image_patches is None or feature_names is not None or plot_original_nodes:
+        _draw_graph_labels(ax, pos, original_graph, normal_node_size=normal_node_size, plot_white_nodes=plot_original_nodes)
+
 
     # tidy up the plot
     ax.set_aspect("equal", adjustable="datalim")  # make y- and x-axis scales equal
