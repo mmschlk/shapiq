@@ -22,11 +22,11 @@ dependencies = [
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
-    {name = "Fabian Fumagalli"},
     {name = "Hubert Baniecki"},
+    {name = "Fabian Fumagalli"},
 ]
 maintainers = [
-    {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"}
+    {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
 ]
 license = { file = "LICENSE" }
 classifiers = [
