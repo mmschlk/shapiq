@@ -36,7 +36,9 @@ class SPEX(Sparse):
         top_order: bool = False,
         sampling_weights: float | None = None,
         random_state: int | None = None,
+        decoder_type: str = "soft" # TODO do we want to let the user configure this?
     ):
+        self.decoder_type = decoder_type
         super().__init__(
             n,
             max_order,
