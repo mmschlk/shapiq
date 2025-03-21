@@ -2,9 +2,12 @@ from collections.abc import Callable
 from .._base import Approximator
 from ...interaction_values import InteractionValues
 from ...game_theory.moebius_converter import MoebiusConverter
-from sparse_transform.qsft.qsft import transform
+from sparse_transform.qsft.qsft import sparse_fourier_transform
 from sparse_transform.qsft.codes.BCH import BCH
-from sparse_transform.qsft.signals.input_signal_subsampled import SubsampledSignal
+from sparse_transform.qsft.signals.input_signal_subsampled import SubsampledSignalFourier
+from sparse_transform.smt.smt import sparse_moebius_transform
+from sparse_transform.smt.signals.input_signal_subsampled import SubsampledSignalMoebius
+from ..utils.sets import powerset
 from functools import partial
 import numpy as np
 
@@ -17,9 +20,10 @@ class Sparse(Approximator):
         index: str,
         top_order: bool,
         random_state: int | None = None,
-        transform_type: str = "fourier", # TODO JK: New parameter, to implement fourier or mobius transform?
+        transform_type: str = "fourier",
     ) -> None:
-        self.transform_type = transform_type
+        assert transform_type.lower() in ["fourier", "moebius"], "transform_type must be either 'fourier' or 'mobius'"
+        self.transform_type = transform_type.lower()
         super().__init__(
             n=n, max_order=max_order, index=index, top_order=top_order, random_state=random_state,
         )
@@ -35,10 +39,35 @@ class Sparse(Approximator):
         Returns:
             The approximated Shapley interaction values.
         """
-        b = self._compute_b(budget, self.transform_type)
-        signal = self._sample_fourier(game, b)
-        transform = Sparse._support_recovery_fourier(signal, b)
-        return self._converter(transform)
+        b, used_budget = self._compute_b(budget, self.transform_type)
+
+        if self.transform_type == "fourier":
+            signal = self._sample_fourier(game, b)
+            fourier_transform = Sparse._support_recovery_fourier(signal, b, t=max(5, self.max_order))
+            moebius_transform = Sparse._fourier_to_moebius(fourier_transform, t=max(5, self.max_order))
+        else:
+            signal = self._sample_moebius(game, b)
+            moebius_transform = Sparse._support_recovery_moebius(signal, b)
+
+        moebius_interactions = list(moebius_transform.keys())
+        self._interaction_lookup = {i: key for i, key in enumerate(moebius_interactions)}
+        values = np.array([moebius_transform[key] for key in moebius_interactions])
+        mobius_interactions = InteractionValues(
+            values=values,
+            index="Moebius",
+            min_order=min(moebius_interactions, key=len),
+            max_order=max(moebius_interactions, key=len),
+            n_players=self.n,
+            interaction_lookup=self._interaction_lookup,
+            estimated=True,
+            estimation_budget=used_budget,
+            baseline_value=moebius_interactions[tuple()] if tuple() in moebius_interactions else 0.0,
+        )
+
+        autoconverter = MoebiusConverter(moebius_coefficients=mobius_interactions)
+        return autoconverter(index=self.index, order=self.max_order)
+
+
 
     def _compute_b(self, budget: int, transform_type: str) -> int:
         """Computes the budget for the approximation.
@@ -48,10 +77,12 @@ class Sparse(Approximator):
 
         Returns:
             The actual b availible for computing the transform.
+            The sample budget to be used under this b.
         """
         #TODO JK: Compute the reduction in budget given the user defined upper bound
         b = 6
-        return b
+        used_budget = 0
+        return b, used_budget
 
     def _sample_fourier(self, game, b, t=5):
         query_args = {
@@ -64,28 +95,43 @@ class Sparse(Approximator):
             "b": b,
             "t": t
         }
-        signal = SubsampledSignal(func=game, n=self.n, q=2, query_args=query_args)
+        signal = SubsampledSignalFourier(func=game, n=self.n, q=2, query_args=query_args)
         return signal
 
-    def _converter(self, transform):
-        temp_mobius = Sparse._fourier_to_mobius(transform)
-        autoconverter = MoebiusConverter(moebius_coefficients=temp_mobius)
-        return autoconverter(index=self.index, order=self.max_order)
+    def _sample_moebius(self, game, b):
+        query_args = {
+            "query_method": "simple",
+            "num_subsample": 3,
+            "delays_method_source": "identity",
+            "delays_method_channel": "identity",
+            "subsampling_method": "smt",
+            "num_repeat": 1,
+            "b": b,
+        }
+        signal = SubsampledSignalMoebius(func=game, n=self.n, q=2, query_args=query_args)
+        return signal
 
     @staticmethod
-    def _fourier_to_mobius(transform):
-        x = InteractionValues()
-        return x
-        # TODO JK: We need to implement this
+    def _fourier_to_moebius(fourier_transform):
+        moebius_dict = {}
+        for loc, coef in fourier_transform.items():
+            for subset in powerset(loc):
+                scaling_factor = np.power(-2.0, len(subset))
+                if subset in moebius_dict:
+                    moebius_dict[subset] += coef * scaling_factor
+                else:
+                    moebius_dict[subset] = coef * scaling_factor
+        return moebius_dict
 
     @staticmethod
     def _support_recovery_fourier(signal, b, t=5, type="soft"):
+
         if type == "hard":
             source_decoder = BCH(signal.n, t).parity_decode
         else:
             source_decoder = partial(BCH(signal.n, t).parity_decode_2chase_t2_max_likelihood,
                                      chase_depth=2 * t)
-        qsft_args = {
+        spex_args = {
             "num_subsample": 3,
             "num_repeat": 1,
             "reconstruct_method_source": "coded",
@@ -101,4 +147,20 @@ class Sparse(Approximator):
             "report": False,
             "peel_average": True,
         }
-        return {key: np.real(value) for key, value in transform(signal, **qsft_args).items()}
+
+        return {tuple(np.nonzero(key)[0]): np.real(value) for key, value in
+                            sparse_fourier_transform(signal, **spex_args).items()}
+
+    @staticmethod
+    def _support_recovery_moebius(signal, b):
+        smt_args = {
+            "num_subsample": 3,
+            "num_repeat": 1,
+            "reconstruct_method_source": "simple",
+            "reconstruct_method_channel": "simple",
+            "b": b,
+            "noise_sd": 0,
+            "source_decoder": None
+        }
+        return {tuple(np.nonzero(key)[0]): np.real(value) for key, value in
+                            sparse_moebius_transform(signal, **smt_args).items()}
