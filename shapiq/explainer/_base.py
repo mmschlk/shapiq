@@ -97,8 +97,6 @@ class Explainer:
             The interaction values of the prediction.
         """
         explanation = self.explain_function(x=x, *args, **kwargs)
-        if explanation.min_order == 0:
-            explanation[()] = explanation.baseline_value
         return explanation
 
     @abstractmethod

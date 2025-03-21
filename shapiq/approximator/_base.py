@@ -1,17 +1,16 @@
 """This module contains the base approximator classes for the shapiq package."""
 
-import copy
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 import numpy as np
+from scipy.special import binom
 
 from ..approximator.sampling import CoalitionSampler
 from ..game_theory.indices import (
     AVAILABLE_INDICES_FOR_APPROXIMATION,
     get_computation_index,
-    is_empty_value_the_baseline,
-    is_index_aggregated,
 )
 from ..interaction_values import InteractionValues
 from ..utils.sets import generate_interaction_lookup
@@ -143,13 +142,29 @@ class Approximator(ABC):
             The weights for sampling subsets of size ``s`` in shape ``(n + 1,)``.
         """
         weight_vector = np.zeros(shape=self.n + 1)
-        for coalition_size in range(0, self.n + 1):
-            if (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
-                # prioritize these subsets
-                weight_vector[coalition_size] = self._big_M
-            else:
-                # KernelSHAP sampling weights
-                weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
+        if self.index in ["FBII"]:
+
+            try:
+                for coalition_size in range(0, self.n + 1):
+                    weight_vector[coalition_size] = binom(self.n, coalition_size) / 2**self.n
+            except OverflowError:
+                for coalition_size in range(0, self.n + 1):
+                    weight_vector[coalition_size] = (
+                        1
+                        / np.sqrt(2 * np.pi * 0.5)
+                        * np.exp(-(coalition_size - self.n / 2) * +2 / (self.n / 2))
+                    )
+                warnings.warn(
+                    "The weights are approximated for n > 1000. While this is very close to the truth for sets for size in the region n/2, the approximation is not exact for size n or 0."
+                )
+        else:
+            for coalition_size in range(0, self.n + 1):
+                if (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
+                    # prioritize these subsets
+                    weight_vector[coalition_size] = self._big_M
+                else:
+                    # KernelSHAP sampling weights
+                    weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
         sampling_weight = weight_vector / np.sum(weight_vector)
         return sampling_weight
 
@@ -174,61 +189,6 @@ class Approximator(ABC):
             The iterator.
         """
         return range(self.min_order, self.max_order + 1)
-
-    def _finalize_result(
-        self,
-        result,
-        baseline_value: float,
-        *,
-        estimated: bool | None = None,
-        budget: int | None = None,
-    ) -> InteractionValues:
-        """Finalizes the result dictionary.
-
-        Args:
-            result: Interaction values.
-            baseline_value: Baseline value.
-            estimated: Whether interaction values were estimated.
-            budget: The budget for the approximation.
-
-        Returns:
-            The interaction values.
-
-        Raises:
-            ValueError: If the baseline value is not provided for SII and k-SII.
-        """
-
-        if budget is None:  # try to get budget from sampler (exclude from coverage)
-            budget = self._sampler.n_coalitions  # pragma: no cover
-
-        if estimated is None:
-            estimated = False if budget >= 2**self.n else True
-
-        # set empty value as baseline value if necessary
-        if tuple() in self._interaction_lookup:
-            idx = self._interaction_lookup[tuple()]
-            empty_value = result[idx]
-            # only for SII empty value is not the baseline value
-            if empty_value != baseline_value and is_empty_value_the_baseline(self.index):
-                result[idx] = baseline_value
-
-        interactions = InteractionValues(
-            values=result,
-            estimated=estimated,
-            estimation_budget=budget,
-            index=self.approximation_index,  # can be different from self.index
-            min_order=self.min_order,
-            max_order=self.max_order,
-            n_players=self.n,
-            interaction_lookup=copy.deepcopy(self.interaction_lookup),
-            baseline_value=baseline_value,
-        )
-
-        # if index needs to be aggregated
-        if is_index_aggregated(self.index):
-            interactions = self.aggregate_interaction_values(interactions)
-
-        return interactions
 
     @staticmethod
     def _calc_iteration_count(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
@@ -313,6 +273,6 @@ class Approximator(ABC):
         Returns:
             The aggregated interaction values.
         """
-        from shapiq.game_theory.aggregation import aggregate_interaction_values
+        from shapiq.game_theory.aggregation import aggregate_base_interaction
 
-        return aggregate_interaction_values(base_interactions, order=order)
+        return aggregate_base_interaction(base_interactions, order=order)

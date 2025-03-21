@@ -2,7 +2,7 @@
 the well established Shapley value and its generalization to interaction.
 """
 
-__version__ = "1.2.2"
+__version__ = "1.2.2.9000"
 
 # approximator classes
 from .approximator import (
@@ -16,6 +16,7 @@ from .approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    RegressionFBII,
     RegressionFSII,
     StratifiedSamplingSV,
     UnbiasedKernelSHAP,
@@ -86,6 +87,7 @@ __all__ = [
     "OwenSamplingSV",
     "KernelSHAP",
     "RegressionFSII",
+    "RegressionFBII",
     "KernelSHAPIQ",
     "InconsistentKernelSHAPIQ",
     "SHAPIQ",

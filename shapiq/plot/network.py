@@ -15,19 +15,20 @@ from ._config import BLUE, LINES, NEUTRAL, RED, get_color
 
 __all__ = ["network_plot"]
 
+
 def network_plot(
-        interaction_values: InteractionValues | None = None,
-        *,
-        first_order_values: np.ndarray[float] | None = None,
-        second_order_values: np.ndarray[float] | None = None,
-        feature_names: list[Any] | None = None,
-        feature_image_patches: dict[int, Image.Image] | None = None,
-        feature_image_patches_size: float | dict[int, float] | None = 0.2,
-        center_image: Image.Image | None = None,
-        center_image_size: float | None = 0.6,
-        draw_legend: bool = True,
-        center_text: str | None = None,
-        show: bool = False,
+    interaction_values: InteractionValues | None = None,
+    *,
+    first_order_values: np.ndarray[float] | None = None,
+    second_order_values: np.ndarray[float] | None = None,
+    feature_names: list[Any] | None = None,
+    feature_image_patches: dict[int, Image.Image] | None = None,
+    feature_image_patches_size: float | dict[int, float] | None = 0.2,
+    center_image: Image.Image | None = None,
+    center_image_size: float | None = 0.6,
+    draw_legend: bool = True,
+    center_text: str | None = None,
+    show: bool = False,
 ) -> tuple[plt.Figure, plt.Axes] | None:
     """Draws the interaction network plot[1]_.
 
@@ -71,15 +72,21 @@ def network_plot(
         .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766–778.
     """
     from . import si_graph_plot
-    fig, ax = si_graph_plot(interaction_values=interaction_values, feature_names=feature_names,
-                            feature_image_patches=feature_image_patches, feature_image_patches_size=feature_image_patches_size,
-                            center_image=center_image, center_image_size=center_image_size,
-                            show=False,
-                            min_max_order=(1,2)
-                            )
+
+    fig, ax = si_graph_plot(
+        interaction_values=interaction_values,
+        feature_names=feature_names,
+        feature_image_patches=feature_image_patches,
+        feature_image_patches_size=feature_image_patches_size,
+        center_image=center_image,
+        center_image_size=center_image_size,
+        show=False,
+        min_max_order=(1, 2),
+    )
     if not show:
         return fig, ax
     plt.show()
+
 
 def network_plot_old(
     interaction_values: InteractionValues | None = None,

@@ -15,17 +15,19 @@ from ..approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    RegressionFBII,
     RegressionFSII,
     UnbiasedKernelSHAP,
 )
 from ..approximator._base import Approximator
 from ..explainer._base import Explainer
-from ..interaction_values import InteractionValues
+from ..interaction_values import InteractionValues, finalize_computed_interactions
 
 APPROXIMATOR_CONFIGURATIONS = {
     "regression": {
         "SII": InconsistentKernelSHAPIQ,
         "FSII": RegressionFSII,
+        "FBII": RegressionFBII,
         "k-SII": InconsistentKernelSHAPIQ,
         "SV": KernelSHAP,
     },
@@ -39,6 +41,7 @@ APPROXIMATOR_CONFIGURATIONS = {
         "SII": SHAPIQ,
         "STII": SHAPIQ,
         "FSII": SHAPIQ,
+        "FBII": SHAPIQ,
         "k-SII": SHAPIQ,
         "SV": UnbiasedKernelSHAP,
     },
@@ -46,12 +49,13 @@ APPROXIMATOR_CONFIGURATIONS = {
         "SII": SVARMIQ,
         "STII": SVARMIQ,
         "FSII": SVARMIQ,
+        "FBII": SVARMIQ,
         "k-SII": SVARMIQ,
         "SV": SVARM,
     },
 }
 
-AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII", "SV"}
+AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII", "FBII", "SV"}
 
 
 class TabularExplainer(Explainer):
@@ -206,6 +210,9 @@ class TabularExplainer(Explainer):
         # explain
         interaction_values = self._approximator(budget=budget, game=imputer)
         interaction_values.baseline_value = self.baseline_value
+        interaction_values = finalize_computed_interactions(
+            interaction_values, target_index=self.index
+        )
 
         return interaction_values
 
@@ -246,6 +253,12 @@ class TabularExplainer(Explainer):
                 )
             elif index == "FSII":
                 return RegressionFSII(
+                    n=self._n_features,
+                    max_order=max_order,
+                    random_state=self._random_state,
+                )
+            elif index == "FBII":
+                return RegressionFBII(
                     n=self._n_features,
                     max_order=max_order,
                     random_state=self._random_state,
