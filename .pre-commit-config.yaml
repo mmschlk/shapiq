@@ -10,18 +10,6 @@ repos:
       - id: mixed-line-ending
       - id: check-merge-conflict
 
-  - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 24.4.2
-    hooks:
-      - id: black
-        name: black
-        entry: black
-        language: python
-      - id: black-jupyter
-        name: black-jupyter
-        entry: black
-        language: python
-
   - repo: local
     hooks:
       - id: ruff
