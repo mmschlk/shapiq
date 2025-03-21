@@ -4,15 +4,22 @@ scores."""
 import copy
 import os
 import pickle
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Union
 from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from shapiq.indices import ALL_AVAILABLE_INDICES, index_generalizes_bv, index_generalizes_sv
-from shapiq.utils.sets import count_interactions, generate_interaction_lookup, powerset
+from .game_theory.indices import (
+    ALL_AVAILABLE_INDICES,
+    index_generalizes_bv,
+    index_generalizes_sv,
+    is_empty_value_the_baseline,
+    is_index_aggregated,
+)
+from .utils.sets import count_interactions, generate_interaction_lookup, powerset
 
 
 @dataclass
@@ -49,7 +56,7 @@ class InteractionValues:
     baseline_value: float
     interaction_lookup: dict[tuple[int, ...], int] = None
     estimated: bool = True
-    estimation_budget: Optional[int] = None
+    estimation_budget: int | None = None
 
     def __post_init__(self) -> None:
         """Checks if the index is valid."""
@@ -74,8 +81,15 @@ class InteractionValues:
                 self.n_players, self.min_order, self.max_order
             )
 
-        if not isinstance(self.baseline_value, (int, float)):
-            raise TypeError("Baseline value must be provided as a number.")
+        if not isinstance(self.baseline_value, int | float):
+            raise TypeError(
+                f"Baseline value must be provided as a number. Got {self.baseline_value}."
+            )
+
+        # check if () is in the interaction_lookup if min_order is 0 -> add it to the end
+        if self.min_order == 0 and () not in self.interaction_lookup:
+            self.interaction_lookup[()] = len(self.interaction_lookup)
+            self.values = np.concatenate((self.values, np.array([self.baseline_value])))
 
     @property
     def dict_values(self) -> dict[tuple[int, ...], float]:
@@ -203,7 +217,7 @@ class InteractionValues:
         """Returns an iterator over the values of the InteractionValues object."""
         return np.nditer(self.values)
 
-    def __getitem__(self, item: Union[int, tuple[int, ...]]) -> float:
+    def __getitem__(self, item: int | tuple[int, ...]) -> float:
         """Returns the score for the given interaction.
 
         Args:
@@ -220,6 +234,28 @@ class InteractionValues:
             return float(self.values[self.interaction_lookup[item]])
         except KeyError:
             return 0.0
+
+    def __setitem__(self, item: int | tuple[int, ...], value: float) -> None:
+        """Sets the score for the given interaction.
+
+        Args:
+            item: The interaction as a tuple of integers for which to set the score. If ``item`` is an
+                integer it serves as the index to the values vector.
+            value: The value to set for the interaction.
+
+        Raises:
+            KeyError: If the interaction is not found in the InteractionValues object.
+        """
+        try:
+            if isinstance(item, int):
+                self.values[item] = value
+            else:
+                item = tuple(sorted(item))
+                self.values[self.interaction_lookup[item]] = value
+        except Exception as e:
+            raise KeyError(
+                f"Interaction {item} not found in the InteractionValues. Unable to set a value."
+            ) from e
 
     def __eq__(self, other: object) -> bool:
         """Checks if two InteractionValues objects are equal.
@@ -331,7 +367,7 @@ class InteractionValues:
                 added_values = self.values + other.values
                 interaction_lookup = self.interaction_lookup
                 baseline_value = self.baseline_value + other.baseline_value
-        elif isinstance(other, (int, float)):
+        elif isinstance(other, int | float):
             added_values = self.values.copy() + other
             interaction_lookup = self.interaction_lookup.copy()
             baseline_value = self.baseline_value + other
@@ -375,7 +411,7 @@ class InteractionValues:
         """Subtracts two InteractionValues objects or a scalar."""
         return (-self).__add__(other)
 
-    def __mul__(self, other: Union[int, float]) -> "InteractionValues":
+    def __mul__(self, other: int | float) -> "InteractionValues":
         """Multiplies an InteractionValues object by a scalar."""
         return InteractionValues(
             values=self.values * other,
@@ -389,9 +425,23 @@ class InteractionValues:
             baseline_value=self.baseline_value * other,
         )
 
-    def __rmul__(self, other: Union[int, float]) -> "InteractionValues":
+    def __rmul__(self, other: int | float) -> "InteractionValues":
         """Multiplies an InteractionValues object by a scalar."""
         return self.__mul__(other)
+
+    def __abs__(self) -> "InteractionValues":
+        """Returns the absolute values of the InteractionValues object."""
+        return InteractionValues(
+            values=np.abs(self.values),
+            index=self.index,
+            max_order=self.max_order,
+            n_players=self.n_players,
+            min_order=self.min_order,
+            interaction_lookup=self.interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )
 
     def get_n_order_values(self, order: int) -> "np.ndarray":
         """Returns the interaction values of a specific order as a numpy array.
@@ -416,7 +466,7 @@ class InteractionValues:
             raise ValueError("Order must be greater or equal to 1.")
         values_shape = tuple([self.n_players] * order)
         values = np.zeros(values_shape, dtype=float)
-        for interaction in powerset(range(self.n_players), min_size=1, max_size=order):
+        for interaction in powerset(range(self.n_players), min_size=order, max_size=order):
             # get all orderings of the interaction (e.g. (0, 1) and (1, 0) for interaction (0, 1))
             for perm in permutations(interaction):
                 values[perm] = self[interaction]
@@ -424,7 +474,7 @@ class InteractionValues:
         return values
 
     def get_n_order(
-        self, order: int, min_order: Optional[int] = None, max_order: Optional[int] = None
+        self, order: int, min_order: int | None = None, max_order: int | None = None
     ) -> "InteractionValues":
         """Returns the interaction values of a specific order.
 
@@ -458,6 +508,58 @@ class InteractionValues:
             max_order=order,
             n_players=self.n_players,
             min_order=order,
+            interaction_lookup=new_interaction_lookup,
+            estimated=self.estimated,
+            estimation_budget=self.estimation_budget,
+            baseline_value=self.baseline_value,
+        )
+
+    def get_subset(self, players: list[int]) -> "InteractionValues":
+        """Selects a subset of players from the InteractionValues object.
+
+        Args:
+            players (list[int]): List of players to select from the InteractionValues object.
+
+        Returns:
+            InteractionValues: Filtered InteractionValues object containing only values related to
+            selected players.
+
+        Example:
+            >>> interaction_values = InteractionValues(
+            ...     values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+            ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+            ...     index="SII",
+            ...     max_order=2,
+            ...     n_players=3,
+            ...     min_order=1,
+            ...     baseline_value=0.0,
+            ... )
+            >>> interaction_values.get_subset([0, 1]).dict_values
+            {(0,): 0.1, (1,): 0.2, (0, 1): 0.3}
+            >>> interaction_values.get_subset([0, 2]).dict_values
+            {(0,): 0.1, (2,): 0.3, (0, 2): 0.4}
+            >>> interaction_values.get_subset([1]).dict_values
+            {(1,): 0.2}
+        """
+        keys = self.interaction_lookup.keys()
+        idx, keys_in_subset = [], []
+        for i, key in enumerate(keys):
+            if all(p in players for p in key):
+                idx.append(i)
+                keys_in_subset.append(key)
+        new_values = self.values[idx]
+        new_interaction_lookup = {}
+        for index, key in enumerate(keys_in_subset):
+            new_interaction_lookup[key] = index
+
+        n_players = self.n_players - len(players)
+
+        return InteractionValues(
+            values=new_values,
+            index=self.index,
+            max_order=self.max_order,
+            n_players=n_players,
+            min_order=self.min_order,
             interaction_lookup=new_interaction_lookup,
             estimated=self.estimated,
             estimation_budget=self.estimation_budget,
@@ -579,20 +681,39 @@ class InteractionValues:
             "baseline_value": self.baseline_value,
         }
 
-    def plot_network(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
+    def aggregate(
+        self, others: Sequence["InteractionValues"], aggregation: str = "mean"
+    ) -> "InteractionValues":
+        """Aggregates InteractionValues objects using a specific aggregation method.
+
+        Args:
+            others: A list of InteractionValues objects to aggregate.
+            aggregation: The aggregation method to use. Defaults to ``"mean"``. Other options are
+                ``"median"``, ``"sum"``, ``"max"``, and ``"min"``.
+
+        Returns:
+            The aggregated InteractionValues object.
+
+        Note:
+            For documentation on the aggregation methods, see the ``aggregate_interaction_values()``
+            function.
+        """
+        return aggregate_interaction_values([self, *others], aggregation)
+
+    def plot_network(self, show: bool = True, **kwargs) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues on a graph.
 
         For arguments, see shapiq.plots.network_plot().
 
         Returns:
-            matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
+
         """
-        from shapiq import network_plot
+        from shapiq.plot.network import network_plot
 
         if self.max_order > 1:
             return network_plot(
-                first_order_values=self.get_n_order_values(1),
-                second_order_values=self.get_n_order_values(2),
+                interaction_values=self,
+                show=show,
                 **kwargs,
             )
         else:
@@ -601,57 +722,41 @@ class InteractionValues:
                 "but requires also 2-order values for the network plot."
             )
 
-    def plot_stacked_bar(self, **kwargs) -> tuple[plt.Figure, plt.Axes]:
+    def plot_si_graph(self, show: bool = True, **kwargs) -> tuple[plt.Figure, plt.Axes] | None:
+        """Visualize InteractionValues as a SI graph.
+
+        For arguments, see shapiq.plots.si_graph_plot().
+
+        Returns:
+            The SI graph as a tuple containing the figure and the axes.
+        """
+
+        from shapiq.plot.si_graph import si_graph_plot
+
+        return si_graph_plot(self, show=show, **kwargs)
+
+    def plot_stacked_bar(self, show: bool = True, **kwargs) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues on a graph.
 
         For arguments, see shapiq.plots.stacked_bar_plot().
 
         Returns:
-            matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
+            The stacked bar plot as a tuple containing the figure and the axes.
         """
         from shapiq import stacked_bar_plot
 
-        if self.max_order >= 2:
-            first_order_values = self.get_n_order_values(1)
-            second_order_values = self.get_n_order_values(2)
-            ret = stacked_bar_plot(
-                n_shapley_values_pos={
-                    1: np.array([0 if x < 0 else x for x in first_order_values]),
-                    2: second_order_values.clip(min=0).sum(axis=0),
-                },
-                n_shapley_values_neg={
-                    1: np.array([0 if x > 0 else x for x in first_order_values]),
-                    2: second_order_values.clip(max=0).sum(axis=0),
-                },
-                **kwargs,
-            )
-            return ret
-        else:
-            first_order_values = self.get_n_order_values(1)
-            ret = stacked_bar_plot(
-                n_shapley_values_pos={
-                    1: np.array([0 if x < 0 else x for x in first_order_values]),
-                },
-                n_shapley_values_neg={
-                    1: np.array([0 if x > 0 else x for x in first_order_values]),
-                },
-                **kwargs,
-            )
-            return ret
+        return stacked_bar_plot(self, show=show, **kwargs)
 
     def plot_force(
         self,
-        feature_names: Optional[np.ndarray] = None,
-        feature_values: Optional[np.ndarray] = None,
-        matplotlib=True,
+        feature_names: np.ndarray | None = None,
         show: bool = True,
-        **kwargs,
-    ) -> Optional[plt.Figure]:
+        abbreviate: bool = True,
+        contribution_threshold: float = 0.03,
+    ) -> plt.Figure | None:
         """Visualize InteractionValues on a force plot.
 
         For arguments, see shapiq.plots.force_plot().
-
-        Requires the ``shap`` Python package to be installed.
 
         Args:
             feature_names: The feature names used for plotting. If no feature names are provided, the
@@ -659,26 +764,29 @@ class InteractionValues:
             feature_values: The feature values used for plotting. Defaults to ``None``.
             matplotlib: Whether to return a ``matplotlib`` figure. Defaults to ``True``.
             show: Whether to show the plot. Defaults to ``False``.
+            abbreviate: Whether to abbreviate the feature names or not. Defaults to ``True``.
             **kwargs: Keyword arguments passed to ``shap.plots.force()``.
+
+        Returns:
+            The force plot as a matplotlib figure (if show is ``False``).
         """
-        from shapiq import force_plot
+        from .plot import force_plot
 
         return force_plot(
             self,
-            feature_values=feature_values,
             feature_names=feature_names,
-            matplotlib=matplotlib,
             show=show,
-            **kwargs,
+            abbreviate=abbreviate,
+            min_percentage=contribution_threshold,
         )
 
     def plot_waterfall(
         self,
-        feature_names: Optional[np.ndarray] = None,
-        feature_values: Optional[np.ndarray] = None,
-        show: bool = False,
+        feature_names: np.ndarray | None = None,
+        show: bool = True,
+        abbreviate: bool = True,
         max_display: int = 10,
-    ) -> Optional[plt.Axes]:
+    ) -> plt.Axes | None:
         """Draws interaction values on a waterfall plot.
 
         Note:
@@ -689,14 +797,205 @@ class InteractionValues:
                 feature indices are used instead. Defaults to ``None``.
             feature_values: The feature values used for plotting. Defaults to ``None``.
             show: Whether to show the plot. Defaults to ``False``.
+            abbreviate: Whether to abbreviate the feature names or not. Defaults to ``True``.
             max_display: The maximum number of interactions to display. Defaults to ``10``.
         """
         from shapiq import waterfall_plot
 
         return waterfall_plot(
             self,
-            feature_values=feature_values,
             feature_names=feature_names,
             show=show,
             max_display=max_display,
+            abbreviate=abbreviate,
         )
+
+    def plot_sentence(
+        self,
+        words: list[str],
+        show: bool = True,
+        **kwargs,
+    ) -> tuple[plt.Figure, plt.Axes] | None:
+        """Plots the first order effects (attributions) of a sentence or paragraph.
+
+        For arguments, see shapiq.plots.sentence_plot().
+
+        Returns:
+            If ``show`` is ``True``, the function returns ``None``. Otherwise, it returns a tuple
+            with the figure and the axis of the plot.
+        """
+        from shapiq.plot.sentence import sentence_plot
+
+        return sentence_plot(self, words, show=show, **kwargs)
+
+    def plot_upset(self, show: bool = True, **kwargs) -> plt.Figure | None:
+        """Plots the upset plot.
+
+        For arguments, see shapiq.plot.upset_plot().
+
+        Returns:
+            The upset plot as a matplotlib figure (if show is ``False``).
+        """
+        from shapiq.plot.upset import upset_plot
+
+        return upset_plot(self, show=show, **kwargs)
+
+
+def aggregate_interaction_values(
+    interaction_values: Sequence[InteractionValues],
+    aggregation: str = "mean",
+) -> InteractionValues:
+    """Aggregates InteractionValues objects using a specific aggregation method.
+
+    Args:
+        interaction_values: A list of InteractionValues objects to aggregate.
+        aggregation: The aggregation method to use. Defaults to ``"mean"``. Other options are
+            ``"median"``, ``"sum"``, ``"max"``, and ``"min"``.
+
+    Returns:
+        The aggregated InteractionValues object.
+
+    Example:
+        >>> iv1 = InteractionValues(
+        ...     values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+        ...     index="SII",
+        ...     max_order=2,
+        ...     n_players=3,
+        ...     min_order=1,
+        ...     baseline_value=0.0,
+        ... )
+        >>> iv2 = InteractionValues(
+        ...     values=np.array([0.2, 0.3, 0.4, 0.5, 0.6]),  # this iv is missing the (1, 2) value
+        ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4},  # no (1, 2)
+        ...     index="SII",
+        ...     max_order=2,
+        ...     n_players=3,
+        ...     min_order=1,
+        ...     baseline_value=1.0,
+        ... )
+        >>> aggregate_interaction_values([iv1, iv2], "mean")
+        InteractionValues(
+            index=SII, max_order=2, min_order=1, estimated=True, estimation_budget=None,
+            n_players=3, baseline_value=0.5,
+            Top 10 interactions:
+                (1, 2): 0.60
+                (0, 2): 0.35
+                (0, 1): 0.25
+                (0,): 0.15
+                (1,): 0.25
+                (2,): 0.35
+        )
+    Note:
+        The index of the aggregated InteractionValues object is set to the index of the first
+        InteractionValues object in the list.
+
+    Raises:
+        ValueError: If the aggregation method is not supported.
+    """
+
+    def _aggregate(vals: list[float], method: str) -> float:
+        """Does the actual aggregation of the values."""
+        if method == "mean":
+            return np.mean(vals)
+        elif method == "median":
+            return np.median(vals)
+        elif method == "sum":
+            return np.sum(vals)
+        elif method == "max":
+            return np.max(vals)
+        elif method == "min":
+            return np.min(vals)
+        else:
+            raise ValueError(f"Aggregation method {method} is not supported.")
+
+    # get all keys from all InteractionValues objects
+    all_keys = set()
+    for iv in interaction_values:
+        all_keys.update(iv.interaction_lookup.keys())
+    all_keys = sorted(all_keys)
+
+    # aggregate the values
+    new_values = np.zeros(len(all_keys), dtype=float)
+    new_lookup = {}
+    for i, key in enumerate(all_keys):
+        new_lookup[key] = i
+        values = [iv[key] for iv in interaction_values]
+        new_values[i] = _aggregate(values, aggregation)
+
+    max_order = max([iv.max_order for iv in interaction_values])
+    min_order = min([iv.min_order for iv in interaction_values])
+    n_players = max([iv.n_players for iv in interaction_values])
+    baseline_value = _aggregate([iv.baseline_value for iv in interaction_values], aggregation)
+
+    return InteractionValues(
+        values=new_values,
+        index=interaction_values[0].index,
+        max_order=max_order,
+        n_players=n_players,
+        min_order=min_order,
+        interaction_lookup=new_lookup,
+        estimated=True,
+        estimation_budget=None,
+        baseline_value=baseline_value,
+    )
+
+
+def finalize_computed_interactions(
+    interactions: InteractionValues,
+    target_index: str | None = None,
+) -> "InteractionValues":
+    """Finalizes computed InteractionValues to be interpretable.
+
+    This function takes care of the following:
+        - Aggregates the interactions if necessary. (e.g. from SII to k-SII)
+        - Adjusts the baseline and empty value if necessary. (e.g. for Shapley indices the baseline
+            value is the prediction of the model without any features - also called empty value, for
+            Banzhaf the baseline value is not the empty prediction as Banzhaf does not fulfill the
+            efficiency property)
+
+    Args:
+        interactions: The InteractionValues to finalize.
+        target_index: The index to which the InteractionValues should be finalized. Defaults to
+            ``None`` which means that the InteractionValues are finalized to the index of the
+            InteractionValues object.
+
+    Returns:
+        The interaction values.
+
+    Note:
+        If you develop new approximators and computation methods, you should finalize the
+        InteractionValues object before returning it to the user.
+
+    Raises:
+        ValueError: If the baseline value is not provided for SII and k-SII.
+    """
+    from .game_theory.aggregation import aggregate_base_interaction
+
+    if target_index is None:
+        target_index = interactions.index
+
+    # aggregate the interactions if necessary
+    if is_index_aggregated(target_index) and target_index != interactions.index:
+        interactions = aggregate_base_interaction(interactions)
+
+    # adjust the baseline and empty value if necessary
+    if tuple() in interactions.interaction_lookup:
+        idx = interactions.interaction_lookup[tuple()]
+        empty_value = interactions[idx]
+        if empty_value != interactions.baseline_value and interactions.index != "SII":
+            if is_empty_value_the_baseline(interactions.index):
+                # insert the empty value given in baseline into the values
+                interactions[idx] = interactions.baseline_value
+            else:  # manually set baseline to the empty value
+                interactions.baseline_value = interactions[idx]
+    # empty not in interactions but min_order is 0 (should be in the interactions)
+    elif interactions.min_order == 0:
+        # TODO: this might not be what we really want to do always ... what if empty and baseline
+        # are different?
+        interactions.interaction_lookup[tuple()] = len(interactions.interaction_lookup)
+        interactions.values = np.concatenate(
+            (interactions.values, np.array([interactions.baseline_value]))
+        )
+
+    return interactions

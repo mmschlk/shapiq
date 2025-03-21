@@ -1,20 +1,30 @@
 """The base Explainer classes for the shapiq package."""
 
-import numpy as np
+from abc import abstractmethod
+from warnings import warn
 
-from shapiq.explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
-from shapiq.interaction_values import InteractionValues
+import numpy as np
+from tqdm.auto import tqdm
+
+from ..explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
+from ..interaction_values import InteractionValues
 
 
 class Explainer:
     """The main Explainer class for a simpler user interface.
 
     shapiq.Explainer is a simplified interface for the ``shapiq`` package. It detects between
-    TabularExplainer and TreeExplainer based on the model class.
+    :class:`~shapiq.explainer.tabular.TabularExplainer`,
+    :class:`~shapiq.explainer.tree.TreeExplainer`,
+    and :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. For a detailed description of the
+    different explainers, see the respective classes.
 
     Args:
         model: The model object to be explained.
         data: A background dataset to be used for imputation in ``TabularExplainer``.
+        class_index: The class index of the model to explain. Defaults to ``None``, which will set
+            the class index to ``1`` per default for classification models and is ignored for
+            regression models.
         **kwargs: Additional keyword-only arguments passed to ``TabularExplainer`` or ``TreeExplainer``.
 
     Attributes:
@@ -22,27 +32,19 @@ class Explainer:
         data: A background data to use for the explainer.
     """
 
-    def __init__(self, model, data: np.ndarray = None, **kwargs) -> None:
+    def __init__(
+        self, model, data: np.ndarray | None = None, class_index: int | None = None, **kwargs
+    ) -> None:
 
         self._model_class = print_class(model)
-        self._predict_function, self._model_type = get_predict_function_and_model_type(
-            model, self._model_class
+        self._shapiq_predict_function, self._model_type = get_predict_function_and_model_type(
+            model, self._model_class, class_index
         )
         self.model = model
 
         if data is not None:
-            if not isinstance(data, np.ndarray):
-                raise TypeError("`data` must be a NumPy array.")
-            try:
-                pred = self.predict(data)
-                if isinstance(pred, np.ndarray):
-                    if len(pred.shape) > 1:
-                        raise ValueError()
-                else:
-                    raise ValueError()
-            except Exception as e:
-                print(f"Error: The `data` provided is not compatible with the model. {e}")
-                pass
+            if self._model_type != "tabpfn":
+                self._validate_data(data)
         self.data = data
 
         # not super()
@@ -50,15 +52,66 @@ class Explainer:
             if self._model_type in list(get_explainers()):
                 _explainer = get_explainers()[self._model_type]
                 self.__class__ = _explainer
-                _explainer.__init__(self, model=model, data=data, **kwargs)
+                _explainer.__init__(self, model=model, data=data, class_index=class_index, **kwargs)
 
-    def explain(self, x: np.ndarray) -> InteractionValues:
-        """Explain the model's prediction in terms of interaction values.
+    def _validate_data(self, data: np.ndarray, raise_error: bool = False) -> None:
+        """Validate the data for compatibility with the model.
 
         Args:
-            x: An instance/point/sample/observation to be explained.
+            data: A 2-dimensional matrix of inputs to be explained.
+            raise_error: Whether to raise an error if the data is not compatible with the model or
+                only print a warning. Defaults to ``False``.
+
+        Raises:
+            TypeError: If the data is not a NumPy array.
         """
-        return {}
+        message = "The `data` and the model must be compatible."
+        if not isinstance(data, np.ndarray):
+            message += " The `data` must be a NumPy array."
+            raise TypeError(message)
+        try:
+            # TODO (mmschlk): This can take a long time for large datasets and slow models
+            pred = self.predict(data)
+            if isinstance(pred, np.ndarray):
+                if len(pred.shape) > 1:
+                    message += " The model's prediction must be a 1-dimensional array."
+                    raise ValueError()
+            else:
+                message += " The model's prediction must be a NumPy array."
+                raise ValueError()
+        except Exception as e:
+            if raise_error:
+                raise ValueError(message) from e
+            else:
+                warn(message)
+
+    def explain(self, x: np.ndarray, *args, **kwargs) -> InteractionValues:
+        """Explain a single prediction in terms of interaction values.
+
+        Args:
+            x: A numpy array of a data point to be explained.
+            *args: Additional positional arguments passed to the explainer.
+            **kwargs: Additional keyword-only arguments passed to the explainer.
+
+        Returns:
+            The interaction values of the prediction.
+        """
+        explanation = self.explain_function(x=x, *args, **kwargs)
+        return explanation
+
+    @abstractmethod
+    def explain_function(self, x: np.ndarray, *args, **kwargs) -> InteractionValues:
+        """Explain a single prediction in terms of interaction values.
+
+        Args:
+            x: A numpy array of a data point to be explained.
+            *args: Additional positional arguments passed to the explainer.
+            **kwargs: Additional keyword-only arguments passed to the explainer.
+
+        Returns:
+            The interaction values of the prediction.
+        """
+        raise NotImplementedError("The method `explain` must be implemented in a subclass.")
 
     def explain_X(
         self, X: np.ndarray, n_jobs=None, random_state=None, **kwargs
@@ -87,7 +140,7 @@ class Explainer:
             )
         else:
             ivs = []
-            for i in range(X.shape[0]):
+            for i in tqdm(range(X.shape[0])):
                 ivs.append(self.explain(X[i, :], **kwargs))
         return ivs
 
@@ -97,4 +150,4 @@ class Explainer:
         Args:
             x: An instance/point/sample/observation to be explained.
         """
-        return self._predict_function(self.model, x)
+        return self._shapiq_predict_function(self.model, x)

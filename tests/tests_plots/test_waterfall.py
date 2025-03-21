@@ -3,8 +3,22 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.plot import waterfall_plot
+from shapiq import ExactComputer, InteractionValues, waterfall_plot
+
+
+def test_waterfall_cooking_game(cooking_game):
+    """Test the waterfall plot function with concrete values from the cooking game."""
+    exact_computer = ExactComputer(n_players=cooking_game.n_players, game=cooking_game)
+    interaction_values = exact_computer(index="k-SII", order=2)
+    print(interaction_values.dict_values)
+    waterfall_plot(interaction_values, show=True)
+    plt.close()
+
+    # visual inspection:
+    # - E[f(X)] = 10
+    # - f(x) = 15
+    # - 0, 1, and 2 should individually have negative contributions (go left)
+    # - all interactions should have a positive +7 contribution (go right)
 
 
 def test_waterfall_plot(interaction_values_list: list[InteractionValues]):
@@ -13,18 +27,13 @@ def test_waterfall_plot(interaction_values_list: list[InteractionValues]):
     n_players = iv.n_players
     feature_names = [f"feature-{i}" for i in range(n_players)]
     feature_names = np.array(feature_names)
-    feature_values = np.array([i for i in range(n_players)])
 
     wp = waterfall_plot(iv, show=False)
     assert wp is not None
     assert isinstance(wp, plt.Axes)
     plt.close()
 
-    wp = waterfall_plot(iv, show=False, feature_names=feature_names, feature_values=feature_values)
-    assert isinstance(wp, plt.Axes)
-    plt.close()
-
-    wp = waterfall_plot(iv, show=False, feature_names=None, feature_values=feature_values)
+    wp = waterfall_plot(iv, show=False, feature_names=feature_names)
     assert isinstance(wp, plt.Axes)
     plt.close()
 
@@ -36,3 +45,8 @@ def test_waterfall_plot(interaction_values_list: list[InteractionValues]):
     wp = iv.plot_waterfall(show=False)
     assert isinstance(wp, plt.Axes)
     plt.close()
+
+    # test show=True
+    output = iv.plot_waterfall(show=True)
+    assert output is None
+    plt.close("all")

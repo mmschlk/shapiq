@@ -1,8 +1,6 @@
 """This test module contains all tests regarding the Inconsistent KernelSHAP-IQ regression
 approximator."""
 
-import copy
-
 import numpy as np
 import pytest
 
@@ -20,18 +18,6 @@ def test_initialization(n):
     assert approximator.top_order is False
     assert approximator.min_order == 0
     assert approximator.iteration_cost == 1
-
-    approximator_copy = copy.copy(approximator)
-    approximator_deepcopy = copy.deepcopy(approximator)
-    approximator_deepcopy.index = "something"
-    assert approximator_copy == approximator  # check that the copy is equal
-    assert approximator_deepcopy != approximator  # check that the deepcopy is not equal
-    approximator_string = str(approximator)
-    assert repr(approximator) == approximator_string
-    assert hash(approximator) == hash(approximator_copy)
-    assert hash(approximator) != hash(approximator_deepcopy)
-    with pytest.raises(ValueError):
-        _ = approximator == 1
 
     # check for error when index is not in AVAILABLE_INDICES_KERNELSHAPIQ
     with pytest.raises(ValueError):

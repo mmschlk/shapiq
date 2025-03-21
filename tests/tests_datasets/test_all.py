@@ -1,5 +1,6 @@
 """This test module contains the tests for all datasets."""
 
+import numpy as np
 from pandas import DataFrame, Series
 
 from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing
@@ -7,20 +8,29 @@ from shapiq.datasets import load_adult_census, load_bike_sharing, load_californi
 
 def test_load_bike():
     x_data, y_data = load_bike_sharing()
-    # test if data is a pandas dataframe and series
     assert isinstance(x_data, DataFrame)
     assert isinstance(y_data, Series)
+
+    x_data, y_data = load_bike_sharing(to_numpy=True)
+    assert isinstance(x_data, np.ndarray)
+    assert isinstance(y_data, np.ndarray)
 
 
 def test_load_adult_census():
     x_data, y_data = load_adult_census()
-    # test if data is a pandas dataframe and series
     assert isinstance(x_data, DataFrame)
     assert isinstance(y_data, Series)
+
+    x_data, y_data = load_adult_census(to_numpy=True)
+    assert isinstance(x_data, np.ndarray)
+    assert isinstance(y_data, np.ndarray)
 
 
 def test_load_california_housing():
     x_data, y_data = load_california_housing()
-    # test if data is a pandas dataframe and series
     assert isinstance(x_data, DataFrame)
     assert isinstance(y_data, Series)
+
+    x_data, y_data = load_california_housing(to_numpy=True)
+    assert isinstance(x_data, np.ndarray)
+    assert isinstance(y_data, np.ndarray)

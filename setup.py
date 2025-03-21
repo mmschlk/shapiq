@@ -9,7 +9,7 @@ LONG_DESCRIPTION_CONTENT_TYPE = "text/markdown"
 URL = "https://github.com/mmschlk/shapiq"
 EMAIL = "maximilian.muschalik@ifi.lmu.de"
 AUTHOR = "Maximilian Muschalik et al."
-REQUIRES_PYTHON = ">=3.9.0"
+REQUIRES_PYTHON = ">=3.10.0"
 
 work_directory = os.path.abspath(os.path.dirname(__file__))
 
@@ -89,10 +89,10 @@ setuptools.setup(
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
     keywords=[
         "python",

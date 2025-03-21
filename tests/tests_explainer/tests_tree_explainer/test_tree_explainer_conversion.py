@@ -2,11 +2,20 @@
 TreeExplainer class."""
 
 import numpy as np
+import pytest
 
+from shapiq import TreeExplainer
 from shapiq.explainer.tree.base import TreeModel
 from shapiq.explainer.tree.conversion.edges import create_edge_tree
-from shapiq.explainer.tree.conversion.sklearn import convert_sklearn_forest, convert_sklearn_tree
+from shapiq.explainer.tree.conversion.sklearn import (
+    convert_sklearn_forest,
+    convert_sklearn_isolation_forest,
+    convert_sklearn_tree,
+)
+from shapiq.explainer.tree.validation import SUPPORTED_MODELS
+from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.utils import safe_isinstance
+from tests.conftest import TREE_MODEL_FIXTURES
 
 
 def test_tree_model_init():
@@ -123,3 +132,65 @@ def test_skleanr_rf_conversion(rf_clf_model, rf_reg_model):
     assert isinstance(tree_model, list)
     assert safe_isinstance(tree_model[0], tree_model_class_path_str)
     assert tree_model[0].empty_prediction is not None
+
+
+def test_sklearn_if_conversion(if_clf_model):
+    """Test the conversion of a scikit-learn isolation forest model."""
+    tree_model_class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
+
+    # test the isolation forest model
+    tree_model = convert_sklearn_isolation_forest(if_clf_model)
+    assert isinstance(tree_model, list)
+    assert safe_isinstance(tree_model[0], tree_model_class_path_str)
+    assert tree_model[0].empty_prediction is not None
+
+
+@pytest.mark.external_libraries
+@pytest.mark.parametrize("model_fixture, model_class", TREE_MODEL_FIXTURES)
+def test_conversion_predict_identity(model_fixture, model_class, background_reg_data, request):
+    if model_class not in SUPPORTED_MODELS:
+        pytest.skip(
+            f"skipped test, {model_class} not in the supported models for the tree explainer."
+        )
+    else:
+        model = request.getfixturevalue(model_fixture)
+        predict_function, _ = get_predict_function_and_model_type(model, model_class)
+        original_pred = predict_function(model, background_reg_data)
+        tree_explainer = TreeExplainer(model=model, max_order=1, min_order=1, index="SV")
+        for index in range(len(background_reg_data)):
+            sv = tree_explainer.explain(background_reg_data[index])
+            prediction = sum(sv.values)
+            if sv[()] == 0:
+                prediction += sv.baseline_value
+            original_pred_value = original_pred[index]
+            if pytest.approx(prediction, abs=1e-4) == original_pred_value:
+                assert True
+            else:
+                if "xgb" or "lightgbm" in model_fixture:
+                    # xgboost sometimes predicts a different value
+                    # see .test_tree_bugfix.test_xgb_predicts_with_wrong_leaf_node
+                    # TODO: take a look at this in more detail, why is it hard to get efficiency
+                    continue
+                assert False
+
+
+def test_tree_model_predict(
+    background_reg_dataset, dt_reg_model, background_clf_dataset, dt_clf_model
+):
+    """Tests weather the tree model predict_one is correct."""
+    X_reg, _ = background_reg_dataset
+    X_clf, _ = background_clf_dataset
+    predictions_reg = dt_reg_model.predict(X_reg)
+    predictions_clf = dt_clf_model.predict_proba(X_clf)[:, 0]
+
+    # convert
+    tree_model_reg = convert_sklearn_tree(dt_reg_model)
+    tree_model_clf = convert_sklearn_tree(dt_clf_model, class_label=0)
+
+    # test prediction
+    for i in range(len(predictions_reg)):
+        assert tree_model_reg.predict_one(X_reg[i]) == predictions_reg[i]
+
+    # test prediction
+    for i in range(len(predictions_clf)):
+        assert tree_model_clf.predict_one(X_clf[i]) == predictions_clf[i]

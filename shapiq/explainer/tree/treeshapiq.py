@@ -2,14 +2,13 @@
 
 import copy
 from math import factorial
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import scipy as sp
 
-from ...aggregation import aggregate_interaction_values
-from ...indices import get_computation_index
-from ...interaction_values import InteractionValues
+from ...game_theory.indices import get_computation_index
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from ...utils.sets import generate_interaction_lookup, powerset
 from .base import EdgeTree, TreeModel
 from .conversion.edges import create_edge_tree
@@ -49,7 +48,7 @@ class TreeSHAPIQ:
 
     def __init__(
         self,
-        model: Union[dict, TreeModel, Any],
+        model: dict | TreeModel | Any,
         max_order: int = 2,
         min_order: int = 1,
         index: str = "k-SII",
@@ -102,9 +101,13 @@ class TreeSHAPIQ:
         self._edge_tree: EdgeTree = copy.deepcopy(edge_tree)
 
         # compute the empty prediction
-        self.empty_prediction: float = float(
+        computed_empty_prediction = float(
             np.sum(self._edge_tree.empty_predictions[self._tree.leaf_mask])
         )
+        tree_empty_prediction = self._tree.empty_prediction
+        if tree_empty_prediction is None:
+            tree_empty_prediction = computed_empty_prediction
+        self.empty_prediction: float = tree_empty_prediction
 
         # stores the interaction scores up to a given order
         self.subset_ancestors_store: dict = {}
@@ -115,7 +118,14 @@ class TreeSHAPIQ:
         self.n_interpolation_size = self._n_features_in_tree
         if self._index in ("SV", "SII", "k-SII"):  # SP is of order at most d_max
             self.n_interpolation_size = min(self._edge_tree.max_depth, self._n_features_in_tree)
-        self._init_summary_polynomials()
+        try:
+            self._init_summary_polynomials()
+            self._trivial_computation = False
+        except ValueError as error:
+            if self._n_features_in_tree == 1:
+                self._trivial_computation = True  # for one feature the computation is trivial
+            else:
+                raise error
 
         # stores the nodes that are active in the tree for a given instance (new for each instance)
         self._activations: np.ndarray[bool] = np.zeros(self._n_nodes, dtype=bool)
@@ -137,16 +147,20 @@ class TreeSHAPIQ:
         x_relevant = x[self._relevant_features]
         n_players = max(x.shape[0], self._n_features_in_tree)
 
-        # compute the Shapley Interaction values
-        interactions = np.asarray([], dtype=float)
-        for order in range(self._min_order, self._max_order + 1):
-            self.shapley_interactions = np.zeros(
-                int(sp.special.binom(self._n_features_in_tree, order)), dtype=float
-            )
-            self._prepare_variables_for_order(interaction_order=order)
-            self._compute_shapley_interaction_values(x_relevant, order=order, node_id=0)
-            # append the computed Shapley Interaction values to the result
-            interactions = np.append(interactions, self.shapley_interactions.copy())
+        if self._trivial_computation:
+            interactions = self._compute_trivial_shapley_interaction_values(x)
+        else:
+            # compute the Shapley Interaction values
+            interactions = np.asarray([], dtype=float)
+            for order in range(self._min_order, self._max_order + 1):
+                shapley_interactions = np.zeros(
+                    int(sp.special.binom(self._n_features_in_tree, order)), dtype=float
+                )
+                self.shapley_interactions = shapley_interactions
+                self._prepare_variables_for_order(interaction_order=order)
+                self._compute_shapley_interaction_values(x_relevant, order=order, node_id=0)
+                # append the computed Shapley Interaction values to the result
+                interactions = np.append(interactions, self.shapley_interactions.copy())
 
         shapley_interaction_values = InteractionValues(
             values=interactions,
@@ -159,10 +173,29 @@ class TreeSHAPIQ:
             baseline_value=self.empty_prediction,
         )
 
-        if self._base_index != self._index:
-            shapley_interaction_values = aggregate_interaction_values(shapley_interaction_values)
-
+        shapley_interaction_values = finalize_computed_interactions(
+            shapley_interaction_values, target_index=self._index
+        )
         return shapley_interaction_values
+
+    def _compute_trivial_shapley_interaction_values(self, x) -> np.ndarray:
+        """Computes the Shapley interactions for the case of only one feature in the tree.
+
+        Computing the Shapley interactions for the case of only one feature in the tree is trivial
+        since only the main effect of this feature is considered, i.e., the first order value of the
+        single feature gets the full effect and all higher order values are zero.
+
+        Args:
+            x: The original instance to be explained.
+
+        Returns:
+            np.ndarray: The computed Shapley Interaction values.
+        """
+        full_prediction = self._tree.predict_one(x)
+        main_effect = full_prediction - self.empty_prediction
+        shapley_interactions = np.zeros(1, dtype=float)
+        shapley_interactions[0] = main_effect
+        return shapley_interactions
 
     def _compute_shapley_interaction_values(
         self,
@@ -403,7 +436,10 @@ class TreeSHAPIQ:
                 interaction_order=order, n_features=self._n_features_in_tree
             )
             self.subset_ancestors_store[order] = subset_ancestors
+
+            # If the tree has only one feature, we assign a default value of 0
             self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
+
             self.D_powers_store[order] = self._cache(self.D_store[order])
             if self._index in ("SV", "SII", "k-SII"):
                 self.Ns_store[order] = self._get_N(self.D_store[order])
@@ -595,7 +631,7 @@ class TreeSHAPIQ:
             )
         return Ns
 
-    def _get_subset_weight_cii(self, t, order) -> Optional[float]:
+    def _get_subset_weight_cii(self, t, order) -> float | None:
         # TODO: add docstring
         if self._index == "STII":
             return self._max_order / (

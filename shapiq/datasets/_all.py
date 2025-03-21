@@ -2,13 +2,18 @@
 
 import os
 
+import numpy as np
 import pandas as pd
 
 GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
 # csv files are located next to this file in a folder called "data"
 SHAPIQ_DATASETS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-os.makedirs(SHAPIQ_DATASETS_FOLDER, exist_ok=True)
+
+
+def _create_folder() -> None:
+    """Create the datasets folder if it does not exist."""
+    os.makedirs(SHAPIQ_DATASETS_FOLDER, exist_ok=True)
 
 
 def _try_load(csv_file_name: str) -> pd.DataFrame:
@@ -21,6 +26,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
     Returns:
         The dataset as a pandas DataFrame.
     """
+    _create_folder()
     try:
         return pd.read_csv(os.path.join(SHAPIQ_DATASETS_FOLDER, csv_file_name))
     except FileNotFoundError:
@@ -29,7 +35,9 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
         return data
 
 
-def load_california_housing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
+def load_california_housing(
+    to_numpy=False,
+) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the California housing dataset.
 
     Args:
@@ -37,6 +45,12 @@ def load_california_housing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
 
     Returns:
         The California housing dataset as a pandas DataFrame.
+
+    Example:
+        >>> from shapiq.datasets import load_california_housing
+        >>> x_data, y_data = load_california_housing()
+        >>> print(x_data.shape, y_data.shape)
+        ((20640, 8), (20640,))
     """
     dataset = _try_load("california_housing.csv")
     class_label = "MedHouseVal"
@@ -45,21 +59,28 @@ def load_california_housing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    else:
-        return x_data, y_data
+    return x_data, y_data
 
 
-def load_bike_sharing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
-    """Load the bike-sharing dataset from openml.
-
-    Args:
-        to_numpy: Return numpy objects instead of pandas. ``Default is False.``
+def load_bike_sharing(
+    to_numpy=False,
+) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
+    """Load the bike-sharing dataset from openml and preprocess it.
 
     Note:
         The function requires the `sklearn` package to be installed.
 
+    Args:
+        to_numpy: Return numpy objects instead of pandas. ``Default is False.``
+
     Returns:
         The bike-sharing dataset as a pandas DataFrame.
+
+    Example:
+        >>> from shapiq.datasets import load_bike_sharing
+        >>> x_data, y_data = load_bike_sharing()
+        >>> print(x_data.shape, y_data.shape)
+        ((17379, 12), (17379,))
     """
     from sklearn.compose import ColumnTransformer
     from sklearn.pipeline import Pipeline
@@ -108,23 +129,30 @@ def load_bike_sharing(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    else:
-        return x_data, y_data
+    return x_data, y_data
 
 
-def load_adult_census(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
+def load_adult_census(
+    to_numpy=False,
+) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the adult census dataset from the UCI Machine Learning Repository.
 
     Original source: https://archive.ics.uci.edu/ml/datasets/adult
 
-    Args:
-        to_numpy: Return numpy objects instead of pandas. Default is ``False``.
-
     Note:
         The function requires the `sklearn` package to be installed.
 
+    Args:
+        to_numpy: Return numpy objects instead of pandas. Default is ``False``.
+
     Returns:
         The adult census dataset as a pandas DataFrame.
+
+    Example:
+        >>> from shapiq.datasets import load_adult_census
+        >>> x_data, y_data = load_adult_census()
+        >>> print(x_data.shape, y_data.shape)
+        ((45222, 14), (45222,))
     """
     from sklearn.compose import ColumnTransformer
     from sklearn.impute import SimpleImputer
@@ -175,5 +203,4 @@ def load_adult_census(to_numpy=False) -> tuple[pd.DataFrame, pd.Series]:
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    else:
-        return x_data, y_data
+    return x_data, y_data

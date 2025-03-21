@@ -1,7 +1,4 @@
-"""This module contains the KernelSHAP regression approximator for estimating the SV.
-Regression with Faithful Shapley Interaction (FSII) index approximation."""
-
-from typing import Optional
+"""This module contains the KernelSHAP regression approximator for estimating the SV."""
 
 import numpy as np
 
@@ -9,7 +6,11 @@ from ._base import Regression
 
 
 class KernelSHAP(Regression):
-    """Estimates the FSII values using the weighted least square approach.
+    """The KernelSHAP regression approximator for estimating the Shapley values.
+
+    The KernelSHAP approximator is described in Lundberg and Lee (2017)[1]_. The method estimates
+    the Shapley values by solving a weighted regression problem, where the Shapley values are the
+    coefficients of the regression problem.
 
     Args:
         n: The number of players.
@@ -19,13 +20,6 @@ class KernelSHAP(Regression):
             be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
             of a certain size. Defaults to ``None``.
         random_state: The random state of the estimator. Defaults to ``None``.
-
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from ``0`` to ``n - 1``).
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For FSII, min_order is equal to ``1``.
-        iteration_cost: The cost of a single iteration of the regression FSII.
 
     Example:
         >>> from shapiq.games.benchmark import DummyGame
@@ -43,14 +37,25 @@ class KernelSHAP(Regression):
                 (4,): 0.2,
             }
         )
+
+    See Also:
+        - :class:`~shapiq.approximator.regression.kernelshapiq.KernelSHAPIQ`: The KernelSHAPIQ
+            approximator for estimating the Shapley interaction index (SII) and the
+            k-Shapley interaction index (k-SII).
+        - :class:`~shapiq.approximator.regression.fsi.RegressionFSII`: The Faithful KernelSHAP
+            approximator for estimating the Faithful Shapley interaction index (FSII).
+
+    References:
+        .. [1] Lundberg, S., and Lee, S.-I. (2017). A Unified Approach to Interpreting Model Predictions. In Proceedings of The 31st Conference on Neural Information Processing Systems. url: https://proceedings.neurips.cc/paper_files/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf
     """
 
     def __init__(
         self,
         n: int,
         pairing_trick: bool = False,
-        sampling_weights: Optional[np.ndarray] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: np.ndarray | None = None,
+        random_state: int | None = None,
+        **kwargs,
     ):
         super().__init__(
             n,

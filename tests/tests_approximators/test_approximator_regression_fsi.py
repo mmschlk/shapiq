@@ -1,7 +1,5 @@
 """This test module contains all tests regarding the FSII regression approximator."""
 
-from copy import copy, deepcopy
-
 import numpy as np
 import pytest
 
@@ -30,16 +28,6 @@ def test_initialization(n, max_order):
     assert approximator.min_order == 0
     assert approximator.iteration_cost == 1
     assert approximator.index == "FSII"
-
-    approximator_copy = copy(approximator)
-    approximator_deepcopy = deepcopy(approximator)
-    approximator_deepcopy.index = "something"
-    assert approximator_copy == approximator  # check that the copy is equal
-    assert approximator_deepcopy != approximator  # check that the deepcopy is not equal
-    approximator_string = str(approximator)
-    assert repr(approximator) == approximator_string
-    assert hash(approximator) == hash(approximator_copy)
-    assert hash(approximator) != hash(approximator_deepcopy)
 
 
 @pytest.mark.parametrize("n, max_order, budget", [(7, 2, 380), (7, 2, 380), (7, 2, 100)])
@@ -70,3 +58,6 @@ def test_approximate(n, max_order, budget):
     # check efficiency
     efficiency = np.sum(fsi_estimates.values)
     assert efficiency == pytest.approx(efficiency, 0.1)
+
+    # with pytest.raises(ValueError):
+    #     approximator._get_regression_coefficient_weights(index="wrong_index", max_order=2)

@@ -1,4 +1,4 @@
-"""This test module contains all tests regarding the interaciton explainer for the shapiq package."""
+"""This test module contains all tests regarding the interaction explainer for the shapiq package."""
 
 import numpy as np
 import pytest
@@ -25,10 +25,10 @@ def data():
     return X
 
 
-INDICES = ["SII", "k-SII", "STII", "FSII"]
+INDICES = ["SII", "k-SII", "STII", "FSII", "FBII"]
 MAX_ORDERS = [2, 3]
-IMPUTER = ["marginal", "conditional"]
-APPROXIMATOR = ["regression", "montecarlo", "permutation"]
+IMPUTER = ["marginal", "conditional", "baseline"]
+APPROXIMATOR = ["regression", "montecarlo", "permutation", "svarm"]
 
 
 @pytest.mark.parametrize("index", INDICES)
@@ -53,6 +53,8 @@ def test_init_params(dt_model, data, index, max_order, imputer):
     # test defaults
     if index == "FSII":
         assert explainer._approximator.__class__.__name__ == "RegressionFSII"
+    elif index == "FBII":
+        assert explainer._approximator.__class__.__name__ == "RegressionFBII"
     elif index == "SII" or index == "k-SII":
         assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
     else:
@@ -165,3 +167,75 @@ def test_explain(dt_model, data, index, budget, max_order, imputer):
     assert np.allclose(
         interaction_values0.get_n_order_values(2), interaction_values2.get_n_order_values(2)
     )
+
+    # test for efficiency
+    if index in ("FSII", "k-SII"):
+        prediction = float(model_function(x)[0])
+        sum_of_values = float(np.sum(interaction_values.values))
+        assert pytest.approx(interaction_values[()]) == interaction_values.baseline_value
+        assert pytest.approx(sum_of_values, 0.01) == prediction
+
+
+def test_against_shap_linear():
+    """Tests weather TabularExplainer yields similar results as SHAP with a basic linear model."""
+
+    n_samples = 3
+    dim = 5
+    rng = np.random.default_rng(42)
+
+    def make_linear_model():
+        w = rng.normal(size=dim)
+
+        def model(X: np.ndarray):
+            return np.dot(X, w)
+
+        return model
+
+    X = rng.normal(size=(n_samples, dim))
+    model = make_linear_model()
+
+    # import shap
+    # compute with shap
+    # explainer_shap = shap.explainers.Exact(model, X)
+    # shap_values = explainer_shap(X).values
+    # print(shap_values)
+    shap_values = np.array(
+        [
+            [-0.29565839, -0.36698085, -0.55970434, 0.22567077, 0.05852208],
+            [1.08513574, 0.06365536, 0.46312977, -0.61532757, 0.00370387],
+            [-0.78947735, 0.30332549, 0.09657457, 0.38965679, -0.06222595],
+        ]
+    )
+
+    # compute with shapiq
+    explainer_shapiq = TabularExplainer(
+        model=model,
+        data=X,
+        random_state=42,
+        index="SV",
+        max_order=1,
+        approximator="auto",
+        imputer="marginal",
+    )
+    shapiq_values = explainer_shapiq.explain_X(X)
+    shapiq_values = np.array([values.get_n_order_values(1) for values in shapiq_values])
+
+    assert np.allclose(shap_values, shapiq_values, atol=1e-5)
+
+
+@pytest.mark.parametrize("approximator", APPROXIMATOR)
+def test_explain_sv(dt_model, data, approximator):
+    """Tests if init and compute works for SV for different estimators."""
+    model_function = dt_model.predict
+    explainer = TabularExplainer(
+        model=model_function,
+        data=data,
+        random_state=42,
+        index="SV",
+        max_order=1,
+        approximator=approximator,
+    )
+    x = data[0].reshape(1, -1)
+    interaction_values = explainer.explain(x, budget=20)
+    assert interaction_values.index == "SV"
+    assert interaction_values.max_order == 1

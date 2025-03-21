@@ -4,7 +4,7 @@ from the precomputed data (GitHub repository)."""
 import os
 import time
 from collections.abc import Generator
-from typing import Any, Optional, Union
+from typing import Any
 
 import requests
 
@@ -26,9 +26,9 @@ __all__ = [
 
 
 def load_games_from_configuration(
-    game_class: Union[Game.__class__, str],
-    config_id: int,
-    n_games: Optional[int] = None,
+    game_class: Game.__class__ | str,
+    config_id: int | dict[str, Any],
+    n_games: int | None = None,
     n_player_id: int = 0,
     check_pre_computed: bool = True,
     only_pre_computed: bool = True,
@@ -50,7 +50,6 @@ def load_games_from_configuration(
     game_class = (
         GAME_NAME_TO_CLASS_MAPPING[game_class] if isinstance(game_class, str) else game_class
     )
-
     # get config if it is an int
     try:
         configuration: dict = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][

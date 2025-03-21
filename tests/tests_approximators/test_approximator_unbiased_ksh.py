@@ -1,7 +1,5 @@
 """This test module contains all tests for the Unbiased KernelSHAP approximator."""
 
-import copy
-
 import pytest
 
 from shapiq.approximator import UnbiasedKernelSHAP
@@ -19,16 +17,6 @@ def test_basic_functionality():
     assert approximator.min_order == 0
     assert approximator.iteration_cost == 1
     assert approximator.index == "SV"
-
-    approximator_copy = copy.copy(approximator)
-    approximator_deepcopy = copy.deepcopy(approximator)
-    approximator_deepcopy.index = "something"
-    assert approximator_copy == approximator  # check that the copy is equal
-    assert approximator_deepcopy != approximator  # check that the deepcopy is not equal
-    approximator_string = str(approximator)
-    assert repr(approximator) == approximator_string
-    assert hash(approximator) == hash(approximator_copy)
-    assert hash(approximator) != hash(approximator_deepcopy)
 
     # test that the approximator can approximate the correct values
     interaction = (1, 2)

@@ -1,8 +1,6 @@
 """This module contains the SOUM class. The SOUM class is constructed from a linear combination of
 the UnanimityGame Class."""
 
-from typing import Optional
-
 import numpy as np
 
 from shapiq.games.base import Game
@@ -88,13 +86,13 @@ class SOUM(Game):
         self,
         n: int,
         n_basis_games: int,
-        min_interaction_size: Optional[int] = None,
-        max_interaction_size: Optional[int] = None,
-        random_state: Optional[int] = None,
+        min_interaction_size: int | None = None,
+        max_interaction_size: int | None = None,
+        random_state: int | None = None,
         normalize: bool = False,
         verbose: bool = False,
     ):
-        from ....moebius_converter import MoebiusConverter
+        from shapiq.game_theory.moebius_converter import MoebiusConverter
 
         self._rng = np.random.default_rng(random_state)
 
@@ -120,8 +118,8 @@ class SOUM(Game):
             self.unanimity_games[i] = UnanimityGame(interaction_binary)
 
         # will store the Möbius transform
-        self._moebius_coefficients: Optional[InteractionValues] = None
-        self.converter: Optional[MoebiusConverter] = None
+        self._moebius_coefficients: InteractionValues | None = None
+        self.converter: MoebiusConverter | None = None
 
         # init base game
         empty_value = float(self.value_function(np.zeros((1, n)))[0])
@@ -160,7 +158,7 @@ class SOUM(Game):
         Returns:
             The exact values for the given index and order.
         """
-        from ....moebius_converter import MoebiusConverter
+        from shapiq.game_theory.moebius_converter import MoebiusConverter
 
         if self.converter is None:
             self.converter = MoebiusConverter(self.moebius_coefficients)

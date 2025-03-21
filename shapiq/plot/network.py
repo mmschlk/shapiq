@@ -2,41 +2,42 @@
 
 import copy
 import math
-from typing import Any, Optional, Union
+from typing import Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from PIL import Image
 
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
-
+from ..interaction_values import InteractionValues
+from ..utils import powerset
 from ._config import BLUE, LINES, NEUTRAL, RED, get_color
 
 __all__ = ["network_plot"]
 
 
 def network_plot(
-    interaction_values: Optional[InteractionValues] = None,
+    interaction_values: InteractionValues | None = None,
     *,
-    first_order_values: Optional[np.ndarray[float]] = None,
-    second_order_values: Optional[np.ndarray[float]] = None,
-    feature_names: Optional[list[Any]] = None,
-    feature_image_patches: Optional[dict[int, Image.Image]] = None,
-    feature_image_patches_size: Optional[Union[float, dict[int, float]]] = 0.2,
-    center_image: Optional[Image.Image] = None,
-    center_image_size: Optional[float] = 0.6,
+    first_order_values: np.ndarray[float] | None = None,
+    second_order_values: np.ndarray[float] | None = None,
+    feature_names: list[Any] | None = None,
+    feature_image_patches: dict[int, Image.Image] | None = None,
+    feature_image_patches_size: float | dict[int, float] | None = 0.2,
+    center_image: Image.Image | None = None,
+    center_image_size: float | None = 0.6,
     draw_legend: bool = True,
-    center_text: Optional[str] = None,
-) -> tuple[plt.Figure, plt.Axes]:
-    """Draws the interaction network.
+    center_text: str | None = None,
+    show: bool = False,
+) -> tuple[plt.Figure, plt.Axes] | None:
+    """Draws the interaction network plot[1]_.
 
     An interaction network is a graph where the nodes represent the features and the edges represent
     the interactions. The edge width is proportional to the interaction value. The color of the edge
     is red if the interaction value is positive and blue if the interaction value is negative. The
-    interaction values should be derived from the n-Shapley interaction index (n-SII). Below is an
-    example of an interaction network with an image in the center.
+    network plot has been used to visualize local Shapley interaction values[1]_ and is a variation
+    of the graph plots presented by Inglis et al. (2022)[2]_. Below is an example of an interaction
+    network with an image in the center.
 
     .. image:: /_static/network_example.png
         :width: 400
@@ -59,9 +60,16 @@ def network_plot(
         center_image_size: The size of the center image. Defaults to ``0.6``.
         draw_legend: Whether to draw the legend. Defaults to ``True``.
         center_text: The text to be displayed in the center of the network. Defaults to ``None``.
+        show: Whether to show the plot. Defaults to ``False``. If ``False``, the figure and the axis
+            containing the plot are returned, otherwise ``None``.
 
     Returns:
-        The figure and the axis containing the plot.
+        The figure and the axis containing the plot if ``show=False``.
+
+    References:
+        .. [1] Muschalik, M., Fumagalli, F., Hammer, B., & Hüllermeier, E. (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
+
+        .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766–778.
     """
     fig, axis = plt.subplots(figsize=(6, 6))
     axis.axis("off")
@@ -175,7 +183,9 @@ def network_plot(
     if draw_legend:
         _add_legend_to_axis(axis)
 
-    return fig, axis
+    if not show:
+        return fig, axis
+    plt.show()
 
 
 def _add_weight_to_edges_in_graph(
@@ -271,7 +281,7 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
         borderpad=0.5,
         handlelength=1.5,
         title_fontsize=font_size,
-        loc="best",
+        loc="upper left",
     )
 
     # order 2 (lines)
@@ -299,7 +309,7 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
         borderpad=0.5,
         handlelength=1.5,
         title_fontsize=font_size,
-        loc="best",
+        loc="upper right",
     )
 
     axis.add_artist(legend1)

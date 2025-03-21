@@ -1,10 +1,10 @@
 """This module implements the Permutation Sampling approximator for the SII (and k-SII) index."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from ...utils.sets import powerset
 from .._base import Approximator
 
@@ -20,13 +20,11 @@ class PermutationSamplingSII(Approximator):
             to the specified order (``False``, default).
         random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        max_order: The interaction order of the approximation.
-        top_order: Whether to approximate only the top order interactions (``True``) or all orders up
-            to the specified order (``False``).
-        min_order: The minimum order to approximate.
-        iteration_cost: The cost of a single iteration of the permutation sampling.
+    See Also:
+        - :class:`~shapiq.approximator.permutation.stii.PermutationSamplingSTII`: The Permutation
+            Sampling approximator for the STII index
+        - :class:`~shapiq.approximator.permutation.sv.PermutationSamplingSV`: The Permutation
+            Sampling approximator for the SV index
     """
 
     def __init__(
@@ -35,7 +33,7 @@ class PermutationSamplingSII(Approximator):
         max_order: int = 2,
         index: str = "SII",
         top_order: bool = False,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         if index not in ["SII", "k-SII"]:
             raise ValueError(f"Invalid index {index}. Must be either 'SII' or 'k-SII'.")
@@ -70,7 +68,7 @@ class PermutationSamplingSII(Approximator):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        batch_size: Optional[int] = 5,
+        batch_size: int | None = 5,
     ) -> InteractionValues:
         """Approximates the interaction values.
 
@@ -145,6 +143,16 @@ class PermutationSamplingSII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        return self._finalize_result(
-            result, baseline_value=empty_value, budget=used_budget, estimated=True
+        interactions = InteractionValues(
+            n_players=self.n,
+            values=result,
+            index=self.approximation_index,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_value,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+
+        return finalize_computed_interactions(interactions, target_index=self.index)

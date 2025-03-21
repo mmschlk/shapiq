@@ -11,6 +11,7 @@ name: Upload Python Package
 on:
   release:
     types: [published]
+    branches: [main]
 
 permissions:
   contents: read
@@ -33,7 +34,7 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish package
-      uses: pypa/gh-action-pypi-publish@897895f1e160c830e369f9779632ebc134688e1b
+      uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}

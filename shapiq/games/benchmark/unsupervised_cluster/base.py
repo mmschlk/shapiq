@@ -1,7 +1,5 @@
 """This module contains all base game classes for the unserpervised benchmark games."""
 
-from typing import Optional, Union
-
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.metrics import calinski_harabasz_score, silhouette_score
@@ -33,10 +31,10 @@ class ClusterExplanation(Game):
         data: np.ndarray,
         cluster_method: str = "kmeans",
         score_method: str = "calinski_harabasz_score",
-        cluster_params: Optional[dict] = None,
+        cluster_params: dict | None = None,
         normalize: bool = True,
         empty_cluster_value: float = 0.0,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
 
@@ -44,7 +42,7 @@ class ClusterExplanation(Game):
             cluster_params = {}
 
         # get a clustering algorithm
-        self.cluster: Optional[Union[KMeans, AgglomerativeClustering]] = None
+        self.cluster: KMeans | AgglomerativeClustering | None = None
         if cluster_method == "kmeans":
             cluster_params["random_state"] = random_state
             self.cluster = KMeans(**cluster_params)
@@ -57,7 +55,7 @@ class ClusterExplanation(Game):
             )
 
         # get a score function for the clustering
-        self.score: Optional[Union[calinski_harabasz_score, silhouette_score]] = None
+        self.score: calinski_harabasz_score | silhouette_score | None = None
         if score_method == "calinski_harabasz_score":
             self.score = calinski_harabasz_score
         elif score_method == "silhouette_score":
@@ -71,12 +69,11 @@ class ClusterExplanation(Game):
         self.data = data
 
         self.random_state = random_state
-        self.empty_cluster_value = empty_cluster_value
 
         super().__init__(
             data.shape[1],
             normalize=normalize,
-            normalization_value=self.empty_cluster_value,
+            normalization_value=0,
             verbose=verbose,
         )
 
@@ -93,7 +90,7 @@ class ClusterExplanation(Game):
         worth = np.zeros(n_coalitions, dtype=float)
         for i, coalition in enumerate(coalitions):
             if sum(coalition) == 0:
-                worth[i] = self.empty_cluster_value
+                worth[i] = 0.0
                 continue
             data_selection = self.data[:, coalition]
             self.cluster.fit(data_selection)

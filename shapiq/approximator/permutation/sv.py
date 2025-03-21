@@ -1,41 +1,41 @@
-"""This module contains the permutation sampling approximation method for the Shapley value (SV).
-It estimates the Shapley values by sampling random permutations of the player set
-and extracting all marginal contributions from each permutation."""
+"""This module contains the permutation sampling approximation method for the Shapley value (SV)."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
-from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
+from .._base import Approximator
 
 
 class PermutationSamplingSV(Approximator):
-    """The  Permutation Sampling algorithm ApproShapley estimates the Shapley values by
-    sampling random permutations of the player set and extracting all marginal contributions
-    from each permutation. For details, refer to `Castro et al. (2009) <https://doi.org/10.1016/j.cor.2008.04.004>`_.
+    """The Permutation Sampling algorithm for estimating the Shapley values.
+
+    Permutation Sampling [1]_ (also known as ApproShapley) estimates the Shapley values by drawing
+    random permutations of the player set and extracting all marginal contributions from each
+    permutation. For details, see Castro et al. (2009)[1]_.
 
     Args:
         n: The number of players.
         random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from ``0`` to ``n - 1``).
-        _grand_coalition_array: The array of players (starting from ``0`` to ``n``).
-        iteration_cost: The cost of a single iteration of the approximator.
+    See Also:
+        - :class:`~shapiq.approximator.permutation.sii.PermutationSamplingSII`: The Permutation
+            Sampling approximator for the SII index
+        - :class:`~shapiq.approximator.permutation.stii.PermutationSamplingSTII`: The Permutation
+            Sampling approximator for the STII index
+
+    References:
+        .. [1] Castro, J., Gómez, D., and Tejada, J. (2009) Polynomial calculation of the Shapley value based on sampling. In Computers & Operations Research 36(5), 1726-1730. doi: https://doi.org/10.1016/j.cor.2008.04.004
+
     """
 
-    def __init__(
-        self,
-        n: int,
-        random_state: Optional[int] = None,
-    ) -> None:
+    def __init__(self, n: int, random_state: int | None = None, **kwargs) -> None:
         super().__init__(n=n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = n - 1
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: Optional[int] = 5
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: int | None = 5
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
@@ -64,9 +64,20 @@ class PermutationSamplingSV(Approximator):
             interaction_index = self._interaction_lookup[self._grand_coalition_tuple]
             result[interaction_index] = full_val - empty_val
             counts[interaction_index] = 1
-            return self._finalize_result(
-                result, baseline_value=empty_val, budget=used_budget, estimated=True
+
+            interactions = InteractionValues(
+                values=result,
+                interaction_lookup=self._interaction_lookup,
+                baseline_value=empty_val,
+                min_order=self.min_order,
+                max_order=self.max_order,
+                n_players=self.n,
+                index=self.approximation_index,
+                estimated=True,
+                estimation_budget=used_budget,
             )
+
+            return finalize_computed_interactions(interactions, target_index=self.index)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
@@ -123,6 +134,17 @@ class PermutationSamplingSV(Approximator):
                 coalition_index += 1
 
         result = np.divide(result, counts, out=result, where=counts != 0)
-        return self._finalize_result(
-            result, baseline_value=empty_val, budget=used_budget, estimated=True
+
+        interactions = InteractionValues(
+            values=result,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_val,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            index=self.approximation_index,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+
+        return finalize_computed_interactions(interactions, target_index=self.index)

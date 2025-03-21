@@ -1,20 +1,19 @@
 """This module contains the base approximator classes for the shapiq package."""
 
-import copy
+import warnings
 from abc import ABC, abstractmethod
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
+from scipy.special import binom
 
-from shapiq.approximator.sampling import CoalitionSampler
-from shapiq.indices import (
+from ..approximator.sampling import CoalitionSampler
+from ..game_theory.indices import (
     AVAILABLE_INDICES_FOR_APPROXIMATION,
     get_computation_index,
-    is_empty_value_the_baseline,
-    is_index_aggregated,
 )
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import generate_interaction_lookup
+from ..interaction_values import InteractionValues
+from ..utils.sets import generate_interaction_lookup
 
 __all__ = [
     "Approximator",
@@ -66,8 +65,8 @@ class Approximator(ABC):
         top_order: bool,
         min_order: int = 0,
         pairing_trick: bool = False,
-        sampling_weights: Optional[np.ndarray[float]] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: np.ndarray[float] | None = None,
+        random_state: int | None = None,
     ) -> None:
         # check if index can be approximated
         self.index: str = index
@@ -92,8 +91,8 @@ class Approximator(ABC):
         )
 
         # set up random state and random number generators
-        self._random_state: Optional[int] = random_state
-        self._rng: Optional[np.random.Generator] = np.random.default_rng(seed=self._random_state)
+        self._random_state: int | None = random_state
+        self._rng: np.random.Generator | None = np.random.default_rng(seed=self._random_state)
 
         # set up a coalition sampler
         self._big_M: int = 100_000_000  # large number for sampling weights
@@ -110,7 +109,7 @@ class Approximator(ABC):
         self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
     ) -> InteractionValues:
         """Calls the approximate method."""
-        return self.approximate(budget, game, *args, **kwargs)
+        return self.approximate(budget=budget, game=game, *args, **kwargs)
 
     @abstractmethod
     def approximate(
@@ -129,7 +128,9 @@ class Approximator(ABC):
         Raises:
             NotImplementedError: If the method is not implemented.
         """
-        raise NotImplementedError("The approximate method needs to be implemented.")
+        raise NotImplementedError(
+            "The approximate method must be implemented in the subclass."
+        )  # pragma: no cover
 
     def _init_sampling_weights(self) -> np.ndarray:
         """Initializes the weights for sampling subsets.
@@ -141,13 +142,29 @@ class Approximator(ABC):
             The weights for sampling subsets of size ``s`` in shape ``(n + 1,)``.
         """
         weight_vector = np.zeros(shape=self.n + 1)
-        for coalition_size in range(0, self.n + 1):
-            if (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
-                # prioritize these subsets
-                weight_vector[coalition_size] = self._big_M
-            else:
-                # KernelSHAP sampling weights
-                weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
+        if self.index in ["FBII"]:
+
+            try:
+                for coalition_size in range(0, self.n + 1):
+                    weight_vector[coalition_size] = binom(self.n, coalition_size) / 2**self.n
+            except OverflowError:
+                for coalition_size in range(0, self.n + 1):
+                    weight_vector[coalition_size] = (
+                        1
+                        / np.sqrt(2 * np.pi * 0.5)
+                        * np.exp(-(coalition_size - self.n / 2) * +2 / (self.n / 2))
+                    )
+                warnings.warn(
+                    "The weights are approximated for n > 1000. While this is very close to the truth for sets for size in the region n/2, the approximation is not exact for size n or 0."
+                )
+        else:
+            for coalition_size in range(0, self.n + 1):
+                if (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
+                    # prioritize these subsets
+                    weight_vector[coalition_size] = self._big_M
+                else:
+                    # KernelSHAP sampling weights
+                    weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
         sampling_weight = weight_vector / np.sum(weight_vector)
         return sampling_weight
 
@@ -172,65 +189,6 @@ class Approximator(ABC):
             The iterator.
         """
         return range(self.min_order, self.max_order + 1)
-
-    def _finalize_result(
-        self,
-        result,
-        baseline_value: float,
-        *,
-        estimated: Optional[bool] = None,
-        budget: Optional[int] = None,
-    ) -> InteractionValues:
-        """Finalizes the result dictionary.
-
-        Args:
-            result: Interaction values.
-            baseline_value: Baseline value.
-            estimated: Whether interaction values were estimated.
-            budget: The budget for the approximation.
-
-        Returns:
-            The interaction values.
-
-        Raises:
-            ValueError: If the baseline value is not provided for SII and k-SII.
-        """
-
-        if budget is None:  # try to get budget from sampler
-            budget = self._sampler.n_coalitions
-            if budget == 0:
-                raise ValueError("Budget is 0. Cannot finalize interaction values.")
-                # Note to developer: This should not happen, the finalize method should be called
-                # with a valid budget.
-
-        if estimated is None:
-            estimated = False if budget >= 2**self.n else True
-
-        # set empty value as baseline value if necessary
-        if tuple() in self._interaction_lookup:
-            idx = self._interaction_lookup[tuple()]
-            empty_value = result[idx]
-            # only for SII empty value is not the baseline value
-            if empty_value != baseline_value and is_empty_value_the_baseline(self.index):
-                result[idx] = baseline_value
-
-        interactions = InteractionValues(
-            values=result,
-            estimated=estimated,
-            estimation_budget=budget,
-            index=self.approximation_index,  # can be different from self.index
-            min_order=self.min_order,
-            max_order=self.max_order,
-            n_players=self.n,
-            interaction_lookup=copy.deepcopy(self.interaction_lookup),
-            baseline_value=baseline_value,
-        )
-
-        # if index needs to be aggregated
-        if is_index_aggregated(self.index):
-            interactions = self.aggregate_interaction_values(interactions)
-
-        return interactions
 
     @staticmethod
     def _calc_iteration_count(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
@@ -303,8 +261,7 @@ class Approximator(ABC):
     @staticmethod
     def aggregate_interaction_values(
         base_interactions: InteractionValues,
-        order: Optional[int] = None,
-        player_set: Optional[set[int]] = None,
+        order: int | None = None,
     ) -> InteractionValues:
         """Aggregates the interaction values.
 
@@ -312,28 +269,10 @@ class Approximator(ABC):
             base_interactions: The base interaction values to aggregate.
             order: The order of the aggregation. For example, the order of the k-SII aggregation.
                 If ``None`` (default), the maximum order of the base interactions is used.
-            player_set: The set of players to consider for the aggregation. If ``None`` (default),
-                all players are considered.
 
         Returns:
             The aggregated interaction values.
         """
-        from ..aggregation import aggregate_interaction_values
+        from shapiq.game_theory.aggregation import aggregate_base_interaction
 
-        return aggregate_interaction_values(base_interactions, order=order)
-
-    @staticmethod
-    def aggregate_to_one_dimension(
-        interaction_values: InteractionValues,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Aggregates the interaction values to one dimension.
-
-        Args:
-            interaction_values: The interaction values to aggregate.
-
-        Returns:
-            tuple[np.ndarray, np.ndarray]: The positive and negative aggregated values.
-        """
-        from ..aggregation import aggregate_to_one_dimension
-
-        return aggregate_to_one_dimension(interaction_values)
+        return aggregate_base_interaction(base_interactions, order=order)

@@ -1,7 +1,6 @@
 """This module contains the base TreeSHAP-IQ xai game."""
 
 import copy
-from typing import Optional
 
 import numpy as np
 
@@ -28,7 +27,7 @@ class TreeSHAPIQXAI(Game):
         self,
         x: np.ndarray,
         tree_model: Model,
-        class_label: Optional[int] = None,
+        class_label: int | None = None,
         normalize: bool = True,
         verbose: bool = True,
     ) -> None:
@@ -43,7 +42,7 @@ class TreeSHAPIQXAI(Game):
             min_order=1,
             max_order=1,
             index="SII",
-            class_label=class_label,
+            class_index=class_label,
         )
         # compute ground truth values
         # self.gt_interaction_values: InteractionValues = self._tree_explainer.explain(x=x)
@@ -112,7 +111,7 @@ class TreeSHAPIQXAI(Game):
             min_order=0,
             max_order=order,
             index=index,
-            class_label=self.class_label,
+            class_index=self.class_label,
         )
         return tree_explainer.explain(x=self.x_explain)
 

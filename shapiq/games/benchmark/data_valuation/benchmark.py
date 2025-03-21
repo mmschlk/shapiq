@@ -1,7 +1,5 @@
 """This module contains the benchmark DatasetValuation games."""
 
-from typing import Optional
-
 from shapiq.games.benchmark.data_valuation.base import DataValuation
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
@@ -14,7 +12,7 @@ class CaliforniaHousing(DataValuation):
         *,
         n_data_points: int = 14,
         model_name: str = "decision_tree",
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -48,7 +46,7 @@ class BikeSharing(DataValuation):
         *,
         n_data_points: int = 14,
         model_name: str = "decision_tree",
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -82,7 +80,7 @@ class AdultCensus(DataValuation):
         *,
         n_data_points: int = 14,
         model_name: str = "decision_tree",
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:

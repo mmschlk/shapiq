@@ -1,9 +1,9 @@
 import sys
 from importlib import import_module
-from typing import Any, Union
+from typing import Any
 
 
-def safe_isinstance(obj: Any, class_path_str: Union[str, list[str], tuple[str]]) -> bool:
+def safe_isinstance(obj: Any, class_path_str: str | list[str] | tuple[str]) -> bool:
     """
     Acts as a safe version of isinstance without having to explicitly import packages which may not
     exist in the user's environment. Checks if obj is an instance of type specified by
@@ -58,17 +58,13 @@ def safe_isinstance(obj: Any, class_path_str: Union[str, list[str], tuple[str]])
     return False
 
 
-def check_import_module(name=None, functionality=None):
+def check_import_module(name: str, functionality: str = None):
     """check if the optional dependency is available"""
-    if name is not None:
-        try:
-            import_module(name)
-        except ImportError:
-            raise ImportError(
-                "Missing optional dependency '"
-                + name
-                + "'. "
-                + ("Install '" + name + "' for " + functionality + ". ")
-                if functionality
-                else "" + "Use pip or conda to install '" + name + "'."
-            )
+    try:
+        import_module(name)
+    except ImportError:
+        message = f"Missing optional dependency '{name}'. Install '{name}'"
+        if functionality:
+            message += f" for {functionality}"
+        message += f". Use pip or conda to install '{name}'."
+        raise ImportError(message)

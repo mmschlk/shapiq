@@ -1,6 +1,6 @@
 """This module contains all tabular machine learning games."""
 
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 import numpy as np
 
@@ -69,10 +69,10 @@ class LocalExplanation(Game):
         *,
         data: np.ndarray,
         model: Callable[[np.ndarray], np.ndarray],
-        x: Union[np.ndarray, int] = None,
-        imputer: Union[MarginalImputer, ConditionalImputer, str] = "marginal",
+        x: np.ndarray | int = None,
+        imputer: MarginalImputer | ConditionalImputer | str = "marginal",
         normalize: bool = True,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
 
@@ -87,7 +87,6 @@ class LocalExplanation(Game):
                     model=model,
                     data=data,
                     x=self.x,
-                    sample_replacements=False,
                     random_state=random_state,
                     normalize=False,
                 )

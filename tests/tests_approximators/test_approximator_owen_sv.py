@@ -28,6 +28,9 @@ def test_anchorpoints(n, m, expected):
     expected = np.array(expected)
     assert np.allclose(output, expected)
 
+    with pytest.raises(ValueError):
+        _ = approximator.get_anchor_points(0)
+
 
 @pytest.mark.parametrize(
     "n, m, budget",

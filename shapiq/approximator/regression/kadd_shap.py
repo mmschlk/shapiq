@@ -1,15 +1,15 @@
 """Regression with Shapley interaction index (SII) approximation."""
 
-from typing import Optional
-
 import numpy as np
 
 from ._base import Regression
 
 
 class kADDSHAP(Regression):
-    """Estimates the kADD-SHAP values using the kADD-SHAP algorithm. The Algorithm is described
-    in `Pelegrina et al. (2023) <https://doi.org/10.48550/arXiv.2211.02166>`_.
+    """The kADD-SHAP regression approximator for estimating the kADD-SHAP values.
+
+    Estimates the kADD-SHAP values using the kADD-SHAP regression algorithm. The Algorithm is
+    described in Pelegrina et al. (2023)[1]_ and is related to Inconsistent KernelSHAP-IQ[2]_.
 
     Args:
         n: The number of players.
@@ -21,13 +21,19 @@ class kADDSHAP(Regression):
             of a certain size. Defaults to ``None``.
         random_state: The random state of the estimator. Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        N: The set of players (starting from ``0`` to ``n - 1``).
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation. For the regression estimator, min_order
-            is equal to ``1``.
-        iteration_cost: The cost of a single iteration of the regression SII.
+    See Also:
+        - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
+            approximator for estimating the Shapley values.
+        - :class:`~shapiq.approximator.regression.kernelshapiq.InconsistentKernelSHAPIQ`: The
+            Inconsistent KernelSHAP-IQ approximator for estimating the Shapley interaction index
+            (SII) and the k-Shapley interaction index (k-SII).
+        - :class:`~shapiq.approximator.regression.kernelshapiq.KernelSHAPIQ`: The KernelSHAP-IQ
+            approximator for estimating the Shapley interaction index (SII) and the k-Shapley
+            interaction index (k-SII).
+
+    References:
+        .. [1] Pelegrina, G. D., Duarte, L. T., Grabisch, M. (2023). A k-additive Choquet integral-based approach to approximate the SHAP values for local interpretability in machine learning. In Artificial Intelligence 325, pp. 104014. doi: https://doi.org/10.1016/j.artint.2023.104014.
+        .. [2] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., and Hammer, B. (2024). KernelSHAP-IQ: Weighted Least Square Optimization for Shapley Interactions. In Proceedings of the 41 st International Conference on Machine Learning. url: https://openreview.net/forum?id=d5jXW2H4gg
     """
 
     def __init__(
@@ -35,8 +41,8 @@ class kADDSHAP(Regression):
         n: int,
         max_order: int = 2,
         pairing_trick: bool = False,
-        sampling_weights: Optional[np.ndarray] = None,
-        random_state: Optional[int] = None,
+        sampling_weights: np.ndarray | None = None,
+        random_state: int | None = None,
     ):
         super().__init__(
             n,

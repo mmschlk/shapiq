@@ -1,7 +1,6 @@
 """Module for plotting the explanation graph of interaction values."""
 
 import math
-from typing import Optional, Union
 
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
@@ -16,6 +15,9 @@ NORMAL_NODE_SIZE = 0.125  # 0.125
 BASE_ALPHA_VALUE = 1.0  # the transparency level for the highest interaction
 BASE_SIZE = 0.05  # the size of the highest interaction edge (with scale factor 1)
 ADJUST_NODE_ALPHA = True
+
+
+__all__ = ["si_graph_plot"]
 
 
 def _normalize_value(
@@ -152,7 +154,7 @@ def _draw_graph_nodes(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
-    nodes: Optional[list] = None,
+    nodes: list | None = None,
     normal_node_size: float = NORMAL_NODE_SIZE,
 ) -> None:
     """Draws the nodes of the graph as circles with a fixed size.
@@ -181,7 +183,7 @@ def _draw_explanation_nodes(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
-    nodes: Optional[list] = None,
+    nodes: list | None = None,
     normal_node_size: float = NORMAL_NODE_SIZE,
     node_area_scaling: bool = False,
 ) -> None:
@@ -193,7 +195,8 @@ def _draw_explanation_nodes(
         graph: The graph to draw the nodes on.
         nodes: The nodes to draw. If ``None``, all nodes are drawn. Defaults to ``None``.
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
-        node_area_scaling: TODO add docstring.
+        node_area_scaling: Whether to scale the node sizes based on the area of the nodes (``True``)
+            or the radius of the nodes (``False``). Defaults to ``False``.
     """
     for node in graph.nodes:
         if isinstance(node, tuple):
@@ -228,7 +231,7 @@ def _draw_graph_edges(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
-    edges: Optional[list[tuple]] = None,
+    edges: list[tuple] | None = None,
     normal_node_size: float = NORMAL_NODE_SIZE,
 ) -> None:
     """Draws black lines between the nodes.
@@ -262,9 +265,7 @@ def _draw_graph_edges(
         ax.add_patch(patch)
 
 
-def _draw_graph_labels(
-    ax: plt.axis, pos: dict, graph: nx.Graph, nodes: Optional[list] = None
-) -> None:
+def _draw_graph_labels(ax: plt.axis, pos: dict, graph: nx.Graph, nodes: list | None = None) -> None:
     """Adds labels to the nodes of the graph.
 
     Args:
@@ -310,35 +311,38 @@ def _adjust_position(
 
 def si_graph_plot(
     interaction_values: InteractionValues,
-    graph: Union[list[tuple], nx.Graph],
-    n_interactions: Optional[int] = None,
+    graph: list[tuple] | nx.Graph | None = None,
+    n_interactions: int | None = None,
     draw_threshold: float = 0.0,
     random_seed: int = 42,
     size_factor: float = 1.0,
     plot_explanation: bool = True,
-    compactness: float = 1.0,
-    label_mapping: Optional[dict] = None,
+    compactness: float = 1e10,
+    feature_names: list | None = None,
     cubic_scaling: bool = False,
-    pos: Optional[dict] = None,
+    pos: dict | None = None,
     node_size_scaling: float = 1.0,
-    min_max_interactions: Optional[tuple[float, float]] = None,
+    min_max_interactions: tuple[float, float] | None = None,
     adjust_node_pos: bool = False,
-    spring_k: Optional[float] = None,
-    interaction_direction: Optional[str] = None,
+    spring_k: float | None = None,
+    interaction_direction: str | None = None,
     node_area_scaling: bool = False,
-) -> tuple[plt.figure, plt.axis]:
+    show: bool = False,
+) -> tuple[plt.figure, plt.axis] | None:
     """Plots the interaction values as an explanation graph.
 
     An explanation graph is an undirected graph where the nodes represent players and the edges
     represent interactions between the players. The size of the nodes and edges represent the
     strength of the interaction values. The color of the edges represents the sign of the
-    interaction values.
+    interaction values (red for positive and blue for negative). The SI-graph plot is presented in
+    Muschalik et al. (2024)[1]_.
 
     Args:
         interaction_values: The interaction values to plot.
         graph: The underlying graph structure as a list of edge tuples or a networkx graph. If a
             networkx graph is provided, the nodes are used as the players and the edges are used as
-            the connections between the players.
+            the connections between the players. Defaults to ``None``, which creates a graph with
+            all nodes from the interaction values without any edges between them.
         n_interactions: The number of interactions to plot. If ``None``, all interactions are plotted
             according to the draw_threshold.
         draw_threshold: The threshold to draw an edge (i.e. only draw explanations with an
@@ -351,8 +355,8 @@ def si_graph_plot(
         compactness: A scaling factor for the underlying spring layout. A higher compactness value
             will move the interactions closer to the graph nodes. If your graph looks weird, try
             adjusting this value, e.g. ``[0.1, 1.0, 10.0, 100.0, 1000.0]``. Defaults to ``1.0``.
-        label_mapping: A mapping from the player/node indices to the player label. If ``None``, the
-            player indices are used as labels. Defaults to ``None``.
+        feature_names: A list of feature names to use for the nodes in the graph. If ``None``,
+            the feature indices are used instead. Defaults to ``None``.
         cubic_scaling: Whether to scale the size of explanations cubically (``True``) or linearly
             (``False``, default). Cubic scaling puts more emphasis on larger interactions in the plot.
             Defaults to ``False``.
@@ -371,14 +375,23 @@ def si_graph_plot(
         interaction_direction: The sign of the interaction values to plot. If ``None``, all
             interactions are plotted. Possible values are ``"positive"`` and
             ``"negative"``. Defaults to ``None``.
-        node_area_scaling: TODO add docstring.
+        node_area_scaling: Whether to scale the node sizes based on the area of the nodes (``True``)
+             or the radius of the nodes (``False``). Defaults to ``False``.
+        show: Whether to show or return the plot. Defaults to ``False``.
 
     Returns:
-        The figure and axis of the plot.
+        The figure and axis of the plot if ``show`` is ``False``. Otherwise, ``None``.
+
+    References:
+        .. [1] Muschalik, M., Baniecki, H., Fumagalli, F., Kolpaczki, P., Hammer, B., and Hüllermeier, E. (2024). shapiq: Shapley Interactions for Machine Learning. In: The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track. url: https://openreview.net/forum?id=knxGmi6SJi#discussion.
     """
 
     normal_node_size = NORMAL_NODE_SIZE * node_size_scaling
     base_size = BASE_SIZE * node_size_scaling
+
+    label_mapping = None
+    if feature_names is not None:
+        label_mapping = {i: feature_names[i] for i in range(len(feature_names))}
 
     # fill the original graph with the edges and nodes
     if isinstance(graph, nx.Graph):
@@ -389,7 +402,7 @@ def si_graph_plot(
             for node in graph_nodes:
                 node_label = label_mapping.get(node, node) if label_mapping is not None else node
                 original_graph.nodes[node]["label"] = node_label
-    else:
+    elif isinstance(graph, list):
         original_graph, graph_nodes = nx.Graph(), []
         for edge in graph:
             original_graph.add_edge(*edge)
@@ -399,6 +412,12 @@ def si_graph_plot(
             original_graph.add_node(edge[0], label=nodel_labels[0])
             original_graph.add_node(edge[1], label=nodel_labels[1])
             graph_nodes.extend([edge[0], edge[1]])
+    else:  # graph is considered None
+        original_graph = nx.Graph()
+        graph_nodes = list(range(interaction_values.n_players))
+        for node in graph_nodes:
+            node_label = label_mapping.get(node, node) if label_mapping is not None else node
+            original_graph.add_node(node, label=node_label)
 
     if n_interactions is not None:
         # get the top n interactions
@@ -500,4 +519,6 @@ def si_graph_plot(
     ax.set_aspect("equal", adjustable="datalim")  # make y- and x-axis scales equal
     ax.axis("off")  # remove axis
 
-    return fig, ax
+    if not show:
+        return fig, ax
+    plt.show()

@@ -1,14 +1,14 @@
 """This module contains the permutation sampling algorithms to estimate STII scores."""
 
 import warnings
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 import scipy as sp
 
-from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import get_explicit_subsets, powerset
+from ...interaction_values import InteractionValues, finalize_computed_interactions
+from ...utils import get_explicit_subsets, powerset
+from .._base import Approximator
 
 
 class PermutationSamplingSTII(Approximator):
@@ -20,14 +20,14 @@ class PermutationSamplingSTII(Approximator):
         random_state: The random state to use for the permutation sampling.
             Defaults to ``None``.
 
-    Attributes:
-        n: The number of players.
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order to approximate.
-        iteration_cost: The cost of a single iteration of the permutation sampling.
+    See Also:
+        - :class:`~shapiq.approximator.permutation.sii.PermutationSamplingSII`: The Permutation
+            Sampling approximator for the SII index
+        - :class:`~shapiq.approximator.permutation.sv.PermutationSamplingSV`: The Permutation
+            Sampling approximator for the SV index
 
     Example:
-        >>> from shapiq.games import DummyGame
+        >>> from shapiq.games.benchmark import DummyGame
         >>> from approximator import PermutationSamplingSTII
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = PermutationSamplingSTII(n=5, max_order=2)
@@ -54,14 +54,19 @@ class PermutationSamplingSTII(Approximator):
         )
     """
 
-    def __init__(self, n: int, max_order: int, random_state: Optional[int] = None) -> None:
+    def __init__(self, n: int, max_order: int, random_state: int | None = None) -> None:
         super().__init__(
             n=n, max_order=max_order, index="STII", top_order=False, random_state=random_state
         )
         self.iteration_cost: int = self._compute_iteration_cost()
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: int = 1
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        batch_size: int = 1,
+        *args,
+        **kwargs,
     ) -> InteractionValues:
         """Approximates the interaction values.
 
@@ -69,6 +74,7 @@ class PermutationSamplingSTII(Approximator):
             budget: The budget for the approximation.
             game: The game function as a callable that takes a set of players and returns the value.
             batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``1``.
+            args and kwargs: Additional arguments and keyword arguments not used in this method.
 
         Returns:
             InteractionValues: The estimated interaction values.
@@ -94,9 +100,20 @@ class PermutationSamplingSTII(Approximator):
                 f"increasing the budget.",
                 category=UserWarning,
             )
-            return self._finalize_result(
-                result, baseline_value=0.0, budget=used_budget, estimated=True
+
+            interactions = InteractionValues(
+                n_players=self.n,
+                values=result,
+                index=self.approximation_index,
+                interaction_lookup=self._interaction_lookup,
+                baseline_value=0.0,
+                min_order=self.min_order,
+                max_order=self.max_order,
+                estimated=True,
+                estimation_budget=used_budget,
             )
+
+            return finalize_computed_interactions(interactions, target_index=self.index)
 
         empty_value = game(np.zeros(self.n, dtype=bool))[0]
         used_budget += 1
@@ -107,16 +124,27 @@ class PermutationSamplingSTII(Approximator):
         )
 
         # warn the user if the budget is too small
-        if n_iterations == 0:
+        if n_iterations <= 0:
             warnings.warn(
                 message=f"The budget {budget} is too small to perform a single iteration, which "
                 f"requires {self.iteration_cost + lower_order_cost + 1} evaluations. Consider "
                 f"increasing the budget.",
                 category=UserWarning,
             )
-            return self._finalize_result(
-                result, baseline_value=empty_value, budget=used_budget, estimated=True
+
+            interactions = InteractionValues(
+                n_players=self.n,
+                values=result,
+                index=self.approximation_index,
+                interaction_lookup=self._interaction_lookup,
+                baseline_value=empty_value,
+                min_order=self.min_order,
+                max_order=self.max_order,
+                estimated=True,
+                estimation_budget=used_budget,
             )
+
+            return finalize_computed_interactions(interactions, target_index=self.index)
 
         # main permutation sampling loop
         for iteration in range(1, n_iterations + 1):
@@ -169,9 +197,18 @@ class PermutationSamplingSTII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        return self._finalize_result(
-            result, baseline_value=empty_value, budget=used_budget, estimated=True
+        interactions = InteractionValues(
+            n_players=self.n,
+            values=result,
+            index=self.approximation_index,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_value,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+        return finalize_computed_interactions(interactions, target_index=self.index)
 
     def _compute_iteration_cost(self) -> int:
         """Computes the cost of performing a single iteration of the permutation sampling given
@@ -184,8 +221,8 @@ class PermutationSamplingSTII(Approximator):
         return iteration_cost
 
     def _compute_lower_order_sti(
-        self, game: Callable[[np.ndarray], np.ndarray], result: np.ndarray[float]
-    ) -> np.ndarray[float]:
+        self, game: Callable[[np.ndarray], np.ndarray], result: np.ndarray
+    ) -> np.ndarray:
         """Computes all lower order interactions for the STII index up to order ``max_order - 1``.
 
         Args:
@@ -197,7 +234,7 @@ class PermutationSamplingSTII(Approximator):
         """
         # get all game values on the whole powerset of players up to order max_order - 1
         lower_order_sizes = list(range(0, self.max_order))
-        subsets: np.ndarray[bool] = get_explicit_subsets(self.n, lower_order_sizes)
+        subsets = get_explicit_subsets(self.n, lower_order_sizes)
         game_values = game(subsets)
         game_values_lookup = {
             tuple(np.where(subsets[index])[0]): float(game_values[index])

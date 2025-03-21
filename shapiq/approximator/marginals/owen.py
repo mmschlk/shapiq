@@ -2,12 +2,12 @@
 Okhrati and Lipani (2020). It estimates the Shapley values in its integral representation by
 sampling random marginal contributions."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
-from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
+from .._base import Approximator
 
 
 class OwenSamplingSV(Approximator):
@@ -34,20 +34,21 @@ class OwenSamplingSV(Approximator):
         self,
         n: int,
         n_anchor_points: int = 10,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
         super().__init__(n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = 2
         self.n_anchor_points = n_anchor_points
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray]
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
     ) -> InteractionValues:
         """Approximates the Shapley values using Owen Sampling.
 
         Args:
             budget: The number of game evaluations for approximation
             game: The game function as a callable that takes a set of players and returns the value.
+            args and kwargs: Additional arguments and keyword arguments not used in this method.
 
         Returns:
             The estimated interaction values.
@@ -100,16 +101,39 @@ class OwenSamplingSV(Approximator):
             idx = self._interaction_lookup[(player,)]
             result_to_finalize[idx] = result[player]
 
-        return self._finalize_result(
-            result_to_finalize, baseline_value=empty_value, budget=used_budget, estimated=True
+        interaction = InteractionValues(
+            n_players=self.n,
+            values=result_to_finalize,
+            index=self.approximation_index,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_value,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            estimated=True,
+            estimation_budget=used_budget,
+        )
+
+        return finalize_computed_interactions(
+            interaction,
+            target_index=self.index,
         )
 
     @staticmethod
-    def get_anchor_points(m: int):
-        if m <= 0:
-            raise ValueError("The number of anchor points needs to be greater than 0.")
+    def get_anchor_points(n_anchor_points: int):
+        """Returns the anchor points for the Owen Sampling approximation.
 
-        if m == 1:
+        Args:
+            n_anchor_points: The number of anchor points.
+
+        Returns:
+            An array of anchor points.
+
+        Raises:
+            ValueError: If the number of anchor points is less than or equal to 0.
+        """
+        if n_anchor_points <= 0:
+            raise ValueError("The number of anchor points needs to be greater than 0.")
+        elif n_anchor_points == 1:
             return np.array([0.5])
         else:
-            return np.linspace(0.0, 1.0, num=m)
+            return np.linspace(0.0, 1.0, num=n_anchor_points)

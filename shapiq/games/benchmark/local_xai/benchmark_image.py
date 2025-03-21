@@ -1,6 +1,5 @@
 """This module contains all benchmark games for image classification tasks."""
 
-from typing import Optional
 from warnings import warn
 
 import numpy as np
@@ -65,7 +64,7 @@ class ImageClassifier(Game):
         self,
         model_name: str = "vit_16_patches",
         n_superpixel_resnet: int = 14,
-        x_explain_path: Optional[str] = None,
+        x_explain_path: str | None = None,
         normalize: bool = True,
         verbose: bool = False,
         *args,

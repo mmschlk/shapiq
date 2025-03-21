@@ -1,8 +1,6 @@
 """This test module contains all tests regarding the base monte-carlo approximator many other
 approximators are based on."""
 
-from copy import copy, deepcopy
-
 import pytest
 
 from shapiq.approximator.montecarlo import MonteCarlo
@@ -15,6 +13,8 @@ from shapiq.interaction_values import InteractionValues
     [
         (7, 2, "SII", False, True, False),
         (7, 2, "wrong_index", False, False, True),
+        (7, 2, "FSII", True, False, False),
+        (7, 2, "FBII", True, False, False),
     ],
 )
 def test_initialization(
@@ -42,17 +42,20 @@ def test_initialization(
     assert approximator.iteration_cost == 1
     assert approximator.index == index
 
-    approximator_copy = copy(approximator)
-    approximator_deepcopy = deepcopy(approximator)
-    approximator_deepcopy.index = "something"
-    assert approximator_copy == approximator  # check that the copy is equal
-    assert approximator_deepcopy != approximator  # check that the deepcopy is not equal
-    approximator_string = str(approximator)
-    assert repr(approximator) == approximator_string
-    assert hash(approximator) == hash(approximator_copy)
-    assert hash(approximator) != hash(approximator_deepcopy)
     with pytest.raises(ValueError):
-        _ = approximator == 1
+        approximator._get_standard_form_weights(index="wrong_index")
+
+    if index == "FSII":
+        max_order = approximator.max_order
+        _ = approximator._fsii_weight(interaction_size=max_order, coalition_size=0)  # no error
+        with pytest.raises(ValueError):  # FSII weights only defined for top order
+            approximator._fsii_weight(interaction_size=max_order - 1, coalition_size=0)  # error
+
+    if index == "FBII":
+        max_order = approximator.max_order
+        _ = approximator._fbii_weight(interaction_size=max_order)
+        with pytest.raises(ValueError):
+            approximator._fbii_weight(interaction_size=max_order - 1)
 
 
 @pytest.mark.parametrize(

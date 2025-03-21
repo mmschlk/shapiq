@@ -1,7 +1,5 @@
 """This test module contains all tests regarding the shapiq approximator."""
 
-from copy import copy, deepcopy
-
 import numpy as np
 import pytest
 
@@ -18,6 +16,7 @@ from shapiq.interaction_values import InteractionValues
         (7, 2, "STII", False),
         (7, 2, "STII", True),
         (7, 2, "FSII", True),
+        (7, 2, "FBII", True),
     ],
 )
 def test_initialization(n, max_order, index, top_order):
@@ -30,18 +29,6 @@ def test_initialization(n, max_order, index, top_order):
     assert approximator.min_order == (max_order if top_order else 0)
     assert approximator.iteration_cost == 1
     assert approximator.index == index
-
-    approximator_copy = copy(approximator)
-    approximator_deepcopy = deepcopy(approximator)
-    approximator_deepcopy.index = "something"
-    assert approximator_copy == approximator  # check that the copy is equal
-    assert approximator_deepcopy != approximator  # check that the deepcopy is not equal
-    approximator_string = str(approximator)
-    assert repr(approximator) == approximator_string
-    assert hash(approximator) == hash(approximator_copy)
-    assert hash(approximator) != hash(approximator_deepcopy)
-    with pytest.raises(ValueError):
-        _ = approximator == 1
 
 
 @pytest.mark.parametrize("n, max_order, budget", [(7, 2, 100), (7, 2, 100)])
@@ -61,6 +48,25 @@ def test_approximate_fsi(n, max_order, budget):
     # for order 2 (max_order) the interaction between player 1 and 2 is the most important (1.0)
     interaction_estimate = estimates[interaction]
     assert interaction_estimate == pytest.approx(1.0, 0.4)  # large tolerance for FSII
+
+
+@pytest.mark.parametrize("n, max_order, budget", [(7, 2, 100), (7, 2, 100)])
+def test_approximate_fbi(n, max_order, budget):
+    """Tests the approximation of the ShapIQ FSII approximation."""
+    interaction = (1, 2)
+    game = DummyGame(n, interaction)
+    approximator = SHAPIQ(n, max_order, index="FBII", top_order=True, random_state=42)
+    estimates = approximator.approximate(budget, game)
+    assert isinstance(estimates, InteractionValues)
+    assert estimates.max_order == max_order
+    assert estimates.min_order == max_order  # only top order for FSII
+
+    # check that the budget is respected
+    assert game.access_counter <= budget + 2
+
+    # for order 2 (max_order) the interaction between player 1 and 2 is the most important (1.0)
+    interaction_estimate = estimates[interaction]
+    assert interaction_estimate == pytest.approx(1.0, 0.4)  # large tolerance for FBII
 
 
 @pytest.mark.parametrize(

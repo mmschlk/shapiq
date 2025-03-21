@@ -1,12 +1,16 @@
 """Conversion functions for the tree explainer implementation."""
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from shapiq.utils import safe_isinstance
 
 from .base import TreeModel
 from .conversion.lightgbm import convert_lightgbm_booster
-from .conversion.sklearn import convert_sklearn_forest, convert_sklearn_tree
+from .conversion.sklearn import (
+    convert_sklearn_forest,
+    convert_sklearn_isolation_forest,
+    convert_sklearn_tree,
+)
 from .conversion.xgboost import convert_xgboost_booster
 
 SUPPORTED_MODELS = {
@@ -20,15 +24,19 @@ SUPPORTED_MODELS = {
     "sklearn.ensemble._forest.ExtraTreesClassifier",
     "sklearn.ensemble.RandomForestRegressor",
     "sklearn.ensemble._forest.RandomForestRegressor",
+    "sklearn.ensemble.ExtraTreesRegressor",
+    "sklearn.ensemble._forest.ExtraTreesRegressor",
+    "sklearn.ensemble.IsolationForest",
+    "sklearn.ensemble._iforest.IsolationForest",
     "lightgbm.sklearn.LGBMRegressor",
     "lightgbm.sklearn.LGBMClassifier",
     "lightgbm.basic.Booster",
+    "xgboost.sklearn.XGBRegressor",
+    "xgboost.sklearn.XGBClassifier",
 }
 
 
-def validate_tree_model(
-    model: Any, class_label: Optional[int] = None
-) -> Union[TreeModel, list[TreeModel]]:
+def validate_tree_model(model: Any, class_label: int | None = None) -> TreeModel | list[TreeModel]:
     """Validate the model.
 
     Args:
@@ -42,6 +50,11 @@ def validate_tree_model(
     # tree model (is already in the correct format)
     if type(model).__name__ == "TreeModel":
         tree_model = model
+    # direct return if list of tree models
+    elif type(model).__name__ == "list":
+        # check if all elements are TreeModel
+        if all([type(tree).__name__ == "TreeModel" for tree in model]):
+            tree_model = model
     # dict as model is parsed to TreeModel (the dict needs to have the correct format and names)
     elif type(model).__name__ == "dict":
         tree_model = TreeModel(**model)
@@ -60,10 +73,16 @@ def validate_tree_model(
         or safe_isinstance(model, "sklearn.ensemble._forest.RandomForestRegressor")
         or safe_isinstance(model, "sklearn.ensemble.RandomForestClassifier")
         or safe_isinstance(model, "sklearn.ensemble._forest.RandomForestClassifier")
+        or safe_isinstance(model, "sklearn.ensemble.ExtraTreesRegressor")
+        or safe_isinstance(model, "sklearn.ensemble._forest.ExtraTreesRegressor")
         or safe_isinstance(model, "sklearn.ensemble.ExtraTreesClassifier")
         or safe_isinstance(model, "sklearn.ensemble._forest.ExtraTreesClassifier")
     ):
         tree_model = convert_sklearn_forest(model, class_label=class_label)
+    elif safe_isinstance(model, "sklearn.ensemble.IsolationForest") or safe_isinstance(
+        model, "sklearn.ensemble._iforest.IsolationForest"
+    ):
+        tree_model = convert_sklearn_isolation_forest(model)
     elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or safe_isinstance(
         model, "lightgbm.sklearn.LGBMClassifier"
     ):
@@ -73,8 +92,6 @@ def validate_tree_model(
     elif safe_isinstance(model, "xgboost.sklearn.XGBRegressor") or safe_isinstance(
         model, "xgboost.sklearn.XGBClassifier"
     ):
-        tree_model = convert_xgboost_booster(model.get_booster(), class_label=class_label)
-    elif safe_isinstance(model, "xgboost.core.Booster"):
         tree_model = convert_xgboost_booster(model, class_label=class_label)
     # unsupported model
     else:
