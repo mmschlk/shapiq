@@ -18,7 +18,7 @@ transformers==4.49.0
 tensorflow==2.18.0; python_version < "3.13"
 tf-keras==2.18.0; python_version < "3.13"
 xgboost==2.1.4
-numpy==1.26.4
+numpy==2.0.2
 requests==2.32.3
 lightgbm==4.6.0
 tabpfn==2.0.6; python_version < "3.13"
