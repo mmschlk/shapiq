@@ -79,3 +79,83 @@ def test_initialization(n, max_order, index, top_order, transform_type, decoder_
             assert channel_method == 'identity-siso'
         else:
             assert channel_method == 'identity'
+
+@pytest.mark.parametrize(
+    "n, index, max_order, budget, transform_type, decoder_type, top_order",
+    [
+        (7, "FBII", 2, 100, "fourier", "soft", False),
+        (7, "FBII", 2, 100, "fourier", "hard", False),
+        (7, "STI", 2, 100, "fourier", "soft", True),
+        (7, "FBII", 3, 200, "fourier", "hard", False),
+        (7, "STI", 3, 200, "mobius", None, False),
+        (7, "FBII", 2, 100, "mobius", None, True),
+    ],
+)
+def test_approximate(n, index, max_order, budget, transform_type, decoder_type, top_order):
+    """Tests the approximation of the Sparse approximator with various configurations."""
+    # Create a game with a specific interaction
+    interaction = (1, 2)
+    game = DummyGame(n, interaction)
+
+    # Initialize the approximator
+    approximator = Sparse(
+        n,
+        max_order,
+        index=index,
+        top_order=top_order,
+        transform_type=transform_type,
+        decoder_type=decoder_type,
+        random_state=42,
+    )
+
+    # Perform approximation with budget
+    estimates = approximator.approximate(budget, game)
+
+    # Verify the result structure
+    assert isinstance(estimates, InteractionValues)
+    assert estimates.max_order == max_order
+    assert estimates.min_order == (max_order if top_order else 0)
+    assert estimates.index == index
+    assert estimates.estimated
+    assert estimates.estimation_budget > 0
+
+    # Check that game was called within budget
+    assert game.access_counter <= budget + 2
+
+    # Check that values dictionary is properly populated
+    assert len(estimates.values) > 0
+
+    # For non-top_order, check that different interaction orders are present
+    if not top_order and max_order >= 2:
+        has_first_order = False
+        has_second_order = False
+
+        for interaction_key in estimates.values:
+            if len(interaction_key) == 1:
+                has_first_order = True
+            elif len(interaction_key) == 2:
+                has_second_order = True
+
+        assert has_first_order
+        assert has_second_order or max_order < 2
+
+    # For top_order, verify only interactions of max_order are present
+    if top_order:
+        for interaction_key in estimates.values:
+            assert len(interaction_key) == max_order or interaction_key == tuple()
+
+    # Check that the target interaction has a non-zero value if it's within max_order
+    if max_order >= 2:
+        if not top_order or (top_order and max_order == 2):
+            assert interaction in estimates.values
+            assert estimates[interaction] == pytest.approx(1.0, 0.5)
+
+    # For first-order effects in non-top_order case
+    if not top_order:
+        if (1,) in estimates.values and (2,) in estimates.values:
+            assert estimates[(1,)] == pytest.approx(1/7, 0.4)
+            assert estimates[(2,)] == pytest.approx(1/7, 0.4)
+
+            # Check efficiency property
+            assert np.sum(list(estimates.values.values())) == pytest.approx(2.0, 0.4)
+

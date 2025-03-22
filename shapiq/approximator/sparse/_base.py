@@ -104,7 +104,7 @@ class Sparse(Approximator):
         Returns:
             The approximated Shapley interaction values.
         """
-        used_budget = self.set_transform_budget(budget)
+        used_budget = self._set_transform_budget(budget)
         if self.transform_type == "fourier":
             signal = SubsampledSignalFourier(func=game, n=self.n, q=2, query_args=self.query_args)
             initial_transformer = sparse_fourier_transform
@@ -139,7 +139,7 @@ class Sparse(Approximator):
         autoconverter = MoebiusConverter(moebius_coefficients=mobius_interactions)
         return autoconverter(index=self.index, order=self.max_order)
 
-    def set_transform_budget(self, budget: int) -> int:
+    def _set_transform_budget(self, budget: int) -> int:
         if self.transform_type == "fourier":
             #TODO replace with static functions in SubsampledSignalFourier
             b = Sparse.get_b_for_sample_budget_fourier(budget, self.n, self.t, 2, self.query_args)
@@ -174,7 +174,7 @@ class Sparse(Approximator):
         Computes the number of vector-wise calls to self.func for the given query_args, n, t, and b.
         """
         num_subsample = query_args.get("num_subsample", 1)
-        num_rows_per_D = SubsampledSignalFourier._get_delay_overhead(n, t, query_args)
+        num_rows_per_D = Sparse._get_delay_overhead_fourier(n, t, query_args)
         samples_per_row = q ** b
         total_samples = num_subsample * num_rows_per_D * samples_per_row  # upper bound
         return total_samples
@@ -195,7 +195,7 @@ class Sparse(Approximator):
         int: The maximum value of b that keeps the total samples within budget.
         """
         num_subsample = query_args.get("num_subsample", 1)
-        num_rows_per_D = SubsampledSignalFourier._get_delay_overhead(n, t, query_args)
+        num_rows_per_D = Sparse._get_delay_overhead_fourier(n, t, query_args)
         largest_b = np.floor(np.log(budget / (num_rows_per_D * num_subsample)) / np.log(q))
         return int(largest_b)
 
@@ -231,7 +231,7 @@ class Sparse(Approximator):
         """
         # Get number of subsampling matrices
         num_subsample = query_args.get("num_subsample", 1)
-        num_rows_per_D = SubsampledSignalMoebius._get_delay_overhead(n, query_args)
+        num_rows_per_D = Sparse._get_delay_overhead_mobius(n, query_args)
         # Calculate samples per row (2^b for binary case)
         samples_per_row = 2 ** b
 
@@ -246,7 +246,7 @@ class Sparse(Approximator):
         Find the maximum value of b that fits within the given sample budget.
         """
         num_subsample = query_args.get("num_subsample", 1)
-        num_rows_per_D = SubsampledSignalMoebius._get_delay_overhead(n, query_args)
+        num_rows_per_D = Sparse._get_delay_overhead_mobius(n, query_args)
         largest_b = np.floor(np.log(budget / (num_rows_per_D * num_subsample))/np.log(2))
         return int(largest_b)
 
