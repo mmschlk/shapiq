@@ -111,7 +111,8 @@ class Sparse(Approximator):
                             initial_transformer(signal, **self.decoder_args).items()}
 
         if self.transform_type == "fourier":
-            moebius_transform = Sparse._fourier_to_moebius(initial_transform, t=max(5, self.max_order))
+            moebius_transform = Sparse._fourier_to_moebius(initial_transform, t=max(5, self.max_order)) #
+            # TODO replace with sparse_transform.qsft.utils.general.fourier_to_mobius
         elif self.transform_type == "mobius":
             moebius_transform = initial_transform
 
@@ -134,8 +135,14 @@ class Sparse(Approximator):
         return autoconverter(index=self.index, order=self.max_order)
 
     def set_transform_budget(self, budget: int) -> int:
-        b = Sparse.get_b_for_sample_budget(budget, self.n, self.t, 2, self.query_args)
-        used_budget = Sparse.get_number_of_samples(self.n, b, self.t, 2, self.query_args)
+        if self.transform_type == "fourier":
+            #TODO replace with static functions in SubsampledSignalFourier
+            b = Sparse.get_b_for_sample_budget_fourier(budget, self.n, self.t, 2, self.query_args)
+            used_budget = Sparse.get_number_of_samples_fourier(self.n, b, self.t, 2, self.query_args)
+        elif self.transform_type == "mobius":
+            # TODO replace with static functions in SubsampledSignalMoebius
+            b = Sparse.get_b_for_sample_budget_mobius(budget, self.n, self.query_args)
+            used_budget = Sparse.get_number_of_samples_mobius(self.n, b, self.query_args)
         self.query_args['b'] = b
         self.decoder_args['b'] = b
         return used_budget
@@ -157,7 +164,7 @@ class Sparse(Approximator):
         return moebius_dict
 
     @staticmethod
-    def get_number_of_samples(n, b, t, q, query_args):
+    def get_number_of_samples_fourier(n, b, t, q, query_args):
         """
         Computes the number of vector-wise calls to self.func for the given query_args, n, t, and b.
         """
@@ -168,7 +175,7 @@ class Sparse(Approximator):
         return total_samples
 
     @staticmethod
-    def get_b_for_sample_budget(budget, n, t, q, query_args):
+    def get_b_for_sample_budget_fourier(budget, n, t, q, query_args):
         """
         Find the maximum value of b that fits within the given sample budget.
 
@@ -188,7 +195,7 @@ class Sparse(Approximator):
         return int(largest_b)
 
     @staticmethod
-    def _get_delay_overhead(n, t, query_args):  # TODO depends on q in general
+    def _get_delay_overhead_fourier(n, t, query_args):  # TODO depends on q in general
         """
         Returns the overhead of the delays in terms of the number of samples
         """
@@ -206,6 +213,52 @@ class Sparse(Approximator):
             # For other delay methods, assume default behavior
             num_rows_per_D = n + 1
 
+        if query_args.get("delays_method_channel") == "nso":
+            num_repeat = query_args.get("num_repeat", 1)
+        else:
+            num_repeat = 1
+        return num_rows_per_D * num_repeat
+
+    @staticmethod
+    def get_number_of_samples_mobius(n, b, query_args):
+        """
+        Computes the number of vector-wise calls to self.func for the given query_args, n, and b.
+        """
+        # Get number of subsampling matrices
+        num_subsample = query_args.get("num_subsample", 1)
+        num_rows_per_D = SubsampledSignalMoebius._get_delay_overhead(n, query_args)
+        # Calculate samples per row (2^b for binary case)
+        samples_per_row = 2 ** b
+
+        # Calculate total samples
+        total_samples = num_subsample * num_rows_per_D * samples_per_row
+        return total_samples
+
+
+    @staticmethod
+    def get_b_for_sample_budget_mobius(budget, n, query_args):
+        """
+        Find the maximum value of b that fits within the given sample budget.
+        """
+        num_subsample = query_args.get("num_subsample", 1)
+        num_rows_per_D = SubsampledSignalMoebius._get_delay_overhead(n, query_args)
+        largest_b = np.floor(np.log(budget / (num_rows_per_D * num_subsample))/np.log(2))
+        return int(largest_b)
+
+
+    @staticmethod
+    def _get_delay_overhead_mobius(n, query_args, t = None):
+        # Calculate number of rows in each delay matrix
+        delays_method_source = query_args.get("delays_method_source", "identity")
+        if delays_method_source == "identity":
+            num_rows_per_D = n + 1
+        elif delays_method_source == "random":
+            num_rows_per_D = query_args.get("num_delays", n) + 1
+        else:
+            # For other delay methods in SMT, default to n+1
+            num_rows_per_D = n + 1
+
+        # Account for channel method and num_repeat
         if query_args.get("delays_method_channel") == "nso":
             num_repeat = query_args.get("num_repeat", 1)
         else:
