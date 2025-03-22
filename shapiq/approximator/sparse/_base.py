@@ -18,18 +18,21 @@ class Sparse(Approximator):
         n: int,
         max_order: int,
         index: str,
-        top_order: bool,
+        top_order: bool = False,
         random_state: int | None = None,
         transform_type: str = "fourier",
+        decoder_type: str | None = None, # TODO JK Do we want to do this?
     ) -> None:
-
-        assert transform_type.lower() in ["fourier", 'mobius'], \
-            "transform_type must be either 'fourier' or mobius'"
+        if  transform_type.lower() not in ["fourier", 'mobius']:
+            raise ValueError("transform_type must be either 'fourier' or mobius'")
         self.transform_type = transform_type.lower()
 
-        self.t = 5 if transform_type == 'fourier' else max(5, max_order)# 5 could be a parameter
+        self.t = 5 if transform_type == 'fourier' else max(5, max_order) # 5 could be a parameter
 
         if self.transform_type == "fourier":
+            decoder_type = 'hard' if decoder_type is None else decoder_type.lower()
+            if decoder_type not in ["soft", "hard"]:
+                raise ValueError("decoder_type must be either 'soft' or 'hard'")
             # The sampling parameters for the Fourier transform
             self.query_args = {
             "query_method": "complex",
@@ -45,7 +48,7 @@ class Sparse(Approximator):
                 "num_repeat": 1,
                 "reconstruct_method_source": "coded",
                 "peeling_method": "multi-detect",
-                "reconstruct_method_channel": "identity-siso" if type != "hard" else "identity",
+                "reconstruct_method_channel": "identity-siso" if decoder_type != "hard" else "identity",
                 "noise_sd": 0,
                 "regress": 'lasso',
                 "res_energy_cutoff": 0.9,
@@ -55,7 +58,7 @@ class Sparse(Approximator):
                 "peel_average": True,
             }
             # deal with the decoder type
-            if self.decoder_type == "hard":
+            if decoder_type == "hard":
                 source_decoder = BCH(n, self.t).parity_decode
             else:
                 source_decoder = partial(BCH(n, self.t).parity_decode_2chase_t2_max_likelihood,
@@ -63,6 +66,8 @@ class Sparse(Approximator):
             self.decoder_args["source_decoder"] = source_decoder
 
         elif self.transform_type == "mobius":
+            if decoder_type is not None:
+                raise ValueError("decoder_type is not supported for Mobius transform")
             self.query_args = {
                 "query_method": "simple",
                 "num_subsample": 3,
