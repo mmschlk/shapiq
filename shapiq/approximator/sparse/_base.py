@@ -16,20 +16,20 @@ class Sparse(Approximator):
     def __init__(
         self,
         n: int,
-        max_order: int,
+        max_order: int, #TODO Should we respect max_order? (Not currently)
         index: str,
-        top_order: bool = False,
+        top_order: bool = False, #TODO Should we respect top_order? (Not currently)
         random_state: int | None = None,
         transform_type: str = "fourier",
-        decoder_type: str | None = None, # TODO JK Do we want to do this?
+        decoder_type: str | None = None, # TODO JK Do we want to let the user do this?
     ) -> None:
         if  transform_type.lower() not in ["fourier", 'mobius']:
             raise ValueError("transform_type must be either 'fourier' or mobius'")
         self.transform_type = transform_type.lower()
-
         self.t = 5 if transform_type == 'fourier' else max(5, max_order) # 5 could be a parameter
-
         if self.transform_type == "fourier":
+            self.signal_class = SubsampledSignalFourier
+            self.initial_transformer = sparse_fourier_transform
             decoder_type = 'hard' if decoder_type is None else decoder_type.lower()
             if decoder_type not in ["soft", "hard"]:
                 raise ValueError("decoder_type must be either 'soft' or 'hard'")
@@ -66,6 +66,8 @@ class Sparse(Approximator):
             self.decoder_args["source_decoder"] = source_decoder
 
         elif self.transform_type == "mobius":
+            self.signal_class = SubsampledSignalMoebius
+            self.inital_transformer = sparse_moebius_transform
             if decoder_type is not None:
                 raise ValueError("decoder_type is not supported for Mobius transform")
             self.query_args = {
@@ -105,51 +107,41 @@ class Sparse(Approximator):
             The approximated Shapley interaction values.
         """
         used_budget = self._set_transform_budget(budget)
-        if self.transform_type == "fourier":
-            signal = SubsampledSignalFourier(func=game, n=self.n, q=2, query_args=self.query_args)
-            initial_transformer = sparse_fourier_transform
-        elif self.transform_type == "mobius":
-            signal = SubsampledSignalMoebius(func=game, n=self.n, q=2, query_args=self.query_args)
-            initial_transformer = sparse_moebius_transform
-
+        signal = self.signal_class(func=game, n=self.n, q=2, query_args=self.query_args)
         initial_transform = {tuple(np.nonzero(key)[0]): np.real(value) for key, value in
-                            initial_transformer(signal, **self.decoder_args).items()}
+                            self.initial_transformer(signal, **self.decoder_args).items()}
 
+        # If we are using the Fourier transform, we need to convert it to a Mobius transform
         if self.transform_type == "fourier":
-            moebius_transform = Sparse._fourier_to_moebius(initial_transform) # TODO add max order
+            moebius_transform = Sparse._fourier_to_moebius(initial_transform) # TODO add max order?
             # TODO replace with sparse_transform.qsft.utils.general.fourier_to_mobius
         elif self.transform_type == "mobius":
             moebius_transform = initial_transform
-
         result = self._process_mobius(mobius_transform=moebius_transform)
-        return self._finalize_result(result=result,
-                                     baseline_value=0.0,
-                                     estimated=True,
-                                     budget=used_budget,
-                                     )
+        return self._finalize_result(result=result, baseline_value=0.0, estimated=True, budget=used_budget)
 
     def _process_mobius(self, mobius_transform: dict[tuple, float]) -> np.ndarray:
-        """Processes the Mobius transform to extract interaction values.
+        """Processes the Mobius transform to extract the desired index.
 
         Args:
-            mobius_transform: The Mobius transform to process.
+            mobius_transform: The Mobius transform to process (dict mapping tuples to float values).
 
         Returns:
-            A dictionary of interaction values.
+            np.ndarray: The converted interaction values based on the specified index.
+            The function also updates the internal _interaction_lookup dictionary.
         """
-        moebius_interactions = list(mobius_transform.keys())
-        self._interaction_lookup = {key: i for i, key in enumerate(moebius_interactions)}
-        values = np.array([mobius_transform[key] for key in moebius_interactions])
         mobius_interactions = InteractionValues(
-            values=values,
+            values=np.array([mobius_transform[key] for key in mobius_transform.keys()]),
             index="Moebius",
             min_order=self.min_order,
             max_order=self.max_order,
             n_players=self.n,
-            interaction_lookup=self._interaction_lookup,
+            interaction_lookup={key: i for i, key in enumerate(mobius_transform.keys())},
             estimated=True,
-            baseline_value=0.0, # TODO verify
+            baseline_value=0.0, # TODO verify this is okay
         )
+        #TODO check that the following code doesn't do anything inefficient
+        #TODO Do we want to sparsify the interactions?
         autoconverter = MoebiusConverter(moebius_coefficients=mobius_interactions)
         converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
         self._interaction_lookup = converted_interaction_values.interaction_lookup
@@ -164,6 +156,7 @@ class Sparse(Approximator):
             # TODO replace with static functions in SubsampledSignalMoebius
             b = Sparse.get_b_for_sample_budget_mobius(budget, self.n, self.query_args)
             used_budget = Sparse.get_number_of_samples_mobius(self.n, b, self.query_args)
+            # TODO Should we try to decrease t to get b to at least 3?
         if b <= 2: #TODO Better to re-route than to throw an error?
             raise ValueError("Budget is too low to compute the transform, consider increasing the budget or  using a "
                              "different approximator.")

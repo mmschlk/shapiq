@@ -81,23 +81,27 @@ def test_initialization(n, max_order, index, top_order, transform_type, decoder_
             assert channel_method == 'identity'
 
 @pytest.mark.parametrize(
-    "n, index, max_order, budget, transform_type, decoder_type, top_order",
-    [
-        (20, "STII", 2, 8000, "fourier", "soft", False),
-        #(7, "FBII", 2, 100, "fourier", "hard", False),
-        #(7, "STI", 2, 100, "fourier", "soft", True),
-        #(7, "FBII", 3, 200, "fourier", "hard", False),
-        #(7, "STII", 3, 200, "mobius", None, False),
-        #(7, "FBII", 2, 100, "mobius", None, True),
+    "n, index, max_order, budget, transform_type, decoder_type, top_order, interaction",
+    [ # These test usually pass with much fewer samples, (~90% of the time with 800), but we use a bigger budget to
+        # ensure that the tests are stable
+        (20, "STII", 2, 1600, "fourier", "soft", False, (1, 2)),
+        (20, "FBII", 2, 1600, "fourier", "hard", False, (2, 4)),
+        (20, "FSII", 2, 1600, "fourier", "soft", False, (0, 2)),
+        (20, "STII", 2, 100, "fourier", "soft", False, (1, 2)), # Should throw and error budget too small
+        #(20, "STII", 2, 800, "mobius", None, False, (1, 2)),
+        #(20, "FBII", 2, 800, "mobius", None, False, (1, 2)),
     ],
 )
-def test_approximate(n, index, max_order, budget, transform_type, decoder_type, top_order):
+def test_approximate(n,
+                     index,
+                     max_order,
+                     budget,
+                     transform_type,
+                     decoder_type,
+                     top_order,
+                     interaction):
     """Tests the approximation of the Sparse approximator with various configurations."""
-    # Create a game with a specific interaction
-    interaction = (1, 2)
     game = DummyGame(n, interaction)
-
-    # Initialize the approximator
     approximator = Sparse(
         n,
         max_order,
@@ -107,8 +111,12 @@ def test_approximate(n, index, max_order, budget, transform_type, decoder_type, 
         decoder_type=decoder_type,
         random_state=42,
     )
-
     # Perform approximation with budget
+    if n >= 20 and budget <= 100:
+        with pytest.raises(ValueError):
+            _ = approximator.approximate(budget, game)
+        return
+
     estimates = approximator.approximate(budget, game)
 
     # Verify the result structure
@@ -122,24 +130,28 @@ def test_approximate(n, index, max_order, budget, transform_type, decoder_type, 
     # Check that game was called within budget
     assert game.access_counter <= budget + 2
 
-    # Check that values dictionary is properly populated
+    # Check that values are not empty
     assert len(estimates.values) > 0
 
-    # For non-top_order, check that different interaction orders are present
-    if not top_order and max_order >= 2:
-        has_first_order = False
-        has_second_order = False
-        for interaction_key in estimates.interaction_lookup.keys():
-            if len(interaction_key) == 1:
-                has_first_order = True
-            elif len(interaction_key) == 2:
-                has_second_order = True
+    #generate the set of expected interactions
+    expected_interactions = set((i,) for i in range(n))
+    expected_interactions.add(interaction)
+    recovered_interactions = set(estimates.interaction_lookup.keys())
+    zero_interactions = set()
 
-        assert has_first_order
-        assert has_second_order
+    if index == "STII" or index == "FBII" or index == "FSII":
+        for interaction_key in recovered_interactions:
+            if interaction_key not in expected_interactions:
+                assert estimates[interaction_key] == pytest.approx(0.0, abs=1e-2)
+                zero_interactions.add(interaction_key)
+            else:
+                if interaction_key == interaction:
+                    assert estimates[interaction_key] == pytest.approx(1.0, rel=0.01)
+                else:
+                    assert estimates[interaction_key] == pytest.approx(1/n, rel=0.01)
+    recovered_interactions = recovered_interactions - zero_interactions
+    assert recovered_interactions == expected_interactions
 
-    # Check that the target interaction has a non-zero value if it's within max_order
-    if max_order >= 2:
-        assert interaction in estimates.interaction_lookup
-        assert abs(estimates[interaction]) > 0
+
+
 
