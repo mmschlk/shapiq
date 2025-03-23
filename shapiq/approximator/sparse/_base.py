@@ -116,28 +116,44 @@ class Sparse(Approximator):
                             initial_transformer(signal, **self.decoder_args).items()}
 
         if self.transform_type == "fourier":
-            moebius_transform = Sparse._fourier_to_moebius(initial_transform, t=max(5, self.max_order)) #
+            moebius_transform = Sparse._fourier_to_moebius(initial_transform) # TODO add max order
             # TODO replace with sparse_transform.qsft.utils.general.fourier_to_mobius
         elif self.transform_type == "mobius":
             moebius_transform = initial_transform
 
-        moebius_interactions = list(moebius_transform.keys())
-        self._interaction_lookup = {i: key for i, key in enumerate(moebius_interactions)}
-        values = np.array([moebius_transform[key] for key in moebius_interactions])
+        result = self._process_mobius(mobius_transform=moebius_transform)
+        return self._finalize_result(result=result,
+                                     baseline_value=0.0,
+                                     estimated=True,
+                                     budget=used_budget,
+                                     )
+
+    def _process_mobius(self, mobius_transform: dict[tuple, float]) -> np.ndarray:
+        """Processes the Mobius transform to extract interaction values.
+
+        Args:
+            mobius_transform: The Mobius transform to process.
+
+        Returns:
+            A dictionary of interaction values.
+        """
+        moebius_interactions = list(mobius_transform.keys())
+        self._interaction_lookup = {key: i for i, key in enumerate(moebius_interactions)}
+        values = np.array([mobius_transform[key] for key in moebius_interactions])
         mobius_interactions = InteractionValues(
             values=values,
             index="Moebius",
-            min_order=min(moebius_interactions, key=len),
-            max_order=max(moebius_interactions, key=len),
+            min_order=self.min_order,
+            max_order=self.max_order,
             n_players=self.n,
             interaction_lookup=self._interaction_lookup,
             estimated=True,
-            estimation_budget=used_budget,
-            baseline_value=moebius_interactions[tuple()] if tuple() in moebius_interactions else 0.0,
+            baseline_value=0.0, # TODO verify
         )
-
         autoconverter = MoebiusConverter(moebius_coefficients=mobius_interactions)
-        return autoconverter(index=self.index, order=self.max_order)
+        converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
+        self._interaction_lookup = converted_interaction_values.interaction_lookup
+        return converted_interaction_values.values
 
     def _set_transform_budget(self, budget: int) -> int:
         if self.transform_type == "fourier":
@@ -148,10 +164,12 @@ class Sparse(Approximator):
             # TODO replace with static functions in SubsampledSignalMoebius
             b = Sparse.get_b_for_sample_budget_mobius(budget, self.n, self.query_args)
             used_budget = Sparse.get_number_of_samples_mobius(self.n, b, self.query_args)
+        if b <= 2: #TODO Better to re-route than to throw an error?
+            raise ValueError("Budget is too low to compute the transform, consider increasing the budget or  using a "
+                             "different approximator.")
         self.query_args['b'] = b
         self.decoder_args['b'] = b
         return used_budget
-
 
     ##########################################################################
     # These functions will be replaced in the next release of sparse-transform
