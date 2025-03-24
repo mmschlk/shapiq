@@ -2,28 +2,9 @@
 
 import numpy as np
 import pytest
-from sklearn.datasets import make_regression
-from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.approximator import RegressionFSII
 from shapiq.explainer import TabularExplainer
-
-
-@pytest.fixture
-def dt_model():
-    """Return a simple decision tree model."""
-    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
-    model = DecisionTreeRegressor(random_state=42, max_depth=3)
-    model.fit(X, y)
-    return model
-
-
-@pytest.fixture
-def data():
-    """Return data to use as background data."""
-    X, y = make_regression(n_samples=100, n_features=7, random_state=42)
-    return X
-
 
 INDICES = ["SII", "k-SII", "STII", "FSII", "FBII"]
 MAX_ORDERS = [2, 3]
@@ -34,12 +15,12 @@ APPROXIMATOR = ["regression", "montecarlo", "permutation", "svarm"]
 @pytest.mark.parametrize("index", INDICES)
 @pytest.mark.parametrize("max_order", MAX_ORDERS)
 @pytest.mark.parametrize("imputer", IMPUTER)
-def test_init_params(dt_model, data, index, max_order, imputer):
+def test_init_params(dt_reg_model, background_reg_data, index, max_order, imputer):
     """Test the initialization of the interaction explainer."""
-    model_function = dt_model.predict
+    model_function = dt_reg_model.predict
     explainer = TabularExplainer(
         model=model_function,
-        data=data,
+        data=background_reg_data,
         random_state=42,
         index=index,
         max_order=max_order,
@@ -61,12 +42,12 @@ def test_init_params(dt_model, data, index, max_order, imputer):
         assert explainer._approximator.__class__.__name__ == "SVARMIQ"
 
 
-def test_auto_params(dt_model, data):
+def test_auto_params(dt_reg_model, background_reg_data):
     """Test the initialization of the interaction explainer."""
-    model_function = dt_model.predict
+    model_function = dt_reg_model.predict
     explainer = TabularExplainer(
         model=model_function,
-        data=data,
+        data=background_reg_data,
     )
     assert explainer.index == "k-SII"
     assert explainer._approximator.index == "k-SII"
@@ -75,28 +56,29 @@ def test_auto_params(dt_model, data):
     assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
 
 
-def test_init_params_error_and_warning(dt_model, data):
+def test_init_params_error_and_warning(dt_reg_model, background_reg_data):
     """Test the initialization of the interaction explainer."""
-    model_function = dt_model.predict
+    model_function = dt_reg_model.predict
     with pytest.raises(ValueError):
-        TabularExplainer(model=model_function, data=data, index="invalid", max_order=0)
+        TabularExplainer(model=model_function, data=background_reg_data, index="invalid", max_order=0)
     with pytest.warns():
         TabularExplainer(
             model=model_function,
-            data=data,
+            data=background_reg_data,
             max_order=1,
         )
     with pytest.warns():
         TabularExplainer(
             model=model_function,
-            data=data,
+            data=background_reg_data,
             index="SV",
         )
 
 
-def test_init_params_approx(dt_model, data):
+def test_init_params_approx(dt_reg_model, background_reg_data):
     """Test the initialization of the tabular explainer."""
-    model_function = dt_model.predict
+    data = background_reg_data
+    model_function = dt_reg_model.predict
     with pytest.raises(ValueError):
         TabularExplainer(
             model=model_function,
@@ -124,12 +106,12 @@ def test_init_params_approx(dt_model, data):
 
 @pytest.mark.parametrize("approximator", APPROXIMATOR)
 @pytest.mark.parametrize("max_order", MAX_ORDERS + [1])
-def test_init_params_approx_params(dt_model, data, approximator, max_order):
+def test_init_params_approx_params(dt_reg_model, background_reg_data, approximator, max_order):
     """Test the initialization of the tabular explainer."""
     explainer = TabularExplainer(
-        approximator=approximator, model=dt_model, data=data, max_order=max_order
+        approximator=approximator, model=dt_reg_model, data=background_reg_data, max_order=max_order
     )
-    iv = explainer.explain(data[0])
+    iv = explainer.explain(background_reg_data[0])
     assert iv.__class__.__name__ == "InteractionValues"
 
 
@@ -140,9 +122,10 @@ BUDGETS = [2**5, 2**8, None]
 @pytest.mark.parametrize("index", INDICES)
 @pytest.mark.parametrize("max_order", MAX_ORDERS)
 @pytest.mark.parametrize("imputer", IMPUTER)
-def test_explain(dt_model, data, index, budget, max_order, imputer):
+def test_explain(dt_reg_model, background_reg_data, index, budget, max_order, imputer):
     """Test the initialization of the interaction explainer."""
-    model_function = dt_model.predict
+    model_function = dt_reg_model.predict
+    data = background_reg_data
     explainer = TabularExplainer(
         model=model_function,
         data=data,
@@ -224,9 +207,10 @@ def test_against_shap_linear():
 
 
 @pytest.mark.parametrize("approximator", APPROXIMATOR)
-def test_explain_sv(dt_model, data, approximator):
+def test_explain_sv(dt_reg_model, background_reg_data, approximator):
     """Tests if init and compute works for SV for different estimators."""
-    model_function = dt_model.predict
+    model_function = dt_reg_model.predict
+    data = background_reg_data
     explainer = TabularExplainer(
         model=model_function,
         data=data,
