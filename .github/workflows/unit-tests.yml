@@ -42,7 +42,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        uv pip install --system .
+        uv sync --system --extra ml
 
     - name: Test with pytest
       run: |
