@@ -43,7 +43,7 @@ jobs:
       run: uv sync --all-extras --dev
 
     - name: Measure coverage
-      run: uv pytest --cov=shapiq --cov-report=xml
+      run: uv run pytest --cov=shapiq --cov-report=xml
 
     - name: Coveralls
       uses: coverallsapp/github-action@v2

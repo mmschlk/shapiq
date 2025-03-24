@@ -31,7 +31,7 @@ jobs:
     - name: Install pre-commit
       run: |
         uv sync --only-group lint
-        pre-commit install
+        uv run pre-commit install
 
     - name: Run code-quality checks
-      run: pre-commit run --all-files
+      run: uv run pre-commit run --all-files
