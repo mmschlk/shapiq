@@ -33,8 +33,7 @@ jobs:
     - name: Cache UV packages
       uses: actions/cache@v4
       with:
-        path: |
-          ${{ runner.os == 'Windows' && format('{0}\\uv', env.LOCALAPPDATA) || format('{0}/.cache/uv', env.HOME) }}
+        path: ~/.cache/uv
         key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
         restore-keys: |
           uv-${{ runner.os }}-${{ matrix.python-version }}-
