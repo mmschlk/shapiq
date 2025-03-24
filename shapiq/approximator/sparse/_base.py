@@ -118,7 +118,10 @@ class Sparse(Approximator):
         elif self.transform_type == "mobius":
             moebius_transform = initial_transform
         result = self._process_mobius(mobius_transform=moebius_transform)
-        return self._finalize_result(result=result, baseline_value=0.0, estimated=True, budget=used_budget)
+        return self._finalize_result(result=result,
+                                     baseline_value=self.interaction_lookup.get((), 0.0),
+                                     estimated=True,
+                                     budget=used_budget)
 
     def _process_mobius(self, mobius_transform: dict[tuple, float]) -> np.ndarray:
         """Processes the Mobius transform to extract the desired index.
@@ -138,7 +141,7 @@ class Sparse(Approximator):
             n_players=self.n,
             interaction_lookup={key: i for i, key in enumerate(mobius_transform.keys())},
             estimated=True,
-            baseline_value=0.0, # TODO verify this is okay
+            baseline_value=mobius_transform.get((), 0.0), # TODO verify this is okay
         )
         #TODO check that the following code doesn't do anything inefficient
         #TODO Do we want to sparsify the interactions?
