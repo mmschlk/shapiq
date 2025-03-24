@@ -41,9 +41,7 @@ jobs:
           uv-${{ runner.os }}-${{ matrix.python-version }}-
 
     - name: Install dependencies
-      run: |
-        uv sync --system --extra ml
+      run: uv sync --all-extras --dev
 
     - name: Test with pytest
-      run: |
-        pytest tests/
+      run: uv run pytest tests
