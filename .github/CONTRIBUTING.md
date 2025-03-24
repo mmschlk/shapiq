@@ -1,21 +1,45 @@
 # ✌️ Contributing Guidelines
 
-This document outlines the guidelines for contributing to the project. It should enable contributors
-to understand the process for applying changes to the project and how to interact with the community.
+This document outlines how to easily contribute to the project.
 For the code of conduct, please refer to the [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 
 ## 🗺️ What to Work On
-First, we welcome contributions from everyone in every form. If you feel that something is missing
-or could be improved, feel free to change it. However, to streamline the process of contributing
-higher-tier changes or features to the project, we maintain an open
-[roadmap](https://github.com/users/mmschlk/projects/4/views/4). There, we collect ideas and features
-that we want to add to the project. If you want to work on something, please check the roadmap first
-to see if the feature is already planned or if there is a similar feature that you could contribute
-to.
+First, we welcome contributions **from everyone** in **every form**. If you feel that something is
+missing or could be improved, feel free to change it. However, to streamline the process of
+contributing higher-tier changes or features to the project, we maintain an open
+[roadmap](https://github.com/users/mmschlk/projects/4/views/4) which is just storing all the ideas
+and problems found on shapiq's [issues page](https://github.com/mmschlk/shapiq/issues). If you want
+to work on something, check out the roadmap or issues first to see if the feature is already
+planned or if there is a similar feature that you could contribute to.
 
-### 🙏 Discussions
+Here are some examples of what we are very happy to receive contributions for:
+
+### Approximators
+We are always looking for new approximators to add to `shapiq`. Approximators are always extending
+the base class `Approximator` and implementing `approximate` method. Make sure to create unit tests
+for the new approximator.
+
+### Explainers
+If you want to add a new explainer, you can extend the base class `Explainer` and implement the
+`explain_function` method. Make sure to create unit tests for the new explainer. Note that
+explainers are quite elaborate, so it is a very good idea to open a discussion before starting to
+work on a new explainer.
+
+### Model Support
+You like a particular machine learning model and it is not yet supported by `shapiq`? Maybe you can
+add support in the [transformation code](https://github.com/mmschlk/shapiq/blob/56e1ea4a41d185b8364ca8e6370a01646dd792c6/shapiq/explainer/utils.py#L1) or [tree/validation](https://github.com/mmschlk/shapiq/blob/56e1ea4a41d185b8364ca8e6370a01646dd792c6/shapiq/explainer/tree/validation.py).
+Make sure to add tests for the new model as part of the unit tests (you can find the tests of the
+other model types).
+
+### Visualizations
+If you have a nice idea to visualize Shapley values or Shapley interaction values, you can add a new
+visualization to the `shapiq.plot` package. Make sure that plots are also available through the
+`InteractionValues` object like the other plots (e.g. `InteractionValues.plot_force`). Make sure to
+add tests for the new visualization.
+
+### 🙏 Discussions and Issues
 If you have an idea for a new feature or a change, we encourage everyone to open a discussion in the
-[Discussions](https://github.com/mmschlk/shapiq/discussions/new/choose) section.
+[Discussions](https://github.com/mmschlk/shapiq/discussions/new/choose) section or open an [issues](https://github.com/mmschlk/shapiq/issues).
 We encourage you to open a discussion so that we can align on the work to be done. It's generally a
 good idea to have a quick discussion before opening a pull request that is potentially out-of-scope.
 
@@ -39,52 +63,37 @@ git clone https://github.com/mmschlk/shapiq/
 ```
 
 Next you need a python environment with a supported version of python. We recommend using
-[pyenv](https://github.com/pyenv/pyenv-installer). Once you have pyenv, you can install the latest
-Python version `shapiq` supports:
+[uv](https://docs.astral.sh/uv/getting-started/installation), which works extremely fast and helps
+to stay up-to-date with the latest Python versions. With `uv`, you can set up your development
+environment with the following command:
 
 ```sh
-pyenv install 3.10
+uv sync --all-extras --dev
 ```
 
-Then, create a virtual environment and install the development dependencies:
+Now you are all set up and ready to go.
 
-```sh
-cd shapiq
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
-```
 
----
-> 📝 **Note**: Since `shapiq` uses the `requests` library, you might need to install the
+> 📝 **Note**: `shapiq` uses the `requests` library, you might need to install the
 > certificates on your MacOS system ([more information](https://stackoverflow.com/a/53310545)).
 ```sh
 /Applications/Python\ 3.x/Install\ Certificates.command
 ```
----
 
-Finally, install the [pre-commit](https://pre-commit.com/) push hooks. This will run some code
-quality checks every time you push to GitHub.
+### 🛠️ Pre-Commit Hooks
+To ensure that the code quality is maintained, we use `pre-commit` hooks. You need to install the
+[pre-commit](https://pre-commit.com/)  hooks. This will run some code quality checks every time
+you push to GitHub. You can view the checks in the `.pre-commit-config.yaml` file and the setup in
+the `pyproject.toml` file.
 
 ```sh
-pre-commit install --hook-type pre-push
+uv run pre-commit install
 ```
 
 If you want, you can optionally run `pre-commit` at any time as so:
 
 ```sh
-pre-commit run --all-files
-```
-
-## 📝 Commit Messages
-
-We do not enforce a strict commit message format, but we encourage you to follow good practices.
-We recommend to use action-words to automatically close issues or pull requests (example: `closes #123`).
-For example, start the commit message with a verb in the imperative mood, and keep the message short
-and concise. For example:
-
-```
-add feature-xyz and closes #123
+uv run pre-commit run --all-files
 ```
 
 ## 🛠️ Making Changes
@@ -102,7 +111,7 @@ To build the documentation on your end and to check if your changes are document
 need to install the documentation dependencies:
 
 ```sh
-pip install -e .[docs]
+uv sync --all-extras --dev --docs
 ```
 
 Then, you can build the documentation from the root of the repository with:
@@ -116,18 +125,18 @@ in your browser to see the rendered documentation.
 
 ### 🎯 Testing Changes
 
-We use `pytest` for running unit tests and coverage. In the near future we will add `mypy` to the
-static type checking.
+We use `pytest` for running unit tests and coverage.
 
 #### Unit Tests
 
 Unit tests **absolutely need to pass**. Write unit tests for your changes. If you are adding a new
 feature, you need to add tests for the new feature. If you are fixing a bug it is a good idea to add
 a test that shows the bug and that your fix works.
-Unit tests are located in the `tests` directory. To run the tests, you can use the following command:
+Unit tests are located in the `tests` directory. To run the tests with `pytest`, you can use the
+following command and replace `n_jobs` with the number of jobs you want to run in parallel:
 
 ```sh
-pytest
+uv run pytest -n n_jobs
 ```
 
 #### Coverage
@@ -138,7 +147,7 @@ We use `pytest-cov` to measure the test coverage. To run the tests with coverage
 following command:
 
 ```sh
-pytest --cov=shapiq
+uv run pytest --cov=shapiq
 ```
 
 #### Static Type Checking and Code Quality
@@ -147,14 +156,5 @@ Currently, we do not have static type checking in place. We use `pre-commit` to 
 checks. These checks **absolutely need to pass**. You can run the checks with the following command:
 
 ```sh
-pre-commit run --all-files
-```
-
-In the near future we aim to use `mypy` for type checking. Once added this will also be part of the
-pre-commit pipeline and hence **absolutely need to pass**.
-
-If you want, you can run `mypy` with the following command:
-
-```sh
-mypy shapiq
+uv run pre-commit run --all-files
 ```
