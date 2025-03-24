@@ -29,7 +29,6 @@ maintainers = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
 ]
 license = "MIT"
-license-file = ["LICEN[CS]E.*"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
