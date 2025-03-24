@@ -42,7 +42,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        uv pip install --system --no-deps .[dev,ml]
+        uv pip install --system .
 
     - name: Test with pytest
       run: |
