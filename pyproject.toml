@@ -72,39 +72,21 @@ tracker = "https://github.com/mmschlk/shapiq/issues"
 changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = [
-    # Lint/format
-    "pre-commit",
-    "ruff",
-    # "mypy",  # TODO: incorporate mypy
-    # Test
-    "pytest",
-    "coverage",
-    "build",
-    "twine",
-]
-
-doc = [
-    "sphinx",
-    "sphinx-autodoc-typehints",
-    "sphinx_rtd_theme",
-    "sphinx_toolbox",
-    # "myst_nb",
-    "nbsphinx",  # for rendering jupyter notebooks
-    "pandoc",  # for rendering jupyter notebooks
-    "furo",  # theme of the docs
-    "sphinx-copybutton",  # easier copy-pasting of code snippets from docs
-    "myst-parser",  # parse md and rst files
+ml = [
+    "tabpfn",
+    "torchvision",
+    "torch",
+    "xgboost",
+    "lightgbm",
+    "transformers",
+    "scikit-image",
+    "tensorflow; python_version < '3.13'",
+    "tf-keras; python_version < '3.13'",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 minversion = "8.0"
-
-
-[tool.black]
-line-length = 100
-target-version = ['py310', 'py311', 'py312', 'py313']
 
 [tool.ruff]
 lint.select = ["E", "F", "I", "UP"]  # https://beta.ruff.rs/docs/rules/
@@ -118,5 +100,19 @@ extra-standard-library = ["typing_extensions"]
 combine-as-imports = true
 force-wrap-aliases = true
 
-[tool.uv.workspace]
-members = ["shapiq/shapiq"]
+[dependency-groups]
+test = [
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.6.1",
+]
+lint = [
+    "ruff>=0.11.2",
+    "pre-commit>=4.2.0",
+]
+dev = [
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
+    {include-group = "test"},
+    {include-group = "lint"},
+]

@@ -30,8 +30,8 @@ jobs:
 
     - name: Install pre-commit
       run: |
-        uv pip install --system pre-commit ruff
-        pre-commit install
+        uv sync --only-group lint
+        uv run pre-commit install
 
     - name: Run code-quality checks
-      run: SKIP=mypy pre-commit run --all-files
+      run: uv run pre-commit run --all-files
