@@ -22,11 +22,16 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }} and uv
+      id: setup-uv
       uses: astral-sh/setup-uv@v5
       with:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
-        cache-dependency-glob: 'uv.lock'
+        cache-dependency-glob: '**/uv.lock'
+
+    - name: Do something if the cache was restored
+      if: steps.setup-uv.outputs.cache-hit == 'true'
+      run: echo "Cache was restored"
 
     - name: Install dependencies
       run: uv sync --all-extras --dev
