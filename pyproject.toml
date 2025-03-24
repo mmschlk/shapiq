@@ -18,7 +18,7 @@ dependencies = [
     # plotting
     "matplotlib",
     "networkx",
-    "colour",
+    "colour"
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -80,6 +80,7 @@ ml = [
     "lightgbm",
     "transformers",
     "scikit-image",
+    "joblib",
     "tensorflow; python_version < '3.13'",
     "tf-keras; python_version < '3.13'",
 ]
@@ -113,6 +114,8 @@ lint = [
 dev = [
     "build>=1.2.2.post1",
     "twine>=6.1.0",
+    "notebook>=7.3.3",
+    "ipywidgets",
     {include-group = "test"},
     {include-group = "lint"},
 ]
