@@ -5,10 +5,10 @@ import pytest
 
 from shapiq import TabPFNImputer
 from shapiq.explainer.utils import get_predict_function_and_model_type
-from tests.markers import importorskip_tabpfn
+from tests.markers import skip_if_no_tabpfn
 
 
-@importorskip_tabpfn
+@skip_if_no_tabpfn
 @pytest.mark.external_libraries
 def test_tabpfn_imputer(tabpfn_classification_problem):
     """Test the TabPFNImputer class."""
@@ -42,7 +42,7 @@ def test_tabpfn_imputer(tabpfn_classification_problem):
     assert model.n_features_in_ == 1
 
 
-@importorskip_tabpfn
+@skip_if_no_tabpfn
 @pytest.mark.external_libraries
 def test_empty_prediction(tabpfn_classification_problem):
     """Tests the TabPFNImputer with a manual empty prediction."""
@@ -73,7 +73,7 @@ def test_empty_prediction(tabpfn_classification_problem):
     assert output[0] == manual_empty_prediction
 
 
-@importorskip_tabpfn
+@skip_if_no_tabpfn
 @pytest.mark.external_libraries
 def test_tabpfn_imputer_validation(tabpfn_classification_problem):
     """Test that the TabPFNImputer raises a ValueError if no predict function is provided."""
