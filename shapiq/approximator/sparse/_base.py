@@ -141,10 +141,9 @@ class Sparse(Approximator):
             n_players=self.n,
             interaction_lookup={key: i for i, key in enumerate(mobius_transform.keys())},
             estimated=True,
-            baseline_value=mobius_transform.get((), 0.0), # TODO verify this is okay
+            baseline_value=mobius_transform.get((), 0.0)
         )
         #TODO check that the following code doesn't do anything inefficient
-        #TODO Do we want to sparsify the interactions?
         autoconverter = MoebiusConverter(moebius_coefficients=mobius_interactions)
         converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
         self._interaction_lookup = converted_interaction_values.interaction_lookup
