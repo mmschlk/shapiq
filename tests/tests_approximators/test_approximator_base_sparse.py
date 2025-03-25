@@ -1,8 +1,6 @@
 """This test module contains all tests regarding the base sparse approximator."""
 
 import pytest
-import numpy as np
-
 from shapiq.approximator.sparse import Sparse
 from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
@@ -147,7 +145,3 @@ def test_approximate(n,
                     assert estimates[interaction_key] == pytest.approx(1/n, rel=0.01)
     recovered_interactions = recovered_interactions - zero_interactions
     assert recovered_interactions == expected_interactions
-
-
-
-

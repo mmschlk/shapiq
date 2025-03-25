@@ -85,37 +85,37 @@ class Sparse(Approximator):
         signal = self.signal_class(func=game, n=self.n, q=2, query_args=self.query_args)
         initial_transform = {tuple(np.nonzero(key)[0]): np.real(value) for key, value in
                             self.initial_transformer(signal, **self.decoder_args).items()}
-        # If we are using the Fourier transform, we need to convert it to a Mobius transform
+        # If we are using the Fourier transform, we need to convert it to a Moebius transform
         moebius_transform = Sparse._fourier_to_moebius(initial_transform) # TODO add max order?
         # TODO replace with sparse_transform.qsft.utils.general.fourier_to_mobius
-        result = self._process_mobius(mobius_transform=moebius_transform)
+        result = self._process_moebius(moebius_transform=moebius_transform)
         return self._finalize_result(result=result,
                                      baseline_value=self.interaction_lookup.get((), 0.0),
                                      estimated=True,
                                      budget=used_budget)
 
-    def _process_mobius(self, mobius_transform: dict[tuple, float]) -> np.ndarray:
-        """Processes the Mobius transform to extract the desired index.
+    def _process_moebius(self, moebius_transform: dict[tuple, float]) -> np.ndarray:
+        """Processes the Moebius transform to extract the desired index.
 
         Args:
-            mobius_transform: The Mobius transform to process (dict mapping tuples to float values).
+            moebius_transform: The Moebius transform to process (dict mapping tuples to float values).
 
         Returns:
             np.ndarray: The converted interaction values based on the specified index.
             The function also updates the internal _interaction_lookup dictionary.
         """
-        mobius_interactions = InteractionValues(
-            values=np.array([mobius_transform[key] for key in mobius_transform.keys()]),
+        moebius_interactions = InteractionValues(
+            values=np.array([moebius_transform[key] for key in moebius_transform.keys()]),
             index="Moebius",
             min_order=self.min_order,
             max_order=self.max_order,
             n_players=self.n,
-            interaction_lookup={key: i for i, key in enumerate(mobius_transform.keys())},
+            interaction_lookup={key: i for i, key in enumerate(moebius_transform.keys())},
             estimated=True,
-            baseline_value=mobius_transform.get((), 0.0)
+            baseline_value=moebius_transform.get((), 0.0)
         )
         #TODO check that the following code doesn't do anything inefficient
-        autoconverter = MoebiusConverter(moebius_coefficients=mobius_interactions)
+        autoconverter = MoebiusConverter(moebius_coefficients=moebius_interactions)
         converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
         self._interaction_lookup = converted_interaction_values.interaction_lookup
         return converted_interaction_values.values
@@ -204,7 +204,7 @@ class Sparse(Approximator):
         return num_rows_per_D * num_repeat
 
     @staticmethod
-    def get_number_of_samples_mobius(n, b, query_args):
+    def get_number_of_samples_moebius(n, b, query_args):
         """
         Computes the number of vector-wise calls to self.func for the given query_args, n, and b.
         """
@@ -220,7 +220,7 @@ class Sparse(Approximator):
 
 
     @staticmethod
-    def get_b_for_sample_budget_mobius(budget, n, query_args):
+    def get_b_for_sample_budget_moebius(budget, n, query_args):
         """
         Find the maximum value of b that fits within the given sample budget.
         """
@@ -231,7 +231,7 @@ class Sparse(Approximator):
 
 
     @staticmethod
-    def _get_delay_overhead_mobius(n, query_args, t = None):
+    def _get_delay_overhead_moebius(n, query_args, t = None):
         # Calculate number of rows in each delay matrix
         delays_method_source = query_args.get("delays_method_source", "identity")
         if delays_method_source == "identity":
