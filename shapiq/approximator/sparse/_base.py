@@ -5,8 +5,6 @@ from ...game_theory.moebius_converter import MoebiusConverter
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
 from sparse_transform.qsft.codes.BCH import BCH
 from sparse_transform.qsft.signals.input_signal_subsampled import SubsampledSignal as SubsampledSignalFourier
-from sparse_transform.smt.smt import transform as sparse_moebius_transform
-from sparse_transform.smt.input_signal_subsampled import SubsampledSignal as SubsampledSignalMoebius
 from ...utils.sets import powerset
 from functools import partial
 import numpy as np
@@ -23,69 +21,46 @@ class Sparse(Approximator):
         transform_type: str = "fourier",
         decoder_type: str | None = None, # TODO JK Do we want to let the user do this?
     ) -> None:
-        if  transform_type.lower() not in ["fourier", 'mobius']:
-            raise ValueError("transform_type must be either 'fourier' or mobius'")
+        if  transform_type.lower() not in ["fourier"]:
+            raise ValueError("transform_type must be 'fourier'")
         self.transform_type = transform_type.lower()
-        self.t = 5 if transform_type == 'fourier' else max(5, max_order) # 5 could be a parameter
-        if self.transform_type == "fourier":
-            self.signal_class = SubsampledSignalFourier
-            self.initial_transformer = sparse_fourier_transform
-            decoder_type = 'hard' if decoder_type is None else decoder_type.lower()
-            if decoder_type not in ["soft", "hard"]:
-                raise ValueError("decoder_type must be either 'soft' or 'hard'")
-            # The sampling parameters for the Fourier transform
-            self.query_args = {
-            "query_method": "complex",
+        self.t = 5 # 5 could be a parameter
+        self.signal_class = SubsampledSignalFourier
+        self.initial_transformer = sparse_fourier_transform
+        decoder_type = 'hard' if decoder_type is None else decoder_type.lower()
+        if decoder_type not in ["soft", "hard"]:
+            raise ValueError("decoder_type must be either 'soft' or 'hard'")
+        # The sampling parameters for the Fourier transform
+        self.query_args = {
+        "query_method": "complex",
+        "num_subsample": 3,
+        "delays_method_source": "joint-coded",
+        "subsampling_method": "qsft",
+        "delays_method_channel": "identity-siso",
+        "num_repeat": 1,
+        "t": self.t,
+    }
+        self.decoder_args = {
             "num_subsample": 3,
-            "delays_method_source": "joint-coded",
-            "subsampling_method": "qsft",
-            "delays_method_channel": "identity-siso",
             "num_repeat": 1,
-            "t": self.t,
+            "reconstruct_method_source": "coded",
+            "peeling_method": "multi-detect",
+            "reconstruct_method_channel": "identity-siso" if decoder_type != "hard" else "identity",
+            "noise_sd": 0,
+            "regress": 'lasso',
+            "res_energy_cutoff": 0.9,
+            "trap_exit": True,
+            "verbosity": 0,
+            "report": False,
+            "peel_average": True,
         }
-            self.decoder_args = { #TODO set defaults correctly in sparse-transform and remove some of this
-                "num_subsample": 3,
-                "num_repeat": 1,
-                "reconstruct_method_source": "coded",
-                "peeling_method": "multi-detect",
-                "reconstruct_method_channel": "identity-siso" if decoder_type != "hard" else "identity",
-                "noise_sd": 0,
-                "regress": 'lasso',
-                "res_energy_cutoff": 0.9,
-                "trap_exit": True,
-                "verbosity": 0,
-                "report": False,
-                "peel_average": True,
-            }
-            # deal with the decoder type
-            if decoder_type == "hard":
-                source_decoder = BCH(n, self.t).parity_decode
-            else:
-                source_decoder = partial(BCH(n, self.t).parity_decode_2chase_t2_max_likelihood,
-                                         chase_depth=2 * self.t)
-            self.decoder_args["source_decoder"] = source_decoder
-
-        elif self.transform_type == "mobius":
-            self.signal_class = SubsampledSignalMoebius
-            self.inital_transformer = sparse_moebius_transform
-            if decoder_type is not None:
-                raise ValueError("decoder_type is not supported for Mobius transform")
-            self.query_args = {
-                "query_method": "simple",
-                "num_subsample": 3,
-                "delays_method_source": "identity",
-                "delays_method_channel": "identity",
-                "subsampling_method": "smt",
-                "num_repeat": 1,
-            }
-            self.decoder_args = {
-                "num_subsample": 3,
-                "num_repeat": 1,
-                "reconstruct_method_source": "simple",
-                "reconstruct_method_channel": "simple",
-                "noise_sd": 0,
-                "source_decoder": None
-            }
+        # deal with the decoder type
+        if decoder_type == "hard":
+            source_decoder = BCH(n, self.t).parity_decode
+        else:
+            source_decoder = partial(BCH(n, self.t).parity_decode_2chase_t2_max_likelihood,
+                                     chase_depth=2 * self.t)
+        self.decoder_args["source_decoder"] = source_decoder
         super().__init__(
             n=n,
             max_order=max_order,
@@ -110,13 +85,9 @@ class Sparse(Approximator):
         signal = self.signal_class(func=game, n=self.n, q=2, query_args=self.query_args)
         initial_transform = {tuple(np.nonzero(key)[0]): np.real(value) for key, value in
                             self.initial_transformer(signal, **self.decoder_args).items()}
-
         # If we are using the Fourier transform, we need to convert it to a Mobius transform
-        if self.transform_type == "fourier":
-            moebius_transform = Sparse._fourier_to_moebius(initial_transform) # TODO add max order?
-            # TODO replace with sparse_transform.qsft.utils.general.fourier_to_mobius
-        elif self.transform_type == "mobius":
-            moebius_transform = initial_transform
+        moebius_transform = Sparse._fourier_to_moebius(initial_transform) # TODO add max order?
+        # TODO replace with sparse_transform.qsft.utils.general.fourier_to_mobius
         result = self._process_mobius(mobius_transform=moebius_transform)
         return self._finalize_result(result=result,
                                      baseline_value=self.interaction_lookup.get((), 0.0),
@@ -150,15 +121,10 @@ class Sparse(Approximator):
         return converted_interaction_values.values
 
     def _set_transform_budget(self, budget: int) -> int:
-        if self.transform_type == "fourier":
-            #TODO replace with static functions in SubsampledSignalFourier
-            b = Sparse.get_b_for_sample_budget_fourier(budget, self.n, self.t, 2, self.query_args)
-            used_budget = Sparse.get_number_of_samples_fourier(self.n, b, self.t, 2, self.query_args)
-        elif self.transform_type == "mobius":
-            # TODO replace with static functions in SubsampledSignalMoebius
-            b = Sparse.get_b_for_sample_budget_mobius(budget, self.n, self.query_args)
-            used_budget = Sparse.get_number_of_samples_mobius(self.n, b, self.query_args)
-            # TODO Should we try to decrease t to get b to at least 3?
+        #TODO replace with static functions in SubsampledSignalFourier
+        b = Sparse.get_b_for_sample_budget_fourier(budget, self.n, self.t, 2, self.query_args)
+        used_budget = Sparse.get_number_of_samples_fourier(self.n, b, self.t, 2, self.query_args)
+        # TODO Should we try to decrease t to get b to at least 3?
         if b <= 2: #TODO Better to re-route than to throw an error?
             raise ValueError("Budget is too low to compute the transform, consider increasing the budget or  using a "
                              "different approximator.")

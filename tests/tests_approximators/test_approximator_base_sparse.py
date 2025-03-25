@@ -16,8 +16,6 @@ from shapiq.interaction_values import InteractionValues
         (7, 2, "FBII", False, "fourier", "Hard"),
         (7, 2, "wrong_index", False, "fourier", "soft"),  # Should raise ValueError
         (7, 2, "wrong_index", False, "fourier", "wrong_dec_type"),  # Should raise ValueError
-        (7, 2, "FBII", True, "mobius", None),
-        (7, 2, "FBII", True, "Mobius", 'abc'),
         (7, 2, "FBII", False, "invalid_type", None),  # Should raise ValueError
     ],
 )
@@ -88,8 +86,6 @@ def test_initialization(n, max_order, index, top_order, transform_type, decoder_
         (20, "FBII", 2, 1600, "fourier", "hard", False, (2, 4)),
         (20, "FSII", 2, 1600, "fourier", "soft", False, (0, 2)),
         (20, "STII", 2, 100, "fourier", "soft", False, (1, 2)), # Should throw and error budget too small
-        #(20, "STII", 2, 800, "mobius", None, False, (1, 2)),
-        #(20, "FBII", 2, 800, "mobius", None, False, (1, 2)),
     ],
 )
 def test_approximate(n,
