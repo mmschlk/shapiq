@@ -1,6 +1,5 @@
 """Module for plotting the explanation graph of interaction values."""
 
-import math
 
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
@@ -43,7 +42,6 @@ def si_graph_plot(
         adjust_node_pos: bool = False,
         spring_k: float | None = None,
         compactness: float = 1e10,
-        node_area_scaling: bool = False,
         feature_image_patches: dict[int, Image.Image] | None = None,
         feature_image_patches_size: float | None = 0.2,
 ) -> tuple[plt.figure, plt.axis] | None:
@@ -99,8 +97,6 @@ def si_graph_plot(
         compactness: A scaling factor for the underlying spring layout. A higher compactness value
             will move the interactions closer to the graph nodes. If your graph looks weird, try
             adjusting this value, e.g. ``[0.1, 1.0, 10.0, 100.0, 1000.0]``. Defaults to ``1e10``.
-        node_area_scaling: Whether to scale the node sizes based on the area of the nodes (``True``)
-             or the radius of the nodes (``False``). Defaults to ``False``.
         feature_image_patches: A dictionary/list containing the image patches to be displayed in addition to
             the feature labels in the network. The keys/indices of the list are the feature indices and the values are
             the feature images. If explicit feature names are provided, they are displayed on top of the image.
@@ -247,7 +243,6 @@ def si_graph_plot(
             explanation_graph,
             nodes=explanation_nodes,
             normal_node_size=normal_node_size,
-            node_area_scaling=node_area_scaling,
         )
 
     # add the original graph structure on top
@@ -448,7 +443,6 @@ def _draw_explanation_nodes(
     graph: nx.Graph,
     nodes: list | None = None,
     normal_node_size: float = NORMAL_NODE_SIZE,
-    node_area_scaling: bool = False,
 ) -> None:
     """Adds the node level explanations to the graph as circles with varying sizes.
 
@@ -458,8 +452,6 @@ def _draw_explanation_nodes(
         graph: The graph to draw the nodes on.
         nodes: The nodes to draw. If ``None``, all nodes are drawn. Defaults to ``None``.
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
-        node_area_scaling: Whether to scale the node sizes based on the area of the nodes (``True``)
-            or the radius of the nodes (``False``). Defaults to ``False``.
     """
     for node in graph.nodes:
         if isinstance(node, tuple):
@@ -476,13 +468,6 @@ def _draw_explanation_nodes(
         alpha = min(1.0, max(0.0, alpha))
 
         radius = normal_node_size / 2 + explanation_size / 2
-        if node_area_scaling:
-            # get the radius of a circle with the same area as the combined area
-            normal_node_area = math.pi * (normal_node_size / 2) ** 2
-            this_node_area = math.pi * (explanation_size / 2) ** 2
-            combined_area = normal_node_area + this_node_area
-            radius = math.sqrt(combined_area / math.pi)
-
         circle = mpath.Path.circle(position, radius=radius)
         patch = mpatches.PathPatch(circle, facecolor=color, lw=1, edgecolor="white", alpha=alpha)
         ax.add_patch(patch)
