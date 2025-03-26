@@ -312,7 +312,6 @@ def _draw_feature_images(
     graph: nx.Graph,
     feature_image_patches: dict[int, Image.Image],
     patch_size: float,
-    scale: float,
 ) -> None:
     """Draws the feature images.
 
@@ -322,9 +321,10 @@ def _draw_feature_images(
         graph: The graph to draw the edges on.
         feature_image_patches: a dict that stores the images for the players
         patch_size: The size of the feature images.
-        scale: scale factor determined by the plots width
     """
-    extend = scale * patch_size / 2
+    x_min, x_max = ax.get_xlim()
+    img_scale = x_max - x_min
+    extend = img_scale * patch_size / 2
     for node in graph.nodes:
         if node < len(feature_image_patches):
             image = feature_image_patches[node]
@@ -338,7 +338,10 @@ def _draw_feature_images(
             # x and y are the middle of the image
             x, y = position[0] + offset[0], position[1] + offset[1]
             ax.imshow(image, extent=(x - extend, x + extend, y - extend, y + extend))
-
+    x_min -= img_scale * patch_size
+    x_max += img_scale * patch_size
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(x_min, x_max)
 
 def _adjust_position(
     pos: dict, graph: nx.Graph, normal_node_size: float = NORMAL_NODE_SIZE
@@ -375,6 +378,7 @@ def si_graph_plot(
     plot_original_nodes: bool = False,
     plot_explanation: bool = True,
     min_max_interactions: tuple[float, float] | None = None,
+    min_max_order: tuple[int, int] = (1, -1),
     pos: dict | None = None,
     adjust_node_pos: bool = False,
     spring_k: float | None = None,
@@ -382,9 +386,6 @@ def si_graph_plot(
     node_area_scaling: bool = False,
     feature_image_patches: dict[int, Image.Image] | None = None,
     feature_image_patches_size: float | None = 0.2,
-    center_image: Image.Image | None = None,
-    center_image_size: float | None = 0.6,
-    min_max_order: tuple[int, int] = (1, -1),
 ) -> tuple[plt.figure, plt.axis] | None:
     """Plots the interaction values as an explanation graph.
 
@@ -590,13 +591,10 @@ def si_graph_plot(
     _draw_graph_edges(ax, pos, original_graph, normal_node_size=normal_node_size)
 
     # add images
-    if (center_image is not None) or feature_image_patches is not None:
+    if feature_image_patches is not None:
         # for scaling and to reset the image size after imshow()
         x_min, x_max = ax.get_xlim()
         img_scale = x_max - x_min
-        if center_image is not None:
-            extend = center_image_size * img_scale / 2
-            ax.imshow(center_image, extent=(-extend, extend, -extend, extend), aspect="auto")
         if feature_image_patches is not None:
             _draw_feature_images(
                 ax,
