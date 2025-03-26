@@ -5,20 +5,13 @@ import networkx as nx
 import numpy as np
 import pytest
 
+from PIL import Image
+
 from shapiq.interaction_values import InteractionValues
 from shapiq.plot import si_graph_plot
 
-
-@pytest.mark.parametrize("draw_threshold", [0.0, 0.5])
-@pytest.mark.parametrize("compactness", [0.0, 1.0, 10.0])
-@pytest.mark.parametrize("n_interactions", [3, None])
-def test_si_graph_plot(
-    draw_threshold,
-    compactness,
-    n_interactions,
-):
-    """Tests the explanation_graph_plot function."""
-
+@pytest.fixture(scope="module")
+def example_values():
     example_values = InteractionValues(
         n_players=4,
         values=np.array(
@@ -65,6 +58,19 @@ def test_si_graph_plot(
         min_order=0,
         max_order=4,
     )
+    return example_values
+
+@pytest.mark.parametrize("draw_threshold", [0.0, 0.5])
+@pytest.mark.parametrize("compactness", [0.0, 1.0, 10.0])
+@pytest.mark.parametrize("n_interactions", [3, None])
+def test_si_graph_plot(
+    draw_threshold,
+    compactness,
+    n_interactions,
+    example_values,
+):
+    """Tests the explanation_graph_plot function."""
+
     graph_tuple = [(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)]
 
     # test without graph and from interaction values
@@ -80,7 +86,7 @@ def test_si_graph_plot(
 
     fig, ax = si_graph_plot(
         example_values,
-        graph_tuple,
+        graph=graph_tuple,
         random_seed=1,
         size_factor=0.7,
         draw_threshold=draw_threshold,
@@ -93,7 +99,7 @@ def test_si_graph_plot(
 
     fig, ax = si_graph_plot(
         example_values,
-        graph_tuple,
+        graph=graph_tuple,
         random_seed=1,
         size_factor=0.7,
         draw_threshold=draw_threshold,
@@ -110,7 +116,7 @@ def test_si_graph_plot(
 
     fig, ax = si_graph_plot(
         example_values,
-        edges,
+        graph=edges,
         random_seed=1,
         size_factor=0.7,
         draw_threshold=draw_threshold,
@@ -127,13 +133,12 @@ def test_si_graph_plot(
     # different parameters
     fig, ax = si_graph_plot(
         example_values,
-        edges,
+        graph=edges,
         pos=pos,
         random_seed=1,
         draw_threshold=draw_threshold,
         plot_explanation=True,
         n_interactions=n_interactions,
-        node_area_scaling=True,
         adjust_node_pos=True,
         interaction_direction="positive",
         min_max_interactions=(-0.5, 0.5),
@@ -151,7 +156,6 @@ def test_si_graph_plot(
         draw_threshold=draw_threshold,
         plot_explanation=True,
         n_interactions=n_interactions,
-        node_area_scaling=True,
         adjust_node_pos=True,
         interaction_direction="negative",
         min_max_interactions=(-0.5, 0.5),
@@ -161,3 +165,33 @@ def test_si_graph_plot(
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
     plt.close(fig)
+
+def test_feature_imgs(example_values):
+    random_img = np.random.randint(0, 256, (128, 128, 3), dtype=np.uint8)
+    img = Image.fromarray(random_img)
+
+    n = 7
+    img_list = [img for _ in range(n)]
+    fig, ax = example_values.plot_si_graph(
+        feature_image_patches=img_list,
+    )
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+
+    img_dict = {index: img_list[index] for index in range(n)}
+    graph = [(i, i+1) for i in range(n-1)]
+    graph.append((n-1, 0))
+    fig, ax = example_values.plot_si_graph(
+        feature_image_patches=img_dict,
+        #graph=graph,
+        #plot_original_nodes = True,
+    )
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+
+def test_feature_names(example_values):
+    feature_names_list = ["A", "B", "C", "D"]
+    feature_names = {index+1: feature_names_list[index] for index in range(4)}
+    fig, ax = example_values.plot_si_graph(feature_names=feature_names)
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)

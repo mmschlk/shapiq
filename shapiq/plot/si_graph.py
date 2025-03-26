@@ -34,7 +34,7 @@ def si_graph_plot(
         cubic_scaling: bool = False,
         node_size_scaling: float = 1.0,
         min_max_interactions: tuple[float, float] | None = None,
-        feature_names: list | None = None,
+        feature_names: list | dict | None = None,
         graph: list[tuple] | nx.Graph | None = None,
         plot_original_nodes: bool = False,
         plot_explanation: bool = True,
@@ -42,7 +42,7 @@ def si_graph_plot(
         adjust_node_pos: bool = False,
         spring_k: float | None = None,
         compactness: float = 1e10,
-        feature_image_patches: dict[int, Image.Image] | None = None,
+        feature_image_patches: dict[int, Image.Image] | list[Image.Image] | None = None,
         feature_image_patches_size: float | None = 0.2,
 ) -> tuple[plt.figure, plt.axis] | None:
     """Plots the interaction values as an explanation graph.
@@ -77,8 +77,8 @@ def si_graph_plot(
         min_max_interactions: The minimum and maximum interaction values to use for scaling the
             interactions as a tuple ``(min, max)``. If ``None``, the minimum and maximum interaction
             values are used. Defaults to ``None``.
-        feature_names: A list of feature names to use for the nodes in the graph. If ``None``,
-            the feature indices are used instead. Defaults to ``None``.
+        feature_names: The feature names used for plotting. List/dict mapping index of the player as index/key to name.
+            If no feature names are provided, the feature indices are used instead. Defaults to ``None``.
         graph: The underlying graph structure as a list of edge tuples or a networkx graph. If a
             networkx graph is provided, the nodes are used as the players and the edges are used as
             the connections between the players. Defaults to ``None``, which creates a graph with
@@ -97,7 +97,7 @@ def si_graph_plot(
         compactness: A scaling factor for the underlying spring layout. A higher compactness value
             will move the interactions closer to the graph nodes. If your graph looks weird, try
             adjusting this value, e.g. ``[0.1, 1.0, 10.0, 100.0, 1000.0]``. Defaults to ``1e10``.
-        feature_image_patches: A dictionary/list containing the image patches to be displayed in addition to
+        feature_image_patches: A dictionary/list containing the image patches to be displayed instead of of
             the feature labels in the network. The keys/indices of the list are the feature indices and the values are
             the feature images. If explicit feature names are provided, they are displayed on top of the image.
             Defaults to ``None``.
@@ -114,7 +114,11 @@ def si_graph_plot(
 
     label_mapping = None
     if feature_names is not None:
-        label_mapping = {i: feature_names[i] for i in range(len(feature_names))}
+        # assume it is a list, if it is not it should be a dict.
+        try:
+            label_mapping = {i: feature_names[i] for i in range(len(feature_names))}
+        except KeyError:
+            label_mapping = feature_names
 
     # fill the original graph with the edges and nodes
     if isinstance(graph, nx.Graph):
@@ -260,7 +264,7 @@ def si_graph_plot(
             feature_image_patches_size,
         )
 
-    if feature_image_patches is None or feature_names is not None or plot_original_nodes:
+    if feature_image_patches is None or plot_original_nodes:
         _draw_graph_labels(
             ax,
             pos,
@@ -575,15 +579,15 @@ def _draw_feature_images(
     for node in graph.nodes:
         if node < len(feature_image_patches):
             image = feature_image_patches[node]
-            position = pos[node]
-            offset_norm = np.sqrt(position[0] ** 2 + position[1] ** 2)
+            x, y = pos[node]
+            offset_norm = np.sqrt(x ** 2 + y ** 2)
             # 1.55 -> bit more than sqrt(2) to position the middle of the image
             offset = (
-                1.55 * patch_size * position[0] / offset_norm,
-                1.55 * patch_size * position[1] / offset_norm,
+                1.55  * patch_size * x / offset_norm,
+                1.55  * patch_size * y / offset_norm,
             )
             # x and y are the middle of the image
-            x, y = position[0] + offset[0], position[1] + offset[1]
+            x, y = x + offset[0], y + offset[1]
             ax.imshow(image, extent=(x - extend, x + extend, y - extend, y + extend))
     # set the plot to show the whole graph
     x_min -= img_scale * patch_size

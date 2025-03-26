@@ -19,8 +19,8 @@ __all__ = ["network_plot"]
 def network_plot(
     interaction_values: InteractionValues | None = None,
     *,
-    feature_names: list[Any] | None = None,
-    feature_image_patches: dict[int, Image.Image] | None = None,
+    feature_names: list[Any] | dict[int, Any] | None = None,
+    feature_image_patches: dict[int, Image.Image] | list[Image.Image] | None = None,
     feature_image_patches_size: float | dict[int, float] | None = 0.2,
     show: bool = False,
 ) -> tuple[plt.Figure, plt.Axes] | None:
@@ -39,9 +39,9 @@ def network_plot(
 
     Args:
         interaction_values: The interaction values as an interaction object.
-        feature_names: The feature names used for plotting. If no feature names are provided, the
-            feature indices are used instead. Defaults to ``None``.
-        feature_image_patches: A dictionary/list containing the image patches to be displayed in addition to
+        feature_names: The feature names used for plotting. List/dict mapping index of the player as index/key to name.
+            If no feature names are provided, the feature indices are used instead. Defaults to ``None``.
+        feature_image_patches: A dictionary/list containing the image patches to be displayed instead of
             the feature labels in the network. The keys/indices of the list are the feature indices and the values are
             the feature images. If explicit feature names are provided, they are displayed on top of the image.
             Defaults to ``None``.
