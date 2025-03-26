@@ -3,10 +3,10 @@
 import pytest
 
 from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
-from tests.markers import importorskip_tabpfn
+from tests.markers import skip_if_no_tabpfn
 
 
-@importorskip_tabpfn
+@skip_if_no_tabpfn
 @pytest.mark.external_libraries
 def test_tabpfn_explainer_clf(tabpfn_classification_problem):
     """Test the TabPFNExplainer class for classification problems."""
@@ -34,7 +34,7 @@ def test_tabpfn_explainer_clf(tabpfn_classification_problem):
         assert isinstance(explainer, TabularExplainer)
 
 
-@importorskip_tabpfn
+@skip_if_no_tabpfn
 @pytest.mark.external_libraries
 def test_tabpfn_explainer_reg(tabpfn_regression_problem):
     """Test the TabPFNExplainer class for regression problems."""
