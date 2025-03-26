@@ -30,15 +30,15 @@ def si_graph_plot(
         n_interactions: int | None = None,
         draw_threshold: float = 0.0,
         interaction_direction: str | None = None,
+        min_max_order: tuple[int, int] = (1, -1),
         size_factor: float = 1.0,
         cubic_scaling: bool = False,
         node_size_scaling: float = 1.0,
+        min_max_interactions: tuple[float, float] | None = None,
         feature_names: list | None = None,
         graph: list[tuple] | nx.Graph | None = None,
         plot_original_nodes: bool = False,
         plot_explanation: bool = True,
-        min_max_interactions: tuple[float, float] | None = None,
-        min_max_order: tuple[int, int] = (1, -1),
         pos: dict | None = None,
         adjust_node_pos: bool = False,
         spring_k: float | None = None,
@@ -57,50 +57,55 @@ def si_graph_plot(
 
     Args:
         interaction_values: The interaction values to plot.
-        graph: The underlying graph structure as a list of edge tuples or a networkx graph. If a
-            networkx graph is provided, the nodes are used as the players and the edges are used as
-            the connections between the players. Defaults to ``None``, which creates a graph with
-            all nodes from the interaction values without any edges between them.
+        show: Whether to show or return the plot. Defaults to ``False``.
+        random_seed: The random seed to use for layout of the graph.
         n_interactions: The number of interactions to plot. If ``None``, all interactions are plotted
             according to the draw_threshold.
         draw_threshold: The threshold to draw an edge (i.e. only draw explanations with an
             interaction value higher than this threshold).
-        random_seed: The random seed to use for layout of the graph.
+        interaction_direction: The sign of the interaction values to plot. If ``None``, all
+            interactions are plotted. Possible values are ``"positive"`` and
+            ``"negative"``. Defaults to ``None``.
+        min_max_order: Only show interactions of min <= size <= max. First order interactions are always shown.
+            To use maximum order of interaction values, set max to -1. Defaults to ``(1, -1)``.
         size_factor: The factor to scale the explanations by (a higher value will make the
             interactions and main effects larger). Defaults to ``1.0``.
-        plot_explanation: Whether to plot the explanation or only the original graph. Defaults to
-            ``True``.
-        compactness: A scaling factor for the underlying spring layout. A higher compactness value
-            will move the interactions closer to the graph nodes. If your graph looks weird, try
-            adjusting this value, e.g. ``[0.1, 1.0, 10.0, 100.0, 1000.0]``. Defaults to ``1e10``.
-        feature_names: A list of feature names to use for the nodes in the graph. If ``None``,
-            the feature indices are used instead. Defaults to ``None``.
         cubic_scaling: Whether to scale the size of explanations cubically (``True``) or linearly
             (``False``, default). Cubic scaling puts more emphasis on larger interactions in the plot.
             Defaults to ``False``.
-        pos: The positions of the nodes in the graph. If ``None``, the spring layout is used to
-            position the nodes. Defaults to ``None``.
         node_size_scaling: The scaling factor for the node sizes. This can be used to make the nodes
             larger or smaller depending on how the graph looks. Defaults to ``1.0`` (no scaling).
             Values between ``0.0`` and ``1.0`` will make the nodes smaller, higher values will make the nodes larger.
         min_max_interactions: The minimum and maximum interaction values to use for scaling the
             interactions as a tuple ``(min, max)``. If ``None``, the minimum and maximum interaction
             values are used. Defaults to ``None``.
+        feature_names: A list of feature names to use for the nodes in the graph. If ``None``,
+            the feature indices are used instead. Defaults to ``None``.
+        graph: The underlying graph structure as a list of edge tuples or a networkx graph. If a
+            networkx graph is provided, the nodes are used as the players and the edges are used as
+            the connections between the players. Defaults to ``None``, which creates a graph with
+            all nodes from the interaction values without any edges between them.
+        plot_original_nodes: If set to ``True``, nodes are shown as white circles with the label inside,
+            large first-order-effects appear as halos around the node. Set to ``False``, only the explanation nodes are
+            shown, their labels next to them. Defaults to ``False``.
+        plot_explanation: Whether to plot the explanation or only the original graph. Defaults to
+            ``True``.
+        pos: The positions of the nodes in the graph. If ``None``, the spring layout is used to
+            position the nodes. Defaults to ``None``.
         adjust_node_pos: Whether to adjust the node positions such that the nodes are at least
             ``NORMAL_NODE_SIZE`` apart. Defaults to ``False``.
         spring_k: The spring constant for the spring layout. If `None`, the spring constant is
             calculated based on the number of nodes in the graph. Defaults to ``None``.
-        interaction_direction: The sign of the interaction values to plot. If ``None``, all
-            interactions are plotted. Possible values are ``"positive"`` and
-            ``"negative"``. Defaults to ``None``.
+        compactness: A scaling factor for the underlying spring layout. A higher compactness value
+            will move the interactions closer to the graph nodes. If your graph looks weird, try
+            adjusting this value, e.g. ``[0.1, 1.0, 10.0, 100.0, 1000.0]``. Defaults to ``1e10``.
         node_area_scaling: Whether to scale the node sizes based on the area of the nodes (``True``)
              or the radius of the nodes (``False``). Defaults to ``False``.
-        show: Whether to show or return the plot. Defaults to ``False``.
-        min_max_order: Only show interactions of min <= size <= max. First order interactions are always shown.
-            To use maximum order of interaction values, set max to -1. Defaults to ``(1, -1)``.
-        plot_original_nodes: If set to ``True``, nodes are shown as white circles with the label inside,
-            large first-order-effects appear as halos around the node. Set to ``False``, only the explanation nodes are
-             shown, their labels next to them. Defaults to ``False``.
+        feature_image_patches: A dictionary/list containing the image patches to be displayed in addition to
+            the feature labels in the network. The keys/indices of the list are the feature indices and the values are
+            the feature images. If explicit feature names are provided, they are displayed on top of the image.
+            Defaults to ``None``.
+        feature_image_patches_size: The size of the feature image patches. Defaults to ``0.2``.
     Returns:
         The figure and axis of the plot if ``show`` is ``False``. Otherwise, ``None``.
 
@@ -252,22 +257,13 @@ def si_graph_plot(
 
     # add images
     if feature_image_patches is not None:
-        # for scaling and to reset the image size after imshow()
-        x_min, x_max = ax.get_xlim()
-        img_scale = x_max - x_min
-        if feature_image_patches is not None:
-            _draw_feature_images(
-                ax,
-                pos,
-                original_graph,
-                feature_image_patches,
-                feature_image_patches_size,
-                img_scale,
-            )
-            x_min -= img_scale * feature_image_patches_size
-            x_max += img_scale * feature_image_patches_size
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(x_min, x_max)
+        _draw_feature_images(
+            ax,
+            pos,
+            original_graph,
+            feature_image_patches,
+            feature_image_patches_size,
+        )
 
     if feature_image_patches is None or feature_names is not None or plot_original_nodes:
         _draw_graph_labels(
@@ -604,6 +600,7 @@ def _draw_feature_images(
             # x and y are the middle of the image
             x, y = position[0] + offset[0], position[1] + offset[1]
             ax.imshow(image, extent=(x - extend, x + extend, y - extend, y + extend))
+    # set the plot to show the whole graph
     x_min -= img_scale * patch_size
     x_max += img_scale * patch_size
     ax.set_xlim(x_min, x_max)
