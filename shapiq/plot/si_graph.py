@@ -1,6 +1,5 @@
 """Module for plotting the explanation graph of interaction values."""
 
-
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
 import networkx as nx
@@ -20,30 +19,29 @@ LABEL_OFFSET = 0.07
 __all__ = ["si_graph_plot"]
 
 
-
 def si_graph_plot(
-        interaction_values: InteractionValues,
-        *,
-        show: bool = False,
-        random_seed: int = 42,
-        n_interactions: int | None = None,
-        draw_threshold: float = 0.0,
-        interaction_direction: str | None = None,
-        min_max_order: tuple[int, int] = (1, -1),
-        size_factor: float = 1.0,
-        cubic_scaling: bool = False,
-        node_size_scaling: float = 1.0,
-        min_max_interactions: tuple[float, float] | None = None,
-        feature_names: list | dict | None = None,
-        graph: list[tuple] | nx.Graph | None = None,
-        plot_original_nodes: bool = False,
-        plot_explanation: bool = True,
-        pos: dict | None = None,
-        adjust_node_pos: bool = False,
-        spring_k: float | None = None,
-        compactness: float = 1e10,
-        feature_image_patches: dict[int, Image.Image] | list[Image.Image] | None = None,
-        feature_image_patches_size: float | None = 0.2,
+    interaction_values: InteractionValues,
+    *,
+    show: bool = True,
+    random_seed: int = 42,
+    n_interactions: int | None = None,
+    draw_threshold: float = 0.0,
+    interaction_direction: str | None = None,
+    min_max_order: tuple[int, int] = (1, -1),
+    size_factor: float = 1.0,
+    cubic_scaling: bool = False,
+    node_size_scaling: float = 1.0,
+    min_max_interactions: tuple[float, float] | None = None,
+    feature_names: list | dict | None = None,
+    graph: list[tuple] | nx.Graph | None = None,
+    plot_original_nodes: bool = False,
+    plot_explanation: bool = True,
+    pos: dict | None = None,
+    adjust_node_pos: bool = False,
+    spring_k: float | None = None,
+    compactness: float = 1e10,
+    feature_image_patches: dict[int, Image.Image] | list[Image.Image] | None = None,
+    feature_image_patches_size: float | None = 0.2,
 ) -> tuple[plt.figure, plt.axis] | None:
     """Plots the interaction values as an explanation graph.
 
@@ -55,7 +53,7 @@ def si_graph_plot(
 
     Args:
         interaction_values: The interaction values to plot.
-        show: Whether to show or return the plot. Defaults to ``False``.
+        show: Whether to show or return the plot. Defaults to ``True``.
         random_seed: The random seed to use for layout of the graph.
         n_interactions: The number of interactions to plot. If ``None``, all interactions are plotted
             according to the draw_threshold.
@@ -108,6 +106,8 @@ def si_graph_plot(
     References:
         .. [1] Muschalik, M., Baniecki, H., Fumagalli, F., Kolpaczki, P., Hammer, B., and Hüllermeier, E. (2024). shapiq: Shapley Interactions for Machine Learning. In: The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track. url: https://openreview.net/forum?id=knxGmi6SJi#discussion.
     """
+    if interaction_values is None:
+        raise ValueError("Interaction_values must be provided.")
 
     normal_node_size = NORMAL_NODE_SIZE * node_size_scaling
     base_size = BASE_SIZE * node_size_scaling
@@ -580,11 +580,11 @@ def _draw_feature_images(
         if node < len(feature_image_patches):
             image = feature_image_patches[node]
             x, y = pos[node]
-            offset_norm = np.sqrt(x ** 2 + y ** 2)
+            offset_norm = np.sqrt(x**2 + y**2)
             # 1.55 -> bit more than sqrt(2) to position the middle of the image
             offset = (
-                1.55  * patch_size * x / offset_norm,
-                1.55  * patch_size * y / offset_norm,
+                1.55 * patch_size * x / offset_norm,
+                1.55 * patch_size * y / offset_norm,
             )
             # x and y are the middle of the image
             x, y = x + offset[0], y + offset[1]
@@ -594,6 +594,7 @@ def _draw_feature_images(
     x_max += img_scale * patch_size
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(x_min, x_max)
+
 
 def _adjust_position(
     pos: dict, graph: nx.Graph, normal_node_size: float = NORMAL_NODE_SIZE
@@ -612,4 +613,3 @@ def _adjust_position(
             pos[node] = pos[node] * min_edge_distance / min_distance
 
     return pos
-

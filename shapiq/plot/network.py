@@ -1,17 +1,11 @@
 """This module contains the network plots for the shapiq package."""
 
-import copy
-import math
 from typing import Any
 
 import matplotlib.pyplot as plt
-import networkx as nx
-import numpy as np
 from PIL import Image
 
 from ..interaction_values import InteractionValues
-from ..utils import powerset
-from ._config import BLUE, LINES, NEUTRAL, RED, get_color
 
 __all__ = ["network_plot"]
 
@@ -71,4 +65,3 @@ def network_plot(
     if not show:
         return fig, ax
     plt.show()
-

@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pytest
-
 from PIL import Image
 
 from shapiq.interaction_values import InteractionValues
 from shapiq.plot import si_graph_plot
+
 
 @pytest.fixture(scope="module")
 def example_values():
@@ -60,6 +60,7 @@ def example_values():
     )
     return example_values
 
+
 @pytest.mark.parametrize("draw_threshold", [0.0, 0.5])
 @pytest.mark.parametrize("compactness", [0.0, 1.0, 10.0])
 @pytest.mark.parametrize("n_interactions", [3, None])
@@ -93,6 +94,7 @@ def test_si_graph_plot(
         plot_explanation=True,
         n_interactions=n_interactions,
         compactness=compactness,
+        show=False,
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
@@ -106,6 +108,7 @@ def test_si_graph_plot(
         plot_explanation=False,
         n_interactions=n_interactions,
         compactness=compactness,
+        show=False,
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
@@ -124,6 +127,7 @@ def test_si_graph_plot(
         n_interactions=n_interactions,
         compactness=compactness,
         feature_names=["A", "B", "C", "D"],
+        show=False,
     )
 
     assert isinstance(fig, plt.Figure)
@@ -142,6 +146,7 @@ def test_si_graph_plot(
         adjust_node_pos=True,
         interaction_direction="positive",
         min_max_interactions=(-0.5, 0.5),
+        show=False,
     )
 
     assert isinstance(fig, plt.Figure)
@@ -160,11 +165,13 @@ def test_si_graph_plot(
         interaction_direction="negative",
         min_max_interactions=(-0.5, 0.5),
         feature_names=["A", "B", "C", "D"],
+        show=False,
     )
 
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
     plt.close(fig)
+
 
 def test_feature_imgs(example_values):
     random_img = np.random.randint(0, 256, (128, 128, 3), dtype=np.uint8)
@@ -174,24 +181,27 @@ def test_feature_imgs(example_values):
     img_list = [img for _ in range(n)]
     fig, ax = example_values.plot_si_graph(
         feature_image_patches=img_list,
+        show=False,
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
 
     img_dict = {index: img_list[index] for index in range(n)}
-    graph = [(i, i+1) for i in range(n-1)]
-    graph.append((n-1, 0))
+    graph = [(i, i + 1) for i in range(n - 1)]
+    graph.append((n - 1, 0))
     fig, ax = example_values.plot_si_graph(
         feature_image_patches=img_dict,
-        #graph=graph,
-        #plot_original_nodes = True,
+        show=False,
+        # graph=graph,
+        # plot_original_nodes = True,
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
 
+
 def test_feature_names(example_values):
     feature_names_list = ["A", "B", "C", "D"]
-    feature_names = {index+1: feature_names_list[index] for index in range(4)}
-    fig, ax = example_values.plot_si_graph(feature_names=feature_names)
+    feature_names = {index + 1: feature_names_list[index] for index in range(4)}
+    fig, ax = example_values.plot_si_graph(feature_names=feature_names, show=False)
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
