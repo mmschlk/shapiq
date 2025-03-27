@@ -5,9 +5,12 @@ from ...game_theory.moebius_converter import MoebiusConverter
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
 from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
 from sparse_transform.qsft.utils.query import get_bch_decoder
-from sparse_transform.qsft.signals.input_signal_subsampled import SubsampledSignal as SubsampledSignalFourier
+from sparse_transform.qsft.signals.input_signal_subsampled import (
+    SubsampledSignal as SubsampledSignalFourier,
+)
 from functools import partial
 import numpy as np
+
 
 class Sparse(Approximator):
     """Approximator for interaction values using sparse transformation techniques.
@@ -30,7 +33,7 @@ class Sparse(Approximator):
         top_order (bool, optional): If True, only compute interactions of exactly max_order.
             If False, compute interactions up to max_order. Defaults to False.
         random_state (int, optional): Random seed for reproducibility. Defaults to None.
-        transform_type (str, optional): Type of transform to use. Currently only "fourier" 
+        transform_type (str, optional): Type of transform to use. Currently only "fourier"
             is supported. Defaults to "fourier".
         decoder_type (str, optional): Type of decoder to use, either "soft" or "hard".
             Defaults to "soft"
@@ -38,6 +41,7 @@ class Sparse(Approximator):
     Raises:
         ValueError: If transform_type is not "fourier" or if decoder_type is not "soft" or "hard".
     """
+
     def __init__(
         self,
         n: int,
@@ -48,44 +52,45 @@ class Sparse(Approximator):
         transform_type: str = "fourier",
         decoder_type: str = "soft",
     ) -> None:
-        if  transform_type.lower() not in ["fourier"]:
+        if transform_type.lower() not in ["fourier"]:
             raise ValueError("transform_type must be 'fourier'")
         self.transform_type = transform_type.lower()
-        self.t = 5 # 5 could be a parameter
-        decoder_type = 'hard' if decoder_type is None else decoder_type.lower()
+        self.t = 5  # 5 could be a parameter
+        decoder_type = "hard" if decoder_type is None else decoder_type.lower()
         if decoder_type not in ["soft", "hard"]:
             raise ValueError("decoder_type must be either 'soft' or 'hard'")
         # The sampling parameters for the Fourier transform
         self.query_args = {
-        "query_method": "complex",
-        "num_subsample": 3,
-        "delays_method_source": "joint-coded",
-        "subsampling_method": "qsft",
-        "delays_method_channel": "identity-siso",
-        "num_repeat": 1,
-        "t": self.t,
-    }
+            "query_method": "complex",
+            "num_subsample": 3,
+            "delays_method_source": "joint-coded",
+            "subsampling_method": "qsft",
+            "delays_method_channel": "identity-siso",
+            "num_repeat": 1,
+            "t": self.t,
+        }
         self.decoder_args = {
             "num_subsample": 3,
             "num_repeat": 1,
             "reconstruct_method_source": "coded",
             "peeling_method": "multi-detect",
             "reconstruct_method_channel": "identity-siso" if decoder_type == "soft" else "identity",
-            "regress": 'lasso',
+            "regress": "lasso",
             "res_energy_cutoff": 0.9,
             "source_decoder": get_bch_decoder(n, self.t, decoder_type),
         }
         super().__init__(
             n=n,
-            max_order= n if max_order is None else max_order,
+            max_order=n if max_order is None else max_order,
             index=index,
             top_order=top_order,
             random_state=random_state,
-            initialize_dict=False, # Important for performance
+            initialize_dict=False,  # Important for performance
         )
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs) -> InteractionValues:
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+    ) -> InteractionValues:
         """Approximates the interaction values using a sparse transform approach.
 
         Args:
@@ -99,8 +104,10 @@ class Sparse(Approximator):
         used_budget = self._set_transform_budget(budget)
         signal = SubsampledSignalFourier(func=game, n=self.n, q=2, query_args=self.query_args)
         # Extract the coefficients of the original transform
-        initial_transform = {tuple(np.nonzero(key)[0]): np.real(value) for key, value in
-                            sparse_fourier_transform(signal, **self.decoder_args).items()}
+        initial_transform = {
+            tuple(np.nonzero(key)[0]): np.real(value)
+            for key, value in sparse_fourier_transform(signal, **self.decoder_args).items()
+        }
         # If we are using the fourier transform, we need to convert it to a Moebius transform
         moebius_transform = fourier_to_moebius(initial_transform)
         # Convert the Moebius transform to the desired index
@@ -108,11 +115,12 @@ class Sparse(Approximator):
         # Filter the output as needed
         if self.top_order:
             result = self._filter_order(result)
-        return self._finalize_result(result=result,
-                                     baseline_value=self.interaction_lookup.get((), 0.0),
-                                     estimated=True,
-                                     budget=used_budget,
-                                     )
+        return self._finalize_result(
+            result=result,
+            baseline_value=self.interaction_lookup.get((), 0.0),
+            estimated=True,
+            budget=used_budget,
+        )
 
     def _filter_order(self, result: np.ndarray) -> np.ndarray:
         """Filters the interactions to keep only those of the maximum order.
@@ -156,9 +164,9 @@ class Sparse(Approximator):
             n_players=self.n,
             interaction_lookup={key: i for i, key in enumerate(moebius_transform.keys())},
             estimated=True,
-            baseline_value=moebius_transform.get((), 0.0)
+            baseline_value=moebius_transform.get((), 0.0),
         )
-        #TODO the Moebius converter should be made more efficient
+        # TODO the Moebius converter should be made more efficient
         autoconverter = MoebiusConverter(moebius_coefficients=moebius_interactions)
         converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
         self._interaction_lookup = converted_interaction_values.interaction_lookup
@@ -180,12 +188,18 @@ class Sparse(Approximator):
         Raises:
             ValueError: If the budget is too low to compute the transform with acceptable parameters.
         """
-        b = SubsampledSignalFourier.get_b_for_sample_budget(budget, self.n, self.t, 2, self.query_args)
-        used_budget = SubsampledSignalFourier.get_number_of_samples(self.n, b, self.t, 2, self.query_args)
+        b = SubsampledSignalFourier.get_b_for_sample_budget(
+            budget, self.n, self.t, 2, self.query_args
+        )
+        used_budget = SubsampledSignalFourier.get_number_of_samples(
+            self.n, b, self.t, 2, self.query_args
+        )
         # TODO Should we try to decrease t to get b to at least 3 or re-route?
         if b <= 2:
-            raise ValueError("Budget is too low to compute the transform, consider increasing the budget or  using a "
-                             "different approximator.")
-        self.query_args['b'] = b
-        self.decoder_args['b'] = b
+            raise ValueError(
+                "Budget is too low to compute the transform, consider increasing the budget or  using a "
+                "different approximator."
+            )
+        self.query_args["b"] = b
+        self.decoder_args["b"] = b
         return used_budget

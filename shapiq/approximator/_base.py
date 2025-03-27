@@ -88,7 +88,9 @@ class Approximator(ABC):
         self._grand_coalition_tuple = tuple(range(self.n))
         self._grand_coalition_array: np.ndarray = np.arange(self.n + 1, dtype=int)
         self.iteration_cost: int = 1  # default value, can be overwritten by subclasses
-        if initialize_dict: # The interaction_lookup is not initialized is some cases due to performance reasons
+        if (
+            initialize_dict
+        ):  # The interaction_lookup is not initialized is some cases due to performance reasons
             self._interaction_lookup = generate_interaction_lookup(
                 self.n, self.min_order, self.max_order
             )

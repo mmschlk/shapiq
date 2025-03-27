@@ -8,7 +8,8 @@ from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
 from .regression import InconsistentKernelSHAPIQ, KernelSHAP, KernelSHAPIQ, RegressionFSII, kADDSHAP
 from .sparse import SPEX
-#TODO JK: Check if addition of SPEX is okay
+
+# TODO JK: Check if addition of SPEX is okay
 
 
 # contains all SV approximators
@@ -20,7 +21,7 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     PermutationSamplingSV,
     KernelSHAP,
     kADDSHAP,
-    SPEX
+    SPEX,
 ]
 
 # contains all SI approximators

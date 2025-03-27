@@ -17,7 +17,7 @@ def test_initialization_defaults():
     assert spex.index == "FBII"
     assert spex.top_order is False
     assert spex.transform_type == "fourier"
-    assert spex.decoder_args['reconstruct_method_channel'] == 'identity-siso'  # For soft decoder
+    assert spex.decoder_args["reconstruct_method_channel"] == "identity-siso"  # For soft decoder
 
 
 @pytest.mark.parametrize(
@@ -46,9 +46,9 @@ def test_initialization_custom(n, index, max_order, top_order, decoder_type):
 
     # Check decoder configuration
     if decoder_type.lower() == "soft":
-        assert spex.decoder_args['reconstruct_method_channel'] == 'identity-siso'
+        assert spex.decoder_args["reconstruct_method_channel"] == "identity-siso"
     else:
-        assert spex.decoder_args['reconstruct_method_channel'] == 'identity'
+        assert spex.decoder_args["reconstruct_method_channel"] == "identity"
 
 
 @pytest.mark.parametrize(
@@ -105,7 +105,9 @@ def test_spex_vs_sparse():
 
     # Initialize both approximators with identical parameters
     spex = SPEX(n=n, random_state=random_state)
-    sparse = Sparse(n=n, index="FBII", transform_type='fourier', decoder_type='soft', random_state=random_state)
+    sparse = Sparse(
+        n=n, index="FBII", transform_type="fourier", decoder_type="soft", random_state=random_state
+    )
 
     # Run approximation with both
     spex_estimates = spex.approximate(budget, game)
