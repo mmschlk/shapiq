@@ -8,7 +8,6 @@ from sparse_transform.qsft.utils.query import get_bch_decoder
 from sparse_transform.qsft.signals.input_signal_subsampled import (
     SubsampledSignal as SubsampledSignalFourier,
 )
-from functools import partial
 import numpy as np
 
 
