@@ -31,12 +31,12 @@ class SPEX(Sparse):
     def __init__(
         self,
         n: int,
-        max_order: int = 2,
         index: str = "FBII",
+        max_order: int | None = None,
         top_order: bool = False,
         sampling_weights: float | None = None,
         random_state: int | None = None,
-        decoder_type: str = "soft"
+        decoder_type: str = "soft",
     ):
         super().__init__(
             n,
@@ -45,5 +45,6 @@ class SPEX(Sparse):
             top_order=top_order,
             random_state=random_state,
             sampling_weights=sampling_weights,
-            transform_type='fourier'
+            transform_type='fourier',
+            decoder_type=decoder_type,
         )
