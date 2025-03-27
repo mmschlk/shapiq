@@ -10,7 +10,37 @@ from functools import partial
 import numpy as np
 
 class Sparse(Approximator):
+    """Approximator for interaction values using sparse transformation techniques.
 
+    This class implements a sparse approximation method for computing various interaction indices
+    using sparse Fourier transforms. It efficiently estimates interaction values with a limited
+    sample budget by leveraging sparsity in the Fourier domain.
+
+    Attributes:
+        transform_type (str): Type of transform used (currently only "fourier" is supported).
+        t (int): Error parameter for the sparse Fourier transform.
+        respect_max_order (bool): Whether to respect the maximum order constraint.
+        signal_class: Class for representing the subsampled signal.
+        initial_transformer: Function for performing the initial transform.
+        query_args (dict): Parameters for querying the signal.
+        decoder_args (dict): Parameters for decoding the transform.
+
+    Args:
+        n (int): Number of players/features.
+        index (str): Type of interaction index to compute (e.g., "STII", "FBII", "FSII").
+        max_order (int, optional): Maximum interaction order to compute. It is not suggested to use this parameter
+            since sparse approximation dynamically adjusts the order based on the budget.
+        top_order (bool, optional): If True, only compute interactions of exactly max_order.
+            If False, compute interactions up to max_order. Defaults to False.
+        random_state (int, optional): Random seed for reproducibility. Defaults to None.
+        transform_type (str, optional): Type of transform to use. Currently only "fourier" 
+            is supported. Defaults to "fourier".
+        decoder_type (str, optional): Type of decoder to use, either "soft" or "hard".
+            Defaults to "soft"
+
+    Raises:
+        ValueError: If transform_type is not "fourier" or if decoder_type is not "soft" or "hard".
+    """
     def __init__(
         self,
         n: int,
@@ -19,7 +49,7 @@ class Sparse(Approximator):
         top_order: bool = False,
         random_state: int | None = None,
         transform_type: str = "fourier",
-        decoder_type: str | None = None,
+        decoder_type: str = "soft",
     ) -> None:
         if  transform_type.lower() not in ["fourier"]:
             raise ValueError("transform_type must be 'fourier'")
@@ -138,6 +168,21 @@ class Sparse(Approximator):
         return converted_interaction_values.values
 
     def _set_transform_budget(self, budget: int) -> int:
+        """Sets the appropriate transform budget parameters based on the given sample budget.
+
+        This method calculates the maximum possible 'b' parameter (number of bits to subsample)
+        that fits within the provided budget, then configures the query and decoder arguments
+        accordingly. The actual number of samples that will be used is returned.
+
+        Args:
+            budget: The maximum number of samples allowed for the approximation.
+
+        Returns:
+            int: The actual number of samples that will be used, which is less than or equal to the budget.
+
+        Raises:
+            ValueError: If the budget is too low to compute the transform with acceptable parameters.
+        """
         #TODO replace with static functions in SubsampledSignalFourier
         b = Sparse.get_b_for_sample_budget_fourier(budget, self.n, self.t, 2, self.query_args)
         used_budget = Sparse.get_number_of_samples_fourier(self.n, b, self.t, 2, self.query_args)
