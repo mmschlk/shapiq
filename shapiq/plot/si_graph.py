@@ -167,7 +167,7 @@ def si_graph_plot(
     interactions_to_plot = {}
     min_interaction, max_interaction = 1e10, 0.0
     for interaction, interaction_pos in interaction_values.interaction_lookup.items():
-        if (len(interaction) < min_order or len(interaction) > max_order) and len(interaction) != 1:
+        if (len(interaction) < min_order or len(interaction) > max_order):
             continue
         interaction_value = interaction_values.values[interaction_pos]
         min_interaction = min(abs(interaction_value), min_interaction)
