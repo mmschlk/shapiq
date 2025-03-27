@@ -16,7 +16,7 @@ BASE_SIZE = 0.05  # the size of the highest interaction edge (with scale factor 
 ADJUST_NODE_ALPHA = True
 LABEL_OFFSET = 0.07
 
-__all__ = ["si_graph_plot"]
+__all__ = ["si_graph_plot", "get_legend"]
 
 
 def si_graph_plot(
@@ -280,6 +280,72 @@ def si_graph_plot(
     if not show:
         return fig, ax
     plt.show()
+
+
+def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
+    """Returns a tuple of legends, a legend for first order (nodes) and one for higher order (edges) interactions. If an
+        axis is provided, it adds the legend to the axis.
+
+    Args:
+        axis (plt.Axes): The axis to add the legend to.
+
+    Returns:
+        a tuple of two legend objects: the first is the legend for the first order interactions, the second for higher
+        order interactions.
+    """
+    interaction_values = [1.0, 0.4, -0.4, -1]
+    labels = ["high pos.", "low pos.", "low neg.", "high neg."]
+
+    plot_circles = []
+    plot_edges = []
+    for value in interaction_values:
+        color = get_color(value)
+        node_size = abs(value)/2+1/2
+        edge_size = abs(value)/2
+        alpha = _normalize_value(value, 1, BASE_ALPHA_VALUE, False)
+        circle = axis.plot([], [], c=color, marker="o", markersize=node_size * 8, linestyle="None", alpha=alpha)
+        plot_circles.append(circle[0])
+        line = axis.plot([], [], c=color, linewidth=edge_size * 8, alpha=alpha)
+        plot_edges.append(line[0])
+
+    font_size = plt.rcParams["legend.fontsize"]
+
+    legend1 = plt.legend(
+        plot_circles,
+        labels,
+        frameon=True,
+        framealpha=0.5,
+        facecolor="white",
+        title=r"$\bf{First\ Order}$",
+        fontsize=font_size,
+        labelspacing=0.5,
+        handletextpad=0.5,
+        borderpad=0.5,
+        handlelength=1.5,
+        title_fontsize=font_size,
+        loc="upper left",
+    )
+
+    legend2 = plt.legend(
+        plot_edges,
+        labels,
+        frameon=True,
+        framealpha=0.5,
+        facecolor="white",
+        title=r"$\bf{Higher\ Order}$",
+        fontsize=font_size,
+        labelspacing=0.5,
+        handletextpad=0.5,
+        borderpad=0.5,
+        handlelength=1.5,
+        title_fontsize=font_size,
+        loc="upper right",
+    )
+    if axis:
+        axis.add_artist(legend1)
+        axis.add_artist(legend2)
+    return legend1, legend2
+
 
 
 def _normalize_value(

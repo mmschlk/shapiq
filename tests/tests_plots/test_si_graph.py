@@ -205,3 +205,14 @@ def test_feature_names(example_values):
     fig, ax = example_values.plot_si_graph(feature_names=feature_names, show=False)
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+
+def test_legend(example_values):
+    from shapiq.plot.si_graph import get_legend
+    fig, ax = example_values.plot_si_graph(
+        cubic_scaling=False,
+        show=False,
+    )
+    get_legend(ax)
+    plt.show()
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
