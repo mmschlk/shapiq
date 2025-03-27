@@ -14,17 +14,18 @@ class Sparse(Approximator):
     def __init__(
         self,
         n: int,
-        max_order: int, #TODO Should we respect max_order? (Not currently)
         index: str,
-        top_order: bool = False, #TODO Should we respect top_order? (Not currently)
+        max_order: int | None = None,
+        top_order: bool = False,
         random_state: int | None = None,
         transform_type: str = "fourier",
-        decoder_type: str | None = None, # TODO JK Do we want to let the user do this?
+        decoder_type: str | None = None,
     ) -> None:
         if  transform_type.lower() not in ["fourier"]:
             raise ValueError("transform_type must be 'fourier'")
         self.transform_type = transform_type.lower()
         self.t = 5 # 5 could be a parameter
+        self.respect_max_order = (max_order is None) or max_order <= 5
         self.signal_class = SubsampledSignalFourier
         self.initial_transformer = sparse_fourier_transform
         decoder_type = 'hard' if decoder_type is None else decoder_type.lower()
@@ -63,7 +64,7 @@ class Sparse(Approximator):
         self.decoder_args["source_decoder"] = source_decoder
         super().__init__(
             n=n,
-            max_order=max_order,
+            max_order= n if max_order is None else max_order,
             index=index,
             top_order=top_order,
             random_state=random_state,
@@ -81,18 +82,34 @@ class Sparse(Approximator):
         Returns:
             The approximated Shapley interaction values.
         """
+        # Find the maximum value of b that fits within the given sample budget and get the used budget
         used_budget = self._set_transform_budget(budget)
         signal = self.signal_class(func=game, n=self.n, q=2, query_args=self.query_args)
+        # Extract the coefficients of the original transform
         initial_transform = {tuple(np.nonzero(key)[0]): np.real(value) for key, value in
                             self.initial_transformer(signal, **self.decoder_args).items()}
-        # If we are using the Fourier transform, we need to convert it to a Moebius transform
-        moebius_transform = Sparse._fourier_to_moebius(initial_transform) # TODO add max order?
-        # TODO replace with sparse_transform.qsft.utils.general.fourier_to_mobius
+        # If we are using the fourier transform, we need to convert it to a Moebius transform
+        moebius_transform = Sparse._fourier_to_moebius(initial_transform)  # TODO replace with sparse_transform.qsft.utils.general.fourier_to_mobius
         result = self._process_moebius(moebius_transform=moebius_transform)
+        # Filter the output as needed
+        if not self.top_order or self.max_order < 5:
+            result = self._filter_order(result)
         return self._finalize_result(result=result,
                                      baseline_value=self.interaction_lookup.get((), 0.0),
                                      estimated=True,
                                      budget=used_budget)
+
+    def _filter_order(self, result: np.ndarray) -> np.ndarray:
+        filtered_interactions = {}
+        filtered_results = []
+        i = 0
+        for j, key in enumerate(self.interaction_lookup):
+            if (len(key) == self.max_order and self.top_order) or (len(key) <= self.max_order and not self.top_order):
+                filtered_interactions[key] = i
+                filtered_results.append(result[j])
+                i += 1
+        self._interaction_lookup = filtered_interactions
+        return np.array(filtered_results)
 
     def _process_moebius(self, moebius_transform: dict[tuple, float]) -> np.ndarray:
         """Processes the Moebius transform to extract the desired index.

@@ -7,25 +7,28 @@ from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(
-    "n, max_order, index, top_order, transform_type, decoder_type",
+    "n, index, max_order, top_order, transform_type, decoder_type",
     [
-        (7, 2, "FBII", False, "fourier", "soft"),
-        (7, 2, "FBII", False, "FouRier", "Soft"),
-        (7, 2, "FBII", False, "fourier", "Hard"),
-        (7, 2, "wrong_index", False, "fourier", "soft"),  # Should raise ValueError
-        (7, 2, "wrong_index", False, "fourier", "wrong_dec_type"),  # Should raise ValueError
-        (7, 2, "FBII", False, "invalid_type", None),  # Should raise ValueError
+        (7, "FBII", None, False, "fourier", "soft"),
+        (7, "FBII", None, False, "FouRier", "Soft"),
+        (7, "FBII", None, False, "fourier", "Hard"),
+        (7, "wrong_index", None, False, "fourier", "soft"),  # Should raise ValueError
+        (7, "wrong_index", None, False, "fourier", "wrong_dec_type"),  # Should raise ValueError
+        (7, "FBII", None, False, "invalid_type", None),  # Should raise ValueError
+        (7, "FBII", 6, False, "fourier", 'soft'),
+        (7, "FBII", 2, False, "fourier", 'soft'),
+
     ],
 )
 
-def test_initialization(n, max_order, index, top_order, transform_type, decoder_type):
+def test_initialization(n, index, max_order, top_order, transform_type, decoder_type):
     """Tests the initialization of the Sparse approximator."""
 
     if index == "wrong_index":
         with pytest.raises(ValueError):
-            _ = Sparse(n,
-                       max_order,
+            _ = Sparse(n=n,
                        index=index,
+                       max_order=max_order,
                        top_order=top_order,
                        transform_type=transform_type,
                        decoder_type=decoder_type,
@@ -34,9 +37,9 @@ def test_initialization(n, max_order, index, top_order, transform_type, decoder_
 
     if transform_type == "invalid_type":
         with pytest.raises(ValueError):
-            _ = Sparse(n,
-                       max_order,
+            _ = Sparse(n=n,
                        index=index,
+                       max_order=max_order,
                        top_order=top_order,
                        transform_type=transform_type,
                        decoder_type=decoder_type,
@@ -45,9 +48,9 @@ def test_initialization(n, max_order, index, top_order, transform_type, decoder_
 
     if decoder_type == "wrong_dec_type" or (transform_type.lower() == "mobius" and decoder_type is not None):
         with pytest.raises(ValueError):
-            _ = Sparse(n,
-                       max_order,
+            _ = Sparse(n=n,
                        index=index,
+                       max_order=max_order,
                        top_order=top_order,
                        transform_type=transform_type,
                        decoder_type=decoder_type,
@@ -55,16 +58,16 @@ def test_initialization(n, max_order, index, top_order, transform_type, decoder_
         return
 
     approximator = Sparse(
-        n,
-        max_order,
+        n=n,
         index=index,
+        max_order=max_order,
         top_order=top_order,
         transform_type=transform_type,
         decoder_type=decoder_type,
     )
 
     assert approximator.n == n
-    assert approximator.max_order == max_order
+    assert approximator.max_order == (n if max_order is None else max_order)
     assert approximator.top_order is top_order
     assert approximator.min_order == (max_order if top_order else 0)
     assert approximator.index == index
@@ -80,10 +83,12 @@ def test_initialization(n, max_order, index, top_order, transform_type, decoder_
     "n, index, max_order, budget, transform_type, decoder_type, top_order, interaction",
     [ # These test usually pass with much fewer samples, (~90% of the time with 800), but we use a bigger budget to
         # ensure that the tests are stable
-        (20, "STII", 2, 1600, "fourier", "soft", False, (1, 2)),
-        (20, "FBII", 2, 1600, "fourier", "hard", False, (2, 4)),
-        (20, "FSII", 2, 1600, "fourier", "soft", False, (0, 2)),
-        (20, "STII", 2, 100, "fourier", "soft", False, (1, 2)), # Should throw and error budget too small
+        (20, "STII", None, 1600, "fourier", "soft", False, (1, 2)), # Standard configuration (STII)
+        (20, "FBII", None, 1600, "fourier", "hard", False, (1, 2, 4, 5)), #Higher order interaction
+        (20, "FSII", None, 1600, "fourier", "soft", False, (0, 2)), # Standard configuration (FSII)
+        (20, "STII", None, 100, "fourier", "soft", False, (1, 2)), # Should throw and error budget too small
+        (20, "STII", 2, 1600, "fourier", "soft", True, (1, 2)), # Should filter out all 1st order interactions
+        (20, "STII", 3, 1600, "fourier", "soft", False, (1, 2, 3)), #Should filter out 3rd order interaction
     ],
 )
 def test_approximate(n,
@@ -97,9 +102,9 @@ def test_approximate(n,
     """Tests the approximation of the Sparse approximator with various configurations."""
     game = DummyGame(n, interaction)
     approximator = Sparse(
-        n,
-        max_order,
+        n=n,
         index=index,
+        max_order=max_order,
         top_order=top_order,
         transform_type=transform_type,
         decoder_type=decoder_type,
@@ -115,7 +120,7 @@ def test_approximate(n,
 
     # Verify the result structure
     assert isinstance(estimates, InteractionValues)
-    assert estimates.max_order == max_order
+    assert estimates.max_order == ( n if max_order is None else max_order)
     assert estimates.min_order == (max_order if top_order else 0)
     assert estimates.index == index
     assert estimates.estimated
@@ -128,11 +133,15 @@ def test_approximate(n,
     assert len(estimates.values) > 0
 
     #generate the set of expected interactions
-    expected_interactions = set((i,) for i in range(n))
-    expected_interactions.add(interaction)
+    expected_interactions = set()
+    if estimates.min_order == 0:
+        expected_interactions.update(set((i,) for i in range(n)))
+    if estimates.max_order > 1:
+        expected_interactions.add(interaction)
+
+    # Check the computed interactions
     recovered_interactions = set(estimates.interaction_lookup.keys())
     zero_interactions = set()
-
     if index == "STII" or index == "FBII" or index == "FSII":
         for interaction_key in recovered_interactions:
             if interaction_key not in expected_interactions:
