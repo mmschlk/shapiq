@@ -5,6 +5,7 @@ import pytest
 
 from shapiq.approximator import RegressionFSII
 from shapiq.explainer import TabularExplainer
+from tests.fixtures.data import BUDGET_NR_FEATURES
 
 INDICES = ["SII", "k-SII", "STII", "FSII", "FBII"]
 MAX_ORDERS = [2, 3]
@@ -111,11 +112,11 @@ def test_init_params_approx_params(dt_reg_model, background_reg_data, approximat
     explainer = TabularExplainer(
         approximator=approximator, model=dt_reg_model, data=background_reg_data, max_order=max_order
     )
-    iv = explainer.explain(background_reg_data[0])
+    iv = explainer.explain(background_reg_data[0],budget=BUDGET_NR_FEATURES)
     assert iv.__class__.__name__ == "InteractionValues"
 
 
-BUDGETS = [2**5, 2**8, None]
+BUDGETS = [2**3, 2**5, BUDGET_NR_FEATURES]
 
 
 @pytest.mark.parametrize("budget", BUDGETS)
@@ -200,7 +201,7 @@ def test_against_shap_linear():
         approximator="auto",
         imputer="marginal",
     )
-    shapiq_values = explainer_shapiq.explain_X(X)
+    shapiq_values = explainer_shapiq.explain_X(X, budget=2 ** dim)
     shapiq_values = np.array([values.get_n_order_values(1) for values in shapiq_values])
 
     assert np.allclose(shap_values, shapiq_values, atol=1e-5)

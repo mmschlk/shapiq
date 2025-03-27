@@ -18,10 +18,12 @@ from sklearn.datasets import make_classification, make_regression
 # normal datasets
 NR_FEATURES = 7
 NR_FEATURES_INFORMATIVE = 7
+BUDGET_NR_FEATURES = 2 ** NR_FEATURES
 
 # small datasets
 NR_FEATURES_SMALL = 3
 NR_FEATURES_SMALL_INFORMATIVE = 2
+BUDGET_NR_FEATURES_SMALL = 2 ** NR_FEATURES_SMALL
 
 
 @pytest.fixture
