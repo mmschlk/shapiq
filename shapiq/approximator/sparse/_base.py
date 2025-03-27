@@ -19,7 +19,6 @@ class Sparse(Approximator):
     Attributes:
         transform_type (str): Type of transform used (currently only "fourier" is supported).
         t (int): Error parameter for the sparse Fourier transform.
-        respect_max_order (bool): Whether to respect the maximum order constraint.
         signal_class: Class for representing the subsampled signal.
         initial_transformer: Function for performing the initial transform.
         query_args (dict): Parameters for querying the signal.
@@ -55,7 +54,6 @@ class Sparse(Approximator):
             raise ValueError("transform_type must be 'fourier'")
         self.transform_type = transform_type.lower()
         self.t = 5 # 5 could be a parameter
-        self.respect_max_order = (max_order is None) or max_order <= 5
         self.signal_class = SubsampledSignalFourier
         self.initial_transformer = sparse_fourier_transform
         decoder_type = 'hard' if decoder_type is None else decoder_type.lower()
@@ -122,7 +120,7 @@ class Sparse(Approximator):
         moebius_transform = Sparse._fourier_to_moebius(initial_transform)  # TODO replace with sparse_transform.qsft.utils.general.fourier_to_mobius
         result = self._process_moebius(moebius_transform=moebius_transform)
         # Filter the output as needed
-        if not self.top_order or self.max_order < 5:
+        if self.top_order:
             result = self._filter_order(result)
         return self._finalize_result(result=result,
                                      baseline_value=self.interaction_lookup.get((), 0.0),
@@ -130,11 +128,23 @@ class Sparse(Approximator):
                                      budget=used_budget)
 
     def _filter_order(self, result: np.ndarray) -> np.ndarray:
+        """Filters the interactions to keep only those of the maximum order.
+
+        This method is used when top_order=True to filter out all interactions that are not
+        of exactly the maximum order (self.max_order).
+
+        Args:
+            result: Array of interaction values.
+
+        Returns:
+            Filtered array containing only interaction values of the maximum order.
+            The method also updates the internal _interaction_lookup dictionary.
+        """
         filtered_interactions = {}
         filtered_results = []
         i = 0
         for j, key in enumerate(self.interaction_lookup):
-            if (len(key) == self.max_order and self.top_order) or (len(key) <= self.max_order and not self.top_order):
+            if len(key) == self.max_order:
                 filtered_interactions[key] = i
                 filtered_results.append(result[j])
                 i += 1

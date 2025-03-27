@@ -4,6 +4,7 @@ import pytest
 from shapiq.approximator.sparse import Sparse
 from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
+from shapiq.game_theory.indices import ALL_AVAILABLE_CONCEPTS
 
 
 @pytest.mark.parametrize(
@@ -84,11 +85,13 @@ def test_initialization(n, index, max_order, top_order, transform_type, decoder_
     [ # These test usually pass with much fewer samples, (~90% of the time with 800), but we use a bigger budget to
         # ensure that the tests are stable
         (20, "STII", None, 1600, "fourier", "soft", False, (1, 2)), # Standard configuration (STII)
-        (20, "FBII", None, 1600, "fourier", "hard", False, (1, 2, 4, 5)), #Higher order interaction
+        (20, "FBII", None, 3200, "fourier", "hard", False, (1, 2, 4, 5)), #Higher order interaction
         (20, "FSII", None, 1600, "fourier", "soft", False, (0, 2)), # Standard configuration (FSII)
         (20, "STII", None, 100, "fourier", "soft", False, (1, 2)), # Should throw and error budget too small
         (20, "STII", 2, 1600, "fourier", "soft", True, (1, 2)), # Should filter out all 1st order interactions
         (20, "STII", 3, 1600, "fourier", "soft", False, (1, 2, 3)), #Should filter out 3rd order interaction
+        (20, "STII", 1, 1600, "fourier", "soft", False, (1, 2, 3)),  # Should spread 3rd order interaction across 1st
+
     ],
 )
 def test_approximate(n,
@@ -117,12 +120,15 @@ def test_approximate(n,
         return
 
     estimates = approximator.approximate(budget, game)
+    max_order = n if max_order is None else max_order
+
 
     # Verify the result structure
     assert isinstance(estimates, InteractionValues)
-    assert estimates.max_order == ( n if max_order is None else max_order)
+    assert estimates.max_order == max_order
     assert estimates.min_order == (max_order if top_order else 0)
-    assert estimates.index == index
+    assert estimates.index == index if (max_order is None or max_order > 1) else ALL_AVAILABLE_CONCEPTS[index][
+        "generalizes"]
     assert estimates.estimated
     assert estimates.estimation_budget > 0
 
@@ -148,9 +154,12 @@ def test_approximate(n,
                 assert estimates[interaction_key] == pytest.approx(0.0, abs=1e-2)
                 zero_interactions.add(interaction_key)
             else:
-                if interaction_key == interaction:
+                if interaction_key == interaction and max_order >= len(interaction):
                     assert estimates[interaction_key] == pytest.approx(1.0, rel=0.01)
                 else:
-                    assert estimates[interaction_key] == pytest.approx(1/n, rel=0.01)
+                    if len(interaction_key) == 1 and interaction_key[0] in interaction and max_order == 1:
+                        assert estimates[interaction_key] == pytest.approx(1/n + 1/len(interaction), rel=0.01)
+                    else:
+                        assert estimates[interaction_key] == pytest.approx(1/n, rel=0.01)
     recovered_interactions = recovered_interactions - zero_interactions
     assert recovered_interactions == expected_interactions
