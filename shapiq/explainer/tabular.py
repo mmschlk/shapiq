@@ -188,14 +188,11 @@ class TabularExplainer(Explainer):
         Args:
             x: The data point to explain as a 2-dimensional array with shape
                 (1, n_features).
-            budget: The budget to use for the approximation.
+            budget: The budget to use for the approximation. It indicates how many coalitions are sampled, thus high values indicate more accurate approximations, but induce higher computational costs.
+                In particular one should be aware of the exponential growth of the number of coalitions with the number of features i.e. 2**(n_players).
+                We abstain from giving a general recommendation for the budget, as it depends on the specific use case and the desired accuracy.
             random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
         """
-        if budget > 2048:
-            warnings.warn(
-                f"Using the budget of 2**n_features={budget}, which might take long\
-                          to compute. Set the `budget` parameter to suppress this warning."
-            )
         if random_state is not None:
             self._imputer._rng = np.random.default_rng(random_state)
             self._approximator._rng = np.random.default_rng(random_state)

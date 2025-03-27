@@ -116,7 +116,7 @@ def test_init_params_approx_params(dt_reg_model, background_reg_data, approximat
     assert iv.__class__.__name__ == "InteractionValues"
 
 
-BUDGETS = [2**3, 2**5, BUDGET_NR_FEATURES]
+BUDGETS = [2**5, 2**8, BUDGET_NR_FEATURES]
 
 
 @pytest.mark.parametrize("budget", BUDGETS)
@@ -140,8 +140,6 @@ def test_explain(dt_reg_model, background_reg_data, index, budget, max_order, im
     interaction_values = explainer.explain(x, budget=budget)
     assert interaction_values.index == index
     assert interaction_values.max_order == max_order
-    if budget is None:
-        budget = 100_000_000_000
     assert interaction_values.estimation_budget <= budget + 2
     interaction_values0 = explainer.explain(x, budget=budget, random_state=0)
     interaction_values2 = explainer.explain(x, budget=budget, random_state=0)

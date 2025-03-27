@@ -1,6 +1,7 @@
 ## Changelog
 
 ### Development
+- changes `budget` to be an mandatory parameter given to the `TabularExplainer.explain()` method [#355](https://github.com/mmschlk/shapiq/pull/356).
 
 ### v1.2.3 (2025-03-24)
 - substantially improves the runtime of all `Regression` approximators by a) a faster pre-computation of the regression matrices and b) a faster computation of the weighted least squares regression [#340](https://github.com/mmschlk/shapiq/issues/340)
