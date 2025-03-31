@@ -116,7 +116,7 @@ class TabularExplainer(Explainer):
     def __init__(
         self,
         model,
-        data: np.ndarray,
+        data,
         class_index: int | None = None,
         imputer="marginal",
         approximator: str | Approximator = "auto",
