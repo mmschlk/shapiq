@@ -126,7 +126,10 @@ lint.ignore = [
     "C901",  # Too complex
 ]
 "__init__.py" = ["I002"]
-"*.ipynb" = ["E501", "E402"]
+"*.ipynb" = [
+    "E501",
+    "E402",  # Module level import not at top of file (its .ipynb)
+]
 
 
 [tool.ruff.lint.isort]
