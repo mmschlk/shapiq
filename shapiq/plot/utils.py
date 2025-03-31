@@ -24,6 +24,7 @@ def format_value(
         "1"
         >>> format_value(1.234)
         "1.23"
+
     """
     if not issubclass(type(s), str):
         s = format_str % s
@@ -54,6 +55,7 @@ def format_labels(
         "A"
         >>> format_labels(feature_mapping, ())
         "Base Value"
+
     """
     if len(feature_tuple) == 0:
         return "Base Value"
@@ -71,6 +73,7 @@ def abbreviate_feature_names(feature_names: Iterable[str]) -> list[str]:
 
     Returns:
         list[str]: The abbreviated feature names.
+
     """
     abbreviated_names = []
     for name in feature_names:

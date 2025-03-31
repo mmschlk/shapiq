@@ -110,6 +110,7 @@ class TabularExplainer(Explainer):
 
     Properties:
         baseline_value: A baseline value of the explainer.
+
     """
 
     def __init__(
@@ -133,7 +134,7 @@ class TabularExplainer(Explainer):
         )
 
         if index not in AVAILABLE_INDICES:
-            raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
+            raise ValueError(f"Invalid index `{index}`. Valid indices are {AVAILABLE_INDICES}.")
 
         super().__init__(model, data, class_index)
 
@@ -144,7 +145,8 @@ class TabularExplainer(Explainer):
                 "You are using a TabPFN model with the ``shapiq.TabularExplainer`` directly. This "
                 "is not recommended as it uses missing value imputation and not contextualization. "
                 "Consider using the ``shapiq.TabPFNExplainer`` instead. For more information see "
-                "the documentation and the example notebooks."
+                "the documentation and the example notebooks.",
+                stacklevel=2,
             )
 
         self._random_state = random_state
@@ -192,6 +194,7 @@ class TabularExplainer(Explainer):
                 In particular one should be aware of the exponential growth of the number of coalitions with the number of features i.e. 2**(n_players).
                 We abstain from giving a general recommendation for the budget, as it depends on the specific use case and the desired accuracy.
             random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
+
         """
         if random_state is not None:
             self._imputer._rng = np.random.default_rng(random_state)
@@ -218,7 +221,6 @@ class TabularExplainer(Explainer):
     def _init_approximator(
         self, approximator: Approximator | str, index: str, max_order: int
     ) -> Approximator:
-
         if isinstance(approximator, Approximator):  # if the approximator is already given
             return approximator
 
@@ -227,7 +229,8 @@ class TabularExplainer(Explainer):
                 if index != "SV":
                     warnings.warn(
                         "`max_order=1` but `index != 'SV'`, setting `index = 'SV'`. "
-                        "Using the KernelSHAP approximator."
+                        "Using the KernelSHAP approximator.",
+                        stacklevel=2,
                     )
                     self.index = "SV"
                 return KernelSHAP(
@@ -238,7 +241,8 @@ class TabularExplainer(Explainer):
                 if max_order != 1:
                     warnings.warn(
                         "`index='SV'` but `max_order != 1`, setting `max_order = 1`. "
-                        "Using the KernelSHAP approximator."
+                        "Using the KernelSHAP approximator.",
+                        stacklevel=2,
                     )
                     self._max_order = 1
                 return KernelSHAP(
@@ -275,11 +279,11 @@ class TabularExplainer(Explainer):
         # assume that the approximator is a string
         try:
             approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
-        except KeyError:
+        except KeyError as error:
             raise ValueError(
                 f"Invalid approximator `{approximator}` or index `{index}`. "
                 f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}."
-            )
+            ) from error
         # initialize the approximator class with params
         init_approximator = approximator(n=self._n_features, max_order=max_order)
         return init_approximator

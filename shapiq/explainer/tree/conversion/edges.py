@@ -1,5 +1,6 @@
 """Conversion functions to parse a tree model into the edge representation used by the
-TreeSHAP-IQ algorithm to compute the interaction values of a tree-based model."""
+TreeSHAP-IQ algorithm to compute the interaction values of a tree-based model.
+"""
 
 import numpy as np
 from scipy.special import binom
@@ -43,6 +44,7 @@ def create_edge_tree(
 
     Returns:
         EdgeTree: A dataclass containing the edge information of the tree.
+
     """
     # variables to be filled with recursive function
     parents = np.full(n_nodes, -1, dtype=int)
@@ -83,6 +85,7 @@ def create_edge_tree(
 
         Returns:
             int: The edge height of the current node.
+
         """
         # if root node, initialize seen_features and p_e_storage
         if seen_features is None:

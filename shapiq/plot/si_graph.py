@@ -36,6 +36,7 @@ def _normalize_value(
 
     Returns:
         The normalized/scaled value.
+
     """
     ratio = abs(value) / abs(max_value)  # ratio is always positive in [0, 1]
     if cubic_scaling:
@@ -60,9 +61,9 @@ def _draw_fancy_hyper_edges(
         pos: The positions of the nodes.
         graph: The graph to draw the hyper-edges on.
         hyper_edges: The hyper-edges to draw.
+
     """
     for hyper_edge in hyper_edges:
-
         # store all paths for the hyper-edge to combine them later
         all_paths = []
 
@@ -90,7 +91,6 @@ def _draw_fancy_hyper_edges(
 
         # draw the fancy connections from the other nodes to the center node
         for player in hyper_edge:
-
             player_pos = pos[player]
 
             circle_p = mpath.Path.circle(player_pos, radius=node_size / 2)
@@ -165,6 +165,7 @@ def _draw_graph_nodes(
         graph: The graph to draw the nodes on.
         nodes: The nodes to draw. If ``None``, all nodes are drawn. Defaults to ``None``.
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
+
     """
     for node in graph.nodes:
         if nodes is not None and node not in nodes:
@@ -197,6 +198,7 @@ def _draw_explanation_nodes(
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
         node_area_scaling: Whether to scale the node sizes based on the area of the nodes (``True``)
             or the radius of the nodes (``False``). Defaults to ``False``.
+
     """
     for node in graph.nodes:
         if isinstance(node, tuple):
@@ -242,6 +244,7 @@ def _draw_graph_edges(
         graph: The graph to draw the edges on.
         edges: The edges to draw. If ``None`` (default), all edges are drawn.
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
+
     """
     for u, v in graph.edges:
         if edges is not None and (u, v) not in edges and (v, u) not in edges:
@@ -273,6 +276,7 @@ def _draw_graph_labels(ax: plt.axis, pos: dict, graph: nx.Graph, nodes: list | N
         pos: The positions of the nodes.
         graph: The graph to draw the labels on.
         nodes: The nodes to draw the labels on. If ``None`` (default), all nodes are drawn.
+
     """
     for node in graph.nodes:
         if nodes is not None and node not in nodes:
@@ -343,7 +347,7 @@ def si_graph_plot(
             networkx graph is provided, the nodes are used as the players and the edges are used as
             the connections between the players. Defaults to ``None``, which creates a graph with
             all nodes from the interaction values without any edges between them.
-        n_interactions: The number of interactions to plot. If ``None``, all interactions are plotted
+        n_interactions: The number of interactions to plot. If ``None``, all interactions are
             according to the draw_threshold.
         draw_threshold: The threshold to draw an edge (i.e. only draw explanations with an
             interaction value higher than this threshold).
@@ -358,8 +362,8 @@ def si_graph_plot(
         feature_names: A list of feature names to use for the nodes in the graph. If ``None``,
             the feature indices are used instead. Defaults to ``None``.
         cubic_scaling: Whether to scale the size of explanations cubically (``True``) or linearly
-            (``False``, default). Cubic scaling puts more emphasis on larger interactions in the plot.
-            Defaults to ``False``.
+            (``False``, default). Cubic scaling puts more emphasis on larger interactions in the
+            plot. Defaults to ``False``.
         pos: The positions of the nodes in the graph. If ``None``, the spring layout is used to
             position the nodes. Defaults to ``None``.
         node_size_scaling: The scaling factor for the node sizes. This can be used to make the nodes
@@ -383,9 +387,12 @@ def si_graph_plot(
         The figure and axis of the plot if ``show`` is ``False``. Otherwise, ``None``.
 
     References:
-        .. [1] Muschalik, M., Baniecki, H., Fumagalli, F., Kolpaczki, P., Hammer, B., and Hüllermeier, E. (2024). shapiq: Shapley Interactions for Machine Learning. In: The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track. url: https://openreview.net/forum?id=knxGmi6SJi#discussion.
-    """
+        .. [1] Muschalik, M., Baniecki, H., Fumagalli, F., Kolpaczki, P., Hammer, B., and
+            Hüllermeier, E. (2024). shapiq: Shapley Interactions for Machine Learning. In:
+            The Thirty-eight Conference on Neural Information Processing Systems Datasets and
+            Benchmarks Track. url: https://openreview.net/forum?id=knxGmi6SJi#discussion.
 
+    """
     normal_node_size = NORMAL_NODE_SIZE * node_size_scaling
     base_size = BASE_SIZE * node_size_scaling
 

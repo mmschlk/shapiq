@@ -11,7 +11,7 @@ from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq.games.base import Game
-from shapiq.utils.types import Model
+from shapiq.utils.custom_types import Model
 
 
 class EnsembleSelection(Game):
@@ -66,7 +66,6 @@ class EnsembleSelection(Game):
         normalize: bool = True,
         random_state: int | None = 42,
     ) -> None:
-
         assert dataset_type in ["classification", "regression"], (
             f"Invalid dataset type provided. Got {dataset_type} but expected one of "
             f"['classification', 'regression']."
@@ -97,7 +96,7 @@ class EnsembleSelection(Game):
             ]
         if ensemble_members is None:
             ensemble_members = []
-            for i in range(n_members):
+            for _ in range(n_members):
                 # sample a random ensemble member
                 ensemble_member = str(self._rng.choice(self.available_members, size=1)[0])
                 ensemble_members.append(ensemble_member)
@@ -149,6 +148,7 @@ class EnsembleSelection(Game):
 
         Returns:
             The worth of the coalition.
+
         """
         worth = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
@@ -234,6 +234,7 @@ class RandomForestEnsembleSelection(EnsembleSelection):
             True.
         normalize: Whether to normalize the game values. Defaults to True.
         random_state: The random state to use for the ensemble members. Defaults to 42.
+
     """
 
     def __init__(

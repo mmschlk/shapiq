@@ -21,9 +21,11 @@ def _setup_core_calculations(
         n_players: amount of players in the game
         game_values: the values of every coalition in the game. Assumes empty set in game_values[0] and grand_coalition
             game_values[-1]
+
     Returns:
         (constraints,bounds): returns the constraints and bounds induced by the stability and efficiency property
          for the underlying game.
+
     """
     n_coalitions = 2**n_players
 
@@ -83,6 +85,7 @@ def _minimization_egal_least_core(credit_subsidy_vector: np.ndarray) -> float:
 
     Returns:
         A value representing the sum of both l2_norm of the credit_assignment and subsidy.
+
     """
     credit_assignment = credit_subsidy_vector[:-1]
     subsidy = credit_subsidy_vector[-1]
@@ -99,13 +102,14 @@ def egalitarian_least_core(
         n_players: amount of players in the game.
         game_values: the values of every coalition in the game.
         coalition_lookup: dictionary mapping a coalition to the corresponding value of game_values.
+
     Returns:
         Returns a tuple of egalitarian_least_core and subsidy value.
 
     Raises:
         ValueError: If the optimization did not complete successfully
-    """
 
+    """
     # Rearrange the game_values and base_line and 0
     tmp = game_values[coalition_lookup[tuple()]]
     game_values[coalition_lookup[tuple()]] = game_values[0]
@@ -124,7 +128,8 @@ def egalitarian_least_core(
         warnings.warn(
             "The egalitarian least core is only defined for normalized games."
             "Thus the resulting vector will undercut efficiency by the value of the empty set."
-            "To suppress warnings normalize the game to have baseline_value == 0."
+            "To suppress warnings normalize the game to have baseline_value == 0.",
+            stacklevel=2,
         )
 
     # Potentially normalize the game

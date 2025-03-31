@@ -20,6 +20,7 @@ def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
 
     Returns:
         The interaction values without the empty value.
+
     """
     try:
         _ = interaction.interaction_lookup[()]
@@ -47,6 +48,7 @@ def compute_diff_metrics(ground_truth: InteractionValues, estimated: Interaction
 
     Returns:
         The metrics between the ground truth and estimated interaction values.
+
     """
     try:
         difference = ground_truth - estimated
@@ -68,7 +70,8 @@ def compute_diff_metrics(ground_truth: InteractionValues, estimated: Interaction
                     ground_truth_values.index = estimated.index
                 warnings.warn(
                     f"Indices do not match for {ground_truth.index} and {estimated.index}. Will "
-                    f"compare anyway but results need to be interpreted with care."
+                    f"compare anyway but results need to be interpreted with care.",
+                    stacklevel=2,
                 )
                 difference = ground_truth_values - estimated_values
         else:
@@ -99,6 +102,7 @@ def compute_kendall_tau(
 
     Returns:
         The Kendall Tau between the ground truth and estimated interaction values.
+
     """
     # get the interactions as a sorted array
     gt_values, estimated_values = [], []
@@ -132,6 +136,7 @@ def compute_precision_at_k(
 
     Returns:
         The precision at k between the ground truth and estimated interaction values.
+
     """
     ground_truth_values = _remove_empty_value(ground_truth)
     estimated_values = _remove_empty_value(estimated)
@@ -155,6 +160,7 @@ def get_all_metrics(
 
     Returns:
         The metrics as a dictionary.
+
     """
     if order_indicator is None:
         order_indicator = ""
@@ -176,6 +182,3 @@ def get_all_metrics(
 
     metrics.update(metrics_diff)
     return metrics
-
-
-# Path: shapiq/benchmark/metrics.py

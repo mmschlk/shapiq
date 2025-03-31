@@ -72,13 +72,12 @@ def test_core_on_normalized_soum():
 def test_core_political_game_empty_core():
     """Tests that core is empty for non-convex game and egalitarian least-core has subsidy=33.3.
 
-    The political game tested here is constructed such that the core is [33.3, 33.3, 33.3] with subsidy 33.3.
-    This is due to all coalitions with at least two players gets 100.
+    The political game tested here is constructed such that the core is [33.3, 33.3, 33.3] with
+    subsidy 33.3. This is due to all coalitions with at least two players gets 100.
 
     """
 
     class NonConvexGame(shapiq.Game):
-
         def __init__(self) -> None:
             super().__init__(n_players=3, normalize=True, normalization_value=0)
 
@@ -135,11 +134,14 @@ def test_core_baseline_warning():
 
 
 def test_core_political_game_existing_core():
-    """Tests that the ELC is equal to the core with subsidy equal to 0, due to convex game structure."""
+    """Tests that the ELC is equal to the core with subsidy equal to 0, due to convex game
+    structure.
+    """
 
     class ConvexGame(shapiq.Game):
-        """Convex game, i.e. meaning that the v(S u {i}) - v(S) <= v(T u {i}) - v(T) for S<=T<={1,..,n} \ {i}.
-        The marginal contribution of a player i is always bigger if it joins a bigger coalition.
+        """Convex game, i.e. meaning that the v(S u {i}) - v(S) <= v(T u {i}) - v(T) for
+        S<=T<={1,..,n} \ {i}. The marginal contribution of a player i is always bigger if it joins
+        a bigger coalition.
         """
 
         def __init__(self) -> None:

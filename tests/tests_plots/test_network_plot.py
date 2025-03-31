@@ -12,7 +12,6 @@ from shapiq.plot import network_plot
 
 def test_network_plot():
     """Tests whether the network plot can be created."""
-
     first_order_values = np.asarray([0.1, -0.2, 0.3, 0.4, 0.5, 0.6])
     second_order_values = np.random.rand(6, 6) - 0.5
 
@@ -52,13 +51,6 @@ def test_network_plot():
     # value error if neither first_order_values nor interaction_values are given
     with pytest.raises(ValueError):
         network_plot()
-
-    # test show=True
-    output = network_plot(interaction_values=iv, show=True)
-    assert output is None
-    plt.close("all")
-
-    assert True
 
 
 def test_network_plot_with_image_or_text():

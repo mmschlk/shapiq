@@ -1,5 +1,6 @@
 """This test module collects all tests for the conversions of the supported tree models for the
-TreeExplainer class."""
+TreeExplainer class.
+"""
 
 import numpy as np
 import pytest
@@ -43,13 +44,10 @@ def test_tree_model_init():
     assert np.all(tree_model.leaf_mask == np.array([False, False, True, True, True]))
     # check if empty prediction is correctly computed
     assert tree_model.empty_prediction == 425.0
-    # test __getitem__
-    assert np.all(tree_model["children_left"] == np.array([1, 2, -1, -1, -1]))
 
 
 def test_edge_tree_init():
     """Tests the initialization of the EdgeTree class."""
-
     # setup test data (same as in test_manual_tree of test_tree_treeshapiq.py)
     children_left = np.asarray([1, 2, 3, -1, -1, -1, 7, -1, -1])
     children_right = np.asarray([6, 5, 4, -1, -1, -1, 8, -1, -1])
@@ -88,9 +86,6 @@ def test_edge_tree_init():
     )
 
     assert safe_isinstance(edge_tree, ["shapiq.explainer.tree.base.EdgeTree"])
-
-    # check if edge_tree can be accessed via __getitem__
-    assert edge_tree["parents"] is not None
 
 
 def test_sklean_dt_conversion(dt_reg_model, dt_clf_model):

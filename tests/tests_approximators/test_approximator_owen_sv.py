@@ -22,7 +22,6 @@ from shapiq.games.benchmark import DummyGame
 )
 def test_anchorpoints(n, m, expected):
     """Tests the generation of anchor points in the OwenSamplingSV approximator."""
-
     approximator = OwenSamplingSV(n, m, random_state=42)
     output = approximator.get_anchor_points(m)
     expected = np.array(expected)

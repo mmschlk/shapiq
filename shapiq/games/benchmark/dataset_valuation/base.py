@@ -34,6 +34,7 @@ class DatasetValuation(Game):
         random_state: The random state to use for all random operations. Defaults to 42.
         normalize: Whether the game values should be normalized. Defaults to `True`.
         empty_data_value: The worth of an empty subset of data. Defaults to 0.0.
+
     """
 
     def __init__(
@@ -54,7 +55,6 @@ class DatasetValuation(Game):
         verbose: bool = False,
         empty_data_value: float = 0.0,
     ) -> None:
-
         # check if all required functions are given, otherwise
         if (
             x_train is None
@@ -147,6 +147,7 @@ class DatasetValuation(Game):
 
         Returns:
             The worth of the coalition.
+
         """
         worth = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):

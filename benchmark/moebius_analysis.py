@@ -25,7 +25,6 @@ def plot_box_plot(
     showfliers: bool = True,
 ) -> None:
     """Plot a box plot of the interaction values."""
-
     # get a dataframe of the interactions
     interactions_df = []
     for interaction_val in interactions:

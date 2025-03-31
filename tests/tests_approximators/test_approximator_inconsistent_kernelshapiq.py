@@ -1,5 +1,6 @@
 """This test module contains all tests regarding the Inconsistent KernelSHAP-IQ regression
-approximator."""
+approximator.
+"""
 
 import numpy as np
 import pytest

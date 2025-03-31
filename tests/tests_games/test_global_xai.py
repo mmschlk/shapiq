@@ -70,7 +70,9 @@ def test_california(model_name):
     test_coalitions = np.zeros(shape=(2, 8), dtype=bool)
     test_coalitions[1] = np.ones(8, dtype=bool)
     game = CaliforniaHousingGlobalXAI(
-        model_name=model_name, n_samples_eval=2, n_samples_empty=3  # small values for testing
+        model_name=model_name,
+        n_samples_eval=2,
+        n_samples_empty=3,  # small values for testing
     )
     worth = game(test_coalitions)
     assert game.n_players == 8
@@ -84,7 +86,9 @@ def test_adult_census(model_name):
     test_coalitions = np.zeros(shape=(2, 14), dtype=bool)
     test_coalitions[1] = np.ones(14, dtype=bool)
     game = AdultCensusGlobalXAI(
-        model_name=model_name, n_samples_eval=2, n_samples_empty=3  # small values for testing
+        model_name=model_name,
+        n_samples_eval=2,
+        n_samples_empty=3,  # small values for testing
     )
     worth = game(test_coalitions)
     assert game.n_players == 14
@@ -98,7 +102,9 @@ def test_bike_sharing(model_name):
     test_coalitions = np.zeros(shape=(2, 12), dtype=bool)
     test_coalitions[1] = np.ones(12, dtype=bool)
     game = BikeSharingGlobalXAI(
-        model_name=model_name, n_samples_eval=2, n_samples_empty=3  # small values for testing
+        model_name=model_name,
+        n_samples_eval=2,
+        n_samples_empty=3,  # small values for testing
     )
     worth = game(test_coalitions)
     assert game.n_players == 12

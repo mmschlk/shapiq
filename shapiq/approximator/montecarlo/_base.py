@@ -31,6 +31,7 @@ class MonteCarlo(Approximator):
         top_order: If ``True``, then only highest order interaction values are computed, e.g. required
             for ``'FSII'``. Defaults to ``False``.
         random_state: The random state to use for the approximation. Defaults to ``None``.
+
     """
 
     def __init__(
@@ -78,6 +79,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The approximated Shapley interaction values.
+
         """
         # sample with current budget
         self._sampler.sample(budget)
@@ -130,8 +132,8 @@ class MonteCarlo(Approximator):
 
         Returns:
             The approximated Shapley interaction values as a numpy array.
-        """
 
+        """
         # get sampling parameters
         coalitions_size = self._sampler.coalitions_size
 
@@ -187,6 +189,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The adjusted sampling weights as numpy array for all coalitions.
+
         """
         sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
         interaction_size = len(interaction)
@@ -242,6 +245,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The adjusted sampling weights as numpy array for all coalitions.
+
         """
         sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
         # Stratify by coalition size but not by intersection
@@ -276,6 +280,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The sampling adjustment weights for the SVARM-IQ routine.
+
         """
         sampling_adjustment_weights = np.ones(self._sampler.n_coalitions)
         interaction_size = len(interaction)
@@ -326,6 +331,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The sampling adjustment weights for the SHAP-IQ routine.
+
         """
         # Compute the number of sampled coalitions, which are not explicitly computed in the border trick
         n_samples = np.sum(self._sampler.coalitions_counter[self._sampler.is_coalition_sampled])
@@ -348,6 +354,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             float: The weight for the interaction type.
+
         """
         return 1 / (
             (self.n - interaction_size + 1) * binom(self.n - interaction_size, coalition_size)
@@ -362,6 +369,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The weight for the interaction type.
+
         """
         return 1 / 2 ** (coalition_size - interaction_size)
 
@@ -375,6 +383,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The weight for the interaction type.
+
         """
         try:
             return interaction_size / coalition_size
@@ -393,6 +402,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The weight for the interaction type.
+
         """
         if interaction_size == self.max_order:
             return self.max_order / (self.n * binom(self.n - 1, coalition_size))
@@ -411,6 +421,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The weight for the interaction type.
+
         """
         if interaction_size == self.max_order:
             return (
@@ -434,6 +445,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The weight for the interaction type.
+
         """
         if interaction_size == self.max_order:
             return 1 / 2 ** (self.n - interaction_size)
@@ -449,6 +461,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The weight for the interaction type.
+
         """
         if index == "STII":
             return self._stii_weight(coalition_size, interaction_size)
@@ -475,6 +488,7 @@ class MonteCarlo(Approximator):
 
         Returns:
             The standard form weights.
+
         """
         # init data structure
         weights = np.zeros((self.max_order + 1, self.n + 1, self.max_order + 1))

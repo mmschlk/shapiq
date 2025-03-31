@@ -1,5 +1,6 @@
 """MoebiusConverter class for computing exact Shapley Interactions
-using the (sparse) Möbius representation.."""
+using the (sparse) Möbius representation..
+"""
 
 import copy
 from collections.abc import Callable
@@ -23,6 +24,7 @@ class MoebiusConverter:
         n: The number of players.
         moebius_coefficients: The InteractionValues object containing all non-zero (sparse) Möbius
             coefficients.
+
     """
 
     def __init__(self, moebius_coefficients: InteractionValues):
@@ -57,6 +59,7 @@ class MoebiusConverter:
 
         Raises:
             ValueError: If the index is not supported.
+
         """
         # sanitize input
         if order is None:
@@ -81,6 +84,7 @@ class MoebiusConverter:
 
         Returns:
             InteractionValues object containing transformed base_interactions
+
         """
         from .aggregation import aggregate_base_interaction
 
@@ -96,6 +100,7 @@ class MoebiusConverter:
 
         Returns:
             An InteractionValues object containing the base interactions
+
         """
         index_to_change_back = index
         if index == "SV":
@@ -112,6 +117,7 @@ class MoebiusConverter:
         for moebius_set, moebius_val in zip(
             self.moebius_coefficients.interaction_lookup,
             self.moebius_coefficients.values,
+            strict=False,
         ):
             moebius_size = len(moebius_set)
             # for higher-order Möbius sets (size > order) distribute the value on all interactions
@@ -146,7 +152,7 @@ class MoebiusConverter:
 
         return base_interactions
 
-    def stii_routine(self, order: int, **kwargs):
+    def stii_routine(self, order: int, **_kwargs):
         """Computes STII. Routine to distribute the Moebius coefficients onto all STII interactions.
 
         The lower-order interactions are equal to their Moebius coefficients, whereas the top-order
@@ -154,10 +160,11 @@ class MoebiusConverter:
 
         Args:
             order: The order of the explanation
-            **kwargs: Additional keyword arguments (not used).
+            **_kwargs: Additional keyword arguments are not used.
 
         Returns:
             An InteractionValues object containing the STII interactions.
+
         """
         stii_dict = {}
         index = "STII"
@@ -176,6 +183,7 @@ class MoebiusConverter:
         for moebius_set, moebius_val in zip(
             self.moebius_coefficients.interaction_lookup,
             self.moebius_coefficients.values,
+            strict=False,
         ):
             moebius_size = len(moebius_set)
             if moebius_size < order:
@@ -225,6 +233,7 @@ class MoebiusConverter:
 
         Returns:
             An InteractionValues object containing the FSII interactions
+
         """
         fii_dict = {}
         # Pre-compute weights
@@ -245,6 +254,7 @@ class MoebiusConverter:
             for moebius_set, moebius_val in zip(
                 self.moebius_coefficients.interaction_lookup,
                 self.moebius_coefficients.values,
+                strict=False,
             ):
                 moebius_size = len(moebius_set)
                 if moebius_size > order:
@@ -256,6 +266,7 @@ class MoebiusConverter:
         for moebius_set, moebius_val in zip(
             self.moebius_coefficients.interaction_lookup,
             self.moebius_coefficients.values,
+            strict=False,
         ):
             moebius_size = len(moebius_set)
             # For higher-order Moebius sets (size > order) distribute the value among all
@@ -294,8 +305,8 @@ class MoebiusConverter:
 
         Returns:
             An InteractionValues object containing the Shapley interactions
-        """
 
+        """
         if index == "STII":
             shapley_interactions = self.stii_routine(order)
         elif index in ["FSII", "FBII"]:
@@ -332,6 +343,7 @@ def _get_moebius_distribution_weight(
 
     Raises:
         ValueError: If the index is not supported.
+
     """
     if index == "SII":
         return 1 / (moebius_size - interaction_size + 1)

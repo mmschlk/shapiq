@@ -9,7 +9,7 @@ import copy
 
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 import torchvision.transforms as transforms
 from PIL import Image
 from skimage.segmentation import slic
@@ -40,6 +40,7 @@ class ResNetModel:
         empty_value: The score of the background image.
         n_superpixels: The number of superpixels.
         superpixels: The superpixel mask found by SLICO.
+
     """
 
     def __init__(
@@ -112,6 +113,7 @@ class ResNetModel:
 
         Returns:
             The class probability of the coalition.
+
         """
         for batch in range(0, len(coalitions), self.batch_size):
             output = self._call_batch(coalitions[batch : batch + self.batch_size])
@@ -130,6 +132,7 @@ class ResNetModel:
 
         Returns:
             The class probability of the coalition.
+
         """
         # create tensor dataset for all coalition in coalitions and apply the masks
         masked_images = torch.stack((self._image_tensor,) * len(coalitions))
@@ -151,6 +154,7 @@ class ResNetModel:
 
         Returns:
             The class probability
+
         """
         with torch.no_grad():
             output = self.model(input_image)
@@ -168,6 +172,7 @@ class ResNetModel:
 
         Returns:
             The number of superpixels and the superpixel mask.
+
         """
         # run slic for first time
         superpixels = slic(image, n_segments=n_segments, start_label=1, slic_zero=True)

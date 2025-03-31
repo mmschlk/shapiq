@@ -55,7 +55,7 @@ from .local_xai.benchmark_tabular import (
 
 # synthetic games
 from .synthetic.dummy import DummyGame
-from .synthetic.random import RandomGame
+from .synthetic.random_game import RandomGame
 from .synthetic.soum import SOUM, UnanimityGame
 
 # treeshap-iq explanation games

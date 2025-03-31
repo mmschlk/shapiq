@@ -317,7 +317,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
                 {"model_name": "decision_tree"},
                 {"model_name": "random_forest"},
                 {"model_name": "gradient_boosting"},
-                # {"model_name": "neural_network"}  # not possible atm. needs dynamic input size
             ],
             "iteration_parameter": "random_state",
             "n_players": 8,
@@ -389,8 +388,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
@@ -412,8 +409,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
@@ -435,8 +430,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
@@ -767,6 +760,7 @@ def get_game_file_name_from_config(
 
     Returns:
         The file name of the game data
+
     """
     file_name = "_".join(f"{key}={value}" for key, value in configuration.items())
     if iteration is not None:
@@ -782,6 +776,7 @@ def get_game_class_from_name(game_name: str) -> Game.__class__:
 
     Returns:
         The class of the game
+
     """
     return GAME_NAME_TO_CLASS_MAPPING[game_name]
 
@@ -794,6 +789,7 @@ def get_name_from_game_class(game_class: Game.__class__) -> str:
 
     Returns:
         The name of the game.
+
     """
     for name, game_cls in GAME_NAME_TO_CLASS_MAPPING.items():
         if game_cls == game_class:
@@ -820,6 +816,3 @@ def print_benchmark_configurations() -> None:
             for i, configuration in enumerate(configurations["configurations"]):
                 print(f"Configuration {i + 1}: {configuration}")
         print()
-
-
-# Path: shapiq/benchmark/configuration.py

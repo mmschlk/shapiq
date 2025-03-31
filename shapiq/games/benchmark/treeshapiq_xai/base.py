@@ -7,7 +7,7 @@ import numpy as np
 from shapiq.explainer.tree import TreeExplainer, TreeModel
 from shapiq.games.base import Game
 from shapiq.interaction_values import InteractionValues
-from shapiq.utils.types import Model
+from shapiq.utils.custom_types import Model
 
 
 class TreeSHAPIQXAI(Game):
@@ -21,6 +21,7 @@ class TreeSHAPIQXAI(Game):
         tree_model: The tree model to be explained.
         class_label: The class label to be explained. The default value is None.
         normalize: A boolean flag to normalize/center the game values. The default value is True.
+
     """
 
     def __init__(
@@ -45,7 +46,6 @@ class TreeSHAPIQXAI(Game):
             class_index=class_label,
         )
         # compute ground truth values
-        # self.gt_interaction_values: InteractionValues = self._tree_explainer.explain(x=x)
         self.empty_value = float(self._tree_explainer.baseline_value)
 
         # get attributes for manual tree traversal and evaluation
@@ -68,6 +68,7 @@ class TreeSHAPIQXAI(Game):
 
         Returns:
             The worth of the coalitions as a vector.
+
         """
         worth = np.zeros(len(coalitions), dtype=float)
         for i, coalition in enumerate(coalitions):
@@ -87,6 +88,7 @@ class TreeSHAPIQXAI(Game):
         Returns:
             The prediction given partial feature information as an average of individual tree
                 predictions.
+
         """
         output = 0.0
         for tree in self._trees:
@@ -105,6 +107,7 @@ class TreeSHAPIQXAI(Game):
 
         Returns:
             The exact interaction values for the game.
+
         """
         tree_explainer = TreeExplainer(
             model=self.model,
@@ -130,6 +133,7 @@ def _get_tree_prediction(
 
     Returns:
          The tree prediction given partial feature information.
+
     """
     if tree.leaf_mask[node_id]:  # end of recursion (base case, return the leaf prediction)
         tree_prediction = tree.values[node_id]

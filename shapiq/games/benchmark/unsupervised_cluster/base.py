@@ -24,6 +24,7 @@ class ClusterExplanation(Game):
         normalize: Whether to normalize the data before clustering. Defaults to True.
         empty_cluster_value: The worth of an empty cluster. Defaults to 0.0 (which automatically
              in a normalized game).
+
     """
 
     def __init__(
@@ -33,11 +34,9 @@ class ClusterExplanation(Game):
         score_method: str = "calinski_harabasz_score",
         cluster_params: dict | None = None,
         normalize: bool = True,
-        empty_cluster_value: float = 0.0,
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
-
         if cluster_params is None:
             cluster_params = {}
 
@@ -85,6 +84,7 @@ class ClusterExplanation(Game):
 
         Returns:
             The score of the clustering algorithm for the given coalitions.
+
         """
         n_coalitions = coalitions.shape[0]
         worth = np.zeros(n_coalitions, dtype=float)

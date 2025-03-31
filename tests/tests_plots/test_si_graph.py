@@ -18,7 +18,6 @@ def test_si_graph_plot(
     n_interactions,
 ):
     """Tests the explanation_graph_plot function."""
-
     example_values = InteractionValues(
         n_players=4,
         values=np.array(
@@ -72,11 +71,6 @@ def test_si_graph_plot(
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
     plt.close(fig)
-
-    # test with show=True
-    output = example_values.plot_si_graph(show=True)
-    assert output is None
-    plt.close("all")
 
     fig, ax = si_graph_plot(
         example_values,

@@ -91,6 +91,7 @@ class GameBenchmarkSetup:
         >>> setup.n_features
         14
         >>> setup.fit_function # returns a callable
+
     """
 
     def __init__(
@@ -271,7 +272,6 @@ class GameBenchmarkSetup:
 
 def _accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Returns the accuracy score of the model."""
-
     if y_true.ndim > 1:
         y_true = np.argmax(y_true, axis=1)
     if y_pred.ndim > 1:
@@ -291,6 +291,7 @@ def get_x_explain(x: np.ndarray | int | None, x_set: np.ndarray) -> np.ndarray:
 
     Returns:
         The data point to explain as a numpy array.
+
     """
     if x is None:
         x = x_set[np.random.randint(0, x_set.shape[0])]

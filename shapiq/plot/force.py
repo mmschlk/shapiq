@@ -3,6 +3,7 @@
 Note:
     Code and implementation was taken and adapted from the [SHAP package](https://github.com/shap/shap)
     which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+
 """
 
 import matplotlib
@@ -30,9 +31,9 @@ def _create_bars(
     separator_list = []
 
     pre_val = out_value
-    for index, features in zip(range(len(features)), features):
+    for index, feature_iteration in zip(range(len(features)), features, strict=False):
         if feature_type == "positive":
-            left_bound = float(features[0])
+            left_bound = float(feature_iteration[0])
             right_bound = pre_val
             pre_val = left_bound
 
@@ -41,7 +42,7 @@ def _create_bars(
             colors = ["#FF0D57", "#FFC3D5"]
         else:
             left_bound = pre_val
-            right_bound = float(features[0])
+            right_bound = float(feature_iteration[0])
             pre_val = right_bound
 
             separator_indent = -np.abs(width_separators)
@@ -106,8 +107,8 @@ def _add_labels(
     min_perc: float = 0.05,
     text_rotation: float = 0,
 ) -> None:
-    """
-    Add labels to the plot.
+    """Add labels to the plot.
+
     Args:
         fig: Figure of the plot
         ax: Axes of the plot
@@ -235,9 +236,9 @@ def _add_labels(
 
     cm = matplotlib.colors.LinearSegmentedColormap.from_list("cm", colors)
 
-    _, Z2 = np.meshgrid(np.linspace(0, 10), np.linspace(-10, 10))
+    _, z2 = np.meshgrid(np.linspace(0, 10), np.linspace(-10, 10))
     im = plt.imshow(
-        Z2,
+        z2,
         interpolation="quadric",
         cmap=cm,
         vmax=0.01,
@@ -254,8 +255,8 @@ def _add_labels(
 
 
 def _add_output_element(out_name: str, out_value: float, ax: plt.Axes) -> None:
-    """
-    Add grew line indicating the output value to the plot.
+    """Add grew line indicating the output value to the plot.
+
     Args:
         out_name: Name of the output value
         out_value: Value of the output
@@ -290,8 +291,8 @@ def _add_output_element(out_name: str, out_value: float, ax: plt.Axes) -> None:
 
 
 def _add_base_value(base_value: float, ax: plt.Axes) -> None:
-    """
-    Add base value to the plot.
+    """Add base value to the plot.
+
     Args:
         base_value: the base value of the game
         ax: Axes of the plot
@@ -319,8 +320,8 @@ def update_axis_limits(
     base_value: float,
     out_value: float,
 ) -> None:
-    """
-    Adjust the axis limits of the plot according to values.
+    """Adjust the axis limits of the plot according to values.
+
     Args:
         ax: Axes of the plot
         total_pos: value of the total positive features
@@ -357,7 +358,7 @@ def update_axis_limits(
     )
     plt.locator_params(axis="x", nbins=12)
 
-    for key, spine in zip(plt.gca().spines.keys(), plt.gca().spines.values()):
+    for key, spine in zip(plt.gca().spines.keys(), plt.gca().spines.values(), strict=False):
         if key != "top":
             spine.set_visible(False)
 
@@ -378,6 +379,7 @@ def _split_features(
     Returns:
         tuple: A tuple containing the positive features, negative features, total positive value,
             and total negative value.
+
     """
     # split features into positive and negative values
     pos_features, neg_features = [], []
@@ -428,8 +430,8 @@ def _split_features(
 def _add_bars(
     ax: plt.Axes, out_value: float, pos_features: np.ndarray, neg_features: np.ndarray
 ) -> None:
-    """
-    Add bars to the plot.
+    """Add bars to the plot.
+
     Args:
         ax: Axes of the plot
         out_value: grand total value
@@ -499,8 +501,7 @@ def _draw_force_plot(
     min_perc: float = 0.05,
     draw_higher_lower: bool = True,
 ) -> plt.Figure:
-    """
-    Draw the force plot.
+    """Draw the force plot.
 
     Note:
         The functionality was taken and adapted from the [SHAP package](https://github.com/shap/shap/blob/master/shap/plots/_force.py)
@@ -517,6 +518,7 @@ def _draw_force_plot(
 
     Returns:
         The figure of the plot.
+
     """
     # turn off interactive plot
     plt.ioff()
@@ -611,6 +613,7 @@ def force_plot(
 
     References:
         .. [1] SHAP is available at https://github.com/shap/shap
+
     """
     if feature_names is None:
         feature_names = [str(i) for i in range(interaction_values.n_players)]

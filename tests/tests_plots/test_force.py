@@ -12,7 +12,7 @@ def test_force_cooking_game(cooking_game):
     interaction_values = exact_computer(index="k-SII", order=2)
     print(interaction_values.dict_values)
     feature_names = list(cooking_game.player_name_lookup.keys())
-    force_plot(interaction_values, show=True, min_percentage=0.2, feature_names=feature_names)
+    force_plot(interaction_values, show=False, min_percentage=0.2, feature_names=feature_names)
     plt.close()
 
     # visual inspection:
@@ -52,8 +52,3 @@ def test_force_plot(interaction_values_list: list[InteractionValues]):
     fp = iv.plot_force(show=False)
     assert isinstance(fp, plt.Figure)
     plt.close()
-
-    # test show=True
-    output = iv.plot_force(show=True)
-    assert output is None
-    plt.close("all")

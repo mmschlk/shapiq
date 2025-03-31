@@ -22,7 +22,6 @@ def test_initialization(n):
 @pytest.mark.parametrize("n, budget", [(7, 380), (7, 380), (7, 100)])
 def test_approximate(n, budget):
     """Tests the approximation of the KernelSHAP approximator."""
-
     interaction = (1, 2)
     game = DummyGame(n, interaction)
 

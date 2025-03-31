@@ -1,5 +1,6 @@
 """This module compares the new benchmark games lookup speed with the old benchmark games lookup
-speed."""
+speed.
+"""
 
 import os
 import random
@@ -16,7 +17,8 @@ from shapiq.utils.sets import powerset, transform_coalitions_to_array
 
 class OldLookUpGame:
     """Wrapper for the Machine Learning Game to use precomputed model outputs for faster runtime in
-    experimental settings."""
+    experimental settings.
+    """
 
     def __init__(
         self,
@@ -99,6 +101,7 @@ def time_both_games(n_sets: int) -> tuple[float, float]:
 
     Args:
         n_sets: The number of sets to test the games with.
+
     """
     n_players = 14
 
@@ -140,7 +143,6 @@ def time_both_games(n_sets: int) -> tuple[float, float]:
 
 
 if __name__ == "__main__":
-
     N_SETS = [1, 2, 5, 10, 20]
     N_ITERATIONS = 10
 

@@ -1,5 +1,6 @@
 """This module contains all utility functions to load benchmark games from the configurations or
-from the precomputed data (GitHub repository)."""
+from the precomputed data (GitHub repository).
+"""
 
 import os
 import time
@@ -46,6 +47,7 @@ def load_games_from_configuration(
 
     Returns:
         An initialized game object with the given configuration.
+
     """
     game_class = (
         GAME_NAME_TO_CLASS_MAPPING[game_class] if isinstance(game_class, str) else game_class
@@ -120,6 +122,7 @@ def load_game_data(
 
     Raises:
         FileNotFoundError: If the file with the precomputed values does not exist
+
     """
     n_players = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["n_players"]
     file_name = get_game_file_name_from_config(configuration, iteration)
@@ -164,6 +167,7 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
 
     Raises:
         FileNotFoundError: If the file could not be downloaded.
+
     """
     github_url = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/precomputed_games"
 
@@ -185,6 +189,3 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
     with open(path, "wb") as file:
         file.write(response.content)
         time.sleep(0.01)
-
-
-# Path: shapiq/benchmark/load.py

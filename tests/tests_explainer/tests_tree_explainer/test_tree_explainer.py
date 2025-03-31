@@ -150,14 +150,15 @@ def test_against_shap_implementation():
 
 def test_xgboost_reg(xgb_reg_model, background_reg_data):
     """Tests the shapiq implementation of TreeSHAP agains SHAP's implementation for XGBoost."""
-
     explanation_instance = 0
 
     # the following code is used to get the shap values from the SHAP implementation
+    """
     # import shap
     # explainer_shap = shap.TreeExplainer(model=xgb_reg_model)
     # x_explain_shap = background_reg_data[explanation_instance].reshape(1, -1)
     # sv_shap = explainer_shap.shap_values(x_explain_shap)[0]
+    """  # noqa: ERA001
     sv_shap = [-2.555832, 28.50987, 1.7708225, -7.8653603, 10.7955885, -0.1877861, 4.549199]
     sv_shap = np.asarray(sv_shap)
 
@@ -177,11 +178,11 @@ def test_xgboost_reg(xgb_reg_model, background_reg_data):
 
 def test_xgboost_clf(xgb_clf_model, background_clf_data):
     """Tests the shapiq implementation of TreeSHAP against SHAP's implementation for XGBoost."""
-
     explanation_instance = 1
     class_label = 1
 
     # the following code is used to get the shap values from the SHAP implementation
+    """
     # import shap
     # model_copy = copy.deepcopy(xgb_clf_model)
     # explainer_shap = shap.TreeExplainer(model=model_copy)
@@ -191,6 +192,7 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0][:, class_label]
     # print(sv_shap)
+    """  # noqa: ERA001
     sv = [-0.00545454, -0.15837783, -0.17675081, -0.24213657, 0.00247543, 0.00988865, -0.01564346]
     sv_shap = np.array(sv)
 
@@ -203,7 +205,6 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
     sv_shapiq_values = sv_shapiq.get_n_order_values(1)
     baseline_shapiq = sv_shapiq.baseline_value
 
-    # assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
     # get prediction of the model (as the log odds)
@@ -215,10 +216,10 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
 
 def test_random_forest_reg(rf_reg_model, background_reg_data):
     """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for Random Forest."""
-
     explanation_instance = 1
 
     # the following code is used to get the shap values from the SHAP implementation
+    """
     # import shap
     # model_copy = copy.deepcopy(rf_reg_model)
     # explainer_shap = shap.TreeExplainer(model=model_copy)
@@ -227,6 +228,7 @@ def test_random_forest_reg(rf_reg_model, background_reg_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0]
     # print(sv_shap_all_classes, baseline_shap)
+    """  # noqa: ERA001
     sv_shap = [25.8278293, -77.40235947, 0.0, 21.7067263, -4.85542565, 0.0, 4.91330141]
     sv_shap = np.asarray(sv_shap)
     baseline_shap = -0.713665621534487
@@ -244,11 +246,11 @@ def test_random_forest_reg(rf_reg_model, background_reg_data):
 
 def test_random_forest_shap(rf_clf_model, background_clf_data):
     """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for Random Forest."""
-
     explanation_instance = 1
     class_label = 1
 
     # the following code is used to get the shap values from the SHAP implementation
+    """
     # import shap
     # model_copy = copy.deepcopy(rf_clf_model)
     # explainer_shap = shap.TreeExplainer(model=model_copy)
@@ -257,6 +259,7 @@ def test_random_forest_shap(rf_clf_model, background_clf_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0][:, class_label]
     # print(sv_shap_all_classes, baseline_shap)
+    """  # noqa: ERA001
     sv_shap = [-0.00537992, 0.0, -0.08206514, -0.03122057, 0.0025626, 0.03182904, 0.03782473]
     sv_shap = np.asarray(sv_shap)
     baseline_shap = 0.32000000000000006
@@ -276,7 +279,6 @@ def test_random_forest_shap(rf_clf_model, background_clf_data):
 
 def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
     """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for LightGBM."""
-
     explanation_instance = 1
     class_label = 1
 
@@ -284,6 +286,7 @@ def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
     # note that you need to uncomment these lines in the shap library you have locally installed:
     # https://github.com/shap/shap/blob/6c4a71ce59ea579be58917d824fa0ba5cd97e787/shap/explainers/_tree.py#L543C1-L547C26
 
+    """
     # import shap
     # model_copy = copy.deepcopy(lightgbm_clf_model)
     # explainer_shap = shap.TreeExplainer(model=model_copy)
@@ -292,6 +295,7 @@ def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0][:, class_label]
     # print(sv_shap_all_classes, baseline_shap)
+    """  # noqa: ERA001
     sv_shap = [0.0, 0.0, -0.05747963, -0.20128496, 0.0, 0.0, 0.01560273]
     sv_shap = np.asarray(sv_shap)
     baseline_shap = -1.0862557008895362
@@ -321,20 +325,19 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     the thresholds makes the model less true to the original model but only then the explanations
     match.
     """
-
     explanation_instance = 0
     class_label = 1
 
     # get the shap explanations (the following code is used to get SVs from SHAP)
-    # import shap
-    # model_copy = copy.deepcopy(xgb_clf_model)
-    # explainer_shap = shap.TreeExplainer(model=model_copy)
-    # baseline_shap = float(explainer_shap.expected_value[class_label])
-    # x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))
-    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
-    # sv_shap = sv_shap_all_classes[0][:, class_label]
-    # print(sv_shap)
-    # print(baseline_shap)
+    # import shap  # noqa: ERA001
+    # model_copy = copy.deepcopy(xgb_clf_model) # noqa: ERA001
+    # explainer_shap = shap.TreeExplainer(model=model_copy)  # noqa: ERA001
+    # baseline_shap = float(explainer_shap.expected_value[class_label])  # noqa: ERA001
+    # x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))  # noqa: ERA001
+    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)  # noqa: ERA001
+    # sv_shap = sv_shap_all_classes[0][:, class_label]  # noqa: ERA001
+    # print(sv_shap)  # noqa: ERA001
+    # print(baseline_shap)  # noqa: ERA001
     sv = [-0.00163636, 0.05099502, -0.13182959, -0.44538185, 0.00428653, -0.04872373, -0.01370917]
     sv_shap = np.array(sv)
 
@@ -367,17 +370,16 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
 
 def test_iso_forest_shap(if_clf_model):
     """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for Isolation Forest."""
-
     x_explain = np.array([0.125, 0.05])
 
     # the following code is used to get the shap values from the SHAP implementation
-    # import shap
-    # model_copy = copy.deepcopy(if_clf_model)
-    # explainer_shap = shap.TreeExplainer(model=model_copy)
-    # baseline_shap = float(explainer_shap.expected_value)
-    # sv_shap = explainer_shap.shap_values(x_explain)
-    # print(sv_shap)
-    # print(baseline_shap)
+    # import shap  # noqa: ERA001
+    # model_copy = copy.deepcopy(if_clf_model)  # noqa: ERA001
+    # explainer_shap = shap.TreeExplainer(model=model_copy)  # noqa: ERA001
+    # baseline_shap = float(explainer_shap.expected_value)  # noqa: ERA001
+    # sv_shap = explainer_shap.shap_values(x_explain)  # noqa: ERA001
+    # print(sv_shap)  # noqa: ERA001
+    # print(baseline_shap)  # noqa: ERA001
     sv_shap = np.array([-2.34951688, -4.55545493])
     baseline_shap = 12.238305148044713
 

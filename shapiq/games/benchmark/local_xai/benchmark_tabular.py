@@ -21,6 +21,7 @@ class AdultCensus(LocalExplanation):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -83,6 +84,7 @@ class BikeSharing(LocalExplanation):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -95,7 +97,6 @@ class BikeSharing(LocalExplanation):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
-
         self.setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
@@ -134,6 +135,7 @@ class CaliforniaHousing(LocalExplanation):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -146,7 +148,6 @@ class CaliforniaHousing(LocalExplanation):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
-
         self.setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,

@@ -18,9 +18,16 @@ class UnsupervisedData(Game):
     Args:
         data: The data to analyze as a numpy array of shape (n_samples, n_features).
         verbose: Whether to print additional information. Defaults to False.
+
     """
 
-    def __init__(self, data: np.ndarray, verbose: bool = False, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        data: np.ndarray,
+        verbose: bool = False,
+        *args,  # noqa ARG002
+        **kwargs,  # noqa ARG002
+    ) -> None:
         self.data = data
         self._n_features = data.shape[1]
 
@@ -51,6 +58,7 @@ class UnsupervisedData(Game):
 
         Returns:
             The value of the coalitions as a numpy array of shape (n_coalitions,).
+
         """
         values = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
@@ -73,6 +81,7 @@ def total_correlation(data) -> float:
 
     Returns:
         The total correlation of the data subset.
+
     """
     n_samples, n_features = data.shape
 

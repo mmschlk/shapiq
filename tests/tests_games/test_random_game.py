@@ -8,7 +8,6 @@ from shapiq.games.benchmark import RandomGame
 
 @pytest.mark.parametrize("n_players", [10, 100])
 def test_random_game(n_players):
-
     n_coalitions = 100
 
     game = RandomGame(n_players, random_state=None)

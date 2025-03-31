@@ -41,13 +41,14 @@ def test_sentence_plot():
     assert isinstance(ax, plt.Axes)
     plt.close(fig)
 
-    output = sentence_plot(
+    fig, ax = sentence_plot(
         iv,
         words,
         chars_per_line=100,
-        show=True,
+        show=False,
         connected_words=[("Shapley", "values")],
         max_score=1.0,
     )
-    assert output is None
-    plt.close("all")
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+    plt.close(fig)

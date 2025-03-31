@@ -16,7 +16,6 @@ class CaliforniaHousing(DataValuation):
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
@@ -50,7 +49,6 @@ class BikeSharing(DataValuation):
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
@@ -84,7 +82,6 @@ class AdultCensus(DataValuation):
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,

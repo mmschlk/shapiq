@@ -32,6 +32,7 @@ def get_color(value: float) -> str:
 
     Returns:
         str: The color as a hex string.
+
     """
     if value >= 0:
         return RED.hex

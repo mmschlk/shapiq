@@ -9,7 +9,6 @@ from shapiq.plot import stacked_bar_plot
 
 def test_stacked_bar_plot():
     """Tests whether the stacked bar plot can be created."""
-
     interaction_values = InteractionValues(
         values=np.array([1, -1.5, 1.75, 0.25, -0.5, 0.75, 0.2]),
         index="SII",
@@ -51,11 +50,11 @@ def test_stacked_bar_plot():
     assert isinstance(axes, plt.Axes)
     plt.close()
 
-    # test show=True
-    output = stacked_bar_plot(
+    fig, axes = stacked_bar_plot(
         interaction_values=interaction_values,
         feature_names=feature_names,
-        show=True,
+        show=False,
     )
-    assert output is None
-    plt.close("all")
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(axes, plt.Axes)
+    plt.close()

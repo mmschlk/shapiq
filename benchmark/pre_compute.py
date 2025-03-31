@@ -1,5 +1,4 @@
-"""This script pre-computes the games provided the benchmark configurations for certain parameters.
-"""
+"""This script pre-computes the games provided the benchmark configurations for certain parameters."""
 
 import argparse
 import sys
@@ -10,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 if __name__ == "__main__":
-
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
         BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS,

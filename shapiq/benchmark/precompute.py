@@ -31,6 +31,7 @@ def get_game_files(game: Game | Game.__class__ | str, n_players: int) -> list[st
 
     Returns:
         The list of files for the given game and number of players.
+
     """
     game_name = game
     if not isinstance(game, str):
@@ -55,8 +56,8 @@ def pre_compute_and_store(
 
     Returns:
         The path to the file where the values are stored.
-    """
 
+    """
     if save_dir is None:
         # this file path
         save_dir = os.path.dirname(__file__)
@@ -130,7 +131,7 @@ def pre_compute_from_configuration(
             f"iteration names: {iteration_names}"
         )
 
-        for iteration, iteration_name in zip(iterations, iteration_names):
+        for iteration, iteration_name in zip(iterations, iteration_names, strict=False):
             save_dir = os.path.join(SHAPIQ_DATA_DIR, game_class.get_game_name(), str(n_players))
             game_id = get_game_file_name_from_config(config, iteration)
             save_path = os.path.join(save_dir, game_id)
@@ -190,14 +191,15 @@ def pre_compute_and_store_from_list(
 
     Returns:
         The paths to the files where the values are stored.
-    """
 
+    """
     if game_ids is None:
         game_ids = [None] * len(games)
 
     if n_jobs == 1:
         return [
-            pre_compute_and_store(game, save_dir, game_id) for game, game_id in zip(games, game_ids)
+            pre_compute_and_store(game, save_dir, game_id)
+            for game, game_id in zip(games, game_ids, strict=False)
         ]
 
     with mp.Pool(n_jobs) as pool:
@@ -205,13 +207,13 @@ def pre_compute_and_store_from_list(
             tqdm(
                 pool.starmap(
                     pre_compute_and_store,
-                    [(game, save_dir, game_id) for game, game_id in zip(games, game_ids)],
+                    [
+                        (game, save_dir, game_id)
+                        for game, game_id in zip(games, game_ids, strict=False)
+                    ],
                 ),
                 total=len(games),
             )
         )
 
     return results
-
-
-# Path: shapiq/benchmark/precompute.py

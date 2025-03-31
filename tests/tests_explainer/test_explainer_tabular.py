@@ -61,7 +61,9 @@ def test_init_params_error_and_warning(dt_reg_model, background_reg_data):
     """Test the initialization of the interaction explainer."""
     model_function = dt_reg_model.predict
     with pytest.raises(ValueError):
-        TabularExplainer(model=model_function, data=background_reg_data, index="invalid", max_order=0)
+        TabularExplainer(
+            model=model_function, data=background_reg_data, index="invalid", max_order=0
+        )
     with pytest.warns():
         TabularExplainer(
             model=model_function,
@@ -112,7 +114,7 @@ def test_init_params_approx_params(dt_reg_model, background_reg_data, approximat
     explainer = TabularExplainer(
         approximator=approximator, model=dt_reg_model, data=background_reg_data, max_order=max_order
     )
-    iv = explainer.explain(background_reg_data[0],budget=BUDGET_NR_FEATURES)
+    iv = explainer.explain(background_reg_data[0], budget=BUDGET_NR_FEATURES)
     assert iv.__class__.__name__ == "InteractionValues"
 
 
@@ -160,7 +162,6 @@ def test_explain(dt_reg_model, background_reg_data, index, budget, max_order, im
 
 def test_against_shap_linear():
     """Tests weather TabularExplainer yields similar results as SHAP with a basic linear model."""
-
     n_samples = 3
     dim = 5
     rng = np.random.default_rng(42)
@@ -175,12 +176,14 @@ def test_against_shap_linear():
 
     X = rng.normal(size=(n_samples, dim))
     model = make_linear_model()
-
+    # The following code is commented out because it requires SHAP to be installed.
+    """
     # import shap
     # compute with shap
     # explainer_shap = shap.explainers.Exact(model, X)
     # shap_values = explainer_shap(X).values
     # print(shap_values)
+    """  # noqa: ERA001
     shap_values = np.array(
         [
             [-0.29565839, -0.36698085, -0.55970434, 0.22567077, 0.05852208],
@@ -199,7 +202,7 @@ def test_against_shap_linear():
         approximator="auto",
         imputer="marginal",
     )
-    shapiq_values = explainer_shapiq.explain_X(X, budget=2 ** dim)
+    shapiq_values = explainer_shapiq.explain_X(X, budget=2**dim)
     shapiq_values = np.array([values.get_n_order_values(1) for values in shapiq_values])
 
     assert np.allclose(shap_values, shapiq_values, atol=1e-5)

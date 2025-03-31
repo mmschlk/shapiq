@@ -58,6 +58,3 @@ def test_approximate(n, max_order, budget):
     # check efficiency
     efficiency = np.sum(fsi_estimates.values)
     assert efficiency == pytest.approx(efficiency, 0.1)
-
-    # with pytest.raises(ValueError):
-    #     approximator._get_regression_coefficient_weights(index="wrong_index", max_order=2)

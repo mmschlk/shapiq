@@ -62,6 +62,7 @@ class LocalExplanation(Game):
         >>> game.save_values("values.npz")
         >>> from shapiq.games import Game
         >>> new_game_from_values = Game(path_to_values="values.npz")
+
     """
 
     def __init__(
@@ -75,7 +76,6 @@ class LocalExplanation(Game):
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
-
         # get x_explain
         self.x = get_x_explain(x, data)
 
@@ -127,5 +127,6 @@ class LocalExplanation(Game):
 
         Returns:
             The output of the model on feature subsets.
+
         """
         return self._imputer(coalitions)

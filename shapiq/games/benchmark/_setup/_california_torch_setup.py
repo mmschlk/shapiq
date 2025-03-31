@@ -1,5 +1,6 @@
 """Note this should not be directly imported in the module as it depends on torch which is not
-installed by default."""
+installed by default.
+"""
 
 import os
 import warnings
@@ -31,9 +32,7 @@ class SmallNeuralNetwork(nn.Module):
 
 
 class CaliforniaHousingTorchModel:
-
     def __init__(self, n_epochs: int = 100):
-
         # instantiate the model
         self.torch_model = SmallNeuralNetwork()
         try:
@@ -45,7 +44,7 @@ class CaliforniaHousingTorchModel:
                 "be found. Please download the model from the shapiq repository. The model can be "
                 "found at tests/models/california_nn_0.812511_0.076331.weights."
             )
-            warnings.warn(msg)
+            warnings.warn(msg, stacklevel=2)
 
         self.n_epochs = n_epochs
 
@@ -57,6 +56,7 @@ class CaliforniaHousingTorchModel:
 
         Returns:
             The model's prediction on the input data.
+
         """
         self.torch_model.eval()
         x = torch.tensor(x.astype(float), dtype=torch.float32)
@@ -78,7 +78,7 @@ class CaliforniaHousingTorchModel:
         optimizer = Adam(self.torch_model.parameters(), lr=0.01)
 
         self.torch_model.train()
-        for epoch in range(self.n_epochs):
+        for _ in range(self.n_epochs):
             optimizer.zero_grad()
             output = self.torch_model(x)
             loss = criterion(output, y)

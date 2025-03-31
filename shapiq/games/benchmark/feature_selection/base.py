@@ -38,6 +38,7 @@ class FeatureSelection(Game):
 
     Attributes:
         empty_features_value: The value to return when the subset of features is empty.
+
     """
 
     def __init__(
@@ -55,7 +56,6 @@ class FeatureSelection(Game):
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-
         self.empty_features_value = empty_features_value
         super().__init__(
             x_train.shape[1],
@@ -97,6 +97,7 @@ class FeatureSelection(Game):
 
         Returns:
             A vector of loss function values given the subset of features.
+
         """
         scores = np.zeros(shape=coalitions.shape[0], dtype=float)
         for i in range(len(coalitions)):

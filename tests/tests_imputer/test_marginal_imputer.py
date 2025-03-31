@@ -114,7 +114,6 @@ def test_joint_marginal_distribution():
 
 
 def test_raise_warning():
-
     def model(x: np.ndarray) -> np.ndarray:
         return np.sum(x, axis=1)
 

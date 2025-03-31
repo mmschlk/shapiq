@@ -1,7 +1,6 @@
 """The base class for tree model conversion."""
 
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 
@@ -48,6 +47,7 @@ class TreeModel:
             indices (as in the tree model) to the original feature indices (as in the model).
         original_output_type: The original output type of the tree model. The default value is
             ``"raw"``.
+
     """
 
     children_left: np.ndarray[int]
@@ -68,9 +68,6 @@ class TreeModel:
     feature_map_internal_original: dict[int, int] | None = None
     original_output_type: str = "raw"  # not used at the moment
 
-    def __getitem__(self, item) -> Any:
-        return getattr(self, item)
-
     def compute_empty_prediction(self) -> None:
         """Compute the empty prediction of the tree model.
 
@@ -90,7 +87,6 @@ class TreeModel:
         self.features = self.features.astype(int)  # make features integer type
         # sanitize thresholds
         self.thresholds = np.where(self.leaf_mask, np.nan, self.thresholds)
-        # self.thresholds = np.round(self.thresholds, 4)  # round thresholds
         # setup empty prediction
         if self.empty_prediction is None:
             self.compute_empty_prediction()
@@ -171,6 +167,7 @@ class TreeModel:
 
         Returns:
             The prediction of the instance with the tree model.
+
         """
         node = self.root_node_id
         is_leaf = self.leaf_mask[node]
@@ -205,9 +202,6 @@ class EdgeTree:
     last_feature_node_in_path: np.ndarray[int]
     interaction_height_store: dict[int, np.ndarray[int]]
     has_ancestors: np.ndarray[bool] | None = None
-
-    def __getitem__(self, item) -> Any:
-        return getattr(self, item)
 
     def __post_init__(self) -> None:
         # setup has ancestors

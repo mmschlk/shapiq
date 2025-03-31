@@ -17,6 +17,7 @@ class AdultCensus(TreeSHAPIQXAI):
         normalize: A boolean flag to normalize/center the game values. The default value is True.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -28,7 +29,6 @@ class AdultCensus(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
-
         # TODO: add xgb to TreeSHAQ-IQ, yet
         assert model_name in [
             "decision_tree",
@@ -65,6 +65,7 @@ class BikeSharing(TreeSHAPIQXAI):
         normalize: A boolean flag to normalize/center the game values. The default value is True.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -75,7 +76,6 @@ class BikeSharing(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
-
         # TODO: add xgb to TreeSHAQ-IQ, yet
         assert model_name in [
             "decision_tree",
@@ -111,6 +111,7 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         normalize: A boolean flag to normalize/center the game values. The default value is True.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -121,7 +122,6 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
-
         # TODO: add xgb to TreeSHAQ-IQ, yet
         assert model_name in [
             "decision_tree",
@@ -148,7 +148,6 @@ class CaliforniaHousing(TreeSHAPIQXAI):
 
 
 class SynthData(TreeSHAPIQXAI):
-
     def __init__(
         self,
         x: int = 0,

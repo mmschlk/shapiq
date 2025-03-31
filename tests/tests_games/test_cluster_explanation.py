@@ -25,7 +25,6 @@ from shapiq.games.benchmark import (
 )
 def test_base_class(cluster_method, score_method):
     """This function tests the setup and logic of the game."""
-
     n_players = 4
 
     # create synthetic data

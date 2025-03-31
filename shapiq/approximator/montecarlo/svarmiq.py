@@ -26,6 +26,7 @@ class SVARMIQ(MonteCarlo):
         .. [1] Kolpaczki, P., Muschalik M., Fumagalli, F., Hammer, B., and Hüllermeier, E., (2024). SVARM-IQ: Efficient Approximation of Any-order Shapley Interactions through Stratification. Proceedings of The 27th International Conference on Artificial Intelligence and Statistics, PMLR 238:3520-3528. url: https://proceedings.mlr.press/v238/kolpaczki24a
 
         .. [2] Kolpaczki, P., Bengs, V., Muschalik, M., & Hüllermeier, E. (2024). Approximating the Shapley Value without Marginal Contributions. Proceedings of the AAAI Conference on Artificial Intelligence, 38(12), 13246-13255. https://doi.org/10.1609/aaai.v38i12.29225
+
     """
 
     def __init__(
@@ -65,9 +66,11 @@ class SVARM(SVARMIQ):
         sampling_weights: An optional array of weights for the sampling procedure. The weights must
             be of shape ``(n + 1,)`` and are used to determine the probability of sampling a
             coalition of a certain size. Defaults to `None`.
+        kwargs: Additional keyword arguments passed to the parent class.
 
     References:
         .. [1] Kolpaczki, P., Bengs, V., Muschalik, M., & Hüllermeier, E. (2024). Approximating the Shapley Value without Marginal Contributions. Proceedings of the AAAI Conference on Artificial Intelligence, 38(12), 13246-13255. https://doi.org/10.1609/aaai.v38i12.29225
+
     """
 
     def __init__(
@@ -76,7 +79,7 @@ class SVARM(SVARMIQ):
         random_state: int | None = None,
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
-        **kwargs,
+        **_kwargs,
     ):
         super().__init__(
             n,

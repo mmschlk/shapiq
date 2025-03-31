@@ -3,6 +3,7 @@
 Note:
     Code and implementation was taken and adapted from the [SHAP package](https://github.com/shap/shap)
     which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+
 """
 
 import matplotlib
@@ -17,7 +18,11 @@ __all__ = ["waterfall_plot"]
 
 
 def _draw_waterfall_plot(
-    values: np.ndarray, base_values: float, feature_names: list[str], max_display=10, show=True
+    values: np.ndarray,
+    base_values: float,
+    feature_names: list[str],
+    max_display: int = 10,
+    show: bool = False,
 ) -> plt.Axes | None:
     """The waterfall plot from the SHAP package.
 
@@ -35,6 +40,7 @@ def _draw_waterfall_plot(
 
     Returns:
         The plot if ``show`` is ``False``.
+
     """
     # Turn off interactive plot
     if show is False:
@@ -265,7 +271,6 @@ def _draw_waterfall_plot(
     plt.gca().spines["top"].set_visible(False)
     plt.gca().spines["left"].set_visible(False)
     ax.tick_params(labelsize=13)
-    # plt.xlabel("\nModel output", fontsize=12)
 
     # draw the E[f(X)] tick mark
     xmin, xmax = ax.get_xlim()
@@ -354,8 +359,8 @@ def waterfall_plot(
 
     References:
         .. [1] SHAP is available at https://github.com/shap/shap
-    """
 
+    """
     if feature_names is None:
         feature_mapping = {i: str(i) for i in range(interaction_values.n_players)}
     else:

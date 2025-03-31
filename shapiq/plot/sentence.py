@@ -78,8 +78,8 @@ def sentence_plot(
     .. image:: /_static/sentence_plot_connected_example.png
         :width: 300
         :align: center
-    """
 
+    """
     # set all the size parameters
     fontsize = 20
     word_spacing = 15
@@ -103,8 +103,7 @@ def sentence_plot(
     max_x_pos = 0
     x_pos, y_pos = word_spacing, 0
     lines, chars_in_line = 0, 0
-    for i, (word, attribution) in enumerate(zip(words, attributions)):
-
+    for i, (word, attribution) in enumerate(zip(words, attributions, strict=False)):
         # check if the word is connected
         is_word_connected_first = False
         is_word_connected_second = (words[i - 1], word) in connected_words

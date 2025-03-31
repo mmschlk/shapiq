@@ -26,6 +26,7 @@ class StratifiedSamplingSV(Approximator):
 
     References:
         .. [1] Maleki, S., Tran-Thanh, L., Hines, G., Rahwan, T., and Rogers, A, (2013). Bounding the Estimation Error of Sampling-based Shapley Value Approximation With/Without Stratifying
+
     """
 
     def __init__(
@@ -37,7 +38,11 @@ class StratifiedSamplingSV(Approximator):
         self.iteration_cost: int = 2
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        *args,  # noqa ARG002,
+        **kwargs,  # noqa ARG002
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
@@ -48,8 +53,8 @@ class StratifiedSamplingSV(Approximator):
 
         Returns:
             The estimated interaction values.
-        """
 
+        """
         used_budget = 0
 
         # get value of empty coalition and grand coalition

@@ -30,7 +30,12 @@ class PermutationSamplingSV(Approximator):
 
     """
 
-    def __init__(self, n: int, random_state: int | None = None, **kwargs) -> None:
+    def __init__(
+        self,
+        n: int,
+        random_state: int | None = None,
+        **kwargs,  # noqa ARG002
+    ) -> None:
         super().__init__(n=n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = n - 1
 
@@ -46,8 +51,8 @@ class PermutationSamplingSV(Approximator):
 
         Returns:
             The estimated interaction values.
-        """
 
+        """
         result: np.ndarray[float] = self._init_result()
         counts: np.ndarray[int] = self._init_result(dtype=int)
 

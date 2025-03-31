@@ -1,9 +1,7 @@
 """Conversion functions for the tree explainer implementation."""
 
-from typing import Any
-
-from shapiq.utils import safe_isinstance
-
+from ...utils.custom_types import Model
+from ...utils.modules import safe_isinstance
 from .base import TreeModel
 from .conversion.lightgbm import convert_lightgbm_booster
 from .conversion.sklearn import (
@@ -36,7 +34,10 @@ SUPPORTED_MODELS = {
 }
 
 
-def validate_tree_model(model: Any, class_label: int | None = None) -> TreeModel | list[TreeModel]:
+def validate_tree_model(
+    model: Model,
+    class_label: int | None = None,
+) -> TreeModel | list[TreeModel]:
     """Validate the model.
 
     Args:
@@ -45,6 +46,7 @@ def validate_tree_model(model: Any, class_label: int | None = None) -> TreeModel
 
     Returns:
         The validated model and the model function.
+
     """
     # direct returns for base tree models and dict as model
     # tree model (is already in the correct format)
@@ -95,7 +97,7 @@ def validate_tree_model(model: Any, class_label: int | None = None) -> TreeModel
         tree_model = convert_xgboost_booster(model, class_label=class_label)
     # unsupported model
     else:
-        raise TypeError("Unsupported model type." f"Supported models are: {SUPPORTED_MODELS}")
+        raise TypeError(f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}")
 
     # if single tree model put it in a list
     if not isinstance(tree_model, list):

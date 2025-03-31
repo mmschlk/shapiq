@@ -8,7 +8,6 @@ from shapiq.games.benchmark import SOUM, DummyGame, UnanimityGame
 
 def test_soum_interations():
     """Test SOUM interactions."""
-
     for i in range(10):
         # run 100 times
         n = np.random.randint(low=2, high=30)

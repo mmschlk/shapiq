@@ -20,7 +20,6 @@ from shapiq.benchmark import (
 @pytest.mark.parametrize("index, n_jobs", [("SV", 2), ("k-SII", 2), ("SV", 1)])
 def test_benchmark(index, n_jobs):
     """Tests the general benchmark setup with pre-computed games."""
-
     game_identifier = "ImageClassifierLocalXAI"
     n_players = 9
     config_id = 1
@@ -70,7 +69,6 @@ def test_benchmark(index, n_jobs):
 
 def test_benchmark_config():
     """Tests the general benchmark setup with pre-computed games."""
-
     game_identifier = "ImageClassifierLocalXAI"
     n_players = 9
     config_id = 1
