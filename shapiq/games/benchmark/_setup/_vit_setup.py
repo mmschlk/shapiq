@@ -7,7 +7,7 @@ Note to developers:
 
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from PIL.Image import Image
 from torch import nn
 from transformers import ViTFeatureExtractor, ViTForImageClassification

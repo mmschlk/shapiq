@@ -9,7 +9,7 @@ import copy
 
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 import torchvision.transforms as transforms
 from PIL import Image
 from skimage.segmentation import slic

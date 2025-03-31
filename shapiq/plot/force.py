@@ -236,9 +236,9 @@ def _add_labels(
 
     cm = matplotlib.colors.LinearSegmentedColormap.from_list("cm", colors)
 
-    _, Z2 = np.meshgrid(np.linspace(0, 10), np.linspace(-10, 10))
+    _, z2 = np.meshgrid(np.linspace(0, 10), np.linspace(-10, 10))
     im = plt.imshow(
-        Z2,
+        z2,
         interpolation="quadric",
         cmap=cm,
         vmax=0.01,

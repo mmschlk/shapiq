@@ -111,12 +111,14 @@ select = [
     "ARG",
     "INP",
     "ERA",
+    "N812",  # TODO: add further N codes
     # "ANN",  # TODO: add this or include mypy
     # "D",  # TODO: include this in the near future
 ]
 ignore = [
     "E501",  # Line too long
-    "N812",    # Checks for lowercase imports that are aliased to non-lowercase names
+    "N803",  # Variable X in function should be lowercase
+    "N806"  # Variable X in function should be lowercase
 #    "E501",    # Line too long
 #    "D203",    # 1 blank line required before class docstring
 #    "D211",    # No blank lines allowed before class docstring
@@ -138,6 +140,7 @@ ignore = [
     "B",
     "ARG",
     "INP",
+    "N",
 ]
 "*.ipynb" = [
     "E402",  # Module level import not at top of file (its .ipynb)
