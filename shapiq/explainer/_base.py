@@ -47,7 +47,7 @@ class Explainer:
                 self._validate_data(data)
         self.data = data
 
-        # not super()
+        # if the class was not run as super
         if self.__class__ is Explainer:
             if self._model_type in list(get_explainers()):
                 _explainer = get_explainers()[self._model_type]

@@ -317,7 +317,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
                 {"model_name": "decision_tree"},
                 {"model_name": "random_forest"},
                 {"model_name": "gradient_boosting"},
-                # {"model_name": "neural_network"}  # not possible atm. needs dynamic input size
             ],
             "iteration_parameter": "random_state",
             "n_players": 8,
@@ -389,8 +388,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
@@ -412,8 +409,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
@@ -435,8 +430,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
@@ -823,6 +816,3 @@ def print_benchmark_configurations() -> None:
             for i, configuration in enumerate(configurations["configurations"]):
                 print(f"Configuration {i + 1}: {configuration}")
         print()
-
-
-# Path: shapiq/benchmark/configuration.py

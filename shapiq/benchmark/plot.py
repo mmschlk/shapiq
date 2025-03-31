@@ -483,10 +483,4 @@ def add_legend(
             color=STYLE_DICT[approximator]["color"],
             linewidth=LINE_THICKNESS,
         )
-
-    # handles, labels = axis.get_legend_handles_labels()
-    # axis.legend(handles, labels, loc=loc)
     axis.legend(loc=loc)
-
-
-# Path: shapiq/benchmark/plot.py

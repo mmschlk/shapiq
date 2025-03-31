@@ -178,9 +178,9 @@ class ExactComputer:
         return baseline_value, game_values, coalition_lookup
 
     def moebius_transform(
-    self,
-    *args,  # noqa: ARG002
-    **kwargs,  # noqa: ARG002
+        self,
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
     ) -> InteractionValues:
         """Computes the Moebius transform for all :math:`2^n` coalitions of the game.
 
@@ -420,7 +420,8 @@ class ExactComputer:
         if index == "CHII" and () in interaction_lookup:
             warnings.warn(
                 f"CHII is not defined for the empty set. Setting to the baseline value "
-                f"{self.baseline_value}.", stacklevel=2
+                f"{self.baseline_value}.",
+                stacklevel=2,
             )
             base_interaction_values[interaction_lookup[()]] = self.baseline_value
 
@@ -468,7 +469,9 @@ class ExactComputer:
             powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1)
         ):
             coalition_val = self.game_values[i]
-            for interaction in powerset((self._grand_coalition_set - set(coalition)), min_size=1, max_size=order):
+            for interaction in powerset(
+                (self._grand_coalition_set - set(coalition)), min_size=1, max_size=order
+            ):
                 coalition_weight = base_weights[len(coalition), len(interaction)]
                 base_generalized_values[interaction_lookup[tuple(sorted(interaction))]] += (
                     coalition_weight
@@ -851,10 +854,12 @@ class ExactComputer:
         self._computed[(index, order)] = base_interaction
         return copy.copy(base_interaction)
 
-    def probabilistic_value(self, index: str,
-                            *args,  # noqa: ARG002
-                            **kwargs, # noqa: ARG002
-                            ) -> InteractionValues:
+    def probabilistic_value(
+        self,
+        index: str,
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
+    ) -> InteractionValues:
         """Computes common semi-values or probabilistic values, i.e. shapley values without
         efficiency axiom.
 
@@ -893,7 +898,11 @@ class ExactComputer:
         self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
 
-    def compute_egalitarian_least_core(self, *_args, **_kwargs):
+    def compute_egalitarian_least_core(
+        self,
+        *args,  # noqa ARG002
+        **kwargs,  # noqa ARG002
+    ):
         from shapiq.game_theory.core import egalitarian_least_core
 
         order = 1

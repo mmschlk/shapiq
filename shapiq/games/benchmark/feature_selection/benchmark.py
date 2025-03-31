@@ -117,6 +117,3 @@ class CaliforniaHousing(FeatureSelection):
             normalize=normalize,
             verbose=verbose,
         )
-
-
-# Path: shapiq/games/benchmark/feature_selection/benchmark.py

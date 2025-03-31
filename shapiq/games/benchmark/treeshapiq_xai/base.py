@@ -46,7 +46,6 @@ class TreeSHAPIQXAI(Game):
             class_index=class_label,
         )
         # compute ground truth values
-        # self.gt_interaction_values: InteractionValues = self._tree_explainer.explain(x=x)
         self.empty_value = float(self._tree_explainer.baseline_value)
 
         # get attributes for manual tree traversal and evaluation

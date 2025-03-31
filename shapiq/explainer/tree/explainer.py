@@ -46,7 +46,7 @@ class TreeExplainer(Explainer):
         min_order: int = 0,
         index: str = "k-SII",
         class_index: int | None = None,
-        **kwargs,  # noqa: ARG002
+        **kwargs,  # noqa ARG002
     ) -> None:
         super().__init__(model)
 
@@ -79,7 +79,7 @@ class TreeExplainer(Explainer):
     def explain_function(
         self,
         x: np.ndarray,
-        **kwargs, # noqa: ARG002
+        **kwargs,  # noqa: ARG002
     ) -> InteractionValues:
         """Computes the Shapley Interaction values for a single instance.
 

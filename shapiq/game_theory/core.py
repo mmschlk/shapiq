@@ -128,7 +128,8 @@ def egalitarian_least_core(
         warnings.warn(
             "The egalitarian least core is only defined for normalized games."
             "Thus the resulting vector will undercut efficiency by the value of the empty set."
-            "To suppress warnings normalize the game to have baseline_value == 0.", stacklevel=2
+            "To suppress warnings normalize the game to have baseline_value == 0.",
+            stacklevel=2,
         )
 
     # Potentially normalize the game

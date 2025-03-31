@@ -391,6 +391,7 @@ def si_graph_plot(
             Hüllermeier, E. (2024). shapiq: Shapley Interactions for Machine Learning. In:
             The Thirty-eight Conference on Neural Information Processing Systems Datasets and
             Benchmarks Track. url: https://openreview.net/forum?id=knxGmi6SJi#discussion.
+
     """
     normal_node_size = NORMAL_NODE_SIZE * node_size_scaling
     base_size = BASE_SIZE * node_size_scaling

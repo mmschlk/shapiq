@@ -21,7 +21,13 @@ class UnsupervisedData(Game):
 
     """
 
-    def __init__(self, data: np.ndarray, verbose: bool = False, *_args, **_kwargs) -> None:
+    def __init__(
+        self,
+        data: np.ndarray,
+        verbose: bool = False,
+        *args,  # noqa ARG002
+        **kwargs,  # noqa ARG002
+    ) -> None:
         self.data = data
         self._n_features = data.shape[1]
 

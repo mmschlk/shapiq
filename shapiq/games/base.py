@@ -94,8 +94,8 @@ class Game:
         path_to_values: str | None = None,
         verbose: bool = False,
         player_names: list[str] | None = None,
-        *_args,
-        **_kwargs,
+        *args,  # noqa ARG002
+        **kwargs,  # noqa ARG002
     ) -> None:
         # manual flag for choosing precomputed values even if not all values might be stored
         self.precompute_flag: bool = False  # flag to manually override the precomputed check
@@ -122,7 +122,8 @@ class Game:
                         "Normalization value is set to `None`. No normalization value was provided"
                         " at initialization. Make sure to set the normalization value before"
                         " calling the game."
-                    ), stacklevel=2
+                    ),
+                    stacklevel=2,
                 )
 
         game_id: str = str(hash(self))[:8]
@@ -363,7 +364,8 @@ class Game:
             warnings.warn(
                 "The number of players is greater than 16. Precomputing all coalitions might "
                 "take a long time. Consider providing a subset of coalitions to precompute. "
-                "Note that 2 ** n_players coalitions will be evaluated for the pre-computation.", stacklevel=2
+                "Note that 2 ** n_players coalitions will be evaluated for the pre-computation.",
+                stacklevel=2,
             )
         if coalitions is None:
             coalitions = list(powerset(range(self.n_players)))  # might be getting slow
@@ -397,7 +399,8 @@ class Game:
 
         if not self.precomputed:
             warnings.warn(
-                UserWarning("The game has not been precomputed yet. Saving the game may be slow."), stacklevel=2
+                UserWarning("The game has not been precomputed yet. Saving the game may be slow."),
+                stacklevel=2,
             )
             self.precompute()
 
@@ -496,7 +499,8 @@ class Game:
         if not self.precomputed and self.n_players > 16:  # pragma: no cover
             warnings.warn(
                 "The game is not precomputed and the number of players is greater than 16. "
-                "Computing the exact interaction values via brute force may take a long time.", stacklevel=2
+                "Computing the exact interaction values via brute force may take a long time.",
+                stacklevel=2,
             )  # pragma: no cover
 
         exact_computer = ExactComputer(self.n_players, game=self)

@@ -189,6 +189,3 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
     with open(path, "wb") as file:
         file.write(response.content)
         time.sleep(0.01)
-
-
-# Path: shapiq/benchmark/load.py

@@ -13,5 +13,3 @@ __all__ = [
     "SentimentAnalysis",
     "ImageClassifier",
 ]
-
-# Path: shapiq/games/benchmark/local_xai/__init__.py

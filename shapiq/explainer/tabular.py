@@ -145,7 +145,8 @@ class TabularExplainer(Explainer):
                 "You are using a TabPFN model with the ``shapiq.TabularExplainer`` directly. This "
                 "is not recommended as it uses missing value imputation and not contextualization. "
                 "Consider using the ``shapiq.TabPFNExplainer`` instead. For more information see "
-                "the documentation and the example notebooks.", stacklevel=2
+                "the documentation and the example notebooks.",
+                stacklevel=2,
             )
 
         self._random_state = random_state
@@ -228,7 +229,8 @@ class TabularExplainer(Explainer):
                 if index != "SV":
                     warnings.warn(
                         "`max_order=1` but `index != 'SV'`, setting `index = 'SV'`. "
-                        "Using the KernelSHAP approximator.", stacklevel=2
+                        "Using the KernelSHAP approximator.",
+                        stacklevel=2,
                     )
                     self.index = "SV"
                 return KernelSHAP(
@@ -239,7 +241,8 @@ class TabularExplainer(Explainer):
                 if max_order != 1:
                     warnings.warn(
                         "`index='SV'` but `max_order != 1`, setting `max_order = 1`. "
-                        "Using the KernelSHAP approximator.", stacklevel=2
+                        "Using the KernelSHAP approximator.",
+                        stacklevel=2,
                     )
                     self._max_order = 1
                 return KernelSHAP(

@@ -83,7 +83,8 @@ class ConditionalImputer(Imputer):
         if self.conditional_budget > 2**n_features:
             warnings.warn(
                 "`conditional_budget` is higher than `2**n_features`; setting "
-                "`conditional_budget = 2**n_features`", stacklevel=2
+                "`conditional_budget = 2**n_features`",
+                stacklevel=2,
             )
             self.conditional_budget = 2**n_features
         X_tiled = np.repeat(data, repeats=self.conditional_budget, axis=0)
@@ -97,7 +98,6 @@ class ConditionalImputer(Imputer):
             coalition_sampler.sample(self.conditional_budget)
             coalitions_matrix.append(coalition_sampler.coalitions_matrix)
         coalitions_matrix = np.concatenate(coalitions_matrix, axis=0)
-        # (data.shape[0] * self.conditional_budget, n_features)
         X_masked = X_tiled.copy()
         try:
             X_masked[coalitions_matrix] = np.NaN  # old numpy version

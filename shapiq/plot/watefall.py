@@ -271,7 +271,6 @@ def _draw_waterfall_plot(
     plt.gca().spines["top"].set_visible(False)
     plt.gca().spines["left"].set_visible(False)
     ax.tick_params(labelsize=13)
-    # plt.xlabel("\nModel output", fontsize=12)
 
     # draw the E[f(X)] tick mark
     xmin, xmax = ax.get_xlim()

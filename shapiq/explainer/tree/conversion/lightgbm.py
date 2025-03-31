@@ -27,11 +27,6 @@ def convert_lightgbm_booster(
     # probabilities are hard and not implemented in shap / lightgbm, see
     # https://stackoverflow.com/q/63490533
     # https://stackoverflow.com/q/41433209
-    # if tree_booster.params['objective'] in ['binary', 'multiclass']:
-    #     # convert raw to probabilities
-    #     booster_df['value'] = _sigmoid(booster_df['value'])
-    #     output_type = "probability"
-    # else:
     convert_feature_str_to_int = {k: v for v, k in enumerate(tree_booster.feature_name())}
     output_type = "raw"
     if tree_booster.params["objective"] == "multiclass":

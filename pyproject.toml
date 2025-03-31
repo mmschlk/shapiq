@@ -96,6 +96,7 @@ directory = "tests"
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+src = ["tests", "shapiq", "docs"]
 
 
 [tool.ruff.lint]
@@ -108,7 +109,9 @@ select = [
     "UP",
     "B",
     "ARG",
-    # "ANN",  # or include mypy
+    "INP",
+    "ERA",
+    # "ANN",  # TODO: add this or include mypy
     # "D",  # TODO: include this in the near future
 ]
 ignore = [
@@ -134,12 +137,13 @@ ignore = [
     "ANN", # type annotations
     "B",
     "ARG",
+    "INP",
 ]
 "*.ipynb" = [
     "E402",  # Module level import not at top of file (its .ipynb)
 ]
-"docs/source/conf.py" = ["A001"]  # copyright must be at the top of the file
-
+"docs/source/conf.py" = ["A001", "INP"]  # copyright must be at the top of the file
+"benchmark/*.py" = ["INP"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["shapiq"]

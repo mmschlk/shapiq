@@ -93,7 +93,8 @@ class CoalitionSampler:
                 UserWarning(
                     "Pairing trick is activated, but sampling weights are not symmetric. "
                     "This may lead to unexpected results."
-                ), stacklevel=2
+                ),
+                stacklevel=2,
             )
 
         # set player numbers
@@ -464,7 +465,8 @@ class CoalitionSampler:
                 UserWarning(
                     "Sampling might be inefficient (stalls) due to the sampling budget being close "
                     "to the total number of coalitions to be sampled."
-                ), stacklevel=2
+                ),
+                stacklevel=2,
             )
 
         # sample coalitions

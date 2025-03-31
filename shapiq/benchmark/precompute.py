@@ -217,6 +217,3 @@ def pre_compute_and_store_from_list(
         )
 
     return results
-
-
-# Path: shapiq/benchmark/precompute.py

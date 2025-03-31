@@ -70,7 +70,8 @@ def compute_diff_metrics(ground_truth: InteractionValues, estimated: Interaction
                     ground_truth_values.index = estimated.index
                 warnings.warn(
                     f"Indices do not match for {ground_truth.index} and {estimated.index}. Will "
-                    f"compare anyway but results need to be interpreted with care.", stacklevel=2
+                    f"compare anyway but results need to be interpreted with care.",
+                    stacklevel=2,
                 )
                 difference = ground_truth_values - estimated_values
         else:
@@ -181,6 +182,3 @@ def get_all_metrics(
 
     metrics.update(metrics_diff)
     return metrics
-
-
-# Path: shapiq/benchmark/metrics.py

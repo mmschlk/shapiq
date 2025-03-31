@@ -22,5 +22,3 @@ __all__ = [
     "BikeSharingRandomForestEnsembleSelection",
     "CaliforniaHousingRandomForestEnsembleSelection",
 ]
-
-# Path: shapiq/games/benchmark/ensemble_selection/__init__.py

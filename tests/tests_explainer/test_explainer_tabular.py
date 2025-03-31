@@ -176,12 +176,14 @@ def test_against_shap_linear():
 
     X = rng.normal(size=(n_samples, dim))
     model = make_linear_model()
-
+    # The following code is commented out because it requires SHAP to be installed.
+    """
     # import shap
     # compute with shap
     # explainer_shap = shap.explainers.Exact(model, X)
     # shap_values = explainer_shap(X).values
     # print(shap_values)
+    """  # noqa: ERA001
     shap_values = np.array(
         [
             [-0.29565839, -0.36698085, -0.55970434, 0.22567077, 0.05852208],

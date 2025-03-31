@@ -156,7 +156,8 @@ class Approximator(ABC):
                         * np.exp(-(coalition_size - self.n / 2) * +2 / (self.n / 2))
                     )
                 warnings.warn(
-                    "The weights are approximated for n > 1000. While this is very close to the truth for sets for size in the region n/2, the approximation is not exact for size n or 0.", stacklevel=2
+                    "The weights are approximated for n > 1000. While this is very close to the truth for sets for size in the region n/2, the approximation is not exact for size n or 0.",
+                    stacklevel=2,
                 )
         else:
             for coalition_size in range(0, self.n + 1):

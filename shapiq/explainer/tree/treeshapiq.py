@@ -601,7 +601,6 @@ class TreeSHAPIQ:
                 int(sp.special.binom(n_features, interaction_order)), -1, dtype=int
             )
         for S in powerset(range(n_features), interaction_order, interaction_order):
-            # self.shapley_interactions_lookup[S] = counter_interaction
             for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
                 subset_ancestor = -1
                 for i in S:

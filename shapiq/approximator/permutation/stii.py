@@ -100,7 +100,8 @@ class PermutationSamplingSTII(Approximator):
                 message=f"The budget {budget} is too small to compute the lower order interactions "
                 f"of the STII index, which requires {lower_order_cost} evaluations. Consider "
                 f"increasing the budget.",
-                category=UserWarning, stacklevel=2,
+                category=UserWarning,
+                stacklevel=2,
             )
 
             interactions = InteractionValues(
@@ -131,7 +132,8 @@ class PermutationSamplingSTII(Approximator):
                 message=f"The budget {budget} is too small to perform a single iteration, which "
                 f"requires {self.iteration_cost + lower_order_cost + 1} evaluations. Consider "
                 f"increasing the budget.",
-                category=UserWarning, stacklevel=2,
+                category=UserWarning,
+                stacklevel=2,
             )
 
             interactions = InteractionValues(

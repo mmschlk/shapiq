@@ -412,9 +412,13 @@ def run_benchmark_from_configuration(
         games = games[:game_n_games]
     print(f"Loaded {len(games)} games for the benchmark. Configuration ID: {config_id}.")
     if not all(game.precomputed for game in games):
-        warnings.warn("Not all games are pre-computed. The benchmark might take longer to run.", stacklevel=2)
+        warnings.warn(
+            "Not all games are pre-computed. The benchmark might take longer to run.", stacklevel=2
+        )
     if not all(game.is_normalized for game in games):
-        warnings.warn("Not all games are normalized. The benchmark might not be accurate.", stacklevel=2)
+        warnings.warn(
+            "Not all games are normalized. The benchmark might not be accurate.", stacklevel=2
+        )
 
     # get the benchmark name for saving the results
     benchmark_name = _make_benchmark_name(config_id, game_class, len(games), index, order)
@@ -470,6 +474,3 @@ def _make_benchmark_name(
             f"n_games={n_games}",
         ]
     )
-
-
-# Path: shapiq/benchmark/run.py

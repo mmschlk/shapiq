@@ -311,7 +311,6 @@ def test_player_symmetry(index, order):
     for coalition in powerset(range(n - 2)):
         coalition_with_first = (0,) + tuple([player + 1 for player in coalition])
         coalition_with_last = tuple([player + 1 for player in coalition]) + (4,)
-        # print(f"{interaction_values[coalition_with_first]} for {coalition_with_first}")
         assert (
             interaction_values[coalition_with_first] - interaction_values[coalition_with_last]
         ) < 10e-7
@@ -372,7 +371,6 @@ def test_null_player(index, order):
     for coalition in powerset(range(n - 2)):
         coalition_with_first = (0,) + tuple([player + 1 for player in coalition])
         coalition_with_last = tuple([player + 1 for player in coalition]) + (4,)
-        # print(f"{interaction_values[coalition_with_first]} for {coalition_with_first}")
         assert interaction_values[coalition_with_first] < 10e-7
         assert interaction_values[coalition_with_last] < 10e-7
 
