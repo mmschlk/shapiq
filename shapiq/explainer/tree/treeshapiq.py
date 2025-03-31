@@ -2,13 +2,13 @@
 
 import copy
 from math import factorial
-from typing import Any
 
 import numpy as np
 import scipy as sp
 
 from ...game_theory.indices import get_computation_index
 from ...interaction_values import InteractionValues, finalize_computed_interactions
+from ...utils.custom_types import Model
 from ...utils.sets import generate_interaction_lookup, powerset
 from .base import EdgeTree, TreeModel
 from .conversion.edges import create_edge_tree
@@ -48,7 +48,7 @@ class TreeSHAPIQ:
 
     def __init__(
         self,
-        model: dict | TreeModel | Any,
+        model: dict | TreeModel | Model,
         max_order: int = 2,
         min_order: int = 1,
         index: str = "k-SII",

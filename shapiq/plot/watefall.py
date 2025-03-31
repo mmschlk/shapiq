@@ -18,7 +18,11 @@ __all__ = ["waterfall_plot"]
 
 
 def _draw_waterfall_plot(
-    values: np.ndarray, base_values: float, feature_names: list[str], max_display=10, show=True
+    values: np.ndarray,
+    base_values: float,
+    feature_names: list[str],
+    max_display: int = 10,
+    show: bool = False,
 ) -> plt.Axes | None:
     """The waterfall plot from the SHAP package.
 

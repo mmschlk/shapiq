@@ -98,8 +98,8 @@ def split_subsets_budget(
         order: interaction order.
         n: number of players.
         budget: total allowed budget for the computation.
-        sampling_weights: weight vector of the sampling distribution in shape (n + 1,). The first and last element
-            constituting the empty and full subsets are not used.
+        sampling_weights: weight vector of the sampling distribution in shape (n + 1,). The first
+            and last element constituting the empty and full subsets are not used.
 
     Returns:
         complete subsets, incomplete subsets, remaining budget

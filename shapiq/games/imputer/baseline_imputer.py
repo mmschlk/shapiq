@@ -132,7 +132,7 @@ class BaselineImputer(Imputer):
                     summarized_feature = values[np.argmax(counts)]
                     # add feature to categorical features
                     warnings.warn(
-                        f"Feature {feature} is not numerical. Adding it to categorical features."
+                        f"Feature {feature} is not numerical. Adding it to categorical features.", stacklevel=2
                     )
                     self._cat_features.append(feature)
             self.baseline_values[0, feature] = summarized_feature

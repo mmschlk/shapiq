@@ -5,7 +5,7 @@ shapiq.
 import numpy as np
 
 from ....utils import safe_isinstance
-from ....utils.types import Model
+from ....utils.custom_types import Model
 from ..base import TreeModel
 
 
@@ -110,7 +110,9 @@ def convert_sklearn_isolation_forest(
 
     return [
         convert_isolation_tree(tree, features, scaling=scaling)
-        for tree, features in zip(tree_model.estimators_, tree_model.estimators_features_)
+        for tree, features in zip(
+            tree_model.estimators_, tree_model.estimators_features_, strict=False
+        )
     ]
 
 

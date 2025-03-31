@@ -61,7 +61,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
 
     # test dict_values property
     assert interaction_values.dict_values == {
-        interaction: value for interaction, value in zip(interaction_lookup, values)
+        interaction: value for interaction, value in zip(interaction_lookup, values, strict=False)
     }
 
     # check that default values are set correctly
@@ -591,10 +591,10 @@ def test_plot():
         baseline_value=0.0,
     )
 
-    _ = interaction_values.plot_network()
-    _ = interaction_values.plot_network(feature_names=["a" for _ in range(n)])
-    _ = interaction_values.plot_stacked_bar()
-    _ = interaction_values.plot_stacked_bar(feature_names=["a" for _ in range(n)])
+    _ = interaction_values.plot_network(show=False)
+    _ = interaction_values.plot_network(show=False, feature_names=["a" for _ in range(n)])
+    _ = interaction_values.plot_stacked_bar(show=False)
+    _ = interaction_values.plot_stacked_bar(show=False, feature_names=["a" for _ in range(n)])
 
     n = 5
     min_order = 1
@@ -613,11 +613,11 @@ def test_plot():
         baseline_value=0.0,
     )
     with pytest.raises(ValueError):
-        _ = interaction_values.plot_network()
+        _ = interaction_values.plot_network(show=False)
     with pytest.raises(ValueError):
-        _ = interaction_values.plot_network(feature_names=["a" for _ in range(n)])
-    _ = interaction_values.plot_stacked_bar()
-    _ = interaction_values.plot_stacked_bar(feature_names=["a" for _ in range(n)])
+        _ = interaction_values.plot_network(show=False, feature_names=["a" for _ in range(n)])
+    _ = interaction_values.plot_stacked_bar(show=False)
+    _ = interaction_values.plot_stacked_bar(show=False, feature_names=["a" for _ in range(n)])
 
 
 @pytest.mark.parametrize("subset_players", [[0, 1], [0, 1, 3, 4]])

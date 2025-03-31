@@ -38,7 +38,7 @@ class StratifiedSamplingSV(Approximator):
         self.iteration_cost: int = 2
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *_args, **_kwargs
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 

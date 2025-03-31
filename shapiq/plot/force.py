@@ -31,9 +31,9 @@ def _create_bars(
     separator_list = []
 
     pre_val = out_value
-    for index, features in zip(range(len(features)), features):
+    for index, feature_iteration in zip(range(len(features)), features, strict=False):
         if feature_type == "positive":
-            left_bound = float(features[0])
+            left_bound = float(feature_iteration[0])
             right_bound = pre_val
             pre_val = left_bound
 
@@ -42,7 +42,7 @@ def _create_bars(
             colors = ["#FF0D57", "#FFC3D5"]
         else:
             left_bound = pre_val
-            right_bound = float(features[0])
+            right_bound = float(feature_iteration[0])
             pre_val = right_bound
 
             separator_indent = -np.abs(width_separators)
@@ -358,7 +358,7 @@ def update_axis_limits(
     )
     plt.locator_params(axis="x", nbins=12)
 
-    for key, spine in zip(plt.gca().spines.keys(), plt.gca().spines.values()):
+    for key, spine in zip(plt.gca().spines.keys(), plt.gca().spines.values(), strict=False):
         if key != "top":
             spine.set_visible(False)
 

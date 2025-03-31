@@ -67,8 +67,8 @@ class ImageClassifier(Game):
         x_explain_path: str | None = None,
         normalize: bool = True,
         verbose: bool = False,
-        *args,
-        **kwargs,
+        *_args,
+        **_kwargs,
     ) -> None:
         if x_explain_path is None:
             raise ValueError("The image to be explained must be provided.")
@@ -108,7 +108,7 @@ class ImageClassifier(Game):
             )
             n_players = resnet_model.n_superpixels
             # warn if not 14 superpixels
-            warn(f"{n_players} superpixels found and not {n_sp}.") if n_players != n_sp else None
+            warn(f"{n_players} superpixels found and not {n_sp}.", stacklevel=2) if n_players != n_sp else None
             normalization_value = resnet_model.empty_value
             self.model_function = resnet_model
 

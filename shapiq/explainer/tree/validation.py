@@ -1,9 +1,7 @@
 """Conversion functions for the tree explainer implementation."""
 
-from typing import Any
-
-from shapiq.utils import safe_isinstance
-
+from ...utils.custom_types import Model
+from ...utils.modules import safe_isinstance
 from .base import TreeModel
 from .conversion.lightgbm import convert_lightgbm_booster
 from .conversion.sklearn import (
@@ -36,7 +34,10 @@ SUPPORTED_MODELS = {
 }
 
 
-def validate_tree_model(model: Any, class_label: int | None = None) -> TreeModel | list[TreeModel]:
+def validate_tree_model(
+    model: Model,
+    class_label: int | None = None,
+) -> TreeModel | list[TreeModel]:
     """Validate the model.
 
     Args:

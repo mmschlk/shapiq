@@ -76,7 +76,7 @@ def aggregate_base_interaction(
             UserWarning(
                 "The base interaction values have a minimum order greater than 1. Aggregation may "
                 "not be meaningful."
-            )
+            ), stacklevel=2
         )
 
     bernoulli_numbers = sp.special.bernoulli(order)  # used for aggregation

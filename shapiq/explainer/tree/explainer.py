@@ -4,11 +4,11 @@ computing any-order Shapley Interactions for tree ensembles.
 
 import copy
 import warnings
-from typing import Any
 
 import numpy as np
 
 from ...interaction_values import InteractionValues, finalize_computed_interactions
+from ...utils.custom_types import Model
 from .._base import Explainer
 from .treeshapiq import TreeModel, TreeSHAPIQ
 from .validation import validate_tree_model
@@ -41,20 +41,20 @@ class TreeExplainer(Explainer):
 
     def __init__(
         self,
-        model: dict | TreeModel | list | Any,
+        model: dict | TreeModel | list | Model,
         max_order: int = 2,
         min_order: int = 0,
         index: str = "k-SII",
         class_index: int | None = None,
-        **kwargs,
+        **_kwargs,
     ) -> None:
         super().__init__(model)
 
         if index == "SV" and max_order > 1:
-            warnings.warn("For index='SV' the max_order is set to 1.")
+            warnings.warn("For index='SV' the max_order is set to 1.", stacklevel=2)
             max_order = 1
         elif max_order == 1 and index != "SV":
-            warnings.warn("For max_order=1 the index is set to 'SV'.")
+            warnings.warn("For max_order=1 the index is set to 'SV'.", stacklevel=2)
             index = "SV"
         self.index = index
 
@@ -76,12 +76,12 @@ class TreeExplainer(Explainer):
         ]
         self.baseline_value = self._compute_baseline_value()
 
-    def explain_function(self, x: np.ndarray, **kwargs) -> InteractionValues:
+    def explain_function(self, x: np.ndarray, **_kwargs) -> InteractionValues:
         """Computes the Shapley Interaction values for a single instance.
 
         Args:
             x: The instance to explain as a 1-dimensional array.
-            **kwargs: Additional keyword arguments are ignored.
+            **_kwargs: Additional keyword arguments are ignored.
 
         Returns:
             The interaction values for the instance.

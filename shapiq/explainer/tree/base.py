@@ -1,7 +1,6 @@
 """The base class for tree model conversion."""
 
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 
@@ -69,8 +68,8 @@ class TreeModel:
     feature_map_internal_original: dict[int, int] | None = None
     original_output_type: str = "raw"  # not used at the moment
 
-    def __getitem__(self, item) -> Any:
-        return getattr(self, item)
+    # def __getitem__(self, item) -> Any:
+    #     return getattr(self, item)
 
     def compute_empty_prediction(self) -> None:
         """Compute the empty prediction of the tree model.
@@ -208,8 +207,8 @@ class EdgeTree:
     interaction_height_store: dict[int, np.ndarray[int]]
     has_ancestors: np.ndarray[bool] | None = None
 
-    def __getitem__(self, item) -> Any:
-        return getattr(self, item)
+    # def __getitem__(self, item) -> Any:
+    #     return getattr(self, item)
 
     def __post_init__(self) -> None:
         # setup has ancestors

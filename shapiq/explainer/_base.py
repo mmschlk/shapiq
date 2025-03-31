@@ -84,9 +84,9 @@ class Explainer:
             if raise_error:
                 raise ValueError(message) from e
             else:
-                warn(message)
+                warn(message, stacklevel=2)
 
-    def explain(self, x: np.ndarray, *args, **kwargs) -> InteractionValues:
+    def explain(self, x: np.ndarray, **kwargs) -> InteractionValues:
         """Explain a single prediction in terms of interaction values.
 
         Args:
@@ -98,7 +98,7 @@ class Explainer:
             The interaction values of the prediction.
 
         """
-        explanation = self.explain_function(x=x, *args, **kwargs)
+        explanation = self.explain_function(x=x, **kwargs)
         return explanation
 
     @abstractmethod

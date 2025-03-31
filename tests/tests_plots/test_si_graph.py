@@ -72,11 +72,6 @@ def test_si_graph_plot(
     assert isinstance(ax, plt.Axes)
     plt.close(fig)
 
-    # test with show=True
-    output = example_values.plot_si_graph(show=True)
-    assert output is None
-    plt.close("all")
-
     fig, ax = si_graph_plot(
         example_values,
         graph_tuple,

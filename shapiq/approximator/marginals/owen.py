@@ -43,7 +43,7 @@ class OwenSamplingSV(Approximator):
         self.n_anchor_points = n_anchor_points
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *_args, **_kwargs
     ) -> InteractionValues:
         """Approximates the Shapley values using Owen Sampling.
 

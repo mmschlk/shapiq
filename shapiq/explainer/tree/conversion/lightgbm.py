@@ -2,7 +2,7 @@
 shapiq.
 """
 
-from ....utils.types import Model
+from ....utils.custom_types import Model
 from ..base import TreeModel
 
 

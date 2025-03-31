@@ -116,7 +116,7 @@ class TabularExplainer(Explainer):
     def __init__(
         self,
         model,
-        data,
+        data: np.ndarray,
         class_index: int | None = None,
         imputer="marginal",
         approximator: str | Approximator = "auto",
@@ -145,7 +145,7 @@ class TabularExplainer(Explainer):
                 "You are using a TabPFN model with the ``shapiq.TabularExplainer`` directly. This "
                 "is not recommended as it uses missing value imputation and not contextualization. "
                 "Consider using the ``shapiq.TabPFNExplainer`` instead. For more information see "
-                "the documentation and the example notebooks."
+                "the documentation and the example notebooks.", stacklevel=2
             )
 
         self._random_state = random_state
@@ -228,7 +228,7 @@ class TabularExplainer(Explainer):
                 if index != "SV":
                     warnings.warn(
                         "`max_order=1` but `index != 'SV'`, setting `index = 'SV'`. "
-                        "Using the KernelSHAP approximator."
+                        "Using the KernelSHAP approximator.", stacklevel=2
                     )
                     self.index = "SV"
                 return KernelSHAP(
@@ -239,7 +239,7 @@ class TabularExplainer(Explainer):
                 if max_order != 1:
                     warnings.warn(
                         "`index='SV'` but `max_order != 1`, setting `max_order = 1`. "
-                        "Using the KernelSHAP approximator."
+                        "Using the KernelSHAP approximator.", stacklevel=2
                     )
                     self._max_order = 1
                 return KernelSHAP(
@@ -276,11 +276,11 @@ class TabularExplainer(Explainer):
         # assume that the approximator is a string
         try:
             approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
-        except KeyError:
+        except KeyError as error:
             raise ValueError(
                 f"Invalid approximator `{approximator}` or index `{index}`. "
                 f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}."
-            )
+            ) from error
         # initialize the approximator class with params
         init_approximator = approximator(n=self._n_features, max_order=max_order)
         return init_approximator

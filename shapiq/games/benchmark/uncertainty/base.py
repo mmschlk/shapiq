@@ -6,7 +6,7 @@ from scipy.stats import entropy
 from shapiq.games.base import Game
 from shapiq.games.benchmark.setup import get_x_explain
 from shapiq.games.imputer import ConditionalImputer, MarginalImputer
-from shapiq.utils.types import Model
+from shapiq.utils.custom_types import Model
 
 
 class UncertaintyExplanation(Game):

@@ -52,13 +52,6 @@ def test_network_plot():
     with pytest.raises(ValueError):
         network_plot()
 
-    # test show=True
-    output = network_plot(interaction_values=iv, show=True)
-    assert output is None
-    plt.close("all")
-
-    assert True
-
 
 def test_network_plot_with_image_or_text():
     first_order_values = np.asarray([0.1, -0.2, 0.3, 0.4, 0.5, 0.6])

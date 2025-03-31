@@ -347,7 +347,7 @@ def si_graph_plot(
             networkx graph is provided, the nodes are used as the players and the edges are used as
             the connections between the players. Defaults to ``None``, which creates a graph with
             all nodes from the interaction values without any edges between them.
-        n_interactions: The number of interactions to plot. If ``None``, all interactions are plotted
+        n_interactions: The number of interactions to plot. If ``None``, all interactions are
             according to the draw_threshold.
         draw_threshold: The threshold to draw an edge (i.e. only draw explanations with an
             interaction value higher than this threshold).
@@ -362,8 +362,8 @@ def si_graph_plot(
         feature_names: A list of feature names to use for the nodes in the graph. If ``None``,
             the feature indices are used instead. Defaults to ``None``.
         cubic_scaling: Whether to scale the size of explanations cubically (``True``) or linearly
-            (``False``, default). Cubic scaling puts more emphasis on larger interactions in the plot.
-            Defaults to ``False``.
+            (``False``, default). Cubic scaling puts more emphasis on larger interactions in the
+            plot. Defaults to ``False``.
         pos: The positions of the nodes in the graph. If ``None``, the spring layout is used to
             position the nodes. Defaults to ``None``.
         node_size_scaling: The scaling factor for the node sizes. This can be used to make the nodes
@@ -387,8 +387,10 @@ def si_graph_plot(
         The figure and axis of the plot if ``show`` is ``False``. Otherwise, ``None``.
 
     References:
-        .. [1] Muschalik, M., Baniecki, H., Fumagalli, F., Kolpaczki, P., Hammer, B., and Hüllermeier, E. (2024). shapiq: Shapley Interactions for Machine Learning. In: The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track. url: https://openreview.net/forum?id=knxGmi6SJi#discussion.
-
+        .. [1] Muschalik, M., Baniecki, H., Fumagalli, F., Kolpaczki, P., Hammer, B., and
+            Hüllermeier, E. (2024). shapiq: Shapley Interactions for Machine Learning. In:
+            The Thirty-eight Conference on Neural Information Processing Systems Datasets and
+            Benchmarks Track. url: https://openreview.net/forum?id=knxGmi6SJi#discussion.
     """
     normal_node_size = NORMAL_NODE_SIZE * node_size_scaling
     base_size = BASE_SIZE * node_size_scaling

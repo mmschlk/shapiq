@@ -4,6 +4,7 @@ import warnings
 
 import numpy as np
 
+from ...utils import Model
 from .base import Imputer
 
 _too_large_sample_size_warning = (
@@ -58,7 +59,7 @@ class MarginalImputer(Imputer):
 
     def __init__(
         self,
-        model,
+        model: Model,
         data: np.ndarray,
         x: np.ndarray | None = None,
         sample_size: int = 100,
@@ -129,7 +130,7 @@ class MarginalImputer(Imputer):
         """
         self.replacement_data = np.copy(data)
         if self.sample_size > self.replacement_data.shape[0]:
-            warnings.warn(UserWarning(_too_large_sample_size_warning))
+            warnings.warn(UserWarning(_too_large_sample_size_warning), stacklevel=2)
             self.sample_size = self.replacement_data.shape[0]
         self.calc_empty_prediction()  # reset the empty prediction to the new background data
         return self

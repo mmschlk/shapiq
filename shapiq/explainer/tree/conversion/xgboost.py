@@ -4,7 +4,7 @@ shapiq.
 
 import warnings
 
-from ....utils.types import Model
+from ....utils.custom_types import Model
 from ..base import TreeModel
 
 
@@ -32,7 +32,7 @@ def convert_xgboost_booster(
         intercept = 0.0
         warnings.warn(
             "The model does not have a valid base score. Setting the intercept to 0.0."
-            "Baseline values of the interaction models might be different."
+            "Baseline values of the interaction models might be different.", stacklevel=2
         )
 
     # https://github.com/shap/shap/blob/77e92c3c110e816b768a0ec2acfbf4cc08ee13db/shap/explainers/_tree.py#L1992

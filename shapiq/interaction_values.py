@@ -67,7 +67,8 @@ class InteractionValues:
                 UserWarning(
                     f"Index {self.index} is not a valid index as defined in "
                     f"{ALL_AVAILABLE_INDICES}. This might lead to unexpected behavior."
-                )
+                ),
+                stacklevel=2,
             )
 
         # set BV or SV if max_order is 1
@@ -314,20 +315,6 @@ class InteractionValues:
 
     def __copy__(self) -> "InteractionValues":
         """Returns a copy of the InteractionValues object."""
-        return InteractionValues(
-            values=copy.deepcopy(self.values),
-            index=self.index,
-            max_order=self.max_order,
-            estimated=self.estimated,
-            estimation_budget=self.estimation_budget,
-            n_players=self.n_players,
-            interaction_lookup=copy.deepcopy(self.interaction_lookup),
-            min_order=self.min_order,
-            baseline_value=self.baseline_value,
-        )
-
-    def __deepcopy__(self, memo) -> "InteractionValues":
-        """Returns a deep copy of the InteractionValues object."""
         return InteractionValues(
             values=copy.deepcopy(self.values),
             index=self.index,

@@ -75,7 +75,7 @@ def sort_values(list_to_sort: list[str], ordering: dict[str, int]) -> list[str]:
     sorted_list = sorted(sorted_list, key=lambda x: ordering[x])
     for name in list_to_sort:
         if name not in sorted_list:
-            warnings.warn(f"Item {name} not in {ordering}. Appending.")
+            warnings.warn(f"Item {name} not in {ordering}. Appending.", stacklevel=2)
             sorted_list.append(name)
     return sorted_list
 

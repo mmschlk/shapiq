@@ -93,7 +93,7 @@ class CoalitionSampler:
                 UserWarning(
                     "Pairing trick is activated, but sampling weights are not symmetric. "
                     "This may lead to unexpected results."
-                )
+                ), stacklevel=2
             )
 
         # set player numbers
@@ -442,7 +442,7 @@ class CoalitionSampler:
             raise ValueError("A minimum sampling budget of 2 samples is required.")
 
         if sampling_budget > self.n_max_coalitions:
-            warnings.warn("Not all budget is required due to the border-trick.")
+            warnings.warn("Not all budget is required due to the border-trick.", stacklevel=2)
             sampling_budget = min(sampling_budget, self.n_max_coalitions)  # set budget to max coals
 
         self._reset_variables(sampling_budget)
@@ -464,7 +464,7 @@ class CoalitionSampler:
                 UserWarning(
                     "Sampling might be inefficient (stalls) due to the sampling budget being close "
                     "to the total number of coalitions to be sampled."
-                )
+                ), stacklevel=2
             )
 
         # sample coalitions

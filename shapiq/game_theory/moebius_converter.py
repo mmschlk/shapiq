@@ -117,6 +117,7 @@ class MoebiusConverter:
         for moebius_set, moebius_val in zip(
             self.moebius_coefficients.interaction_lookup,
             self.moebius_coefficients.values,
+            strict=False,
         ):
             moebius_size = len(moebius_set)
             # for higher-order Möbius sets (size > order) distribute the value on all interactions
@@ -151,7 +152,7 @@ class MoebiusConverter:
 
         return base_interactions
 
-    def stii_routine(self, order: int, **kwargs):
+    def stii_routine(self, order: int, **_kwargs):
         """Computes STII. Routine to distribute the Moebius coefficients onto all STII interactions.
 
         The lower-order interactions are equal to their Moebius coefficients, whereas the top-order
@@ -159,7 +160,7 @@ class MoebiusConverter:
 
         Args:
             order: The order of the explanation
-            **kwargs: Additional keyword arguments (not used).
+            **_kwargs: Additional keyword arguments are not used.
 
         Returns:
             An InteractionValues object containing the STII interactions.
@@ -182,6 +183,7 @@ class MoebiusConverter:
         for moebius_set, moebius_val in zip(
             self.moebius_coefficients.interaction_lookup,
             self.moebius_coefficients.values,
+            strict=False,
         ):
             moebius_size = len(moebius_set)
             if moebius_size < order:
@@ -252,6 +254,7 @@ class MoebiusConverter:
             for moebius_set, moebius_val in zip(
                 self.moebius_coefficients.interaction_lookup,
                 self.moebius_coefficients.values,
+                strict=False,
             ):
                 moebius_size = len(moebius_set)
                 if moebius_size > order:
@@ -263,6 +266,7 @@ class MoebiusConverter:
         for moebius_set, moebius_val in zip(
             self.moebius_coefficients.interaction_lookup,
             self.moebius_coefficients.values,
+            strict=False,
         ):
             moebius_size = len(moebius_set)
             # For higher-order Moebius sets (size > order) distribute the value among all

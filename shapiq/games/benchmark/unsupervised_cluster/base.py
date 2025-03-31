@@ -34,7 +34,6 @@ class ClusterExplanation(Game):
         score_method: str = "calinski_harabasz_score",
         cluster_params: dict | None = None,
         normalize: bool = True,
-        empty_cluster_value: float = 0.0,
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:

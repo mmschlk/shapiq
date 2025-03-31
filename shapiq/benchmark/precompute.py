@@ -131,7 +131,7 @@ def pre_compute_from_configuration(
             f"iteration names: {iteration_names}"
         )
 
-        for iteration, iteration_name in zip(iterations, iteration_names):
+        for iteration, iteration_name in zip(iterations, iteration_names, strict=False):
             save_dir = os.path.join(SHAPIQ_DATA_DIR, game_class.get_game_name(), str(n_players))
             game_id = get_game_file_name_from_config(config, iteration)
             save_path = os.path.join(save_dir, game_id)
@@ -198,7 +198,8 @@ def pre_compute_and_store_from_list(
 
     if n_jobs == 1:
         return [
-            pre_compute_and_store(game, save_dir, game_id) for game, game_id in zip(games, game_ids)
+            pre_compute_and_store(game, save_dir, game_id)
+            for game, game_id in zip(games, game_ids, strict=False)
         ]
 
     with mp.Pool(n_jobs) as pool:
@@ -206,7 +207,10 @@ def pre_compute_and_store_from_list(
             tqdm(
                 pool.starmap(
                     pre_compute_and_store,
-                    [(game, save_dir, game_id) for game, game_id in zip(games, game_ids)],
+                    [
+                        (game, save_dir, game_id)
+                        for game, game_id in zip(games, game_ids, strict=False)
+                    ],
                 ),
                 total=len(games),
             )

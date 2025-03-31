@@ -44,7 +44,7 @@ class CaliforniaHousingTorchModel:
                 "be found. Please download the model from the shapiq repository. The model can be "
                 "found at tests/models/california_nn_0.812511_0.076331.weights."
             )
-            warnings.warn(msg)
+            warnings.warn(msg, stacklevel=2)
 
         self.n_epochs = n_epochs
 
@@ -78,7 +78,7 @@ class CaliforniaHousingTorchModel:
         optimizer = Adam(self.torch_model.parameters(), lr=0.01)
 
         self.torch_model.train()
-        for epoch in range(self.n_epochs):
+        for _ in range(self.n_epochs):
             optimizer.zero_grad()
             output = self.torch_model(x)
             loss = criterion(output, y)

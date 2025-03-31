@@ -151,7 +151,7 @@ def run_benchmark(
         (iteration, approximator, game, gt_value, budget_step)
         for iteration in range(1, n_iterations + 1)
         for approximator in approximators_per_iteration[iteration]
-        for game, gt_value in zip(games, gt_values)
+        for game, gt_value in zip(games, gt_values, strict=False)
         for budget_step in budget_steps
     ]
 
@@ -185,7 +185,7 @@ def run_benchmark(
         progress.close()
 
     # add the exact values to the results
-    for game, gt_value in zip(games, gt_values):
+    for game, gt_value in zip(games, gt_values, strict=False):
         results.append(
             {
                 "game_name": game.game_name,
@@ -412,9 +412,9 @@ def run_benchmark_from_configuration(
         games = games[:game_n_games]
     print(f"Loaded {len(games)} games for the benchmark. Configuration ID: {config_id}.")
     if not all(game.precomputed for game in games):
-        warnings.warn("Not all games are pre-computed. The benchmark might take longer to run.")
+        warnings.warn("Not all games are pre-computed. The benchmark might take longer to run.", stacklevel=2)
     if not all(game.is_normalized for game in games):
-        warnings.warn("Not all games are normalized. The benchmark might not be accurate.")
+        warnings.warn("Not all games are normalized. The benchmark might not be accurate.", stacklevel=2)
 
     # get the benchmark name for saving the results
     benchmark_name = _make_benchmark_name(config_id, game_class, len(games), index, order)

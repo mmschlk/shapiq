@@ -340,7 +340,7 @@ def _set_x_axis_ticks(ax: plt.Axes, n_players: int, max_budget: int) -> None:
         budgets_relative = budgets / (2**n_players)
 
     xtick_labels = []
-    for bdgt, bdgt_rel in zip(budgets, budgets_relative):
+    for bdgt, bdgt_rel in zip(budgets, budgets_relative, strict=False):
         bdgt_rel_str = f"{bdgt_rel:.0%}"
         if bdgt_rel <= 0.01 and bdgt_rel != 0:
             bdgt_rel_str = "<1%"

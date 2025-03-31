@@ -74,7 +74,6 @@ def stacked_bar_plot(
 
     References:
         .. [1] Bordt, M., and von Luxburg, U. (2023). From Shapley Values to Generalized Additive Models and back. Proceedings of The 26th International Conference on Artificial Intelligence and Statistics, PMLR 206:709-745. url: https://proceedings.mlr.press/v206/bordt23a.html
-
     """
     # sanitize inputs
     if max_order is None:

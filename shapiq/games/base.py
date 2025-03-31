@@ -3,7 +3,6 @@
 import os
 import pickle
 import warnings
-from abc import ABC
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -12,7 +11,7 @@ from ..interaction_values import InteractionValues
 from ..utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
 
 
-class Game(ABC):
+class Game:
     """Base class for games/benchmarks in the ``shapiq`` package.
 
     This class implements some common methods and attributes that all games should have.
@@ -95,8 +94,8 @@ class Game(ABC):
         path_to_values: str | None = None,
         verbose: bool = False,
         player_names: list[str] | None = None,
-        *args,
-        **kwargs,
+        *_args,
+        **_kwargs,
     ) -> None:
         # manual flag for choosing precomputed values even if not all values might be stored
         self.precompute_flag: bool = False  # flag to manually override the precomputed check
@@ -123,7 +122,7 @@ class Game(ABC):
                         "Normalization value is set to `None`. No normalization value was provided"
                         " at initialization. Make sure to set the normalization value before"
                         " calling the game."
-                    )
+                    ), stacklevel=2
                 )
 
         game_id: str = str(hash(self))[:8]
@@ -364,7 +363,7 @@ class Game(ABC):
             warnings.warn(
                 "The number of players is greater than 16. Precomputing all coalitions might "
                 "take a long time. Consider providing a subset of coalitions to precompute. "
-                "Note that 2 ** n_players coalitions will be evaluated for the pre-computation."
+                "Note that 2 ** n_players coalitions will be evaluated for the pre-computation.", stacklevel=2
             )
         if coalitions is None:
             coalitions = list(powerset(range(self.n_players)))  # might be getting slow
@@ -398,7 +397,7 @@ class Game(ABC):
 
         if not self.precomputed:
             warnings.warn(
-                UserWarning("The game has not been precomputed yet. Saving the game may be slow.")
+                UserWarning("The game has not been precomputed yet. Saving the game may be slow."), stacklevel=2
             )
             self.precompute()
 
@@ -497,7 +496,7 @@ class Game(ABC):
         if not self.precomputed and self.n_players > 16:  # pragma: no cover
             warnings.warn(
                 "The game is not precomputed and the number of players is greater than 16. "
-                "Computing the exact interaction values via brute force may take a long time."
+                "Computing the exact interaction values via brute force may take a long time.", stacklevel=2
             )  # pragma: no cover
 
         exact_computer = ExactComputer(self.n_players, game=self)

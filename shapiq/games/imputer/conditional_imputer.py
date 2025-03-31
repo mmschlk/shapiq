@@ -83,7 +83,7 @@ class ConditionalImputer(Imputer):
         if self.conditional_budget > 2**n_features:
             warnings.warn(
                 "`conditional_budget` is higher than `2**n_features`; setting "
-                "`conditional_budget = 2**n_features`"
+                "`conditional_budget = 2**n_features`", stacklevel=2
             )
             self.conditional_budget = 2**n_features
         X_tiled = np.repeat(data, repeats=self.conditional_budget, axis=0)
@@ -166,7 +166,7 @@ class ConditionalImputer(Imputer):
         return empty_prediction
 
 
-def hamming_distance(X, x):
+def hamming_distance(X: np.ndarray, x: np.ndarray) -> np.ndarray:
     """Computes hamming distance between point x (1d) and points in X (2d).
     https://en.wikipedia.org/wiki/Hamming_distance
     """

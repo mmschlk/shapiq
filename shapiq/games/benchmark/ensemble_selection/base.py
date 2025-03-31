@@ -11,7 +11,7 @@ from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq.games.base import Game
-from shapiq.utils.types import Model
+from shapiq.utils.custom_types import Model
 
 
 class EnsembleSelection(Game):
@@ -96,7 +96,7 @@ class EnsembleSelection(Game):
             ]
         if ensemble_members is None:
             ensemble_members = []
-            for i in range(n_members):
+            for _ in range(n_members):
                 # sample a random ensemble member
                 ensemble_member = str(self._rng.choice(self.available_members, size=1)[0])
                 ensemble_members.append(ensemble_member)

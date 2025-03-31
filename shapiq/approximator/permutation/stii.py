@@ -66,8 +66,8 @@ class PermutationSamplingSTII(Approximator):
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
         batch_size: int = 1,
-        *args,
-        **kwargs,
+        *_args,
+        **_kwargs,
     ) -> InteractionValues:
         """Approximates the interaction values.
 
@@ -100,7 +100,7 @@ class PermutationSamplingSTII(Approximator):
                 message=f"The budget {budget} is too small to compute the lower order interactions "
                 f"of the STII index, which requires {lower_order_cost} evaluations. Consider "
                 f"increasing the budget.",
-                category=UserWarning,
+                category=UserWarning, stacklevel=2,
             )
 
             interactions = InteractionValues(
@@ -131,7 +131,7 @@ class PermutationSamplingSTII(Approximator):
                 message=f"The budget {budget} is too small to perform a single iteration, which "
                 f"requires {self.iteration_cost + lower_order_cost + 1} evaluations. Consider "
                 f"increasing the budget.",
-                category=UserWarning,
+                category=UserWarning, stacklevel=2,
             )
 
             interactions = InteractionValues(
@@ -182,7 +182,7 @@ class PermutationSamplingSTII(Approximator):
 
             # update the interaction scores by iterating over the permutations again
             subset_index = 0
-            for permutation_id in range(n_permutations):
+            for _ in range(n_permutations):
                 for interaction in powerset(
                     self._grand_coalition_set, self.max_order, self.max_order
                 ):
