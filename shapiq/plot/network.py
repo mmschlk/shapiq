@@ -70,6 +70,7 @@ def network_plot(
         .. [1] Muschalik, M., Fumagalli, F., Hammer, B., & Hüllermeier, E. (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
 
         .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766–778.
+
     """
     fig, axis = plt.subplots(figsize=(6, 6))
     axis.axis("off")
@@ -208,8 +209,8 @@ def _add_weight_to_edges_in_graph(
 
     Returns:
         None
-    """
 
+    """
     # get min and max value for n_shapley_values
     min_node_value, max_node_value = np.min(first_order_values), np.max(first_order_values)
     min_edge_value, max_edge_value = np.min(second_order_values), np.max(second_order_values)
@@ -250,6 +251,7 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
 
     Returns:
         None
+
     """
     sizes = [1.0, 0.2, 0.2, 1]
     labels = ["high pos.", "low pos.", "low neg.", "high neg."]
@@ -329,6 +331,7 @@ def _add_center_image(
 
     Returns:
         None
+
     """
     # plot the center image
     image_to_plot = Image.fromarray(np.asarray(copy.deepcopy(center_image)))
@@ -355,6 +358,7 @@ def _get_highest_node_index(n_nodes: int) -> int:
 
     Returns:
         int: The index of the highest node.
+
     """
     n_connections = 0
     # highest node is the last node below 1/4 of all connections in the circle
@@ -372,6 +376,7 @@ def _order_nodes(n_nodes: int) -> list[int]:
 
     Returns:
         list[int]: The order of the nodes.
+
     """
     highest_node = _get_highest_node_index(n_nodes)
     nodes_visit_order = [highest_node]

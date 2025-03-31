@@ -1,5 +1,6 @@
 """Note this should not be directly imported in the module as it depends on torch which is not
-installed by default."""
+installed by default.
+"""
 
 import os
 import warnings
@@ -31,9 +32,7 @@ class SmallNeuralNetwork(nn.Module):
 
 
 class CaliforniaHousingTorchModel:
-
     def __init__(self, n_epochs: int = 100):
-
         # instantiate the model
         self.torch_model = SmallNeuralNetwork()
         try:
@@ -57,6 +56,7 @@ class CaliforniaHousingTorchModel:
 
         Returns:
             The model's prediction on the input data.
+
         """
         self.torch_model.eval()
         x = torch.tensor(x.astype(float), dtype=torch.float32)

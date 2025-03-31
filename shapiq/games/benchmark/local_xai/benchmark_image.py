@@ -70,7 +70,6 @@ class ImageClassifier(Game):
         *args,
         **kwargs,
     ) -> None:
-
         if x_explain_path is None:
             raise ValueError("The image to be explained must be provided.")
 
@@ -130,6 +129,6 @@ class ImageClassifier(Game):
 
         Returns:
             The predicted class probability of the coalition given the image classifier model.
-        """
 
+        """
         return self.model_function(coalitions)

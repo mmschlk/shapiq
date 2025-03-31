@@ -4,8 +4,7 @@ from typing import Any
 
 
 def safe_isinstance(obj: Any, class_path_str: str | list[str] | tuple[str]) -> bool:
-    """
-    Acts as a safe version of isinstance without having to explicitly import packages which may not
+    """Acts as a safe version of isinstance without having to explicitly import packages which may not
     exist in the user's environment. Checks if obj is an instance of type specified by
     class_path_str.
 
@@ -19,6 +18,7 @@ def safe_isinstance(obj: Any, class_path_str: str | list[str] | tuple[str]) -> b
 
     Returns:
             True if isinstance is true and the package exists, False otherwise
+
     """
     if isinstance(class_path_str, str):
         class_path_strs = [class_path_str]
@@ -59,7 +59,7 @@ def safe_isinstance(obj: Any, class_path_str: str | list[str] | tuple[str]) -> b
 
 
 def check_import_module(name: str, functionality: str = None):
-    """check if the optional dependency is available"""
+    """Check if the optional dependency is available"""
     try:
         import_module(name)
     except ImportError:

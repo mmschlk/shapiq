@@ -1,5 +1,6 @@
 """TreeExplainer class that uses the TreeSHAPIQ algorithm for
-computing any-order Shapley Interactions for tree ensembles."""
+computing any-order Shapley Interactions for tree ensembles.
+"""
 
 import copy
 import warnings
@@ -14,8 +15,7 @@ from .validation import validate_tree_model
 
 
 class TreeExplainer(Explainer):
-    """
-    The explainer for tree-based models using the TreeSHAP-IQ algorithm.
+    """The explainer for tree-based models using the TreeSHAP-IQ algorithm.
     For details, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
 
     TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.
@@ -36,6 +36,7 @@ class TreeExplainer(Explainer):
         class_index: The class index of the model to explain. Defaults to ``None``, which will set
             the class index to ``1`` per default for classification models and is ignored for
             regression models.
+
     """
 
     def __init__(
@@ -47,7 +48,6 @@ class TreeExplainer(Explainer):
         class_index: int | None = None,
         **kwargs,
     ) -> None:
-
         super().__init__(model)
 
         if index == "SV" and max_order > 1:
@@ -85,6 +85,7 @@ class TreeExplainer(Explainer):
 
         Returns:
             The interaction values for the instance.
+
         """
         if len(x.shape) != 1:
             raise TypeError("explain expects a single instance, not a batch.")
@@ -117,8 +118,8 @@ class TreeExplainer(Explainer):
 
         Returns:
             The baseline value for the explainer.
-        """
 
+        """
         baseline_value = sum(
             [treeshapiq.empty_prediction for treeshapiq in self._treeshapiq_explainers]
         )

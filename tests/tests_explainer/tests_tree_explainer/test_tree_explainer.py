@@ -150,7 +150,6 @@ def test_against_shap_implementation():
 
 def test_xgboost_reg(xgb_reg_model, background_reg_data):
     """Tests the shapiq implementation of TreeSHAP agains SHAP's implementation for XGBoost."""
-
     explanation_instance = 0
 
     # the following code is used to get the shap values from the SHAP implementation
@@ -177,7 +176,6 @@ def test_xgboost_reg(xgb_reg_model, background_reg_data):
 
 def test_xgboost_clf(xgb_clf_model, background_clf_data):
     """Tests the shapiq implementation of TreeSHAP against SHAP's implementation for XGBoost."""
-
     explanation_instance = 1
     class_label = 1
 
@@ -215,7 +213,6 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
 
 def test_random_forest_reg(rf_reg_model, background_reg_data):
     """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for Random Forest."""
-
     explanation_instance = 1
 
     # the following code is used to get the shap values from the SHAP implementation
@@ -244,7 +241,6 @@ def test_random_forest_reg(rf_reg_model, background_reg_data):
 
 def test_random_forest_shap(rf_clf_model, background_clf_data):
     """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for Random Forest."""
-
     explanation_instance = 1
     class_label = 1
 
@@ -276,7 +272,6 @@ def test_random_forest_shap(rf_clf_model, background_clf_data):
 
 def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
     """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for LightGBM."""
-
     explanation_instance = 1
     class_label = 1
 
@@ -321,7 +316,6 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     the thresholds makes the model less true to the original model but only then the explanations
     match.
     """
-
     explanation_instance = 0
     class_label = 1
 
@@ -367,7 +361,6 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
 
 def test_iso_forest_shap(if_clf_model):
     """Tests the shapiq implementation of TreeSHAP vs. SHAP's implementation for Isolation Forest."""
-
     x_explain = np.array([0.125, 0.05])
 
     # the following code is used to get the shap values from the SHAP implementation

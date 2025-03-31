@@ -29,6 +29,7 @@ def get_conditional_sample_weights(
         >>> sample_count = np.asarray([100, 70, 50, 20, 30, 15, 15])
         >>> get_conditional_sample_weights(sample_count, parent_array)
         >>> [1., 0.7, 0.71428571, 0.28571429, 0.3, 0.5, 0.5]
+
     """
     conditional_sample_weights = np.zeros_like(sample_count, dtype=float)
     conditional_sample_weights[0] = 1
@@ -50,5 +51,6 @@ def compute_empty_prediction(
 
     Returns:
         The empty prediction of the tree model.
+
     """
     return np.sum(leaf_values * leaf_sample_weights) / np.sum(leaf_sample_weights)

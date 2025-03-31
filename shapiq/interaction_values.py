@@ -1,5 +1,6 @@
 """InteractionValues data-class, which is used to store the interaction
-scores."""
+scores.
+"""
 
 import copy
 import os
@@ -46,6 +47,7 @@ class InteractionValues:
     Raises:
         UserWarning: If the index is not a valid index as defined in ``ALL_AVAILABLE_INDICES``.
         TypeError: If the baseline value is not a number.
+
     """
 
     values: np.ndarray
@@ -105,6 +107,7 @@ class InteractionValues:
         Args:
             threshold: The threshold value below which interactions are zeroed out. Defaults to
                 1e-3.
+
         """
         # find interactions to remove in self.values
         interactions_to_remove: set[int] = set(np.where(np.abs(self.values) < threshold)[0])
@@ -125,6 +128,7 @@ class InteractionValues:
 
         Returns:
             The top k interactions as an InteractionValues object.
+
         """
         top_k_indices = np.argsort(np.abs(self.values))[::-1][:k]
         new_values = np.zeros(k, dtype=float)
@@ -174,6 +178,7 @@ class InteractionValues:
             {(0, 2): 0.5, (1, 0): 0.6}
             >>> sorted_top_k_interactions
             [((1, 0), 0.6), ((0, 2), 0.5)]
+
         """
         if as_interaction_values:
             return self.get_top_k_interactions(k)
@@ -226,6 +231,7 @@ class InteractionValues:
 
         Returns:
             The interaction value. If the interaction is not present zero is returned.
+
         """
         if isinstance(item, int):
             return float(self.values[item])
@@ -245,6 +251,7 @@ class InteractionValues:
 
         Raises:
             KeyError: If the interaction is not found in the InteractionValues object.
+
         """
         try:
             if isinstance(item, int):
@@ -265,6 +272,7 @@ class InteractionValues:
 
         Returns:
             True if the two objects are equal, False otherwise.
+
         """
         if not isinstance(other, InteractionValues):
             raise TypeError("Cannot compare InteractionValues with other types.")
@@ -288,6 +296,7 @@ class InteractionValues:
 
         Returns:
             True if the two objects are not equal, False otherwise.
+
         """
         return not self.__eq__(other)
 
@@ -372,7 +381,7 @@ class InteractionValues:
             interaction_lookup = self.interaction_lookup.copy()
             baseline_value = self.baseline_value + other
         else:
-            raise TypeError("Cannot add InteractionValues with object of type " f"{type(other)}.")
+            raise TypeError(f"Cannot add InteractionValues with object of type {type(other)}.")
         return InteractionValues(
             values=added_values,
             index=self.index,
@@ -459,6 +468,7 @@ class InteractionValues:
 
         Raises:
             ValueError: If the order is less than ``1``.
+
         """
         from itertools import permutations
 
@@ -487,6 +497,7 @@ class InteractionValues:
 
         Returns:
             The interaction values of the specified order.
+
         """
         max_order = order if max_order is None else max_order
         min_order = order if min_order is None else min_order
@@ -540,6 +551,7 @@ class InteractionValues:
             {(0,): 0.1, (2,): 0.3, (0, 2): 0.4}
             >>> interaction_values.get_subset([1]).dict_values
             {(1,): 0.2}
+
         """
         keys = self.interaction_lookup.keys()
         idx, keys_in_subset = [], []
@@ -573,6 +585,7 @@ class InteractionValues:
             path: The path to save the InteractionValues object to.
             as_pickle: Whether to save the InteractionValues object as a pickle file (``True``) or
                 as a ``npz`` file (``False``). Defaults to ``False``.
+
         """
         # check if the directory exists
         directory = os.path.dirname(path)
@@ -608,6 +621,7 @@ class InteractionValues:
 
         Returns:
             The loaded InteractionValues object.
+
         """
         return InteractionValues.load(path)
 
@@ -620,6 +634,7 @@ class InteractionValues:
 
         Returns:
             The loaded InteractionValues object.
+
         """
         # try loading as npz file
         try:
@@ -650,6 +665,7 @@ class InteractionValues:
 
         Returns:
             The InteractionValues object created from the dictionary.
+
         """
         return cls(
             values=data["values"],
@@ -668,6 +684,7 @@ class InteractionValues:
 
         Returns:
             The InteractionValues object as a dictionary.
+
         """
         return {
             "values": self.values,
@@ -697,6 +714,7 @@ class InteractionValues:
         Note:
             For documentation on the aggregation methods, see the ``aggregate_interaction_values()``
             function.
+
         """
         return aggregate_interaction_values([self, *others], aggregation)
 
@@ -729,8 +747,8 @@ class InteractionValues:
 
         Returns:
             The SI graph as a tuple containing the figure and the axes.
-        """
 
+        """
         from shapiq.plot.si_graph import si_graph_plot
 
         return si_graph_plot(self, show=show, **kwargs)
@@ -742,6 +760,7 @@ class InteractionValues:
 
         Returns:
             The stacked bar plot as a tuple containing the figure and the axes.
+
         """
         from shapiq import stacked_bar_plot
 
@@ -769,6 +788,7 @@ class InteractionValues:
 
         Returns:
             The force plot as a matplotlib figure (if show is ``False``).
+
         """
         from .plot import force_plot
 
@@ -799,6 +819,7 @@ class InteractionValues:
             show: Whether to show the plot. Defaults to ``False``.
             abbreviate: Whether to abbreviate the feature names or not. Defaults to ``True``.
             max_display: The maximum number of interactions to display. Defaults to ``10``.
+
         """
         from shapiq import waterfall_plot
 
@@ -823,6 +844,7 @@ class InteractionValues:
         Returns:
             If ``show`` is ``True``, the function returns ``None``. Otherwise, it returns a tuple
             with the figure and the axis of the plot.
+
         """
         from shapiq.plot.sentence import sentence_plot
 
@@ -835,6 +857,7 @@ class InteractionValues:
 
         Returns:
             The upset plot as a matplotlib figure (if show is ``False``).
+
         """
         from shapiq.plot.upset import upset_plot
 
@@ -886,12 +909,14 @@ def aggregate_interaction_values(
                 (1,): 0.25
                 (2,): 0.35
         )
+
     Note:
         The index of the aggregated InteractionValues object is set to the index of the first
         InteractionValues object in the list.
 
     Raises:
         ValueError: If the aggregation method is not supported.
+
     """
 
     def _aggregate(vals: list[float], method: str) -> float:
@@ -969,6 +994,7 @@ def finalize_computed_interactions(
 
     Raises:
         ValueError: If the baseline value is not provided for SII and k-SII.
+
     """
     from .game_theory.aggregation import aggregate_base_interaction
 

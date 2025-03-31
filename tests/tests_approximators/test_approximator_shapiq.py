@@ -21,7 +21,6 @@ from shapiq.interaction_values import InteractionValues
 )
 def test_initialization(n, max_order, index, top_order):
     """Tests the initialization of the ShapIQ approximator."""
-
     approximator = SHAPIQ(n, max_order, index=index, top_order=top_order)
     assert approximator.n == n
     assert approximator.max_order == max_order

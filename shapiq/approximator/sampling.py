@@ -68,6 +68,7 @@ class CoalitionSampler:
          [True, True, True],
          [True, False, False],
          [False, True, True]]
+
     """
 
     def __init__(
@@ -141,6 +142,7 @@ class CoalitionSampler:
 
         Returns:
             The number of coalitions that have been sampled.
+
         """
         try:
             return int(self._sampled_coalitions_matrix.shape[0])
@@ -153,6 +155,7 @@ class CoalitionSampler:
 
         Returns:
             The Boolean array whether the coalition size was sampled.
+
         """
         return copy.deepcopy(self._is_coalition_size_sampled)
 
@@ -162,6 +165,7 @@ class CoalitionSampler:
 
         Returns:
             The Boolean array whether the coalition was sampled.
+
         """
         coalitions_size = np.sum(self.coalitions_matrix, axis=1)
         return self._is_coalition_size_sampled[coalitions_size]
@@ -172,6 +176,7 @@ class CoalitionSampler:
 
         Returns:
             An array with adjusted weight for each coalition
+
         """
         coalitions_counter = self.coalitions_counter
         is_coalition_sampled = self.is_coalition_sampled
@@ -196,6 +201,7 @@ class CoalitionSampler:
         Returns:
             A copy of the sampled coalitions matrix as a binary matrix of shape (n_coalitions,
                 n_players).
+
         """
         return copy.deepcopy(self._sampled_coalitions_matrix)
 
@@ -205,6 +211,7 @@ class CoalitionSampler:
 
         Returns:
             An array containing the probabilities of shappe ``(n+1,)``
+
         """
         size_probs = np.zeros(self.n + 1)
         size_probs[self._coalitions_to_sample] = self.adjusted_sampling_weights / np.sum(
@@ -218,6 +225,7 @@ class CoalitionSampler:
 
         Returns:
             A copy of the sampled coalitions counter of shape ``(n_coalitions,)``.
+
         """
         return copy.deepcopy(self._sampled_coalitions_counter)
 
@@ -229,6 +237,7 @@ class CoalitionSampler:
 
         Returns:
             A copy of the sampled coalitions probabilities of shape ``(n_coalitions,)``.
+
         """
         if (
             self._sampled_coalitions_size_prob is not None
@@ -243,6 +252,7 @@ class CoalitionSampler:
 
         Returns:
             A copy of the probabilities of shape (n_coalitions,).
+
         """
         return copy.deepcopy(self._sampled_coalitions_size_prob)
 
@@ -256,6 +266,7 @@ class CoalitionSampler:
 
         Returns:
             A copy of the sampled probabilities of shape ``(n_coalitions,)``.
+
         """
         return copy.deepcopy(self._sampled_coalitions_in_size_prob)
 
@@ -265,6 +276,7 @@ class CoalitionSampler:
 
         Returns:
             The coalition sizes of the sampled coalitions.
+
         """
         return np.sum(self.coalitions_matrix, axis=1)
 
@@ -274,6 +286,7 @@ class CoalitionSampler:
 
         Returns:
             The index of the empty coalition or ``None`` if the empty coalition was not sampled.
+
         """
         try:
             if self.coalitions_per_size[0] >= 1:
@@ -293,6 +306,7 @@ class CoalitionSampler:
 
         Returns:
             The sampling budget reduced by the number of coalitions in ``coalitions_to_compute``.
+
         """
         coalitions_per_size = np.array([binom(self.n, k) for k in range(self.n + 1)])
         expected_number_of_coalitions = sampling_budget * self.adjusted_sampling_weights
@@ -333,6 +347,7 @@ class CoalitionSampler:
 
         Returns:
             The remaining sampling budget after the pairing-trick.
+
         """
         coalition_size = len(coalition_tuple)
         paired_coalition_size = self.n - coalition_size
@@ -354,6 +369,7 @@ class CoalitionSampler:
         Args:
             sampling_budget: The budget for the approximation (i.e., the number of distinct
                 coalitions to sample/evaluate).
+
         """
         self.sampled_coalitions_dict = {}
         self.coalitions_per_size = np.zeros(self.n + 1, dtype=int)
@@ -384,6 +400,7 @@ class CoalitionSampler:
 
         Returns:
             The remaining sampling budget, i.e. reduced by ``2``.
+
         """
         empty_grand_coalition_indicator = np.zeros_like(self.adjusted_sampling_weights, dtype=bool)
         empty_grand_coalition_size = [0, self.n]
@@ -418,6 +435,7 @@ class CoalitionSampler:
 
         Raises:
             UserWarning: If the sampling budget is higher than the maximum number of coalitions.
+
         """
         if sampling_budget < 2:
             # Empty and grand coalition always have to be computed.
@@ -513,6 +531,7 @@ class CoalitionSampler:
 
         Returns:
             The negative distance to the center n/2
+
         """
         # Sort by distance to center
         return -abs(self.n / 2 - value)

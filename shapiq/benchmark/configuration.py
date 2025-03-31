@@ -767,6 +767,7 @@ def get_game_file_name_from_config(
 
     Returns:
         The file name of the game data
+
     """
     file_name = "_".join(f"{key}={value}" for key, value in configuration.items())
     if iteration is not None:
@@ -782,6 +783,7 @@ def get_game_class_from_name(game_name: str) -> Game.__class__:
 
     Returns:
         The class of the game
+
     """
     return GAME_NAME_TO_CLASS_MAPPING[game_name]
 
@@ -794,6 +796,7 @@ def get_name_from_game_class(game_class: Game.__class__) -> str:
 
     Returns:
         The name of the game.
+
     """
     for name, game_cls in GAME_NAME_TO_CLASS_MAPPING.items():
         if game_cls == game_class:

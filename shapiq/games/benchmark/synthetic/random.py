@@ -11,6 +11,7 @@ class RandomGame(Game):
     Args:
         n: The number of players.
         random_state: The random state for the random number generator.
+
     """
 
     def __init__(self, n: int, random_state: int | None = None):
@@ -27,6 +28,7 @@ class RandomGame(Game):
 
         Returns:
             A random vector of integers between 0 and 100.
+
         """
         if self.random_state is not None:
             self.rng = np.random.default_rng(self.random_state)

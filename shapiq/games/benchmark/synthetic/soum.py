@@ -1,5 +1,6 @@
 """This module contains the SOUM class. The SOUM class is constructed from a linear combination of
-the UnanimityGame Class."""
+the UnanimityGame Class.
+"""
 
 import numpy as np
 
@@ -27,6 +28,7 @@ class UnanimityGame(Game):
         >>> coalitions = np.array(coalitions).astype(bool)
         >>> game(coalitions)
         array([0., 0., 1., 1.])
+
     """
 
     def __init__(self, interaction_binary: np.ndarray):
@@ -43,6 +45,7 @@ class UnanimityGame(Game):
 
         Returns:
             The worth of the coalition.
+
         """
         worth = np.prod(coalitions >= self.interaction_binary, 1)
         return worth
@@ -80,6 +83,7 @@ class SOUM(Game):
         array([0., 0.25, 1.5, 2.])  # depending on the random linear coefficients this can vary
         >>> game.moebius_coefficients
         InteractionValues(values=array([0.25, 0.25, 0.25]), index='Moebius', max_order=4, min_order=0, ...)
+
     """
 
     def __init__(
@@ -142,6 +146,7 @@ class SOUM(Game):
 
         Returns:
             The worth of the coalition.
+
         """
         worth = np.zeros(coalitions.shape[0])
         for i, game in self.unanimity_games.items():
@@ -157,6 +162,7 @@ class SOUM(Game):
 
         Returns:
             The exact values for the given index and order.
+
         """
         from shapiq.game_theory.moebius_converter import MoebiusConverter
 
@@ -173,6 +179,7 @@ class SOUM(Game):
 
         Returns:
             An InteractionValues object containing all non-zero Möbius coefficients of the SOUM.
+
         """
         # fill the moebius coefficients dict from the game
         moebius_coefficients_dict = {}

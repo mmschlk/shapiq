@@ -25,6 +25,7 @@ class DataValuation(Game):
         normalize: Whether the game values should be normalized. Defaults to `True`.
         verbose: Whether to print verbose output. Defaults to `False`.
         empty_data_value: The worth of an empty subset of data. Defaults to 0.0.
+
     """
 
     def __init__(
@@ -40,7 +41,6 @@ class DataValuation(Game):
         verbose: bool = False,
         empty_data_value: float = 0.0,
     ) -> None:
-
         # set the random state
         if random_state is not None:
             np.random.seed(random_state)
@@ -76,6 +76,7 @@ class DataValuation(Game):
 
         Returns:
             The worth of the coalition.
+
         """
         worth = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):

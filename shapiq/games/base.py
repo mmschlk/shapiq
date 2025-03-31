@@ -84,6 +84,7 @@ class Game(ABC):
         >>> new_game = DummyGame.load("game.pkl")
         >>> new_game.precomputed, new_game.n_values_stored
         True, 2
+
     """
 
     def __init__(
@@ -185,6 +186,7 @@ class Game(ABC):
 
         Args:
             coalitions: The coalitions to convert to one-hot encoding.
+
         Returns:
             np.ndarray: The coalitions in the correct format
 
@@ -202,6 +204,7 @@ class Game(ABC):
             >>> coalitions = [1, 0, 0, 0]
             >>> coalitions = [(1, "Alice")]
             >>> coalitions = np.array([1, -1, 2])
+
         """
         error_message = (
             "List may only contain tuples of integers or strings. The tuples are not allowed to "
@@ -271,6 +274,7 @@ class Game(ABC):
 
         Returns:
             The values of the coalitions.
+
         """
         coalitions = self._check_coalitions(coalitions)  # validate and convert input coalitions
         verbose = verbose or self.verbose
@@ -314,6 +318,7 @@ class Game(ABC):
 
         Note:
             This method has to be implemented in the inheriting class.
+
         """
         raise NotImplementedError("The value function has to be implemented in inherited classes.")
 
@@ -352,6 +357,7 @@ class Game(ABC):
             all coalitions is evaluated. If the number of players is greater than 16 and no
             coalitions are given, a warning is raised to inform the user about the potential
             slow computation.
+
         """
         # if more than 16 players and no coalitions are given, warn the user
         if self.n_players > 16 and coalitions is None:
@@ -384,6 +390,7 @@ class Game(ABC):
 
         Args:
             path: The path to save the game.
+
         """
         # check if path ends with .npz
         if not path.endswith(".npz"):
@@ -420,6 +427,7 @@ class Game(ABC):
             precomputed: Whether the game should be set to precomputed after loading the values no
                 matter how many values are loaded. This can be useful if a game is loaded for a
                 subset of all coalitions and only this subset will be used. Defaults to ``False``.
+
         """
         # check if path ends with .npz
         if not path.endswith(".npz"):
@@ -444,6 +452,7 @@ class Game(ABC):
 
         Args:
             path: The path to save the game.
+
         """
         with open(path, "wb") as f:
             pickle.dump(self, f)
@@ -454,6 +463,7 @@ class Game(ABC):
 
         Args:
             path: The path to load the game from.
+
         """
         with open(path, "rb") as f:
             game = pickle.load(f)
@@ -479,6 +489,7 @@ class Game(ABC):
 
         Returns:
             InteractionValues: The exact interaction values.
+
         """
         from shapiq.game_theory.exact import ExactComputer
 
@@ -535,6 +546,7 @@ class Game(ABC):
 
         Raises:
             KeyError: If the coalition is not stored in the game.
+
         """
         try:
             return self.value_storage[self.coalition_lookup[tuple(sorted(item))]]

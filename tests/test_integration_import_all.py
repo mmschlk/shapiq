@@ -1,5 +1,6 @@
 """This integration test module contains all tests regarding the import-ability of the package.
-(I.e. it checks whether all modules can be imported without errors.)"""
+(I.e. it checks whether all modules can be imported without errors.)
+"""
 
 import importlib
 import pkgutil
@@ -48,7 +49,6 @@ def test_import_submodules(package):
 
 def test_approximator_imports():
     """Tests whether all modules can be imported manually."""
-
     assert True
 
 

@@ -127,6 +127,7 @@ class Approximator(ABC):
 
         Raises:
             NotImplementedError: If the method is not implemented.
+
         """
         raise NotImplementedError(
             "The approximate method must be implemented in the subclass."
@@ -140,10 +141,10 @@ class Approximator(ABC):
 
         Returns:
             The weights for sampling subsets of size ``s`` in shape ``(n + 1,)``.
+
         """
         weight_vector = np.zeros(shape=self.n + 1)
         if self.index in ["FBII"]:
-
             try:
                 for coalition_size in range(0, self.n + 1):
                     weight_vector[coalition_size] = binom(self.n, coalition_size) / 2**self.n
@@ -177,6 +178,7 @@ class Approximator(ABC):
 
         Returns:
             The result array.
+
         """
         result = np.zeros(len(self._interaction_lookup), dtype=dtype)
         return result
@@ -187,6 +189,7 @@ class Approximator(ABC):
 
         Returns:
             The iterator.
+
         """
         return range(self.min_order, self.max_order + 1)
 
@@ -202,6 +205,7 @@ class Approximator(ABC):
 
         Returns:
             int, int: The number of iterations and the size of the last batch.
+
         """
         n_iterations = budget // (iteration_cost * batch_size)
         last_batch_size = batch_size
@@ -272,6 +276,7 @@ class Approximator(ABC):
 
         Returns:
             The aggregated interaction values.
+
         """
         from shapiq.game_theory.aggregation import aggregate_base_interaction
 

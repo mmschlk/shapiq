@@ -38,6 +38,7 @@ class CaliforniaHousing(DatasetValuation):
         >>> game = Game(path_to_values="california_housing_values.npz")
         >>> game.n_players
         4
+
     """
 
     def __init__(
@@ -50,7 +51,6 @@ class CaliforniaHousing(DatasetValuation):
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
@@ -109,6 +109,7 @@ class BikeSharing(DatasetValuation):
         >>> game = Game(path_to_values="bike_sharing_values.npz")
         >>> game.n_players
         4
+
     """
 
     def __init__(
@@ -121,7 +122,6 @@ class BikeSharing(DatasetValuation):
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
@@ -180,6 +180,7 @@ class AdultCensus(DatasetValuation):
         >>> game = Game(path_to_values="adult_census_values.npz")
         >>> game.n_players
         4
+
     """
 
     def __init__(
@@ -192,7 +193,6 @@ class AdultCensus(DatasetValuation):
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,

@@ -45,6 +45,7 @@ def powerset(
 
         >>> list(powerset(["A", "B", "C"], min_size=1, max_size=2))
         [('A',), ('B',), ('C',), ('A', 'B'), ('A', 'C'), ('B', 'C')]
+
     """
     s = sorted(list(iterable))
     max_size = len(s) if max_size is None else min(max_size, len(s))
@@ -74,6 +75,7 @@ def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], int | 
 
         >>> pair_subset_sizes(order=2, n=5)
         ([(2, 3)], None)
+
     """
     subset_sizes = list(range(order, n - order + 1))
     n_paired_subsets = len(subset_sizes) // 2
@@ -111,6 +113,7 @@ def split_subsets_budget(
 
         >>> split_subsets_budget(order=1, n=6, budget=100, sampling_weights=np.zeros(shape=(6,)))
         ([], [1, 2, 3, 4, 5], 100)
+
     """
     # determine paired and unpaired subsets
     complete_subsets: list[int] = []
@@ -174,6 +177,7 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
                [0, 1, 1, 0],
                [0, 1, 0, 1],
                [0, 0, 1, 1]])
+
     """
     total_subsets = int(sum(binom(n, size) for size in subset_sizes))
     subset_matrix = np.zeros(shape=(total_subsets, n), dtype=bool)
@@ -205,6 +209,7 @@ def generate_interaction_lookup(
         {(0, 1): 0, (0, 2): 1, (1, 2): 2}
         >>> generate_interaction_lookup(["A", "B", "C"], 1, 2)
         {('A',): 0, ('B',): 1, ('C',): 2, ('A', 'B'): 3, ('A', 'C'): 4, ('B', 'C'): 5}
+
     """
     if isinstance(players, int):
         players = set(range(players))
@@ -241,6 +246,7 @@ def transform_coalitions_to_array(
         array([[ True,  True, False, False],
                [False,  True,  True, False],
                [ True, False,  True, False]])
+
     """
     n_coalitions = len(coalitions)
     if n_players is None:
@@ -269,6 +275,7 @@ def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int]]:
         >>> coalitions = np.array([[False, False, False], [True, True, True]])
         >>> transform_array_to_coalitions(coalitions)
         [(), (0, 1, 2)]
+
     """
     return [tuple(np.where(coalition)[0]) for coalition in coalitions]
 
@@ -292,6 +299,7 @@ def count_interactions(n: int, max_order: int | None = None, min_order: int = 0)
         7
         >>> count_interactions(3, 2, 1)
         6
+
     """
     if max_order is None:
         max_order = n

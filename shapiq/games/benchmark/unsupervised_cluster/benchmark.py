@@ -15,6 +15,7 @@ class AdultCensus(ClusterExplanation):
             'calinski_harabasz_score'.
         normalize: Whether to normalize the data before clustering. Defaults to True.
         random_state: The random state to use for the clustering algorithm. Defaults to 42.
+
     """
 
     def __init__(
@@ -26,7 +27,6 @@ class AdultCensus(ClusterExplanation):
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
-
         setup = GameBenchmarkSetup("adult_census", verbose=False)
         data = setup.x_data
 
@@ -61,6 +61,7 @@ class BikeSharing(ClusterExplanation):
             'calinski_harabasz_score'.
         normalize: Whether to normalize the data before clustering. Defaults to True.
         random_state: The random state to use for the clustering algorithm. Defaults to 42.
+
     """
 
     def __init__(
@@ -71,7 +72,6 @@ class BikeSharing(ClusterExplanation):
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
-
         setup = GameBenchmarkSetup("bike_sharing", verbose=False)
         data = setup.x_data
 
@@ -106,6 +106,7 @@ class CaliforniaHousing(ClusterExplanation):
             'calinski_harabasz_score'.
         normalize: Whether to normalize the data before clustering. Defaults to True.
         random_state: The random state to use for the clustering algorithm. Defaults to 42.
+
     """
 
     def __init__(
@@ -116,7 +117,6 @@ class CaliforniaHousing(ClusterExplanation):
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
-
         setup = GameBenchmarkSetup("california_housing", verbose=False)
         data = setup.x_data
 

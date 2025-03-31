@@ -23,21 +23,15 @@ skip_if_no_tabpfn = pytest.mark.skipif(
 )
 
 skip_if_no_tensorflow = pytest.mark.skipif(
-    not is_installed("tensorflow"),
-    reason="tensorflow is not installed"
+    not is_installed("tensorflow"), reason="tensorflow is not installed"
 )
 
 skip_if_no_xgboost = pytest.mark.skipif(
-    not is_installed("xgboost"),
-    reason="xgboost is not installed"
+    not is_installed("xgboost"), reason="xgboost is not installed"
 )
 
-skip_if_no_keras = pytest.mark.skipif(
-    not is_installed("keras"),
-    reason="keras is not installed"
-)
+skip_if_no_keras = pytest.mark.skipif(not is_installed("keras"), reason="keras is not installed")
 
 skip_if_no_lightgbm = pytest.mark.skipif(
-    not is_installed("lightgbm"),
-    reason="lightgbm is not installed"
+    not is_installed("lightgbm"), reason="lightgbm is not installed"
 )

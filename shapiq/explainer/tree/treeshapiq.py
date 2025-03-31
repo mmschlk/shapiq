@@ -16,8 +16,7 @@ from .validation import validate_tree_model
 
 
 class TreeSHAPIQ:
-    """
-    The explainer for tree-based models using the TreeSHAP-IQ algorithm. For a detailed presentation
+    """The explainer for tree-based models using the TreeSHAP-IQ algorithm. For a detailed presentation
     of the algorithm, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
 
     TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.
@@ -44,6 +43,7 @@ class TreeSHAPIQ:
     Note:
         This class is not intended to be used directly. Instead, use the ``TreeExplainer`` class to
         explain tree-based models which internally uses then the TreeSHAP-IQ algorithm.
+
     """
 
     def __init__(
@@ -143,6 +143,7 @@ class TreeSHAPIQ:
 
         Returns:
             InteractionValues: The computed Shapley Interaction values.
+
         """
         x_relevant = x[self._relevant_features]
         n_players = max(x.shape[0], self._n_features_in_tree)
@@ -190,6 +191,7 @@ class TreeSHAPIQ:
 
         Returns:
             np.ndarray: The computed Shapley Interaction values.
+
         """
         full_prediction = self._tree.predict_one(x)
         main_effect = full_prediction - self.empty_prediction
@@ -224,6 +226,7 @@ class TreeSHAPIQ:
             quotient_poly_down: The quotient polynomial for the current node. Defaults to ``None``
                 (init).
             depth: The depth of the current node in the tree. Defaults to ``0``.
+
         """
         # fmt: off
         # manually formatted for better readability in formulas and equations
@@ -423,6 +426,7 @@ class TreeSHAPIQ:
 
         Returns:
             np.ndarray: The computed psi function.
+
         """
         d = degree + 1
         n = Ns[d, :d]
@@ -430,7 +434,8 @@ class TreeSHAPIQ:
 
     def _init_summary_polynomials(self):
         """Initializes summary polynomial variables. This function is called once during the
-        initialization of the explainer."""
+        initialization of the explainer.
+        """
         for order in range(1, self._max_order + 1):
             subset_ancestors: dict[int, np.ndarray] = self._precalculate_interaction_ancestors(
                 interaction_order=order, n_features=self._n_features_in_tree
@@ -468,6 +473,7 @@ class TreeSHAPIQ:
         Returns:
             tuple: The summary polynomial down, the summary polynomial up, the interaction polynomial
                 down, and the quotient polynomial down.
+
         """
         if summary_poly_down is None:
             summary_poly_down = np.zeros((self._edge_tree.max_depth + 1, self.n_interpolation_size))
@@ -501,6 +507,7 @@ class TreeSHAPIQ:
         Args:
             interaction_order (int): The interaction order for which the storage variables should be
                 loaded.
+
         """
         self.subset_updates_pos = self._interaction_update_positions[interaction_order]
         self.subset_ancestors = self.subset_ancestors_store[interaction_order]
@@ -542,6 +549,7 @@ class TreeSHAPIQ:
                 for each feature given an interaction order.
             interaction_update_positions: A dictionary (lookup table) containing the positions of
                 the interaction subsets to update for each feature given an interaction order.
+
         """
         # stores interactions that include feature i (needs to be updated when feature i appears)
         interaction_updates: dict[int, list[tuple]] = {}
@@ -582,8 +590,8 @@ class TreeSHAPIQ:
         Returns:
             subset_ancestors: A dictionary containing the ancestors of the interactions for each
                 node in the tree.
-        """
 
+        """
         # stores position of interactions
         counter_interaction = 0
         subset_ancestors: dict[int, np.ndarray[int]] = {}
@@ -605,14 +613,14 @@ class TreeSHAPIQ:
         return subset_ancestors
 
     def _get_N(self, interpolated_poly: np.ndarray[float]) -> np.ndarray[float]:
-        """
-        Computes the N matrix for the Shapley interaction values.
+        """Computes the N matrix for the Shapley interaction values.
 
         Args:
             interpolated_poly: The interpolated polynomial.
 
         Returns:
             The N matrix.
+
         """
         depth = interpolated_poly.shape[0]
         Ns = np.zeros((depth + 1, depth))
@@ -671,6 +679,7 @@ class TreeSHAPIQ:
 
         Returns:
             The cached powers of the interpolated polynomial.
+
         """
         return np.vander(interpolated_poly + 1).T[::-1]
 

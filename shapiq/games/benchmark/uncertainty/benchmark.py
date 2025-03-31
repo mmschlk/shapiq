@@ -7,7 +7,6 @@ from shapiq.games.benchmark.uncertainty.base import UncertaintyExplanation
 
 
 class AdultCensus(UncertaintyExplanation):
-
     def __init__(
         self,
         *,

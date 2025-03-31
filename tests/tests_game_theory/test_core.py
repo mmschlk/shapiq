@@ -78,7 +78,6 @@ def test_core_political_game_empty_core():
     """
 
     class NonConvexGame(shapiq.Game):
-
         def __init__(self) -> None:
             super().__init__(n_players=3, normalize=True, normalization_value=0)
 

@@ -25,6 +25,7 @@ class PermutationSamplingSII(Approximator):
             Sampling approximator for the STII index
         - :class:`~shapiq.approximator.permutation.sv.PermutationSamplingSV`: The Permutation
             Sampling approximator for the SV index
+
     """
 
     def __init__(
@@ -48,6 +49,7 @@ class PermutationSamplingSII(Approximator):
 
         Returns:
             int: The cost of a single iteration.
+
         """
         iteration_cost: int = 0
         min_order = 1 if not self.top_order else self.max_order
@@ -60,6 +62,7 @@ class PermutationSamplingSII(Approximator):
 
         Returns:
             np.ndarray: The order iterator.
+
         """
         min_order = 1 if not self.top_order else self.max_order
         return np.arange(min_order, self.max_order + 1)
@@ -79,8 +82,8 @@ class PermutationSamplingSII(Approximator):
 
         Returns:
             InteractionValues: The estimated interaction values.
-        """
 
+        """
         batch_size = 1 if batch_size is None else batch_size
         used_budget = 0
 

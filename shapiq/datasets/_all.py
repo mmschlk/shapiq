@@ -25,6 +25,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
 
     Returns:
         The dataset as a pandas DataFrame.
+
     """
     _create_folder()
     try:
@@ -51,6 +52,7 @@ def load_california_housing(
         >>> x_data, y_data = load_california_housing()
         >>> print(x_data.shape, y_data.shape)
         ((20640, 8), (20640,))
+
     """
     dataset = _try_load("california_housing.csv")
     class_label = "MedHouseVal"
@@ -81,6 +83,7 @@ def load_bike_sharing(
         >>> x_data, y_data = load_bike_sharing()
         >>> print(x_data.shape, y_data.shape)
         ((17379, 12), (17379,))
+
     """
     from sklearn.compose import ColumnTransformer
     from sklearn.pipeline import Pipeline
@@ -153,6 +156,7 @@ def load_adult_census(
         >>> x_data, y_data = load_adult_census()
         >>> print(x_data.shape, y_data.shape)
         ((45222, 14), (45222,))
+
     """
     from sklearn.compose import ColumnTransformer
     from sklearn.impute import SimpleImputer

@@ -41,6 +41,7 @@ class Imputer(Game):
 
     Properties:
         x: The explanation point to use the imputer on.
+
     """
 
     @abstractmethod
@@ -95,6 +96,7 @@ class Imputer(Game):
 
         Returns:
             The model's prediction for the given data point as a vector.
+
         """
         return self._predict_function(self.model, x)
 
@@ -107,6 +109,7 @@ class Imputer(Game):
 
         Returns:
             The fitted imputer.
+
         """
         self._x = x.copy()
         if self._x.ndim == 1:
@@ -122,6 +125,7 @@ class Imputer(Game):
 
         Returns:
             The model's predictions with the empty value inserted for the empty coalitions.
+
         """
         outputs[~np.any(coalitions, axis=1)] = self.empty_prediction
         return outputs

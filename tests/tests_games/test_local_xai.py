@@ -63,7 +63,6 @@ def test_basic_function(background_reg_dataset, dt_reg_model):
 )
 def test_adult_census(model):
     """Tests the AdultCensus LocalExplanation game."""
-
     game_n_players = 14
     x_explain_id = 1
     game_name = "AdultCensus_LocalExplanation_Game"
@@ -100,7 +99,6 @@ def test_adult_census(model):
 )
 def test_california_housing(model):
     """Tests the CaliforniaHousing game local XAI."""
-
     game_n_players = 8
     x_id = 0
     game_name = "CaliforniaHousing_LocalExplanation_Game"
@@ -133,7 +131,6 @@ def test_california_housing(model):
 )
 def test_bike_sharing(model):
     """Tests the BikeSharing local XAI game."""
-
     game_n_players = 12
     x_explain_id = 0
     game_name = "BikeSharing_LocalExplanation_Game"

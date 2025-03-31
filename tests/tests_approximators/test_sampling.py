@@ -10,7 +10,6 @@ from shapiq.approximator.sampling import CoalitionSampler
 @pytest.mark.parametrize("budget", [10, 100])
 def test_basic_functionality(n_players, budget):
     """This test checks the basic functionality of the CoalitionSampler class."""
-
     n = n_players
     expected_budget = min(budget, 2**n)
 

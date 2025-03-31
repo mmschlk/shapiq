@@ -1,5 +1,6 @@
 """Summary of all interaction indices and game theoretic concepts available
-in ``shapiq``."""
+in ``shapiq``.
+"""
 
 ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     # Base Interactions
@@ -122,22 +123,18 @@ ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII", "FBII"}
 AVAILABLE_INDICES_MONTE_CARLO = {"k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII"}
 
-AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = (
-    {
-        "SII",
-        "BII",
-        "k-SII",
-        "STII",
-        "FSII",
-        "SV",
-        "BV",
-        "kADD-SHAP",
-        "CHII",
-        "FBII",
-    }
-    .union(AVAILABLE_INDICES_REGRESSION)
-    .union(AVAILABLE_INDICES_MONTE_CARLO)
-)
+AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = {
+    "SII",
+    "BII",
+    "k-SII",
+    "STII",
+    "FSII",
+    "SV",
+    "BV",
+    "kADD-SHAP",
+    "CHII",
+    "FBII",
+}.union(AVAILABLE_INDICES_REGRESSION).union(AVAILABLE_INDICES_MONTE_CARLO)
 
 
 def index_generalizes_sv(index: str) -> bool:
@@ -158,6 +155,7 @@ def index_generalizes_sv(index: str) -> bool:
         True
         >>> index_generalizes_sv("BV")
         False
+
     """
     return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "SV"
 
@@ -178,6 +176,7 @@ def index_generalizes_bv(index: str) -> bool:
         False
         >>> index_generalizes_bv("BV")
         False
+
     """
     return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "BV"
 
@@ -204,6 +203,7 @@ def get_computation_index(index: str) -> str:
         "SII"
         >>> get_computation_index("BV")
         "BII"
+
     """
     if "k-" in index:
         return index.split("-")[1]  # remove the k- prefix
@@ -223,6 +223,7 @@ def get_index_from_computation_index(index: str, max_order: int) -> str:
 
     Returns:
         The original interaction index.
+
     """
     if max_order == 1:
         if index == "BII":
@@ -250,6 +251,7 @@ def is_index_aggregated(index: str) -> bool:
         False
         >>> is_index_aggregated("k-FSII")
         True
+
     """
     return "k-" in index
 
@@ -271,5 +273,6 @@ def is_empty_value_the_baseline(index: str) -> bool:
         True
         >>> is_empty_value_the_baseline("k-SII")
         True
+
     """
     return index not in ["SII", "FBII", "BII", "BV"]

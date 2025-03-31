@@ -28,7 +28,6 @@ def test_random_forest_selection(
     background_reg_dataset,
 ):
     """Tests the base TreeSHAP-IQ explanation game."""
-
     # start with classification model
     if task == "clf":
         model = dt_clf_model

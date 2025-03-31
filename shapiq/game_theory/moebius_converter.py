@@ -1,5 +1,6 @@
 """MoebiusConverter class for computing exact Shapley Interactions
-using the (sparse) Möbius representation.."""
+using the (sparse) Möbius representation..
+"""
 
 import copy
 from collections.abc import Callable
@@ -23,6 +24,7 @@ class MoebiusConverter:
         n: The number of players.
         moebius_coefficients: The InteractionValues object containing all non-zero (sparse) Möbius
             coefficients.
+
     """
 
     def __init__(self, moebius_coefficients: InteractionValues):
@@ -57,6 +59,7 @@ class MoebiusConverter:
 
         Raises:
             ValueError: If the index is not supported.
+
         """
         # sanitize input
         if order is None:
@@ -81,6 +84,7 @@ class MoebiusConverter:
 
         Returns:
             InteractionValues object containing transformed base_interactions
+
         """
         from .aggregation import aggregate_base_interaction
 
@@ -96,6 +100,7 @@ class MoebiusConverter:
 
         Returns:
             An InteractionValues object containing the base interactions
+
         """
         index_to_change_back = index
         if index == "SV":
@@ -158,6 +163,7 @@ class MoebiusConverter:
 
         Returns:
             An InteractionValues object containing the STII interactions.
+
         """
         stii_dict = {}
         index = "STII"
@@ -225,6 +231,7 @@ class MoebiusConverter:
 
         Returns:
             An InteractionValues object containing the FSII interactions
+
         """
         fii_dict = {}
         # Pre-compute weights
@@ -294,8 +301,8 @@ class MoebiusConverter:
 
         Returns:
             An InteractionValues object containing the Shapley interactions
-        """
 
+        """
         if index == "STII":
             shapley_interactions = self.stii_routine(order)
         elif index in ["FSII", "FBII"]:
@@ -332,6 +339,7 @@ def _get_moebius_distribution_weight(
 
     Raises:
         ValueError: If the index is not supported.
+
     """
     if index == "SII":
         return 1 / (moebius_size - interaction_size + 1)

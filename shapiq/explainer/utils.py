@@ -21,6 +21,7 @@ def get_explainers() -> dict[str, Any]:
 
     Returns:
         A dictionary of all available explainer classes.
+
     """
     from shapiq.explainer.tabpfn import TabPFNExplainer
     from shapiq.explainer.tabular import TabularExplainer
@@ -52,6 +53,7 @@ def get_predict_function_and_model_type(
 
     Returns:
         A tuple of the predict function and the model type.
+
     """
     from . import tree
 
@@ -147,7 +149,7 @@ def get_predict_function_and_model_type(
             f"`model` is of unsupported type: {model_class}.\n"
             "Please, raise a new issue at https://github.com/mmschlk/shapiq/issues if you want this model type\n"
             "to be handled automatically by shapiq.Explainer. Otherwise, use one of the supported explainers:\n"
-            f'{", ".join(print_classes_nicely(get_explainers()))}'
+            f"{', '.join(print_classes_nicely(get_explainers()))}"
         )
 
     if class_index is None:
@@ -163,6 +165,7 @@ def get_predict_function_and_model_type(
 
         Returns:
             The model's prediction for the given data point as a vector.
+
         """
         predictions = _predict_function(model, data)
         if predictions.ndim == 1:
@@ -203,8 +206,7 @@ def predict_torch(model: ModelType, data: np.ndarray) -> np.ndarray:
 
 
 def print_classes_nicely(obj):
-    """
-    Converts a list of classes into *user-readable* class names. I/O examples:
+    """Converts a list of classes into *user-readable* class names. I/O examples:
     [shapiq.explainer._base.Explainer] -> ['shapiq.Explainer']
     {'tree': shapiq.explainer.tree.explainer.TreeExplainer}  -> ['shapiq.TreeExplainer']
     {'tree': shapiq.TreeExplainer}  -> ['shapiq.TreeExplainer']
@@ -216,8 +218,7 @@ def print_classes_nicely(obj):
 
 
 def print_class(obj):
-    """
-    Converts a class or class type into a *user-readable* class name. I/O examples:
+    """Converts a class or class type into a *user-readable* class name. I/O examples:
     sklearn.ensemble._forest.RandomForestRegressor -> 'sklearn.ensemble._forest.RandomForestRegressor'
     type(sklearn.ensemble._forest.RandomForestRegressor) -> 'sklearn.ensemble._forest.RandomForestRegressor'
     shapiq.explainer.tree.explainer.TreeExplainer -> 'shapiq.explainer.tree.explainer.TreeExplainer'

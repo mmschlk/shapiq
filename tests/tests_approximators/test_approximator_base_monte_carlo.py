@@ -1,5 +1,6 @@
 """This test module contains all tests regarding the base monte-carlo approximator many other
-approximators are based on."""
+approximators are based on.
+"""
 
 import pytest
 
@@ -21,7 +22,6 @@ def test_initialization(
     n, max_order, index, top_order, stratify_intersection, stratify_coalition_size
 ):
     """Tests the initialization of the MonteCarlo approximator."""
-
     if index == "wrong_index":
         with pytest.raises(ValueError):
             _ = MonteCarlo(n, max_order, index=index, top_order=top_order)

@@ -26,6 +26,7 @@ def _save_results(results: pd.DataFrame, save_path: str) -> None:
     Args:
         results: The results of the benchmark.
         save_path: The path to save the results as a CSV file. Defaults to "results.csv".
+
     """
     # check if the directory exists
     save_dir = os.path.dirname(save_path)
@@ -82,6 +83,7 @@ def run_benchmark(
     Raises:
         ValueError: If the number of players in the games is not the same.
         ValueError: If the number of ground truth values is not the same as the number of games.
+
     """
     from .configuration import APPROXIMATION_CONFIGURATIONS, APPROXIMATION_NAME_TO_CLASS_MAPPING
 
@@ -214,6 +216,7 @@ def _run_benchmark(args) -> dict[str, str | int | float | InteractionValues]:
 
     Returns:
         The results of the benchmark.
+
     """
     iteration, approximator, game, gt_value, budget = args
     estimates = copy.deepcopy(approximator.approximate(budget=budget, game=game))
@@ -258,6 +261,7 @@ def _init_approximator_from_class(
 
     Returns:
         The initialized approximator.
+
     """
     from .configuration import APPROXIMATION_BENCHMARK_PARAMS
 
@@ -295,6 +299,7 @@ def load_benchmark_results(
 
     Raises:
         ValueError: If save path is None and the game configuration is not provided.
+
     """
     if save_path is None:
         from .configuration import (
@@ -372,6 +377,7 @@ def run_benchmark_from_configuration(
         n_jobs: The number of parallel jobs to run. Defaults to 1.
         rerun_if_exists: If `True`, the benchmark is rerun even if the results already exist.
             Defaults to `False`.
+
     """
     from .configuration import (
         BENCHMARK_CONFIGURATIONS,

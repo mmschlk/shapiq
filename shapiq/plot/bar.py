@@ -3,6 +3,7 @@
 Note:
     Code and implementation was taken and adapted from the [SHAP package](https://github.com/shap/shap)
     which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+
 """
 
 import matplotlib.pyplot as plt
@@ -38,6 +39,7 @@ def _bar(
 
     Returns:
         The axis of the plot.
+
     """
     # determine how many top features we will plot
     num_features = len(values[0])
@@ -207,6 +209,7 @@ def bar_plot(
 
     References:
         .. [1] SHAP is available at https://github.com/shap/shap
+
     """
     n_players = list_of_interaction_values[0].n_players
 

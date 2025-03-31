@@ -30,12 +30,12 @@ class Explainer:
     Attributes:
         model: The model object to be explained.
         data: A background data to use for the explainer.
+
     """
 
     def __init__(
         self, model, data: np.ndarray | None = None, class_index: int | None = None, **kwargs
     ) -> None:
-
         self._model_class = print_class(model)
         self._shapiq_predict_function, self._model_type = get_predict_function_and_model_type(
             model, self._model_class, class_index
@@ -64,6 +64,7 @@ class Explainer:
 
         Raises:
             TypeError: If the data is not a NumPy array.
+
         """
         message = "The `data` and the model must be compatible."
         if not isinstance(data, np.ndarray):
@@ -95,6 +96,7 @@ class Explainer:
 
         Returns:
             The interaction values of the prediction.
+
         """
         explanation = self.explain_function(x=x, *args, **kwargs)
         return explanation
@@ -110,6 +112,7 @@ class Explainer:
 
         Returns:
             The interaction values of the prediction.
+
         """
         raise NotImplementedError("The method `explain` must be implemented in a subclass.")
 
@@ -122,6 +125,7 @@ class Explainer:
             X: A 2-dimensional matrix of inputs to be explained.
             n_jobs: Number of jobs for ``joblib.Parallel``.
             random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
+
         """
         assert len(X.shape) == 2
         if random_state is not None:
@@ -149,5 +153,6 @@ class Explainer:
 
         Args:
             x: An instance/point/sample/observation to be explained.
+
         """
         return self._shapiq_predict_function(self.model, x)

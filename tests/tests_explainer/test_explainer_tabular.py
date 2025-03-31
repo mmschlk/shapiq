@@ -60,7 +60,9 @@ def test_init_params_error_and_warning(dt_reg_model, background_reg_data):
     """Test the initialization of the interaction explainer."""
     model_function = dt_reg_model.predict
     with pytest.raises(ValueError):
-        TabularExplainer(model=model_function, data=background_reg_data, index="invalid", max_order=0)
+        TabularExplainer(
+            model=model_function, data=background_reg_data, index="invalid", max_order=0
+        )
     with pytest.warns():
         TabularExplainer(
             model=model_function,
@@ -161,7 +163,6 @@ def test_explain(dt_reg_model, background_reg_data, index, budget, max_order, im
 
 def test_against_shap_linear():
     """Tests weather TabularExplainer yields similar results as SHAP with a basic linear model."""
-
     n_samples = 3
     dim = 5
     rng = np.random.default_rng(42)

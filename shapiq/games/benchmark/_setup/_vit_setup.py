@@ -32,6 +32,7 @@ class ViTModel:
 
     Raises:
         ValueError: If the number of patches is not 9 or 16.
+
     """
 
     def __init__(self, n_patches: int, input_image: Image, verbose: bool = True) -> None:
@@ -87,6 +88,7 @@ class ViTModel:
 
         Returns:
             The class probability of the coalition.
+
         """
         # make coalition into 2d
         if len(coalitions.shape) == 1:
@@ -136,6 +138,7 @@ class ViTModel:
 
         Returns:
             The boolean mask for the model in 1D with shape (144,).
+
         """
         bool_mask_2d = torch.ones((12, 12), dtype=torch.int)
         for player, is_present in enumerate(coalition):

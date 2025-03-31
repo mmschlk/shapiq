@@ -378,7 +378,6 @@ def test_n_order_transform():
 
 def test_sparsify():
     """Tests the sparsify function of the InteractionValues dataclass."""
-
     # parameters
     values = np.array([1, 1e-1, 1e-3, 1e-4, 1, 1e-4, 1])
     n_players = 7
@@ -434,7 +433,6 @@ def test_sparsify():
 
 def test_top_k():
     """Tests the top-k selection of the InteractionValues dataclass."""
-
     # parameters
     values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
     n_players = 10
@@ -492,7 +490,6 @@ def test_top_k():
 
 def test_from_dict():
     """Tests the from_dict method of the InteractionValues dataclass."""
-
     # parameters
     values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
     n_players = 10
@@ -528,7 +525,6 @@ def test_from_dict():
 @pytest.mark.parametrize("as_pickle", [True, False])
 def test_save_and_load(as_pickle):
     """Tests the save and load functions of the InteractionValues dataclass."""
-
     # parameters
     values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
     n_players = 10
@@ -673,7 +669,6 @@ def test_subset(subset_players):
 
 @pytest.mark.parametrize("aggregation", ["sum", "mean", "median", "max", "min"])
 def test_aggregation(aggregation):
-
     n_objects = 3
 
     n, min_order, max_order = 5, 1, 3
@@ -734,7 +729,6 @@ def test_aggregation(aggregation):
 
 def test_docs_aggregation_function():
     """Tests the aggregation function in the InteractionValues dataclass like in the docs."""
-
     iv1 = InteractionValues(
         values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
         index="SII",

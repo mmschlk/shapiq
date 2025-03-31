@@ -18,7 +18,6 @@ def test_si_graph_plot(
     n_interactions,
 ):
     """Tests the explanation_graph_plot function."""
-
     example_values = InteractionValues(
         n_players=4,
         values=np.array(

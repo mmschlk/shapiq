@@ -3,6 +3,7 @@
 Note:
     Code and implementation was taken and adapted from the [SHAP package](https://github.com/shap/shap)
     which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+
 """
 
 import matplotlib
@@ -35,6 +36,7 @@ def _draw_waterfall_plot(
 
     Returns:
         The plot if ``show`` is ``False``.
+
     """
     # Turn off interactive plot
     if show is False:
@@ -354,8 +356,8 @@ def waterfall_plot(
 
     References:
         .. [1] SHAP is available at https://github.com/shap/shap
-    """
 
+    """
     if feature_names is None:
         feature_mapping = {i: str(i) for i in range(interaction_values.n_players)}
     else:

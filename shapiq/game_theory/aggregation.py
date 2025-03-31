@@ -1,5 +1,6 @@
 """Aggregation functions for summarizing base interaction indices into
-efficient indices useful for explanations"""
+efficient indices useful for explanations
+"""
 
 import warnings
 
@@ -18,6 +19,7 @@ def _change_index(index: str) -> str:
 
     Returns:
         The new index of the interaction values.
+
     """
     if index in ["SV", "BV"]:  # no change for probabilistic values like SV or BV
         return index
@@ -64,6 +66,7 @@ def aggregate_base_interaction(
         {(): 0, (1,): 1, (2,): 2, (3,): 3, (1, 2): 4, (2, 3): 5, (1, 3): 6}
         >>> k_sii_values.max_order
         2
+
     """
     # sanitize input parameters
     order = order or base_interactions.max_order
@@ -126,6 +129,7 @@ def aggregate_to_one_dimension(interactions: InteractionValues) -> tuple[np.ndar
 
     Returns:
         The positive and negative interaction values as a 1-dimensional array for each player.
+
     """
     n = interactions.n_players
     pos_values = np.zeros(shape=(n,), dtype=float)

@@ -15,6 +15,7 @@ def shuffle_data(
 
     Returns:
         The shuffled data.
+
     """
     rng = np.random.default_rng(random_state)
     indices = np.arange(len(x_data))

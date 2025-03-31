@@ -8,7 +8,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 if __name__ == "__main__":
-
     # example python run command with nohup and nice
     # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 > configs.log &
 

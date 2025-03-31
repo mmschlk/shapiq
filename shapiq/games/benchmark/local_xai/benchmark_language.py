@@ -51,6 +51,7 @@ class SentimentAnalysis(Game):
         0.6615
         >>> game(np.asarray([1, 1, 1, 1, 1, 1], dtype=bool))
         0.6615
+
     """
 
     def __init__(
@@ -99,6 +100,7 @@ class SentimentAnalysis(Game):
 
         Returns:
             The sentiment of the coalition's text as a vector of length `n_coalitions`.
+
         """
         # get the texts of the coalitions
         texts = []
@@ -125,6 +127,7 @@ class SentimentAnalysis(Game):
 
         Returns:
             The sentiment of the input texts as a vector of length `n_coalitions`.
+
         """
         # get the sentiment of the input texts
         outputs = self._classifier(input_texts)

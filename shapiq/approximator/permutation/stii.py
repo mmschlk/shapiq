@@ -52,6 +52,7 @@ class PermutationSamplingSTII(Approximator):
                 (3, 4): 0
             }
         )
+
     """
 
     def __init__(self, n: int, max_order: int, random_state: int | None = None) -> None:
@@ -78,6 +79,7 @@ class PermutationSamplingSTII(Approximator):
 
         Returns:
             InteractionValues: The estimated interaction values.
+
         """
         batch_size = 1 if batch_size is None else batch_size
         used_budget = 0
@@ -216,6 +218,7 @@ class PermutationSamplingSTII(Approximator):
 
         Returns:
             int: The cost of a single iteration.
+
         """
         iteration_cost = int(sp.special.binom(self.n, self.max_order) * 2**self.max_order)
         return iteration_cost
@@ -231,6 +234,7 @@ class PermutationSamplingSTII(Approximator):
 
         Returns:
             The result array.
+
         """
         # get all game values on the whole powerset of players up to order max_order - 1
         lower_order_sizes = list(range(0, self.max_order))

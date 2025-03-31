@@ -53,6 +53,7 @@ class MarginalImputer(Imputer):
         >>> # exchange the background data
         >>> new_data = np.random.rand(1000, 4)
         >>> imputer.init_background(data=new_data)
+
     """
 
     def __init__(
@@ -88,6 +89,7 @@ class MarginalImputer(Imputer):
         Returns:
             The model's predictions on the imputed data points. The shape of the array is
                ``(n_subsets, n_outputs)``.
+
         """
         n_coalitions = coalitions.shape[0]
         replacement_data = self._sample_replacement_data(self.sample_size)
@@ -123,6 +125,7 @@ class MarginalImputer(Imputer):
             >>> imputer = MarginalImputer(model=model, data=data, x=data[0])
             >>> new_data = np.random.rand(10, 3)
             >>> imputer.init_background(data=new_data)
+
         """
         self.replacement_data = np.copy(data)
         if self.sample_size > self.replacement_data.shape[0]:
@@ -141,6 +144,7 @@ class MarginalImputer(Imputer):
         Returns:
             The replacement values as a two-dimensional array with shape
                 ``(sample_size, n_features)``.
+
         """
         replacement_data = np.copy(self.replacement_data)
         rng = np.random.default_rng(self.random_state)
@@ -160,6 +164,7 @@ class MarginalImputer(Imputer):
 
         Returns:
             The empty prediction.
+
         """
         background_data = self._sample_replacement_data()
         empty_predictions = self.predict(background_data)

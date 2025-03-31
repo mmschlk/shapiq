@@ -9,7 +9,6 @@ from shapiq.plot import stacked_bar_plot
 
 def test_stacked_bar_plot():
     """Tests whether the stacked bar plot can be created."""
-
     interaction_values = InteractionValues(
         values=np.array([1, -1.5, 1.75, 0.25, -0.5, 0.75, 0.2]),
         index="SII",

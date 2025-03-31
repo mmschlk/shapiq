@@ -48,6 +48,7 @@ class TreeModel:
             indices (as in the tree model) to the original feature indices (as in the model).
         original_output_type: The original output type of the tree model. The default value is
             ``"raw"``.
+
     """
 
     children_left: np.ndarray[int]
@@ -171,6 +172,7 @@ class TreeModel:
 
         Returns:
             The prediction of the instance with the tree model.
+
         """
         node = self.root_node_id
         is_leaf = self.leaf_mask[node]

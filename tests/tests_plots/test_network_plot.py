@@ -12,7 +12,6 @@ from shapiq.plot import network_plot
 
 def test_network_plot():
     """Tests whether the network plot can be created."""
-
     first_order_values = np.asarray([0.1, -0.2, 0.3, 0.4, 0.5, 0.6])
     second_order_values = np.random.rand(6, 6) - 0.5
 

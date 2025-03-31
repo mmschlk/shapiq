@@ -12,6 +12,7 @@ def get_concrete_class(abclass):
 
     Returns:
         The concrete class.
+
     """
 
     class concreteCls(abclass):

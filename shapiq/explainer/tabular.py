@@ -110,6 +110,7 @@ class TabularExplainer(Explainer):
 
     Properties:
         baseline_value: A baseline value of the explainer.
+
     """
 
     def __init__(
@@ -133,7 +134,7 @@ class TabularExplainer(Explainer):
         )
 
         if index not in AVAILABLE_INDICES:
-            raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
+            raise ValueError(f"Invalid index `{index}`. Valid indices are {AVAILABLE_INDICES}.")
 
         super().__init__(model, data, class_index)
 
@@ -191,6 +192,7 @@ class TabularExplainer(Explainer):
             budget: The budget to use for the approximation. Defaults to `None`, which will
                 set the budget to 2**n_features based on the number of features.
             random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
+
         """
         if budget is None:
             budget = 2**self._n_features
@@ -224,7 +226,6 @@ class TabularExplainer(Explainer):
     def _init_approximator(
         self, approximator: Approximator | str, index: str, max_order: int
     ) -> Approximator:
-
         if isinstance(approximator, Approximator):  # if the approximator is already given
             return approximator
 

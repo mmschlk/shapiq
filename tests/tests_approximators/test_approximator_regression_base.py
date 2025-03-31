@@ -8,7 +8,6 @@ from shapiq.approximator.regression._base import AVAILABLE_INDICES_REGRESSION
 
 def test_basic_functions():
     """Tests the initialization of the Regression approximator."""
-
     for index in AVAILABLE_INDICES_REGRESSION:
         _ = Regression(n=7, max_order=2, index=index)
 

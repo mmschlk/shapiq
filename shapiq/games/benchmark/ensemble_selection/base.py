@@ -66,7 +66,6 @@ class EnsembleSelection(Game):
         normalize: bool = True,
         random_state: int | None = 42,
     ) -> None:
-
         assert dataset_type in ["classification", "regression"], (
             f"Invalid dataset type provided. Got {dataset_type} but expected one of "
             f"['classification', 'regression']."
@@ -149,6 +148,7 @@ class EnsembleSelection(Game):
 
         Returns:
             The worth of the coalition.
+
         """
         worth = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
@@ -234,6 +234,7 @@ class RandomForestEnsembleSelection(EnsembleSelection):
             True.
         normalize: Whether to normalize the game values. Defaults to True.
         random_state: The random state to use for the ensemble members. Defaults to 42.
+
     """
 
     def __init__(

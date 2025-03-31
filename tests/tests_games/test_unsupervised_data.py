@@ -14,7 +14,6 @@ from shapiq.utils import powerset
 
 def test_base_class():
     """This function tests the setup and logic of the game."""
-
     n_players = 4
 
     # create synthetic data

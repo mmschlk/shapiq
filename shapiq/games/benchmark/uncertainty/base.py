@@ -10,7 +10,6 @@ from shapiq.utils.types import Model
 
 
 class UncertaintyExplanation(Game):
-
     def __init__(
         self,
         *,
@@ -84,6 +83,7 @@ class UncertaintyExplanation(Game):
 
         Returns:
             The uncertainty of the predictions.
+
         """
         predictions_mean = predictions.mean(axis=0)
         if self._uncertainty_to_explain == "total":
@@ -115,6 +115,7 @@ class UncertaintyExplanation(Game):
 
         Returns:
             The value function of the game.
+
         """
         uncertainty = self._imputer(coalitions)
         return uncertainty

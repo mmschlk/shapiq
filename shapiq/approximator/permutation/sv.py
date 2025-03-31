@@ -46,8 +46,8 @@ class PermutationSamplingSV(Approximator):
 
         Returns:
             The estimated interaction values.
-        """
 
+        """
         result: np.ndarray[float] = self._init_result()
         counts: np.ndarray[int] = self._init_result(dtype=int)
 

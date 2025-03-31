@@ -1,5 +1,6 @@
 """Functions for converting xgboost decision trees to the format used by
-shapiq."""
+shapiq.
+"""
 
 import warnings
 
@@ -20,6 +21,7 @@ def convert_xgboost_booster(
 
     Returns:
         The converted xgboost booster.
+
     """
     try:
         intercept = tree_booster.base_score
@@ -80,6 +82,7 @@ def _convert_xgboost_tree_as_df(
 
     Returns:
         The converted decision tree model.
+
     """
     convert_node_str_to_int = {k: v for v, k in enumerate(tree_df["ID"])}
 

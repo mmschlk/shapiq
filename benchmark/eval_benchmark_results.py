@@ -1,6 +1,7 @@
 """This script evaluates and summarizes all benchmark results by iterating over all result
 dataframes and computing summary statistics such as 'percentage of approximator being the best' or
-ranking at highest budget. The results are then saved to a csv file."""
+ranking at highest budget. The results are then saved to a csv file.
+"""
 
 import os
 import sys
@@ -107,7 +108,6 @@ def _get_best_approximator(df: pd.DataFrame) -> dict[str, list[tuple]]:
 
 def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
     """Create a summary csv file from all benchmark results."""
-
     from shapiq.games.benchmark.run import load_benchmark_results
 
     # get all files in the benchmark results directory
@@ -207,6 +207,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
             - full_budget
         setting: The budget setting to use. Can be 'all', 'high', or 'low'.
         save: Whether to save the plot to a file.
+
     """
     assert setting in [
         "all",
@@ -317,7 +318,6 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
 
 
 if __name__ == "__main__":
-
     create_eval = False
     budget_setting = "high"  # can be 'all', 'high', 'low'
 

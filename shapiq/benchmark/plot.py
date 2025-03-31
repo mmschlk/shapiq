@@ -87,6 +87,7 @@ def abbreviate_application_name(application_name: str, new_line: bool = False) -
     Example:
         >>> abbreviate_application_name("LocalExplanation")
         "Loc. Exp."
+
     """
     abbreviations = []
     count_char = 0
@@ -130,6 +131,7 @@ def get_game_title_name(game_name: str) -> str:
         "Image Classifier Local XAI"
         >>> get_game_title_name("AdultCensusClusterExplanation")
         "Adult Census Cluster Explanation"
+
     """
     # split words by capital letters
     words = ""
@@ -151,6 +153,7 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
     Returns:
         The aggregation function.
+
     """
 
     def quantile(x) -> float:
@@ -200,6 +203,7 @@ def plot_approximation_quality(
 
     Returns:
         The figure and axes of the plot.
+
     """
     if data_path is None and data is None:
         raise ValueError("Either data or data_path must be provided.")
@@ -376,8 +380,8 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 
     Returns:
         The metric data.
-    """
 
+    """
     # get the metric columns for each order in the results
     metric_columns = [col for col in results_df.columns if metric in col]
 
@@ -435,6 +439,7 @@ def add_legend(
             Defaults to `None`.
         legend_subtitle: Whether to add a subtitle to the legend. Defaults to `True`.
         loc: The location of the legend. Defaults to "upper right".
+
     """
     if orders is None and approximators is None:
         return

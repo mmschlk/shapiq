@@ -1,5 +1,6 @@
 """This module contains the TabPFNImputer class, which incorporates the Remove-and-Contextualize
-paradigm of explaining the TabPFN model's predictions."""
+paradigm of explaining the TabPFN model's predictions.
+"""
 
 from collections.abc import Callable
 
@@ -96,6 +97,7 @@ class TabPFNImputer(Imputer):
         Returns:
             The model's predictions on the restricted data points. The shape of the array is
                 ``(n_subsets,)``.
+
         """
         output = np.zeros(len(coalitions), dtype=float)
         for i, coalition in enumerate(coalitions):

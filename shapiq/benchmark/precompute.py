@@ -31,6 +31,7 @@ def get_game_files(game: Game | Game.__class__ | str, n_players: int) -> list[st
 
     Returns:
         The list of files for the given game and number of players.
+
     """
     game_name = game
     if not isinstance(game, str):
@@ -55,8 +56,8 @@ def pre_compute_and_store(
 
     Returns:
         The path to the file where the values are stored.
-    """
 
+    """
     if save_dir is None:
         # this file path
         save_dir = os.path.dirname(__file__)
@@ -190,8 +191,8 @@ def pre_compute_and_store_from_list(
 
     Returns:
         The paths to the files where the values are stored.
-    """
 
+    """
     if game_ids is None:
         game_ids = [None] * len(games)
 

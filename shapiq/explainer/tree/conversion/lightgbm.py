@@ -1,5 +1,6 @@
 """Functions for converting lightgbm decision trees to the format used by
-shapiq."""
+shapiq.
+"""
 
 from ....utils.types import Model
 from ..base import TreeModel
@@ -18,8 +19,8 @@ def convert_lightgbm_booster(
 
     Returns:
         The converted lightgbm booster.
-    """
 
+    """
     # https://github.com/shap/shap/blob/77e92c3c110e816b768a0ec2acfbf4cc08ee13db/shap/explainers/_tree.py#L1079
     scaling = 1.0
     booster_df = tree_booster.trees_to_dataframe()
@@ -65,6 +66,7 @@ def _convert_lightgbm_tree_as_df(
 
     Returns:
         The converted decision tree model.
+
     """
     convert_node_str_to_int = {k: v for v, k in enumerate(tree_df.node_index)}
 

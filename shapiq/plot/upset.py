@@ -48,8 +48,8 @@ def upset_plot(
 
     References:
         .. [1] Alexander Lex, Nils Gehlenborg, Hendrik Strobelt, Romain Vuillemot, Hanspeter Pfister. UpSet: Visualization of Intersecting Sets IEEE Transactions on Visualization and Computer Graphics (InfoVis), 20(12): 1983--1992, doi:10.1109/TVCG.2014.2346248, 2014.
-    """
 
+    """
     # prepare data ---------------------------------------------------------------------------------
     values = interaction_values.values
     values_ids: dict[int, tuple[int, ...]] = {
