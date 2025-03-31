@@ -177,7 +177,11 @@ class ExactComputer:
         coalition_lookup = coalition_lookup
         return baseline_value, game_values, coalition_lookup
 
-    def moebius_transform(self, *_args, **_kwargs) -> InteractionValues:
+    def moebius_transform(
+    self,
+    *args,  # noqa: ARG002
+    **kwargs,  # noqa: ARG002
+    ) -> InteractionValues:
         """Computes the Moebius transform for all :math:`2^n` coalitions of the game.
 
         Args:
@@ -847,7 +851,10 @@ class ExactComputer:
         self._computed[(index, order)] = base_interaction
         return copy.copy(base_interaction)
 
-    def probabilistic_value(self, index: str, *_args, **_kwargs) -> InteractionValues:
+    def probabilistic_value(self, index: str,
+                            *args,  # noqa: ARG002
+                            **kwargs, # noqa: ARG002
+                            ) -> InteractionValues:
         """Computes common semi-values or probabilistic values, i.e. shapley values without
         efficiency axiom.
 

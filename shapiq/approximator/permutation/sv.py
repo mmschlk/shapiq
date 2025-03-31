@@ -30,7 +30,11 @@ class PermutationSamplingSV(Approximator):
 
     """
 
-    def __init__(self, n: int, random_state: int | None = None, **_kwargs) -> None:
+    def __init__(
+    self,
+    n: int, random_state: int | None = None,
+    **kwargs,  # noqa: ARG002
+    ) -> None:
         super().__init__(n=n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = n - 1
 

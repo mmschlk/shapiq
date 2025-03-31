@@ -104,8 +104,8 @@ class Regression(Approximator):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        *_args,
-        **_kwargs,
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
     ) -> InteractionValues:
         """The main approximation routine for the regression approximators.
 

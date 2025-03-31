@@ -66,8 +66,8 @@ class PermutationSamplingSTII(Approximator):
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
         batch_size: int = 1,
-        *_args,
-        **_kwargs,
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the interaction values.
 
