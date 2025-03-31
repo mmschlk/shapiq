@@ -114,7 +114,7 @@ def test_init_params_approx_params(dt_reg_model, background_reg_data, approximat
     explainer = TabularExplainer(
         approximator=approximator, model=dt_reg_model, data=background_reg_data, max_order=max_order
     )
-    iv = explainer.explain(background_reg_data[0],budget=BUDGET_NR_FEATURES)
+    iv = explainer.explain(background_reg_data[0], budget=BUDGET_NR_FEATURES)
     assert iv.__class__.__name__ == "InteractionValues"
 
 
@@ -200,7 +200,7 @@ def test_against_shap_linear():
         approximator="auto",
         imputer="marginal",
     )
-    shapiq_values = explainer_shapiq.explain_X(X, budget=2 ** dim)
+    shapiq_values = explainer_shapiq.explain_X(X, budget=2**dim)
     shapiq_values = np.array([values.get_n_order_values(1) for values in shapiq_values])
 
     assert np.allclose(shap_values, shapiq_values, atol=1e-5)

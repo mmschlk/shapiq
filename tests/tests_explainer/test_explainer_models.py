@@ -26,19 +26,18 @@ def test_torch_clf(torch_clf_model, background_clf_data):
     """Test the explainer with basic torch classification model."""
     import torch
 
-
     x_explain = background_clf_data[0]
     x_explain_tensor = torch.tensor(x_explain, dtype=torch.float32).reshape(1, -1)
     prediction = torch_clf_model(x_explain_tensor).detach().numpy()[0]
 
     explainer = Explainer(model=torch_clf_model, data=background_clf_data, class_index=2)
-    values = explainer.explain(x_explain,budget=BUDGET_NR_FEATURES)
+    values = explainer.explain(x_explain, budget=BUDGET_NR_FEATURES)
     assert isinstance(values, InteractionValues)
     sum_of_values = sum(values.values)
     assert prediction[2] == pytest.approx(sum_of_values, rel=0.001)
 
     explainer = Explainer(model=torch_clf_model, data=background_clf_data, class_index=0)
-    values = explainer.explain(x_explain,budget=BUDGET_NR_FEATURES)
+    values = explainer.explain(x_explain, budget=BUDGET_NR_FEATURES)
     assert isinstance(values, InteractionValues)
     sum_of_values = sum(values.values)
     assert prediction[0] == pytest.approx(sum_of_values, rel=0.001)
