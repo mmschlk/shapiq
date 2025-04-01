@@ -14,6 +14,7 @@ def upset_plot(
     feature_names: Sequence[str] | None = None,
     color_matrix: bool = False,
     all_features: bool = True,
+    figsize: tuple[float, float] | None = None,
     show: bool = False,
 ) -> plt.Figure | None:
     """Plots the upset plot.
@@ -40,6 +41,8 @@ def upset_plot(
             not (black). Defaults to ``False``.
         all_features: Whether to plot all ``n_players`` features or only the features that are
             present in the top interactions. Defaults to ``True``.
+        figsize: The size of the figure. Defaults to ``None``. If ``None``, the size will be set
+            automatically depending on the number of features.
         show: Whether to show the plot. Defaults to ``False``.
 
     Returns:
@@ -77,9 +80,16 @@ def upset_plot(
     height_upper, height_lower = 5, n_features * 0.75
     height = height_upper + height_lower
     ratio = [height_upper, height_lower]
-    fig, ax = plt.subplots(
-        2, 1, figsize=(10, height), gridspec_kw={"height_ratios": ratio}, sharex=True
-    )
+    if figsize is None:
+        figsize = (10, height)
+    else:
+        figsize = figsize
+        if figsize[1] is None:
+            figsize = (figsize[0], height)
+        if figsize[0] is None:
+            figsize = (10, figsize[1])
+
+    fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={"height_ratios": ratio}, sharex=True)
 
     # plot lower part of the upset plot
     for x_pos, interaction in enumerate(interactions):
