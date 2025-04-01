@@ -83,7 +83,6 @@ def upset_plot(
     if figsize is None:
         figsize = (10, height)
     else:
-        figsize = figsize
         if figsize[1] is None:
             figsize = (figsize[0], height)
         if figsize[0] is None:
