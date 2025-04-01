@@ -9,8 +9,8 @@ import sys
 import commonmark
 from sphinx.builders.html import StandaloneHTMLBuilder
 
-sys.path.insert(0, os.path.abspath("../.."))
-sys.path.insert(0, os.path.abspath("../../shapiq"))
+sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
+sys.path.insert(0, os.path.abspath("../../shapiq"))  # noqa: PTH100
 
 import shapiq
 

@@ -2,8 +2,8 @@
 
 import copy
 import multiprocessing as mp
-import os
 import warnings
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -29,9 +29,8 @@ def _save_results(results: pd.DataFrame, save_path: str) -> None:
 
     """
     # check if the directory exists
-    save_dir = os.path.dirname(save_path)
-    if save_dir != "" and not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+    save_dir = Path(save_path).parent
+    save_dir.mkdir(parents=True, exist_ok=True)
     results.to_json(save_path)
 
 
@@ -88,10 +87,10 @@ def run_benchmark(
     from .configuration import APPROXIMATION_CONFIGURATIONS, APPROXIMATION_NAME_TO_CLASS_MAPPING
 
     if save_path is None:
-        save_path = os.path.join("results", f"{benchmark_name}.json")
-        os.makedirs("results", exist_ok=True)
+        save_path = Path("results") / f"{benchmark_name}.json"
+        save_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not rerun_if_exists and os.path.exists(save_path):
+    if not rerun_if_exists and Path(save_path).exists():
         print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
         return pd.read_json(save_path)
 
@@ -281,7 +280,7 @@ def load_benchmark_results(
     game_configuration: dict[str, Any] | int | None = None,
     game_n_player_id: int | None = None,
     game_n_games: int | None = None,
-) -> tuple[pd.DataFrame, str]:
+) -> tuple[pd.DataFrame, Path]:
     """Loads the benchmark results from a JSON file which either specified by the save path or
     the benchmark configuration.
 
@@ -326,8 +325,7 @@ def load_benchmark_results(
                 "configurations"
             ][game_configuration - 1]
 
-        save_path = os.path.join(
-            BENCHMARK_RESULTS_DIR,
+        benchmark_name: str = (
             _make_benchmark_name(
                 config_id=get_game_file_name_from_config(game_configuration),
                 game_class=game_class,
@@ -335,8 +333,9 @@ def load_benchmark_results(
                 index=index,
                 order=order,
             )
-            + ".json",
+            + ".json"
         )
+        save_path = Path(BENCHMARK_RESULTS_DIR) / benchmark_name
 
     df = pd.read_json(save_path)
     return df, save_path
@@ -422,13 +421,13 @@ def run_benchmark_from_configuration(
 
     # get the benchmark name for saving the results
     benchmark_name = _make_benchmark_name(config_id, game_class, len(games), index, order)
-    save_path = os.path.join("results", f"{benchmark_name}.json")
-    os.makedirs("results", exist_ok=True)
+    save_path = Path("results") / f"{benchmark_name}.json"
+    Path("results").mkdir(parents=True, exist_ok=True)
     print(
         f"Checking if the benchmark results already exist with the name: {benchmark_name} and the "
         f"save path: {save_path}."
     )
-    if not rerun_if_exists and os.path.exists(save_path):
+    if not rerun_if_exists and Path(save_path).exists():
         print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
         return
     elif rerun_if_exists:

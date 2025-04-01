@@ -2,9 +2,9 @@
 from the precomputed data (GitHub repository).
 """
 
-import os
 import time
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -127,13 +127,8 @@ def load_game_data(
     n_players = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["n_players"]
     file_name = get_game_file_name_from_config(configuration, iteration)
 
-    path_to_values = str(
-        os.path.join(
-            SHAPIQ_DATA_DIR,
-            game_class.get_game_name(),
-            str(n_players),
-            f"{file_name}.npz",
-        )
+    path_to_values = (
+        SHAPIQ_DATA_DIR / game_class.get_game_name() / str(n_players) / f"{file_name}.npz"
     )
     try:
         return Game(
@@ -172,12 +167,12 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
     github_url = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/precomputed_games"
 
     # create the directory if it does not exist
-    game_dir = str(os.path.join(SHAPIQ_DATA_DIR, game_name, str(n_players)))
-    os.makedirs(game_dir, exist_ok=True)
+    game_dir = SHAPIQ_DATA_DIR / game_name / str(n_players)
+    game_dir.mkdir(parents=True, exist_ok=True)
 
     # download the file
     file_name = file_name.replace(".npz", "")
-    path = os.path.join(game_dir, f"{file_name}.npz")
+    path = Path(game_dir) / f"{file_name}.npz"
     url = f"{github_url}/{game_name}/{n_players}/{file_name}.npz"
     try:
         response = requests.get(url)
@@ -186,6 +181,6 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
         raise FileNotFoundError(
             f"Could not download the game data from {url}. Check if configuration is correct."
         ) from error
-    with open(path, "wb") as file:
+    with Path(path).open("wb") as file:
         file.write(response.content)
         time.sleep(0.01)

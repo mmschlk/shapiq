@@ -113,7 +113,8 @@ select = [
     "ERA",
     "N812",  # TODO: add further N codes
     # "ANN",  # TODO: add this or include mypy
-    # "D",  # TODO: include this in the near future
+    #"D",  # TODO: include this in the near future
+    "PTH",
 ]
 ignore = [
     "E501",  # Line too long
@@ -141,12 +142,13 @@ ignore = [
     "ARG",
     "INP",
     "N",
+    "PTH",
 ]
 "*.ipynb" = [
     "E402",  # Module level import not at top of file (its .ipynb)
 ]
 "docs/source/conf.py" = ["A001", "INP"]  # copyright must be at the top of the file
-"benchmark/*.py" = ["INP"]
+"benchmark/*.py" = ["INP", "PTH"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["shapiq"]

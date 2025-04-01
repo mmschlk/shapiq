@@ -2,8 +2,8 @@
 installed by default.
 """
 
-import os
 import warnings
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -89,8 +89,14 @@ class CaliforniaHousingTorchModel:
     def _load_torch_model_weights(self) -> None:
         """Loads a pre-trained neural network model for the CaliforniaHousing dataset."""
         # the file is located in the tests/data/models directory
-        module_dir = os.path.abspath(__file__).split("shapiq")[0]
-        path = os.path.join("tests", "data", "models", "california_nn_0.812511_0.076331.weights")
-        test_model_path = os.path.join(module_dir, "shapiq", path)
+        full_path = Path(__file__).resolve()
+        parts = full_path.parts
+        if "shapiq" in parts:
+            idx = parts.index("shapiq")
+            module_dir = Path(*parts[:idx])  # everything before shapiq
+        else:
+            raise ValueError("shapiq not in path")
+        path = Path("tests", "data", "models", "california_nn_0.812511_0.076331.weights")
+        test_model_path = module_dir / "shapiq" / path
         self.torch_model.load_state_dict(torch.load(test_model_path))
         self.torch_model.eval()

@@ -111,7 +111,7 @@ def test_benchmark_config():
         game_n_games=n_games,
     )
     assert data_loaded_no_path is not None
-    assert path_loaded_no_path == save_path
+    assert str(path_loaded_no_path) == save_path
     assert len(data_loaded) == len(data_loaded_no_path)
 
     fig, axis = plot_approximation_quality(data=results)

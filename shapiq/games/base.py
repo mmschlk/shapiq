@@ -3,6 +3,7 @@
 import os
 import pickle
 import warnings
+from pathlib import Path
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -91,7 +92,7 @@ class Game:
         n_players: int | None = None,
         normalize: bool = True,
         normalization_value: float | None = None,
-        path_to_values: str | None = None,
+        path_to_values: Path | str | None = None,
         verbose: bool = False,
         player_names: list[str] | None = None,
         *args,  # noqa ARG002
@@ -130,7 +131,7 @@ class Game:
         self.game_id = "_".join([self.get_game_name(), game_id])
         if path_to_values is not None:
             self.load_values(path_to_values, precomputed=True)
-            self.game_id = path_to_values.split(os.path.sep)[-1].split(".")[0]
+            self.game_id = str(path_to_values).split(os.path.sep)[-1].split(".")[0]
             # if game should not be normalized, reset normalization value to 0
             if not normalize and self.normalization_value != 0:
                 self.normalization_value = 0.0
@@ -386,14 +387,17 @@ class Game:
         self.coalition_lookup = coalitions_dict
         self.precompute_flag = True
 
-    def save_values(self, path: str) -> None:
+    def save_values(self, path: Path | str) -> None:
         """Saves the game values to the given path.
 
         Args:
             path: The path to save the game.
 
         """
-        # check if path ends with .npz
+        # check if path is a Path object
+        if isinstance(path, Path):
+            path = str(path)
+
         if not path.endswith(".npz"):
             path += ".npz"
 
@@ -421,7 +425,7 @@ class Game:
             normalization_value=self.normalization_value,
         )
 
-    def load_values(self, path: str, precomputed: bool = False) -> None:
+    def load_values(self, path: Path | str, precomputed: bool = False) -> None:
         """Loads the game values from the given path.
 
         Args:
@@ -431,6 +435,10 @@ class Game:
                 subset of all coalitions and only this subset will be used. Defaults to ``False``.
 
         """
+        # check if path is a Path object
+        if isinstance(path, Path):
+            path = str(path)
+
         # check if path ends with .npz
         if not path.endswith(".npz"):
             path += ".npz"
@@ -449,25 +457,25 @@ class Game:
         self.precompute_flag = precomputed
         self.normalization_value = float(data["normalization_value"])
 
-    def save(self, path: str) -> None:
+    def save(self, path: Path | str) -> None:
         """Saves and serializes the game object to the given path.
 
         Args:
             path: The path to save the game.
 
         """
-        with open(path, "wb") as f:
+        with Path(path).open("wb") as f:
             pickle.dump(self, f)
 
     @classmethod
-    def load(cls, path: str) -> "Game":
+    def load(cls, path: Path | str) -> "Game":
         """Load the game from a given path.
 
         Args:
             path: The path to load the game from.
 
         """
-        with open(path, "rb") as f:
+        with Path(path).open("rb") as f:
             game = pickle.load(f)
         return game
 
