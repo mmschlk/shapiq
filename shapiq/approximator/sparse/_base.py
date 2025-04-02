@@ -195,10 +195,30 @@ class Sparse(Approximator):
         )
         # TODO Should we try to decrease t to get b to at least 3 or re-route?
         if b <= 2:
-            raise ValueError(
-                "Budget is too low to compute the transform, consider increasing the budget or  using a "
-                "different approximator."
-            )
+            while self.t > self.max_order:
+                self.t -= 1
+                self.query_args["t"] = self.t
+
+                # Recalculate 'b' with the updated 't'
+                b = SubsampledSignalFourier.get_b_for_sample_budget(
+                    budget, self.n, self.t, 2, self.query_args
+                )
+
+                # Compute the used budget
+                used_budget = SubsampledSignalFourier.get_number_of_samples(
+                    self.n, b, self.t, 2, self.query_args
+                )
+
+                # Break if 'b' is now sufficient
+                if b > 2:
+                    break
+
+            # If 'b' is still too low, raise an error
+            if b <= 2:
+                raise ValueError(
+                    "Insufficient budget to compute the transform. Increase the budget or use a different approximator."
+                )
+        # Store the final 'b' value
         self.query_args["b"] = b
         self.decoder_args["b"] = b
         return used_budget
