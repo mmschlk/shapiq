@@ -22,7 +22,7 @@ def stacked_bar_plot(
     xlabel: str | None = None,
     ylabel: str | None = None,
     show: bool = False,
-):
+) -> tuple[plt.Figure, plt.Axes] | None:
     """The stacked bar plot interaction scores.
 
     This stacked bar plot can be used to visualize the amount of interaction between the features

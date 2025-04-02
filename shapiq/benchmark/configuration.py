@@ -33,7 +33,7 @@ information:
         the game evaluations are computed on the fly during the benchmark (significantly slower).
 """
 
-import os
+from pathlib import Path
 from typing import Any
 
 from shapiq.approximator import (
@@ -157,8 +157,9 @@ IMAGENET_EXAMPLE_FILES = [
     "ILSVRC2012_val_00010863.JPEG",
     "ILSVRC2012_val_00028489.JPEG",
 ]
-IMAGE_FOLDER = os.path.join(os.path.dirname(__file__), "imagenet_examples")
-IMAGENET_EXAMPLE_FILES = [os.path.join(IMAGE_FOLDER, file) for file in IMAGENET_EXAMPLE_FILES]
+
+IMAGE_FOLDER = Path(__file__).parent / "imagenet_examples"
+IMAGENET_EXAMPLE_FILES = [IMAGE_FOLDER / file for file in IMAGENET_EXAMPLE_FILES]
 
 # stores the configurations of all the benchmark games and how they are set up
 BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {

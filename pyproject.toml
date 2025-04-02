@@ -113,13 +113,13 @@ select = [
     "ERA",
     "N812",  # TODO: add further N codes
     # "ANN",  # TODO: add this or include mypy
-    # "D",  # TODO: include this in the near future
+    #"D",  # TODO: include this in the near future
+    "PTH",
 ]
 ignore = [
     "E501",  # Line too long
     "N803",  # Variable X in function should be lowercase
     "N806"  # Variable X in function should be lowercase
-#    "E501",    # Line too long
 #    "D203",    # 1 blank line required before class docstring
 #    "D211",    # No blank lines allowed before class docstring
 #    "D213",    # Multi-line docstring summary should start at the second line
@@ -141,12 +141,13 @@ ignore = [
     "ARG",
     "INP",
     "N",
+    "PTH",
 ]
 "*.ipynb" = [
     "E402",  # Module level import not at top of file (its .ipynb)
 ]
 "docs/source/conf.py" = ["A001", "INP"]  # copyright must be at the top of the file
-"benchmark/*.py" = ["INP"]
+"benchmark/*.py" = ["INP", "PTH"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["shapiq"]

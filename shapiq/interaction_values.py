@@ -3,10 +3,10 @@ scores.
 """
 
 import copy
-import os
 import pickle
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Union
 from warnings import warn
 
@@ -575,14 +575,15 @@ class InteractionValues:
 
         """
         # check if the directory exists
-        directory = os.path.dirname(path)
-        if not os.path.exists(directory):
+        directory = Path(path).parent
+        if not Path(directory).exists():
             try:
-                os.makedirs(directory)
+                # create the directory if it does not exist
+                Path(directory).mkdir(parents=True, exist_ok=True)
             except FileNotFoundError:  # no directory
                 pass
         if as_pickle:
-            with open(path, "wb") as file:
+            with Path(path).open("wb") as file:
                 pickle.dump(self, file)
         else:
             # save object as npz file
@@ -639,7 +640,7 @@ class InteractionValues:
             )
         except AttributeError:  # not a npz file
             pass
-        with open(path, "rb") as file:
+        with Path(path).open("rb") as file:
             # this is unsafe, but for the purpose of this library it is fine
             return pickle.load(file)
 
