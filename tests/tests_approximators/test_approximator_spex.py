@@ -1,5 +1,4 @@
 import pytest
-import numpy as np
 
 from shapiq.approximator.sparse.spex import SPEX
 from shapiq.games.benchmark import DummyGame
@@ -123,3 +122,44 @@ def test_spex_vs_sparse():
 
     # Check that the interaction is estimated similarly
     assert abs(spex_estimates[interaction] - sparse_estimates[interaction]) < 0.1
+
+@pytest.mark.parametrize(
+    "n, interaction, budget, correct_b, correct_t",
+    [
+        (10, (1, 2), 1000, 3, 5),
+        (10, (1, 2), 450, 3, 3),
+        (7, (0, 3, 5), 800, 3, 5),
+        (7, (0, 3, 5), 300, 3, 2),
+    ],
+)
+def test_sparsity_parameter(n, interaction, budget, correct_b, correct_t):
+    """Test SPEX approximation functionality."""
+    # Create a game with a specific interaction
+    game = DummyGame(n, interaction)
+
+    # Initialize SPEX approximator
+    spex = SPEX(n=n, random_state=42)
+
+    # Run approximation with both
+    _ = spex.approximate(budget, game)
+
+    assert spex.query_args["b"] == correct_b
+    assert spex.t == correct_t
+
+@pytest.mark.parametrize(
+    "n, interaction, budget",
+    [
+        (10, (1, 2), 100),
+        (7, (0, 3, 5), 20),
+    ],
+)
+def test_undersampling(n, interaction, budget):
+    """Test SPEX approximation functionality."""
+    # Create a game with a specific interaction
+    game = DummyGame(n, interaction)
+
+    # Initialize SPEX approximator
+    spex = SPEX(n=n, random_state=42)
+
+    with pytest.raises(ValueError):
+        _ = spex.approximate(budget, game)
