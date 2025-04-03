@@ -20,6 +20,7 @@ from .approximator import (
     StratifiedSamplingSV,
     UnbiasedKernelSHAP,
     kADDSHAP,
+    SPEX
 )
 from .benchmark import (
     BENCHMARK_CONFIGURATIONS,
@@ -93,6 +94,7 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
+    "SPEX",
     # explainers
     "Explainer",
     "TabularExplainer",
