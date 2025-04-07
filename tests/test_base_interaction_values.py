@@ -766,3 +766,32 @@ def test_docs_aggregation_function():
 
     with pytest.raises(ValueError):
         _ = aggregate_interaction_values([iv1, iv2], aggregation="invalid")
+
+
+@pytest.mark.parametrize("n_players, min_order, max_order", [(5, 0, 2), (5, 1, 3), (300, 1, 1)])
+def test_get_n_order(n_players, min_order, max_order):
+    """Tests the get_n_order method of the InteractionValues dataclass."""
+    if n_players == 5:
+        interaction_lookup = {
+            interaction: i for i, interaction in enumerate(powerset(range(n_players)))
+        }
+        raise NotImplementedError("todo")  # tood
+    elif n_players == 300:
+        interaction_lookup = {(1, 2): 5, (1, 4, 10): 6}
+    else:
+        raise ValueError("Test not properly defined")
+
+    values = np.random.rand(len(interaction_lookup))
+    interaction_values = InteractionValues(
+        values=values,
+        index="SII",
+        n_players=n_players,
+        min_order=min_order,
+        max_order=max_order,
+        interaction_lookup=interaction_lookup,
+        baseline_value=0.0,
+    )
+
+    # test get_n_order
+    n_order_values = interaction_values.get_n_order_values(max_order)
+    assert n_order_values.shape == (n_players,) * max_order

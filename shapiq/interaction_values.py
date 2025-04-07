@@ -494,11 +494,12 @@ class InteractionValues:
             dtype=float,
         )
         new_interaction_lookup = {}
-        for i, interaction in enumerate(
-            powerset(range(self.n_players), min_size=min_order, max_size=max_order)
-        ):
-            new_values[i] = self[interaction]
-            new_interaction_lookup[interaction] = len(new_interaction_lookup)
+        for interaction in self.interaction_lookup.keys():
+            if len(interaction) < min_order or len(interaction) > max_order:
+                continue
+            interaction_idx = len(new_interaction_lookup)
+            new_values[interaction_idx] = self[interaction]
+            new_interaction_lookup[interaction] = interaction_idx
 
         return InteractionValues(
             values=new_values,
