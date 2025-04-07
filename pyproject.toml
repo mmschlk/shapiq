@@ -148,6 +148,7 @@ ignore = [
 ]
 "docs/source/conf.py" = ["A001", "INP"]  # copyright must be at the top of the file
 "benchmark/*.py" = ["INP", "PTH"]
+"docs/copy_notebooks.py" = ["PTH"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["shapiq"]

@@ -12,6 +12,8 @@ build:
     python: "3.10"
   apt_packages:
     - pandoc
+  commands:
+    - python docs/copy_notebooks.py
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

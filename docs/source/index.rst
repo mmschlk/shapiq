@@ -47,7 +47,7 @@ Contents
    :caption: API EXAMPLES
    :glob:
 
-   ../../examples/api_examples/*
+   api_examples/*
 
 .. toctree::
    :maxdepth: 2
