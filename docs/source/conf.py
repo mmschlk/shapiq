@@ -11,6 +11,8 @@ from sphinx.builders.html import StandaloneHTMLBuilder
 
 sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
 sys.path.insert(0, os.path.abspath("../../shapiq"))  # noqa: PTH100
+sys.path.insert(0, os.path.abspath("../../examples"))  # noqa: PTH100
+
 
 import shapiq
 
@@ -43,6 +45,8 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
 ]
+
+nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
