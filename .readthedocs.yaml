@@ -13,6 +13,7 @@ build:
   apt_packages:
     - pandoc
   commands:
+    - pip install -r docs/requirements/requirements.txt
     - python docs/copy_notebooks.py
     - sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html
 
@@ -25,6 +26,6 @@ build:
 #    - pdf
 
 # Optionally declare the Python requirements required to build your docs
-python:
-  install:
-    - requirements: docs/requirements/requirements.txt
+#python:
+#  install:
+#    - requirements: docs/requirements/requirements.txt
