@@ -34,7 +34,10 @@ ENSEMBLE_MEMBERS_VERY_FAST = ["regression", "decision_tree", "regression", "deci
     ],
 )
 def test_ensemble_selection(
-    task, loss_function, background_reg_dataset, background_clf_dataset_binary
+    task,
+    loss_function,
+    background_reg_dataset,
+    background_clf_dataset_binary,
 ):
     """Tests the EnsembleSelection game on a regression and classification dataset."""
     # start with regression data

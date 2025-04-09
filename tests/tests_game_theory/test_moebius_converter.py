@@ -8,7 +8,7 @@ from shapiq.games.benchmark.synthetic.soum import SOUM
 
 def test_soum_moebius_conversion():
     """Test the basic funcitonality of the Möbius converter."""
-    for i in range(10):
+    for _ in range(10):
         n = np.random.randint(low=2, high=20)
         order = np.random.randint(low=1, high=min(n, 5))
         n_basis_games = np.random.randint(low=1, high=100)
@@ -23,7 +23,8 @@ def test_soum_moebius_conversion():
         shapley_interactions = {}
         for index in ["STII", "k-SII", "FSII"]:
             shapley_interactions[index] = moebius_converter.moebius_to_shapley_interaction(
-                index=index, order=order
+                index=index,
+                order=order,
             )
             # Assert efficiency
             assert (np.sum(shapley_interactions[index].values) - predicted_value) ** 2 < 10e-7

@@ -52,7 +52,7 @@ def test_adult():
     assert game.game_name == "AdultCensus_UnsupervisedData_Game"
 
     test_coalitions = np.array(
-        [game.empty_coalition, game.empty_coalition, game.grand_coalition]
+        [game.empty_coalition, game.empty_coalition, game.grand_coalition],
     ).astype(bool)
     test_coalitions[1][2] = True  # one player coalition
 
@@ -74,7 +74,7 @@ def test_bike_sharing():
     assert game.game_name == "BikeSharing_UnsupervisedData_Game"
 
     test_coalitions = np.array(
-        [game.empty_coalition, game.empty_coalition, game.grand_coalition]
+        [game.empty_coalition, game.empty_coalition, game.grand_coalition],
     ).astype(bool)
     test_coalitions[1][2] = True  # one player coalition
 
@@ -96,7 +96,7 @@ def test_california_housing():
     assert game.game_name == "CaliforniaHousing_UnsupervisedData_Game"
 
     test_coalitions = np.array(
-        [game.empty_coalition, game.empty_coalition, game.grand_coalition]
+        [game.empty_coalition, game.empty_coalition, game.grand_coalition],
     ).astype(bool)
     test_coalitions[1][2] = True  # one player coalition
 

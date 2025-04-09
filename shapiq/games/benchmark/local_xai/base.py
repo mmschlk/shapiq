@@ -93,7 +93,9 @@ class LocalExplanation(Game):
             elif imputer == "conditional":
                 # use only a random subset of the data for the conditional imputer
                 random_indices = np.random.default_rng(random_state).choice(
-                    data.shape[0], size=2_000, replace=False
+                    data.shape[0],
+                    size=2_000,
+                    replace=False,
                 )
                 data_background = data[random_indices]
                 self._imputer = ConditionalImputer(
@@ -106,7 +108,7 @@ class LocalExplanation(Game):
                 )
             else:
                 raise ValueError(
-                    f"Imputer {imputer} not available. Choose from {'marginal', 'conditional'}."
+                    f"Imputer {imputer} not available. Choose from {'marginal', 'conditional'}.",
                 )
 
         self.empty_prediction_value: float = self._imputer.empty_prediction

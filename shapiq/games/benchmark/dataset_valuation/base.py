@@ -65,7 +65,7 @@ class DatasetValuation(Game):
         ):
             raise ValueError(
                 "The 'data', 'target', 'fit_function', 'predict_function', and 'loss_function' "
-                "must be provided."
+                "must be provided.",
             )
 
         if isinstance(player_sizes, str):
@@ -77,7 +77,7 @@ class DatasetValuation(Game):
                 player_sizes = np.random.rand(n_players)
             else:
                 raise ValueError(
-                    "player_sizes must be 'uniform', 'increasing', 'random', or a list."
+                    "player_sizes must be 'uniform', 'increasing', 'random', or a list.",
                 )
         elif player_sizes is None:
             player_sizes = [1 / n_players for _ in range(n_players)]

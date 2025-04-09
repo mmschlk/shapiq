@@ -3,6 +3,7 @@ dataframes and computing summary statistics such as 'percentage of approximator 
 ranking at highest budget. The results are then saved to a csv file.
 """
 
+import logging
 import os
 import sys
 import warnings
@@ -152,8 +153,9 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
         try:
             best_approximators: dict = _get_best_approximator(results_df)
         except Exception as e:
-            print(f"Error occurred: {e}. Continuing.")
-            print(f"Skipping: {file_name}")
+            message = f"Error occurred while getting the best approximator for {file_name}: {e}"
+            print(message)
+            logging.exception(message)
             continue
         for metric, metric_values in best_approximators.items():
             for approximator, budget in metric_values:
@@ -209,15 +211,12 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
         save: Whether to save the plot to a file.
 
     """
-    assert setting in [
-        "all",
-        "high",
-        "low",
-    ], "Budget setting must be 'all', 'high', or 'low'."
+    if setting not in ["all", "high", "low"]:
+        raise ValueError("Budget setting must be 'all', 'high', or 'low'.")
 
     import matplotlib.pyplot as plt
 
-    from shapiq.games.benchmark.plot import STYLE_DICT  # maps approx names to colors and markers
+    from shapiq.benchmark.plot import STYLE_DICT  # maps approx names to colors and markers
 
     # get all unique applications and metrics and index
     all_applications = df["application_name"].unique()
@@ -227,9 +226,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
 
     index_approximators = {}
     for index in all_indices:
-        index_approximators[index] = list(
-            sorted(df[df["index"] == index]["best_approximator"].unique())
-        )
+        index_approximators[index] = sorted(df[df["index"] == index]["best_approximator"].unique())
 
     # iterate over all metrics
     for metric in all_metrics:
@@ -244,7 +241,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
                 high_budget_dfs.append(
                     metric_df[
                         (metric_df["run_id"] == run_id) & (metric_df["budget"] == max_budget)
-                    ].copy()
+                    ].copy(),
                 )
             metric_df = pd.concat(high_budget_dfs)
         fig, ax = plt.subplots()
@@ -261,7 +258,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
                     metric_df[
                         (metric_df["application_name"] == application)
                         & (metric_df["index"] == index)
-                    ]
+                    ],
                 )
                 approximators = index_approximators[index]
                 if index == "SV":
@@ -278,7 +275,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
                             (metric_df["application_name"] == application)
                             & (metric_df["best_approximator"] == approximator)
                             & (metric_df["index"] == index)
-                        ]
+                        ],
                     )
                     percent_best = count / n_values
                     height = percent_best * 100

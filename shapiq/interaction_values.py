@@ -66,7 +66,7 @@ class InteractionValues:
             warn(
                 UserWarning(
                     f"Index {self.index} is not a valid index as defined in "
-                    f"{ALL_AVAILABLE_INDICES}. This might lead to unexpected behavior."
+                    f"{ALL_AVAILABLE_INDICES}. This might lead to unexpected behavior.",
                 ),
                 stacklevel=2,
             )
@@ -81,12 +81,14 @@ class InteractionValues:
         # populate interaction_lookup and reverse_interaction_lookup
         if self.interaction_lookup is None:
             self.interaction_lookup = generate_interaction_lookup(
-                self.n_players, self.min_order, self.max_order
+                self.n_players,
+                self.min_order,
+                self.max_order,
             )
 
         if not isinstance(self.baseline_value, int | float):
             raise TypeError(
-                f"Baseline value must be provided as a number. Got {self.baseline_value}."
+                f"Baseline value must be provided as a number. Got {self.baseline_value}.",
             )
 
         # check if () is in the interaction_lookup if min_order is 0 -> add it to the end
@@ -152,7 +154,9 @@ class InteractionValues:
         )
 
     def get_top_k(
-        self, k: int, as_interaction_values: bool = True
+        self,
+        k: int,
+        as_interaction_values: bool = True,
     ) -> Union["InteractionValues", tuple[dict, list[tuple]]]:
         """Returns the top k interactions.
 
@@ -262,7 +266,7 @@ class InteractionValues:
                 self.values[self.interaction_lookup[item]] = value
         except Exception as e:
             raise KeyError(
-                f"Interaction {item} not found in the InteractionValues. Unable to set a value."
+                f"Interaction {item} not found in the InteractionValues. Unable to set a value.",
             ) from e
 
     def __eq__(self, other: object) -> bool:
@@ -310,7 +314,7 @@ class InteractionValues:
                 self.min_order,
                 self.n_players,
                 tuple(self.values.flatten()),
-            )
+            ),
         )
 
     def __copy__(self) -> "InteractionValues":
@@ -334,7 +338,7 @@ class InteractionValues:
             if self.index != other.index:  # different indices
                 raise ValueError(
                     f"Cannot add InteractionValues with different indices {self.index} and "
-                    f"{other.index}."
+                    f"{other.index}.",
                 )
             if (
                 self.interaction_lookup != other.interaction_lookup
@@ -471,7 +475,10 @@ class InteractionValues:
         return values
 
     def get_n_order(
-        self, order: int, min_order: int | None = None, max_order: int | None = None
+        self,
+        order: int,
+        min_order: int | None = None,
+        max_order: int | None = None,
     ) -> "InteractionValues":
         """Returns the interaction values of a specific order.
 
@@ -495,7 +502,7 @@ class InteractionValues:
         )
         new_interaction_lookup = {}
         for i, interaction in enumerate(
-            powerset(range(self.n_players), min_size=min_order, max_size=max_order)
+            powerset(range(self.n_players), min_size=min_order, max_size=max_order),
         ):
             new_values[i] = self[interaction]
             new_interaction_lookup[interaction] = len(new_interaction_lookup)
@@ -687,7 +694,9 @@ class InteractionValues:
         }
 
     def aggregate(
-        self, others: Sequence["InteractionValues"], aggregation: str = "mean"
+        self,
+        others: Sequence["InteractionValues"],
+        aggregation: str = "mean",
     ) -> "InteractionValues":
         """Aggregates InteractionValues objects using a specific aggregation method.
 
@@ -725,7 +734,7 @@ class InteractionValues:
         else:
             raise ValueError(
                 "InteractionValues contains only 1-order values,"
-                "but requires also 2-order values for the network plot."
+                "but requires also 2-order values for the network plot.",
             )
 
     def plot_si_graph(self, show: bool = True, **kwargs) -> tuple[plt.Figure, plt.Axes] | None:
@@ -1009,7 +1018,7 @@ def finalize_computed_interactions(
         # are different?
         interactions.interaction_lookup[tuple()] = len(interactions.interaction_lookup)
         interactions.values = np.concatenate(
-            (interactions.values, np.array([interactions.baseline_value]))
+            (interactions.values, np.array([interactions.baseline_value])),
         )
 
     return interactions

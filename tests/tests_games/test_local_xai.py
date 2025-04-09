@@ -59,7 +59,8 @@ def test_basic_function(background_reg_dataset, dt_reg_model):
 
 
 @pytest.mark.parametrize(
-    "model", ["decision_tree", "random_forest", "gradient_boosting", "invalid"]
+    "model",
+    ["decision_tree", "random_forest", "gradient_boosting", "invalid"],
 )
 def test_adult_census(model):
     """Tests the AdultCensus LocalExplanation game."""
@@ -95,7 +96,8 @@ def test_adult_census(model):
 
 
 @pytest.mark.parametrize(
-    "model", ["neural_network", "decision_tree", "random_forest", "gradient_boosting", "invalid"]
+    "model",
+    ["neural_network", "decision_tree", "random_forest", "gradient_boosting", "invalid"],
 )
 def test_california_housing(model):
     """Tests the CaliforniaHousing game local XAI."""
@@ -127,7 +129,8 @@ def test_california_housing(model):
 
 
 @pytest.mark.parametrize(
-    "model", ["decision_tree", "random_forest", "gradient_boosting", "invalid"]
+    "model",
+    ["decision_tree", "random_forest", "gradient_boosting", "invalid"],
 )
 def test_bike_sharing(model):
     """Tests the BikeSharing local XAI game."""
@@ -164,7 +167,9 @@ def test_sentiment_classifier(mask_strategy):
     input_text = "this is a six word sentence"
     n_players = 6
     game = SentimentAnalysisLocalXAI(
-        input_text=input_text, normalize=True, mask_strategy=mask_strategy
+        input_text=input_text,
+        normalize=True,
+        mask_strategy=mask_strategy,
     )
 
     assert game.n_players == n_players
@@ -190,7 +195,9 @@ def test_sentiment_classifier(mask_strategy):
     # test ValueError with wrong param
     with pytest.raises(ValueError):
         _ = SentimentAnalysisLocalXAI(
-            input_text=input_text, normalize=True, mask_strategy="undefined"
+            input_text=input_text,
+            normalize=True,
+            mask_strategy="undefined",
         )
 
 
@@ -219,7 +226,9 @@ def test_image_classifier_game_resnet(image_and_path):
     """Tests the ImageClassifierGame with the ResNet models."""
     test_image, path_from_test_root = image_and_path
     game = ImageClassifierLocalXAI(
-        model_name="resnet_18", verbose=True, x_explain_path=path_from_test_root
+        model_name="resnet_18",
+        verbose=True,
+        x_explain_path=path_from_test_root,
     )
     assert game.n_players == 14
     assert game.game_name == "ImageClassifier_Game"
@@ -256,7 +265,10 @@ def test_image_classifier_game_vit(image_and_path):
     """Tests the ImageClassifierGame with the ViT models."""
     test_image, path_from_test_root = image_and_path
     game = ImageClassifierLocalXAI(
-        x_explain_path=path_from_test_root, model_name="vit_9_patches", normalize=True, verbose=True
+        x_explain_path=path_from_test_root,
+        model_name="vit_9_patches",
+        normalize=True,
+        verbose=True,
     )
     assert game.n_players == 9
     assert game.normalization_value == game.model_function.empty_value

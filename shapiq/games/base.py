@@ -108,7 +108,7 @@ class Game:
 
         if n_players is None and path_to_values is None:
             raise ValueError(
-                "The number of players has to be provided if game is not loaded from values."
+                "The number of players has to be provided if game is not loaded from values.",
             )
 
         # setup normalization of the game
@@ -122,7 +122,7 @@ class Game:
                     RuntimeWarning(
                         "Normalization value is set to `None`. No normalization value was provided"
                         " at initialization. Make sure to set the normalization value before"
-                        " calling the game."
+                        " calling the game.",
                     ),
                     stacklevel=2,
                 )
@@ -220,13 +220,13 @@ class Game:
                 if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
                     raise TypeError(
                         "The array of coalitions is not correctly formatted."
-                        f"It should have a length of {self.n_players}"
+                        f"It should have a length of {self.n_players}",
                     )
                 coalitions = coalitions.reshape((1, self.n_players))
             if coalitions.shape[1] != self.n_players:  # check if players match
                 raise TypeError(
                     f"Number of players in the coalitions ({coalitions.shape[1]}) does not match "
-                    f"the number of players in the game ({self.n_players})."
+                    f"the number of players in the game ({self.n_players}).",
                 )
             # TODO maybe remove this, as it might increase runtime unnecessarily
             # check that values of numpy array are either 0 or 1
@@ -284,7 +284,7 @@ class Game:
         elif not self.precomputed and verbose:
             values = np.zeros(coalitions.shape[0], dtype=float)
             for i, coalition in enumerate(
-                tqdm(coalitions, desc="Evaluating game", unit=" coalition")
+                tqdm(coalitions, desc="Evaluating game", unit=" coalition"),
             ):
                 coalition = coalition.reshape((1, self.n_players))
                 values[i] = self.value_function(coalition)[0]
@@ -303,7 +303,7 @@ class Game:
             except KeyError as error:
                 raise KeyError(
                     f"The coalition {coalition_tuple} is not stored in the game. "
-                    f"Are all values pre-computed?"
+                    f"Are all values pre-computed?",
                 ) from error
         return values
 
@@ -413,7 +413,8 @@ class Game:
 
         # cast the coalitions_in_storage to bool
         coalitions_in_storage = transform_coalitions_to_array(
-            coalitions=self.coalition_lookup, n_players=self.n_players
+            coalitions=self.coalition_lookup,
+            n_players=self.n_players,
         ).astype(bool)
 
         # save the data
@@ -448,7 +449,7 @@ class Game:
         if self.n_players is not None and n_players != self.n_players:
             raise ValueError(
                 f"The number of players in the game ({self.n_players}) does not match the number "
-                f"of players in the saved game ({n_players})."
+                f"of players in the saved game ({n_players}).",
             )
         self.n_players = int(n_players)
         self.value_storage = data["values"]
@@ -563,5 +564,5 @@ class Game:
             return self.value_storage[self.coalition_lookup[tuple(sorted(item))]]
         except (KeyError, IndexError) as error:
             raise KeyError(
-                f"The coalition {item} is not stored in the game. Is it precomputed?"
+                f"The coalition {item} is not stored in the game. Is it precomputed?",
             ) from error

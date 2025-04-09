@@ -86,7 +86,7 @@ class TabPFNExplainer(TabularExplainer):
         if data.shape[0] != labels.shape[0]:
             raise ValueError(
                 f"The number of samples in `data` and `labels` must be equal (got data.shape= "
-                f"{data.shape} and labels.shape={labels.shape})."
+                f"{data.shape} and labels.shape={labels.shape}).",
             )
         n_samples = data.shape[0]
         x_train = data

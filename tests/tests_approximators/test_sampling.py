@@ -112,7 +112,10 @@ def test_sampling():
 
         # run the sampler
         sampler = CoalitionSampler(
-            n, sampling_weights, pairing_trick=False, random_state=random_state
+            n,
+            sampling_weights,
+            pairing_trick=False,
+            random_state=random_state,
         )
         sampler.sample(budget)
 
@@ -131,7 +134,10 @@ def test_sampling():
         # assert similar output with scaled sampling weights and similar random_state
         sampling_weights_scaled = sampling_weights * 1.4
         sampler_scaled = CoalitionSampler(
-            n, sampling_weights_scaled, pairing_trick=False, random_state=random_state
+            n,
+            sampling_weights_scaled,
+            pairing_trick=False,
+            random_state=random_state,
         )
         sampler_scaled.sample(budget)
         coalitions_matrix_scaled = sampler_scaled.coalitions_matrix
@@ -155,7 +161,7 @@ def test_sampling():
                 sampler.coalitions_probability[
                     np.where(np.sum(coalitions_matrix, axis=1) == compute_size)
                 ]
-                == 1
+                == 1,
             )
 
         # assert weights are less than one for sampled subsets
@@ -164,5 +170,5 @@ def test_sampling():
                 sampler.coalitions_probability[
                     np.where(np.sum(coalitions_matrix, axis=1) == sample_size)
                 ]
-                < 1
+                < 1,
             )

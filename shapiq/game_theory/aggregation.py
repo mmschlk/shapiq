@@ -28,7 +28,8 @@ def _change_index(index: str) -> str:
 
 
 def aggregate_base_interaction(
-    base_interactions: InteractionValues, order: int | None = None
+    base_interactions: InteractionValues,
+    order: int | None = None,
 ) -> InteractionValues:
     """Aggregates the basis interaction values into an efficient interaction index.
 
@@ -75,7 +76,7 @@ def aggregate_base_interaction(
         warnings.warn(
             UserWarning(
                 "The base interaction values have a minimum order greater than 1. Aggregation may "
-                "not be meaningful."
+                "not be meaningful.",
             ),
             stacklevel=2,
         )

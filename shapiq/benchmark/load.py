@@ -71,10 +71,12 @@ def load_games_from_configuration(
     game_should_be_precomputed = config_of_class["precompute"]
     iteration_param = config_of_class["iteration_parameter"]
     iteration_param_values = config_of_class.get(
-        "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
+        "iteration_parameter_values",
+        BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
     )
     iteration_param_values_names = config_of_class.get(
-        "iteration_parameter_values_names", iteration_param_values
+        "iteration_parameter_values_names",
+        iteration_param_values,
     )
 
     # create the generator of games
@@ -94,7 +96,10 @@ def load_games_from_configuration(
         else:
             try:  # try to load the game from disk
                 yield load_game_data(
-                    game_class, configuration, iteration=game_iteration, n_player_id=n_player_id
+                    game_class,
+                    configuration,
+                    iteration=game_iteration,
+                    n_player_id=n_player_id,
                 )
             except FileNotFoundError:
                 if only_pre_computed:  # if only pre-computed games are requested, skip the game
@@ -148,7 +153,7 @@ def load_game_data(
         except FileNotFoundError as error:
             raise FileNotFoundError(
                 f"Game data for game {game_class.get_game_name()} with configuration "
-                f"{configuration} and iteration {iteration} could not be found."
+                f"{configuration} and iteration {iteration} could not be found.",
             ) from error
 
 
@@ -175,11 +180,11 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
     path = Path(game_dir) / f"{file_name}.npz"
     url = f"{github_url}/{game_name}/{n_players}/{file_name}.npz"
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
     except requests.exceptions.HTTPError as error:
         raise FileNotFoundError(
-            f"Could not download the game data from {url}. Check if configuration is correct."
+            f"Could not download the game data from {url}. Check if configuration is correct.",
         ) from error
     with Path(path).open("wb") as file:
         file.write(response.content)

@@ -25,7 +25,10 @@ def _utils_get_model(model, label, x_data):
 @pytest.mark.external_libraries
 @pytest.mark.parametrize("model_name, label", TABULAR_MODEL_FIXTURES)
 def test_tabular_get_predict_function_and_model_type(
-    model_name, label, background_reg_dataset, request
+    model_name,
+    label,
+    background_reg_dataset,
+    request,
 ):
     model = request.getfixturevalue(model_name)
     x_data, y = background_reg_dataset
@@ -40,12 +43,16 @@ def test_tabular_get_predict_function_and_model_type(
 
 
 @pytest.mark.skipif(
-    not any(pkg in sys.modules for pkg in ["tensorflow"]), reason="Tensorflow is not available."
+    not any(pkg in sys.modules for pkg in ["tensorflow"]),
+    reason="Tensorflow is not available.",
 )
 @pytest.mark.external_libraries
 @pytest.mark.parametrize("model_name, label", TABULAR_TENSORFLOW_MODEL_FIXTURES)
 def test_tensorflow_get_predict_function_and_model_type(
-    model_name, label, background_reg_dataset, request
+    model_name,
+    label,
+    background_reg_dataset,
+    request,
 ):
     model = request.getfixturevalue(model_name)
     x_data, _ = background_reg_dataset
@@ -56,7 +63,10 @@ def test_tensorflow_get_predict_function_and_model_type(
 @pytest.mark.external_libraries
 @pytest.mark.parametrize("model_name, label", TABULAR_TORCH_MODEL_FIXTURES)
 def test_torch_get_predict_function_and_model_type(
-    model_name, label, background_reg_dataset, request
+    model_name,
+    label,
+    background_reg_dataset,
+    request,
 ):
     model = request.getfixturevalue(model_name)
     x_data, _ = background_reg_dataset
@@ -67,7 +77,10 @@ def test_torch_get_predict_function_and_model_type(
 @pytest.mark.external_libraries
 @pytest.mark.parametrize("model_fixture, model_class", TREE_MODEL_FIXTURES)
 def test_tree_get_predict_function_and_model_type(
-    model_fixture, model_class, background_reg_dataset, request
+    model_fixture,
+    model_class,
+    background_reg_dataset,
+    request,
 ):
     model = request.getfixturevalue(model_fixture)
     x_data, y = background_reg_dataset

@@ -49,7 +49,7 @@ class MonteCarlo(Approximator):
         if index not in AVAILABLE_INDICES_MONTE_CARLO:
             raise ValueError(
                 f"Index {index} not available for Regression Approximator. Choose from "
-                f"{AVAILABLE_INDICES_MONTE_CARLO}."
+                f"{AVAILABLE_INDICES_MONTE_CARLO}.",
             )
         if index in ["FSII", "FBII"]:
             top_order = True
@@ -156,7 +156,9 @@ class MonteCarlo(Approximator):
             intersections_size = np.sum(coalitions_matrix * interaction_binary, axis=1)
             # pre-compute all coalition weights with interaction, coalition, and intersection size
             interaction_weights = standard_form_weights[
-                interaction_size, coalitions_size, intersections_size
+                interaction_size,
+                coalitions_size,
+                intersections_size,
             ]
 
             # get the sampling adjustment weights depending on the stratification strategy
@@ -171,7 +173,7 @@ class MonteCarlo(Approximator):
 
             # compute interaction approximation (using adjustment weights and interaction weights)
             shapley_interaction_values[interaction_pos] = np.sum(
-                game_values_centered * interaction_weights * sampling_adjustment_weights
+                game_values_centered * interaction_weights * sampling_adjustment_weights,
             )
 
         # manually set emptyset interaction to baseline
@@ -203,7 +205,8 @@ class MonteCarlo(Approximator):
             intersection_binary[list(intersection)] = 1
             # Compute current stratum
             in_stratum = np.prod(
-                self._sampler.coalitions_matrix * interaction_binary == intersection_binary, axis=1
+                self._sampler.coalitions_matrix * interaction_binary == intersection_binary,
+                axis=1,
             ).astype(bool)
             # Flag all coalitions that belong to the stratum and are sampled
             in_stratum_and_sampled = in_stratum * self._sampler.is_coalition_sampled
@@ -212,7 +215,7 @@ class MonteCarlo(Approximator):
             stratum_probability = 0
             # The probability is the sum over all coalition_sizes, due to law of total expectation
             for sampling_size, sampling_size_prob in enumerate(
-                self._sampler.sampling_size_probabilities
+                self._sampler.sampling_size_probabilities,
             ):
                 if sampling_size_prob > 0:
                     stratum_probability += (
@@ -294,7 +297,8 @@ class MonteCarlo(Approximator):
             intersection_binary[list(intersection)] = 1
             # Compute current intersection stratum
             in_intersection_stratum = np.prod(
-                self._sampler.coalitions_matrix * interaction_binary == intersection_binary, axis=1
+                self._sampler.coalitions_matrix * interaction_binary == intersection_binary,
+                axis=1,
             ).astype(bool)
             for size_stratum in size_strata:
                 # compute current intersection-coalition-size stratum
@@ -496,7 +500,8 @@ class MonteCarlo(Approximator):
             # fill with values specific to each index
             for coalition_size in range(0, self.n + 1):
                 for intersection_size in range(
-                    max(0, order + coalition_size - self.n), min(order, coalition_size) + 1
+                    max(0, order + coalition_size - self.n),
+                    min(order, coalition_size) + 1,
                 ):
                     weights[order, coalition_size, intersection_size] = (-1) ** (
                         order - intersection_size

@@ -114,7 +114,7 @@ def load_bike_sharing(
     cat_pipeline = Pipeline(
         [
             ("ordinal_encoder", OrdinalEncoder()),
-        ]
+        ],
     )
     column_transformer = ColumnTransformer(
         [
@@ -181,12 +181,12 @@ def load_adult_census(
     ]
     dataset[num_feature_names] = dataset[num_feature_names].apply(pd.to_numeric)
     num_pipeline = Pipeline(
-        [("imputer", SimpleImputer(strategy="median")), ("std_scaler", StandardScaler())]
+        [("imputer", SimpleImputer(strategy="median")), ("std_scaler", StandardScaler())],
     )
     cat_pipeline = Pipeline(
         [
             ("ordinal_encoder", OrdinalEncoder()),
-        ]
+        ],
     )
     column_transformer = ColumnTransformer(
         [

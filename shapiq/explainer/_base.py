@@ -34,11 +34,17 @@ class Explainer:
     """
 
     def __init__(
-        self, model, data: np.ndarray | None = None, class_index: int | None = None, **kwargs
+        self,
+        model,
+        data: np.ndarray | None = None,
+        class_index: int | None = None,
+        **kwargs,
     ) -> None:
         self._model_class = print_class(model)
         self._shapiq_predict_function, self._model_type = get_predict_function_and_model_type(
-            model, self._model_class, class_index
+            model,
+            self._model_class,
+            class_index,
         )
         self.model = model
 
@@ -117,7 +123,11 @@ class Explainer:
         raise NotImplementedError("The method `explain` must be implemented in a subclass.")
 
     def explain_X(
-        self, X: np.ndarray, n_jobs=None, random_state=None, **kwargs
+        self,
+        X: np.ndarray,
+        n_jobs=None,
+        random_state=None,
+        **kwargs,
     ) -> list[InteractionValues]:
         """Explain multiple predictions in terms of interaction values.
 
@@ -127,7 +137,8 @@ class Explainer:
             random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
 
         """
-        assert len(X.shape) == 2
+        if len(X.shape) != 2:
+            raise TypeError("The `X` must be a 2-dimensional matrix.")
         if random_state is not None:
             if hasattr(self, "_imputer"):
                 self._imputer._rng = np.random.default_rng(random_state)

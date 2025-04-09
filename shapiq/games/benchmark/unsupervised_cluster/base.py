@@ -50,7 +50,7 @@ class ClusterExplanation(Game):
         else:
             raise ValueError(
                 f"Invalid clustering method provided. Got {cluster_method} but expected one of "
-                f"['kmeans', 'agglomerative']."
+                f"['kmeans', 'agglomerative'].",
             )
 
         # get a score function for the clustering
@@ -62,7 +62,7 @@ class ClusterExplanation(Game):
         else:
             raise ValueError(
                 f"Invalid score method provided. Got {score_method} but expected one of "
-                f"['calinski_harabasz_score', 'silhouette_score']."
+                f"['calinski_harabasz_score', 'silhouette_score'].",
             )
 
         self.data = data

@@ -59,7 +59,7 @@ class KernelSHAPIQ(Regression):
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
             raise ValueError(
                 f"Index {index} not available for KernelSHAP-IQ. Choose from "
-                f"{AVAILABLE_INDICES_KERNELSHAPIQ}."
+                f"{AVAILABLE_INDICES_KERNELSHAPIQ}.",
             )
         super().__init__(
             n,
@@ -120,7 +120,7 @@ class InconsistentKernelSHAPIQ(Regression):
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
             raise ValueError(
                 f"Index {index} not available for KernelSHAP-IQ. Choose from "
-                f"{AVAILABLE_INDICES_KERNELSHAPIQ}."
+                f"{AVAILABLE_INDICES_KERNELSHAPIQ}.",
             )
         super().__init__(
             n,

@@ -74,7 +74,7 @@ class Approximator(ABC):
         if self.approximation_index not in AVAILABLE_INDICES_FOR_APPROXIMATION:
             raise ValueError(
                 f"Index {self.index} cannot be approximated. Available indices are"
-                f"{AVAILABLE_INDICES_FOR_APPROXIMATION}."
+                f"{AVAILABLE_INDICES_FOR_APPROXIMATION}.",
             )
 
         # get approximation parameters
@@ -87,7 +87,9 @@ class Approximator(ABC):
         self._grand_coalition_array: np.ndarray = np.arange(self.n + 1, dtype=int)
         self.iteration_cost: int = 1  # default value, can be overwritten by subclasses
         self._interaction_lookup = generate_interaction_lookup(
-            self.n, self.min_order, self.max_order
+            self.n,
+            self.min_order,
+            self.max_order,
         )
 
         # set up random state and random number generators
@@ -106,14 +108,21 @@ class Approximator(ABC):
         )
 
     def __call__(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], **kwargs
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        **kwargs,
     ) -> InteractionValues:
         """Calls the approximate method."""
         return self.approximate(budget=budget, game=game, **kwargs)
 
     @abstractmethod
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        *args,
+        **kwargs,
     ) -> InteractionValues:
         """Approximates the interaction values. Abstract method that needs to be implemented for
         each approximator.
@@ -130,7 +139,7 @@ class Approximator(ABC):
 
         """
         raise NotImplementedError(
-            "The approximate method must be implemented in the subclass."
+            "The approximate method must be implemented in the subclass.",
         )  # pragma: no cover
 
     def _init_sampling_weights(self) -> np.ndarray:

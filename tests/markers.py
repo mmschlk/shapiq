@@ -19,19 +19,23 @@ def is_installed(pkg_name: str) -> bool:
 
 
 skip_if_no_tabpfn = pytest.mark.skipif(
-    not is_installed("tabpfn"), reason="TabPFN is not available."
+    not is_installed("tabpfn"),
+    reason="TabPFN is not available.",
 )
 
 skip_if_no_tensorflow = pytest.mark.skipif(
-    not is_installed("tensorflow"), reason="tensorflow is not installed"
+    not is_installed("tensorflow"),
+    reason="tensorflow is not installed",
 )
 
 skip_if_no_xgboost = pytest.mark.skipif(
-    not is_installed("xgboost"), reason="xgboost is not installed"
+    not is_installed("xgboost"),
+    reason="xgboost is not installed",
 )
 
 skip_if_no_keras = pytest.mark.skipif(not is_installed("keras"), reason="keras is not installed")
 
 skip_if_no_lightgbm = pytest.mark.skipif(
-    not is_installed("lightgbm"), reason="lightgbm is not installed"
+    not is_installed("lightgbm"),
+    reason="lightgbm is not installed",
 )

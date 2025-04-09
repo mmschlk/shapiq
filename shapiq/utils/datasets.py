@@ -4,7 +4,9 @@ import numpy as np
 
 
 def shuffle_data(
-    x_data: np.ndarray, y_data: np.ndarray, random_state: int | None = None
+    x_data: np.ndarray,
+    y_data: np.ndarray,
+    random_state: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Shuffle the data.
 

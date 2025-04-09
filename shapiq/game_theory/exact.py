@@ -320,7 +320,9 @@ class ExactComputer:
         return stii_weights
 
     def _get_discrete_derivative(
-        self, interaction: set[int] | tuple[int], coalition: set[int] | tuple[int]
+        self,
+        interaction: set[int] | tuple[int],
+        coalition: set[int] | tuple[int],
     ) -> float:
         """Computes the discrete derivative of a coalition with respect to an interaction.
 
@@ -383,7 +385,9 @@ class ExactComputer:
         for interaction_size in range(order + 1):
             for coalition_size in range(self.n - interaction_size + 1):
                 base_weights[coalition_size, interaction_size] = self._base_weights(
-                    coalition_size, interaction_size, index
+                    coalition_size,
+                    interaction_size,
+                    index,
                 )
         return base_weights
 
@@ -466,11 +470,13 @@ class ExactComputer:
             interaction_lookup[interaction] = i
 
         for i, coalition in enumerate(
-            powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1)
+            powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1),
         ):
             coalition_val = self.game_values[i]
             for interaction in powerset(
-                (self._grand_coalition_set - set(coalition)), min_size=1, max_size=order
+                (self._grand_coalition_set - set(coalition)),
+                min_size=1,
+                max_size=order,
             ):
                 coalition_weight = base_weights[len(coalition), len(interaction)]
                 base_generalized_values[interaction_lookup[tuple(sorted(interaction))]] += (
@@ -499,7 +505,9 @@ class ExactComputer:
         return copy.deepcopy(base_generalized_values)
 
     def base_aggregation(
-        self, base_interactions: InteractionValues, order: int
+        self,
+        base_interactions: InteractionValues,
+        order: int,
     ) -> InteractionValues:
         """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII
 
@@ -532,14 +540,15 @@ class ExactComputer:
         # create interaction lookup
         interaction_lookup = {}
         for interaction_pos, interaction in enumerate(
-            powerset(self._grand_coalition_set, max_size=order)
+            powerset(self._grand_coalition_set, max_size=order),
         ):
             interaction_lookup[interaction] = interaction_pos
 
         # lower-order interactions (size < order) are the Möbius transform, i.e. discrete derivative with empty set
         for interaction in powerset(self._grand_coalition_set, max_size=order - 1):
             stii_values[interaction_lookup[interaction]] = self._get_discrete_derivative(
-                interaction, tuple()
+                interaction,
+                tuple(),
             )
 
         # pre-compute STII weights
@@ -589,7 +598,7 @@ class ExactComputer:
         # create interaction lookup
         interaction_lookup = {}
         for interaction_pos, interaction in enumerate(
-            powerset(self._grand_coalition_set, max_size=order)
+            powerset(self._grand_coalition_set, max_size=order),
         ):
             interaction_lookup[interaction] = interaction_pos
 
@@ -612,7 +621,9 @@ class ExactComputer:
         regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
         # solve the weighted least squares (WLSQ) problem
         fii_values, residuals, rank, singular_values = np.linalg.lstsq(
-            coalition_matrix_weighted_sqrt, regression_response_weighted_sqrt, rcond=None
+            coalition_matrix_weighted_sqrt,
+            regression_response_weighted_sqrt,
+            rcond=None,
         )
 
         # transform into InteractionValues object
@@ -660,7 +671,12 @@ class ExactComputer:
             weights[r] = qnum / qden
         # check that the checksum is satisfied
         checksum = sum([binom(self.n, i) * weights[i] for i in range((self.n - order), self.n)])
-        assert np.isclose(checksum, 1.0)
+        if not np.isclose(checksum, 1.0):
+            message = (
+                f"JointSV weights do not sum to 1.0. but to {checksum}. This is likely due "
+                f"to numerical instability."
+            )
+            warnings.warn(message, stacklevel=2)
         return weights
 
     def compute_kadd_shap(self, order: int) -> InteractionValues:
@@ -702,7 +718,9 @@ class ExactComputer:
         regression_response = self.game_values - self.baseline_value  # normalization
         regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
         kADD_shap_values, residuals, rank, singular_values = np.linalg.lstsq(
-            coalition_matrix_weighted_sqrt, regression_response_weighted_sqrt, rcond=None
+            coalition_matrix_weighted_sqrt,
+            regression_response_weighted_sqrt,
+            rcond=None,
         )
 
         # Set baseline value
@@ -743,12 +761,14 @@ class ExactComputer:
             interaction_lookup[interaction] = i
 
         for coalition_pos, coalition in enumerate(
-            powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1)
+            powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1),
         ):
             coalition_val = self.game_values[coalition_pos]
             coalition_weight = coalition_weights[len(coalition)]
             for interaction in powerset(
-                self._grand_coalition_set - set(coalition), min_size=1, max_size=order
+                self._grand_coalition_set - set(coalition),
+                min_size=1,
+                max_size=order,
             ):
                 jointSV_values[interaction_lookup[interaction]] += coalition_weight * (
                     self.game_values[self.coalition_lookup[tuple(sorted(coalition + interaction))]]

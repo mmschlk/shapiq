@@ -152,15 +152,24 @@ class TabularExplainer(Explainer):
         self._random_state = random_state
         if imputer == "marginal":
             self._imputer = MarginalImputer(
-                self.predict, self.data, random_state=random_state, **kwargs
+                self.predict,
+                self.data,
+                random_state=random_state,
+                **kwargs,
             )
         elif imputer == "conditional":
             self._imputer = ConditionalImputer(
-                self.predict, self.data, random_state=random_state, **kwargs
+                self.predict,
+                self.data,
+                random_state=random_state,
+                **kwargs,
             )
         elif imputer == "baseline":
             self._imputer = BaselineImputer(
-                self.predict, self.data, random_state=random_state, **kwargs
+                self.predict,
+                self.data,
+                random_state=random_state,
+                **kwargs,
             )
         elif (
             isinstance(imputer, MarginalImputer)
@@ -173,7 +182,7 @@ class TabularExplainer(Explainer):
             raise ValueError(
                 f"Invalid imputer {imputer}. "
                 f'Must be one of ["marginal", "baseline", "conditional"], or a valid Imputer '
-                f"object."
+                f"object.",
             )
         self._n_features: int = self.data.shape[1]
         self._imputer.verbose = verbose  # set the verbose flag for the imputer
@@ -183,7 +192,10 @@ class TabularExplainer(Explainer):
         self._approximator = self._init_approximator(approximator, self.index, self._max_order)
 
     def explain_function(
-        self, x: np.ndarray, budget: int, random_state: int | None = None
+        self,
+        x: np.ndarray,
+        budget: int,
+        random_state: int | None = None,
     ) -> InteractionValues:
         """Explains the model's predictions.
 
@@ -208,7 +220,8 @@ class TabularExplainer(Explainer):
         interaction_values = self._approximator(budget=budget, game=imputer)
         interaction_values.baseline_value = self.baseline_value
         interaction_values = finalize_computed_interactions(
-            interaction_values, target_index=self.index
+            interaction_values,
+            target_index=self.index,
         )
 
         return interaction_values
@@ -219,7 +232,10 @@ class TabularExplainer(Explainer):
         return self._imputer.empty_prediction
 
     def _init_approximator(
-        self, approximator: Approximator | str, index: str, max_order: int
+        self,
+        approximator: Approximator | str,
+        index: str,
+        max_order: int,
     ) -> Approximator:
         if isinstance(approximator, Approximator):  # if the approximator is already given
             return approximator
@@ -282,7 +298,7 @@ class TabularExplainer(Explainer):
         except KeyError as error:
             raise ValueError(
                 f"Invalid approximator `{approximator}` or index `{index}`. "
-                f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}."
+                f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}.",
             ) from error
         # initialize the approximator class with params
         init_approximator = approximator(n=self._n_features, max_order=max_order)

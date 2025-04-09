@@ -79,7 +79,11 @@ def _create_bars(
             ]
 
         line = plt.Polygon(
-            points_rectangle, closed=True, fill=True, facecolor=colors[0], linewidth=0
+            points_rectangle,
+            closed=True,
+            fill=True,
+            facecolor=colors[0],
+            linewidth=0,
         )
         rectangle_list += [line]
 
@@ -285,7 +289,12 @@ def _add_output_element(out_name: str, out_value: float, ax: plt.Axes) -> None:
     text_out_val.set_bbox(dict(facecolor="white", edgecolor="white"))
 
     text_out_val = plt.text(
-        out_value, 0.33, out_name, fontsize=12, alpha=0.5, horizontalalignment="center"
+        out_value,
+        0.33,
+        out_name,
+        fontsize=12,
+        alpha=0.5,
+        horizontalalignment="center",
     )
     text_out_val.set_bbox(dict(facecolor="white", edgecolor="white"))
 
@@ -306,7 +315,12 @@ def _add_base_value(base_value: float, ax: plt.Axes) -> None:
     ax.add_line(line)
 
     text_out_val = ax.text(
-        base_value, 0.25, "base value", fontsize=12, alpha=1, horizontalalignment="center"
+        base_value,
+        0.25,
+        "base value",
+        fontsize=12,
+        alpha=1,
+        horizontalalignment="center",
     )
     text_out_val.set_bbox(dict(facecolor="white", edgecolor="white"))
 
@@ -405,7 +419,7 @@ def _split_features(
         i[0] = neg_val
     if len(neg_features) > 0:
         total_neg = np.max(neg_features[:, 0].astype(float)) - np.min(
-            neg_features[:, 0].astype(float)
+            neg_features[:, 0].astype(float),
         )
     else:
         total_neg = 0
@@ -419,7 +433,7 @@ def _split_features(
 
     if len(pos_features) > 0:
         total_pos = np.max(pos_features[:, 0].astype(float)) - np.min(
-            pos_features[:, 0].astype(float)
+            pos_features[:, 0].astype(float),
         )
     else:
         total_pos = 0
@@ -428,7 +442,10 @@ def _split_features(
 
 
 def _add_bars(
-    ax: plt.Axes, out_value: float, pos_features: np.ndarray, neg_features: np.ndarray
+    ax: plt.Axes,
+    out_value: float,
+    pos_features: np.ndarray,
+    neg_features: np.ndarray,
 ) -> None:
     """Add bars to the plot.
 
@@ -445,7 +462,11 @@ def _add_bars(
     width_separators = (ax.get_xlim()[1] - ax.get_xlim()[0]) / 200
     # Create bar for negative shap values
     rectangle_list, separator_list = _create_bars(
-        out_value, neg_features, "negative", width_separators, width_bar
+        out_value,
+        neg_features,
+        "negative",
+        width_separators,
+        width_bar,
     )
     for i in rectangle_list:
         ax.add_patch(i)
@@ -455,7 +476,11 @@ def _add_bars(
 
     # Create bar for positive shap values
     rectangle_list, separator_list = _create_bars(
-        out_value, pos_features, "positive", width_separators, width_bar
+        out_value,
+        pos_features,
+        "positive",
+        width_separators,
+        width_bar,
     )
     for i in rectangle_list:
         ax.add_patch(i)
@@ -482,7 +507,12 @@ def draw_higher_lower_element(out_value, offset_text):
         horizontalalignment="left",
     )
     plt.text(
-        out_value, 0.34, r"$\leftarrow$", fontsize=13, color="#1E88E5", horizontalalignment="center"
+        out_value,
+        0.34,
+        r"$\leftarrow$",
+        fontsize=13,
+        color="#1E88E5",
+        horizontalalignment="center",
     )
     plt.text(
         out_value,
@@ -530,7 +560,9 @@ def _draw_force_plot(
     # split features into positive and negative values
     features_to_names = {i: str(name) for i, name in enumerate(feature_names)}
     pos_features, neg_features, total_pos, total_neg = _split_features(
-        interaction_value.dict_values, features_to_names, out_value
+        interaction_value.dict_values,
+        features_to_names,
+        out_value,
     )
 
     # define plots

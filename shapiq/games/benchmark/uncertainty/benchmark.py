@@ -33,7 +33,7 @@ class AdultCensus(UncertaintyExplanation):
             model.fit(self.setup.x_train, self.setup.y_train)
         else:
             raise ValueError(
-                f"Invalid model name provided. Should be 'random_forest' but got {model_name}."
+                f"Invalid model name provided. Should be 'random_forest' but got {model_name}.",
             )
 
         print(f"Trained model {model_name} for the adult_census dataset.")

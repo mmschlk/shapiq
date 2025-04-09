@@ -73,7 +73,7 @@ class MarginalImputer(Imputer):
         # setup attributes
         self.joint_marginal_distribution: bool = joint_marginal_distribution
         self.replacement_data: np.ndarray = np.zeros(
-            (1, self.n_features)
+            (1, self.n_features),
         )  # overwritten at init_background
         self.init_background(self.data)
 

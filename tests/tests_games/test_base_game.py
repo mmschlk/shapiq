@@ -26,7 +26,8 @@ def test_call():
 
     n_players = 6
     test_game = TestGame(
-        n=n_players, player_names=["Alice", "Bob", "Charlie", "David", "Eve", "Frank"]
+        n=n_players,
+        player_names=["Alice", "Bob", "Charlie", "David", "Eve", "Frank"],
     )
 
     # assert that player names are correctly stored

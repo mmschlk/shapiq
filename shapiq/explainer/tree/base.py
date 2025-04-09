@@ -75,7 +75,8 @@ class TreeModel:
         the leaf node values. The method modifies the tree model in place.
         """
         self.empty_prediction = compute_empty_prediction(
-            self.values[self.leaf_mask], self.node_sample_weight[self.leaf_mask]
+            self.values[self.leaf_mask],
+            self.node_sample_weight[self.leaf_mask],
         )
 
     def __post_init__(self) -> None:

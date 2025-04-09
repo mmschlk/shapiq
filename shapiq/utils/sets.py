@@ -21,7 +21,9 @@ __all__ = [
 
 
 def powerset(
-    iterable: Iterable[Any], min_size: int = 0, max_size: int | None = None
+    iterable: Iterable[Any],
+    min_size: int = 0,
+    max_size: int | None = None,
 ) -> Iterable[tuple]:
     """Return a powerset of an iterable as tuples with optional size limits.
 
@@ -87,7 +89,10 @@ def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], int | 
 
 
 def split_subsets_budget(
-    order: int, n: int, budget: int, sampling_weights: np.ndarray[float]
+    order: int,
+    n: int,
+    budget: int,
+    sampling_weights: np.ndarray[float],
 ) -> tuple[list, list, int]:
     """Determines which subset sizes can be computed explicitly and which sizes need to be sampled.
 
@@ -125,7 +130,10 @@ def split_subsets_budget(
     weight_vector[0], weight_vector[-1] = 0, 0  # zero out the empty and full subsets
     sum_weight_vector = np.sum(weight_vector)
     weight_vector = np.divide(
-        weight_vector, sum_weight_vector, out=weight_vector, where=sum_weight_vector != 0
+        weight_vector,
+        sum_weight_vector,
+        out=weight_vector,
+        where=sum_weight_vector != 0,
     )
 
     # check if the budget is sufficient to compute all paired subset sizes explicitly
@@ -190,7 +198,9 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
 
 
 def generate_interaction_lookup(
-    players: Iterable[Any] | int, min_order: int, max_order: int | None = None
+    players: Iterable[Any] | int,
+    min_order: int,
+    max_order: int | None = None,
 ) -> dict[tuple[Any], int]:
     """Generates a lookup dictionary for interactions.
 
@@ -223,7 +233,8 @@ def generate_interaction_lookup(
 
 
 def transform_coalitions_to_array(
-    coalitions: Collection[tuple[int, ...]], n_players: int | None = None
+    coalitions: Collection[tuple[int, ...]],
+    n_players: int | None = None,
 ) -> np.ndarray:
     """Transforms a collection of coalitions to a binary array (one-hot encodings).
 

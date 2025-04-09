@@ -102,7 +102,8 @@ class ViTModel:
             bool_masked_pos = self._transform_coalition_into_bool_mask(coalition, self.n_patches)
             with torch.no_grad():
                 embeddings = self._embedding_layer(
-                    **self._transformed_image, bool_masked_pos=bool_masked_pos
+                    **self._transformed_image,
+                    bool_masked_pos=bool_masked_pos,
                 )
                 encodings = self._encoder(embeddings)
                 norm_encodings = F.layer_norm(
@@ -961,8 +962,8 @@ NORM_WEIGHT = nn.Parameter(
             0.7513,
             0.9935,
             0.8690,
-        ]
-    )
+        ],
+    ),
 )
 
 NORM_BIAS = nn.Parameter(
@@ -1736,6 +1737,6 @@ NORM_BIAS = nn.Parameter(
             1.6395e-02,
             -8.8686e-02,
             5.7581e-02,
-        ]
-    )
+        ],
+    ),
 )

@@ -62,7 +62,10 @@ def convert_xgboost_booster(
     intercept /= n_trees
     return [
         _convert_xgboost_tree_as_df(
-            tree_df=tree_df, intercept=intercept, output_type=output_type, scaling=scaling
+            tree_df=tree_df,
+            intercept=intercept,
+            output_type=output_type,
+            scaling=scaling,
         )
         for _, tree_df in booster_df.groupby("Tree")
     ]

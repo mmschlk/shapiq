@@ -12,7 +12,8 @@ def test_safe_isinstance():
 
     assert safe_isinstance(model, "sklearn.tree.DecisionTreeRegressor")
     assert safe_isinstance(
-        model, ["sklearn.tree.DecisionTreeClassifier", "sklearn.tree.DecisionTreeRegressor"]
+        model,
+        ["sklearn.tree.DecisionTreeClassifier", "sklearn.tree.DecisionTreeRegressor"],
     )
     assert safe_isinstance(model, ("sklearn.tree.DecisionTreeRegressor",))
     with pytest.raises(ValueError):

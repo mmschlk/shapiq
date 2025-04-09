@@ -90,7 +90,11 @@ def test_tabpfn_imputer_validation(tabpfn_classification_problem):
     # no prediction function
     with pytest.raises(ValueError):
         _ = TabPFNImputer(
-            model=model, x_train=data, y_train=labels, x_test=x_test, predict_function=None
+            model=model,
+            x_train=data,
+            y_train=labels,
+            x_test=x_test,
+            predict_function=None,
         )
 
     # no x_test and no empty prediction

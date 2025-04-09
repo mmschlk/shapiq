@@ -87,12 +87,13 @@ class CoalitionSampler:
 
         # raise warning if sampling weights are not symmetric but pairing trick is activated
         if self.pairing_trick and not np.allclose(
-            self._sampling_weights, self._sampling_weights[::-1]
+            self._sampling_weights,
+            self._sampling_weights[::-1],
         ):
             warnings.warn(
                 UserWarning(
                     "Pairing trick is activated, but sampling weights are not symmetric. "
-                    "This may lead to unexpected results."
+                    "This may lead to unexpected results.",
                 ),
                 stacklevel=2,
             )
@@ -101,7 +102,7 @@ class CoalitionSampler:
         if n_players + 1 != np.size(sampling_weights):  # shape of sampling weights -> sizes 0,...,n
             raise ValueError(
                 f"{n_players} elements must correspond to {n_players + 1} coalition sizes "
-                "(including empty subsets)"
+                "(including empty subsets)",
             )
         self.n: int = n_players
         self.n_max_coalitions = int(2**self.n)
@@ -216,7 +217,7 @@ class CoalitionSampler:
         """
         size_probs = np.zeros(self.n + 1)
         size_probs[self._coalitions_to_sample] = self.adjusted_sampling_weights / np.sum(
-            self.adjusted_sampling_weights
+            self.adjusted_sampling_weights,
         )
         return size_probs
 
@@ -324,7 +325,7 @@ class CoalitionSampler:
                 [
                     self._coalitions_to_sample.pop(self._coalitions_to_sample.index(move_this))
                     for move_this in coalitions_to_move
-                ]
+                ],
             )
             sampling_budget -= int(np.sum(coalitions_per_size[coalitions_to_move]))
             self.adjusted_sampling_weights = self.adjusted_sampling_weights[
@@ -387,7 +388,7 @@ class CoalitionSampler:
             if coalition_size not in self._coalitions_to_exclude
         ]
         self.adjusted_sampling_weights = copy.deepcopy(
-            self._sampling_weights[self._coalitions_to_sample]
+            self._sampling_weights[self._coalitions_to_sample],
         )
         self.adjusted_sampling_weights /= np.sum(self.adjusted_sampling_weights)  # probability
 
@@ -418,7 +419,7 @@ class CoalitionSampler:
             [
                 self._coalitions_to_sample.pop(self._coalitions_to_sample.index(move_this))
                 for move_this in coalitions_to_move
-            ]
+            ],
         )
         self.adjusted_sampling_weights = self.adjusted_sampling_weights[
             ~empty_grand_coalition_indicator
@@ -464,7 +465,7 @@ class CoalitionSampler:
             warnings.warn(
                 UserWarning(
                     "Sampling might be inefficient (stalls) due to the sampling budget being close "
-                    "to the total number of coalitions to be sampled."
+                    "to the total number of coalitions to be sampled.",
                 ),
                 stacklevel=2,
             )
@@ -477,7 +478,9 @@ class CoalitionSampler:
 
                 # draw coalition
                 coalition_size = self._rng.choice(
-                    self._coalitions_to_sample, size=1, p=self.adjusted_sampling_weights
+                    self._coalitions_to_sample,
+                    size=1,
+                    p=self.adjusted_sampling_weights,
                 )[0]
                 ids = self._rng.choice(self.n, size=coalition_size, replace=False)
                 coalition_tuple = tuple(sorted(ids))  # get coalition
@@ -500,7 +503,9 @@ class CoalitionSampler:
         for coalition_size in self._coalitions_to_compute:
             self.coalitions_per_size[coalition_size] = int(binom(self.n, coalition_size))
             for coalition in powerset(
-                range(self.n), min_size=coalition_size, max_size=coalition_size
+                range(self.n),
+                min_size=coalition_size,
+                max_size=coalition_size,
             ):
                 self._sampled_coalitions_matrix[coalition_index, list(coalition)] = 1
                 self._sampled_coalitions_counter[coalition_index] = 1

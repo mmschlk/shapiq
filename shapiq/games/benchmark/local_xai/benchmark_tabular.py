@@ -38,7 +38,7 @@ class AdultCensus(LocalExplanation):
         # validate the inputs
         if isinstance(class_to_explain, int) and class_to_explain not in [0, 1]:
             raise ValueError(
-                f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}."
+                f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}.",
             )
 
         self.setup = GameBenchmarkSetup(

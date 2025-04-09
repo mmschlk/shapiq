@@ -69,7 +69,8 @@ def create_application_name(setup: str, abbrev: bool = False) -> str:
     application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
     application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
     application_name = application_name.replace(
-        "RandomForestEnsembleSelection", "EnsembleSelection"
+        "RandomForestEnsembleSelection",
+        "EnsembleSelection",
     )
     if abbrev:
         application_name = abbreviate_application_name(application_name)
@@ -263,7 +264,7 @@ def plot_approximation_quality(
             if log_scale_y:
                 # manually set all below log_scale_min to log_scale_min (to avoid log(0))
                 data_order[aggregation] = data_order[aggregation].apply(
-                    lambda x: log_scale_min if x < log_scale_min else x
+                    lambda x: log_scale_min if x < log_scale_min else x,
                 )
 
             # get the plot colors and styles
@@ -313,7 +314,9 @@ def plot_approximation_quality(
 
     # add %model calls to the x-axis as a secondary axis
     _set_x_axis_ticks(
-        ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
+        ax,
+        n_players=int(data["n_players"].unique().max()),
+        max_budget=approx_max_budget,
     )
 
     if remove_spines:
@@ -399,8 +402,8 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
                         "median",
                         agg_percentile(95),
                         agg_percentile(5),
-                    ]
-                }
+                    ],
+                },
             )
             .reset_index()
         )

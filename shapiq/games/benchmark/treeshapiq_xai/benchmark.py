@@ -30,10 +30,8 @@ class AdultCensus(TreeSHAPIQXAI):
         random_state: int | None = 42,
     ) -> None:
         # TODO: add xgb to TreeSHAQ-IQ, yet
-        assert model_name in [
-            "decision_tree",
-            "random_forest",
-        ], "Model name must be either decision_tree' or 'random_forest'."
+        if model_name not in ["decision_tree", "random_forest"]:
+            raise ValueError("Model name must be either decision_tree' or 'random_forest'.")
 
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
@@ -77,10 +75,8 @@ class BikeSharing(TreeSHAPIQXAI):
         random_state: int | None = 42,
     ) -> None:
         # TODO: add xgb to TreeSHAQ-IQ, yet
-        assert model_name in [
-            "decision_tree",
-            "random_forest",
-        ], "Model name must be either decision_tree' or 'random_forest'."
+        if model_name not in ["decision_tree", "random_forest"]:
+            raise ValueError("Model name must be either decision_tree' or 'random_forest'.")
 
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
@@ -123,10 +119,8 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         random_state: int | None = 42,
     ) -> None:
         # TODO: add xgb to TreeSHAQ-IQ, yet
-        assert model_name in [
-            "decision_tree",
-            "random_forest",
-        ], "Model name must be either decision_tree' or 'random_forest'."
+        if model_name not in ["decision_tree", "random_forest"]:
+            raise ValueError("Model name must be either decision_tree' or 'random_forest'.")
 
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
@@ -193,11 +187,15 @@ class SynthData(TreeSHAPIQXAI):
         else:
             if classification:
                 model = RandomForestClassifier(
-                    random_state=random_state, n_estimators=10, max_depth=15
+                    random_state=random_state,
+                    n_estimators=10,
+                    max_depth=15,
                 )
             else:
                 model = RandomForestRegressor(
-                    random_state=random_state, n_estimators=10, max_depth=15
+                    random_state=random_state,
+                    n_estimators=10,
+                    max_depth=15,
                 )
         # fit the model
         model.fit(x_data, y_data)

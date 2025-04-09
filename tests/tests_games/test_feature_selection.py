@@ -58,7 +58,11 @@ def test_basic_function(background_reg_dataset):
     # init with no score and or predict function
     with pytest.raises(ValueError):
         _ = FeatureSelection(
-            x_train=x_data, x_test=x_data, y_train=y_data, y_test=y_data, fit_function=model.fit
+            x_train=x_data,
+            x_test=x_data,
+            y_train=y_data,
+            y_test=y_data,
+            fit_function=model.fit,
         )
 
     # test save and load

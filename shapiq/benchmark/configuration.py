@@ -449,7 +449,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "n_players": 15,
             "iteration_parameter_values": list(range(1, 10 + 1)),
             "precompute": True,
-        }
+        },
     ],
     BikeSharingDataValuation: [
         {
@@ -461,7 +461,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "n_players": 15,
             "iteration_parameter_values": list(range(1, 10 + 1)),
             "precompute": True,
-        }
+        },
     ],
     CaliforniaHousingDataValuation: [
         {
@@ -473,7 +473,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "n_players": 15,
             "iteration_parameter_values": list(range(1, 10 + 1)),
             "precompute": True,
-        }
+        },
     ],
     # cluster explanation configurations -----------------------------------------------------------
     BikeSharingClusterExplanation: [
@@ -740,18 +740,19 @@ APPROXIMATION_NAME_TO_CLASS_MAPPING = {
 # contains all parameters that will be passed to the approximators at initialization
 APPROXIMATION_BENCHMARK_PARAMS: dict[Approximator.__class__, tuple[str]] = {}
 APPROXIMATION_BENCHMARK_PARAMS.update(
-    {approx: ("n", "random_state") for approx in SV_APPROXIMATORS}
+    {approx: ("n", "random_state") for approx in SV_APPROXIMATORS},
 )
 APPROXIMATION_BENCHMARK_PARAMS.update(
     {
         approx: ("n", "random_state", "index", "max_order")
         for approx in SI_APPROXIMATORS + SII_APPROXIMATORS + STII_APPROXIMATORS + FSII_APPROXIMATORS
-    }
+    },
 )
 
 
 def get_game_file_name_from_config(
-    configuration: dict[str, Any], iteration: int | None = None
+    configuration: dict[str, Any],
+    iteration: int | None = None,
 ) -> str:
     """Get the file name for the game data with the given configuration and iteration.
 

@@ -22,7 +22,7 @@ def test_basic_function(background_reg_dataset, dt_reg_model, mae_loss):
         [
             [False for _ in range(n_players)],
             [True for _ in range(n_players)],
-        ]
+        ],
     ).astype(bool)
 
     game = GlobalExplanation(

@@ -75,7 +75,7 @@ class FeatureSelection(Game):
             if loss_function is None or predict_function is None:
                 raise ValueError(
                     "If score function is not provided, then 'predict_function' and 'loss_function'"
-                    " must be provided."
+                    " must be provided.",
                 )
 
         # setup callables

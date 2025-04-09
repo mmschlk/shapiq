@@ -66,7 +66,7 @@ class TabPFNImputer(Imputer):
                 raise ValueError(
                     f"If the Imputer is not instantiated via a ``shapiq.Explainer`` object, you"
                     f" must provide a ``predict_function`` (received"
-                    f" predict_function={predict_function})."
+                    f" predict_function={predict_function}).",
                 )
             model._shapiq_predict_function = predict_function
 
@@ -74,7 +74,12 @@ class TabPFNImputer(Imputer):
             raise ValueError("The empty prediction must be given if no test data is provided")
 
         super().__init__(
-            model=model, data=x_test, x=None, sample_size=None, random_state=None, verbose=verbose
+            model=model,
+            data=x_test,
+            x=None,
+            sample_size=None,
+            random_state=None,
+            verbose=verbose,
         )
 
         if empty_prediction is None:

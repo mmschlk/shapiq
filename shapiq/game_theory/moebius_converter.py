@@ -317,7 +317,8 @@ class MoebiusConverter:
             base_interactions = self.moebius_to_base_interaction(order=order, index="SII")
             self._computed["SII"] = base_interactions
             shapley_interactions = self.base_aggregation(
-                base_interactions=base_interactions, order=order
+                base_interactions=base_interactions,
+                order=order,
             )
         else:
             raise ValueError(f"Index {index} not supported. Please choose from STII, FSII, k-SII.")
@@ -327,7 +328,10 @@ class MoebiusConverter:
 
 
 def _get_moebius_distribution_weight(
-    moebius_size: int, interaction_size: int, order: int, index: str
+    moebius_size: int,
+    interaction_size: int,
+    order: int,
+    index: str,
 ) -> float:
     """Return the distribution weights for the Möbius coefficients onto the lower-order interaction
     indices.

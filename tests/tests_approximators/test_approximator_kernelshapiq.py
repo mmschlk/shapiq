@@ -24,7 +24,8 @@ def test_initialization(n):
 
 
 @pytest.mark.parametrize(
-    "budget, order, index", [(100, 2, "SII"), (100, 3, "SII"), (100, 3, "k-SII"), (100, 4, "SII")]
+    "budget, order, index",
+    [(100, 2, "SII"), (100, 3, "SII"), (100, 3, "k-SII"), (100, 4, "SII")],
 )
 def test_approximate(budget, order, index):
     """Tests the approximation of the KernelSHAP-IQ approximator."""

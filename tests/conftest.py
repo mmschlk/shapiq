@@ -50,7 +50,7 @@ def interaction_values_list():
         values = []
         interaction_lookup = {}
         for i, interaction in enumerate(
-            powerset(range(n_players), min_size=min_order, max_size=max_order)
+            powerset(range(n_players), min_size=min_order, max_size=max_order),
         ):
             interaction_lookup[interaction] = i
             values.append(rng.uniform(0, 1))

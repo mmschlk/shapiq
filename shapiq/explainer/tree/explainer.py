@@ -108,10 +108,12 @@ class TreeExplainer(Explainer):
         if self._min_order == 0 and final_explanation.min_order == 1:
             final_explanation.min_order = 0
             final_explanation = finalize_computed_interactions(
-                final_explanation, target_index=self.index
+                final_explanation,
+                target_index=self.index,
             )
         final_explanation = finalize_computed_interactions(
-            final_explanation, target_index=self.index
+            final_explanation,
+            target_index=self.index,
         )
         return final_explanation
 
@@ -125,6 +127,6 @@ class TreeExplainer(Explainer):
 
         """
         baseline_value = sum(
-            [treeshapiq.empty_prediction for treeshapiq in self._treeshapiq_explainers]
+            [treeshapiq.empty_prediction for treeshapiq in self._treeshapiq_explainers],
         )
         return baseline_value

@@ -82,17 +82,20 @@ def validate_tree_model(
     ):
         tree_model = convert_sklearn_forest(model, class_label=class_label)
     elif safe_isinstance(model, "sklearn.ensemble.IsolationForest") or safe_isinstance(
-        model, "sklearn.ensemble._iforest.IsolationForest"
+        model,
+        "sklearn.ensemble._iforest.IsolationForest",
     ):
         tree_model = convert_sklearn_isolation_forest(model)
     elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or safe_isinstance(
-        model, "lightgbm.sklearn.LGBMClassifier"
+        model,
+        "lightgbm.sklearn.LGBMClassifier",
     ):
         tree_model = convert_lightgbm_booster(model.booster_, class_label=class_label)
     elif safe_isinstance(model, "lightgbm.basic.Booster"):
         tree_model = convert_lightgbm_booster(model, class_label=class_label)
     elif safe_isinstance(model, "xgboost.sklearn.XGBRegressor") or safe_isinstance(
-        model, "xgboost.sklearn.XGBClassifier"
+        model,
+        "xgboost.sklearn.XGBClassifier",
     ):
         tree_model = convert_xgboost_booster(model, class_label=class_label)
     # unsupported model

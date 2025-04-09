@@ -27,7 +27,9 @@ def test_core_on_soum():
         predicted_value = soum(np.ones(n))[0]  # value of grand coalition
 
         egalitarian_vector, subsidy = egalitarian_least_core(
-            n_players=n, game_values=game_values, coalition_lookup=coalition_lookup
+            n_players=n,
+            game_values=game_values,
+            coalition_lookup=coalition_lookup,
         )
 
         # Assert efficiency
@@ -56,7 +58,9 @@ def test_core_on_normalized_soum():
         predicted_value = soum(np.ones(n))[0]  # value of grand coalition
 
         egalitarian_vector, subsidy = egalitarian_least_core(
-            n_players=n, game_values=game_values, coalition_lookup=coalition_lookup
+            n_players=n,
+            game_values=game_values,
+            coalition_lookup=coalition_lookup,
         )
 
         # Assert efficiency.
@@ -102,7 +106,7 @@ def test_core_political_game_empty_core():
     coalition_matrix = np.zeros((2**game_political.n_players, game_political.n_players), dtype=bool)
     grand_coalition_set = set(range(3))
     for i, T in enumerate(
-        powerset(grand_coalition_set, min_size=0, max_size=game_political.n_players)
+        powerset(grand_coalition_set, min_size=0, max_size=game_political.n_players),
     ):
         coalition_lookup[T] = i  # set lookup for the coalition
         coalition_matrix[i, T] = True  # one-hot-encode the coalition
@@ -112,7 +116,9 @@ def test_core_political_game_empty_core():
     predicted_value = game_political(np.ones(3))[0]  # value of grand coalition
 
     egalitarian_vector, subsidy = egalitarian_least_core(
-        n_players=3, game_values=game_values, coalition_lookup=coalition_lookup
+        n_players=3,
+        game_values=game_values,
+        coalition_lookup=coalition_lookup,
     )
     # Assert correct values
     assert np.all(egalitarian_vector.values - np.array([100 / 3, 100 / 3, 100 / 3]) < 10e-7)
@@ -139,7 +145,7 @@ def test_core_political_game_existing_core():
     """
 
     class ConvexGame(shapiq.Game):
-        """Convex game, i.e. meaning that the v(S u {i}) - v(S) <= v(T u {i}) - v(T) for
+        r"""Convex game, i.e. meaning that the v(S u {i}) - v(S) <= v(T u {i}) - v(T) for
         S<=T<={1,..,n} \ {i}. The marginal contribution of a player i is always bigger if it joins
         a bigger coalition.
         """
@@ -168,7 +174,7 @@ def test_core_political_game_existing_core():
     coalition_matrix = np.zeros((2**game_political.n_players, game_political.n_players), dtype=bool)
     grand_coalition_set = set(range(3))
     for i, T in enumerate(
-        powerset(grand_coalition_set, min_size=0, max_size=game_political.n_players)
+        powerset(grand_coalition_set, min_size=0, max_size=game_political.n_players),
     ):
         coalition_lookup[T] = i  # set lookup for the coalition
         coalition_matrix[i, T] = True  # one-hot-encode the coalition
@@ -178,7 +184,9 @@ def test_core_political_game_existing_core():
     predicted_value = game_political(np.ones(3))[0]  # value of grand coalition
 
     egalitarian_vector, subsidy = egalitarian_least_core(
-        n_players=3, game_values=game_values, coalition_lookup=coalition_lookup
+        n_players=3,
+        game_values=game_values,
+        coalition_lookup=coalition_lookup,
     )
     # Assert correct values
     assert np.all(egalitarian_vector.values - np.array([200 / 3, 200 / 3, 200 / 3]) < 10e-7)

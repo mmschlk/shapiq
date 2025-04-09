@@ -128,7 +128,10 @@ class SOUM(Game):
         # init base game
         empty_value = float(self.value_function(np.zeros((1, n)))[0])
         super().__init__(
-            n_players=n, normalize=normalize, verbose=verbose, normalization_value=empty_value
+            n_players=n,
+            normalize=normalize,
+            verbose=verbose,
+            normalization_value=empty_value,
         )
 
     @property

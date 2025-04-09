@@ -29,13 +29,19 @@ def test_loading():
     _ = next(load_games_from_configuration(game_class, 1, 1, only_pre_computed=True))
     _ = next(
         load_games_from_configuration(
-            game_class, 1, 1, only_pre_computed=False, check_pre_computed=False
-        )
+            game_class,
+            1,
+            1,
+            only_pre_computed=False,
+            check_pre_computed=False,
+        ),
     )
     _ = next(
         load_games_from_configuration(
-            game_class, {"model_name": "decision_tree", "imputer": "marginal"}, 1
-        )
+            game_class,
+            {"model_name": "decision_tree", "imputer": "marginal"},
+            1,
+        ),
     )
 
     game_class = GAME_NAME_TO_CLASS_MAPPING["SynthDataTreeSHAPIQXAI"]

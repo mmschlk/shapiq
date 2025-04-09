@@ -88,7 +88,7 @@ def network_plot(
         if first_order_values is None or second_order_values is None:
             raise ValueError(
                 "Either interaction_values or first_order_values and second_order_values must be "
-                "provided. If interaction_values is provided this will be used."
+                "provided. If interaction_values is provided this will be used.",
             )
 
     # get the number of features and the feature names
@@ -231,7 +231,7 @@ def _add_weight_to_edges_in_graph(
 
     for interaction in powerset(range(n_features), min_size=2, max_size=2):
         weight: float = float(second_order_values[interaction])
-        edge = list(sorted(interaction))
+        edge = sorted(interaction)
         edge[0] = nodes_visit_order.index(interaction[0])
         edge[1] = nodes_visit_order.index(interaction[1])
         edge = tuple(edge)
@@ -319,7 +319,10 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
 
 
 def _add_center_image(
-    axis: plt.Axes, center_image: Image.Image, center_image_size: float, n_features: int
+    axis: plt.Axes,
+    center_image: Image.Image,
+    center_image_size: float,
+    n_features: int,
 ) -> None:
     """Adds the center image to the axis.
 

@@ -89,7 +89,7 @@ def stacked_bar_plot(
             .clip(min=0)
             .sum(axis=tuple(range(1, order)))
             for order in range(1, max_order + 1)
-        ]
+        ],
     )
     values_neg = np.array(
         [
@@ -97,7 +97,7 @@ def stacked_bar_plot(
             .clip(max=0)
             .sum(axis=tuple(range(1, order)))
             for order in range(1, max_order + 1)
-        ]
+        ],
     )
     # get the number of features and the feature names
     n_features = len(values_pos[0])
@@ -127,7 +127,7 @@ def stacked_bar_plot(
     legend_elements = []
     for order in range(max_order):
         legend_elements.append(
-            Patch(facecolor=COLORS_K_SII[order], edgecolor="black", label=f"Order {order + 1}")
+            Patch(facecolor=COLORS_K_SII[order], edgecolor="black", label=f"Order {order + 1}"),
         )
     axis.legend(handles=legend_elements, loc="upper center", ncol=min(max_order, 4))
 

@@ -149,7 +149,7 @@ def get_predict_function_and_model_type(
             f"`model` is of unsupported type: {model_class}.\n"
             "Please, raise a new issue at https://github.com/mmschlk/shapiq/issues if you want this model type\n"
             "to be handled automatically by shapiq.Explainer. Otherwise, use one of the supported explainers:\n"
-            f"{', '.join(print_classes_nicely(get_explainers()))}"
+            f"{', '.join(print_classes_nicely(get_explainers()))}",
         )
 
     if class_index is None:

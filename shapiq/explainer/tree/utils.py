@@ -39,7 +39,8 @@ def get_conditional_sample_weights(
 
 
 def compute_empty_prediction(
-    leaf_values: np.ndarray[float], leaf_sample_weights: np.ndarray[float]
+    leaf_values: np.ndarray[float],
+    leaf_sample_weights: np.ndarray[float],
 ) -> float:
     """Compute the empty prediction of a tree model.
 

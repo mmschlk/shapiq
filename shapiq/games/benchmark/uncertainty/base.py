@@ -28,7 +28,7 @@ class UncertaintyExplanation(Game):
         if uncertainty_to_explain not in ["total", "aleatoric", "epistemic"]:
             raise ValueError(
                 f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' "
-                f"but got {uncertainty_to_explain}."
+                f"but got {uncertainty_to_explain}.",
             )
 
         # get x_explain
@@ -40,7 +40,7 @@ class UncertaintyExplanation(Game):
             self._predict = self._predict_rf
         else:
             raise ValueError(
-                f"Invalid model provided. Should be RandomForestClassifier but got {model}."
+                f"Invalid model provided. Should be RandomForestClassifier but got {model}.",
             )
 
         if imputer == "marginal":
@@ -63,7 +63,7 @@ class UncertaintyExplanation(Game):
         else:
             raise ValueError(
                 f"Invalid imputer provided. Should be 'marginal' or 'conditional' but got "
-                f"{imputer}."
+                f"{imputer}.",
             )
 
         self.empty_prediction_value: float = self._imputer.empty_prediction
@@ -92,18 +92,20 @@ class UncertaintyExplanation(Game):
             uncertainty = entropy(predictions, axis=2, base=2).mean(axis=0)
         elif self._uncertainty_to_explain == "epistemic":
             uncertainty = entropy(predictions_mean, axis=1, base=2) - entropy(
-                predictions, axis=2, base=2
+                predictions,
+                axis=2,
+                base=2,
             ).mean(axis=0)
         else:
             raise ValueError(
                 f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' "
-                f"but got {self._uncertainty_to_explain}."
+                f"but got {self._uncertainty_to_explain}.",
             )
         return uncertainty
 
     def _predict_rf(self, x: np.ndarray) -> np.ndarray:
         predictions = np.array(
-            [estimator.predict_proba(x) for estimator in self._model.estimators_]
+            [estimator.predict_proba(x) for estimator in self._model.estimators_],
         )
         return self._uncertainty(predictions)
 

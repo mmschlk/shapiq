@@ -66,10 +66,11 @@ class EnsembleSelection(Game):
         normalize: bool = True,
         random_state: int | None = 42,
     ) -> None:
-        assert dataset_type in ["classification", "regression"], (
-            f"Invalid dataset type provided. Got {dataset_type} but expected one of "
-            f"['classification', 'regression']."
-        )
+        if dataset_type not in ["classification", "regression"]:
+            raise ValueError(
+                f"Invalid dataset type provided. Got {dataset_type} but expected one of "
+                f"['classification', 'regression'].",
+            )
         self.dataset_type: str = dataset_type
         self.random_state: int | None = random_state
         self._rng = np.random.default_rng(seed=random_state)
@@ -107,7 +108,7 @@ class EnsembleSelection(Game):
                 if member not in self.available_members:
                     raise ValueError(
                         f"Invalid ensemble member provided. Got {member} but expected one of "
-                        f"{self.available_members}."
+                        f"{self.available_members}.",
                     )
             self.player_names: list[str] = ensemble_members
             self.ensemble_members = self._init_ensemble_members()  # initialize the ensemble members
@@ -180,11 +181,13 @@ class EnsembleSelection(Game):
             elif member == "random_forest":
                 if self.dataset_type == "classification":
                     model = RandomForestClassifier(
-                        n_estimators=10, random_state=self.random_state + member_id
+                        n_estimators=10,
+                        random_state=self.random_state + member_id,
                     )
                 else:
                     model = RandomForestRegressor(
-                        n_estimators=10, random_state=self.random_state + member_id
+                        n_estimators=10,
+                        random_state=self.random_state + member_id,
                     )
             elif member == "knn":
                 if self.dataset_type == "classification":
@@ -206,7 +209,7 @@ class EnsembleSelection(Game):
             else:
                 raise ValueError(
                     f"Invalid ensemble member provided. Got {member} but expected one of "
-                    f"{self.available_members}."
+                    f"{self.available_members}.",
                 )
 
             ensemble_members[member_id] = model
@@ -252,11 +255,12 @@ class RandomForestEnsembleSelection(EnsembleSelection):
     ) -> None:
         # check if the random forest is a scikit-learn random forest
         if not isinstance(random_forest, RandomForestClassifier) and not isinstance(
-            random_forest, RandomForestRegressor
+            random_forest,
+            RandomForestRegressor,
         ):
             raise ValueError(
                 "Invalid random forest provided. Expected a RandomForestClassifier or "
-                "RandomForestRegressor as provided by the scikit-learn package."
+                "RandomForestRegressor as provided by the scikit-learn package.",
             )
 
         # get the ensemble members

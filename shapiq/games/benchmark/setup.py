@@ -121,7 +121,7 @@ class GameBenchmarkSetup:
         else:
             raise ValueError(
                 f"Invalid dataset name {dataset_name}. Available datasets are 'adult_census', "
-                "'bike_sharing', 'california_housing'."
+                "'bike_sharing', 'california_housing'.",
             )
 
         self.dataset_name: str = dataset_name
@@ -225,7 +225,8 @@ class GameBenchmarkSetup:
     def init_random_forest_classifier(self):
         """Initializes and trains a random forest model for a classification dataset."""
         self.model = RandomForestClassifier(
-            n_estimators=self._random_forest_n_estimators, random_state=self.random_state
+            n_estimators=self._random_forest_n_estimators,
+            random_state=self.random_state,
         )
         self.model.fit(self.x_train, self.y_train)
 

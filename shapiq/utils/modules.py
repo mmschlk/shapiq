@@ -36,7 +36,7 @@ def safe_isinstance(
         if "." not in class_path_str:
             raise ValueError(
                 "class_path_str must be a string or list of strings specifying a full \
-                module path to a class. Eg, 'sklearn.ensemble.RandomForestRegressor'"
+                module path to a class. Eg, 'sklearn.ensemble.RandomForestRegressor'",
             )
 
         # Splits on last occurrence of "."
