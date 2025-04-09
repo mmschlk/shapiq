@@ -135,7 +135,7 @@ def test_core_baseline_warning():
         egalitarian_least_core(
             n_players=2,
             game_values=game_values,
-            coalition_lookup={tuple(): 0, (0,): 1, (1,): 2, (0, 1): 3},
+            coalition_lookup={(): 0, (0,): 1, (1,): 2, (0, 1): 3},
         )
 
 

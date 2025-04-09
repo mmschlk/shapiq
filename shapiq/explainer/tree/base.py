@@ -148,7 +148,7 @@ class TreeModel:
         if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
             mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}
-            mapping_new_old = {new_id: old_id for new_id, old_id in enumerate(self.feature_ids)}
+            mapping_new_old = dict(enumerate(self.feature_ids))
             new_features = np.zeros_like(self.features)
             for i, old_feature in enumerate(self.features):
                 new_value = -2 if old_feature == -2 else mapping_old_new[old_feature]

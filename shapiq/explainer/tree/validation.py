@@ -55,7 +55,7 @@ def validate_tree_model(
     # direct return if list of tree models
     elif type(model).__name__ == "list":
         # check if all elements are TreeModel
-        if all([type(tree).__name__ == "TreeModel" for tree in model]):
+        if all(type(tree).__name__ == "TreeModel" for tree in model):
             tree_model = model
     # dict as model is parsed to TreeModel (the dict needs to have the correct format and names)
     elif type(model).__name__ == "dict":

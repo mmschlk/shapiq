@@ -116,8 +116,8 @@ def egalitarian_least_core(
 
     """
     # Rearrange the game_values and base_line and 0
-    tmp = game_values[coalition_lookup[tuple()]]
-    game_values[coalition_lookup[tuple()]] = game_values[0]
+    tmp = game_values[coalition_lookup[()]]
+    game_values[coalition_lookup[()]] = game_values[0]
     game_values[0] = tmp
 
     # Rearrange the game_values to have grand_coalition at -1

@@ -548,7 +548,7 @@ class ExactComputer:
         for interaction in powerset(self._grand_coalition_set, max_size=order - 1):
             stii_values[interaction_lookup[interaction]] = self._get_discrete_derivative(
                 interaction,
-                tuple(),
+                (),
             )
 
         # pre-compute STII weights
@@ -912,9 +912,7 @@ class ExactComputer:
             raise ValueError(f"Index {index} not supported")
         # Change emptyset to baseline value, due to the definitions of players
         probabilistic_value.baseline_value = self.baseline_value
-        probabilistic_value.values[probabilistic_value.interaction_lookup[tuple()]] = (
-            self.baseline_value
-        )
+        probabilistic_value.values[probabilistic_value.interaction_lookup[()]] = self.baseline_value
         self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
 

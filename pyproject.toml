@@ -101,7 +101,7 @@ src = ["tests", "shapiq", "docs"]
 
 
 [tool.ruff.lint]
-# extend-safe-fixes = ["ALL"]  # Dangerous on large codebases
+#extend-safe-fixes = ["ALL"]  # Dangerous on large codebases
 select = [
     "A",  # flake8-builtins: checks for shadowing builtins and related to builtins
     "W",  # pycodestyle: checks for code style guidelines
@@ -121,7 +121,7 @@ select = [
     "N812",  # TODO: add further N codes
     "BLE",  # blind-except: checks for usage of blind excepts
     "COM",  # flake8-commas: checks for comma errors
-    # "C4"
+    "C4"  # flake8-comprehensions: checks for better list/set/dict comprehensions
     #"ANN",  # TODO: add this or include mypy
     #"D",  # TODO: include this in the near future
 ]

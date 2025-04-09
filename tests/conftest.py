@@ -58,7 +58,7 @@ def interaction_values_list():
         iv = InteractionValues(
             n_players=n_players,
             values=values,
-            baseline_value=float(values[interaction_lookup[tuple()]]),
+            baseline_value=float(values[interaction_lookup[()]]),
             index="Moebius",
             interaction_lookup=interaction_lookup,
             max_order=max_order,

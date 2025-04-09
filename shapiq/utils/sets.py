@@ -49,7 +49,7 @@ def powerset(
         [('A',), ('B',), ('C',), ('A', 'B'), ('A', 'C'), ('B', 'C')]
 
     """
-    s = sorted(list(iterable))
+    s = sorted(iterable)
     max_size = len(s) if max_size is None else min(max_size, len(s))
     return chain.from_iterable(combinations(s, r) for r in range(max(min_size, 0), max_size + 1))
 
@@ -224,7 +224,7 @@ def generate_interaction_lookup(
     if isinstance(players, int):
         players = set(range(players))
     else:
-        players = set(sorted(players))
+        players = set(players)
     interaction_lookup = {
         interaction: i
         for i, interaction in enumerate(powerset(players, min_size=min_order, max_size=max_order))

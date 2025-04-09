@@ -178,7 +178,7 @@ def _add_labels(
             va=va_alignment,
             rotation=text_rotation,
         )
-        text_out_val.set_bbox(dict(facecolor="none", edgecolor="none"))
+        text_out_val.set_bbox({"facecolor": "none", "edgecolor": "none"})
 
         # We need to draw the plot to be able to get the size of the
         # text box
@@ -286,7 +286,7 @@ def _add_output_element(out_name: str, out_value: float, ax: plt.Axes) -> None:
         fontsize=14,
         horizontalalignment="center",
     )
-    text_out_val.set_bbox(dict(facecolor="white", edgecolor="white"))
+    text_out_val.set_bbox({"facecolor": "white", "edgecolor": "white"})
 
     text_out_val = plt.text(
         out_value,
@@ -296,7 +296,7 @@ def _add_output_element(out_name: str, out_value: float, ax: plt.Axes) -> None:
         alpha=0.5,
         horizontalalignment="center",
     )
-    text_out_val.set_bbox(dict(facecolor="white", edgecolor="white"))
+    text_out_val.set_bbox({"facecolor": "white", "edgecolor": "white"})
 
 
 def _add_base_value(base_value: float, ax: plt.Axes) -> None:
@@ -322,7 +322,7 @@ def _add_base_value(base_value: float, ax: plt.Axes) -> None:
         alpha=1,
         horizontalalignment="center",
     )
-    text_out_val.set_bbox(dict(facecolor="white", edgecolor="white"))
+    text_out_val.set_bbox({"facecolor": "white", "edgecolor": "white"})
 
 
 def update_axis_limits(

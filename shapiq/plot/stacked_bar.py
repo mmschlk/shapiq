@@ -131,7 +131,7 @@ def stacked_bar_plot(
         )
     axis.legend(handles=legend_elements, loc="upper center", ncol=min(max_order, 4))
 
-    x_ticks_labels = [feature for feature in feature_names]  # might be unnecessary
+    x_ticks_labels = list(feature_names)  # might be unnecessary
     axis.set_xticks(x)
     axis.set_xticklabels(x_ticks_labels, rotation=45, ha="right")
 

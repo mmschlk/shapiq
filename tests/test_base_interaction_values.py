@@ -60,9 +60,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values.interaction_lookup == interaction_lookup
 
     # test dict_values property
-    assert interaction_values.dict_values == {
-        interaction: value for interaction, value in zip(interaction_lookup, values, strict=False)
-    }
+    assert interaction_values.dict_values == dict(zip(interaction_lookup, values, strict=False))
 
     # check that default values are set correctly
     interaction_values_2 = InteractionValues(

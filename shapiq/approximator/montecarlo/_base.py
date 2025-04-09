@@ -178,7 +178,7 @@ class MonteCarlo(Approximator):
 
         # manually set emptyset interaction to baseline
         if self.min_order == 0:
-            shapley_interaction_values[self.interaction_lookup[tuple()]] = empty_coalition_value
+            shapley_interaction_values[self.interaction_lookup[()]] = empty_coalition_value
 
         return shapley_interaction_values
 

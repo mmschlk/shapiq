@@ -81,7 +81,7 @@ def abbreviate_feature_names(feature_names: Iterable[str]) -> list[str]:
         name = name.strip()
         capital_letters = sum(1 for c in name if c.isupper())
         seperator_chars = (" ", "_", "-", ".")
-        is_seperator_in_name = any([c in seperator_chars for c in name[:-1]])
+        is_seperator_in_name = any(c in seperator_chars for c in name[:-1])
         if is_seperator_in_name:
             for seperator in seperator_chars:
                 name = name.replace(seperator, ".")

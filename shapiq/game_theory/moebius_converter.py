@@ -145,7 +145,7 @@ class MoebiusConverter:
             min_order=1,
             max_order=order,
             n_players=self.n,
-            baseline_value=self.moebius_coefficients[tuple()],
+            baseline_value=self.moebius_coefficients[()],
             estimation_budget=self.moebius_coefficients.estimation_budget,
             estimated=self.moebius_coefficients.estimated,
         )
@@ -172,7 +172,7 @@ class MoebiusConverter:
         # Pre-compute weights
         distribution_weights = np.zeros((self.n + 1, order + 1))
 
-        stii_dict[tuple()] = self.moebius_coefficients[tuple()]
+        stii_dict[()] = self.moebius_coefficients[()]
 
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
@@ -217,7 +217,7 @@ class MoebiusConverter:
             min_order=0,
             max_order=order,
             n_players=self.n,
-            baseline_value=self.moebius_coefficients[tuple()],
+            baseline_value=self.moebius_coefficients[()],
         )
         return stii
 
@@ -247,10 +247,10 @@ class MoebiusConverter:
         # Handle empty set / baseline values differently for FSII and FBII
         if index == "FSII":
             # Set empty set
-            fii_dict[tuple()] = self.moebius_coefficients[tuple()]
+            fii_dict[()] = self.moebius_coefficients[()]
         if index == "FBII":
             # Add empty set for FBII via Möbius coefficients
-            fii_dict[tuple()] = self.moebius_coefficients[tuple()]
+            fii_dict[()] = self.moebius_coefficients[()]
             for moebius_set, moebius_val in zip(
                 self.moebius_coefficients.interaction_lookup,
                 self.moebius_coefficients.values,
@@ -258,7 +258,7 @@ class MoebiusConverter:
             ):
                 moebius_size = len(moebius_set)
                 if moebius_size > order:
-                    fii_dict[tuple()] += (-1) ** (order) * (
+                    fii_dict[()] += (-1) ** (order) * (
                         (1 / 2) ** moebius_size * binom(moebius_size - 1, order) * moebius_val
                     )
 
@@ -292,7 +292,7 @@ class MoebiusConverter:
             min_order=0,
             max_order=order,
             n_players=self.n,
-            baseline_value=fii_dict[tuple()],
+            baseline_value=fii_dict[()],
         )
         return fii
 

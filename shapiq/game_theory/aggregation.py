@@ -83,7 +83,7 @@ def aggregate_base_interaction(
 
     bernoulli_numbers = sp.special.bernoulli(order)  # used for aggregation
     baseline_value = base_interactions.baseline_value
-    transformed_dict: dict[tuple, float] = {tuple(): baseline_value}  # storage
+    transformed_dict: dict[tuple, float] = {(): baseline_value}  # storage
     # iterate over all interactions in base_interactions and project them onto all interactions T
     # where 1 <= |T| <= order
     for base_interaction, pos in base_interactions.interaction_lookup.items():

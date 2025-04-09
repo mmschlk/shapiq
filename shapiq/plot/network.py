@@ -175,7 +175,7 @@ def network_plot(
             center_text,
             horizontalalignment="center",
             verticalalignment="center",
-            bbox=dict(facecolor=background_color, alpha=0.5, edgecolor=line_color, pad=7),
+            bbox={"facecolor": background_color, "alpha": 0.5, "edgecolor": line_color, "pad": 7},
             color="black",
             fontsize=plt.rcParams["font.size"] + 3,
         )

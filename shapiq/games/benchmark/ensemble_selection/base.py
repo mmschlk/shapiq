@@ -118,7 +118,7 @@ class EnsembleSelection(Game):
                 member.fit(x_train, y_train)
         else:
             self.player_names: list[str] = [str(member) for member in ensemble_members]
-            self.ensemble_members = {i: member for i, member in enumerate(ensemble_members)}
+            self.ensemble_members = dict(enumerate(ensemble_members))
 
         # setup base game and attributes
         self.player_names: list[str] = ensemble_members
@@ -265,7 +265,7 @@ class RandomForestEnsembleSelection(EnsembleSelection):
 
         # get the ensemble members
         ensemble_members = random_forest.estimators_
-        ensemble_members = [member for member in ensemble_members]
+        ensemble_members = list(ensemble_members)
 
         super().__init__(
             x_train=x_train,

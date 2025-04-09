@@ -201,7 +201,7 @@ class SOUM(Game):
 
         # handle baseline value and set to 0 if no empty set is present
         try:
-            baseline_value = moebius_coefficients_dict[tuple()]
+            baseline_value = moebius_coefficients_dict[()]
         except KeyError:
             baseline_value = 0.0
 

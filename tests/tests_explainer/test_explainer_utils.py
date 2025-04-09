@@ -149,5 +149,5 @@ def callable_check():  # todo useful addition?
     # call with false signature
     model_with_false_call = ModelWithFalseCall()
     call_signature = inspect.signature(model_with_false_call)
-    if not any([_valid_sig(param) for param in call_signature.parameters.values()]):
+    if not any(_valid_sig(param) for param in call_signature.parameters.values()):
         raise TypeError

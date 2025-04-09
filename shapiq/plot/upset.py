@@ -68,7 +68,7 @@ def upset_plot(
     if all_features:
         features = set(range(interaction_values.n_players))
     else:
-        features = set([feature for interaction in interactions for feature in interaction])
+        features = {feature for interaction in interactions for feature in interaction}
     n_features = len(features)
     feature_pos = {feature: n_features - 1 - i for i, feature in enumerate(features)}
     if feature_names is None:

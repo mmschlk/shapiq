@@ -28,7 +28,7 @@ def test_soum_moebius_conversion():
             )
             # Assert efficiency
             assert (np.sum(shapley_interactions[index].values) - predicted_value) ** 2 < 10e-7
-            assert (shapley_interactions[index][tuple()] - emptyset_prediction) ** 2 < 10e-7
+            assert (shapley_interactions[index][()] - emptyset_prediction) ** 2 < 10e-7
 
         # test direct call of Möbius converter
         for index in ["STII", "k-SII", "SII", "FSII"]:
