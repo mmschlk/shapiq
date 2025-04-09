@@ -1,5 +1,7 @@
 """This test module contains all tests for bugfixes regarding TreeSHAP-IQ."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

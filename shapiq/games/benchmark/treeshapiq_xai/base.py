@@ -1,5 +1,7 @@
 """This module contains the base TreeSHAP-IQ xai game."""
 
+from __future__ import annotations
+
 import copy
 
 import numpy as np

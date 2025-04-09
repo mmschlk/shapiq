@@ -73,10 +73,11 @@ if __name__ == "__main__":
     all_game_configs = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"]
     n_configs = len(all_game_configs)
     if config_id < 1 or config_id > n_configs:
-        raise ValueError(
+        msg = (
             f"Invalid configuration ID. Must be in [1, {n_configs}] for game {game} which has "
-            f"{all_game_configs} configurations.",
+            f"{all_game_configs} configurations."
         )
+        raise ValueError(msg)
 
     game_config = all_game_configs[config_id - 1]
 

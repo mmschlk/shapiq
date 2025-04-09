@@ -2,6 +2,8 @@
 (I.e. it checks whether all modules can be imported without errors.)
 """
 
+from __future__ import annotations
+
 import importlib
 import pkgutil
 import sys

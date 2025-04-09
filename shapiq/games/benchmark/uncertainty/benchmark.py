@@ -1,5 +1,7 @@
 """This module contains tabular benchmark games for uncertainty explanation."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
@@ -32,9 +34,8 @@ class AdultCensus(UncertaintyExplanation):
             model = RandomForestClassifier(n_estimators=10, max_depth=5, random_state=random_state)
             model.fit(self.setup.x_train, self.setup.y_train)
         else:
-            raise ValueError(
-                f"Invalid model name provided. Should be 'random_forest' but got {model_name}.",
-            )
+            msg = f"Invalid model name provided. Should be 'random_forest' but got {model_name}."
+            raise ValueError(msg)
 
         print(f"Trained model {model_name} for the adult_census dataset.")
         print(f"Score on training data: {model.score(self.setup.x_test, self.setup.y_test)}")

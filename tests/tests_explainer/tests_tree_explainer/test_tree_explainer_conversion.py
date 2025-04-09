@@ -2,6 +2,8 @@
 TreeExplainer class.
 """
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -166,7 +168,8 @@ def test_conversion_predict_identity(model_fixture, model_class, background_reg_
                     # see .test_tree_bugfix.test_xgb_predicts_with_wrong_leaf_node
                     # TODO: take a look at this in more detail, why is it hard to get efficiency
                     continue
-                raise AssertionError("Prediction does not match the original prediction.")
+                msg = "Prediction does not match the original prediction."
+                raise AssertionError(msg)
 
 
 def test_tree_model_predict(

@@ -1,5 +1,7 @@
 """This module contains utility functions for testing purposes."""
 
+from __future__ import annotations
+
 
 def get_concrete_class(abclass):
     """Class decorator to create a concrete class from an abstract class.

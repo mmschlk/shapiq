@@ -1,5 +1,7 @@
 """This module contains the network plots for the shapiq package."""
 
+from __future__ import annotations
+
 import copy
 import math
 from typing import Any
@@ -86,10 +88,11 @@ def network_plot(
                 second_order_values[interaction] = interaction_values[interaction]
     else:
         if first_order_values is None or second_order_values is None:
-            raise ValueError(
+            msg = (
                 "Either interaction_values or first_order_values and second_order_values must be "
-                "provided. If interaction_values is provided this will be used.",
+                "provided. If interaction_values is provided this will be used."
             )
+            raise ValueError(msg)
 
     # get the number of features and the feature names
     n_features = first_order_values.shape[0]

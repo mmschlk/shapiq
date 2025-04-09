@@ -7,6 +7,8 @@ Note to developers:
     This is especially important for the data fixtures, as they are used in multiple tests.
 """
 
+from __future__ import annotations
+
 import copy
 import os
 

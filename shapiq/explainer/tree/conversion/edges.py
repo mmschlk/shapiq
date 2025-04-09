@@ -2,6 +2,8 @@
 TreeSHAP-IQ algorithm to compute the interaction values of a tree-based model.
 """
 
+from __future__ import annotations
+
 import numpy as np
 from scipy.special import binom
 

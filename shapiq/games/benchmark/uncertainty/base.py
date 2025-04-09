@@ -1,5 +1,7 @@
 """This module contains the base class for the uncertainty explanation game."""
 
+from __future__ import annotations
+
 import numpy as np
 from scipy.stats import entropy
 
@@ -26,10 +28,11 @@ class UncertaintyExplanation(Game):
 
         # validate the inputs
         if uncertainty_to_explain not in ["total", "aleatoric", "epistemic"]:
-            raise ValueError(
+            msg = (
                 f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' "
-                f"but got {uncertainty_to_explain}.",
+                f"but got {uncertainty_to_explain}."
             )
+            raise ValueError(msg)
 
         # get x_explain
         self.x = get_x_explain(x, data)
@@ -39,8 +42,9 @@ class UncertaintyExplanation(Game):
         if isinstance(model, RandomForestClassifier):
             self._predict = self._predict_rf
         else:
+            msg = f"Invalid model provided. Should be RandomForestClassifier but got {model}."
             raise ValueError(
-                f"Invalid model provided. Should be RandomForestClassifier but got {model}.",
+                msg,
             )
 
         if imputer == "marginal":
@@ -61,9 +65,12 @@ class UncertaintyExplanation(Game):
                 normalize=False,
             )
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid imputer provided. Should be 'marginal' or 'conditional' but got "
-                f"{imputer}.",
+                f"{imputer}."
+            )
+            raise ValueError(
+                msg,
             )
 
         self.empty_prediction_value: float = self._imputer.empty_prediction
@@ -97,9 +104,12 @@ class UncertaintyExplanation(Game):
                 base=2,
             ).mean(axis=0)
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' "
-                f"but got {self._uncertainty_to_explain}.",
+                f"but got {self._uncertainty_to_explain}."
+            )
+            raise ValueError(
+                msg,
             )
         return uncertainty
 

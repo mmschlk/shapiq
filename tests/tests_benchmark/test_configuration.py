@@ -1,5 +1,7 @@
 """This test module contains all tests for the configuration of benchmark games."""
 
+from __future__ import annotations
+
 import pytest
 
 from shapiq.benchmark.configuration import (

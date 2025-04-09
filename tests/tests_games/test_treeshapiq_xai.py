@@ -1,5 +1,7 @@
 """This test module tests the TreeSHAP-IQ explanation games."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

@@ -2,6 +2,8 @@
 like interaction indices or generalized values.
 """
 
+from __future__ import annotations
+
 import copy
 import warnings
 from collections.abc import Callable
@@ -133,7 +135,8 @@ class ExactComputer:
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
-            raise ValueError(f"Index {index} not supported.")
+            msg = f"Index {index} not supported."
+            raise ValueError(msg)
 
     @property
     def baseline_value(self) -> float:
@@ -262,7 +265,8 @@ class ExactComputer:
             else:
                 return 0
         else:
-            raise ValueError(f"Index {index} not supported")
+            msg = f"Index {index} not supported"
+            raise ValueError(msg)
 
     def _stii_weight(self, coalition_size: int, interaction_size: int, order: int) -> float:
         """Sets the weight for the representation of STII as a CII (using discrete derivatives).
@@ -616,7 +620,8 @@ class ExactComputer:
         if index in ["FSII", "FBII"]:
             regression_response = self.game_values - self.baseline_value  # normalization
         else:
-            raise ValueError(f"Index {index} not supported.")
+            msg = f"Index {index} not supported."
+            raise ValueError(msg)
 
         regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
         # solve the weighted least squares (WLSQ) problem
@@ -812,7 +817,8 @@ class ExactComputer:
             self._computed[(index, order)] = shapley_generalized_value
             return copy.copy(shapley_generalized_value)
         else:
-            raise ValueError(f"Index {index} not supported")
+            msg = f"Index {index} not supported"
+            raise ValueError(msg)
 
     def shapley_interaction(self, index: str, order: int) -> InteractionValues:
         """Computes k-additive Shapley Interactions, i.e. probabilistic interaction indices that
@@ -846,7 +852,8 @@ class ExactComputer:
         elif index == "kADD-SHAP":
             shapley_interaction = self.compute_kadd_shap(order)
         else:
-            raise ValueError(f"Index {index} not supported")
+            msg = f"Index {index} not supported"
+            raise ValueError(msg)
         shapley_interaction = finalize_computed_interactions(shapley_interaction)
         self._computed[(index, order)] = shapley_interaction
         return copy.copy(shapley_interaction)
@@ -909,7 +916,8 @@ class ExactComputer:
         elif index == "SV":
             probabilistic_value = self.base_interaction(index="SII", order=order)
         else:
-            raise ValueError(f"Index {index} not supported")
+            msg = f"Index {index} not supported"
+            raise ValueError(msg)
         # Change emptyset to baseline value, due to the definitions of players
         probabilistic_value.baseline_value = self.baseline_value
         probabilistic_value.values[probabilistic_value.interaction_lookup[()]] = self.baseline_value

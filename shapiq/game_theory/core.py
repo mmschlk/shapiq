@@ -1,5 +1,7 @@
 """Logic to solve for the egalitarian least-core."""
 
+from __future__ import annotations
+
 import copy
 import warnings
 

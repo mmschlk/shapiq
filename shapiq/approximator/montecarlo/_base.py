@@ -1,5 +1,7 @@
 """This module contains the Base Regression approximator to compute SII and k-SII of arbitrary max_order."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -47,10 +49,11 @@ class MonteCarlo(Approximator):
         sampling_weights: np.ndarray = None,
     ):
         if index not in AVAILABLE_INDICES_MONTE_CARLO:
-            raise ValueError(
+            msg = (
                 f"Index {index} not available for Regression Approximator. Choose from "
-                f"{AVAILABLE_INDICES_MONTE_CARLO}.",
+                f"{AVAILABLE_INDICES_MONTE_CARLO}."
             )
+            raise ValueError(msg)
         if index in ["FSII", "FBII"]:
             top_order = True
         super().__init__(
@@ -435,7 +438,8 @@ class MonteCarlo(Approximator):
                 * factorial(coalition_size + self.max_order - 1)
                 / factorial(self.n + self.max_order - 1)
             )
-        raise ValueError(f"Lower order interactions are not supported for {self.index}.")
+        msg = f"Lower order interactions are not supported for {self.index}."
+        raise ValueError(msg)
 
     def _fbii_weight(self, interaction_size: int) -> float:
         """Returns the FSII discrete derivative weight given the coalition size and interaction
@@ -453,7 +457,8 @@ class MonteCarlo(Approximator):
         """
         if interaction_size == self.max_order:
             return 1 / 2 ** (self.n - interaction_size)
-        raise ValueError(f"Lower order interactions are not supported for {self.index}.")
+        msg = f"Lower order interactions are not supported for {self.index}."
+        raise ValueError(msg)
 
     def _weight(self, index: str, coalition_size: int, interaction_size: int) -> float:
         """Returns the weight for each interaction type given coalition and interaction size.
@@ -480,7 +485,8 @@ class MonteCarlo(Approximator):
         elif index == "CHII":
             return self._chii_weight(coalition_size, interaction_size)
         else:
-            raise ValueError(f"The index {index} is not supported.")
+            msg = f"The index {index} is not supported."
+            raise ValueError(msg)
 
     def _get_standard_form_weights(self, index: str) -> np.ndarray:
         """Initializes the weights for the interaction index re-written from discrete derivatives to

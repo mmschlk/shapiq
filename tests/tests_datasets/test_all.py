@@ -1,5 +1,7 @@
 """This test module contains the tests for all datasets."""
 
+from __future__ import annotations
+
 import numpy as np
 from pandas import DataFrame, Series
 

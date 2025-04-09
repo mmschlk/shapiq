@@ -1,5 +1,7 @@
 """This module contains all markers for the tests."""
 
+from __future__ import annotations
+
 import importlib.util
 
 import pytest

@@ -1,5 +1,7 @@
 """This module contains the configuration for the shapiq visualizations."""
 
+from __future__ import annotations
+
 from colour import Color
 
 __all__ = ["RED", "BLUE", "NEUTRAL", "LINES", "COLORS_K_SII", "get_color"]

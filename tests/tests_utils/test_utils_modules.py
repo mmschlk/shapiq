@@ -1,5 +1,7 @@
 """This test module contains tests for utils.modules."""
 
+from __future__ import annotations
+
 import pytest
 from sklearn.tree import DecisionTreeRegressor
 

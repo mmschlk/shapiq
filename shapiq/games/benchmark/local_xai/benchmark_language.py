@@ -1,5 +1,7 @@
 """This module contains the Sentiment Classification Game class, which is a subclass of the Game"""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.base import Game
@@ -65,9 +67,8 @@ class SentimentAnalysis(Game):
         from transformers import pipeline
 
         if mask_strategy not in ["remove", "mask"]:
-            raise ValueError(
-                f"'mask_strategy' must be either 'remove' or 'mask' and not {mask_strategy}",
-            )
+            msg = f"'mask_strategy' must be either 'remove' or 'mask' and not {mask_strategy}"
+            raise ValueError(msg)
         self.mask_strategy = mask_strategy
 
         # get the model

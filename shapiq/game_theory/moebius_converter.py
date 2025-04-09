@@ -2,6 +2,8 @@
 using the (sparse) Möbius representation..
 """
 
+from __future__ import annotations
+
 import copy
 from collections.abc import Callable
 
@@ -73,7 +75,8 @@ class MoebiusConverter:
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
-            raise ValueError(f"Index {index} not supported.")
+            msg = f"Index {index} not supported."
+            raise ValueError(msg)
 
     def base_aggregation(self, base_interactions: InteractionValues, order: int):
         """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII.
@@ -321,7 +324,8 @@ class MoebiusConverter:
                 order=order,
             )
         else:
-            raise ValueError(f"Index {index} not supported. Please choose from STII, FSII, k-SII.")
+            msg = f"Index {index} not supported. Please choose from STII, FSII, k-SII."
+            raise ValueError(msg)
 
         self._computed[index] = shapley_interactions
         return copy.copy(shapley_interactions)
@@ -390,4 +394,5 @@ def _get_moebius_distribution_weight(
                 * (1 / 2) ** (moebius_size - interaction_size)
                 * binom(moebius_size - interaction_size - 1, order - interaction_size)
             )
-    raise ValueError(f"Index {index} not supported.")
+    msg = f"Index {index} not supported."
+    raise ValueError(msg)

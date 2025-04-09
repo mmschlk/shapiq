@@ -1,5 +1,7 @@
 """This module contains the base game for the unsupervised data analysis setting."""
 
+from __future__ import annotations
+
 import numpy as np
 from scipy import stats
 

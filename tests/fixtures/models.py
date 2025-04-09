@@ -1,5 +1,7 @@
 """This fixtures module contains model fixtures for the tests."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from sklearn.ensemble import IsolationForest, RandomForestClassifier, RandomForestRegressor

@@ -1,5 +1,7 @@
 """Conversion functions for the tree explainer implementation."""
 
+from __future__ import annotations
+
 from ...utils.custom_types import Model
 from ...utils.modules import safe_isinstance
 from .base import TreeModel
@@ -100,7 +102,8 @@ def validate_tree_model(
         tree_model = convert_xgboost_booster(model, class_label=class_label)
     # unsupported model
     else:
-        raise TypeError(f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}")
+        msg = f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}"
+        raise TypeError(msg)
 
     # if single tree model put it in a list
     if not isinstance(tree_model, list):

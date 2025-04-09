@@ -1,5 +1,7 @@
 """Pre-compute the values for the games and store them in a file."""
 
+from __future__ import annotations
+
 import multiprocessing as mp
 import os
 from pathlib import Path

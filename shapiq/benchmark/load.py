@@ -2,6 +2,8 @@
 from the precomputed data (GitHub repository).
 """
 
+from __future__ import annotations
+
 import time
 from collections.abc import Generator
 from pathlib import Path
@@ -151,10 +153,11 @@ def load_game_data(
                 normalize=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["normalize"],
             )
         except FileNotFoundError as error:
-            raise FileNotFoundError(
+            msg = (
                 f"Game data for game {game_class.get_game_name()} with configuration "
-                f"{configuration} and iteration {iteration} could not be found.",
-            ) from error
+                f"{configuration} and iteration {iteration} could not be found."
+            )
+            raise FileNotFoundError(msg) from error
 
 
 def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
@@ -183,8 +186,9 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
     except requests.exceptions.HTTPError as error:
+        msg = f"Could not download the game data from {url}. Check if configuration is correct."
         raise FileNotFoundError(
-            f"Could not download the game data from {url}. Check if configuration is correct.",
+            msg,
         ) from error
     with Path(path).open("wb") as file:
         file.write(response.content)

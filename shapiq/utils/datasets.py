@@ -1,5 +1,7 @@
 """This module contains utility functions for datasets and data."""
 
+from __future__ import annotations
+
 import numpy as np
 
 

@@ -1,5 +1,7 @@
 """Module for plotting the explanation graph of interaction values."""
 
+from __future__ import annotations
+
 import math
 
 import matplotlib.patches as mpatches

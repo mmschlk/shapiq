@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the Möbius converter class."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.game_theory.moebius_converter import MoebiusConverter

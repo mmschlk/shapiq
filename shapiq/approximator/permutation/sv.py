@@ -1,5 +1,7 @@
 """This module contains the permutation sampling approximation method for the Shapley value (SV)."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np

@@ -1,5 +1,7 @@
 """Tests the approximiation of k-SII values with PermutationSamplingSII and SHAPIQ."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

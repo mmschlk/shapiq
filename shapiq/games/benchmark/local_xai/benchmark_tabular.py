@@ -1,5 +1,7 @@
 """This module contains tabular benchmark games for local explanation."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.benchmark.local_xai.base import LocalExplanation
@@ -37,9 +39,8 @@ class AdultCensus(LocalExplanation):
     ) -> None:
         # validate the inputs
         if isinstance(class_to_explain, int) and class_to_explain not in [0, 1]:
-            raise ValueError(
-                f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}.",
-            )
+            msg = f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}."
+            raise ValueError(msg)
 
         self.setup = GameBenchmarkSetup(
             dataset_name="adult_census",

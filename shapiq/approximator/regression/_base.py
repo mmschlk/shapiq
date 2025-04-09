@@ -1,5 +1,7 @@
 """This module contains the Base Regression approximator to compute SII and k-SII of arbitrary max_order."""
 
+from __future__ import annotations
+
 import copy
 from collections.abc import Callable
 
@@ -46,10 +48,11 @@ class Regression(Approximator):
         random_state: int | None = None,
     ):
         if index not in AVAILABLE_INDICES_REGRESSION:
-            raise ValueError(
+            msg = (
                 f"Index {index} not available for Regression Approximator. Choose from "
-                f"{AVAILABLE_INDICES_REGRESSION}.",
+                f"{AVAILABLE_INDICES_REGRESSION}."
             )
+            raise ValueError(msg)
         super().__init__(
             n,
             min_order=0,
@@ -96,8 +99,9 @@ class Regression(Approximator):
                         * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
                     )
             return weight_vector
+        msg = f"Index {self.index} not available for Regression Approximator."
         raise ValueError(
-            f"Index {self.index} not available for Regression Approximator.",
+            msg,
         )  # pragma: no cover
 
     def approximate(
@@ -347,7 +351,8 @@ class Regression(Approximator):
                 # 1 if interaction is fully contained, else 0.
                 weights[interaction_size, interaction_size] = 1
             return weights
-        raise ValueError(f"Index {index} not valid in Regression Approximator.")  # pragma: no cover
+        msg = f"Index {index} not valid in Regression Approximator."
+        raise ValueError(msg)  # pragma: no cover
 
     def _get_bernoulli_weights(self, max_order: int) -> np.ndarray:
         """Pre-computes and array of Bernoulli weights for a given max_order.

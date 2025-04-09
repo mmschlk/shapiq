@@ -1,5 +1,7 @@
 """Utility functions for dealing with trees or tree structures."""
 
+from __future__ import annotations
+
 import numpy as np
 
 __all__ = ["get_conditional_sample_weights", "compute_empty_prediction"]

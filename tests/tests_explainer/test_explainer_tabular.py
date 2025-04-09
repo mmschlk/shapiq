@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the interaction explainer for the shapiq package."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

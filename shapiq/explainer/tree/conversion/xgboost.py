@@ -2,6 +2,8 @@
 shapiq.
 """
 
+from __future__ import annotations
+
 import warnings
 
 from ....utils.custom_types import Model

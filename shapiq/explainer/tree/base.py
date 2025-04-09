@@ -1,5 +1,7 @@
 """The base class for tree model conversion."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -120,7 +122,8 @@ class TreeModel:
         # flatten values if necessary
         if self.values.ndim > 1:
             if self.values.shape[1] != 1:
-                raise ValueError("Values array has more than one column.")
+                msg = "Values array has more than one column."
+                raise ValueError(msg)
             self.values = self.values.flatten()
         # set all values of non leaf nodes to zero
         self.values[~self.leaf_mask] = 0

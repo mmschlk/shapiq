@@ -2,6 +2,8 @@
 of a TabPFN model.
 """
 
+from __future__ import annotations
+
 import numpy as np
 
 from ..approximator._base import Approximator
@@ -84,10 +86,11 @@ class TabPFNExplainer(TabularExplainer):
 
         # check that data and labels have the same number of samples
         if data.shape[0] != labels.shape[0]:
-            raise ValueError(
+            msg = (
                 f"The number of samples in `data` and `labels` must be equal (got data.shape= "
-                f"{data.shape} and labels.shape={labels.shape}).",
+                f"{data.shape} and labels.shape={labels.shape})."
             )
+            raise ValueError(msg)
         n_samples = data.shape[0]
         x_train = data
         y_train = labels

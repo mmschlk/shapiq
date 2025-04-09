@@ -1,5 +1,7 @@
 """This module contains the main benchmark run setup for the shapiq package."""
 
+from __future__ import annotations
+
 import copy
 import multiprocessing as mp
 import warnings
@@ -97,7 +99,8 @@ def run_benchmark(
     # check that all games have the same number of players
     n_players = games[0].n_players
     if not all(game.n_players == n_players for game in games):
-        raise ValueError("All games must have the same number of players.")
+        msg = "All games must have the same number of players."
+        raise ValueError(msg)
 
     # check that the number of ground truth values is the same as the number of games
     if gt_values is None:
@@ -107,9 +110,8 @@ def run_benchmark(
             gt_values.append(game.exact_values(index=index, order=order))
 
     if len(gt_values) != len(games):
-        raise ValueError(
-            "The number of ground truth values must be the same as the number of games.",
-        )
+        msg = "The number of ground truth values must be the same as the number of games."
+        raise ValueError(msg)
 
     # transform the budget steps to integers if float is provided
     if n_players > 16:  # sets the budget to 10k for synthetic games with more than 16 players
@@ -321,7 +323,8 @@ def load_benchmark_results(
             or index is None
             or order is None
         ):
-            raise ValueError("The game configuration must be provided if the save path is not.")
+            msg = "The game configuration must be provided if the save path is not."
+            raise ValueError(msg)
 
         if isinstance(game_class, str):
             game_class = get_game_class_from_name(game_class)

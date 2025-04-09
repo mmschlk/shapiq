@@ -1,5 +1,7 @@
 """This test module contains all tests for the tree explainer module of the shapiq package."""
 
+from __future__ import annotations
+
 import copy
 
 import numpy as np

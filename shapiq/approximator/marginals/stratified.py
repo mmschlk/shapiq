@@ -1,5 +1,7 @@
 """This module contains the Stratified Sampling approximation method for the Shapley values."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np

@@ -212,7 +212,8 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
 
     """
     if setting not in ["all", "high", "low"]:
-        raise ValueError("Budget setting must be 'all', 'high', or 'low'.")
+        msg = "Budget setting must be 'all', 'high', or 'low'."
+        raise ValueError(msg)
 
     import matplotlib.pyplot as plt
 

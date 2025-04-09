@@ -1,5 +1,7 @@
 """This module contains the plotting utilities for the benchmark results."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from collections.abc import Callable
 
@@ -207,7 +209,8 @@ def plot_approximation_quality(
 
     """
     if data_path is None and data is None:
-        raise ValueError("Either data or data_path must be provided.")
+        msg = "Either data or data_path must be provided."
+        raise ValueError(msg)
 
     if data is None:
         data = pd.read_csv(data_path)

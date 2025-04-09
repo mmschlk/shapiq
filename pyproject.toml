@@ -101,7 +101,7 @@ src = ["tests", "shapiq", "docs"]
 
 
 [tool.ruff.lint]
-#extend-safe-fixes = ["ALL"]  # Dangerous on large codebases
+# extend-safe-fixes = ["ALL"]  # Dangerous on large codebases
 select = [
     "A",  # flake8-builtins: checks for shadowing builtins and related to builtins
     "W",  # pycodestyle: checks for code style guidelines
@@ -121,16 +121,24 @@ select = [
     "N812",  # TODO: add further N codes
     "BLE",  # blind-except: checks for usage of blind excepts
     "COM",  # flake8-commas: checks for comma errors
-    "C4"  # flake8-comprehensions: checks for better list/set/dict comprehensions
+    "C4",  # flake8-comprehensions: checks for better list/set/dict comprehensions
+    # "CPY",  # for the time being we do not have copy-right notices in the top of the file so we do not need to include this
+    "DTZ",  # flake8-datetimez: checks for datetime usage
+    "T10",  # flake8-debugger: checks for usage of debugger
+    "EM",  # flake8-errmsg: checks for error message handling
+    "EXE", # flake8-executable: checks for executable files
+    "FIX",  # flake8-fixme: checks for TODOs and FIXMEs
+    "FA",  # require from __future__ import annotations import when using type hints
     #"ANN",  # TODO: add this or include mypy
-    #"D",  # TODO: include this in the near future
+    # "D",  # TODO: include this in the near future
 ]
 ignore = [
     "E501",  # Line too long
     "N803",  # Variable X in function should be lowercase
     "N806",  # Variable X in function should be lowercase
     "S301",  # exclude pickle restriction, atm. games are unpickled this will need to be fixed
-    "COM812"  # this is redundant with the formatter which anyways does this (must be excluded) in the future # TODO: add remove pickle calls and remove this exclusion
+    "COM812",  # this is redundant with the formatter which anyways does this (must be excluded) in the future # TODO: add remove pickle calls and remove this exclusion
+    "FIX002",  # we use TODOs atm to track potential code improvements  # TODO: add this in the future
 ]
 exclude = [
     ".bzr",
@@ -181,9 +189,10 @@ exclude = [
     "T20",  # notebooks can have print statements
     "I002",  # notebooks do not have to import required modules
 ]
-"docs/source/conf.py" = [
+"docs/source/*.py" = [
     "A001",  # some conf.py variables shadow builtins which is okay here
-    "INP"  # docs can be an implicit package (does not need to be imported)
+    "INP",  # docs can be an implicit package (does not need to be imported)
+    "I002",  # benchmark code does not have to import required modules
 ]
 "benchmark/*.py" = [
     "INP", # imports can be different here
@@ -191,11 +200,18 @@ exclude = [
     "PTH"  # in benchmark code we use a lot of os, which is okay
 ]
 "docs/copy_notebooks.py" = [
-    "PTH"  # the script uses os, which is not cirtical for shapiq so it's fine
+    "PTH",  # the script uses os, which is not cirtical for shapiq so it's fine
+    "I002",  # benchmark code does not have to import required modules
 ]
 "__init__.py" = [
     "I002", # __init__.py does not have to import required modules
-    "RUF022"  # we can have unsorted imports in __init__.py
+    "RUF022",  # we can have unsorted imports in __init__.py
+    "FA",
+]
+"scripts/*.py" = [
+    "INP", # imports can be different here
+    "I002",  # script code does not have to import required modules
+    "PTH"  # in script code we use a lot of os, which is okay
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -206,6 +222,8 @@ known-first-party = ["shapiq"]
 extra-standard-library = ["typing_extensions"]
 combine-as-imports = true
 force-wrap-aliases = true
+no-lines-before = ["future"]
+required-imports = ["from __future__ import annotations"]
 
 [dependency-groups]
 test = [

@@ -1,5 +1,7 @@
 """This module implements the Permutation Sampling approximator for the SII (and k-SII) index."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -37,7 +39,8 @@ class PermutationSamplingSII(Approximator):
         random_state: int | None = None,
     ) -> None:
         if index not in ["SII", "k-SII"]:
-            raise ValueError(f"Invalid index {index}. Must be either 'SII' or 'k-SII'.")
+            msg = f"Invalid index {index}. Must be either 'SII' or 'k-SII'."
+            raise ValueError(msg)
         super().__init__(
             n=n,
             max_order=max_order,

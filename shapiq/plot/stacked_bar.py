@@ -1,5 +1,7 @@
 """This module contains functions to plot the n_sii stacked bar charts."""
 
+from __future__ import annotations
+
 from copy import deepcopy
 from typing import Any
 

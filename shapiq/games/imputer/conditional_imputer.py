@@ -1,5 +1,7 @@
 """Implementation of the conditional imputer."""
 
+from __future__ import annotations
+
 import warnings
 
 import numpy as np
@@ -54,7 +56,8 @@ class ConditionalImputer(Imputer):
     ) -> None:
         super().__init__(model, data, x, sample_size, categorical_features, random_state)
         if method != "generative":
-            raise ValueError("Currently only a generative conditional imputer is implemented.")
+            msg = "Currently only a generative conditional imputer is implemented."
+            raise ValueError(msg)
         self.method = method
         self.conditional_budget = conditional_budget
         self.conditional_threshold = conditional_threshold
@@ -65,7 +68,7 @@ class ConditionalImputer(Imputer):
         if normalize:
             self.normalization_value = self.empty_prediction
 
-    def init_background(self, data: np.ndarray) -> "ConditionalImputer":
+    def init_background(self, data: np.ndarray) -> ConditionalImputer:
         """Initializes the conditional imputer.
 
         Args:

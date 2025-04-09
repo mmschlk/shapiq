@@ -1,5 +1,7 @@
 """This module contains utility functions for the explainer module."""
 
+from __future__ import annotations
+
 import re
 from collections.abc import Callable
 from typing import Any, TypeVar
@@ -145,12 +147,13 @@ def get_predict_function_and_model_type(
         _predict_function = model[0].compute_empty_prediction
         _model_type = "tree"
     elif _predict_function is None:
-        raise TypeError(
+        msg = (
             f"`model` is of unsupported type: {model_class}.\n"
             "Please, raise a new issue at https://github.com/mmschlk/shapiq/issues if you want this model type\n"
             "to be handled automatically by shapiq.Explainer. Otherwise, use one of the supported explainers:\n"
-            f"{', '.join(print_classes_nicely(get_explainers()))}",
+            f"{', '.join(print_classes_nicely(get_explainers()))}"
         )
+        raise TypeError(msg)
 
     if class_index is None:
         class_index = 1

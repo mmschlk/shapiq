@@ -1,5 +1,7 @@
 """This module contains all tabular machine learning games."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -107,9 +109,8 @@ class LocalExplanation(Game):
                     normalize=False,
                 )
             else:
-                raise ValueError(
-                    f"Imputer {imputer} not available. Choose from {'marginal', 'conditional'}.",
-                )
+                msg = f"Imputer {imputer} not available. Choose from {'marginal', 'conditional'}."
+                raise ValueError(msg)
 
         self.empty_prediction_value: float = self._imputer.empty_prediction
 

@@ -1,5 +1,7 @@
 """Metrics for evaluating the performance of interaction values."""
 
+from __future__ import annotations
+
 import copy
 import warnings
 

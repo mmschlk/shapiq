@@ -1,5 +1,7 @@
 """This test module tests the tabpfn imputer object."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

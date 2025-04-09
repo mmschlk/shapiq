@@ -5,6 +5,8 @@ Note to developers:
     (e.g. `torch`, `torchvision`, `PIL`, and `skimage`).
 """
 
+from __future__ import annotations
+
 import copy
 
 import numpy as np

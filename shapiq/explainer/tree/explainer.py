@@ -2,6 +2,8 @@
 computing any-order Shapley Interactions for tree ensembles.
 """
 
+from __future__ import annotations
+
 import copy
 import warnings
 
@@ -92,7 +94,8 @@ class TreeExplainer(Explainer):
 
         """
         if len(x.shape) != 1:
-            raise TypeError("explain expects a single instance, not a batch.")
+            msg = "explain expects a single instance, not a batch."
+            raise TypeError(msg)
         # run treeshapiq for all trees
         interaction_values: list[InteractionValues] = []
         for explainer in self._treeshapiq_explainers:

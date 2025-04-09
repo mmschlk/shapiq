@@ -1,5 +1,7 @@
 """The base Explainer classes for the shapiq package."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from warnings import warn
 
@@ -120,7 +122,8 @@ class Explainer:
             The interaction values of the prediction.
 
         """
-        raise NotImplementedError("The method `explain` must be implemented in a subclass.")
+        msg = "The method `explain` must be implemented in a subclass."
+        raise NotImplementedError(msg)
 
     def explain_X(
         self,
@@ -138,7 +141,8 @@ class Explainer:
 
         """
         if len(X.shape) != 2:
-            raise TypeError("The `X` must be a 2-dimensional matrix.")
+            msg = "The `X` must be a 2-dimensional matrix."
+            raise TypeError(msg)
         if random_state is not None:
             if hasattr(self, "_imputer"):
                 self._imputer._rng = np.random.default_rng(random_state)

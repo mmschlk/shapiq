@@ -1,5 +1,7 @@
 """Base Game class for games and benchmarks."""
 
+from __future__ import annotations
+
 import os
 import pickle
 import warnings
@@ -107,9 +109,8 @@ class Game:
         self.n_players: int = n_players  # if path_to_values is provided, this may be overwritten
 
         if n_players is None and path_to_values is None:
-            raise ValueError(
-                "The number of players has to be provided if game is not loaded from values.",
-            )
+            msg = "The number of players has to be provided if game is not loaded from values."
+            raise ValueError(msg)
 
         # setup normalization of the game
         self.normalization_value: float = 0.0
@@ -215,23 +216,31 @@ class Game:
         # check for array input and do validation
         if isinstance(coalitions, np.ndarray):
             if len(coalitions) == 0:  # check that coalition is contained in array
-                raise TypeError("The array of coalitions is empty.")
+                msg = "The array of coalitions is empty."
+                raise TypeError(msg)
             if coalitions.ndim == 1:  # check if single coalition is correctly given
                 if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
-                    raise TypeError(
+                    msg = (
                         "The array of coalitions is not correctly formatted."
-                        f"It should have a length of {self.n_players}",
+                        f"It should have a length of {self.n_players}"
+                    )
+                    raise TypeError(
+                        msg,
                     )
                 coalitions = coalitions.reshape((1, self.n_players))
             if coalitions.shape[1] != self.n_players:  # check if players match
-                raise TypeError(
+                msg = (
                     f"Number of players in the coalitions ({coalitions.shape[1]}) does not match "
-                    f"the number of players in the game ({self.n_players}).",
+                    f"the number of players in the game ({self.n_players})."
+                )
+                raise TypeError(
+                    msg,
                 )
             # TODO maybe remove this, as it might increase runtime unnecessarily
             # check that values of numpy array are either 0 or 1
             if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
-                raise TypeError("The values in the array of coalitions are not binary.")
+                msg = "The values in the array of coalitions are not binary."
+                raise TypeError(msg)
             return coalitions
         # try for list of tuples
         if isinstance(coalitions, tuple):
@@ -244,7 +253,8 @@ class Game:
             pass
         # assuming str input
         if self.player_name_lookup is None:
-            raise ValueError("Player names are not provided. Cannot convert string to integer.")
+            msg = "Player names are not provided. Cannot convert string to integer."
+            raise ValueError(msg)
         try:
             coalitions_from_str = []
             for coalition in coalitions:
@@ -301,9 +311,12 @@ class Game:
             try:
                 values[i] = self.value_storage[self.coalition_lookup[coalition_tuple]]
             except KeyError as error:
-                raise KeyError(
+                msg = (
                     f"The coalition {coalition_tuple} is not stored in the game. "
-                    f"Are all values pre-computed?",
+                    f"Are all values pre-computed?"
+                )
+                raise KeyError(
+                    msg,
                 ) from error
         return values
 
@@ -321,7 +334,8 @@ class Game:
             This method has to be implemented in the inheriting class.
 
         """
-        raise NotImplementedError("The value function has to be implemented in inherited classes.")
+        msg = "The value function has to be implemented in inherited classes."
+        raise NotImplementedError(msg)
 
     def precompute(self, coalitions: np.ndarray | None = None) -> None:
         """Precompute the game values for all or a given set of coalitions.
@@ -447,9 +461,12 @@ class Game:
         data = np.load(path)
         n_players = data["n_players"]
         if self.n_players is not None and n_players != self.n_players:
-            raise ValueError(
+            msg = (
                 f"The number of players in the game ({self.n_players}) does not match the number "
-                f"of players in the saved game ({n_players}).",
+                f"of players in the saved game ({n_players})."
+            )
+            raise ValueError(
+                msg,
             )
         self.n_players = int(n_players)
         self.value_storage = data["values"]
@@ -469,7 +486,7 @@ class Game:
             pickle.dump(self, f)
 
     @classmethod
-    def load(cls, path: Path | str) -> "Game":
+    def load(cls, path: Path | str) -> Game:
         """Load the game from a given path.
 
         Args:
@@ -563,6 +580,7 @@ class Game:
         try:
             return self.value_storage[self.coalition_lookup[tuple(sorted(item))]]
         except (KeyError, IndexError) as error:
+            msg = f"The coalition {item} is not stored in the game. Is it precomputed?"
             raise KeyError(
-                f"The coalition {item} is not stored in the game. Is it precomputed?",
+                msg,
             ) from error

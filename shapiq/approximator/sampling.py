@@ -1,5 +1,7 @@
 """This module contains stochastic sampling procedures for coalitions of players."""
 
+from __future__ import annotations
+
 import copy
 import warnings
 
@@ -82,7 +84,8 @@ class CoalitionSampler:
 
         # set sampling weights
         if not (sampling_weights >= 0).all():  # Check non-negativity of sampling weights
-            raise ValueError("All sampling weights must be non-negative")
+            msg = "All sampling weights must be non-negative"
+            raise ValueError(msg)
         self._sampling_weights = sampling_weights / np.sum(sampling_weights)  # make probabilities
 
         # raise warning if sampling weights are not symmetric but pairing trick is activated
@@ -100,10 +103,11 @@ class CoalitionSampler:
 
         # set player numbers
         if n_players + 1 != np.size(sampling_weights):  # shape of sampling weights -> sizes 0,...,n
-            raise ValueError(
+            msg = (
                 f"{n_players} elements must correspond to {n_players + 1} coalition sizes "
-                "(including empty subsets)",
+                "(including empty subsets)"
             )
+            raise ValueError(msg)
         self.n: int = n_players
         self.n_max_coalitions = int(2**self.n)
         self.n_max_coalitions_per_size = np.array([binom(self.n, k) for k in range(self.n + 1)])
@@ -441,7 +445,8 @@ class CoalitionSampler:
         """
         if sampling_budget < 2:
             # Empty and grand coalition always have to be computed.
-            raise ValueError("A minimum sampling budget of 2 samples is required.")
+            msg = "A minimum sampling budget of 2 samples is required."
+            raise ValueError(msg)
 
         if sampling_budget > self.n_max_coalitions:
             warnings.warn("Not all budget is required due to the border-trick.", stacklevel=2)

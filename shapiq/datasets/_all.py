@@ -1,5 +1,7 @@
 """This module contains functions to load datasets."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import numpy as np
@@ -38,7 +40,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
 
 
 def load_california_housing(
-    to_numpy=False,
+    to_numpy: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the California housing dataset.
 
@@ -66,7 +68,7 @@ def load_california_housing(
 
 
 def load_bike_sharing(
-    to_numpy=False,
+    to_numpy: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the bike-sharing dataset from openml and preprocess it.
 
@@ -137,7 +139,7 @@ def load_bike_sharing(
 
 
 def load_adult_census(
-    to_numpy=False,
+    to_numpy: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the adult census dataset from the UCI Machine Learning Repository.
 

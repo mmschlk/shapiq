@@ -1,5 +1,7 @@
 """This module contains the tests for the unsupervised data benchmark games."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.base import Game

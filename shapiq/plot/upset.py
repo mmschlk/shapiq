@@ -1,5 +1,7 @@
 """This module contains the upset plot."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 
 import matplotlib.pyplot as plt

@@ -1,5 +1,7 @@
 """This test module contains all tests for computing error metrics."""
 
+from __future__ import annotations
+
 import random
 
 import numpy as np

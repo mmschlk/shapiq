@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the InteractionValues dataclass."""
 
+from __future__ import annotations
+
 import os
 from copy import copy, deepcopy
 

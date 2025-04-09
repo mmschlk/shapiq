@@ -1,5 +1,7 @@
 """This utility module contains helper functions for plotting."""
 
+from __future__ import annotations
+
 import re
 from collections.abc import Iterable
 

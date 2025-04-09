@@ -2,6 +2,8 @@
 approximators are based on.
 """
 
+from __future__ import annotations
+
 import pytest
 
 from shapiq.approximator.montecarlo import MonteCarlo

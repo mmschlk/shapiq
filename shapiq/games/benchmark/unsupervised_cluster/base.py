@@ -1,5 +1,7 @@
 """This module contains all base game classes for the unserpervised benchmark games."""
 
+from __future__ import annotations
+
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.metrics import calinski_harabasz_score, silhouette_score
@@ -48,10 +50,11 @@ class ClusterExplanation(Game):
         elif cluster_method == "agglomerative":
             self.cluster = AgglomerativeClustering(**cluster_params)
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid clustering method provided. Got {cluster_method} but expected one of "
-                f"['kmeans', 'agglomerative'].",
+                f"['kmeans', 'agglomerative']."
             )
+            raise ValueError(msg)
 
         # get a score function for the clustering
         self.score: calinski_harabasz_score | silhouette_score | None = None
@@ -60,9 +63,12 @@ class ClusterExplanation(Game):
         elif score_method == "silhouette_score":
             self.score = silhouette_score
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid score method provided. Got {score_method} but expected one of "
-                f"['calinski_harabasz_score', 'silhouette_score'].",
+                f"['calinski_harabasz_score', 'silhouette_score']."
+            )
+            raise ValueError(
+                msg,
             )
 
         self.data = data

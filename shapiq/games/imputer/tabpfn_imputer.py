@@ -2,6 +2,8 @@
 paradigm of explaining the TabPFN model's predictions.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -63,15 +65,17 @@ class TabPFNImputer(Imputer):
 
         if not hasattr(model, "_shapiq_predict_function"):
             if predict_function is None:
-                raise ValueError(
+                msg = (
                     f"If the Imputer is not instantiated via a ``shapiq.Explainer`` object, you"
                     f" must provide a ``predict_function`` (received"
-                    f" predict_function={predict_function}).",
+                    f" predict_function={predict_function})."
                 )
+                raise ValueError(msg)
             model._shapiq_predict_function = predict_function
 
         if x_test is None and empty_prediction is None:
-            raise ValueError("The empty prediction must be given if no test data is provided")
+            msg = "The empty prediction must be given if no test data is provided"
+            raise ValueError(msg)
 
         super().__init__(
             model=model,

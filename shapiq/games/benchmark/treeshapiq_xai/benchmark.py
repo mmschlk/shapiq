@@ -1,5 +1,7 @@
 """This module contains the TreeSHAPIQ explanation benchmark games."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
@@ -31,7 +33,8 @@ class AdultCensus(TreeSHAPIQXAI):
     ) -> None:
         # TODO: add xgb to TreeSHAQ-IQ, yet
         if model_name not in ["decision_tree", "random_forest"]:
-            raise ValueError("Model name must be either decision_tree' or 'random_forest'.")
+            msg = "Model name must be either decision_tree' or 'random_forest'."
+            raise ValueError(msg)
 
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
@@ -76,7 +79,8 @@ class BikeSharing(TreeSHAPIQXAI):
     ) -> None:
         # TODO: add xgb to TreeSHAQ-IQ, yet
         if model_name not in ["decision_tree", "random_forest"]:
-            raise ValueError("Model name must be either decision_tree' or 'random_forest'.")
+            msg = "Model name must be either decision_tree' or 'random_forest'."
+            raise ValueError(msg)
 
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
@@ -120,7 +124,8 @@ class CaliforniaHousing(TreeSHAPIQXAI):
     ) -> None:
         # TODO: add xgb to TreeSHAQ-IQ, yet
         if model_name not in ["decision_tree", "random_forest"]:
-            raise ValueError("Model name must be either decision_tree' or 'random_forest'.")
+            msg = "Model name must be either decision_tree' or 'random_forest'."
+            raise ValueError(msg)
 
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",

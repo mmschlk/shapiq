@@ -1,5 +1,7 @@
 """This module contains the permutation sampling algorithms to estimate STII scores."""
 
+from __future__ import annotations
+
 import warnings
 from collections.abc import Callable
 

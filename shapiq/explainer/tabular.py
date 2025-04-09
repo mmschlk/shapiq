@@ -1,5 +1,7 @@
 """Tabular Explainer class for the shapiq package."""
 
+from __future__ import annotations
+
 import warnings
 from warnings import warn
 
@@ -134,7 +136,8 @@ class TabularExplainer(Explainer):
         )
 
         if index not in AVAILABLE_INDICES:
-            raise ValueError(f"Invalid index `{index}`. Valid indices are {AVAILABLE_INDICES}.")
+            msg = f"Invalid index `{index}`. Valid indices are {AVAILABLE_INDICES}."
+            raise ValueError(msg)
 
         super().__init__(model, data, class_index)
 
@@ -179,11 +182,12 @@ class TabularExplainer(Explainer):
         ):
             self._imputer = imputer
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid imputer {imputer}. "
                 f'Must be one of ["marginal", "baseline", "conditional"], or a valid Imputer '
-                f"object.",
+                f"object."
             )
+            raise ValueError(msg)
         self._n_features: int = self.data.shape[1]
         self._imputer.verbose = verbose  # set the verbose flag for the imputer
 
@@ -296,10 +300,11 @@ class TabularExplainer(Explainer):
         try:
             approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
         except KeyError as error:
-            raise ValueError(
+            msg = (
                 f"Invalid approximator `{approximator}` or index `{index}`. "
-                f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}.",
-            ) from error
+                f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}."
+            )
+            raise ValueError(msg) from error
         # initialize the approximator class with params
         init_approximator = approximator(n=self._n_features, max_order=max_order)
         return init_approximator

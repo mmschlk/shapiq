@@ -1,5 +1,7 @@
 """This test module contains all fixtures for all tests of shapiq."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

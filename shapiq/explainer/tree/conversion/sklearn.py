@@ -2,6 +2,8 @@
 shapiq.
 """
 
+from __future__ import annotations
+
 import numpy as np
 
 from ....utils import safe_isinstance

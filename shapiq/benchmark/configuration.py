@@ -33,6 +33,8 @@ information:
         the game evaluations are computed on the fly during the benchmark (significantly slower).
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
 
@@ -796,7 +798,8 @@ def get_name_from_game_class(game_class: Game.__class__) -> str:
     for name, game_cls in GAME_NAME_TO_CLASS_MAPPING.items():
         if game_cls == game_class:
             return name
-    raise ValueError(f"Game class {game_class} not found in the mapping.")
+    msg = f"Game class {game_class} not found in the mapping."
+    raise ValueError(msg)
 
 
 def print_benchmark_configurations() -> None:

@@ -1,5 +1,7 @@
 """This module contains the KernelSHAP regression approximator for estimating the SV."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from ._base import Regression
