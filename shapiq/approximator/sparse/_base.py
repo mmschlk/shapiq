@@ -55,8 +55,8 @@ class Sparse(Approximator):
             raise ValueError("transform_type must be 'fourier'")
         self.transform_type = transform_type.lower()
         self.t = 5  # 5 could be a parameter
-        decoder_type = "hard" if decoder_type is None else decoder_type.lower()
-        if decoder_type not in ["soft", "hard"]:
+        self.decoder_type = "hard" if decoder_type is None else decoder_type.lower()
+        if self.decoder_type not in ["soft", "hard"]:
             raise ValueError("decoder_type must be either 'soft' or 'hard'")
         # The sampling parameters for the Fourier transform
         self.query_args = {
@@ -101,7 +101,7 @@ class Sparse(Approximator):
         """
         # Find the maximum value of b that fits within the given sample budget and get the used budget
         used_budget = self._set_transform_budget(budget)
-        signal = SubsampledSignalFourier(func=game, n=self.n, q=2, query_args=self.query_args)
+        signal = SubsampledSignalFourier(func=lambda inputs: game(inputs.astype(bool)), n=self.n, q=2, query_args=self.query_args)
         # Extract the coefficients of the original transform
         initial_transform = {
             tuple(np.nonzero(key)[0]): np.real(value)
@@ -193,12 +193,33 @@ class Sparse(Approximator):
         used_budget = SubsampledSignalFourier.get_number_of_samples(
             self.n, b, self.t, 2, self.query_args
         )
-        # TODO Should we try to decrease t to get b to at least 3 or re-route?
+
         if b <= 2:
-            raise ValueError(
-                "Budget is too low to compute the transform, consider increasing the budget or  using a "
-                "different approximator."
-            )
+            while self.t > 2:
+                self.t -= 1
+                self.query_args["t"] = self.t
+
+                # Recalculate 'b' with the updated 't'
+                b = SubsampledSignalFourier.get_b_for_sample_budget(
+                    budget, self.n, self.t, 2, self.query_args
+                )
+
+                # Compute the used budget
+                used_budget = SubsampledSignalFourier.get_number_of_samples(
+                    self.n, b, self.t, 2, self.query_args
+                )
+
+                # Break if 'b' is now sufficient
+                if b > 2:
+                    self.decoder_args["source_decoder"] = get_bch_decoder(self.n, self.t, self.decoder_type)
+                    break
+
+            # If 'b' is still too low, raise an error
+            if b <= 2:
+                raise ValueError(
+                    "Insufficient budget to compute the transform. Increase the budget or use a different approximator."
+                )
+        # Store the final 'b' value
         self.query_args["b"] = b
         self.decoder_args["b"] = b
         return used_budget
