@@ -235,6 +235,17 @@ lint = [
     "ruff>=0.11.2",
     "pre-commit>=4.2.0",
 ]
+docs = [
+    "sphinx>=8.0.0",
+    "furo",
+    "myst-parser",
+    "sphinx-copybutton",
+    "sphinx-autodoc-typehints",
+    "sphinx_toolbox",
+    "nbconvert",
+    "nbsphinx",
+    "commonmark",  # Markdown parser and renderer
+]
 dev = [
     "build>=1.2.2.post1",
     "twine>=6.1.0",
@@ -242,4 +253,5 @@ dev = [
     "ipywidgets",
     {include-group = "test"},
     {include-group = "lint"},
+    {include-group = "docs"},
 ]
