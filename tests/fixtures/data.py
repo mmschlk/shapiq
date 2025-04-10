@@ -7,6 +7,8 @@ Note to developers:
     This is especially important for the data fixtures, as they are used in multiple tests.
 """
 
+from __future__ import annotations
+
 import copy
 import os
 
@@ -118,7 +120,10 @@ def image_and_path() -> tuple[Image.Image, str]:
     """Reads and returns the test image."""
     # get path for this file's directory
     path_from_test_root = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "data", "test_croc.JPEG"
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "data",
+        "test_croc.JPEG",
     )
     image = Image.open(path_from_test_root)
     return copy.deepcopy(image), copy.deepcopy(path_from_test_root)

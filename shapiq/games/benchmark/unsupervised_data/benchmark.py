@@ -1,5 +1,7 @@
 """This module contains all base game classes for the unserpervised benchmark games."""
 
+from __future__ import annotations
+
 from ..setup import GameBenchmarkSetup
 from .base import UnsupervisedData
 

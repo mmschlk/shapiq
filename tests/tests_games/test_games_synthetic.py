@@ -1,5 +1,7 @@
 """This test module tests the SOUM Game class"""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -8,7 +10,7 @@ from shapiq.games.benchmark import SOUM, DummyGame, UnanimityGame
 
 def test_soum_interations():
     """Test SOUM interactions."""
-    for i in range(10):
+    for _ in range(10):
         # run 100 times
         n = np.random.randint(low=2, high=30)
         M = np.random.randint(low=1, high=150)
@@ -43,7 +45,7 @@ def test_soum_interations():
         assert len(soum_2_values) == M
         assert len(soum_2.linear_coefficients) == n_interactions
         assert len(soum_2.unanimity_games) == n_interactions
-        for i, base_game in soum_2.unanimity_games.items():
+        for _, base_game in soum_2.unanimity_games.items():
             assert len(base_game.interaction) >= min_interaction_size
         assert soum_2.max_interaction_size == n
         assert soum_2.min_interaction_size == min_interaction_size
@@ -55,7 +57,7 @@ def test_soum_interations():
         assert len(soum_3_values) == M
         assert len(soum_3.linear_coefficients) == n_interactions
         assert len(soum_3.unanimity_games) == n_interactions
-        for i, base_game in soum_3.unanimity_games.items():
+        for _, base_game in soum_3.unanimity_games.items():
             assert len(base_game.interaction) <= max_interaction_size
         assert soum_3.max_interaction_size == max_interaction_size
         assert soum_3.min_interaction_size == 0
@@ -73,7 +75,7 @@ def test_soum_interations():
         assert len(soum_4_values) == M
         assert len(soum_4.linear_coefficients) == n_interactions
         assert len(soum_4.unanimity_games) == n_interactions
-        for i, base_game in soum_4.unanimity_games.items():
+        for _, base_game in soum_4.unanimity_games.items():
             assert (len(base_game.interaction) <= max_interaction_size) and (
                 len(base_game.interaction) >= min_interaction_size
             )
@@ -144,7 +146,7 @@ def test_dummy_game_access_counts():
                 [True, False, False, False, False, False, False, False, False, False],
                 [False, True, False, False, False, False, False, False, False, False],
                 [False, False, True, False, False, False, False, False, False, False],
-            ]
-        )
+            ],
+        ),
     )
     assert game.access_counter == 5

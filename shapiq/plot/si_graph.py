@@ -1,5 +1,7 @@
 """Module for plotting the explanation graph of interaction values."""
 
+from __future__ import annotations
+
 import math
 
 import matplotlib.patches as mpatches
@@ -21,7 +23,10 @@ __all__ = ["si_graph_plot"]
 
 
 def _normalize_value(
-    value: float, max_value: float, base_value: float, cubic_scaling: bool = False
+    value: float,
+    max_value: float,
+    base_value: float,
+    cubic_scaling: bool = False,
 ) -> float:
     """Scale a value between 0 and 1 based on the maximum value and a base value.
 
@@ -295,7 +300,9 @@ def _draw_graph_labels(ax: plt.axis, pos: dict, graph: nx.Graph, nodes: list | N
 
 
 def _adjust_position(
-    pos: dict, graph: nx.Graph, normal_node_size: float = NORMAL_NODE_SIZE
+    pos: dict,
+    graph: nx.Graph,
+    normal_node_size: float = NORMAL_NODE_SIZE,
 ) -> dict:
     """Moves the nodes in the graph further apart if they are too close together."""
     # get the minimum distance between two nodes
@@ -458,12 +465,18 @@ def si_graph_plot(
         attributes = {
             "color": get_color(interaction_value),
             "alpha": _normalize_value(
-                interaction_value, max_interaction, BASE_ALPHA_VALUE, cubic_scaling
+                interaction_value,
+                max_interaction,
+                BASE_ALPHA_VALUE,
+                cubic_scaling,
             ),
             "interaction": interaction,
             "weight": interaction_strength * compactness,
             "size": _normalize_value(
-                interaction_value, max_interaction, base_size * size_factor, cubic_scaling
+                interaction_value,
+                max_interaction,
+                base_size * size_factor,
+                cubic_scaling,
             ),
         }
 
@@ -504,7 +517,11 @@ def si_graph_plot(
     if plot_explanation:
         # position now again the hyper-edges onto the normal nodes weight param is weight
         pos_explain = nx.spring_layout(
-            explanation_graph, weight="weight", seed=random_seed, pos=pos, fixed=graph_nodes
+            explanation_graph,
+            weight="weight",
+            seed=random_seed,
+            pos=pos,
+            fixed=graph_nodes,
         )
         pos.update(pos_explain)
         _draw_fancy_hyper_edges(ax, pos, explanation_graph, hyper_edges=explanation_edges)

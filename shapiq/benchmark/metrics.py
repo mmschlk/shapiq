@@ -1,5 +1,7 @@
 """Metrics for evaluating the performance of interaction values."""
 
+from __future__ import annotations
+
 import copy
 import warnings
 
@@ -78,7 +80,9 @@ def compute_diff_metrics(ground_truth: InteractionValues, estimated: Interaction
             raise error
     diff_values = _remove_empty_value(difference).values
     n_values = count_interactions(
-        ground_truth.n_players, ground_truth.max_order, ground_truth.min_order
+        ground_truth.n_players,
+        ground_truth.max_order,
+        ground_truth.min_order,
     )
     metrics = {
         "MSE": np.sum(diff_values**2) / n_values,
@@ -90,7 +94,9 @@ def compute_diff_metrics(ground_truth: InteractionValues, estimated: Interaction
 
 
 def compute_kendall_tau(
-    ground_truth: InteractionValues, estimated: InteractionValues, k: int = None
+    ground_truth: InteractionValues,
+    estimated: InteractionValues,
+    k: int = None,
 ) -> float:
     """Compute the Kendall Tau between two interaction values.
 
@@ -125,7 +131,9 @@ def compute_kendall_tau(
 
 
 def compute_precision_at_k(
-    ground_truth: InteractionValues, estimated: InteractionValues, k: int = 10
+    ground_truth: InteractionValues,
+    estimated: InteractionValues,
+    k: int = 10,
 ) -> float:
     """Compute the precision at k between two interaction values.
 

@@ -1,5 +1,7 @@
 """This test script tests the RandomGame class from the synthetic module."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the STII permutation sampling approximator."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

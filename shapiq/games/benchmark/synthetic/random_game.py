@@ -1,5 +1,7 @@
 """This module contains the Random Game which returns a random vector of integers between 0 and 100."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.base import Game

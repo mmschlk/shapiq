@@ -1,5 +1,7 @@
 """Base class for all Imputers."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 
 import numpy as np
@@ -61,7 +63,8 @@ class Imputer(Game):
         elif hasattr(model, "_shapiq_predict_function"):
             self._predict_function = model._shapiq_predict_function
         else:
-            raise ValueError("The model must be callable or have a predict function.")
+            msg = "The model must be callable or have a predict function."
+            raise ValueError(msg)
         self.model = model
         # check if data is a vector
         if data.ndim == 1:
@@ -100,7 +103,7 @@ class Imputer(Game):
         """
         return self._predict_function(self.model, x)
 
-    def fit(self, x: np.ndarray) -> "Imputer":
+    def fit(self, x: np.ndarray) -> Imputer:
         """Fits the imputer to the explanation point.
 
         Args:

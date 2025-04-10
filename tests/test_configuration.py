@@ -1,5 +1,7 @@
 """Tests the indices configuration module."""
 
+from __future__ import annotations
+
 from shapiq.game_theory.indices import ALL_AVAILABLE_CONCEPTS
 
 

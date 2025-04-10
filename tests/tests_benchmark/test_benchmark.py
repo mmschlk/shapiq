@@ -1,5 +1,7 @@
 """This test module contains all tests for the configuration of benchmark games."""
 
+from __future__ import annotations
+
 import os
 
 import matplotlib.pyplot as plt
@@ -37,10 +39,14 @@ def test_benchmark(index, n_jobs):
             PermutationSamplingSII(n=n_players, random_state=42, index=index),
         ]
     else:
-        raise ValueError("Wrong index for test.")
+        msg = "Wrong index for test."
+        raise ValueError(msg)
 
     games = load_games_from_configuration(
-        game_class=game_identifier, n_player_id=n_player_id, config_id=config_id, n_games=n_games
+        game_class=game_identifier,
+        n_player_id=n_player_id,
+        config_id=config_id,
+        n_games=n_games,
     )
     games = list(games)  # convert to list (the generator is consumed)
     assert games[0].n_players == n_players

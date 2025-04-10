@@ -1,5 +1,7 @@
 """This module contains the main benchmark run setup for the shapiq package."""
 
+from __future__ import annotations
+
 import copy
 import multiprocessing as mp
 import warnings
@@ -97,7 +99,8 @@ def run_benchmark(
     # check that all games have the same number of players
     n_players = games[0].n_players
     if not all(game.n_players == n_players for game in games):
-        raise ValueError("All games must have the same number of players.")
+        msg = "All games must have the same number of players."
+        raise ValueError(msg)
 
     # check that the number of ground truth values is the same as the number of games
     if gt_values is None:
@@ -107,9 +110,8 @@ def run_benchmark(
             gt_values.append(game.exact_values(index=index, order=order))
 
     if len(gt_values) != len(games):
-        raise ValueError(
-            "The number of ground truth values must be the same as the number of games."
-        )
+        msg = "The number of ground truth values must be the same as the number of games."
+        raise ValueError(msg)
 
     # transform the budget steps to integers if float is provided
     if n_players > 16:  # sets the budget to 10k for synthetic games with more than 16 players
@@ -135,7 +137,11 @@ def run_benchmark(
         approximators_per_iteration[iteration] = [
             (
                 _init_approximator_from_class(
-                    approximator_class, n_players, index, order, random_state=iteration
+                    approximator_class,
+                    n_players,
+                    index,
+                    order,
+                    random_state=iteration,
                 )
                 if isinstance(approximator_class, type)  # check if the approximator is a class
                 else approximator_class
@@ -168,7 +174,7 @@ def run_benchmark(
                     total=len(parameter_space),
                     desc="Running benchmark:",
                     unit=" experiments",
-                )
+                ),
             )
     else:
         progress = tqdm(
@@ -196,7 +202,7 @@ def run_benchmark(
                 "estimates_values": gt_value.dict_values,
                 "used_budget": 2**game.n_players,
                 "estimated": False,
-            }
+            },
         )
 
     # finalize results
@@ -236,7 +242,9 @@ def _run_benchmark(args) -> dict[str, str | int | float | InteractionValues]:
     result.update(metrics_all_orders)
     for order in range(1, gt_value.max_order + 1):
         metrics_order = get_all_metrics(
-            gt_value.get_n_order(order), estimates.get_n_order(order), order_indicator=str(order)
+            gt_value.get_n_order(order),
+            estimates.get_n_order(order),
+            order_indicator=str(order),
         )
         result.update(metrics_order)
     return result
@@ -315,7 +323,8 @@ def load_benchmark_results(
             or index is None
             or order is None
         ):
-            raise ValueError("The game configuration must be provided if the save path is not.")
+            msg = "The game configuration must be provided if the save path is not."
+            raise ValueError(msg)
 
         if isinstance(game_class, str):
             game_class = get_game_class_from_name(game_class)
@@ -405,18 +414,20 @@ def run_benchmark_from_configuration(
             n_player_id=game_n_player_id,
             only_pre_computed=True,
             n_games=game_n_games,
-        )
+        ),
     )
     if game_n_games is not None:
         games = games[:game_n_games]
     print(f"Loaded {len(games)} games for the benchmark. Configuration ID: {config_id}.")
     if not all(game.precomputed for game in games):
         warnings.warn(
-            "Not all games are pre-computed. The benchmark might take longer to run.", stacklevel=2
+            "Not all games are pre-computed. The benchmark might take longer to run.",
+            stacklevel=2,
         )
     if not all(game.is_normalized for game in games):
         warnings.warn(
-            "Not all games are normalized. The benchmark might not be accurate.", stacklevel=2
+            "Not all games are normalized. The benchmark might not be accurate.",
+            stacklevel=2,
         )
 
     # get the benchmark name for saving the results
@@ -425,7 +436,7 @@ def run_benchmark_from_configuration(
     Path("results").mkdir(parents=True, exist_ok=True)
     print(
         f"Checking if the benchmark results already exist with the name: {benchmark_name} and the "
-        f"save path: {save_path}."
+        f"save path: {save_path}.",
     )
     if not rerun_if_exists and Path(save_path).exists():
         print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
@@ -457,7 +468,11 @@ def run_benchmark_from_configuration(
 
 
 def _make_benchmark_name(
-    config_id: str, game_class: Game.__class__ | str, n_games: int, index: str, order: int
+    config_id: str,
+    game_class: Game.__class__ | str,
+    n_games: int,
+    index: str,
+    order: int,
 ) -> str:
     """Make the benchmark name for the given configuration."""
     try:
@@ -471,5 +486,5 @@ def _make_benchmark_name(
             str(index),
             str(order),
             f"n_games={n_games}",
-        ]
+        ],
     )

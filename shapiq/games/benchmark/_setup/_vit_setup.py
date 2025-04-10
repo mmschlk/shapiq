@@ -5,6 +5,8 @@ Note to developers:
     (e.g. `torch`, `transformers`, `PIL`).
 """
 
+from __future__ import annotations
+
 import numpy as np
 import torch
 import torch.nn.functional as F  # noqa: N812
@@ -38,7 +40,8 @@ class ViTModel:
     def __init__(self, n_patches: int, input_image: Image, verbose: bool = True) -> None:
         # check input
         if n_patches not in [9, 16]:
-            raise ValueError(f"The number of patches must be either 9 or 16 and not {n_patches}")
+            msg = f"The number of patches must be either 9 or 16 and not {n_patches}"
+            raise ValueError(msg)
 
         self.n_patches = n_patches
         self.class_id = None  # will be overwritten after we know the original class
@@ -102,7 +105,8 @@ class ViTModel:
             bool_masked_pos = self._transform_coalition_into_bool_mask(coalition, self.n_patches)
             with torch.no_grad():
                 embeddings = self._embedding_layer(
-                    **self._transformed_image, bool_masked_pos=bool_masked_pos
+                    **self._transformed_image,
+                    bool_masked_pos=bool_masked_pos,
                 )
                 encodings = self._encoder(embeddings)
                 norm_encodings = F.layer_norm(
@@ -961,8 +965,8 @@ NORM_WEIGHT = nn.Parameter(
             0.7513,
             0.9935,
             0.8690,
-        ]
-    )
+        ],
+    ),
 )
 
 NORM_BIAS = nn.Parameter(
@@ -1736,6 +1740,6 @@ NORM_BIAS = nn.Parameter(
             1.6395e-02,
             -8.8686e-02,
             5.7581e-02,
-        ]
-    )
+        ],
+    ),
 )

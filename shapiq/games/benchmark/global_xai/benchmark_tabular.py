@@ -1,5 +1,7 @@
 """This module contains tabular benchmark games for local explanation."""
 
+from __future__ import annotations
+
 from shapiq.games.benchmark.global_xai.base import GlobalExplanation
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
