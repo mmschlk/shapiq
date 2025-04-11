@@ -1,5 +1,7 @@
 """A collection of differently sized interaction values usefull for testing purposes."""
 
+from __future__ import annotations
+
 import copy
 from typing import Literal
 

@@ -1,5 +1,7 @@
 """Logic to solve for the egalitarian least-core."""
 
+from __future__ import annotations
+
 import copy
 import warnings
 
@@ -13,7 +15,8 @@ __all__ = ["egalitarian_least_core"]
 
 
 def _setup_core_calculations(
-    n_players: int, game_values: np.ndarray
+    n_players: int,
+    game_values: np.ndarray,
 ) -> tuple[list[LinearConstraint], list[tuple[int | None, int | None]]]:
     """Setup core optimization matrices for scipy.linprog.
 
@@ -37,7 +40,7 @@ def _setup_core_calculations(
 
     # Setup the binary matrix representing the linear inequalities for core  except for the grand coalition
     stability_matrix = np.ones(
-        (n_coalitions - 1, n_players + 1)
+        (n_coalitions - 1, n_players + 1),
     )  # $A_\{ub\}$. Optimization upper bound values.
     stability_matrix[:, :-1] = coalition_matrix[:-1]
     stability_matrix[0, -1] = 0
@@ -69,7 +72,9 @@ def _setup_core_calculations(
     credit_assignment_constraints = LinearConstraint(stability_matrix, ub=stability_values)
     # $A_\{eq\} @ (x,e) == $b_\{eq\}$
     efficiency_constraint = LinearConstraint(
-        efficiency_matrix, lb=efficiency_value, ub=efficiency_value
+        efficiency_matrix,
+        lb=efficiency_value,
+        ub=efficiency_value,
     )
 
     constraints = [credit_assignment_constraints, efficiency_constraint]
@@ -94,7 +99,9 @@ def _minimization_egal_least_core(credit_subsidy_vector: np.ndarray) -> float:
 
 
 def egalitarian_least_core(
-    n_players: int, game_values: np.ndarray, coalition_lookup: dict[tuple[int], int]
+    n_players: int,
+    game_values: np.ndarray,
+    coalition_lookup: dict[tuple[int], int],
 ) -> tuple[InteractionValues, float]:
     """Computes the egalitarian least-core for the underlying game represented through the parameters.
 
@@ -111,8 +118,8 @@ def egalitarian_least_core(
 
     """
     # Rearrange the game_values and base_line and 0
-    tmp = game_values[coalition_lookup[tuple()]]
-    game_values[coalition_lookup[tuple()]] = game_values[0]
+    tmp = game_values[coalition_lookup[()]]
+    game_values[coalition_lookup[()]] = game_values[0]
     game_values[0] = tmp
 
     # Rearrange the game_values to have grand_coalition at -1

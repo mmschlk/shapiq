@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the KernelSHAP-IQ regression approximator."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -24,7 +26,8 @@ def test_initialization(n):
 
 
 @pytest.mark.parametrize(
-    "budget, order, index", [(100, 2, "SII"), (100, 3, "SII"), (100, 3, "k-SII"), (100, 4, "SII")]
+    "budget, order, index",
+    [(100, 2, "SII"), (100, 3, "SII"), (100, 3, "k-SII"), (100, 4, "SII")],
 )
 def test_approximate(budget, order, index):
     """Tests the approximation of the KernelSHAP-IQ approximator."""

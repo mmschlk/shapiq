@@ -1,5 +1,7 @@
 """Implementation of the tree explainer."""
 
+from __future__ import annotations
+
 import copy
 from math import factorial
 
@@ -58,10 +60,11 @@ class TreeSHAPIQ:
         self._root_node_id = 0
         self.verbose = verbose
         if max_order < min_order or max_order < 1 or min_order < 1:
-            raise ValueError(
+            msg = (
                 "The maximum order must be greater than the minimum order and both must be greater "
                 "than 0."
             )
+            raise ValueError(msg)
         self._max_order: int = max_order
         self._min_order: int = min_order
         self._index: str = index
@@ -80,7 +83,9 @@ class TreeSHAPIQ:
 
         # precompute interaction lookup tables
         self._interactions_lookup_relevant: dict[tuple, int] = generate_interaction_lookup(
-            self._relevant_features, self._min_order, self._max_order
+            self._relevant_features,
+            self._min_order,
+            self._max_order,
         )
         self._interactions_lookup: dict[int, dict[tuple, int]] = {}  # lookup for interactions
         self._interaction_update_positions: dict[int, dict[int, np.ndarray[int]]] = {}  # lookup
@@ -102,7 +107,7 @@ class TreeSHAPIQ:
 
         # compute the empty prediction
         computed_empty_prediction = float(
-            np.sum(self._edge_tree.empty_predictions[self._tree.leaf_mask])
+            np.sum(self._edge_tree.empty_predictions[self._tree.leaf_mask]),
         )
         tree_empty_prediction = self._tree.empty_prediction
         if tree_empty_prediction is None:
@@ -155,7 +160,8 @@ class TreeSHAPIQ:
             interactions = np.asarray([], dtype=float)
             for order in range(self._min_order, self._max_order + 1):
                 shapley_interactions = np.zeros(
-                    int(sp.special.binom(self._n_features_in_tree, order)), dtype=float
+                    int(sp.special.binom(self._n_features_in_tree, order)),
+                    dtype=float,
                 )
                 self.shapley_interactions = shapley_interactions
                 self._prepare_variables_for_order(interaction_order=order)
@@ -175,7 +181,8 @@ class TreeSHAPIQ:
         )
 
         shapley_interaction_values = finalize_computed_interactions(
-            shapley_interaction_values, target_index=self._index
+            shapley_interaction_values,
+            target_index=self._index,
         )
         return shapley_interaction_values
 
@@ -438,7 +445,8 @@ class TreeSHAPIQ:
         """
         for order in range(1, self._max_order + 1):
             subset_ancestors: dict[int, np.ndarray] = self._precalculate_interaction_ancestors(
-                interaction_order=order, n_features=self._n_features_in_tree
+                interaction_order=order,
+                n_features=self._n_features_in_tree,
             )
             self.subset_ancestors_store[order] = subset_ancestors
 
@@ -486,7 +494,7 @@ class TreeSHAPIQ:
                     self._edge_tree.max_depth + 1,
                     int(sp.special.binom(self._n_features_in_tree, order)),
                     self.n_interpolation_size,
-                )
+                ),
             )
             interaction_poly_down[0, :] = 1
         if quotient_poly_down is None:
@@ -495,7 +503,7 @@ class TreeSHAPIQ:
                     self._edge_tree.max_depth + 1,
                     int(sp.special.binom(self._n_features_in_tree, order)),
                     self.n_interpolation_size,
-                )
+                ),
             )
             quotient_poly_down[0, :] = 1
         return summary_poly_down, summary_poly_up, interaction_poly_down, quotient_poly_down
@@ -521,7 +529,9 @@ class TreeSHAPIQ:
         """Initializes the lookup tables for the interaction subsets."""
         for order in range(1, self._max_order + 1):
             order_interactions_lookup = generate_interaction_lookup(
-                self._n_features_in_tree, order, order
+                self._n_features_in_tree,
+                order,
+                order,
             )
             self._interactions_lookup[order] = order_interactions_lookup
             _, interaction_update_positions = self._precompute_subsets_with_feature(
@@ -533,7 +543,9 @@ class TreeSHAPIQ:
 
     @staticmethod
     def _precompute_subsets_with_feature(
-        n_features: int, interaction_order: int, order_interactions_lookup: dict[tuple, int]
+        n_features: int,
+        interaction_order: int,
+        order_interactions_lookup: dict[tuple, int],
     ) -> tuple[dict[int, list[tuple]], dict[int, np.ndarray[int]]]:
         """Precomputes the subsets of interactions that include a given feature.
 
@@ -559,7 +571,8 @@ class TreeSHAPIQ:
         # prepare the interaction updates and positions
         for feature_i in range(n_features):
             positions = np.zeros(
-                int(sp.special.binom(n_features - 1, interaction_order - 1)), dtype=int
+                int(sp.special.binom(n_features - 1, interaction_order - 1)),
+                dtype=int,
             )
             interaction_update_positions[feature_i] = positions.copy()
             interaction_updates[feature_i] = []
@@ -567,7 +580,9 @@ class TreeSHAPIQ:
         # fill the interaction updates and positions
         position_counter = np.zeros(n_features, dtype=int)  # used to keep track of the position
         for interaction in powerset(
-            range(n_features), min_size=interaction_order, max_size=interaction_order
+            range(n_features),
+            min_size=interaction_order,
+            max_size=interaction_order,
         ):
             for i in interaction:
                 interaction_updates[i].append(interaction)
@@ -578,7 +593,9 @@ class TreeSHAPIQ:
         return interaction_updates, interaction_update_positions
 
     def _precalculate_interaction_ancestors(
-        self, interaction_order, n_features
+        self,
+        interaction_order,
+        n_features,
     ) -> dict[int, np.ndarray]:
         """Calculates the position of the ancestors of the interactions for the tree for a given
         order of interactions.
@@ -598,14 +615,17 @@ class TreeSHAPIQ:
 
         for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
             subset_ancestors[node_id] = np.full(
-                int(sp.special.binom(n_features, interaction_order)), -1, dtype=int
+                int(sp.special.binom(n_features, interaction_order)),
+                -1,
+                dtype=int,
             )
         for S in powerset(range(n_features), interaction_order, interaction_order):
             for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
                 subset_ancestor = -1
                 for i in S:
                     subset_ancestor = max(
-                        subset_ancestor, self._edge_tree.ancestor_nodes[node_id][i]
+                        subset_ancestor,
+                        self._edge_tree.ancestor_nodes[node_id][i],
                     )
                 subset_ancestors[node_id][counter_interaction] = subset_ancestor
             counter_interaction += 1
@@ -625,7 +645,7 @@ class TreeSHAPIQ:
         Ns = np.zeros((depth + 1, depth))
         for i in range(1, depth + 1):
             Ns[i, :i] = np.linalg.inv(np.vander(interpolated_poly[:i]).T).dot(
-                1.0 / self._get_norm_weight(i - 1)
+                1.0 / self._get_norm_weight(i - 1),
             )
         return Ns
 
@@ -634,7 +654,7 @@ class TreeSHAPIQ:
         Ns = np.zeros((depth + 1, depth))
         for i in range(1, depth + 1):
             Ns[i, :i] = np.linalg.inv(np.vander(interpolated_poly[:i]).T).dot(
-                i * np.array([self._get_subset_weight_cii(j, order) for j in range(i)])
+                i * np.array([self._get_subset_weight_cii(j, order) for j in range(i)]),
             )
         return Ns
 

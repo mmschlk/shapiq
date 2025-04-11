@@ -1,5 +1,7 @@
 """This module contains the data valuation games for the shapiq benchmark."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np

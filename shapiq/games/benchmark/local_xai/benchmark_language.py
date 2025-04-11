@@ -1,5 +1,7 @@
 """This module contains the Sentiment Classification Game class, which is a subclass of the Game"""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.base import Game
@@ -55,15 +57,18 @@ class SentimentAnalysis(Game):
     """
 
     def __init__(
-        self, input_text: str, mask_strategy: str = "mask", verbose: bool = False, **kwargs
+        self,
+        input_text: str,
+        mask_strategy: str = "mask",
+        verbose: bool = False,
+        **kwargs,
     ):
         # import the required modules locally (to avoid having to install them for all)
         from transformers import pipeline
 
         if mask_strategy not in ["remove", "mask"]:
-            raise ValueError(
-                f"'mask_strategy' must be either 'remove' or 'mask' and not {mask_strategy}"
-            )
+            msg = f"'mask_strategy' must be either 'remove' or 'mask' and not {mask_strategy}"
+            raise ValueError(msg)
         self.mask_strategy = mask_strategy
 
         # get the model
@@ -75,7 +80,7 @@ class SentimentAnalysis(Game):
         # get the text
         self.original_input_text: str = input_text
         self._tokenized_input = np.asarray(
-            self._tokenizer(self.original_input_text)["input_ids"][1:-1]
+            self._tokenizer(self.original_input_text)["input_ids"][1:-1],
         )
         self.input_text: str = str(self._tokenizer.decode(self._tokenized_input))
 
@@ -89,7 +94,10 @@ class SentimentAnalysis(Game):
 
         # setup game object
         super().__init__(
-            n_players, normalization_value=self._empty_output, verbose=verbose, **kwargs
+            n_players,
+            normalization_value=self._empty_output,
+            verbose=verbose,
+            **kwargs,
         )
 
     def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:

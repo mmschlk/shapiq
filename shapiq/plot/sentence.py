@@ -1,5 +1,7 @@
 """This module contains the sentence plot."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 
 from matplotlib import pyplot as plt

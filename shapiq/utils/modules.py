@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from importlib import import_module
 
@@ -34,10 +36,9 @@ def safe_isinstance(
     # try each module path in order
     for class_path_str in class_path_strs:
         if "." not in class_path_str:
-            raise ValueError(
-                "class_path_str must be a string or list of strings specifying a full \
+            msg = "class_path_str must be a string or list of strings specifying a full \
                 module path to a class. Eg, 'sklearn.ensemble.RandomForestRegressor'"
-            )
+            raise ValueError(msg)
 
         # Splits on last occurrence of "."
         module_name, class_name = class_path_str.rsplit(".", 1)

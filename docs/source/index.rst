@@ -44,6 +44,13 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: API EXAMPLES
+   :glob:
+
+   api_examples/*
+
+.. toctree::
+   :maxdepth: 2
    :caption: API REFERENCE
 
    api

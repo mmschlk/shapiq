@@ -1,5 +1,7 @@
 """This test module contains all tests for bugfixes regarding TreeSHAP-IQ."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -232,7 +234,7 @@ def test_bike_bug():
             6.0,
             0.0,
             0.0,
-        ]
+        ],
     )
 
     tree_explainer = TreeSHAPIQ(model=tree_model, index="SII", max_order=2, min_order=1)

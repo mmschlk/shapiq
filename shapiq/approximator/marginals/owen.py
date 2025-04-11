@@ -3,6 +3,8 @@ Okhrati and Lipani (2020). It estimates the Shapley values in its integral repre
 sampling random marginal contributions.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -80,7 +82,10 @@ class OwenSamplingSV(Approximator):
                         # draw a subset of players without player: all are inserted independently
                         # with probability q
                         coalition = self._rng.choice(
-                            [True, False], self.n - 1, replace=True, p=[q, 1 - q]
+                            [True, False],
+                            self.n - 1,
+                            replace=True,
+                            p=[q, 1 - q],
                         )
                         # add information that player is absent
                         coalition = np.insert(coalition, player, False)
@@ -139,7 +144,8 @@ class OwenSamplingSV(Approximator):
 
         """
         if n_anchor_points <= 0:
-            raise ValueError("The number of anchor points needs to be greater than 0.")
+            msg = "The number of anchor points needs to be greater than 0."
+            raise ValueError(msg)
         elif n_anchor_points == 1:
             return np.array([0.5])
         else:

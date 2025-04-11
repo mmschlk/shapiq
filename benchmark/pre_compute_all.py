@@ -71,7 +71,7 @@ if __name__ == "__main__":
                 if not precompute:
                     print(
                         f"Skipping pre-computation for game: {game_name} as it should not be "
-                        f"pre-computed."
+                        f"pre-computed.",
                     )
                     continue
                 if n_players > max_n_players:

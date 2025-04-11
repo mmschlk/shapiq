@@ -6,6 +6,8 @@ Note:
 
 """
 
+from __future__ import annotations
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -259,7 +261,13 @@ def _draw_waterfall_plot(
 
     # mark the prior expected value and the model prediction
     plt.axvline(
-        base_values, 0, 1 / num_features, color="#bbbbbb", linestyle="--", linewidth=0.5, zorder=-1
+        base_values,
+        0,
+        1 / num_features,
+        color="#bbbbbb",
+        linestyle="--",
+        linewidth=0.5,
+        zorder=-1,
     )
     fx = base_values + values.sum()
     plt.axvline(fx, 0, 1, color="#bbbbbb", linestyle="--", linewidth=0.5, zorder=-1)
@@ -277,7 +285,7 @@ def _draw_waterfall_plot(
     ax2 = ax.twiny()
     ax2.set_xlim(xmin, xmax)
     ax2.set_xticks(
-        [base_values, base_values + 1e-8]
+        [base_values, base_values + 1e-8],
     )  # The 1e-8 is so matplotlib 3.3 doesn't try and collapse the ticks
     ax2.set_xticklabels(
         ["\n$E[f(X)]$", "\n$ = " + format_value(base_values, "%0.03f") + "$"],
@@ -294,16 +302,18 @@ def _draw_waterfall_plot(
     # The 1e-8 is so matplotlib 3.3 doesn't try and collapse the ticks
     ax3.set_xticks([base_values + values.sum(), base_values + values.sum() + 1e-8])
     ax3.set_xticklabels(
-        ["$f(x)$", "$ = " + format_value(fx, "%0.03f") + "$"], fontsize=12, ha="left"
+        ["$f(x)$", "$ = " + format_value(fx, "%0.03f") + "$"],
+        fontsize=12,
+        ha="left",
     )
     tick_labels = ax3.xaxis.get_majorticklabels()
     tick_labels[0].set_transform(
         tick_labels[0].get_transform()
-        + matplotlib.transforms.ScaledTranslation(-10 / 72.0, 0, fig.dpi_scale_trans)
+        + matplotlib.transforms.ScaledTranslation(-10 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_transform(
         tick_labels[1].get_transform()
-        + matplotlib.transforms.ScaledTranslation(12 / 72.0, 0, fig.dpi_scale_trans)
+        + matplotlib.transforms.ScaledTranslation(12 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_color("#999999")
     ax3.spines["right"].set_visible(False)
@@ -314,11 +324,11 @@ def _draw_waterfall_plot(
     tick_labels = ax2.xaxis.get_majorticklabels()
     tick_labels[0].set_transform(
         tick_labels[0].get_transform()
-        + matplotlib.transforms.ScaledTranslation(-20 / 72.0, 0, fig.dpi_scale_trans)
+        + matplotlib.transforms.ScaledTranslation(-20 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_transform(
         tick_labels[1].get_transform()
-        + matplotlib.transforms.ScaledTranslation(22 / 72.0, -1 / 72.0, fig.dpi_scale_trans)
+        + matplotlib.transforms.ScaledTranslation(22 / 72.0, -1 / 72.0, fig.dpi_scale_trans),
     )
 
     tick_labels[1].set_color("#999999")
@@ -378,5 +388,9 @@ def waterfall_plot(
     feature_names = data[:, 0]
 
     return _draw_waterfall_plot(
-        values, interaction_values.baseline_value, feature_names, max_display=max_display, show=show
+        values,
+        interaction_values.baseline_value,
+        feature_names,
+        max_display=max_display,
+        show=show,
     )

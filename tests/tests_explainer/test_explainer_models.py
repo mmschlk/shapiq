@@ -1,5 +1,7 @@
 """This test module contains tests for the Tabular explainer module given differnt model types."""
 
+from __future__ import annotations
+
 import pytest
 
 from shapiq import InteractionValues

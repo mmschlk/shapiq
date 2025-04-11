@@ -1,5 +1,7 @@
 """This module contains the Stratified Sampling approximation method for the Shapley values."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -94,7 +96,7 @@ class StratifiedSamplingSV(Approximator):
                             # draw a subset of the player set without player of size stratum
                             # uniformly at random
                             coalition_list = list(
-                                self._rng.choice(available_players, size, replace=False)
+                                self._rng.choice(available_players, size, replace=False),
                             )
                             coalition = np.zeros(self.n, dtype=bool)
                             coalition[coalition_list] = True

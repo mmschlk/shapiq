@@ -2,6 +2,8 @@
 installed by default.
 """
 
+from __future__ import annotations
+
 import warnings
 from pathlib import Path
 
@@ -95,7 +97,8 @@ class CaliforniaHousingTorchModel:
             idx = parts.index("shapiq")
             module_dir = Path(*parts[:idx])  # everything before shapiq
         else:
-            raise ValueError("shapiq not in path")
+            msg = "shapiq not in path"
+            raise ValueError(msg)
         path = Path("tests", "data", "models", "california_nn_0.812511_0.076331.weights")
         test_model_path = module_dir / "shapiq" / path
         self.torch_model.load_state_dict(torch.load(test_model_path))

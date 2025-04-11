@@ -1,5 +1,7 @@
 """This test module tests the ExactComputer class."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -10,7 +12,7 @@ from shapiq.games.benchmark.synthetic.soum import SOUM
 
 
 def test_exact_computer_on_soum():
-    for i in range(20):
+    for _ in range(20):
         n = np.random.randint(low=2, high=10)
         order = np.random.randint(low=1, high=min(n, 5))
         n_basis_games = np.random.randint(low=1, high=100)
@@ -33,43 +35,50 @@ def test_exact_computer_on_soum():
         shapley_interactions_exact = {}
         for index in ["k-SII"]:
             shapley_interactions_gt[index] = moebius_converter.moebius_to_shapley_interaction(
-                index=index, order=order
+                index=index,
+                order=order,
             )
             shapley_interactions_exact[index] = exact_computer.shapley_interaction(
-                index=index, order=order
+                index=index,
+                order=order,
             )
             # Check equality with ground truth calculations from SOUM
             assert (
                 np.sum(
-                    (shapley_interactions_exact[index] - shapley_interactions_gt[index]).values ** 2
+                    (shapley_interactions_exact[index] - shapley_interactions_gt[index]).values
+                    ** 2,
                 )
                 < 10e-7
             )
 
         index = "JointSV"
         shapley_generalized_values = exact_computer.shapley_generalized_value(
-            order=order, index=index
+            order=order,
+            index=index,
         )
         # Assert efficiency
         assert (np.sum(shapley_generalized_values.values) - predicted_value) ** 2 < 10e-7
 
         index = "kADD-SHAP"
         shapley_interactions_exact[index] = exact_computer.shapley_interaction(
-            index=index, order=order
+            index=index,
+            order=order,
         )
 
         base_interaction_indices = ["SII", "BII", "CHII", "Co-Moebius"]
         base_interactions = {}
         for base_index in base_interaction_indices:
             base_interactions[base_index] = exact_computer.shapley_base_interaction(
-                order=order, index=base_index
+                order=order,
+                index=base_index,
             )
 
         base_gv_indices = ["SGV", "BGV", "CHGV", "IGV", "EGV"]
         base_gv = {}
         for base_gv_index in base_gv_indices:
             base_gv[base_gv_index] = exact_computer.base_generalized_value(
-                order=order, index=base_gv_index
+                order=order,
+                index=base_gv_index,
             )
 
         probabilistic_values_indices = ["SV", "BV"]
@@ -177,7 +186,7 @@ def original_game():
                 [0, 0, 0, 0, 1],
                 [0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0],
-            ]
+            ],
         )
 
         def _interaction(arr: np.ndarray):  # dtype bool
@@ -291,7 +300,7 @@ def test_player_symmetry(index, order):
                 [0, 0, 0, 0, 0.1],
                 [0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0],
-            ]
+            ],
         )
 
         def _interaction(arr: np.ndarray):  # dtype bool
@@ -351,7 +360,7 @@ def test_null_player(index, order):
                 [0, 0, 0, 0.4, 0],
                 [0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0],
-            ]
+            ],
         )
 
         def _interaction(arr: np.ndarray):  # dtype bool
@@ -443,7 +452,7 @@ def test_generalized_null_player(index, order):
                 [0, 0, 0, 0.4, 0],
                 [0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0],
-            ]
+            ],
         )
 
         def _interaction(arr: np.ndarray):  # dtype bool

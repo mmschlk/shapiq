@@ -5,6 +5,8 @@ Note to developers:
     (e.g. `torch`, `torchvision`, `PIL`, and `skimage`).
 """
 
+from __future__ import annotations
+
 import copy
 
 import numpy as np
@@ -82,7 +84,7 @@ class ResNetModel:
         self._background_image: Image.Image = Image.fromarray(_background_image)
         self._background_image_tensor: torch.Tensor = self._tensor_transform(self._background_image)
         self._background_input_tensor: torch.Tensor = self._preprocess(
-            self._background_image_tensor
+            self._background_image_tensor,
         )
 
         # evaluate the model on the background
@@ -91,7 +93,8 @@ class ResNetModel:
 
         # get superpixels
         self.n_superpixels, self.superpixels = self.get_superpixels(
-            image=np.array(input_image), n_segments=n_superpixels
+            image=np.array(input_image),
+            n_segments=n_superpixels,
         )
 
         # setup bool mask for all superpixels

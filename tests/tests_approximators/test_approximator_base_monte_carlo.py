@@ -2,6 +2,8 @@
 approximators are based on.
 """
 
+from __future__ import annotations
+
 import pytest
 
 from shapiq.approximator.montecarlo import MonteCarlo
@@ -19,7 +21,12 @@ from shapiq.interaction_values import InteractionValues
     ],
 )
 def test_initialization(
-    n, max_order, index, top_order, stratify_intersection, stratify_coalition_size
+    n,
+    max_order,
+    index,
+    top_order,
+    stratify_intersection,
+    stratify_coalition_size,
 ):
     """Tests the initialization of the MonteCarlo approximator."""
     if index == "wrong_index":

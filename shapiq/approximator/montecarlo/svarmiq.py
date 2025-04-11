@@ -1,5 +1,7 @@
 """SVARM-IQ approximation."""
 
+from __future__ import annotations
+
 from ._base import MonteCarlo
 
 

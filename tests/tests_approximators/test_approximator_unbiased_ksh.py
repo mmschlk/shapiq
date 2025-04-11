@@ -1,5 +1,7 @@
 """This test module contains all tests for the Unbiased KernelSHAP approximator."""
 
+from __future__ import annotations
+
 import pytest
 
 from shapiq.approximator import UnbiasedKernelSHAP

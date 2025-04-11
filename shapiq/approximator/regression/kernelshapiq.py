@@ -1,5 +1,7 @@
 """Regression with Shapley interaction index (SII) approximation."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from ._base import Regression
@@ -57,10 +59,11 @@ class KernelSHAPIQ(Regression):
         random_state: int | None = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
-            raise ValueError(
+            msg = (
                 f"Index {index} not available for KernelSHAP-IQ. Choose from "
                 f"{AVAILABLE_INDICES_KERNELSHAPIQ}."
             )
+            raise ValueError(msg)
         super().__init__(
             n,
             max_order,
@@ -118,9 +121,12 @@ class InconsistentKernelSHAPIQ(Regression):
         random_state: int | None = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
-            raise ValueError(
+            msg = (
                 f"Index {index} not available for KernelSHAP-IQ. Choose from "
                 f"{AVAILABLE_INDICES_KERNELSHAPIQ}."
+            )
+            raise ValueError(
+                msg,
             )
         super().__init__(
             n,

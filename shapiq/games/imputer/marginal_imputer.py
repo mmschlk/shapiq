@@ -1,5 +1,7 @@
 """Implementation of the marginal imputer."""
 
+from __future__ import annotations
+
 import warnings
 
 import numpy as np
@@ -73,7 +75,7 @@ class MarginalImputer(Imputer):
         # setup attributes
         self.joint_marginal_distribution: bool = joint_marginal_distribution
         self.replacement_data: np.ndarray = np.zeros(
-            (1, self.n_features)
+            (1, self.n_features),
         )  # overwritten at init_background
         self.init_background(self.data)
 
@@ -107,7 +109,7 @@ class MarginalImputer(Imputer):
         outputs[~np.any(coalitions, axis=1)] = self.empty_prediction
         return outputs
 
-    def init_background(self, data: np.ndarray) -> "MarginalImputer":
+    def init_background(self, data: np.ndarray) -> MarginalImputer:
         """Initializes the imputer to the background data.
 
         The background data is used to sample replacement values for the missing features.

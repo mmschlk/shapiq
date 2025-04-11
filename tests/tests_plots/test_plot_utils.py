@@ -1,5 +1,7 @@
 """This module contains tests for the plot.utils module."""
 
+from __future__ import annotations
+
 from shapiq.plot.utils import abbreviate_feature_names
 
 

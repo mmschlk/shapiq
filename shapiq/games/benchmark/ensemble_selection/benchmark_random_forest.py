@@ -1,5 +1,7 @@
 """This benchmark module contains the benchmark games for ensemble selection."""
 
+from __future__ import annotations
+
 from shapiq.games.benchmark.ensemble_selection.base import RandomForestEnsembleSelection
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 

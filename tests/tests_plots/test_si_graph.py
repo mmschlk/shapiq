@@ -1,5 +1,7 @@
 """This test module contains all tests for the explanation plot functions."""
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np

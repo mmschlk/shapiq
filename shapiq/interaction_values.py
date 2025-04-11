@@ -2,12 +2,13 @@
 scores.
 """
 
+from __future__ import annotations
+
 import copy
 import pickle
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -66,7 +67,7 @@ class InteractionValues:
             warn(
                 UserWarning(
                     f"Index {self.index} is not a valid index as defined in "
-                    f"{ALL_AVAILABLE_INDICES}. This might lead to unexpected behavior."
+                    f"{ALL_AVAILABLE_INDICES}. This might lead to unexpected behavior.",
                 ),
                 stacklevel=2,
             )
@@ -81,13 +82,14 @@ class InteractionValues:
         # populate interaction_lookup and reverse_interaction_lookup
         if self.interaction_lookup is None:
             self.interaction_lookup = generate_interaction_lookup(
-                self.n_players, self.min_order, self.max_order
+                self.n_players,
+                self.min_order,
+                self.max_order,
             )
 
         if not isinstance(self.baseline_value, int | float):
-            raise TypeError(
-                f"Baseline value must be provided as a number. Got {self.baseline_value}."
-            )
+            msg = f"Baseline value must be provided as a number. Got {self.baseline_value}."
+            raise TypeError(msg)
 
         # check if () is in the interaction_lookup if min_order is 0 -> add it to the end
         if self.min_order == 0 and () not in self.interaction_lookup:
@@ -121,7 +123,7 @@ class InteractionValues:
         self.values = new_values
         self.interaction_lookup = new_interaction_lookup
 
-    def get_top_k_interactions(self, k: int) -> "InteractionValues":
+    def get_top_k_interactions(self, k: int) -> InteractionValues:
         """Returns the top k interactions.
 
         Args:
@@ -152,8 +154,10 @@ class InteractionValues:
         )
 
     def get_top_k(
-        self, k: int, as_interaction_values: bool = True
-    ) -> Union["InteractionValues", tuple[dict, list[tuple]]]:
+        self,
+        k: int,
+        as_interaction_values: bool = True,
+    ) -> InteractionValues | tuple[dict, list[tuple]]:
         """Returns the top k interactions.
 
         Args:
@@ -261,9 +265,8 @@ class InteractionValues:
                 item = tuple(sorted(item))
                 self.values[self.interaction_lookup[item]] = value
         except Exception as e:
-            raise KeyError(
-                f"Interaction {item} not found in the InteractionValues. Unable to set a value."
-            ) from e
+            msg = f"Interaction {item} not found in the InteractionValues. Unable to set a value."
+            raise KeyError(msg) from e
 
     def __eq__(self, other: object) -> bool:
         """Checks if two InteractionValues objects are equal.
@@ -276,7 +279,8 @@ class InteractionValues:
 
         """
         if not isinstance(other, InteractionValues):
-            raise TypeError("Cannot compare InteractionValues with other types.")
+            msg = "Cannot compare InteractionValues with other types."
+            raise TypeError(msg)
         if (
             self.index != other.index
             or self.max_order != other.max_order
@@ -310,10 +314,10 @@ class InteractionValues:
                 self.min_order,
                 self.n_players,
                 tuple(self.values.flatten()),
-            )
+            ),
         )
 
-    def __copy__(self) -> "InteractionValues":
+    def __copy__(self) -> InteractionValues:
         """Returns a copy of the InteractionValues object."""
         return InteractionValues(
             values=copy.deepcopy(self.values),
@@ -327,15 +331,16 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
-    def __add__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
+    def __add__(self, other: InteractionValues | int | float) -> InteractionValues:
         """Adds two InteractionValues objects together or a scalar."""
         n_players, min_order, max_order = self.n_players, self.min_order, self.max_order
         if isinstance(other, InteractionValues):
             if self.index != other.index:  # different indices
-                raise ValueError(
+                msg = (
                     f"Cannot add InteractionValues with different indices {self.index} and "
                     f"{other.index}."
                 )
+                raise ValueError(msg)
             if (
                 self.interaction_lookup != other.interaction_lookup
                 or self.n_players != other.n_players
@@ -368,7 +373,8 @@ class InteractionValues:
             interaction_lookup = self.interaction_lookup.copy()
             baseline_value = self.baseline_value + other
         else:
-            raise TypeError(f"Cannot add InteractionValues with object of type {type(other)}.")
+            msg = f"Cannot add InteractionValues with object of type {type(other)}."
+            raise TypeError(msg)
         return InteractionValues(
             values=added_values,
             index=self.index,
@@ -381,7 +387,7 @@ class InteractionValues:
             baseline_value=baseline_value,
         )
 
-    def __radd__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
+    def __radd__(self, other: InteractionValues | int | float) -> InteractionValues:
         """Adds two InteractionValues objects together or a scalar."""
         return self.__add__(other)
 
@@ -399,15 +405,15 @@ class InteractionValues:
             baseline_value=-self.baseline_value,
         )
 
-    def __sub__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
+    def __sub__(self, other: InteractionValues | int | float) -> InteractionValues:
         """Subtracts two InteractionValues objects or a scalar."""
         return self.__add__(-other)
 
-    def __rsub__(self, other: Union["InteractionValues", int, float]) -> "InteractionValues":
+    def __rsub__(self, other: InteractionValues | int | float) -> InteractionValues:
         """Subtracts two InteractionValues objects or a scalar."""
         return (-self).__add__(other)
 
-    def __mul__(self, other: int | float) -> "InteractionValues":
+    def __mul__(self, other: int | float) -> InteractionValues:
         """Multiplies an InteractionValues object by a scalar."""
         return InteractionValues(
             values=self.values * other,
@@ -421,11 +427,11 @@ class InteractionValues:
             baseline_value=self.baseline_value * other,
         )
 
-    def __rmul__(self, other: int | float) -> "InteractionValues":
+    def __rmul__(self, other: int | float) -> InteractionValues:
         """Multiplies an InteractionValues object by a scalar."""
         return self.__mul__(other)
 
-    def __abs__(self) -> "InteractionValues":
+    def __abs__(self) -> InteractionValues:
         """Returns the absolute values of the InteractionValues object."""
         return InteractionValues(
             values=np.abs(self.values),
@@ -439,7 +445,7 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
-    def get_n_order_values(self, order: int) -> "np.ndarray":
+    def get_n_order_values(self, order: int) -> np.ndarray:
         """Returns the interaction values of a specific order as a numpy array.
 
         Note:
@@ -460,7 +466,8 @@ class InteractionValues:
         from itertools import permutations
 
         if order < 1:
-            raise ValueError("Order must be greater or equal to 1.")
+            msg = "Order must be greater or equal to 1."
+            raise ValueError(msg)
         values_shape = tuple([self.n_players] * order)
         values = np.zeros(values_shape, dtype=float)
         for interaction in powerset(range(self.n_players), min_size=order, max_size=order):
@@ -471,8 +478,11 @@ class InteractionValues:
         return values
 
     def get_n_order(
-        self, order: int, min_order: int | None = None, max_order: int | None = None
-    ) -> "InteractionValues":
+        self,
+        order: int,
+        min_order: int | None = None,
+        max_order: int | None = None,
+    ) -> InteractionValues:
         """Returns the interaction values of a specific order.
 
         Args:
@@ -513,7 +523,7 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
-    def get_subset(self, players: list[int]) -> "InteractionValues":
+    def get_subset(self, players: list[int]) -> InteractionValues:
         """Selects a subset of players from the InteractionValues object.
 
         Args:
@@ -602,7 +612,7 @@ class InteractionValues:
             )
 
     @staticmethod
-    def load_interaction_values(path: str) -> "InteractionValues":
+    def load_interaction_values(path: str) -> InteractionValues:
         """Load an InteractionValues object from a file.
 
         Args:
@@ -615,7 +625,7 @@ class InteractionValues:
         return InteractionValues.load(path)
 
     @classmethod
-    def load(cls, path: str) -> "InteractionValues":
+    def load(cls, path: str) -> InteractionValues:
         """Load an InteractionValues object from a file.
 
         Args:
@@ -646,7 +656,7 @@ class InteractionValues:
             return pickle.load(file)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "InteractionValues":
+    def from_dict(cls, data: dict) -> InteractionValues:
         """Create an InteractionValues object from a dictionary.
 
         Args:
@@ -688,8 +698,10 @@ class InteractionValues:
         }
 
     def aggregate(
-        self, others: Sequence["InteractionValues"], aggregation: str = "mean"
-    ) -> "InteractionValues":
+        self,
+        others: Sequence[InteractionValues],
+        aggregation: str = "mean",
+    ) -> InteractionValues:
         """Aggregates InteractionValues objects using a specific aggregation method.
 
         Args:
@@ -724,10 +736,11 @@ class InteractionValues:
                 **kwargs,
             )
         else:
-            raise ValueError(
+            msg = (
                 "InteractionValues contains only 1-order values,"
                 "but requires also 2-order values for the network plot."
             )
+            raise ValueError(msg)
 
     def plot_si_graph(self, show: bool = True, **kwargs) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues as a SI graph.
@@ -921,7 +934,8 @@ def aggregate_interaction_values(
         elif method == "min":
             return np.min(vals)
         else:
-            raise ValueError(f"Aggregation method {method} is not supported.")
+            msg = f"Aggregation method {method} is not supported."
+            raise ValueError(msg)
 
     # get all keys from all InteractionValues objects
     all_keys = set()
@@ -958,7 +972,7 @@ def aggregate_interaction_values(
 def finalize_computed_interactions(
     interactions: InteractionValues,
     target_index: str | None = None,
-) -> "InteractionValues":
+) -> InteractionValues:
     """Finalizes computed InteractionValues to be interpretable.
 
     This function takes care of the following:
@@ -995,8 +1009,8 @@ def finalize_computed_interactions(
         interactions = aggregate_base_interaction(interactions)
 
     # adjust the baseline and empty value if necessary
-    if tuple() in interactions.interaction_lookup:
-        idx = interactions.interaction_lookup[tuple()]
+    if () in interactions.interaction_lookup:
+        idx = interactions.interaction_lookup[()]
         empty_value = interactions[idx]
         if empty_value != interactions.baseline_value and interactions.index != "SII":
             if is_empty_value_the_baseline(interactions.index):
@@ -1008,9 +1022,9 @@ def finalize_computed_interactions(
     elif interactions.min_order == 0:
         # TODO: this might not be what we really want to do always ... what if empty and baseline
         # are different?
-        interactions.interaction_lookup[tuple()] = len(interactions.interaction_lookup)
+        interactions.interaction_lookup[()] = len(interactions.interaction_lookup)
         interactions.values = np.concatenate(
-            (interactions.values, np.array([interactions.baseline_value]))
+            (interactions.values, np.array([interactions.baseline_value])),
         )
 
     return interactions

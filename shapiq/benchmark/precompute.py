@@ -1,5 +1,7 @@
 """Pre-compute the values for the games and store them in a file."""
 
+from __future__ import annotations
+
 import multiprocessing as mp
 import os
 from pathlib import Path
@@ -44,7 +46,9 @@ def get_game_files(game: Game | Game.__class__ | str, n_players: int) -> list[st
 
 
 def pre_compute_and_store(
-    game: Game, save_dir: str | None = None, game_id: str | None = None
+    game: Game,
+    save_dir: str | None = None,
+    game_id: str | None = None,
 ) -> Path:
     """Pre-compute the values for the given game and store them in a file.
 
@@ -114,7 +118,8 @@ def pre_compute_from_configuration(
         configurations = game_class_config["configurations"]
 
     iterations = game_class_config.get(
-        "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
+        "iteration_parameter_values",
+        BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
     )
     iteration_names = game_class_config.get("iteration_parameter_values_names", iterations)
     if n_iterations is not None:
@@ -126,7 +131,7 @@ def pre_compute_from_configuration(
         print(
             f"Pre-computing game data for {game_class.get_game_name()}, "
             f"configuration: {config}, n_players: {n_players}, iterations: {iterations}, "
-            f"iteration names: {iteration_names}"
+            f"iteration names: {iteration_names}",
         )
 
         for iteration, iteration_name in zip(iterations, iteration_names, strict=False):
@@ -208,7 +213,7 @@ def pre_compute_and_store_from_list(
                     ],
                 ),
                 total=len(games),
-            )
+            ),
         )
 
     return results
