@@ -18,8 +18,7 @@ dependencies = [
     # plotting
     "matplotlib",
     "networkx",
-    "colour",
-    "notebook>=7.3.3",
+    "colour"
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
