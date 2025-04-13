@@ -21,7 +21,7 @@ from .game_theory.indices import (
     is_empty_value_the_baseline,
     is_index_aggregated,
 )
-from .utils.sets import generate_interaction_lookup, powerset
+from .utils.sets import generate_interaction_lookup
 
 
 @dataclass
@@ -470,7 +470,9 @@ class InteractionValues:
             raise ValueError(msg)
         values_shape = tuple([self.n_players] * order)
         values = np.zeros(values_shape, dtype=float)
-        for interaction in powerset(range(self.n_players), min_size=order, max_size=order):
+        for interaction in self.interaction_lookup.keys():
+            if len(interaction) != order:
+                continue
             # get all orderings of the interaction (e.g. (0, 1) and (1, 0) for interaction (0, 1))
             for perm in permutations(interaction):
                 values[perm] = self[interaction]
