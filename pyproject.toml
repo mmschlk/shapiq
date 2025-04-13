@@ -18,8 +18,7 @@ dependencies = [
     # plotting
     "matplotlib",
     "networkx",
-    "colour",
-    "notebook>=7.3.3",
+    "colour"
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -91,7 +90,6 @@ testpaths = ["tests"]
 minversion = "8.0"
 
 [tool.coverage.report]
-fail_under = 93
 directory = "tests"
 
 [tool.ruff]

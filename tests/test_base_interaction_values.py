@@ -10,6 +10,9 @@ import pytest
 
 from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 from shapiq.utils import powerset
+from tests.fixtures.interaction_values import (
+    get_mock_interaction_value,
+)
 
 
 @pytest.mark.parametrize(
@@ -84,9 +87,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
 
     # check equality
     interaction_values_copy = copy(interaction_values)
-    interaction_values_deepcopy = deepcopy(interaction_values)
     assert interaction_values == interaction_values_copy
-    assert interaction_values == interaction_values_deepcopy
     assert interaction_values != interaction_values_2
 
     try:
@@ -96,7 +97,6 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
 
     # check that the hash is correct
     assert hash(interaction_values) == hash(interaction_values_copy)
-    assert hash(interaction_values) == hash(interaction_values_deepcopy)
     assert hash(interaction_values) != hash(interaction_values_2)
 
     # check getitem
@@ -771,3 +771,161 @@ def test_docs_aggregation_function():
 
     with pytest.raises(ValueError):
         _ = aggregate_interaction_values([iv1, iv2], aggregation="invalid")
+
+
+def test_get_n_order_error_all_none(iv_10_all):
+    """Tests if `get_n_order` raises ValueError if all parameters are `None`."""
+    iv = iv_10_all
+    with pytest.raises(ValueError):
+        iv.get_n_order()  # all parameters are None
+
+
+def test_get_n_order_error_min_larger_max(iv_10_all):
+    """Tests if `get_n_order` raises ValueError if min_order > max_order."""
+    iv = iv_10_all
+    with pytest.raises(ValueError):
+        iv.get_n_order(min_order=2, max_order=1)  # min > max
+
+    with pytest.raises(ValueError):
+        iv.get_n_order(order=3, min_order=3, max_order=2)  # min > max even with order
+
+
+def test_get_n_order_min_max_overrides_order(iv_10_all):
+    """Tests that min_order and max_order overrides order."""
+    iv = iv_10_all
+    min_order = 0
+    max_order = 5
+    iv_new = iv.get_n_order(order=2, min_order=min_order, max_order=max_order)
+    assert iv_new.min_order == min_order
+    assert iv_new.max_order == max_order
+    assert all(
+        min_order <= len(interaction) <= max_order
+        for interaction in iv_new.interaction_lookup.keys()
+    )
+
+
+@pytest.mark.parametrize("min_order, max_order", [(None, 3), (2, None)])
+def test_get_n_order_single_bound(min_order, max_order, iv_10_all):
+    """Tests behavior when only min or max is provided."""
+    iv = iv_10_all
+    iv_new = iv.get_n_order(min_order=min_order, max_order=max_order)
+
+    if min_order is None:
+        min_order = iv.min_order
+    if max_order is None:
+        max_order = iv.max_order
+
+    assert iv_new.min_order == min_order
+    assert iv_new.max_order == max_order
+    assert all(min_order <= len(inter) <= max_order for inter in iv_new.interaction_lookup)
+
+
+def test_get_n_order_empty_result(iv_10_all):
+    """Test that get_n_order returns an empty InteractionValues if no interactions match."""
+    iv = iv_10_all
+    # Choose min/max such that no interaction can match
+    iv_new = iv.get_n_order(min_order=11, max_order=15)
+    assert len(iv_new.interaction_lookup) == 0
+    assert iv_new.values.size == 0
+
+    # choose order to be larger than max_order
+    iv_new = iv.get_n_order(order=11)
+    assert len(iv_new.interaction_lookup) == 0
+    assert iv_new.values.size == 0
+
+
+@pytest.mark.parametrize("order", [0, 1, 2, 3, 4, 5])
+def test_get_n_order_with_only_order_param(
+    order: int,
+    iv_10_all: InteractionValues,
+    iv_300_300_0_300: InteractionValues,
+):
+    """Tests that get_n_order returns only the specified order if only order is given as a parameter."""
+    for iv in [iv_10_all, iv_300_300_0_300]:
+        iv_new = iv.get_n_order(order=order)
+        assert isinstance(iv_new, InteractionValues)
+        assert iv_new.min_order == order
+        assert iv_new.max_order == order
+
+        # check that the order is correct
+        assert all(len(interaction) == order for interaction in iv_new.interaction_lookup.keys())
+
+        # check that all interactions from the original are present
+        assert all(
+            interaction in iv_new.interaction_lookup
+            for interaction in iv.interaction_lookup.keys()
+            if len(interaction) == order
+        )
+
+        # check that all values are correct
+        assert all(
+            iv_new[interaction] == iv[interaction]
+            for interaction in iv_new.interaction_lookup.keys()
+        )
+
+
+@pytest.mark.parametrize("min_order, max_order", [(0, 1), (0, 2), (2, 3), (3, 4), (4, 4)])
+def test_get_n_order_with_only_min_max_param(
+    min_order: int,
+    max_order: int,
+    iv_10_all: InteractionValues,
+    iv_300_300_0_300: InteractionValues,
+):
+    for iv in [iv_10_all, iv_300_300_0_300]:
+        iv_new = iv.get_n_order(min_order=min_order, max_order=max_order)
+        assert isinstance(iv_new, InteractionValues)
+        assert iv_new.min_order == min_order
+        assert iv_new.max_order == max_order
+
+        # check that the order is correct
+        assert all(
+            min_order <= len(interaction) <= max_order
+            for interaction in iv_new.interaction_lookup.keys()
+        )
+
+        # check that all interactions from the original are present
+        assert all(
+            interaction in iv_new.interaction_lookup
+            for interaction in iv.interaction_lookup.keys()
+            if min_order <= len(interaction) <= max_order
+        )
+
+        # check that all values are correct
+        assert all(
+            iv_new[interaction] == iv[interaction]
+            for interaction in iv_new.interaction_lookup.keys()
+        )
+
+
+def test_copy_behaviour():
+    """Tests that InteractionValues objects are copied correctly."""
+    from copy import copy, deepcopy
+
+    # check that copy and deepcopy both work and create a copyied object
+    for copy_method in [copy, deepcopy]:
+        original = get_mock_interaction_value(n_players=10, n_interactions=20)
+        copied = copy_method(original)
+        interaction = next(iter(copied.interaction_lookup))  # we use this interaction to test later
+
+        # Structural equality: values, lookup, etc.
+        assert isinstance(copied, InteractionValues)
+        assert np.array_equal(original.values, copied.values)
+        assert original.interaction_lookup == copied.interaction_lookup
+        assert original.n_players == copied.n_players
+        assert original.min_order == copied.min_order
+        assert original.max_order == copied.max_order
+        assert original.index == copied.index
+        assert original.baseline_value == copied.baseline_value
+        assert original.estimated == copied.estimated
+        assert original[interaction] == copied[interaction]
+        assert hash(original) == hash(copied)
+        assert original == copied
+
+        # Independence: changing one doesn’t affect the other
+        copied.values[0] += 1.0
+        assert not np.array_equal(original.values, copied.values), "Values should be independent"
+        copied.interaction_lookup[interaction] = 999
+        assert original.interaction_lookup != copied.interaction_lookup, "Lookup should be different"  # fmt: skip
+        assert original.interaction_lookup[interaction] != copied.interaction_lookup[interaction]
+        assert hash(original) != hash(copied)
+        assert original != copied, "Objects should be different"
