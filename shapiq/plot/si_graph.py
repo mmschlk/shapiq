@@ -298,7 +298,7 @@ def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
         color = get_color(value)
         node_size = abs(value)/2+1/2
         edge_size = abs(value)/2
-        alpha = _normalize_value(value, 1, BASE_ALPHA_VALUE, False)
+        alpha = _normalize_value(value, 1, BASE_ALPHA_VALUE)
         circle = axis.plot([], [], c=color, marker="o", markersize=node_size * 8, linestyle="None", alpha=alpha)
         plot_circles.append(circle[0])
         line = axis.plot([], [], c=color, linewidth=edge_size * 8, alpha=alpha)
@@ -531,6 +531,8 @@ def _draw_explanation_nodes(
 
         radius = normal_node_size / 2 + explanation_size / 2
         circle = mpath.Path.circle(position, radius=radius)
+        patch = mpatches.PathPatch(circle, facecolor='white', lw=1, edgecolor="white", alpha=1.0)
+        ax.add_patch(patch)
         patch = mpatches.PathPatch(circle, facecolor=color, lw=1, edgecolor="white", alpha=alpha)
         ax.add_patch(patch)
 
