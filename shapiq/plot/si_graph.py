@@ -29,7 +29,6 @@ def si_graph_plot(
     interaction_direction: str | None = None,
     min_max_order: tuple[int, int] = (1, -1),
     size_factor: float = 1.0,
-    cubic_scaling: bool = False,
     node_size_scaling: float = 1.0,
     min_max_interactions: tuple[float, float] | None = None,
     feature_names: list | dict | None = None,
@@ -66,9 +65,6 @@ def si_graph_plot(
             To use maximum order of interaction values, set max to -1. Defaults to ``(1, -1)``.
         size_factor: The factor to scale the explanations by (a higher value will make the
             interactions and main effects larger). Defaults to ``1.0``.
-        cubic_scaling: Whether to scale the size of explanations cubically (``True``) or linearly
-            (``False``, default). Cubic scaling puts more emphasis on larger interactions in the plot.
-            Defaults to ``False``.
         node_size_scaling: The scaling factor for the node sizes. This can be used to make the nodes
             larger or smaller depending on how the graph looks. Defaults to ``1.0`` (no scaling).
             Values between ``0.0`` and ``1.0`` will make the nodes smaller, higher values will make the nodes larger.
@@ -191,12 +187,12 @@ def si_graph_plot(
         attributes = {
             "color": get_color(interaction_value),
             "alpha": _normalize_value(
-                interaction_value, max_interaction, BASE_ALPHA_VALUE, cubic_scaling
+                interaction_value, max_interaction, BASE_ALPHA_VALUE
             ),
             "interaction": interaction,
             "weight": interaction_strength * compactness,
             "size": _normalize_value(
-                interaction_value, max_interaction, base_size * size_factor, cubic_scaling
+                interaction_value, max_interaction, base_size * size_factor
             ),
         }
 
@@ -349,7 +345,7 @@ def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
 
 
 def _normalize_value(
-    value: float, max_value: float, base_value: float, cubic_scaling: bool = False
+    value: float, max_value: float, base_value: float
 ) -> float:
     """Scale a value between 0 and 1 based on the maximum value and a base value.
 
@@ -359,15 +355,11 @@ def _normalize_value(
         base_value: The base value to scale the value by. For example, the alpha value for the
             highest interaction (as defined in ``BASE_ALPHA_VALUE``) or the size of the highest
             interaction edge (as defined in ``BASE_SIZE``).
-        cubic_scaling: Whether to scale cubically (``True``) or linearly (``False``. default)
-            between 0 and 1.
 
     Returns:
         The normalized/scaled value.
     """
     ratio = abs(value) / abs(max_value)  # ratio is always positive in [0, 1]
-    if cubic_scaling:
-        ratio = ratio**3
     alpha = ratio * base_value
     return alpha
 
