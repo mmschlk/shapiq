@@ -36,6 +36,7 @@ def si_graph_plot(
     plot_original_nodes: bool = False,
     plot_explanation: bool = True,
     pos: dict | None = None,
+    circular_layout: bool = False,
     adjust_node_pos: bool = False,
     spring_k: float | None = None,
     compactness: float = 1e10,
@@ -84,6 +85,7 @@ def si_graph_plot(
             ``True``.
         pos: The positions of the nodes in the graph. If ``None``, the spring layout is used to
             position the nodes. Defaults to ``None``.
+        circular_layout: plot the players in a circle according to their order.
         adjust_node_pos: Whether to adjust the node positions such that the nodes are at least
             ``NORMAL_NODE_SIZE`` apart. Defaults to ``False``.
         spring_k: The spring constant for the spring layout. If `None`, the spring constant is
@@ -216,8 +218,11 @@ def si_graph_plot(
 
     # position first the original graph structure
     if pos is None:
-        pos = nx.spring_layout(original_graph, seed=random_seed, k=spring_k)
-        pos = nx.kamada_kawai_layout(original_graph, scale=1.0, pos=pos)
+        if circular_layout:
+            pos = nx.circular_layout(original_graph)
+        else:
+            pos = nx.spring_layout(original_graph, seed=random_seed, k=spring_k)
+            pos = nx.kamada_kawai_layout(original_graph, scale=1.0, pos=pos)
     else:
         # pos is given, but we need to scale the positions potentially
         min_pos = np.min(list(pos.values()), axis=0)
