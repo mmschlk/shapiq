@@ -6,59 +6,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from shapiq.interaction_values import InteractionValues
 from shapiq.plot import si_graph_plot
-
-
-@pytest.fixture(scope="module")
-def example_values():
-    example_values = InteractionValues(
-        n_players=4,
-        values=np.array(
-            [
-                0.0,  # ()
-                -0.2,  # (1)
-                0.2,  # (2)
-                0.2,  # (3)
-                -0.1,  # (4)
-                0.2,  # (1, 2)
-                -0.2,  # (1, 3)
-                0.2,  # (1, 4)
-                0.2,  # (2, 3)
-                -0.2,  # (2, 4)
-                0.2,  # (3, 4)
-                0.4,  # (1, 2, 3)
-                0.0,  # (1, 2, 4)
-                0.0,  # (1, 3, 4)
-                0.0,  # (2, 3, 4)
-                -0.1,  # (1, 2, 3, 4)
-            ],
-            dtype=float,
-        ),
-        index="k-SII",
-        interaction_lookup={
-            (): 0,
-            (1,): 1,
-            (2,): 2,
-            (3,): 3,
-            (4,): 4,
-            (1, 2): 5,
-            (1, 3): 6,
-            (1, 4): 7,
-            (2, 3): 8,
-            (2, 4): 9,
-            (3, 4): 10,
-            (1, 2, 3): 11,
-            (1, 2, 4): 12,
-            (1, 3, 4): 13,
-            (2, 3, 4): 14,
-            (1, 2, 3, 4): 15,
-        },
-        baseline_value=0,
-        min_order=0,
-        max_order=4,
-    )
-    return example_values
 
 
 @pytest.mark.parametrize("draw_threshold", [0.0, 0.5])
@@ -209,10 +157,16 @@ def test_feature_names(example_values):
 def test_legend(example_values):
     from shapiq.plot.si_graph import get_legend
     fig, ax = example_values.plot_si_graph(
-        cubic_scaling=False,
         show=False,
     )
     get_legend(ax)
     plt.show()
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+
+def test_param_changes(example_values):
+    for random_seed in [1, 42, 103, 98099]:
+        example_values.plot_si_graph(
+            show=True,
+            random_seed=random_seed,
+        )

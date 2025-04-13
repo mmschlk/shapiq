@@ -22,7 +22,7 @@ __all__ = ["si_graph_plot", "get_legend"]
 def si_graph_plot(
     interaction_values: InteractionValues,
     *,
-    show: bool = True,
+    show: bool = False,
     random_seed: int = 42,
     n_interactions: int | None = None,
     draw_threshold: float = 0.0,
