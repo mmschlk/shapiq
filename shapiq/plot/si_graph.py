@@ -301,7 +301,7 @@ def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
         alpha = _normalize_value(value, 1, BASE_ALPHA_VALUE)
         circle = axis.plot([], [], c=color, marker="o", markersize=node_size * 8, linestyle="None", alpha=alpha)
         plot_circles.append(circle[0])
-        line = axis.plot([], [], c=color, linewidth=edge_size * 8, alpha=alpha)
+        line = axis.plot([], [], c=color, linewidth=edge_size * 6, alpha=alpha)
         plot_edges.append(line[0])
 
     font_size = plt.rcParams["legend.fontsize"]
