@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from warnings import warn
+
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
 import networkx as nx
@@ -121,6 +123,12 @@ def si_graph_plot(
         except KeyError:
             label_mapping = feature_names
 
+    player_ids = {
+        interaction[0]
+        for interaction in interaction_values.interaction_lookup.keys()
+        if len(interaction) == 1
+    }
+
     # fill the original graph with the edges and nodes
     if isinstance(graph, nx.Graph):
         original_graph = graph
@@ -143,16 +151,19 @@ def si_graph_plot(
             graph_nodes.extend([edge[0], edge[1]])
     else:  # graph is considered None
         original_graph = nx.Graph()
-        graph_nodes = list(
-            {
-                interaction[0]
-                for interaction in interaction_values.interaction_lookup.keys()
-                if len(interaction) == 1
-            }
-        )
+        graph_nodes = list(player_ids)
         for node in graph_nodes:
             node_label = label_mapping.get(node, node) if label_mapping is not None else node
             original_graph.add_node(node, label=node_label)
+
+    for player_id in player_ids:
+        if player_id not in original_graph.nodes:
+            msg = (
+                f"The given graph does not contain player {player_id}, which can lead to misattributions in the plot.\n"
+                f"The given graph: {graph} and the players of the given interaction values: {player_ids}"
+            )
+            warn(msg, stacklevel=2)
+            break
 
     if n_interactions is not None:
         # get the top n interactions

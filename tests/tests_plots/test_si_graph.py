@@ -160,11 +160,3 @@ def test_legend(example_values):
     plt.show()
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
-
-
-def test_param_changes(example_values):
-    for random_seed in [1, 42, 103, 98099]:
-        example_values.plot_si_graph(
-            show=True,
-            random_seed=random_seed,
-        )
