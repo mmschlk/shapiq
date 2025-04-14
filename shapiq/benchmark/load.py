@@ -1,9 +1,12 @@
 """This module contains all utility functions to load benchmark games from the configurations or
-from the precomputed data (GitHub repository)."""
+from the precomputed data (GitHub repository).
+"""
 
-import os
+from __future__ import annotations
+
 import time
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -46,6 +49,7 @@ def load_games_from_configuration(
 
     Returns:
         An initialized game object with the given configuration.
+
     """
     game_class = (
         GAME_NAME_TO_CLASS_MAPPING[game_class] if isinstance(game_class, str) else game_class
@@ -69,10 +73,12 @@ def load_games_from_configuration(
     game_should_be_precomputed = config_of_class["precompute"]
     iteration_param = config_of_class["iteration_parameter"]
     iteration_param_values = config_of_class.get(
-        "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
+        "iteration_parameter_values",
+        BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
     )
     iteration_param_values_names = config_of_class.get(
-        "iteration_parameter_values_names", iteration_param_values
+        "iteration_parameter_values_names",
+        iteration_param_values,
     )
 
     # create the generator of games
@@ -92,7 +98,10 @@ def load_games_from_configuration(
         else:
             try:  # try to load the game from disk
                 yield load_game_data(
-                    game_class, configuration, iteration=game_iteration, n_player_id=n_player_id
+                    game_class,
+                    configuration,
+                    iteration=game_iteration,
+                    n_player_id=n_player_id,
                 )
             except FileNotFoundError:
                 if only_pre_computed:  # if only pre-computed games are requested, skip the game
@@ -120,17 +129,13 @@ def load_game_data(
 
     Raises:
         FileNotFoundError: If the file with the precomputed values does not exist
+
     """
     n_players = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["n_players"]
     file_name = get_game_file_name_from_config(configuration, iteration)
 
-    path_to_values = str(
-        os.path.join(
-            SHAPIQ_DATA_DIR,
-            game_class.get_game_name(),
-            str(n_players),
-            f"{file_name}.npz",
-        )
+    path_to_values = (
+        SHAPIQ_DATA_DIR / game_class.get_game_name() / str(n_players) / f"{file_name}.npz"
     )
     try:
         return Game(
@@ -148,10 +153,11 @@ def load_game_data(
                 normalize=BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["normalize"],
             )
         except FileNotFoundError as error:
-            raise FileNotFoundError(
+            msg = (
                 f"Game data for game {game_class.get_game_name()} with configuration "
                 f"{configuration} and iteration {iteration} could not be found."
-            ) from error
+            )
+            raise FileNotFoundError(msg) from error
 
 
 def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
@@ -164,27 +170,26 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
 
     Raises:
         FileNotFoundError: If the file could not be downloaded.
+
     """
     github_url = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/precomputed_games"
 
     # create the directory if it does not exist
-    game_dir = str(os.path.join(SHAPIQ_DATA_DIR, game_name, str(n_players)))
-    os.makedirs(game_dir, exist_ok=True)
+    game_dir = SHAPIQ_DATA_DIR / game_name / str(n_players)
+    game_dir.mkdir(parents=True, exist_ok=True)
 
     # download the file
     file_name = file_name.replace(".npz", "")
-    path = os.path.join(game_dir, f"{file_name}.npz")
+    path = Path(game_dir) / f"{file_name}.npz"
     url = f"{github_url}/{game_name}/{n_players}/{file_name}.npz"
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
     except requests.exceptions.HTTPError as error:
+        msg = f"Could not download the game data from {url}. Check if configuration is correct."
         raise FileNotFoundError(
-            f"Could not download the game data from {url}. Check if configuration is correct."
+            msg,
         ) from error
-    with open(path, "wb") as file:
+    with Path(path).open("wb") as file:
         file.write(response.content)
         time.sleep(0.01)
-
-
-# Path: shapiq/benchmark/load.py

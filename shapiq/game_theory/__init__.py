@@ -1,5 +1,4 @@
-"""conversions of interaction values to different indices
-"""
+"""conversions of interaction values to different indices"""
 
 from .aggregation import aggregate_base_interaction
 from .core import egalitarian_least_core

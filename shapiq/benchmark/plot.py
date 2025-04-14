@@ -1,5 +1,7 @@
 """This module contains the plotting utilities for the benchmark results."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from collections.abc import Callable
 
@@ -69,7 +71,8 @@ def create_application_name(setup: str, abbrev: bool = False) -> str:
     application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
     application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
     application_name = application_name.replace(
-        "RandomForestEnsembleSelection", "EnsembleSelection"
+        "RandomForestEnsembleSelection",
+        "EnsembleSelection",
     )
     if abbrev:
         application_name = abbreviate_application_name(application_name)
@@ -87,6 +90,7 @@ def abbreviate_application_name(application_name: str, new_line: bool = False) -
     Example:
         >>> abbreviate_application_name("LocalExplanation")
         "Loc. Exp."
+
     """
     abbreviations = []
     count_char = 0
@@ -130,6 +134,7 @@ def get_game_title_name(game_name: str) -> str:
         "Image Classifier Local XAI"
         >>> get_game_title_name("AdultCensusClusterExplanation")
         "Adult Census Cluster Explanation"
+
     """
     # split words by capital letters
     words = ""
@@ -151,6 +156,7 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
     Returns:
         The aggregation function.
+
     """
 
     def quantile(x) -> float:
@@ -200,9 +206,11 @@ def plot_approximation_quality(
 
     Returns:
         The figure and axes of the plot.
+
     """
     if data_path is None and data is None:
-        raise ValueError("Either data or data_path must be provided.")
+        msg = "Either data or data_path must be provided."
+        raise ValueError(msg)
 
     if data is None:
         data = pd.read_csv(data_path)
@@ -259,7 +267,7 @@ def plot_approximation_quality(
             if log_scale_y:
                 # manually set all below log_scale_min to log_scale_min (to avoid log(0))
                 data_order[aggregation] = data_order[aggregation].apply(
-                    lambda x: log_scale_min if x < log_scale_min else x
+                    lambda x: log_scale_min if x < log_scale_min else x,
                 )
 
             # get the plot colors and styles
@@ -309,7 +317,9 @@ def plot_approximation_quality(
 
     # add %model calls to the x-axis as a secondary axis
     _set_x_axis_ticks(
-        ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
+        ax,
+        n_players=int(data["n_players"].unique().max()),
+        max_budget=approx_max_budget,
     )
 
     if remove_spines:
@@ -336,7 +346,7 @@ def _set_x_axis_ticks(ax: plt.Axes, n_players: int, max_budget: int) -> None:
         budgets_relative = budgets / (2**n_players)
 
     xtick_labels = []
-    for bdgt, bdgt_rel in zip(budgets, budgets_relative):
+    for bdgt, bdgt_rel in zip(budgets, budgets_relative, strict=False):
         bdgt_rel_str = f"{bdgt_rel:.0%}"
         if bdgt_rel <= 0.01 and bdgt_rel != 0:
             bdgt_rel_str = "<1%"
@@ -376,8 +386,8 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 
     Returns:
         The metric data.
-    """
 
+    """
     # get the metric columns for each order in the results
     metric_columns = [col for col in results_df.columns if metric in col]
 
@@ -395,8 +405,8 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
                         "median",
                         agg_percentile(95),
                         agg_percentile(5),
-                    ]
-                }
+                    ],
+                },
             )
             .reset_index()
         )
@@ -435,6 +445,7 @@ def add_legend(
             Defaults to `None`.
         legend_subtitle: Whether to add a subtitle to the legend. Defaults to `True`.
         loc: The location of the legend. Defaults to "upper right".
+
     """
     if orders is None and approximators is None:
         return
@@ -478,10 +489,4 @@ def add_legend(
             color=STYLE_DICT[approximator]["color"],
             linewidth=LINE_THICKNESS,
         )
-
-    # handles, labels = axis.get_legend_handles_labels()
-    # axis.legend(handles, labels, loc=loc)
     axis.legend(loc=loc)
-
-
-# Path: shapiq/benchmark/plot.py

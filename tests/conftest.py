@@ -1,5 +1,7 @@
 """This test module contains all fixtures for all tests of shapiq."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -24,6 +26,7 @@ pytest_plugins = [
     "tests.fixtures.games",
     "tests.fixtures.models",
     "tests.fixtures.data",
+    "tests.fixtures.interaction_values",
 ]
 
 
@@ -52,7 +55,7 @@ def interaction_values_list():
         values = []
         interaction_lookup = {}
         for i, interaction in enumerate(
-            powerset(range(n_players), min_size=min_order, max_size=max_order)
+            powerset(range(n_players), min_size=min_order, max_size=max_order),
         ):
             interaction_lookup[interaction] = i
             values.append(rng.uniform(0, 1))
@@ -60,7 +63,7 @@ def interaction_values_list():
         iv = InteractionValues(
             n_players=n_players,
             values=values,
-            baseline_value=float(values[interaction_lookup[tuple()]]),
+            baseline_value=float(values[interaction_lookup[()]]),
             index="Moebius",
             interaction_lookup=interaction_lookup,
             max_order=max_order,
@@ -78,7 +81,7 @@ def example_values():
             [
                 0.0,  # ()
                 -0.2,  # (1)
-                0.2,  # (2)
+                0.4,  # (2)
                 0.2,  # (3)
                 -0.1,  # (4)
                 0.2,  # (1, 2)

@@ -92,5 +92,3 @@ __all__ = [
     "FSII_APPROXIMATORS",
     "FBII_APPROXIMATORS",
 ]
-
-# Path: shapiq/approximator/__init__.py

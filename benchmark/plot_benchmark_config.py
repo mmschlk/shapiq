@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 os.makedirs("plots", exist_ok=True)
 
 if __name__ == "__main__":
-
     import matplotlib.pyplot as plt
 
     from shapiq.games.benchmark.benchmark_config import GAME_NAME_TO_CLASS_MAPPING

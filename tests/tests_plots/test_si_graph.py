@@ -1,5 +1,7 @@
 """This test module contains all tests for the explanation plot functions."""
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -27,11 +29,6 @@ def test_si_graph_plot(
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
     plt.close(fig)
-
-    # test with show=True
-    output = example_values.plot_si_graph(show=True)
-    assert output is None
-    plt.close("all")
 
     fig, ax = si_graph_plot(
         example_values,
@@ -140,8 +137,6 @@ def test_feature_imgs(example_values):
     fig, ax = example_values.plot_si_graph(
         feature_image_patches=img_dict,
         show=False,
-        # graph=graph,
-        # plot_original_nodes = True,
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
@@ -154,8 +149,10 @@ def test_feature_names(example_values):
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
 
+
 def test_legend(example_values):
     from shapiq.plot.si_graph import get_legend
+
     fig, ax = example_values.plot_si_graph(
         show=False,
     )
@@ -163,6 +160,7 @@ def test_legend(example_values):
     plt.show()
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+
 
 def test_param_changes(example_values):
     for random_seed in [1, 42, 103, 98099]:

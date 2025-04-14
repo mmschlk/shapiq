@@ -1,11 +1,12 @@
 """Tests the indices configuration module."""
 
+from __future__ import annotations
+
 from shapiq.game_theory.indices import ALL_AVAILABLE_CONCEPTS
 
 
 def test_configuration():
     """Tests if the fields in the configuration are correct."""
-
     all_indices_checked = set()
 
     for index, index_info in ALL_AVAILABLE_CONCEPTS.items():

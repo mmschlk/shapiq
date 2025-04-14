@@ -1,5 +1,7 @@
 """Base class for all Imputers."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 
 import numpy as np
@@ -41,6 +43,7 @@ class Imputer(Game):
 
     Properties:
         x: The explanation point to use the imputer on.
+
     """
 
     @abstractmethod
@@ -60,7 +63,8 @@ class Imputer(Game):
         elif hasattr(model, "_shapiq_predict_function"):
             self._predict_function = model._shapiq_predict_function
         else:
-            raise ValueError("The model must be callable or have a predict function.")
+            msg = "The model must be callable or have a predict function."
+            raise ValueError(msg)
         self.model = model
         # check if data is a vector
         if data.ndim == 1:
@@ -95,10 +99,11 @@ class Imputer(Game):
 
         Returns:
             The model's prediction for the given data point as a vector.
+
         """
         return self._predict_function(self.model, x)
 
-    def fit(self, x: np.ndarray) -> "Imputer":
+    def fit(self, x: np.ndarray) -> Imputer:
         """Fits the imputer to the explanation point.
 
         Args:
@@ -107,6 +112,7 @@ class Imputer(Game):
 
         Returns:
             The fitted imputer.
+
         """
         self._x = x.copy()
         if self._x.ndim == 1:
@@ -122,6 +128,7 @@ class Imputer(Game):
 
         Returns:
             The model's predictions with the empty value inserted for the empty coalitions.
+
         """
         outputs[~np.any(coalitions, axis=1)] = self.empty_prediction
         return outputs

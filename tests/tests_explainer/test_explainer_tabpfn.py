@@ -1,8 +1,11 @@
 """This test module tests the TabPFNExplainer object."""
 
+from __future__ import annotations
+
 import pytest
 
 from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
+from tests.fixtures.data import BUDGET_NR_FEATURES_SMALL
 from tests.markers import skip_if_no_tabpfn
 
 
@@ -21,7 +24,7 @@ def test_tabpfn_explainer_clf(tabpfn_classification_problem):
     assert model.n_features_in_ == data.shape[1]
 
     explainer = TabPFNExplainer(model=model, data=data, labels=labels, x_test=x_test)
-    explanation = explainer.explain(x=x_explain)
+    explanation = explainer.explain(x=x_explain, budget=BUDGET_NR_FEATURES_SMALL)
     assert isinstance(explanation, InteractionValues)
 
     # test that bare explainer gets turned into TabPFNExplainer
@@ -49,7 +52,7 @@ def test_tabpfn_explainer_reg(tabpfn_regression_problem):
     assert model.n_features_in_ == data.shape[1]
 
     explainer = TabPFNExplainer(model=model, data=data, labels=labels, x_test=x_test)
-    explanation = explainer.explain(x=x_explain)
+    explanation = explainer.explain(x=x_explain, budget=BUDGET_NR_FEATURES_SMALL)
     assert isinstance(explanation, InteractionValues)
 
     # test that bare explainer gets turned into TabPFNExplainer

@@ -1,7 +1,8 @@
 """The base class for tree model conversion."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 
@@ -48,6 +49,7 @@ class TreeModel:
             indices (as in the tree model) to the original feature indices (as in the model).
         original_output_type: The original output type of the tree model. The default value is
             ``"raw"``.
+
     """
 
     children_left: np.ndarray[int]
@@ -68,9 +70,6 @@ class TreeModel:
     feature_map_internal_original: dict[int, int] | None = None
     original_output_type: str = "raw"  # not used at the moment
 
-    def __getitem__(self, item) -> Any:
-        return getattr(self, item)
-
     def compute_empty_prediction(self) -> None:
         """Compute the empty prediction of the tree model.
 
@@ -78,7 +77,8 @@ class TreeModel:
         the leaf node values. The method modifies the tree model in place.
         """
         self.empty_prediction = compute_empty_prediction(
-            self.values[self.leaf_mask], self.node_sample_weight[self.leaf_mask]
+            self.values[self.leaf_mask],
+            self.node_sample_weight[self.leaf_mask],
         )
 
     def __post_init__(self) -> None:
@@ -90,7 +90,6 @@ class TreeModel:
         self.features = self.features.astype(int)  # make features integer type
         # sanitize thresholds
         self.thresholds = np.where(self.leaf_mask, np.nan, self.thresholds)
-        # self.thresholds = np.round(self.thresholds, 4)  # round thresholds
         # setup empty prediction
         if self.empty_prediction is None:
             self.compute_empty_prediction()
@@ -123,7 +122,8 @@ class TreeModel:
         # flatten values if necessary
         if self.values.ndim > 1:
             if self.values.shape[1] != 1:
-                raise ValueError("Values array has more than one column.")
+                msg = "Values array has more than one column."
+                raise ValueError(msg)
             self.values = self.values.flatten()
         # set all values of non leaf nodes to zero
         self.values[~self.leaf_mask] = 0
@@ -151,7 +151,7 @@ class TreeModel:
         if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
             mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}
-            mapping_new_old = {new_id: old_id for new_id, old_id in enumerate(self.feature_ids)}
+            mapping_new_old = dict(enumerate(self.feature_ids))
             new_features = np.zeros_like(self.features)
             for i, old_feature in enumerate(self.features):
                 new_value = -2 if old_feature == -2 else mapping_old_new[old_feature]
@@ -171,6 +171,7 @@ class TreeModel:
 
         Returns:
             The prediction of the instance with the tree model.
+
         """
         node = self.root_node_id
         is_leaf = self.leaf_mask[node]
@@ -205,9 +206,6 @@ class EdgeTree:
     last_feature_node_in_path: np.ndarray[int]
     interaction_height_store: dict[int, np.ndarray[int]]
     has_ancestors: np.ndarray[bool] | None = None
-
-    def __getitem__(self, item) -> Any:
-        return getattr(self, item)
 
     def __post_init__(self) -> None:
         # setup has ancestors

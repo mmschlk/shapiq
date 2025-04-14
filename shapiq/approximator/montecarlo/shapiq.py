@@ -1,6 +1,9 @@
 """This module contains the shapiq estimators. Namely, the SHAPIQ and UnbiasedKernelSHAP estimators.
 The Unbiased KernelSHAP method is a variant of KernelSHAP. However, it was shown that Unbiased
-KernelSHAP is a more specific variant of the ShapIQ interaction method."""
+KernelSHAP is a more specific variant of the ShapIQ interaction method.
+"""
+
+from __future__ import annotations
 
 from ._base import MonteCarlo
 
@@ -43,6 +46,7 @@ class SHAPIQ(MonteCarlo):
         .. [1] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., (2023). SHAP-IQ: Unified Approximation of any-order Shapley Interactions. In Thirty-seventh Conference on Neural Information Processing Systems. url: https://openreview.net/forum?id=IEMLNF4gK4
 
         .. [2] Covert, I., and Lee, S.-I. (2021). Improving KernelSHAP: Practical Shapley Value Estimation via Linear Regression. In Proceedings of The 24th International Conference on Artificial Intelligence and Statistics, PMLR 130:3457-3465. url: https://proceedings.mlr.press/v130/covert21a.html
+
     """
 
     def __init__(
@@ -109,6 +113,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
         .. [1] Covert, I., and Lee, S.-I. (2021). Improving KernelSHAP: Practical Shapley Value Estimation via Linear Regression. In Proceedings of The 24th International Conference on Artificial Intelligence and Statistics, PMLR 130:3457-3465. url: https://proceedings.mlr.press/v130/covert21a.html
 
         .. [2] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., (2023). SHAP-IQ: Unified Approximation of any-order Shapley Interactions. In Thirty-seventh Conference on Neural Information Processing Systems. url: https://openreview.net/forum?id=IEMLNF4gK4
+
     """
 
     def __init__(
@@ -117,7 +122,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
         random_state: int | None = None,
-        **kwargs,
+        **kwargs,  # noqa: ARG002
     ):
         super().__init__(
             n,

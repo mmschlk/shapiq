@@ -1,5 +1,7 @@
 """Module for plotting the explanation graph of interaction values."""
 
+from __future__ import annotations
+
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
 import networkx as nx
@@ -105,7 +107,8 @@ def si_graph_plot(
         .. [1] Muschalik, M., Baniecki, H., Fumagalli, F., Kolpaczki, P., Hammer, B., and Hüllermeier, E. (2024). shapiq: Shapley Interactions for Machine Learning. In: The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track. url: https://openreview.net/forum?id=knxGmi6SJi#discussion.
     """
     if interaction_values is None:
-        raise ValueError("Interaction_values must be provided.")
+        msg = "Interaction_values must be provided."
+        raise ValueError(msg)
 
     normal_node_size = NORMAL_NODE_SIZE * node_size_scaling
     base_size = BASE_SIZE * node_size_scaling
@@ -140,13 +143,11 @@ def si_graph_plot(
     else:  # graph is considered None
         original_graph = nx.Graph()
         graph_nodes = list(
-            set(
-                [
-                    interaction[0]
-                    for interaction in interaction_values.interaction_lookup.keys()
-                    if len(interaction) == 1
-                ]
-            )
+            {
+                interaction[0]
+                for interaction in interaction_values.interaction_lookup.keys()
+                if len(interaction) == 1
+            }
         )
         for node in graph_nodes:
             node_label = label_mapping.get(node, node) if label_mapping is not None else node
@@ -165,7 +166,7 @@ def si_graph_plot(
     interactions_to_plot = {}
     min_interaction, max_interaction = 1e10, 0.0
     for interaction, interaction_pos in interaction_values.interaction_lookup.items():
-        if (len(interaction) < min_order or len(interaction) > max_order):
+        if len(interaction) < min_order or len(interaction) > max_order:
             continue
         interaction_value = interaction_values.values[interaction_pos]
         min_interaction = min(abs(interaction_value), min_interaction)
@@ -188,14 +189,10 @@ def si_graph_plot(
 
         attributes = {
             "color": get_color(interaction_value),
-            "alpha": _normalize_value(
-                interaction_value, max_interaction, BASE_ALPHA_VALUE
-            ),
+            "alpha": _normalize_value(interaction_value, max_interaction, BASE_ALPHA_VALUE),
             "interaction": interaction,
             "weight": interaction_strength * compactness,
-            "size": _normalize_value(
-                interaction_value, max_interaction, base_size * size_factor
-            ),
+            "size": _normalize_value(interaction_value, max_interaction, base_size * size_factor),
         }
 
         # add main effect explanations as nodes
@@ -301,10 +298,12 @@ def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
     plot_edges = []
     for value in interaction_values:
         color = get_color(value)
-        node_size = abs(value)/2+1/2
-        edge_size = abs(value)/2
+        node_size = abs(value) / 2 + 1 / 2
+        edge_size = abs(value) / 2
         alpha = _normalize_value(value, 1, BASE_ALPHA_VALUE)
-        circle = axis.plot([], [], c=color, marker="o", markersize=node_size * 8, linestyle="None", alpha=alpha)
+        circle = axis.plot(
+            [], [], c=color, marker="o", markersize=node_size * 8, linestyle="None", alpha=alpha
+        )
         plot_circles.append(circle[0])
         line = axis.plot([], [], c=color, linewidth=edge_size * 6, alpha=alpha)
         plot_edges.append(line[0])
@@ -348,9 +347,10 @@ def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
     return legend1, legend2
 
 
-
 def _normalize_value(
-    value: float, max_value: float, base_value: float
+    value: float,
+    max_value: float,
+    base_value: float,
 ) -> float:
     """Scale a value between 0 and 1 based on the maximum value and a base value.
 
@@ -363,6 +363,7 @@ def _normalize_value(
 
     Returns:
         The normalized/scaled value.
+
     """
     ratio = abs(value) / abs(max_value)  # ratio is always positive in [0, 1]
     alpha = ratio * base_value
@@ -385,9 +386,9 @@ def _draw_fancy_hyper_edges(
         pos: The positions of the nodes.
         graph: The graph to draw the hyper-edges on.
         hyper_edges: The hyper-edges to draw.
+
     """
     for hyper_edge in hyper_edges:
-
         # store all paths for the hyper-edge to combine them later
         all_paths = []
 
@@ -415,7 +416,6 @@ def _draw_fancy_hyper_edges(
 
         # draw the fancy connections from the other nodes to the center node
         for player in hyper_edge:
-
             player_pos = pos[player]
 
             circle_p = mpath.Path.circle(player_pos, radius=node_size / 2)
@@ -490,6 +490,7 @@ def _draw_graph_nodes(
         graph: The graph to draw the nodes on.
         nodes: The nodes to draw. If ``None``, all nodes are drawn. Defaults to ``None``.
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
+
     """
     for node in graph.nodes:
         if nodes is not None and node not in nodes:
@@ -519,6 +520,7 @@ def _draw_explanation_nodes(
         graph: The graph to draw the nodes on.
         nodes: The nodes to draw. If ``None``, all nodes are drawn. Defaults to ``None``.
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
+
     """
     for node in graph.nodes:
         if isinstance(node, tuple):
@@ -536,7 +538,7 @@ def _draw_explanation_nodes(
 
         radius = normal_node_size / 2 + explanation_size / 2
         circle = mpath.Path.circle(position, radius=radius)
-        patch = mpatches.PathPatch(circle, facecolor='white', lw=1, edgecolor="white", alpha=1.0)
+        patch = mpatches.PathPatch(circle, facecolor="white", lw=1, edgecolor="white", alpha=1.0)
         ax.add_patch(patch)
         patch = mpatches.PathPatch(circle, facecolor=color, lw=1, edgecolor="white", alpha=alpha)
         ax.add_patch(patch)
@@ -559,6 +561,7 @@ def _draw_graph_edges(
         graph: The graph to draw the edges on.
         edges: The edges to draw. If ``None`` (default), all edges are drawn.
         normal_node_size: The size of the nodes. Defaults to ``NORMAL_NODE_SIZE``.
+
     """
     for u, v in graph.edges:
         if edges is not None and (u, v) not in edges and (v, u) not in edges:
@@ -597,6 +600,7 @@ def _draw_graph_labels(
         pos: The positions of the nodes.
         graph: The graph to draw the labels on.
         nodes: The nodes to draw the labels on. If ``None`` (default), all nodes are drawn.
+
     """
     for node in graph.nodes:
         if nodes is not None and node not in nodes:
@@ -608,9 +612,10 @@ def _draw_graph_labels(
         else:
             # offset so the text is next to the node
             offset_norm = np.sqrt(position[0] ** 2 + position[1] ** 2)
-            offset = (LABEL_OFFSET + normal_node_size) * position[0] / offset_norm, (
-                LABEL_OFFSET + normal_node_size
-            ) * position[1] / offset_norm
+            offset = (
+                (LABEL_OFFSET + normal_node_size) * position[0] / offset_norm,
+                (LABEL_OFFSET + normal_node_size) * position[1] / offset_norm,
+            )
         ax.text(
             position[0] + offset[0],
             position[1] + offset[1],
@@ -662,7 +667,9 @@ def _draw_feature_images(
 
 
 def _adjust_position(
-    pos: dict, graph: nx.Graph, normal_node_size: float = NORMAL_NODE_SIZE
+    pos: dict,
+    graph: nx.Graph,
+    normal_node_size: float = NORMAL_NODE_SIZE,
 ) -> dict:
     """Moves the nodes in the graph further apart if they are too close together."""
     # get the minimum distance between two nodes

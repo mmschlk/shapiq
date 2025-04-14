@@ -1,5 +1,7 @@
 """This test module tests all plotting utilities."""
 
+from __future__ import annotations
+
 from shapiq.plot.utils import abbreviate_feature_names, format_labels, format_value
 
 

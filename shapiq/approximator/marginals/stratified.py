@@ -1,5 +1,7 @@
 """This module contains the Stratified Sampling approximation method for the Shapley values."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -26,6 +28,7 @@ class StratifiedSamplingSV(Approximator):
 
     References:
         .. [1] Maleki, S., Tran-Thanh, L., Hines, G., Rahwan, T., and Rogers, A, (2013). Bounding the Estimation Error of Sampling-based Shapley Value Approximation With/Without Stratifying
+
     """
 
     def __init__(
@@ -37,7 +40,11 @@ class StratifiedSamplingSV(Approximator):
         self.iteration_cost: int = 2
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        *args,  # noqa ARG002,
+        **kwargs,  # noqa ARG002
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
@@ -48,8 +55,8 @@ class StratifiedSamplingSV(Approximator):
 
         Returns:
             The estimated interaction values.
-        """
 
+        """
         used_budget = 0
 
         # get value of empty coalition and grand coalition
@@ -89,7 +96,7 @@ class StratifiedSamplingSV(Approximator):
                             # draw a subset of the player set without player of size stratum
                             # uniformly at random
                             coalition_list = list(
-                                self._rng.choice(available_players, size, replace=False)
+                                self._rng.choice(available_players, size, replace=False),
                             )
                             coalition = np.zeros(self.n, dtype=bool)
                             coalition[coalition_list] = True

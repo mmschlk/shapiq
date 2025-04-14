@@ -1,5 +1,7 @@
 """This module contains the base approximator classes for the shapiq package."""
 
+from __future__ import annotations
+
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -72,10 +74,11 @@ class Approximator(ABC):
         self.index: str = index
         self.approximation_index: str = get_computation_index(index)
         if self.approximation_index not in AVAILABLE_INDICES_FOR_APPROXIMATION:
-            raise ValueError(
+            msg = (
                 f"Index {self.index} cannot be approximated. Available indices are"
                 f"{AVAILABLE_INDICES_FOR_APPROXIMATION}."
             )
+            raise ValueError(msg)
 
         # get approximation parameters
         self.n: int = n
@@ -87,7 +90,9 @@ class Approximator(ABC):
         self._grand_coalition_array: np.ndarray = np.arange(self.n + 1, dtype=int)
         self.iteration_cost: int = 1  # default value, can be overwritten by subclasses
         self._interaction_lookup = generate_interaction_lookup(
-            self.n, self.min_order, self.max_order
+            self.n,
+            self.min_order,
+            self.max_order,
         )
 
         # set up random state and random number generators
@@ -106,14 +111,21 @@ class Approximator(ABC):
         )
 
     def __call__(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        **kwargs,
     ) -> InteractionValues:
         """Calls the approximate method."""
-        return self.approximate(budget=budget, game=game, *args, **kwargs)
+        return self.approximate(budget=budget, game=game, **kwargs)
 
     @abstractmethod
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        *args,
+        **kwargs,
     ) -> InteractionValues:
         """Approximates the interaction values. Abstract method that needs to be implemented for
         each approximator.
@@ -127,9 +139,11 @@ class Approximator(ABC):
 
         Raises:
             NotImplementedError: If the method is not implemented.
+
         """
+        msg = "The approximate method must be implemented in the subclass."
         raise NotImplementedError(
-            "The approximate method must be implemented in the subclass."
+            msg,
         )  # pragma: no cover
 
     def _init_sampling_weights(self) -> np.ndarray:
@@ -140,10 +154,10 @@ class Approximator(ABC):
 
         Returns:
             The weights for sampling subsets of size ``s`` in shape ``(n + 1,)``.
+
         """
         weight_vector = np.zeros(shape=self.n + 1)
         if self.index in ["FBII"]:
-
             try:
                 for coalition_size in range(0, self.n + 1):
                     weight_vector[coalition_size] = binom(self.n, coalition_size) / 2**self.n
@@ -155,7 +169,8 @@ class Approximator(ABC):
                         * np.exp(-(coalition_size - self.n / 2) * +2 / (self.n / 2))
                     )
                 warnings.warn(
-                    "The weights are approximated for n > 1000. While this is very close to the truth for sets for size in the region n/2, the approximation is not exact for size n or 0."
+                    "The weights are approximated for n > 1000. While this is very close to the truth for sets for size in the region n/2, the approximation is not exact for size n or 0.",
+                    stacklevel=2,
                 )
         else:
             for coalition_size in range(0, self.n + 1):
@@ -177,6 +192,7 @@ class Approximator(ABC):
 
         Returns:
             The result array.
+
         """
         result = np.zeros(len(self._interaction_lookup), dtype=dtype)
         return result
@@ -187,6 +203,7 @@ class Approximator(ABC):
 
         Returns:
             The iterator.
+
         """
         return range(self.min_order, self.max_order + 1)
 
@@ -202,6 +219,7 @@ class Approximator(ABC):
 
         Returns:
             int, int: The number of iterations and the size of the last batch.
+
         """
         n_iterations = budget // (iteration_cost * batch_size)
         last_batch_size = batch_size
@@ -230,7 +248,8 @@ class Approximator(ABC):
     def __eq__(self, other: object) -> bool:
         """Checks if two Approximator objects are equal."""
         if not isinstance(other, Approximator):
-            raise ValueError("Cannot compare Approximator with other types.")
+            msg = "Cannot compare Approximator with other types."
+            raise ValueError(msg)
         if (
             self.n != other.n
             or self.max_order != other.max_order
@@ -272,6 +291,7 @@ class Approximator(ABC):
 
         Returns:
             The aggregated interaction values.
+
         """
         from shapiq.game_theory.aggregation import aggregate_base_interaction
 

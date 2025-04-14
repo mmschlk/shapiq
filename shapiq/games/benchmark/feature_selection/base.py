@@ -1,5 +1,7 @@
 """This module contains the metaclass for all FeatureSelection benchmark games."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from typing import Any
 
@@ -38,6 +40,7 @@ class FeatureSelection(Game):
 
     Attributes:
         empty_features_value: The value to return when the subset of features is empty.
+
     """
 
     def __init__(
@@ -55,7 +58,6 @@ class FeatureSelection(Game):
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
-
         self.empty_features_value = empty_features_value
         super().__init__(
             x_train.shape[1],
@@ -73,10 +75,11 @@ class FeatureSelection(Game):
         # sanity check on  input params
         if score_function is None:
             if loss_function is None or predict_function is None:
-                raise ValueError(
+                msg = (
                     "If score function is not provided, then 'predict_function' and 'loss_function'"
                     " must be provided."
                 )
+                raise ValueError(msg)
 
         # setup callables
         self._fit_function = fit_function
@@ -97,6 +100,7 @@ class FeatureSelection(Game):
 
         Returns:
             A vector of loss function values given the subset of features.
+
         """
         scores = np.zeros(shape=coalitions.shape[0], dtype=float)
         for i in range(len(coalitions)):

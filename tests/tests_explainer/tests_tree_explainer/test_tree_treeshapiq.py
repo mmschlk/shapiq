@@ -1,5 +1,7 @@
 """This module contains all tests for the TreeExplainer class of the shapiq package."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -142,7 +144,7 @@ def test_no_bug_with_one_feature_tree():
             [1, 1, 1, 2],
             [2, 1, 1, 1],
             [3, 2, 1, 1],
-        ]
+        ],
     )
 
     # Define simple one feature tree

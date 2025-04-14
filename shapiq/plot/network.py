@@ -1,5 +1,7 @@
 """This module contains the network plots for the shapiq package."""
 
+from __future__ import annotations
+
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -51,6 +53,7 @@ def network_plot(
         .. [1] Muschalik, M., Fumagalli, F., Hammer, B., & Hüllermeier, E. (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
 
         .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766–778.
+
     """
     from . import si_graph_plot
 

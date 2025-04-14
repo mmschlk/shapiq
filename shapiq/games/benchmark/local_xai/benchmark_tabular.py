@@ -1,5 +1,7 @@
 """This module contains tabular benchmark games for local explanation."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.benchmark.local_xai.base import LocalExplanation
@@ -21,6 +23,7 @@ class AdultCensus(LocalExplanation):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -36,9 +39,8 @@ class AdultCensus(LocalExplanation):
     ) -> None:
         # validate the inputs
         if isinstance(class_to_explain, int) and class_to_explain not in [0, 1]:
-            raise ValueError(
-                f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}."
-            )
+            msg = f"Invalid class label provided. Should be 0 or 1 but got {class_to_explain}."
+            raise ValueError(msg)
 
         self.setup = GameBenchmarkSetup(
             dataset_name="adult_census",
@@ -83,6 +85,7 @@ class BikeSharing(LocalExplanation):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -95,7 +98,6 @@ class BikeSharing(LocalExplanation):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
-
         self.setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
@@ -134,6 +136,7 @@ class CaliforniaHousing(LocalExplanation):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -146,7 +149,6 @@ class CaliforniaHousing(LocalExplanation):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
-
         self.setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,

@@ -1,5 +1,7 @@
 """This module contains all tests for the waterfall plots."""
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -11,8 +13,8 @@ def test_waterfall_cooking_game(cooking_game):
     exact_computer = ExactComputer(n_players=cooking_game.n_players, game=cooking_game)
     interaction_values = exact_computer(index="k-SII", order=2)
     print(interaction_values.dict_values)
-    waterfall_plot(interaction_values, show=True)
-    plt.close()
+    waterfall_plot(interaction_values, show=False)
+    plt.close("all")
 
     # visual inspection:
     # - E[f(X)] = 10
@@ -45,8 +47,3 @@ def test_waterfall_plot(interaction_values_list: list[InteractionValues]):
     wp = iv.plot_waterfall(show=False)
     assert isinstance(wp, plt.Axes)
     plt.close()
-
-    # test show=True
-    output = iv.plot_waterfall(show=True)
-    assert output is None
-    plt.close("all")

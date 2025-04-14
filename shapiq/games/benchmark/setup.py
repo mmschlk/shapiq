@@ -1,5 +1,7 @@
 """This module contains a setup for the tabular benchmark games."""
 
+from __future__ import annotations
+
 import copy
 
 import numpy as np
@@ -91,6 +93,7 @@ class GameBenchmarkSetup:
         >>> setup.n_features
         14
         >>> setup.fit_function # returns a callable
+
     """
 
     def __init__(
@@ -118,10 +121,11 @@ class GameBenchmarkSetup:
             x_data, y_data = load_california_housing()
             self.feature_names: list = list(x_data.columns)
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid dataset name {dataset_name}. Available datasets are 'adult_census', "
                 "'bike_sharing', 'california_housing'."
             )
+            raise ValueError(msg)
 
         self.dataset_name: str = dataset_name
 
@@ -176,7 +180,8 @@ class GameBenchmarkSetup:
 
         # check if the model is loaded
         if self.model is None and model_name is not None:
-            raise ValueError(f"Invalid model name {model_name} for the {dataset_name} dataset.")
+            msg = f"Invalid model name {model_name} for the {dataset_name} dataset."
+            raise ValueError(msg)
 
         # set up the functions
         if self.dataset_type == "classification" and model_name is not None:
@@ -224,7 +229,8 @@ class GameBenchmarkSetup:
     def init_random_forest_classifier(self):
         """Initializes and trains a random forest model for a classification dataset."""
         self.model = RandomForestClassifier(
-            n_estimators=self._random_forest_n_estimators, random_state=self.random_state
+            n_estimators=self._random_forest_n_estimators,
+            random_state=self.random_state,
         )
         self.model.fit(self.x_train, self.y_train)
 
@@ -271,7 +277,6 @@ class GameBenchmarkSetup:
 
 def _accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Returns the accuracy score of the model."""
-
     if y_true.ndim > 1:
         y_true = np.argmax(y_true, axis=1)
     if y_pred.ndim > 1:
@@ -291,6 +296,7 @@ def get_x_explain(x: np.ndarray | int | None, x_set: np.ndarray) -> np.ndarray:
 
     Returns:
         The data point to explain as a numpy array.
+
     """
     if x is None:
         x = x_set[np.random.randint(0, x_set.shape[0])]

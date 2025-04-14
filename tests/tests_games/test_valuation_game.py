@@ -1,5 +1,7 @@
 """This module contains the tests for the `DatasetValuationGame` class."""
 
+from __future__ import annotations
+
 import os
 
 import numpy as np
@@ -18,7 +20,6 @@ from shapiq.games.benchmark import (
 
 def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
     """This function tests the setup and logic of the game."""
-
     n_players = 4
     player_sizes = [0.25, 0.25, 0.4, 0.1]
     test_coalitions = [[0, 0, 0, 0], [1, 0, 0, 0], [1, 1, 0, 1], [1, 1, 1, 1]]
@@ -189,7 +190,6 @@ def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
 
 def test_california():
     """Tests the california housing Dataset Valuation Benchmark game."""
-
     game = CaliforniaHousingDatasetValuation()
     assert game.n_players == 10  # Default Value
     assert game.normalization_value == 0.0  # Default Value
@@ -216,7 +216,6 @@ def test_california():
 
 def test_bike():
     """Tests the bike sharing Dataset Valuation Benchmark game."""
-
     game = BikeSharingDatasetValuation()
     assert game.n_players == 10  # Default Value
     assert game.normalization_value == 0.0  # Default Value
@@ -243,7 +242,6 @@ def test_bike():
 
 def test_adult_census():
     """Tests the adult census Dataset Valuation Benchmark game."""
-
     game = AdultCensusDatasetValuation()
     assert game.n_players == 10  # Default Value
     assert game.normalization_value == 0.0  # Default Value

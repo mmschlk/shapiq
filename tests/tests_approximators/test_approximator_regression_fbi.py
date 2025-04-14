@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the FSII regression approximator."""
 
+from __future__ import annotations
+
 from copy import copy, deepcopy
 
 import numpy as np
@@ -44,7 +46,6 @@ def test_initialization(n, max_order):
 
 def test_extreme_weight_initialisation():
     """Tests if the attributes and properties of approximators are set correctly."""
-
     # In local tests this number still did not trigger an OverflowError
     n_players = 1000
     game = DummyGame(n=n_players, interaction=(1, 2))
@@ -80,7 +81,6 @@ def test_approximate_fbii(paper_game):
     """Tests the approximation of the RegressionFBII approximator to be equal to the results from
     http://jmlr.org/papers/v24/22-0202.html.
     """
-
     n_players = 11
     game = paper_game
     approximator = RegressionFBII(n=n_players, max_order=2)

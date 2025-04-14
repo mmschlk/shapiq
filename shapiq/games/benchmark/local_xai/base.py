@@ -1,5 +1,7 @@
 """This module contains all tabular machine learning games."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -62,6 +64,7 @@ class LocalExplanation(Game):
         >>> game.save_values("values.npz")
         >>> from shapiq.games import Game
         >>> new_game_from_values = Game(path_to_values="values.npz")
+
     """
 
     def __init__(
@@ -75,7 +78,6 @@ class LocalExplanation(Game):
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
-
         # get x_explain
         self.x = get_x_explain(x, data)
 
@@ -93,7 +95,9 @@ class LocalExplanation(Game):
             elif imputer == "conditional":
                 # use only a random subset of the data for the conditional imputer
                 random_indices = np.random.default_rng(random_state).choice(
-                    data.shape[0], size=2_000, replace=False
+                    data.shape[0],
+                    size=2_000,
+                    replace=False,
                 )
                 data_background = data[random_indices]
                 self._imputer = ConditionalImputer(
@@ -105,9 +109,8 @@ class LocalExplanation(Game):
                     normalize=False,
                 )
             else:
-                raise ValueError(
-                    f"Imputer {imputer} not available. Choose from {'marginal', 'conditional'}."
-                )
+                msg = f"Imputer {imputer} not available. Choose from {'marginal', 'conditional'}."
+                raise ValueError(msg)
 
         self.empty_prediction_value: float = self._imputer.empty_prediction
 
@@ -127,5 +130,6 @@ class LocalExplanation(Game):
 
         Returns:
             The output of the model on feature subsets.
+
         """
         return self._imputer(coalitions)

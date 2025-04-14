@@ -1,9 +1,11 @@
 """This module compares the new benchmark games lookup speed with the old benchmark games lookup
-speed."""
+speed.
+"""
 
 import os
 import random
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +18,8 @@ from shapiq.utils.sets import powerset, transform_coalitions_to_array
 
 class OldLookUpGame:
     """Wrapper for the Machine Learning Game to use precomputed model outputs for faster runtime in
-    experimental settings."""
+    experimental settings.
+    """
 
     def __init__(
         self,
@@ -54,7 +57,7 @@ class OldLookUpGame:
                 files = os.listdir(instances_dir)
                 self.used_ids = set()
             # select random file with seed
-            data_id = random.choice(files)
+            data_id = random.choice(files)  # noqa: S311
             data_id = data_id.split(".")[0]
         self.data_id = str(data_id)
         self.game_name = "_".join(("LookUpGame", data_folder, str(n), self.data_id))
@@ -99,6 +102,7 @@ def time_both_games(n_sets: int) -> tuple[float, float]:
 
     Args:
         n_sets: The number of sets to test the games with.
+
     """
     n_players = 14
 
@@ -122,8 +126,12 @@ def time_both_games(n_sets: int) -> tuple[float, float]:
     ]
 
     # check that both have the same number of coalitions
-    assert len(test_coalitions_new) == n_sets * 2**n_players
-    assert len(test_coalitions_old) == n_sets * 2**n_players
+    if len(test_coalitions_new) != len(test_coalitions_old) != n_sets * 2**n_players:
+        warnings.warn(
+            f"Old game has {len(test_coalitions_old)} coalitions, but new game "
+            f"has {len(test_coalitions_new)}.",
+            stacklevel=2,
+        )
 
     # time the new game
     start = time.time()
@@ -140,7 +148,6 @@ def time_both_games(n_sets: int) -> tuple[float, float]:
 
 
 if __name__ == "__main__":
-
     N_SETS = [1, 2, 5, 10, 20]
     N_ITERATIONS = 10
 

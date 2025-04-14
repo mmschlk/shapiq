@@ -1,5 +1,7 @@
 """This module contains the Base Regression approximator to compute SII and k-SII of arbitrary max_order."""
 
+from __future__ import annotations
+
 import copy
 from collections.abc import Callable
 
@@ -32,6 +34,7 @@ class Regression(Approximator):
             be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
             of a certain size. Defaults to ``None``.
         random_state: The random state to use for the approximation. Defaults to ``None``.
+
     """
 
     def __init__(
@@ -45,10 +48,11 @@ class Regression(Approximator):
         random_state: int | None = None,
     ):
         if index not in AVAILABLE_INDICES_REGRESSION:
-            raise ValueError(
+            msg = (
                 f"Index {index} not available for Regression Approximator. Choose from "
                 f"{AVAILABLE_INDICES_REGRESSION}."
             )
+            raise ValueError(msg)
         super().__init__(
             n,
             min_order=0,
@@ -75,6 +79,7 @@ class Regression(Approximator):
 
         Returns:
             The weights for sampling subsets of size s in shape (n + 1,).
+
         """
         # vector that determines the kernel weights for the regression
         weight_vector = np.zeros(shape=self.n + 1)
@@ -94,16 +99,17 @@ class Regression(Approximator):
                         * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
                     )
             return weight_vector
+        msg = f"Index {self.index} not available for Regression Approximator."
         raise ValueError(
-            f"Index {self.index} not available for Regression Approximator."
+            msg,
         )  # pragma: no cover
 
     def approximate(
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        *args,
-        **kwargs,
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
     ) -> InteractionValues:
         """The main approximation routine for the regression approximators.
 
@@ -122,8 +128,8 @@ class Regression(Approximator):
 
         Returns:
             The `InteractionValues` object containing the estimated interaction values.
-        """
 
+        """
         # initialize the kernel weights
         kernel_weights_dict = {}
         for interaction_size in range(1, self.max_order + 1):
@@ -141,7 +147,8 @@ class Regression(Approximator):
 
         if index_approximation == "SII" and self._sii_consistent:
             shapley_interactions_values = self.kernel_shap_iq_routine(
-                kernel_weights_dict=kernel_weights_dict, game_values=game_values
+                kernel_weights_dict=kernel_weights_dict,
+                game_values=game_values,
             )
         else:
             shapley_interactions_values = self.regression_routine(
@@ -167,7 +174,9 @@ class Regression(Approximator):
         return finalize_computed_interactions(interactions, target_index=self.index)
 
     def kernel_shap_iq_routine(
-        self, kernel_weights_dict: dict, game_values: np.ndarray
+        self,
+        kernel_weights_dict: dict,
+        game_values: np.ndarray,
     ) -> np.ndarray[float]:
         """The main regression routine for the KernelSHAP-IQ approximator.
 
@@ -184,8 +193,8 @@ class Regression(Approximator):
 
         Returns:
             The approximated SII values of the KernelSHAP-IQ routine
-        """
 
+        """
         coalitions_matrix = self._sampler.coalitions_matrix
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
         coalitions_size = np.sum(coalitions_matrix, axis=1)
@@ -198,7 +207,8 @@ class Regression(Approximator):
         sii_values = np.array([empty_coalition_value])
 
         regression_coefficient_weight = self._get_regression_coefficient_weights(
-            max_order=self.max_order, index="SII"
+            max_order=self.max_order,
+            index="SII",
         )
 
         # iterate over the interaction sizes and compute the sii values via the WLSQ regression
@@ -233,7 +243,8 @@ class Regression(Approximator):
                     coalitions_size > self.n - interaction_size
                 )
                 weights_from_ground_truth = self._get_ground_truth_sii_weights(
-                    coalitions_matrix[ground_truth_weights_indicator], interaction_size
+                    coalitions_matrix[ground_truth_weights_indicator],
+                    interaction_size,
                 )
                 sii_values_current_size_minus = np.dot(
                     weights_from_ground_truth.T,
@@ -283,13 +294,15 @@ class Regression(Approximator):
 
         Returns:
             A numpy array of the approximated interaction values.
+
         """
         coalitions_matrix = self._sampler.coalitions_matrix
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
         empty_coalition_value = float(game_values[np.sum(coalitions_matrix, axis=1) == 0][0])
         regression_response = game_values - empty_coalition_value
         regression_coefficient_weight = self._get_regression_coefficient_weights(
-            max_order=self.max_order, index=index_approximation
+            max_order=self.max_order,
+            index=index_approximation,
         )
 
         regression_matrix, regression_weights = _get_regression_matrices(
@@ -318,12 +331,13 @@ class Regression(Approximator):
         """Pre-computes the regression coefficient weights based on the index and the max_order.
         Bernoulli weights for SII and kADD-SHAP. Binary weights for FSI.
 
-           Args:
+        Args:
                 max_order: The highest interaction size considered
                 index: The interaction index
 
-           Returns:
+        Returns:
                An array of the regression coefficient weights.
+
         """
         if index == "SII":
             return self._get_bernoulli_weights(max_order=max_order)
@@ -337,7 +351,8 @@ class Regression(Approximator):
                 # 1 if interaction is fully contained, else 0.
                 weights[interaction_size, interaction_size] = 1
             return weights
-        raise ValueError(f"Index {index} not valid in Regression Approximator.")  # pragma: no cover
+        msg = f"Index {index} not valid in Regression Approximator."
+        raise ValueError(msg)  # pragma: no cover
 
     def _get_bernoulli_weights(self, max_order: int) -> np.ndarray:
         """Pre-computes and array of Bernoulli weights for a given max_order.
@@ -348,12 +363,14 @@ class Regression(Approximator):
         Returns:
             An array of the (regression coefficient) Bernoulli weights for all interaction sizes up
                 to the max_order.
+
         """
         bernoulli_weights = np.zeros((max_order + 1, max_order + 1))
         for interaction_size in range(1, max_order + 1):
             for intersection_size in range(interaction_size + 1):
                 bernoulli_weights[interaction_size, intersection_size] = self._bernoulli_weights(
-                    intersection_size, interaction_size
+                    intersection_size,
+                    interaction_size,
                 )
         return bernoulli_weights
 
@@ -366,12 +383,14 @@ class Regression(Approximator):
         Returns:
             An array of the (regression coefficient) Bernoulli weights for all interaction sizes up
                 to the max_order.
+
         """
         bernoulli_weights = np.zeros((max_order + 1, max_order + 1))
         for interaction_size in range(max_order + 1):
             for intersection_size in range(interaction_size + 1):
                 bernoulli_weights[interaction_size, intersection_size] = self._kadd_weights(
-                    intersection_size, interaction_size
+                    intersection_size,
+                    interaction_size,
                 )
         return bernoulli_weights
 
@@ -387,6 +406,7 @@ class Regression(Approximator):
 
         Returns:
             The weight of SII in the k-additive approximation.
+
         """
         weight = 0
         for sum_index in range(1, intersection_size + 1):
@@ -409,6 +429,7 @@ class Regression(Approximator):
 
         Returns:
             The weight of SII in the k-additive approximation.
+
         """
         weight = 0
         for sum_index in range(intersection_size + 1):
@@ -427,8 +448,8 @@ class Regression(Approximator):
 
         Returns:
             An array of weights with weights per coalition and per interaction
-        """
 
+        """
         coalition_sizes = np.unique(np.sum(coalitions, axis=1))
 
         ground_truth_sii_weights = np.zeros((len(coalition_sizes), interaction_size + 1))
@@ -441,31 +462,40 @@ class Regression(Approximator):
             ):
                 ground_truth_sii_weights[coalition_size_pos, intersection_size] = (
                     self._ground_truth_sii_weight(
-                        coalition_size, interaction_size, intersection_size
+                        coalition_size,
+                        interaction_size,
+                        intersection_size,
                     )
                 )
 
         # Compute ground truth weights
         coalitions_sii_weights = np.zeros(
-            (np.shape(coalitions)[0], int(binom(self.n, interaction_size))), dtype=float
+            (np.shape(coalitions)[0], int(binom(self.n, interaction_size))),
+            dtype=float,
         )
 
         for coalition_pos, coalition in enumerate(coalitions):
             coalition_size = np.sum(coalition)
             for interaction_pos, interaction in enumerate(
                 powerset(
-                    self._grand_coalition_set, min_size=interaction_size, max_size=interaction_size
-                )
+                    self._grand_coalition_set,
+                    min_size=interaction_size,
+                    max_size=interaction_size,
+                ),
             ):
                 intersection_size = np.sum(coalition[list(interaction)])
                 coalitions_sii_weights[coalition_pos, interaction_pos] = ground_truth_sii_weights[
-                    list(coalition_sizes).index(coalition_size), intersection_size
+                    list(coalition_sizes).index(coalition_size),
+                    intersection_size,
                 ]
 
         return coalitions_sii_weights
 
     def _ground_truth_sii_weight(
-        self, coalition_size: int, interaction_size: int, intersection_size: int
+        self,
+        coalition_size: int,
+        interaction_size: int,
+        intersection_size: int,
     ) -> float:
         """Returns the ground truth SII weight for a given coalition size, interaction size and
             its intersection size.
@@ -477,6 +507,7 @@ class Regression(Approximator):
 
         Returns:
             The ground truth SII weight
+
         """
         return (-1) ** (interaction_size - intersection_size) / (
             (self.n - interaction_size + 1)
@@ -504,6 +535,7 @@ def _get_regression_matrices(
 
     Returns:
         A tuple containing the regression matrix and the regression weights.
+
     """
     # Step 1: Precompute interactions masks
     interaction_masks = []
@@ -545,6 +577,7 @@ def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: np.ndarray) -
 
     Returns:
         The solution to the regression problem.
+
     """
     try:
         # try solving via solve function

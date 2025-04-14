@@ -1,5 +1,7 @@
 """This test module tests base functionality of imputers."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

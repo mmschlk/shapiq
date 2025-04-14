@@ -1,5 +1,7 @@
 """This test module tests the TreeSHAP-IQ explanation games."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -28,7 +30,6 @@ def test_random_forest_selection(
     background_reg_dataset,
 ):
     """Tests the base TreeSHAP-IQ explanation game."""
-
     # start with classification model
     if task == "clf":
         model = dt_clf_model

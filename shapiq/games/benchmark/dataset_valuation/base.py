@@ -1,5 +1,7 @@
 """This module contains the data valuation games for the shapiq benchmark."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -34,6 +36,7 @@ class DatasetValuation(Game):
         random_state: The random state to use for all random operations. Defaults to 42.
         normalize: Whether the game values should be normalized. Defaults to `True`.
         empty_data_value: The worth of an empty subset of data. Defaults to 0.0.
+
     """
 
     def __init__(
@@ -54,7 +57,6 @@ class DatasetValuation(Game):
         verbose: bool = False,
         empty_data_value: float = 0.0,
     ) -> None:
-
         # check if all required functions are given, otherwise
         if (
             x_train is None
@@ -63,10 +65,11 @@ class DatasetValuation(Game):
             or loss_function is None
             or predict_function is None
         ):
-            raise ValueError(
+            msg = (
                 "The 'data', 'target', 'fit_function', 'predict_function', and 'loss_function' "
                 "must be provided."
             )
+            raise ValueError(msg)
 
         if isinstance(player_sizes, str):
             if player_sizes == "uniform":
@@ -76,8 +79,9 @@ class DatasetValuation(Game):
             elif player_sizes == "random":
                 player_sizes = np.random.rand(n_players)
             else:
+                msg = "player_sizes must be 'uniform', 'increasing', 'random', or a list."
                 raise ValueError(
-                    "player_sizes must be 'uniform', 'increasing', 'random', or a list."
+                    msg,
                 )
         elif player_sizes is None:
             player_sizes = [1 / n_players for _ in range(n_players)]
@@ -90,7 +94,8 @@ class DatasetValuation(Game):
         # get the holdout set (if not provided)
         if x_test is None or y_test is None:
             if isinstance(x_train, list):
-                raise ValueError("x_test and y_test must be provided if x_train is a list.")
+                msg = "x_test and y_test must be provided if x_train is a list."
+                raise ValueError(msg)
             # randomly split the data into training and test set
             idx = rng.permutation(np.arange(x_train.shape[0]))
             x_train, y_train = x_train[idx], y_train[idx]
@@ -147,6 +152,7 @@ class DatasetValuation(Game):
 
         Returns:
             The worth of the coalition.
+
         """
         worth = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):

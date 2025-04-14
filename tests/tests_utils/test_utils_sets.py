@@ -1,5 +1,7 @@
 """This test module contains the test cases for the utils sets module."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

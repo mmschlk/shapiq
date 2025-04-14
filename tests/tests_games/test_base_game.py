@@ -1,5 +1,7 @@
 """This test module contains all tests for the base game class in the shapiq package."""
 
+from __future__ import annotations
+
 import os
 
 import numpy as np
@@ -26,7 +28,8 @@ def test_call():
 
     n_players = 6
     test_game = TestGame(
-        n=n_players, player_names=["Alice", "Bob", "Charlie", "David", "Eve", "Frank"]
+        n=n_players,
+        player_names=["Alice", "Bob", "Charlie", "David", "Eve", "Frank"],
     )
 
     # assert that player names are correctly stored
@@ -140,7 +143,6 @@ def test_precompute():
 
 def test_core_functions():
     """This test tests the core functions of the base game class object."""
-
     n_players = 6
     dummy_game = DummyGame(n=n_players, interaction=(0, 1))
 
@@ -175,7 +177,6 @@ def test_lookup_vs_run():
 
 def test_load_and_save():
     """This test tests the save and load functions of the base game class object."""
-
     dummy_game = DummyGame(n=4, interaction=(0, 1))
     dummy_game.precompute()
     path = "dummy_game.pkl"
@@ -297,7 +298,6 @@ def test_save_and_load_with_normalization():
 
 def test_progress_bar():
     """Tests the progress bar of the game class."""
-
     dummy_game = DummyGame(n=5, interaction=(0, 1))
 
     test_coalitions = list(powerset(range(dummy_game.n_players)))
@@ -321,7 +321,6 @@ def test_abstract_game():
 
 def test_exact_computer_call():
     """Tests the call to the exact computer in the game class."""
-
     game = DummyGame(n=4, interaction=(0, 1))
 
     index = "SII"

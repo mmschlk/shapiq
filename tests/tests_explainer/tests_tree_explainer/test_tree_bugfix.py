@@ -1,5 +1,7 @@
 """This test module contains all tests for bugfixes regarding TreeSHAP-IQ."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -8,7 +10,6 @@ from shapiq.explainer.tree import TreeExplainer, TreeModel, TreeSHAPIQ
 
 def test_bike_bug():
     """A test for the bug denoted in GH #118. Should be fixed."""
-
     children_left = [
         1,
         2,
@@ -233,7 +234,7 @@ def test_bike_bug():
             6.0,
             0.0,
             0.0,
-        ]
+        ],
     )
 
     tree_explainer = TreeSHAPIQ(model=tree_model, index="SII", max_order=2, min_order=1)
@@ -283,7 +284,6 @@ def test_xgb_predicts_with_wrong_leaf_node():
     node with the xgboost model. We are parsing the xgboost model and creating our tree model
     representation, where we correctly predict with the left leave node.
     """
-
     from sklearn.datasets import make_regression
     from xgboost import XGBRegressor
 

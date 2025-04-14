@@ -1,6 +1,9 @@
 """This module contains the DummyGame class. The DummyGame class is mainly used for testing
 purposes. It returns the size of the coalition divided by the number of players plus an additional
-interaction term."""
+interaction term.
+"""
+
+from __future__ import annotations
 
 import numpy as np
 
@@ -30,6 +33,7 @@ class DummyGame(Game):
         >>> coalitions = np.array(coalitions).astype(bool)
         >>> game(coalitions)
         array([0., 0.25 , 1.5, 2])
+
     """
 
     def __init__(self, n: int, interaction: set | tuple = ()):
@@ -50,8 +54,8 @@ class DummyGame(Game):
 
         Returns:
             The worth of the coalition.
-        """
 
+        """
         worth = np.sum(coalitions, axis=1) / self.n
         if len(self.interaction) > 0:
             interaction = coalitions[:, self.interaction]

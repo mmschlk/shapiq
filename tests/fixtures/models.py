@@ -1,5 +1,7 @@
 """This fixtures module contains model fixtures for the tests."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from sklearn.ensemble import IsolationForest, RandomForestClassifier, RandomForestRegressor
@@ -94,7 +96,7 @@ def _sequential_model(output_shape_nr, background_reg_dataset) -> Model:
             keras.layers.Input(shape=(NR_FEATURES,)),
             keras.layers.Dense(2, activation="relu", name="layer1"),
             keras.layers.Dense(output_shape_nr, name="layer2"),
-        ]
+        ],
     )
     model.compile(optimizer="adam", loss="mse")
     X, y = background_reg_dataset

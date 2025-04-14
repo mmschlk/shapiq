@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 if __name__ == "__main__":
-
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
         BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS,
@@ -72,12 +71,12 @@ if __name__ == "__main__":
                 if not precompute:
                     print(
                         f"Skipping pre-computation for game: {game_name} as it should not be "
-                        f"pre-computed."
+                        f"pre-computed.",
                     )
                     continue
                 if n_players > max_n_players:
                     continue
-                for i, config in enumerate(player_id_configs):
+                for _, config in enumerate(player_id_configs):
                     print()
                     print(f"Pre-computing game: {game_name}, config {config}.")
                     pre_compute_from_configuration(

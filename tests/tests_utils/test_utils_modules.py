@@ -1,5 +1,7 @@
 """This test module contains tests for utils.modules."""
 
+from __future__ import annotations
+
 import pytest
 from sklearn.tree import DecisionTreeRegressor
 
@@ -12,7 +14,8 @@ def test_safe_isinstance():
 
     assert safe_isinstance(model, "sklearn.tree.DecisionTreeRegressor")
     assert safe_isinstance(
-        model, ["sklearn.tree.DecisionTreeClassifier", "sklearn.tree.DecisionTreeRegressor"]
+        model,
+        ["sklearn.tree.DecisionTreeClassifier", "sklearn.tree.DecisionTreeRegressor"],
     )
     assert safe_isinstance(model, ("sklearn.tree.DecisionTreeRegressor",))
     with pytest.raises(ValueError):

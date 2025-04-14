@@ -1,5 +1,7 @@
 """Regression with Shapley interaction index (SII) approximation."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from ._base import Regression
@@ -57,10 +59,11 @@ class KernelSHAPIQ(Regression):
         random_state: int | None = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
-            raise ValueError(
+            msg = (
                 f"Index {index} not available for KernelSHAP-IQ. Choose from "
                 f"{AVAILABLE_INDICES_KERNELSHAPIQ}."
             )
+            raise ValueError(msg)
         super().__init__(
             n,
             max_order,
@@ -105,6 +108,7 @@ class InconsistentKernelSHAPIQ(Regression):
     References:
         .. [1] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., and Hammer, B. (2024). KernelSHAP-IQ: Weighted Least Square Optimization for Shapley Interactions. In Proceedings of the 41 st International Conference on Machine Learning. url: https://openreview.net/forum?id=d5jXW2H4gg
         .. [2] Pelegrina, G. D., Duarte, L. T., Grabisch, M. (2023). A k-additive Choquet integral-based approach to approximate the SHAP values for local interpretability in machine learning. In Artificial Intelligence 325, pp. 104014. doi: https://doi.org/10.1016/j.artint.2023.104014.
+
     """
 
     def __init__(
@@ -117,9 +121,12 @@ class InconsistentKernelSHAPIQ(Regression):
         random_state: int | None = None,
     ) -> None:
         if index not in AVAILABLE_INDICES_KERNELSHAPIQ:
-            raise ValueError(
+            msg = (
                 f"Index {index} not available for KernelSHAP-IQ. Choose from "
                 f"{AVAILABLE_INDICES_KERNELSHAPIQ}."
+            )
+            raise ValueError(
+                msg,
             )
         super().__init__(
             n,

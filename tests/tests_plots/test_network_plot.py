@@ -1,5 +1,7 @@
 """This module contains all tests for the network plots."""
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -11,8 +13,6 @@ from shapiq.plot import network_plot
 
 def test_network_plot():
     """Tests whether the network plot can be created."""
-
-    # test with InteractionValues object
     n_players = 5
     n_values = n_players + int(sp.special.binom(n_players, 2))
     iv = InteractionValues(

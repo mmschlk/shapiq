@@ -1,5 +1,4 @@
-"""This script pre-computes the games provided the benchmark configurations for certain parameters.
-"""
+"""This script pre-computes the games provided the benchmark configurations for certain parameters."""
 
 import argparse
 import sys
@@ -10,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 if __name__ == "__main__":
-
     from shapiq.games.benchmark.benchmark_config import (
         BENCHMARK_CONFIGURATIONS,
         BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS,
@@ -31,7 +29,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     game_choices = list(GAME_NAME_TO_CLASS_MAPPING.keys())
     parser.add_argument(
-        "--game", type=str, required=False, choices=game_choices, default=default_game
+        "--game",
+        type=str,
+        required=False,
+        choices=game_choices,
+        default=default_game,
     )
     parser.add_argument(
         "--config_id",
@@ -58,7 +60,7 @@ if __name__ == "__main__":
 
     print(
         f"Pre-computing game data for {game}, configuration ID: {config_id}, player ID: "
-        f"{n_player_id}, n_jobs: {n_jobs}, verbose: {verbose}."
+        f"{n_player_id}, n_jobs: {n_jobs}, verbose: {verbose}.",
     )
 
     if verbose:
@@ -71,14 +73,18 @@ if __name__ == "__main__":
     all_game_configs = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"]
     n_configs = len(all_game_configs)
     if config_id < 1 or config_id > n_configs:
-        raise ValueError(
+        msg = (
             f"Invalid configuration ID. Must be in [1, {n_configs}] for game {game} which has "
             f"{all_game_configs} configurations."
         )
+        raise ValueError(msg)
 
     game_config = all_game_configs[config_id - 1]
 
     # run the pre-computation
     pre_compute_from_configuration(
-        game_class, configuration=game_config, n_player_id=n_player_id, n_jobs=n_jobs
+        game_class,
+        configuration=game_config,
+        n_player_id=n_player_id,
+        n_jobs=n_jobs,
     )

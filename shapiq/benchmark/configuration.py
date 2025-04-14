@@ -33,7 +33,9 @@ information:
         the game evaluations are computed on the fly during the benchmark (significantly slower).
 """
 
-import os
+from __future__ import annotations
+
+from pathlib import Path
 from typing import Any
 
 from shapiq.approximator import (
@@ -157,8 +159,9 @@ IMAGENET_EXAMPLE_FILES = [
     "ILSVRC2012_val_00010863.JPEG",
     "ILSVRC2012_val_00028489.JPEG",
 ]
-IMAGE_FOLDER = os.path.join(os.path.dirname(__file__), "imagenet_examples")
-IMAGENET_EXAMPLE_FILES = [os.path.join(IMAGE_FOLDER, file) for file in IMAGENET_EXAMPLE_FILES]
+
+IMAGE_FOLDER = Path(__file__).parent / "imagenet_examples"
+IMAGENET_EXAMPLE_FILES = [IMAGE_FOLDER / file for file in IMAGENET_EXAMPLE_FILES]
 
 # stores the configurations of all the benchmark games and how they are set up
 BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
@@ -317,7 +320,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
                 {"model_name": "decision_tree"},
                 {"model_name": "random_forest"},
                 {"model_name": "gradient_boosting"},
-                # {"model_name": "neural_network"}  # not possible atm. needs dynamic input size
             ],
             "iteration_parameter": "random_state",
             "n_players": 8,
@@ -389,8 +391,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
@@ -412,8 +412,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
@@ -435,8 +433,6 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
         {
             "configurations": [
                 {"model_name": "decision_tree", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "random_forest", "player_sizes": "increasing", "n_players": 14},
-                # {"model_name": "gradient_boosting", "player_sizes": "increasing", "n_players": 14},
             ],
             "iteration_parameter": "random_state",
             "n_players": 14,
@@ -455,7 +451,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "n_players": 15,
             "iteration_parameter_values": list(range(1, 10 + 1)),
             "precompute": True,
-        }
+        },
     ],
     BikeSharingDataValuation: [
         {
@@ -467,7 +463,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "n_players": 15,
             "iteration_parameter_values": list(range(1, 10 + 1)),
             "precompute": True,
-        }
+        },
     ],
     CaliforniaHousingDataValuation: [
         {
@@ -479,7 +475,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game.__class__, list[dict[str, Any]]] = {
             "n_players": 15,
             "iteration_parameter_values": list(range(1, 10 + 1)),
             "precompute": True,
-        }
+        },
     ],
     # cluster explanation configurations -----------------------------------------------------------
     BikeSharingClusterExplanation: [
@@ -746,18 +742,19 @@ APPROXIMATION_NAME_TO_CLASS_MAPPING = {
 # contains all parameters that will be passed to the approximators at initialization
 APPROXIMATION_BENCHMARK_PARAMS: dict[Approximator.__class__, tuple[str]] = {}
 APPROXIMATION_BENCHMARK_PARAMS.update(
-    {approx: ("n", "random_state") for approx in SV_APPROXIMATORS}
+    {approx: ("n", "random_state") for approx in SV_APPROXIMATORS},
 )
 APPROXIMATION_BENCHMARK_PARAMS.update(
     {
         approx: ("n", "random_state", "index", "max_order")
         for approx in SI_APPROXIMATORS + SII_APPROXIMATORS + STII_APPROXIMATORS + FSII_APPROXIMATORS
-    }
+    },
 )
 
 
 def get_game_file_name_from_config(
-    configuration: dict[str, Any], iteration: int | None = None
+    configuration: dict[str, Any],
+    iteration: int | None = None,
 ) -> str:
     """Get the file name for the game data with the given configuration and iteration.
 
@@ -767,6 +764,7 @@ def get_game_file_name_from_config(
 
     Returns:
         The file name of the game data
+
     """
     file_name = "_".join(f"{key}={value}" for key, value in configuration.items())
     if iteration is not None:
@@ -782,6 +780,7 @@ def get_game_class_from_name(game_name: str) -> Game.__class__:
 
     Returns:
         The class of the game
+
     """
     return GAME_NAME_TO_CLASS_MAPPING[game_name]
 
@@ -794,11 +793,13 @@ def get_name_from_game_class(game_class: Game.__class__) -> str:
 
     Returns:
         The name of the game.
+
     """
     for name, game_cls in GAME_NAME_TO_CLASS_MAPPING.items():
         if game_cls == game_class:
             return name
-    raise ValueError(f"Game class {game_class} not found in the mapping.")
+    msg = f"Game class {game_class} not found in the mapping."
+    raise ValueError(msg)
 
 
 def print_benchmark_configurations() -> None:
@@ -820,6 +821,3 @@ def print_benchmark_configurations() -> None:
             for i, configuration in enumerate(configurations["configurations"]):
                 print(f"Configuration {i + 1}: {configuration}")
         print()
-
-
-# Path: shapiq/benchmark/configuration.py

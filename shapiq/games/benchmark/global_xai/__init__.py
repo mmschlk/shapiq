@@ -9,5 +9,3 @@ __all__ = [
     "BikeSharing",
     "CaliforniaHousing",
 ]
-
-# Path: shapiq/games/benchmark/global_xai/__init__.py

@@ -1,5 +1,7 @@
 """This module contains the KernelSHAP regression approximator for estimating the SV."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from ._base import Regression
@@ -47,6 +49,7 @@ class KernelSHAP(Regression):
 
     References:
         .. [1] Lundberg, S., and Lee, S.-I. (2017). A Unified Approach to Interpreting Model Predictions. In Proceedings of The 31st Conference on Neural Information Processing Systems. url: https://proceedings.neurips.cc/paper_files/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf
+
     """
 
     def __init__(
@@ -55,7 +58,7 @@ class KernelSHAP(Regression):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-        **kwargs,
+        **kwargs,  # noqa: ARG002
     ):
         super().__init__(
             n,

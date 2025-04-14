@@ -1,5 +1,7 @@
 """This test script tests the RandomGame class from the synthetic module."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -8,7 +10,6 @@ from shapiq.games.benchmark import RandomGame
 
 @pytest.mark.parametrize("n_players", [10, 100])
 def test_random_game(n_players):
-
     n_coalitions = 100
 
     game = RandomGame(n_players, random_state=None)

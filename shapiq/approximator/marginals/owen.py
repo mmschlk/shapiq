@@ -1,6 +1,9 @@
 """This module contains the Owen Sampling approximation method for the Shapley value by
 Okhrati and Lipani (2020). It estimates the Shapley values in its integral representation by
-sampling random marginal contributions."""
+sampling random marginal contributions.
+"""
+
+from __future__ import annotations
 
 from collections.abc import Callable
 
@@ -28,6 +31,7 @@ class OwenSamplingSV(Approximator):
         n: The number of players.
         _grand_coalition_array: The array of players (starting from ``0`` to ``n``).
         iteration_cost: The cost of a single iteration of the approximator.
+
     """
 
     def __init__(
@@ -41,7 +45,11 @@ class OwenSamplingSV(Approximator):
         self.n_anchor_points = n_anchor_points
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        *args,  # noqa ARG002
+        **_kwargs,
     ) -> InteractionValues:
         """Approximates the Shapley values using Owen Sampling.
 
@@ -52,8 +60,8 @@ class OwenSamplingSV(Approximator):
 
         Returns:
             The estimated interaction values.
-        """
 
+        """
         used_budget = 0
 
         empty_value = game(np.zeros(self.n, dtype=bool))[0]
@@ -74,7 +82,10 @@ class OwenSamplingSV(Approximator):
                         # draw a subset of players without player: all are inserted independently
                         # with probability q
                         coalition = self._rng.choice(
-                            [True, False], self.n - 1, replace=True, p=[q, 1 - q]
+                            [True, False],
+                            self.n - 1,
+                            replace=True,
+                            p=[q, 1 - q],
                         )
                         # add information that player is absent
                         coalition = np.insert(coalition, player, False)
@@ -130,9 +141,11 @@ class OwenSamplingSV(Approximator):
 
         Raises:
             ValueError: If the number of anchor points is less than or equal to 0.
+
         """
         if n_anchor_points <= 0:
-            raise ValueError("The number of anchor points needs to be greater than 0.")
+            msg = "The number of anchor points needs to be greater than 0."
+            raise ValueError(msg)
         elif n_anchor_points == 1:
             return np.array([0.5])
         else:

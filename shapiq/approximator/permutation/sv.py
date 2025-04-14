@@ -1,5 +1,7 @@
 """This module contains the permutation sampling approximation method for the Shapley value (SV)."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -30,12 +32,20 @@ class PermutationSamplingSV(Approximator):
 
     """
 
-    def __init__(self, n: int, random_state: int | None = None, **kwargs) -> None:
+    def __init__(
+        self,
+        n: int,
+        random_state: int | None = None,
+        **kwargs,  # noqa ARG002
+    ) -> None:
         super().__init__(n=n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = n - 1
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: int | None = 5
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        batch_size: int | None = 5,
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
@@ -46,8 +56,8 @@ class PermutationSamplingSV(Approximator):
 
         Returns:
             The estimated interaction values.
-        """
 
+        """
         result: np.ndarray[float] = self._init_result()
         counts: np.ndarray[int] = self._init_result(dtype=int)
 
@@ -81,7 +91,9 @@ class PermutationSamplingSV(Approximator):
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget - 2, batch_size, self.iteration_cost
+            budget - 2,
+            batch_size,
+            self.iteration_cost,
         )
 
         # main permutation sampling loop
