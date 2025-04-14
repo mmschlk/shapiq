@@ -2,7 +2,13 @@
 
 import numpy as np
 import pytest
-from sklearn.ensemble import IsolationForest, RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import (
+    ExtraTreesClassifier,
+    ExtraTreesRegressor,
+    IsolationForest,
+    RandomForestClassifier,
+    RandomForestRegressor,
+)
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -283,5 +289,26 @@ def if_clf_model(if_clf_dataset) -> IsolationForest:
     """Return a simple isolation forest model."""
     X, y = if_clf_dataset
     model = IsolationForest(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+# Extra trees model
+@pytest.fixture
+def et_clf_model(background_clf_dataset) -> Model:
+    """Return a simple (classification) extra trees model."""
+
+    X, y = background_clf_dataset
+    model = ExtraTreesClassifier(random_state=42, max_depth=3, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def et_reg_model(background_reg_dataset) -> Model:
+    """Return a simple (regression) extra trees model."""
+
+    X, y = background_reg_dataset
+    model = ExtraTreesRegressor(random_state=42, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model
