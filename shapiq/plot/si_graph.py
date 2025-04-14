@@ -25,7 +25,6 @@ def si_graph_plot(
     interaction_values: InteractionValues,
     *,
     show: bool = False,
-    random_seed: int = 42,
     n_interactions: int | None = None,
     draw_threshold: float = 0.0,
     interaction_direction: str | None = None,
@@ -38,7 +37,8 @@ def si_graph_plot(
     plot_original_nodes: bool = False,
     plot_explanation: bool = True,
     pos: dict | None = None,
-    circular_layout: bool = False,
+    circular_layout: bool = True,
+    random_seed: int = 42,
     adjust_node_pos: bool = False,
     spring_k: float | None = None,
     compactness: float = 1e10,
@@ -56,7 +56,6 @@ def si_graph_plot(
     Args:
         interaction_values: The interaction values to plot.
         show: Whether to show or return the plot. Defaults to ``True``.
-        random_seed: The random seed to use for layout of the graph.
         n_interactions: The number of interactions to plot. If ``None``, all interactions are plotted
             according to the draw_threshold.
         draw_threshold: The threshold to draw an edge (i.e. only draw explanations with an
@@ -88,6 +87,7 @@ def si_graph_plot(
         pos: The positions of the nodes in the graph. If ``None``, the spring layout is used to
             position the nodes. Defaults to ``None``.
         circular_layout: plot the players in a circle according to their order.
+        random_seed: The random seed to use for layout of the graph (if not circular).
         adjust_node_pos: Whether to adjust the node positions such that the nodes are at least
             ``NORMAL_NODE_SIZE`` apart. Defaults to ``False``.
         spring_k: The spring constant for the spring layout. If `None`, the spring constant is
@@ -131,6 +131,7 @@ def si_graph_plot(
                 node_label = label_mapping.get(node, node) if label_mapping is not None else node
                 original_graph.nodes[node]["label"] = node_label
     elif isinstance(graph, list):
+        circular_layout = False
         original_graph, graph_nodes = nx.Graph(), []
         for edge in graph:
             original_graph.add_edge(*edge)
@@ -214,6 +215,8 @@ def si_graph_plot(
                 explanation_graph.add_edge(player, player_last, **attributes)
 
     # position first the original graph structure
+    if isinstance(graph, nx.Graph) or isinstance(graph, list):
+        circular_layout = False
     if pos is None:
         if circular_layout:
             pos = nx.circular_layout(original_graph)
