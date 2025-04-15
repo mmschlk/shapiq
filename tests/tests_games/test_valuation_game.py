@@ -1,5 +1,7 @@
 """This module contains the tests for the `DatasetValuationGame` class."""
 
+from __future__ import annotations
+
 import os
 
 import numpy as np

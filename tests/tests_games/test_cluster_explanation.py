@@ -1,5 +1,7 @@
 """This module contains the tests for the `ClusterExplanation` class."""
 
+from __future__ import annotations
+
 import os
 
 import numpy as np
@@ -117,7 +119,8 @@ def test_california(cluster_method, score_method):
     n_players = 8
     # setup game
     game = CaliforniaHousingClusterExplanation(
-        cluster_method=cluster_method, score_method=score_method
+        cluster_method=cluster_method,
+        score_method=score_method,
     )
     assert game.n_players == n_players
     assert game.game_name == "CaliforniaHousing_ClusterExplanation_Game"

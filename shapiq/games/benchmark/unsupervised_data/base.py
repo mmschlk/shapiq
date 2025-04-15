@@ -1,5 +1,7 @@
 """This module contains the base game for the unsupervised data analysis setting."""
 
+from __future__ import annotations
+
 import numpy as np
 from scipy import stats
 
@@ -35,7 +37,10 @@ class UnsupervisedData(Game):
         from sklearn.preprocessing import KBinsDiscretizer
 
         discretizer = KBinsDiscretizer(
-            n_bins=20, encode="ordinal", strategy="uniform", subsample=200000
+            n_bins=20,
+            encode="ordinal",
+            strategy="uniform",
+            subsample=200000,
         )
         self.data_discrete = np.zeros_like(data)
         for i in range(self._n_features):

@@ -3,6 +3,8 @@ purposes. It returns the size of the coalition divided by the number of players 
 interaction term.
 """
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.base import Game

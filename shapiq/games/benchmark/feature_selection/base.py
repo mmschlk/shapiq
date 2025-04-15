@@ -1,5 +1,7 @@
 """This module contains the metaclass for all FeatureSelection benchmark games."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from typing import Any
 
@@ -73,10 +75,11 @@ class FeatureSelection(Game):
         # sanity check on  input params
         if score_function is None:
             if loss_function is None or predict_function is None:
-                raise ValueError(
+                msg = (
                     "If score function is not provided, then 'predict_function' and 'loss_function'"
                     " must be provided."
                 )
+                raise ValueError(msg)
 
         # setup callables
         self._fit_function = fit_function

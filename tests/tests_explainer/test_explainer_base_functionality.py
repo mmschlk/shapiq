@@ -1,5 +1,7 @@
 """This module tests the base functionality of the explainer class."""
 
+from __future__ import annotations
+
 import pytest
 
 from shapiq import Explainer

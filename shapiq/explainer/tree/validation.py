@@ -1,5 +1,7 @@
 """Conversion functions for the tree explainer implementation."""
 
+from __future__ import annotations
+
 from ...utils.custom_types import Model
 from ...utils.modules import safe_isinstance
 from .base import TreeModel
@@ -55,7 +57,7 @@ def validate_tree_model(
     # direct return if list of tree models
     elif type(model).__name__ == "list":
         # check if all elements are TreeModel
-        if all([type(tree).__name__ == "TreeModel" for tree in model]):
+        if all(type(tree).__name__ == "TreeModel" for tree in model):
             tree_model = model
     # dict as model is parsed to TreeModel (the dict needs to have the correct format and names)
     elif type(model).__name__ == "dict":
@@ -82,22 +84,26 @@ def validate_tree_model(
     ):
         tree_model = convert_sklearn_forest(model, class_label=class_label)
     elif safe_isinstance(model, "sklearn.ensemble.IsolationForest") or safe_isinstance(
-        model, "sklearn.ensemble._iforest.IsolationForest"
+        model,
+        "sklearn.ensemble._iforest.IsolationForest",
     ):
         tree_model = convert_sklearn_isolation_forest(model)
     elif safe_isinstance(model, "lightgbm.sklearn.LGBMRegressor") or safe_isinstance(
-        model, "lightgbm.sklearn.LGBMClassifier"
+        model,
+        "lightgbm.sklearn.LGBMClassifier",
     ):
         tree_model = convert_lightgbm_booster(model.booster_, class_label=class_label)
     elif safe_isinstance(model, "lightgbm.basic.Booster"):
         tree_model = convert_lightgbm_booster(model, class_label=class_label)
     elif safe_isinstance(model, "xgboost.sklearn.XGBRegressor") or safe_isinstance(
-        model, "xgboost.sklearn.XGBClassifier"
+        model,
+        "xgboost.sklearn.XGBClassifier",
     ):
         tree_model = convert_xgboost_booster(model, class_label=class_label)
     # unsupported model
     else:
-        raise TypeError(f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}")
+        msg = f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}"
+        raise TypeError(msg)
 
     # if single tree model put it in a list
     if not isinstance(tree_model, list):

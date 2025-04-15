@@ -1,6 +1,7 @@
 """This script runs all benchmarks for all pre-computed configurations configuration."""
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -90,7 +91,7 @@ if __name__ == "__main__":
                         n_runs_done += 1
                         print(f"Ran {n_runs_done} out of {n_configs_tried} configurations.")
                     except Exception as e:
-                        print(f"Error occurred: {e}. Continuing.")
+                        logging.exception(f"Error occurred: {e}. Continuing.")
                         continue
 
     print(f"Ran {n_runs_done} out of {n_configs_tried} configurations.")

@@ -3,6 +3,8 @@ The Unbiased KernelSHAP method is a variant of KernelSHAP. However, it was shown
 KernelSHAP is a more specific variant of the ShapIQ interaction method.
 """
 
+from __future__ import annotations
+
 from ._base import MonteCarlo
 
 

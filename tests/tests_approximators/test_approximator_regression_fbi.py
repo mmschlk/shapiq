@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the FSII regression approximator."""
 
+from __future__ import annotations
+
 from copy import copy, deepcopy
 
 import numpy as np

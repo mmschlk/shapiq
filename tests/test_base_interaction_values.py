@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the InteractionValues dataclass."""
 
+from __future__ import annotations
+
 import os
 from copy import copy, deepcopy
 
@@ -60,9 +62,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values.interaction_lookup == interaction_lookup
 
     # test dict_values property
-    assert interaction_values.dict_values == {
-        interaction: value for interaction, value in zip(interaction_lookup, values, strict=False)
-    }
+    assert interaction_values.dict_values == dict(zip(interaction_lookup, values, strict=False))
 
     # check that default values are set correctly
     interaction_values_2 = InteractionValues(
@@ -461,7 +461,8 @@ def test_top_k():
     # top-k
     k = 3
     top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k(
-        k=k, as_interaction_values=False
+        k=k,
+        as_interaction_values=False,
     )
 
     assert len(top_k_interaction) == len(sorted_top_k_interactions) == k
@@ -476,14 +477,16 @@ def test_top_k():
     # test with k > len(values)
     k = 20
     top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k(
-        k=k, as_interaction_values=False
+        k=k,
+        as_interaction_values=False,
     )
     assert len(top_k_interaction) == len(sorted_top_k_interactions) == original_length
 
     # test with k = 0
     k = 0
     top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k(
-        k=k, as_interaction_values=False
+        k=k,
+        as_interaction_values=False,
     )
     assert len(top_k_interaction) == len(sorted_top_k_interactions) == 0
 
@@ -651,7 +654,7 @@ def test_subset(subset_players):
         for key in subset_interaction_values.interaction_lookup.keys()
     )
     assert len(subset_interaction_values.values) == len(
-        subset_interaction_values.interaction_lookup
+        subset_interaction_values.interaction_lookup,
     )
     assert interaction_values.baseline_value == subset_interaction_values.baseline_value
     assert subset_interaction_values.min_order == interaction_values.min_order
@@ -692,7 +695,8 @@ def test_aggregation(aggregation):
         interaction_values_list.append(interaction_values)
 
     aggregated_interaction_values = aggregate_interaction_values(
-        interaction_values_list, aggregation=aggregation
+        interaction_values_list,
+        aggregation=aggregation,
     )
 
     assert isinstance(aggregated_interaction_values, InteractionValues)
@@ -704,7 +708,7 @@ def test_aggregation(aggregation):
     # check that all interactions are equal to the expected value
     for interaction in powerset(range(n), 1, n):
         aggregated_value = np.array(
-            [interaction_values[interaction] for interaction_values in interaction_values_list]
+            [interaction_values[interaction] for interaction_values in interaction_values_list],
         )
         if aggregation == "sum":
             expected_value = np.sum(aggregated_value)
@@ -720,7 +724,8 @@ def test_aggregation(aggregation):
 
     # test aggregate from InteractionValues object
     aggregated_from_object = interaction_values_list[0].aggregate(
-        aggregation=aggregation, others=interaction_values_list[1:]
+        aggregation=aggregation,
+        others=interaction_values_list[1:],
     )
     assert isinstance(aggregated_from_object, InteractionValues)
     assert aggregated_from_object == aggregated_interaction_values  # same values

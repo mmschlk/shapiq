@@ -1,5 +1,7 @@
 """This module contains the permutation sampling algorithms to estimate STII scores."""
 
+from __future__ import annotations
+
 import warnings
 from collections.abc import Callable
 
@@ -57,7 +59,11 @@ class PermutationSamplingSTII(Approximator):
 
     def __init__(self, n: int, max_order: int, random_state: int | None = None) -> None:
         super().__init__(
-            n=n, max_order=max_order, index="STII", top_order=False, random_state=random_state
+            n=n,
+            max_order=max_order,
+            index="STII",
+            top_order=False,
+            random_state=random_state,
         )
         self.iteration_cost: int = self._compute_iteration_cost()
 
@@ -123,7 +129,9 @@ class PermutationSamplingSTII(Approximator):
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget - 1, batch_size, self.iteration_cost
+            budget - 1,
+            batch_size,
+            self.iteration_cost,
         )
 
         # warn the user if the budget is too small
@@ -166,7 +174,9 @@ class PermutationSamplingSTII(Approximator):
             subset_index = 0
             for permutation_id in range(n_permutations):
                 for interaction in powerset(
-                    self._grand_coalition_set, self.max_order, self.max_order
+                    self._grand_coalition_set,
+                    self.max_order,
+                    self.max_order,
                 ):
                     idx = 0
                     for i in permutations[permutation_id]:
@@ -186,7 +196,9 @@ class PermutationSamplingSTII(Approximator):
             subset_index = 0
             for _ in range(n_permutations):
                 for interaction in powerset(
-                    self._grand_coalition_set, self.max_order, self.max_order
+                    self._grand_coalition_set,
+                    self.max_order,
+                    self.max_order,
                 ):
                     interaction_index = self._interaction_lookup[interaction]
                     counts[interaction_index] += 1
@@ -226,7 +238,9 @@ class PermutationSamplingSTII(Approximator):
         return iteration_cost
 
     def _compute_lower_order_sti(
-        self, game: Callable[[np.ndarray], np.ndarray], result: np.ndarray
+        self,
+        game: Callable[[np.ndarray], np.ndarray],
+        result: np.ndarray,
     ) -> np.ndarray:
         """Computes all lower order interactions for the STII index up to order ``max_order - 1``.
 

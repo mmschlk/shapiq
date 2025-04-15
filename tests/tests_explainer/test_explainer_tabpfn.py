@@ -1,5 +1,7 @@
 """This test module tests the TabPFNExplainer object."""
 
+from __future__ import annotations
+
 import pytest
 
 from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer

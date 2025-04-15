@@ -2,6 +2,8 @@
 TreeExplainer class.
 """
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -145,7 +147,7 @@ def test_sklearn_if_conversion(if_clf_model):
 def test_conversion_predict_identity(model_fixture, model_class, background_reg_data, request):
     if model_class not in SUPPORTED_MODELS:
         pytest.skip(
-            f"skipped test, {model_class} not in the supported models for the tree explainer."
+            f"skipped test, {model_class} not in the supported models for the tree explainer.",
         )
     else:
         model = request.getfixturevalue(model_fixture)
@@ -166,11 +168,15 @@ def test_conversion_predict_identity(model_fixture, model_class, background_reg_
                     # see .test_tree_bugfix.test_xgb_predicts_with_wrong_leaf_node
                     # TODO: take a look at this in more detail, why is it hard to get efficiency
                     continue
-                assert False
+                msg = "Prediction does not match the original prediction."
+                raise AssertionError(msg)
 
 
 def test_tree_model_predict(
-    background_reg_dataset, dt_reg_model, background_clf_dataset, dt_clf_model
+    background_reg_dataset,
+    dt_reg_model,
+    background_clf_dataset,
+    dt_clf_model,
 ):
     """Tests weather the tree model predict_one is correct."""
     X_reg, _ = background_reg_dataset

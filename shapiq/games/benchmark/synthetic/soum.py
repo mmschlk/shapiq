@@ -2,6 +2,8 @@
 the UnanimityGame Class.
 """
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.base import Game
@@ -128,7 +130,10 @@ class SOUM(Game):
         # init base game
         empty_value = float(self.value_function(np.zeros((1, n)))[0])
         super().__init__(
-            n_players=n, normalize=normalize, verbose=verbose, normalization_value=empty_value
+            n_players=n,
+            normalize=normalize,
+            verbose=verbose,
+            normalization_value=empty_value,
         )
 
     @property
@@ -198,7 +203,7 @@ class SOUM(Game):
 
         # handle baseline value and set to 0 if no empty set is present
         try:
-            baseline_value = moebius_coefficients_dict[tuple()]
+            baseline_value = moebius_coefficients_dict[()]
         except KeyError:
             baseline_value = 0.0
 

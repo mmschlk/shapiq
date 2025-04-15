@@ -2,6 +2,8 @@
 efficient indices useful for explanations
 """
 
+from __future__ import annotations
+
 import warnings
 
 import numpy as np
@@ -28,7 +30,8 @@ def _change_index(index: str) -> str:
 
 
 def aggregate_base_interaction(
-    base_interactions: InteractionValues, order: int | None = None
+    base_interactions: InteractionValues,
+    order: int | None = None,
 ) -> InteractionValues:
     """Aggregates the basis interaction values into an efficient interaction index.
 
@@ -75,14 +78,14 @@ def aggregate_base_interaction(
         warnings.warn(
             UserWarning(
                 "The base interaction values have a minimum order greater than 1. Aggregation may "
-                "not be meaningful."
+                "not be meaningful.",
             ),
             stacklevel=2,
         )
 
     bernoulli_numbers = sp.special.bernoulli(order)  # used for aggregation
     baseline_value = base_interactions.baseline_value
-    transformed_dict: dict[tuple, float] = {tuple(): baseline_value}  # storage
+    transformed_dict: dict[tuple, float] = {(): baseline_value}  # storage
     # iterate over all interactions in base_interactions and project them onto all interactions T
     # where 1 <= |T| <= order
     for base_interaction, pos in base_interactions.interaction_lookup.items():

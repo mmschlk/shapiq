@@ -1,5 +1,7 @@
 """This module contains all benchmark games for image classification tasks."""
 
+from __future__ import annotations
+
 from warnings import warn
 
 import numpy as np
@@ -71,13 +73,17 @@ class ImageClassifier(Game):
         **_kwargs,
     ) -> None:
         if x_explain_path is None:
-            raise ValueError("The image to be explained must be provided.")
+            msg = "The image to be explained must be provided."
+            raise ValueError(msg)
 
         # validate inputs
         if model_name.lower() not in ["vit_16_patches", "vit_9_patches", "resnet_18"]:
-            raise ValueError(
+            msg = (
                 f"Invalid model {model_name}. The model must be one of ['vit_16_patches', "
                 f"'vit_9_patches', 'resnet_18']"
+            )
+            raise ValueError(
+                msg,
             )
 
         # read image with PIL
@@ -109,7 +115,8 @@ class ImageClassifier(Game):
             n_players = resnet_model.n_superpixels
             # warn if not 14 superpixels
             warn(
-                f"{n_players} superpixels found and not {n_sp}.", stacklevel=2
+                f"{n_players} superpixels found and not {n_sp}.",
+                stacklevel=2,
             ) if n_players != n_sp else None
             normalization_value = resnet_model.empty_value
             self.model_function = resnet_model

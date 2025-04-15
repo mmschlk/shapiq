@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the interaction explainer for the shapiq package."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -62,7 +64,10 @@ def test_init_params_error_and_warning(dt_reg_model, background_reg_data):
     model_function = dt_reg_model.predict
     with pytest.raises(ValueError):
         TabularExplainer(
-            model=model_function, data=background_reg_data, index="invalid", max_order=0
+            model=model_function,
+            data=background_reg_data,
+            index="invalid",
+            max_order=0,
         )
     with pytest.warns():
         TabularExplainer(
@@ -112,7 +117,10 @@ def test_init_params_approx(dt_reg_model, background_reg_data):
 def test_init_params_approx_params(dt_reg_model, background_reg_data, approximator, max_order):
     """Test the initialization of the tabular explainer."""
     explainer = TabularExplainer(
-        approximator=approximator, model=dt_reg_model, data=background_reg_data, max_order=max_order
+        approximator=approximator,
+        model=dt_reg_model,
+        data=background_reg_data,
+        max_order=max_order,
     )
     iv = explainer.explain(background_reg_data[0], budget=BUDGET_NR_FEATURES)
     assert iv.__class__.__name__ == "InteractionValues"
@@ -146,10 +154,12 @@ def test_explain(dt_reg_model, background_reg_data, index, budget, max_order, im
     interaction_values0 = explainer.explain(x, budget=budget, random_state=0)
     interaction_values2 = explainer.explain(x, budget=budget, random_state=0)
     assert np.allclose(
-        interaction_values0.get_n_order_values(1), interaction_values2.get_n_order_values(1)
+        interaction_values0.get_n_order_values(1),
+        interaction_values2.get_n_order_values(1),
     )
     assert np.allclose(
-        interaction_values0.get_n_order_values(2), interaction_values2.get_n_order_values(2)
+        interaction_values0.get_n_order_values(2),
+        interaction_values2.get_n_order_values(2),
     )
 
     # test for efficiency
@@ -189,7 +199,7 @@ def test_against_shap_linear():
             [-0.29565839, -0.36698085, -0.55970434, 0.22567077, 0.05852208],
             [1.08513574, 0.06365536, 0.46312977, -0.61532757, 0.00370387],
             [-0.78947735, 0.30332549, 0.09657457, 0.38965679, -0.06222595],
-        ]
+        ],
     )
 
     # compute with shapiq

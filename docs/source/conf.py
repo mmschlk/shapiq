@@ -2,6 +2,7 @@
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+from __future__ import annotations
 
 import os
 import sys
@@ -87,7 +88,7 @@ html_sidebars = {
         "sidebar/navigation.html",
         "sidebar/ethical-ads.html",
         "sidebar/scroll-end.html",
-    ]
+    ],
 }
 
 # -- Autodoc ---------------------------------------------------------------------------------------

@@ -1,5 +1,7 @@
 """Implementation of the baseline imputer."""
 
+from __future__ import annotations
+
 import warnings
 
 import numpy as np
@@ -89,7 +91,7 @@ class BaselineImputer(Imputer):
         outputs = self.predict(data)
         return outputs
 
-    def init_background(self, data: np.ndarray) -> "BaselineImputer":
+    def init_background(self, data: np.ndarray) -> BaselineImputer:
         """Initializes the imputer to the background data.
 
         Args:

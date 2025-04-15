@@ -1,5 +1,7 @@
 """This module contains the benchmark DatasetValuation games."""
 
+from __future__ import annotations
+
 from shapiq.games.benchmark.data_valuation.base import DataValuation
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 

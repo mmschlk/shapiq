@@ -1,5 +1,7 @@
 """The base class for tree model conversion."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -75,7 +77,8 @@ class TreeModel:
         the leaf node values. The method modifies the tree model in place.
         """
         self.empty_prediction = compute_empty_prediction(
-            self.values[self.leaf_mask], self.node_sample_weight[self.leaf_mask]
+            self.values[self.leaf_mask],
+            self.node_sample_weight[self.leaf_mask],
         )
 
     def __post_init__(self) -> None:
@@ -119,7 +122,8 @@ class TreeModel:
         # flatten values if necessary
         if self.values.ndim > 1:
             if self.values.shape[1] != 1:
-                raise ValueError("Values array has more than one column.")
+                msg = "Values array has more than one column."
+                raise ValueError(msg)
             self.values = self.values.flatten()
         # set all values of non leaf nodes to zero
         self.values[~self.leaf_mask] = 0
@@ -147,7 +151,7 @@ class TreeModel:
         if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
             mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}
-            mapping_new_old = {new_id: old_id for new_id, old_id in enumerate(self.feature_ids)}
+            mapping_new_old = dict(enumerate(self.feature_ids))
             new_features = np.zeros_like(self.features)
             for i, old_feature in enumerate(self.features):
                 new_value = -2 if old_feature == -2 else mapping_old_new[old_feature]

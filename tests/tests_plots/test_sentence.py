@@ -1,5 +1,7 @@
 """This test module contains all tests for the sentence plot."""
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import numpy as np
 

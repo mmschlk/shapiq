@@ -2,6 +2,8 @@
 shapiq.
 """
 
+from __future__ import annotations
+
 from ....utils.custom_types import Model
 from ..base import TreeModel
 

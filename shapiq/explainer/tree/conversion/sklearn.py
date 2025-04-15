@@ -2,6 +2,8 @@
 shapiq.
 """
 
+from __future__ import annotations
+
 import numpy as np
 
 from ....utils import safe_isinstance
@@ -32,7 +34,9 @@ def convert_sklearn_forest(
 
 
 def convert_sklearn_tree(
-    tree_model: Model, class_label: int | None = None, scaling: float = 1.0
+    tree_model: Model,
+    class_label: int | None = None,
+    scaling: float = 1.0,
 ) -> TreeModel:
     """Convert a scikit-learn decision tree to the format used by shapiq.
 
@@ -111,7 +115,9 @@ def convert_sklearn_isolation_forest(
     return [
         convert_isolation_tree(tree, features, scaling=scaling)
         for tree, features in zip(
-            tree_model.estimators_, tree_model.estimators_features_, strict=False
+            tree_model.estimators_,
+            tree_model.estimators_features_,
+            strict=False,
         )
     ]
 
@@ -134,7 +140,10 @@ def convert_isolation_tree(
     """
     output_type = "raw"
     features_updated, values_updated = isotree_value_traversal(
-        tree_model.tree_, tree_features, normalize=False, scaling=1.0
+        tree_model.tree_,
+        tree_features,
+        normalize=False,
+        scaling=1.0,
     )
     values_updated = values_updated * scaling
     values_updated = values_updated.flatten()

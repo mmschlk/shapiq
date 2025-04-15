@@ -1,5 +1,7 @@
 """This module contains the base TreeSHAP-IQ xai game."""
 
+from __future__ import annotations
+
 import copy
 
 import numpy as np
@@ -93,7 +95,10 @@ class TreeSHAPIQXAI(Game):
         output = 0.0
         for tree in self._trees:
             tree_prediction = _get_tree_prediction(
-                node_id=tree.nodes[0], tree=tree, coalition=coalition, x_explain=self.x_explain
+                node_id=tree.nodes[0],
+                tree=tree,
+                coalition=coalition,
+                x_explain=self.x_explain,
             )
             output += tree_prediction
         return output
@@ -120,7 +125,10 @@ class TreeSHAPIQXAI(Game):
 
 
 def _get_tree_prediction(
-    node_id: int, tree: TreeModel, coalition: np.ndarray, x_explain: np.ndarray
+    node_id: int,
+    tree: TreeModel,
+    coalition: np.ndarray,
+    x_explain: np.ndarray,
 ) -> float:
     """Traverses the tree and retrieves the prediction of the tree given subsets of features.
 

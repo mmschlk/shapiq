@@ -1,5 +1,7 @@
 """This module contains all tests for the waterfall plots."""
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import numpy as np
 

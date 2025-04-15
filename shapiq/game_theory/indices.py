@@ -2,6 +2,8 @@
 in ``shapiq``.
 """
 
+from __future__ import annotations
+
 ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     # Base Interactions
     "SII": {

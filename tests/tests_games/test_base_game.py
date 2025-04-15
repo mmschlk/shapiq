@@ -1,5 +1,7 @@
 """This test module contains all tests for the base game class in the shapiq package."""
 
+from __future__ import annotations
+
 import os
 
 import numpy as np
@@ -26,7 +28,8 @@ def test_call():
 
     n_players = 6
     test_game = TestGame(
-        n=n_players, player_names=["Alice", "Bob", "Charlie", "David", "Eve", "Frank"]
+        n=n_players,
+        player_names=["Alice", "Bob", "Charlie", "David", "Eve", "Frank"],
     )
 
     # assert that player names are correctly stored
