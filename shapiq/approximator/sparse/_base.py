@@ -73,10 +73,10 @@ class Sparse(Approximator):
             "num_repeat": 1,
             "reconstruct_method_source": "coded",
             "peeling_method": "multi-detect",
-            "reconstruct_method_channel": "identity-siso" if decoder_type == "soft" else "identity",
+            "reconstruct_method_channel": "identity-siso" if self.decoder_type == "soft" else "identity",
             "regress": "lasso",
             "res_energy_cutoff": 0.9,
-            "source_decoder": get_bch_decoder(n, self.t, decoder_type),
+            "source_decoder": get_bch_decoder(n, self.t, self.decoder_type),
         }
         super().__init__(
             n=n,
