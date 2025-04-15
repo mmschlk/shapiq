@@ -21,7 +21,7 @@ from .game_theory.indices import (
     is_empty_value_the_baseline,
     is_index_aggregated,
 )
-from .utils.sets import count_interactions, generate_interaction_lookup, powerset
+from .utils.sets import generate_interaction_lookup
 
 
 @dataclass
@@ -139,7 +139,7 @@ class InteractionValues:
         for interaction_pos, interaction in enumerate(self.interaction_lookup):
             if interaction_pos in top_k_indices:
                 new_position = len(new_interaction_lookup)
-                new_values[new_position] = self[interaction_pos]
+                new_values[new_position] = float(self[interaction_pos])
                 new_interaction_lookup[interaction] = new_position
         return InteractionValues(
             values=new_values,
@@ -266,9 +266,7 @@ class InteractionValues:
                 self.values[self.interaction_lookup[item]] = value
         except Exception as e:
             msg = f"Interaction {item} not found in the InteractionValues. Unable to set a value."
-            raise KeyError(
-                msg,
-            ) from e
+            raise KeyError(msg) from e
 
     def __eq__(self, other: object) -> bool:
         """Checks if two InteractionValues objects are equal.
@@ -342,9 +340,7 @@ class InteractionValues:
                     f"Cannot add InteractionValues with different indices {self.index} and "
                     f"{other.index}."
                 )
-                raise ValueError(
-                    msg,
-                )
+                raise ValueError(msg)
             if (
                 self.interaction_lookup != other.interaction_lookup
                 or self.n_players != other.n_players
@@ -474,7 +470,9 @@ class InteractionValues:
             raise ValueError(msg)
         values_shape = tuple([self.n_players] * order)
         values = np.zeros(values_shape, dtype=float)
-        for interaction in powerset(range(self.n_players), min_size=order, max_size=order):
+        for interaction in self.interaction_lookup.keys():
+            if len(interaction) != order:
+                continue
             # get all orderings of the interaction (e.g. (0, 1) and (1, 0) for interaction (0, 1))
             for perm in permutations(interaction):
                 values[perm] = self[interaction]
@@ -483,14 +481,40 @@ class InteractionValues:
 
     def get_n_order(
         self,
-        order: int,
+        order: int | None = None,
         min_order: int | None = None,
         max_order: int | None = None,
     ) -> InteractionValues:
-        """Returns the interaction values of a specific order.
+        """Returns a new InteractionValues object containing only the interactions within the
+        specified order range.
+
+        You can specify:
+            - `order`: to select interactions of a single specific order (e.g., all pairwise
+                interactions).
+            - `min_order` and/or `max_order`: to select a range of interaction orders.
+            - If `order` and `min_order`/`max_order` are both set, `min_order` and `max_order` will
+                override the `order` value.
+
+        Example:
+            >>> interaction_values = InteractionValues(
+            ...     values=np.array([1, 2, 3, 4, 5, 6, 7]),
+            ...     interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5, (0, 1, 2): 6},
+            ...     index="SII",
+            ...     max_order=3,
+            ...     n_players=3,
+            ...     min_order=1,
+            ...     baseline_value=0.0,
+            ... )
+            >>> interaction_values.get_n_order(order=1).dict_values
+            {(0,): 1.0, (1,): 2.0, (2,): 3.0}
+            >>> interaction_values.get_n_order(min_order=1, max_order=2).dict_values
+            {(0,): 1.0, (1,): 2.0, (2,): 3.0, (0, 1): 4.0, (0, 2): 5.0, (1, 2): 6.0}
+            >>> interaction_values.get_n_order(min_order=2).dict_values
+            {(0, 1): 4.0, (0, 2): 5.0, (1, 2): 6.0, (0, 1, 2): 7.0}
 
         Args:
-            order: The order of the interactions to return.
+            order: The order of the interactions to return. Defaults to ``None`` which requires
+                ``min_order`` or ``max_order`` to be set.
             min_order: The minimum order of the interactions to return. Defaults to ``None`` which
                 sets it to the order.
             max_order: The maximum order of the interactions to return. Defaults to ``None`` which
@@ -499,27 +523,39 @@ class InteractionValues:
         Returns:
             The interaction values of the specified order.
 
+        Raises:
+            ValueError: If all three parameters are set to ``None``.
         """
-        max_order = order if max_order is None else max_order
-        min_order = order if min_order is None else min_order
+        if order is None and min_order is None and max_order is None:
+            msg = "Either order, min_order or max_order must be set."
+            raise ValueError(msg)
 
-        new_values = np.zeros(
-            count_interactions(n=self.n_players, max_order=max_order, min_order=min_order),
-            dtype=float,
-        )
+        if order is not None:
+            max_order = order if max_order is None else max_order
+            min_order = order if min_order is None else min_order
+        else:  # order is None
+            min_order = self.min_order if min_order is None else min_order
+            max_order = self.max_order if max_order is None else max_order
+
+        if min_order > max_order:
+            msg = f"min_order ({min_order}) must be less than or equal to max_order ({max_order})."
+            raise ValueError(msg)
+
+        new_values = []
         new_interaction_lookup = {}
-        for i, interaction in enumerate(
-            powerset(range(self.n_players), min_size=min_order, max_size=max_order),
-        ):
-            new_values[i] = self[interaction]
-            new_interaction_lookup[interaction] = len(new_interaction_lookup)
+        for interaction in self.interaction_lookup.keys():
+            if len(interaction) < min_order or len(interaction) > max_order:
+                continue
+            interaction_idx = len(new_interaction_lookup)
+            new_values.append(self[interaction])
+            new_interaction_lookup[interaction] = interaction_idx
 
         return InteractionValues(
-            values=new_values,
+            values=np.array(new_values),
             index=self.index,
-            max_order=order,
+            max_order=max_order,
             n_players=self.n_players,
-            min_order=order,
+            min_order=min_order,
             interaction_lookup=new_interaction_lookup,
             estimated=self.estimated,
             estimation_budget=self.estimation_budget,
@@ -743,9 +779,7 @@ class InteractionValues:
                 "InteractionValues contains only 1-order values,"
                 "but requires also 2-order values for the network plot."
             )
-            raise ValueError(
-                msg,
-            )
+            raise ValueError(msg)
 
     def plot_si_graph(self, show: bool = True, **kwargs) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues as a SI graph.

@@ -24,6 +24,7 @@ pytest_plugins = [
     "tests.fixtures.games",
     "tests.fixtures.models",
     "tests.fixtures.data",
+    "tests.fixtures.interaction_values",
 ]
 
 
