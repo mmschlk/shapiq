@@ -466,3 +466,67 @@ def test_decision_stumps(background_reg_dataset, background_clf_dataset):
             continue
 
         assert pred == pytest.approx(efficiency, rel=1e-5)
+
+
+def test_extra_trees_clf(et_clf_model, background_clf_data):
+    """Test the shapiq implementation of TreeSHAP vs. SHAP's implementation for Extra Trees."""
+    explanation_instance = 1
+    class_label = 1
+
+    # the following code is used to get the shap values from the SHAP implementation
+    """
+    #import shap
+    # model_copy = copy.deepcopy(et_clf_model)
+    # explainer_shap = shap.TreeExplainer(model=model_copy)
+    # baseline_shap = float(explainer_shap.expected_value[class_label])
+    # x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))
+    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
+    # sv_shap = sv_shap_all_classes[0][:, class_label]
+    # print(sv_shap_all_classes, format(baseline_shap, '.20f'))
+    """  # noqa: ERA001
+    sv_shap = [0.00207427, 0.00949552, -0.00108266, -0.03825587, -0.02694092, 0.0170296, 0.02046364]
+    sv_shap = np.asarray(sv_shap)
+    baseline_shap = 0.34000000000000002
+
+    # compute with shapiq
+    explainer_shapiq = TreeExplainer(
+        model=et_clf_model, max_order=1, index="SV", class_index=class_label
+    )
+    x_explain_shapiq = copy.deepcopy(background_clf_data[explanation_instance])
+    sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
+    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
+    baseline_shapiq = sv_shapiq.baseline_value
+
+    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+
+
+def test_extra_trees_reg(et_reg_model, background_reg_data):
+    """Test the shapiq implementation of TreeSHAP vs. SHAP's implementation for Extra Trees."""
+    explanation_instance = 1
+
+    # the following code is used to get the shap values from the SHAP implementation
+    """
+    # import shap
+    # model_copy = copy.deepcopy(et_reg_model)
+    # explainer_shap = shap.TreeExplainer(model=model_copy)
+    # baseline_shap = float(explainer_shap.expected_value)
+    # x_explain_shap = copy.deepcopy(background_reg_data[explanation_instance].reshape(1, -1))
+    # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
+    # sv_shap = sv_shap_all_classes[0]
+    # print(sv_shap_all_classes, format(baseline_shap, '.20f'))
+    """  # noqa: ERA001
+    sv_shap = [19.28673017, -19.87182634, 0.0, 10.89201698, -9.62498263, 0.35992212, 42.31290091]
+    sv_shap = np.asarray(sv_shap)
+    print(sv_shap)
+    baseline_shap = -2.56682283435175007
+
+    # compute with shapiq
+    explainer_shapiq = TreeExplainer(model=et_reg_model, max_order=1, index="SV")
+    x_explain_shapiq = copy.deepcopy(background_reg_data[explanation_instance])
+    sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
+    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
+    baseline_shapiq = sv_shapiq.baseline_value
+
+    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
+    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
