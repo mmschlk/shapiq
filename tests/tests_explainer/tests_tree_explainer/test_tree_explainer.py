@@ -518,7 +518,6 @@ def test_extra_trees_reg(et_reg_model, background_reg_data):
     """  # noqa: ERA001
     sv_shap = [19.28673017, -19.87182634, 0.0, 10.89201698, -9.62498263, 0.35992212, 42.31290091]
     sv_shap = np.asarray(sv_shap)
-    print(sv_shap)
     baseline_shap = -2.56682283435175007
 
     # compute with shapiq
