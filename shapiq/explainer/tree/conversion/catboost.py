@@ -12,6 +12,7 @@ def convert_catboost(
     tree_model: Model,
 ) -> list[TreeModel]:
     """Transforms models from the catboost package to the format used by shapiq.
+
     Args:
         tree_model: The catboost model to convert.
 
@@ -21,6 +22,7 @@ def convert_catboost(
     """
     output_type = "raw"
 
+    # Logic from shap package
     import json
     import tempfile
     from pathlib import Path
