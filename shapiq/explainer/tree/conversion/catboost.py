@@ -38,12 +38,6 @@ def convert_catboost(
 
     trees = []
     for tree_index in range(num_trees):
-        leaf_weights_json = loaded_cb_model["oblivious_trees"][tree_index]["leaf_weights"]
-        leaf_weights = [0] * (len(leaf_weights_json) - 1) + leaf_weights_json
-        leaf_weights[0] = sum(leaf_weights_json)
-        for index in range(len(leaf_weights_json) - 2, 0, -1):
-            leaf_weights[index] = leaf_weights[2 * index + 1] + leaf_weights[2 * index + 2]
-
         leaf_values_json = loaded_cb_model["oblivious_trees"][tree_index]["leaf_values"]
         leaf_values = [0] * (len(leaf_values_json) - 1) + leaf_values_json
 
@@ -52,6 +46,14 @@ def convert_catboost(
 
         children_right = [i * 2 for i in range(1, len(leaf_values_json))]
         children_right += [-1] * len(leaf_values_json)
+
+        total_nodes = len(children_right)  # TODO check if usefully
+
+        leaf_weights_json = loaded_cb_model["oblivious_trees"][tree_index]["leaf_weights"]
+        leaf_weights = [0] * (total_nodes - len(leaf_weights_json)) + leaf_weights_json
+        leaf_weights[0] = sum(leaf_weights_json)
+        for index in range(len(leaf_weights_json) - 2, 0, -1):
+            leaf_weights[index] = leaf_weights[2 * index + 1] + leaf_weights[2 * index + 2]
 
         # split features and borders go from leafs to the root
         split_features_index_json = []
@@ -73,12 +75,12 @@ def convert_catboost(
         split_features_index = []
         for counter, feature_index in enumerate(split_features_index_json[::-1]):
             split_features_index += [feature_index] * (2**counter)
-        split_features_index += [0] * len(leaf_values_json)
+        split_features_index += [-2] * (total_nodes - len(split_features_index))
 
         borders = []
         for counter, border in enumerate(borders_json[::-1]):
             borders += [border] * (2**counter)
-        borders += [0] * len(leaf_values_json)
+        borders += [0] * (total_nodes - len(borders))
 
         trees.append(
             TreeModel(
