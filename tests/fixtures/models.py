@@ -301,7 +301,7 @@ def et_clf_model(background_clf_dataset) -> Model:
     """Return a simple (classification) extra trees model."""
 
     X, y = background_clf_dataset
-    model = ExtraTreesClassifier(random_state=42, max_depth=3, n_estimators=3)
+    model = ExtraTreesClassifier(random_state=42, max_depth=3, n_estimators=3, verbose=False)
     model.fit(X, y)
     return model
 
@@ -311,6 +311,40 @@ def et_reg_model(background_reg_dataset) -> Model:
     """Return a simple (regression) extra trees model."""
 
     X, y = background_reg_dataset
-    model = ExtraTreesRegressor(random_state=42, max_depth=3, n_estimators=3)
+    model = ExtraTreesRegressor(random_state=42, max_depth=3, n_estimators=3, verbose=False)
+    model.fit(X, y)
+    return model
+
+
+# CatBoost model
+@pytest.fixture
+def cb_clf_model_bin(background_clf_dataset_binary_small) -> Model:
+    """Return a simple CatBoost binary classification model."""
+    catboost = pytest.importorskip("catboost")
+
+    X, y = background_clf_dataset_binary_small
+    model = catboost.CatBoostClassifier(depth=3, random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def cb_clf_model(background_clf_dataset) -> Model:
+    """Return a simple CatBoost classification model."""
+    catboost = pytest.importorskip("catboost")
+
+    X, y = background_clf_dataset
+    model = catboost.CatBoostClassifier(depth=3, random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def cb_reg_model(background_reg_dataset) -> Model:
+    """Return a simple CatBoost regression model."""
+    catboost = pytest.importorskip("catboost")
+
+    X, y = background_reg_dataset
+    model = catboost.CatBoostRegressor(depth=3, random_state=42, n_estimators=3)
     model.fit(X, y)
     return model
