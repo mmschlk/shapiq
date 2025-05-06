@@ -20,6 +20,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Create virtual environment
+        run: uv venv
+
       - name: Install package using uv
         run: uv pip install .
 
