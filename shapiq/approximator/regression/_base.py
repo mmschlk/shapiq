@@ -46,6 +46,7 @@ class Regression(Approximator):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
+        do_sparse: bool = False,
     ):
         if index not in AVAILABLE_INDICES_REGRESSION:
             msg = (
@@ -67,6 +68,7 @@ class Regression(Approximator):
         self._sii_consistent = (
             sii_consistent  # used for SII, if False, then Inconsistent KernelSHAP-IQ is used
         )
+        self.do_sparse = do_sparse
 
     def _init_kernel_weights(self, interaction_size: int) -> np.ndarray:
         """Initializes the kernel weights for the regression in KernelSHAP-IQ.
@@ -140,6 +142,7 @@ class Regression(Approximator):
 
         # query the game for the coalitions
         game_values = game(self._sampler.coalitions_matrix)
+        print(f"Game values: {game_values}")
 
         index_approximation = self.index
         if self.index == "k-SII":
@@ -235,6 +238,7 @@ class Regression(Approximator):
                     X=regression_matrix,
                     y=residual_game_values[interaction_size],
                     kernel_weights=regression_weights,
+                    do_sparse=self.do_sparse,
                 )
             else:
                 # for order > 2 use ground truth weights for sizes < interaction_size and > n -
@@ -260,6 +264,7 @@ class Regression(Approximator):
                     X=regression_matrix,
                     y=game_values_plus,
                     kernel_weights=regression_weights,
+                    do_sparse=self.do_sparse,
                 )
 
                 sii_values_current_size = (
@@ -318,6 +323,7 @@ class Regression(Approximator):
             X=regression_matrix,
             y=regression_response,
             kernel_weights=regression_weights,
+            do_sparse=self.do_sparse,
         )
 
         if index_approximation in ["kADD-SHAP", "FBII"]:
@@ -566,7 +572,9 @@ def _get_regression_matrices(
     return regression_matrix, regression_weights
 
 
-def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: np.ndarray) -> np.ndarray:
+def solve_regression(
+    X: np.ndarray, y: np.ndarray, kernel_weights: np.ndarray, do_sparse: bool = False
+) -> np.ndarray:
     """Solves the regression problem using the weighted least squares method. Returns all
     approximated interactions.
 
@@ -579,6 +587,18 @@ def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: np.ndarray) -
         The solution to the regression problem.
 
     """
+    if do_sparse:
+        from scipy.sparse import csr_matrix, diags
+        from scipy.sparse.linalg import lsqr
+
+        print("Solving sparse least squares...")
+        X_sparse = csr_matrix(X)
+        W_sparse = diags(kernel_weights)
+        WX_sparse = W_sparse @ X_sparse  # Pre-multiply: W * X and W * y
+        Wy = kernel_weights * y
+        result = lsqr(WX_sparse, Wy)  # Solve sparse least squares
+        phi = result[0]  # coefficients
+        return phi
     try:
         # try solving via solve function
         WX = kernel_weights[:, np.newaxis] * X

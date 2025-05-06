@@ -60,3 +60,25 @@ def test_approximate(n, max_order, budget):
     # check efficiency
     efficiency = np.sum(fsi_estimates.values)
     assert efficiency == pytest.approx(efficiency, 0.1)
+
+
+def test_sparse_regression_is_similar_to_dense():
+    """Tests that the sparse regression is similar to the dense regression."""
+    from shapiq.games.benchmark import RandomGame
+
+    n = 20
+    game = RandomGame(n, random_state=42)
+
+    # Dense regression
+    approximator_dense = RegressionFSII(n, max_order=2, random_state=42)
+    estimates_dense = approximator_dense.approximate(1000, game)
+
+    # Sparse regression
+    approximator_sparse = RegressionFSII(n, max_order=2, random_state=42, do_sparse=True)
+    estimates_sparse = approximator_sparse.approximate(1000, game)
+
+    # Compare the estimates
+    for interaction in estimates_dense.interaction_lookup.keys():
+        assert estimates_sparse[interaction] == pytest.approx(
+            estimates_dense[interaction], abs=0.001
+        )

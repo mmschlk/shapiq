@@ -42,6 +42,7 @@ class RegressionFSII(Regression):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
+        do_sparse: bool = False,
     ):
         super().__init__(
             n,
@@ -50,6 +51,7 @@ class RegressionFSII(Regression):
             random_state=random_state,
             pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,
+            do_sparse=do_sparse,
         )
 
 
