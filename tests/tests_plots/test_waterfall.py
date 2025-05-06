@@ -13,7 +13,7 @@ def test_waterfall_cooking_game(cooking_game):
     exact_computer = ExactComputer(n_players=cooking_game.n_players, game=cooking_game)
     interaction_values = exact_computer(index="k-SII", order=2)
     print(interaction_values.dict_values)
-    waterfall_plot(interaction_values, show=False)
+    waterfall_plot(interaction_values, show=True)
     plt.close("all")
 
     # visual inspection:
@@ -21,6 +21,15 @@ def test_waterfall_cooking_game(cooking_game):
     # - f(x) = 15
     # - 0, 1, and 2 should individually have negative contributions (go left)
     # - all interactions should have a positive +7 contribution (go right)
+
+    waterfall_plot(interaction_values, show=True, max_display=2)
+    # visual inspection:
+    # - E[f(X)] = 10
+    # - f(x) = 15
+    # - 0x1 should have +7 contribution (go right)
+    # - remaining 5 interactions should have -2 negative contributions (go left)
+    # - Nowhere should there be any cutoffs
+    plt.close("all")
 
 
 def test_waterfall_plot(interaction_values_list: list[InteractionValues]):
