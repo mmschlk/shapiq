@@ -19,10 +19,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
-
-      - name: Create virtual environment
-        run: uv venv
-
+          activate-environment: true
       - name: Install package using uv
         run: uv pip install .
 
