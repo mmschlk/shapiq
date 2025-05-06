@@ -5,6 +5,7 @@
 - changes logic of `InteractionValues.get_n_order()` function to be callable with **either** the `order: int` parameter and optional assignment of `min_order: int` and `max_order: int` parameters **or** with the min/max order parameters.
 - made `InteractionValues.get_n_order()` and `InteractionValues.get_n_order_values()` function more efficient by iterating over the stored interactions and not over the powerset of all potential interactions, which made the function not usable for higher player counts (models with many features, and results obtained from `TreeExplainer`). Note, this change does not really help `get_n_order_values()` as it still needs to create a numpy array of shape `n_players` times `order`.
 - improved the testing environment by adding a new fixture module containing mock `InteractionValues` objects to be used in the tests. This allows for more efficient and cleaner tests, as well as easier debugging of the tests.
+- fixed a bug in the `shapiq.waterfall_plot` function that caused the plot to not display correctly resulting in cutoff y_ticks. Additionally, the file was renamed from `watefall.py` to `waterfall.py` to match the function name.
 
 ### v1.2.3 (2025-03-24)
 - substantially improves the runtime of all `Regression` approximators by a) a faster pre-computation of the regression matrices and b) a faster computation of the weighted least squares regression [#340](https://github.com/mmschlk/shapiq/issues/340)
