@@ -1,5 +1,7 @@
 """This test module tests the ensemble selection games."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from sklearn.metrics import (

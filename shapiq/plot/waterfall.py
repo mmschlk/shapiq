@@ -3,7 +3,10 @@
 Note:
     Code and implementation was taken and adapted from the [SHAP package](https://github.com/shap/shap)
     which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+
 """
+
+from __future__ import annotations
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -17,7 +20,11 @@ __all__ = ["waterfall_plot"]
 
 
 def _draw_waterfall_plot(
-    values: np.ndarray, base_values: float, feature_names: list[str], max_display=10, show=True
+    values: np.ndarray,
+    base_values: float,
+    feature_names: list[str],
+    max_display: int = 10,
+    show: bool = False,
 ) -> plt.Axes | None:
     """The waterfall plot from the SHAP package.
 
@@ -35,6 +42,7 @@ def _draw_waterfall_plot(
 
     Returns:
         The plot if ``show`` is ``False``.
+
     """
     # Turn off interactive plot
     if show is False:
@@ -59,7 +67,7 @@ def _draw_waterfall_plot(
     yticklabels = ["" for _ in range(num_features + 1)]
 
     # size the plot based on how many features we are plotting
-    plt.gcf().set_size_inches(8, num_features * row_height + 1.5)
+    plt.gcf().set_size_inches(8, num_features * row_height + 3.5)
 
     # see how many individual (vs. grouped at the end) features we are plotting
     if num_features == len(values):
@@ -92,7 +100,7 @@ def _draw_waterfall_plot(
 
     # add a last grouped feature to represent the impact of all the features we didn't show
     if num_features < len(values):
-        yticklabels[0] = "%d other features".format()
+        yticklabels[0] = f"{int(len(values) - num_features + 1)} other features"
         remaining_impact = base_values - loc
         if remaining_impact < 0:
             pos_inds.append(0)
@@ -139,6 +147,7 @@ def _draw_waterfall_plot(
     width = bbox.width
     bbox_to_xscale = xlen / width
     hl_scaled = bbox_to_xscale * head_length
+    dpi = fig.dpi
     renderer = fig.canvas.get_renderer()
 
     # draw the positive arrows
@@ -247,13 +256,29 @@ def _draw_waterfall_plot(
         fontsize=13,
     )
 
+    # Check that the y-ticks are not drawn outside the plot
+    max_label_width = (
+        max([label.get_window_extent(renderer=renderer).width for label in ax.get_yticklabels()])
+        / dpi
+    )
+    if max_label_width > 0.1 * fig.get_size_inches()[0]:
+        required_width = max_label_width / 0.1
+        fig_height = fig.get_size_inches()[1]
+        fig.set_size_inches(required_width, fig_height, forward=True)
+
     # put horizontal lines for each feature row
     for i in range(num_features):
         plt.axhline(i, color="#cccccc", lw=0.5, dashes=(1, 5), zorder=-1)
 
     # mark the prior expected value and the model prediction
     plt.axvline(
-        base_values, 0, 1 / num_features, color="#bbbbbb", linestyle="--", linewidth=0.5, zorder=-1
+        base_values,
+        0,
+        1 / num_features,
+        color="#bbbbbb",
+        linestyle="--",
+        linewidth=0.5,
+        zorder=-1,
     )
     fx = base_values + values.sum()
     plt.axvline(fx, 0, 1, color="#bbbbbb", linestyle="--", linewidth=0.5, zorder=-1)
@@ -265,14 +290,13 @@ def _draw_waterfall_plot(
     plt.gca().spines["top"].set_visible(False)
     plt.gca().spines["left"].set_visible(False)
     ax.tick_params(labelsize=13)
-    # plt.xlabel("\nModel output", fontsize=12)
 
     # draw the E[f(X)] tick mark
     xmin, xmax = ax.get_xlim()
     ax2 = ax.twiny()
     ax2.set_xlim(xmin, xmax)
     ax2.set_xticks(
-        [base_values, base_values + 1e-8]
+        [base_values, base_values + 1e-8],
     )  # The 1e-8 is so matplotlib 3.3 doesn't try and collapse the ticks
     ax2.set_xticklabels(
         ["\n$E[f(X)]$", "\n$ = " + format_value(base_values, "%0.03f") + "$"],
@@ -289,16 +313,18 @@ def _draw_waterfall_plot(
     # The 1e-8 is so matplotlib 3.3 doesn't try and collapse the ticks
     ax3.set_xticks([base_values + values.sum(), base_values + values.sum() + 1e-8])
     ax3.set_xticklabels(
-        ["$f(x)$", "$ = " + format_value(fx, "%0.03f") + "$"], fontsize=12, ha="left"
+        ["$f(x)$", "$ = " + format_value(fx, "%0.03f") + "$"],
+        fontsize=12,
+        ha="left",
     )
     tick_labels = ax3.xaxis.get_majorticklabels()
     tick_labels[0].set_transform(
         tick_labels[0].get_transform()
-        + matplotlib.transforms.ScaledTranslation(-10 / 72.0, 0, fig.dpi_scale_trans)
+        + matplotlib.transforms.ScaledTranslation(-10 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_transform(
         tick_labels[1].get_transform()
-        + matplotlib.transforms.ScaledTranslation(12 / 72.0, 0, fig.dpi_scale_trans)
+        + matplotlib.transforms.ScaledTranslation(12 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_color("#999999")
     ax3.spines["right"].set_visible(False)
@@ -309,11 +335,11 @@ def _draw_waterfall_plot(
     tick_labels = ax2.xaxis.get_majorticklabels()
     tick_labels[0].set_transform(
         tick_labels[0].get_transform()
-        + matplotlib.transforms.ScaledTranslation(-20 / 72.0, 0, fig.dpi_scale_trans)
+        + matplotlib.transforms.ScaledTranslation(-20 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_transform(
         tick_labels[1].get_transform()
-        + matplotlib.transforms.ScaledTranslation(22 / 72.0, -1 / 72.0, fig.dpi_scale_trans)
+        + matplotlib.transforms.ScaledTranslation(22 / 72.0, -1 / 72.0, fig.dpi_scale_trans),
     )
 
     tick_labels[1].set_color("#999999")
@@ -354,8 +380,8 @@ def waterfall_plot(
 
     References:
         .. [1] SHAP is available at https://github.com/shap/shap
-    """
 
+    """
     if feature_names is None:
         feature_mapping = {i: str(i) for i in range(interaction_values.n_players)}
     else:
@@ -373,5 +399,9 @@ def waterfall_plot(
     feature_names = data[:, 0]
 
     return _draw_waterfall_plot(
-        values, interaction_values.baseline_value, feature_names, max_display=max_display, show=show
+        values,
+        interaction_values.baseline_value,
+        feature_names,
+        max_display=max_display,
+        show=show,
     )

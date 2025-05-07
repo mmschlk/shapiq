@@ -1,5 +1,7 @@
 """This module contains all tests for the bar plots."""
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -11,7 +13,7 @@ def test_bar_cooking_game(cooking_game):
     exact_computer = ExactComputer(n_players=cooking_game.n_players, game=cooking_game)
     sv_exact = exact_computer(index="k-SII", order=2)
     print(sv_exact.dict_values)
-    bar_plot([sv_exact], show=True)
+    bar_plot([sv_exact], show=False)
 
     # visual inspection:
     # - Order from top to bottom: Base Value, the interactions (all equal), F0, F1, F2
@@ -29,14 +31,9 @@ def test_bar_plot(interaction_values_list: list[InteractionValues]):
     assert isinstance(axis, plt.Axes)
     plt.close()
 
-    axis = bar_plot(interaction_values_list, show=True)
-    assert axis is None
+    axis = bar_plot(interaction_values_list, show=False)
+    assert isinstance(axis, plt.Axes)
     plt.close()
-
-    # test show=True
-    output = bar_plot(interaction_values_list, show=True)
-    assert output is None
-    plt.close("all")
 
     # test max_display=None
     output = bar_plot(interaction_values_list, show=False, max_display=None)

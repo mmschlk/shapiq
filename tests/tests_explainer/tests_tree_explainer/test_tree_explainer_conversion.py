@@ -1,5 +1,8 @@
 """This test module collects all tests for the conversions of the supported tree models for the
-TreeExplainer class."""
+TreeExplainer class.
+"""
+
+from __future__ import annotations
 
 import numpy as np
 import pytest
@@ -43,13 +46,10 @@ def test_tree_model_init():
     assert np.all(tree_model.leaf_mask == np.array([False, False, True, True, True]))
     # check if empty prediction is correctly computed
     assert tree_model.empty_prediction == 425.0
-    # test __getitem__
-    assert np.all(tree_model["children_left"] == np.array([1, 2, -1, -1, -1]))
 
 
 def test_edge_tree_init():
     """Tests the initialization of the EdgeTree class."""
-
     # setup test data (same as in test_manual_tree of test_tree_treeshapiq.py)
     children_left = np.asarray([1, 2, 3, -1, -1, -1, 7, -1, -1])
     children_right = np.asarray([6, 5, 4, -1, -1, -1, 8, -1, -1])
@@ -88,9 +88,6 @@ def test_edge_tree_init():
     )
 
     assert safe_isinstance(edge_tree, ["shapiq.explainer.tree.base.EdgeTree"])
-
-    # check if edge_tree can be accessed via __getitem__
-    assert edge_tree["parents"] is not None
 
 
 def test_sklean_dt_conversion(dt_reg_model, dt_clf_model):
@@ -150,7 +147,7 @@ def test_sklearn_if_conversion(if_clf_model):
 def test_conversion_predict_identity(model_fixture, model_class, background_reg_data, request):
     if model_class not in SUPPORTED_MODELS:
         pytest.skip(
-            f"skipped test, {model_class} not in the supported models for the tree explainer."
+            f"skipped test, {model_class} not in the supported models for the tree explainer.",
         )
     else:
         model = request.getfixturevalue(model_fixture)
@@ -171,11 +168,15 @@ def test_conversion_predict_identity(model_fixture, model_class, background_reg_
                     # see .test_tree_bugfix.test_xgb_predicts_with_wrong_leaf_node
                     # TODO: take a look at this in more detail, why is it hard to get efficiency
                     continue
-                assert False
+                msg = "Prediction does not match the original prediction."
+                raise AssertionError(msg)
 
 
 def test_tree_model_predict(
-    background_reg_dataset, dt_reg_model, background_clf_dataset, dt_clf_model
+    background_reg_dataset,
+    dt_reg_model,
+    background_clf_dataset,
+    dt_clf_model,
 ):
     """Tests weather the tree model predict_one is correct."""
     X_reg, _ = background_reg_dataset

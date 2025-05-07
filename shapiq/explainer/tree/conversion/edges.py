@@ -1,5 +1,8 @@
 """Conversion functions to parse a tree model into the edge representation used by the
-TreeSHAP-IQ algorithm to compute the interaction values of a tree-based model."""
+TreeSHAP-IQ algorithm to compute the interaction values of a tree-based model.
+"""
+
+from __future__ import annotations
 
 import numpy as np
 from scipy.special import binom
@@ -43,6 +46,7 @@ def create_edge_tree(
 
     Returns:
         EdgeTree: A dataclass containing the edge information of the tree.
+
     """
     # variables to be filled with recursive function
     parents = np.full(n_nodes, -1, dtype=int)
@@ -83,11 +87,14 @@ def create_edge_tree(
 
         Returns:
             int: The edge height of the current node.
+
         """
         # if root node, initialize seen_features and p_e_storage
         if seen_features is None:
             seen_features: np.ndarray[int] = np.full(
-                n_features, -1, dtype=int
+                n_features,
+                -1,
+                dtype=int,
             )  # maps feature_id to ancestor node_id
 
         # update the maximum depth of the tree
@@ -103,10 +110,16 @@ def create_edge_tree(
         # if root_node, step into the tree and end recursion
         if node_id == 0:
             edge_heights_left = recursive_search(
-                int(left_child), depth + 1, prod_weight, seen_features.copy()
+                int(left_child),
+                depth + 1,
+                prod_weight,
+                seen_features.copy(),
             )
             edge_heights_right = recursive_search(
-                int(right_child), depth + 1, prod_weight, seen_features.copy()
+                int(right_child),
+                depth + 1,
+                prod_weight,
+                seen_features.copy(),
             )
             edge_heights[node_id] = max(edge_heights_left, edge_heights_right)
             return edge_heights[node_id]  # final return ending the recursion
@@ -158,10 +171,16 @@ def create_edge_tree(
         # update the edge heights
         if not is_leaf:  # if node is not a leaf, continue recursion
             edge_heights_left = recursive_search(
-                int(left_child), depth + 1, prod_weight, seen_features.copy()
+                int(left_child),
+                depth + 1,
+                prod_weight,
+                seen_features.copy(),
             )
             edge_heights_right = recursive_search(
-                int(right_child), depth + 1, prod_weight, seen_features.copy()
+                int(right_child),
+                depth + 1,
+                prod_weight,
+                seen_features.copy(),
             )
             edge_heights[node_id] = max(edge_heights_left, edge_heights_right)
         else:  # if node is a leaf, end recursion

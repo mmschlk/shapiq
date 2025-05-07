@@ -1,5 +1,6 @@
 """Utility functions for the shapiq package."""
 
+from .custom_types import Model
 from .datasets import shuffle_data
 from .modules import check_import_module, safe_isinstance
 from .sets import (
@@ -12,7 +13,6 @@ from .sets import (
     transform_array_to_coalitions,
     transform_coalitions_to_array,
 )
-from .types import Model
 
 __all__ = [
     # types

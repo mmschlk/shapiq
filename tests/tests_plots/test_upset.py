@@ -1,5 +1,7 @@
 """This module contains all tests for the upset plot."""
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -41,8 +43,8 @@ def test_upset_plot():
     assert isinstance(fig, plt.Figure)
     plt.close("all")
 
-    fig = upset_plot(iv, feature_names=feature_names, color_matrix=True, show=True)
-    assert fig is None
+    fig = upset_plot(iv, feature_names=feature_names, color_matrix=True, show=False)
+    assert isinstance(fig, plt.Figure)
     plt.close("all")
 
     # in the following feature 3 is not shown

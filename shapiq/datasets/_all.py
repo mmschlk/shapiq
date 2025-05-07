@@ -1,6 +1,8 @@
 """This module contains functions to load datasets."""
 
-import os
+from __future__ import annotations
+
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -8,12 +10,12 @@ import pandas as pd
 GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
 # csv files are located next to this file in a folder called "data"
-SHAPIQ_DATASETS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+SHAPIQ_DATASETS_FOLDER = Path(__file__).parent / "data"
 
 
 def _create_folder() -> None:
     """Create the datasets folder if it does not exist."""
-    os.makedirs(SHAPIQ_DATASETS_FOLDER, exist_ok=True)
+    Path(SHAPIQ_DATASETS_FOLDER).mkdir(parents=True, exist_ok=True)
 
 
 def _try_load(csv_file_name: str) -> pd.DataFrame:
@@ -25,18 +27,20 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
 
     Returns:
         The dataset as a pandas DataFrame.
+
     """
     _create_folder()
+    path = Path(SHAPIQ_DATASETS_FOLDER) / csv_file_name
     try:
-        return pd.read_csv(os.path.join(SHAPIQ_DATASETS_FOLDER, csv_file_name))
+        return pd.read_csv(path)
     except FileNotFoundError:
         data = pd.read_csv(GITHUB_DATA_URL + csv_file_name)
-        data.to_csv(os.path.join(SHAPIQ_DATASETS_FOLDER, csv_file_name), index=False)
+        data.to_csv(path, index=False)
         return data
 
 
 def load_california_housing(
-    to_numpy=False,
+    to_numpy: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the California housing dataset.
 
@@ -51,6 +55,7 @@ def load_california_housing(
         >>> x_data, y_data = load_california_housing()
         >>> print(x_data.shape, y_data.shape)
         ((20640, 8), (20640,))
+
     """
     dataset = _try_load("california_housing.csv")
     class_label = "MedHouseVal"
@@ -63,7 +68,7 @@ def load_california_housing(
 
 
 def load_bike_sharing(
-    to_numpy=False,
+    to_numpy: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the bike-sharing dataset from openml and preprocess it.
 
@@ -81,6 +86,7 @@ def load_bike_sharing(
         >>> x_data, y_data = load_bike_sharing()
         >>> print(x_data.shape, y_data.shape)
         ((17379, 12), (17379,))
+
     """
     from sklearn.compose import ColumnTransformer
     from sklearn.pipeline import Pipeline
@@ -110,7 +116,7 @@ def load_bike_sharing(
     cat_pipeline = Pipeline(
         [
             ("ordinal_encoder", OrdinalEncoder()),
-        ]
+        ],
     )
     column_transformer = ColumnTransformer(
         [
@@ -133,7 +139,7 @@ def load_bike_sharing(
 
 
 def load_adult_census(
-    to_numpy=False,
+    to_numpy: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the adult census dataset from the UCI Machine Learning Repository.
 
@@ -153,6 +159,7 @@ def load_adult_census(
         >>> x_data, y_data = load_adult_census()
         >>> print(x_data.shape, y_data.shape)
         ((45222, 14), (45222,))
+
     """
     from sklearn.compose import ColumnTransformer
     from sklearn.impute import SimpleImputer
@@ -176,12 +183,12 @@ def load_adult_census(
     ]
     dataset[num_feature_names] = dataset[num_feature_names].apply(pd.to_numeric)
     num_pipeline = Pipeline(
-        [("imputer", SimpleImputer(strategy="median")), ("std_scaler", StandardScaler())]
+        [("imputer", SimpleImputer(strategy="median")), ("std_scaler", StandardScaler())],
     )
     cat_pipeline = Pipeline(
         [
             ("ordinal_encoder", OrdinalEncoder()),
-        ]
+        ],
     )
     column_transformer = ColumnTransformer(
         [

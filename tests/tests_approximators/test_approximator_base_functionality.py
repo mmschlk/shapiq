@@ -1,5 +1,7 @@
 """This test module tests base functionality of approximators."""
 
+from __future__ import annotations
+
 from copy import copy, deepcopy
 
 import pytest

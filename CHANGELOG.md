@@ -1,11 +1,22 @@
 ## Changelog
 
 ### Development
+- changes `budget` to be an mandatory parameter given to the `TabularExplainer.explain()` method [#355](https://github.com/mmschlk/shapiq/pull/356).
+- changes logic of `InteractionValues.get_n_order()` function to be callable with **either** the `order: int` parameter and optional assignment of `min_order: int` and `max_order: int` parameters **or** with the min/max order parameters.
+- made `InteractionValues.get_n_order()` and `InteractionValues.get_n_order_values()` function more efficient by iterating over the stored interactions and not over the powerset of all potential interactions, which made the function not usable for higher player counts (models with many features, and results obtained from `TreeExplainer`). Note, this change does not really help `get_n_order_values()` as it still needs to create a numpy array of shape `n_players` times `order`.
+- improved the testing environment by adding a new fixture module containing mock `InteractionValues` objects to be used in the tests. This allows for more efficient and cleaner tests, as well as easier debugging of the tests.
+- fixed a bug in the `shapiq.waterfall_plot` function that caused the plot to not display correctly resulting in cutoff y_ticks. Additionally, the file was renamed from `watefall.py` to `waterfall.py` to match the function name.
+
+### v1.2.3 (2025-03-24)
+- substantially improves the runtime of all `Regression` approximators by a) a faster pre-computation of the regression matrices and b) a faster computation of the weighted least squares regression [#340](https://github.com/mmschlk/shapiq/issues/340)
 - removes `sample_replacements` parameter from `MarginalImputer` and removes the DeprecationWarning for it
 - adds a trivial computation to `TreeSHAP-IQ` for trees that use only one feature in the tree (this works for decision stumps or trees splitting on only one feature multiple times). In such trees, the computation is trivial as the whole effect of $\nu(N) - \nu(\emptyset)$ is all on the main effect of the single feature and there is no interaction effect. This expands on the fix in v1.2.1 [#286](https://github.com/mmschlk/shapiq/issues/286).
 - fixes a bug with xgboost where feature names where trees that did not contain all features would lead `TreeExplainer` to fail
 - fixes a bug with `stacked_bar_plot` where the higher order interactions were inflated by the lower order interactions, thus wrongly showing the higher order interactions as higher than they are
 - fixes a bug where `InteractionValues.get_subset()` returns a faulty `coalition_lookup` dictionary pointing to indices outside the subset of players [#336](https://github.com/mmschlk/shapiq/issues/336)
+- updates default value of `TreeExplainer`'s `min_order` parameter from 1 to 0 to include the baseline value in the interaction values as per default
+- adds the `RegressionFBII` approximator to estimate Faithful Banzhaf interactions via least squares regression [#333](https://github.com/mmschlk/shapiq/pull/333). Additionally, FBII support was introduced in TabularExplainer and MonteCarlo-Approximator.
+- adds a `RandomGame` class as part of `shapiq.games.benchmark` which always returns a random vector of integers between 0 and 100.
 
 ### v1.2.2 (2025-03-11)
 - changes python support to 3.10-3.13 [#318](https://github.com/mmschlk/shapiq/pull/318)

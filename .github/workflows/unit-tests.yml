@@ -21,16 +21,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - name: Set up Python ${{ matrix.python-version }} and uv
+      id: setup-uv-python
+      uses: astral-sh/setup-uv@v6
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'pip'
+        enable-cache: true
+        cache-dependency-glob: |
+            **/pyproject.toml
+            **/uv.lock
 
     - name: Install dependencies
-      run: |
-        pip install -r tests/requirements/requirements.txt
+      run: uv sync --all-extras --dev
 
     - name: Test with pytest
-      run: |
-        pytest
+      run: uv run pytest -n logical

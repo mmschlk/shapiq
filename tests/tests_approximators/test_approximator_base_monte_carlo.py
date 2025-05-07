@@ -1,5 +1,8 @@
 """This test module contains all tests regarding the base monte-carlo approximator many other
-approximators are based on."""
+approximators are based on.
+"""
+
+from __future__ import annotations
 
 import pytest
 
@@ -14,13 +17,18 @@ from shapiq.interaction_values import InteractionValues
         (7, 2, "SII", False, True, False),
         (7, 2, "wrong_index", False, False, True),
         (7, 2, "FSII", True, False, False),
+        (7, 2, "FBII", True, False, False),
     ],
 )
 def test_initialization(
-    n, max_order, index, top_order, stratify_intersection, stratify_coalition_size
+    n,
+    max_order,
+    index,
+    top_order,
+    stratify_intersection,
+    stratify_coalition_size,
 ):
     """Tests the initialization of the MonteCarlo approximator."""
-
     if index == "wrong_index":
         with pytest.raises(ValueError):
             _ = MonteCarlo(n, max_order, index=index, top_order=top_order)
@@ -49,6 +57,12 @@ def test_initialization(
         _ = approximator._fsii_weight(interaction_size=max_order, coalition_size=0)  # no error
         with pytest.raises(ValueError):  # FSII weights only defined for top order
             approximator._fsii_weight(interaction_size=max_order - 1, coalition_size=0)  # error
+
+    if index == "FBII":
+        max_order = approximator.max_order
+        _ = approximator._fbii_weight(interaction_size=max_order)
+        with pytest.raises(ValueError):
+            approximator._fbii_weight(interaction_size=max_order - 1)
 
 
 @pytest.mark.parametrize(

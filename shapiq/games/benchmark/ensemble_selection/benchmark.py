@@ -1,5 +1,7 @@
 """This benchmark module contains the benchmark games for ensemble selection."""
 
+from __future__ import annotations
+
 from shapiq.games.benchmark.ensemble_selection.base import EnsembleSelection
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
@@ -25,6 +27,7 @@ class AdultCensus(EnsembleSelection):
         random_state: The random state to use for the ensemble selection game. Defaults to 42, which
             is the same random state used in the other benchmark games with this model type for this
             dataset.
+
     """
 
     def __init__(
@@ -79,6 +82,7 @@ class BikeSharing(EnsembleSelection):
         random_state: The random state to use for the ensemble selection game. Defaults to 42, which
             is the same random state used in the other benchmark games with this model type for this
             dataset.
+
     """
 
     def __init__(
@@ -133,6 +137,7 @@ class CaliforniaHousing(EnsembleSelection):
         random_state: The random state to use for the ensemble selection game. Defaults to 42, which
             is the same random state used in the other benchmark games with this model type for this
             dataset.
+
     """
 
     def __init__(

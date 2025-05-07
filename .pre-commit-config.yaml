@@ -10,22 +10,9 @@ repos:
       - id: mixed-line-ending
       - id: check-merge-conflict
 
-  - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 24.4.2
-    hooks:
-      - id: black
-        name: black
-        entry: black
-        language: python
-      - id: black-jupyter
-        name: black-jupyter
-        entry: black
-        language: python
-
-  - repo: local
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
     hooks:
       - id: ruff
-        name: ruff
-        language: python
-        types: [python]
-        entry: ruff check --no-cache --fix
+        args: [--fix, --exit-non-zero-on-fix, --no-cache]
+      - id: ruff-format

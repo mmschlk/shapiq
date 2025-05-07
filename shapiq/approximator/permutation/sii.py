@@ -1,10 +1,12 @@
 """This module implements the Permutation Sampling approximator for the SII (and k-SII) index."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from ...utils.sets import powerset
 from .._base import Approximator
 
@@ -25,6 +27,7 @@ class PermutationSamplingSII(Approximator):
             Sampling approximator for the STII index
         - :class:`~shapiq.approximator.permutation.sv.PermutationSamplingSV`: The Permutation
             Sampling approximator for the SV index
+
     """
 
     def __init__(
@@ -36,9 +39,14 @@ class PermutationSamplingSII(Approximator):
         random_state: int | None = None,
     ) -> None:
         if index not in ["SII", "k-SII"]:
-            raise ValueError(f"Invalid index {index}. Must be either 'SII' or 'k-SII'.")
+            msg = f"Invalid index {index}. Must be either 'SII' or 'k-SII'."
+            raise ValueError(msg)
         super().__init__(
-            n=n, max_order=max_order, index=index, top_order=top_order, random_state=random_state
+            n=n,
+            max_order=max_order,
+            index=index,
+            top_order=top_order,
+            random_state=random_state,
         )
         self.iteration_cost: int = self._compute_iteration_cost()
 
@@ -48,6 +56,7 @@ class PermutationSamplingSII(Approximator):
 
         Returns:
             int: The cost of a single iteration.
+
         """
         iteration_cost: int = 0
         min_order = 1 if not self.top_order else self.max_order
@@ -60,6 +69,7 @@ class PermutationSamplingSII(Approximator):
 
         Returns:
             np.ndarray: The order iterator.
+
         """
         min_order = 1 if not self.top_order else self.max_order
         return np.arange(min_order, self.max_order + 1)
@@ -79,8 +89,8 @@ class PermutationSamplingSII(Approximator):
 
         Returns:
             InteractionValues: The estimated interaction values.
-        """
 
+        """
         batch_size = 1 if batch_size is None else batch_size
         used_budget = 0
 
@@ -92,7 +102,9 @@ class PermutationSamplingSII(Approximator):
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget - used_budget, batch_size, self.iteration_cost
+            budget - used_budget,
+            batch_size,
+            self.iteration_cost,
         )
 
         # main permutation sampling loop
@@ -143,6 +155,16 @@ class PermutationSamplingSII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        return self._finalize_result(
-            result, baseline_value=empty_value, budget=used_budget, estimated=True
+        interactions = InteractionValues(
+            n_players=self.n,
+            values=result,
+            index=self.approximation_index,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_value,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+
+        return finalize_computed_interactions(interactions, target_index=self.index)

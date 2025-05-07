@@ -1,5 +1,7 @@
 """Implementation of the baseline imputer."""
 
+from __future__ import annotations
+
 import warnings
 
 import numpy as np
@@ -48,6 +50,7 @@ class BaselineImputer(Imputer):
         >>> # get the model prediction with missing values
         >>> imputer(np.array([[True, False, True, False]]))
         np.array([2.])  # model prediciton with the last baseline value
+
     """
 
     def __init__(
@@ -79,6 +82,7 @@ class BaselineImputer(Imputer):
         Returns:
             The model's predictions on the imputed data points. The shape of the array is
                ``(n_subsets, n_outputs)``.
+
         """
         n_coalitions = coalitions.shape[0]
         data = np.tile(np.copy(self._x), (n_coalitions, 1))
@@ -87,7 +91,7 @@ class BaselineImputer(Imputer):
         outputs = self.predict(data)
         return outputs
 
-    def init_background(self, data: np.ndarray) -> "BaselineImputer":
+    def init_background(self, data: np.ndarray) -> BaselineImputer:
         """Initializes the imputer to the background data.
 
         Args:
@@ -110,6 +114,7 @@ class BaselineImputer(Imputer):
             >>> imputer.init_background(baseline_vector)
             >>> imputer.baseline_values
             array([[0, 0, 0]])  # given as input
+
         """
         if data.ndim == 1 or data.shape[0] == 1:  # data is a vector -> use as baseline values
             self.baseline_values = data.reshape(1, self.n_features)
@@ -129,7 +134,8 @@ class BaselineImputer(Imputer):
                     summarized_feature = values[np.argmax(counts)]
                     # add feature to categorical features
                     warnings.warn(
-                        f"Feature {feature} is not numerical. Adding it to categorical features."
+                        f"Feature {feature} is not numerical. Adding it to categorical features.",
+                        stacklevel=2,
                     )
                     self._cat_features.append(feature)
             self.baseline_values[0, feature] = summarized_feature
@@ -141,6 +147,7 @@ class BaselineImputer(Imputer):
 
         Returns:
             The empty prediction.
+
         """
         empty_predictions = self.predict(self.baseline_values)
         empty_prediction = float(empty_predictions[0])

@@ -2,6 +2,7 @@ from collections.abc import Callable
 from .._base import Approximator
 from ...interaction_values import InteractionValues
 from ...game_theory.moebius_converter import MoebiusConverter
+from ...game_theory.indices import is_index_aggregated
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
 from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
 from sparse_transform.qsft.utils.query import get_bch_decoder
@@ -9,6 +10,7 @@ from sparse_transform.qsft.signals.input_signal_subsampled import (
     SubsampledSignal as SubsampledSignalFourier,
 )
 import numpy as np
+import copy
 
 
 class Sparse(Approximator):
@@ -101,7 +103,11 @@ class Sparse(Approximator):
         """
         # Find the maximum value of b that fits within the given sample budget and get the used budget
         used_budget = self._set_transform_budget(budget)
-        signal = SubsampledSignalFourier(func=lambda inputs: game(inputs.astype(bool)), n=self.n, q=2, query_args=self.query_args)
+        signal = SubsampledSignalFourier(func=lambda inputs: game(inputs.astype(bool)),
+                                         n=self.n,
+                                         q=2,
+                                         query_args=self.query_args,
+                                         )
         # Extract the coefficients of the original transform
         initial_transform = {
             tuple(np.nonzero(key)[0]): np.real(value)
@@ -114,12 +120,22 @@ class Sparse(Approximator):
         # Filter the output as needed
         if self.top_order:
             result = self._filter_order(result)
-        return self._finalize_result(
-            result=result,
-            baseline_value=self.interaction_lookup.get((), 0.0),
+        output = InteractionValues(
+            values=result,
+            index=self.approximation_index,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            interaction_lookup=copy.deepcopy(self.interaction_lookup),
             estimated=True,
-            budget=used_budget,
+            estimation_budget=used_budget,
+            baseline_value=self.interaction_lookup.get((), 0.0),
         )
+        # Update the interaction lookup to reflect the filtered results
+        if is_index_aggregated(self.index):
+            output = self.aggregate_interaction_values(output)
+        return output
+
 
     def _filter_order(self, result: np.ndarray) -> np.ndarray:
         """Filters the interactions to keep only those of the maximum order.
@@ -165,7 +181,6 @@ class Sparse(Approximator):
             estimated=True,
             baseline_value=moebius_transform.get((), 0.0),
         )
-        # TODO the Moebius converter should be made more efficient
         autoconverter = MoebiusConverter(moebius_coefficients=moebius_interactions)
         converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
         self._interaction_lookup = converted_interaction_values.interaction_lookup

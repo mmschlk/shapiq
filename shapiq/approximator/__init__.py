@@ -6,11 +6,16 @@ from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
+from .regression import (
+    InconsistentKernelSHAPIQ,
+    KernelSHAP,
+    KernelSHAPIQ,
+    RegressionFBII,
+    RegressionFSII,
+    kADDSHAP,
+)
 from .regression import InconsistentKernelSHAPIQ, KernelSHAP, KernelSHAPIQ, RegressionFSII, kADDSHAP
 from .sparse import SPEX
-
-# TODO JK: Check if addition of SPEX is okay
-
 
 # contains all SV approximators
 SV_APPROXIMATORS: list[Approximator.__class__] = [
@@ -65,6 +70,12 @@ FSII_APPROXIMATORS: list[Approximator.__class__] = [
     SPEX,
 ]
 
+# contains all approximators that can be used for FBII
+FBII_APPROXIMATORS: list[Approximator.__class__] = [
+    RegressionFBII,
+    SPEX,
+]
+
 __all__ = [
     "PermutationSamplingSII",
     "PermutationSamplingSTII",
@@ -73,6 +84,7 @@ __all__ = [
     "OwenSamplingSV",
     "KernelSHAP",
     "RegressionFSII",
+    "RegressionFBII",
     "KernelSHAPIQ",
     "InconsistentKernelSHAPIQ",
     "SHAPIQ",
@@ -86,6 +98,5 @@ __all__ = [
     "SII_APPROXIMATORS",
     "STII_APPROXIMATORS",
     "FSII_APPROXIMATORS",
+    "FBII_APPROXIMATORS",
 ]
-
-# Path: shapiq/approximator/__init__.py

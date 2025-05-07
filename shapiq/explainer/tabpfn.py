@@ -1,5 +1,8 @@
 """This module contains the TabPFNExplainer class, which is a class for explaining the predictions
-of a TabPFN model."""
+of a TabPFN model.
+"""
+
+from __future__ import annotations
 
 import numpy as np
 
@@ -59,6 +62,7 @@ class TabPFNExplainer(TabularExplainer):
     References:
         .. [1] Rundel, D., Kobialka, J., von Crailsheim, C., Feurer, M., Nagler, T., Rügamer, D. (2024). Interpretable Machine Learning for TabPFN. In: Longo, L., Lapuschkin, S., Seifert, C. (eds) Explainable Artificial Intelligence. xAI 2024. Communications in Computer and Information Science, vol 2154. Springer, Cham. https://doi.org/10.1007/978-3-031-63797-1_23
         .. [2] Hollmann, N., Müller, S., Purucker, L. et al. Accurate predictions on small data with a tabular foundation model. Nature 637, 319–326 (2025). https://doi.org/10.1038/s41586-024-08328-6
+
     """
 
     def __init__(
@@ -82,10 +86,11 @@ class TabPFNExplainer(TabularExplainer):
 
         # check that data and labels have the same number of samples
         if data.shape[0] != labels.shape[0]:
-            raise ValueError(
+            msg = (
                 f"The number of samples in `data` and `labels` must be equal (got data.shape= "
                 f"{data.shape} and labels.shape={labels.shape})."
             )
+            raise ValueError(msg)
         n_samples = data.shape[0]
         x_train = data
         y_train = labels

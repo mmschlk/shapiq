@@ -2,6 +2,7 @@
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+from __future__ import annotations
 
 import os
 import sys
@@ -9,8 +10,10 @@ import sys
 import commonmark
 from sphinx.builders.html import StandaloneHTMLBuilder
 
-sys.path.insert(0, os.path.abspath("../.."))
-sys.path.insert(0, os.path.abspath("../../shapiq"))
+sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
+sys.path.insert(0, os.path.abspath("../../shapiq"))  # noqa: PTH100
+sys.path.insert(0, os.path.abspath("../../examples"))  # noqa: PTH100
+
 
 import shapiq
 
@@ -43,6 +46,8 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
 ]
+
+nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
@@ -83,7 +88,7 @@ html_sidebars = {
         "sidebar/navigation.html",
         "sidebar/ethical-ads.html",
         "sidebar/scroll-end.html",
-    ]
+    ],
 }
 
 # -- Autodoc ---------------------------------------------------------------------------------------
@@ -116,7 +121,7 @@ copybutton_prompt_is_regexp = True
 # based on https://stackoverflow.com/a/56428123/23972
 
 
-def docstring(app, what, name, obj, options, lines):
+def docstring(_app, _what, _name, _obj, _options, lines):
     if len(lines) > 1 and lines[0] == "@&ismd":
         md = "\n".join(lines[1:])
         ast = commonmark.Parser().parse(md)

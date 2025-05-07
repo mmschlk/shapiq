@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the kADDSHAP regression approximator."""
 
+from __future__ import annotations
+
 import pytest
 
 from shapiq.approximator import kADDSHAP

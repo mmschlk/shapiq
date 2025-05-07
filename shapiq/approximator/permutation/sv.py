@@ -1,10 +1,12 @@
 """This module contains the permutation sampling approximation method for the Shapley value (SV)."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
+from ...interaction_values import InteractionValues, finalize_computed_interactions
 from .._base import Approximator
 
 
@@ -30,12 +32,20 @@ class PermutationSamplingSV(Approximator):
 
     """
 
-    def __init__(self, n: int, random_state: int | None = None, **kwargs) -> None:
+    def __init__(
+        self,
+        n: int,
+        random_state: int | None = None,
+        **kwargs,  # noqa ARG002
+    ) -> None:
         super().__init__(n=n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = n - 1
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], batch_size: int | None = 5
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
+        batch_size: int | None = 5,
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
@@ -46,8 +56,8 @@ class PermutationSamplingSV(Approximator):
 
         Returns:
             The estimated interaction values.
-        """
 
+        """
         result: np.ndarray[float] = self._init_result()
         counts: np.ndarray[int] = self._init_result(dtype=int)
 
@@ -64,13 +74,26 @@ class PermutationSamplingSV(Approximator):
             interaction_index = self._interaction_lookup[self._grand_coalition_tuple]
             result[interaction_index] = full_val - empty_val
             counts[interaction_index] = 1
-            return self._finalize_result(
-                result, baseline_value=empty_val, budget=used_budget, estimated=True
+
+            interactions = InteractionValues(
+                values=result,
+                interaction_lookup=self._interaction_lookup,
+                baseline_value=empty_val,
+                min_order=self.min_order,
+                max_order=self.max_order,
+                n_players=self.n,
+                index=self.approximation_index,
+                estimated=True,
+                estimation_budget=used_budget,
             )
+
+            return finalize_computed_interactions(interactions, target_index=self.index)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget - 2, batch_size, self.iteration_cost
+            budget - 2,
+            batch_size,
+            self.iteration_cost,
         )
 
         # main permutation sampling loop
@@ -123,6 +146,17 @@ class PermutationSamplingSV(Approximator):
                 coalition_index += 1
 
         result = np.divide(result, counts, out=result, where=counts != 0)
-        return self._finalize_result(
-            result, baseline_value=empty_val, budget=used_budget, estimated=True
+
+        interactions = InteractionValues(
+            values=result,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_val,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            index=self.approximation_index,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+
+        return finalize_computed_interactions(interactions, target_index=self.index)

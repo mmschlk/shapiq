@@ -1,5 +1,8 @@
 """Aggregation functions for summarizing base interaction indices into
-efficient indices useful for explanations"""
+efficient indices useful for explanations
+"""
+
+from __future__ import annotations
 
 import warnings
 
@@ -18,6 +21,7 @@ def _change_index(index: str) -> str:
 
     Returns:
         The new index of the interaction values.
+
     """
     if index in ["SV", "BV"]:  # no change for probabilistic values like SV or BV
         return index
@@ -25,8 +29,9 @@ def _change_index(index: str) -> str:
     return new_index
 
 
-def aggregate_interaction_values(
-    base_interactions: InteractionValues, order: int | None = None
+def aggregate_base_interaction(
+    base_interactions: InteractionValues,
+    order: int | None = None,
 ) -> InteractionValues:
     """Aggregates the basis interaction values into an efficient interaction index.
 
@@ -55,7 +60,7 @@ def aggregate_interaction_values(
         ...     min_order=0,
         ...     max_order=2,
         ... )
-        >>> k_sii_values = aggregate_interaction_values(sii_values)
+        >>> k_sii_values = aggregate_base_interaction(sii_values)
         >>> k_sii_values.index
         'k-SII'
         >>> k_sii_values.baseline_value
@@ -64,6 +69,7 @@ def aggregate_interaction_values(
         {(): 0, (1,): 1, (2,): 2, (3,): 3, (1, 2): 4, (2, 3): 5, (1, 3): 6}
         >>> k_sii_values.max_order
         2
+
     """
     # sanitize input parameters
     order = order or base_interactions.max_order
@@ -72,13 +78,14 @@ def aggregate_interaction_values(
         warnings.warn(
             UserWarning(
                 "The base interaction values have a minimum order greater than 1. Aggregation may "
-                "not be meaningful."
-            )
+                "not be meaningful.",
+            ),
+            stacklevel=2,
         )
 
     bernoulli_numbers = sp.special.bernoulli(order)  # used for aggregation
     baseline_value = base_interactions.baseline_value
-    transformed_dict: dict[tuple, float] = {tuple(): baseline_value}  # storage
+    transformed_dict: dict[tuple, float] = {(): baseline_value}  # storage
     # iterate over all interactions in base_interactions and project them onto all interactions T
     # where 1 <= |T| <= order
     for base_interaction, pos in base_interactions.interaction_lookup.items():
@@ -126,6 +133,7 @@ def aggregate_to_one_dimension(interactions: InteractionValues) -> tuple[np.ndar
 
     Returns:
         The positive and negative interaction values as a 1-dimensional array for each player.
+
     """
     n = interactions.n_players
     pos_values = np.zeros(shape=(n,), dtype=float)

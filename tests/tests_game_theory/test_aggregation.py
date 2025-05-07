@@ -1,5 +1,7 @@
 """Tests the approximiation of k-SII values with PermutationSamplingSII and SHAPIQ."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -29,9 +31,7 @@ def test_k_sii_estimation(sii_approximator, ksii_approximator):
     n = 7
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    # sii_approximator = PermutationSamplingSII(n, max_order, "SII", False, random_state=42)
     sii_estimates = sii_approximator.approximate(1_000, game)
-    # nsii_approximator = PermutationSamplingSII(n, max_order, "kSII", False, random_state=42)
     ksii_estimates = ksii_approximator.approximate(1_000, game)
     assert sii_estimates != ksii_estimates
     assert ksii_estimates.index == "k-SII"

@@ -1,7 +1,10 @@
 """Pre-compute the values for the games and store them in a file."""
 
+from __future__ import annotations
+
 import multiprocessing as mp
 import os
+from pathlib import Path
 from typing import Any
 
 from tqdm.auto import tqdm
@@ -16,9 +19,8 @@ __all__ = [
     "get_game_files",
 ]
 
-
-SHAPIQ_DATA_DIR = os.path.join(os.path.dirname(__file__), "precomputed")
-os.makedirs(SHAPIQ_DATA_DIR, exist_ok=True)
+SHAPIQ_DATA_DIR: Path = Path(__file__).parent / "precomputed"
+SHAPIQ_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_game_files(game: Game | Game.__class__ | str, n_players: int) -> list[str]:
@@ -31,11 +33,12 @@ def get_game_files(game: Game | Game.__class__ | str, n_players: int) -> list[st
 
     Returns:
         The list of files for the given game and number of players.
+
     """
     game_name = game
     if not isinstance(game, str):
         game_name = game.get_game_name()
-    save_dir = os.path.join(SHAPIQ_DATA_DIR, game_name, str(n_players))
+    save_dir = Path(SHAPIQ_DATA_DIR) / game_name / str(n_players)
     try:
         return os.listdir(save_dir)
     except FileNotFoundError:
@@ -43,8 +46,10 @@ def get_game_files(game: Game | Game.__class__ | str, n_players: int) -> list[st
 
 
 def pre_compute_and_store(
-    game: Game, save_dir: str | None = None, game_id: str | None = None
-) -> str:
+    game: Game,
+    save_dir: str | None = None,
+    game_id: str | None = None,
+) -> Path:
     """Pre-compute the values for the given game and store them in a file.
 
     Args:
@@ -55,23 +60,21 @@ def pre_compute_and_store(
 
     Returns:
         The path to the file where the values are stored.
-    """
 
+    """
     if save_dir is None:
         # this file path
-        save_dir = os.path.dirname(__file__)
-        save_dir = os.path.join(save_dir, "precomputed", game.game_name, str(game.n_players))
+        save_dir = Path(__file__).parent
+        save_dir = save_dir / "precomputed" / game.game_name / str(game.n_players)
     else:  # check if n_players is in the path
         if str(game.n_players) not in save_dir:
-            save_dir = os.path.join(save_dir, str(game.n_players))
-
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+            save_dir = Path(save_dir) / str(game.n_players)
+    save_dir.mkdir(parents=True, exist_ok=True)
 
     if game_id is None:
         game_id = str(hash(game))[:8]
 
-    save_path = os.path.join(save_dir, game_id)
+    save_path = Path(save_dir) / game_id
 
     game.precompute()
     game.save_values(path=save_path)
@@ -115,7 +118,8 @@ def pre_compute_from_configuration(
         configurations = game_class_config["configurations"]
 
     iterations = game_class_config.get(
-        "iteration_parameter_values", BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS
+        "iteration_parameter_values",
+        BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
     )
     iteration_names = game_class_config.get("iteration_parameter_values_names", iterations)
     if n_iterations is not None:
@@ -127,19 +131,16 @@ def pre_compute_from_configuration(
         print(
             f"Pre-computing game data for {game_class.get_game_name()}, "
             f"configuration: {config}, n_players: {n_players}, iterations: {iterations}, "
-            f"iteration names: {iteration_names}"
+            f"iteration names: {iteration_names}",
         )
 
-        for iteration, iteration_name in zip(iterations, iteration_names):
-            save_dir = os.path.join(SHAPIQ_DATA_DIR, game_class.get_game_name(), str(n_players))
+        for iteration, iteration_name in zip(iterations, iteration_names, strict=False):
+            save_dir = Path(SHAPIQ_DATA_DIR) / game_class.get_game_name() / str(n_players)
             game_id = get_game_file_name_from_config(config, iteration)
-            save_path = os.path.join(save_dir, game_id)
-
-            if (
-                os.path.exists(save_path)
-                or os.path.exists(save_path + ".npz")
-                or os.path.exists(save_path + ".csv")
-            ):
+            save_path = Path(save_dir) / game_id
+            save_path_npz = save_path.with_suffix(".npz")
+            save_path_csv = save_path.with_suffix(".csv")
+            if save_path.exists() or save_path_npz.exists() or save_path_csv.exists():
                 print(f"Game data for {game_class.get_game_name()} already pre-computed.")
                 continue
 
@@ -190,14 +191,15 @@ def pre_compute_and_store_from_list(
 
     Returns:
         The paths to the files where the values are stored.
-    """
 
+    """
     if game_ids is None:
         game_ids = [None] * len(games)
 
     if n_jobs == 1:
         return [
-            pre_compute_and_store(game, save_dir, game_id) for game, game_id in zip(games, game_ids)
+            pre_compute_and_store(game, save_dir, game_id)
+            for game, game_id in zip(games, game_ids, strict=False)
         ]
 
     with mp.Pool(n_jobs) as pool:
@@ -205,13 +207,13 @@ def pre_compute_and_store_from_list(
             tqdm(
                 pool.starmap(
                     pre_compute_and_store,
-                    [(game, save_dir, game_id) for game, game_id in zip(games, game_ids)],
+                    [
+                        (game, save_dir, game_id)
+                        for game, game_id in zip(games, game_ids, strict=False)
+                    ],
                 ),
                 total=len(games),
-            )
+            ),
         )
 
     return results
-
-
-# Path: shapiq/benchmark/precompute.py

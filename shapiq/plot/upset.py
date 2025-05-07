@@ -1,5 +1,7 @@
 """This module contains the upset plot."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 
 import matplotlib.pyplot as plt
@@ -14,6 +16,7 @@ def upset_plot(
     feature_names: Sequence[str] | None = None,
     color_matrix: bool = False,
     all_features: bool = True,
+    figsize: tuple[float, float] | None = None,
     show: bool = False,
 ) -> plt.Figure | None:
     """Plots the upset plot.
@@ -40,6 +43,8 @@ def upset_plot(
             not (black). Defaults to ``False``.
         all_features: Whether to plot all ``n_players`` features or only the features that are
             present in the top interactions. Defaults to ``True``.
+        figsize: The size of the figure. Defaults to ``None``. If ``None``, the size will be set
+            automatically depending on the number of features.
         show: Whether to show the plot. Defaults to ``False``.
 
     Returns:
@@ -48,8 +53,8 @@ def upset_plot(
 
     References:
         .. [1] Alexander Lex, Nils Gehlenborg, Hendrik Strobelt, Romain Vuillemot, Hanspeter Pfister. UpSet: Visualization of Intersecting Sets IEEE Transactions on Visualization and Computer Graphics (InfoVis), 20(12): 1983--1992, doi:10.1109/TVCG.2014.2346248, 2014.
-    """
 
+    """
     # prepare data ---------------------------------------------------------------------------------
     values = interaction_values.values
     values_ids: dict[int, tuple[int, ...]] = {
@@ -65,7 +70,7 @@ def upset_plot(
     if all_features:
         features = set(range(interaction_values.n_players))
     else:
-        features = set([feature for interaction in interactions for feature in interaction])
+        features = {feature for interaction in interactions for feature in interaction}
     n_features = len(features)
     feature_pos = {feature: n_features - 1 - i for i, feature in enumerate(features)}
     if feature_names is None:
@@ -77,9 +82,15 @@ def upset_plot(
     height_upper, height_lower = 5, n_features * 0.75
     height = height_upper + height_lower
     ratio = [height_upper, height_lower]
-    fig, ax = plt.subplots(
-        2, 1, figsize=(10, height), gridspec_kw={"height_ratios": ratio}, sharex=True
-    )
+    if figsize is None:
+        figsize = (10, height)
+    else:
+        if figsize[1] is None:
+            figsize = (figsize[0], height)
+        if figsize[0] is None:
+            figsize = (10, figsize[1])
+
+    fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={"height_ratios": ratio}, sharex=True)
 
     # plot lower part of the upset plot
     for x_pos, interaction in enumerate(interactions):

@@ -1,5 +1,8 @@
 """ExactComputer class for a plethora of game theoretic concepts
-like interaction indices or generalized values."""
+like interaction indices or generalized values.
+"""
+
+from __future__ import annotations
 
 import copy
 import warnings
@@ -8,7 +11,7 @@ from collections.abc import Callable
 import numpy as np
 from scipy.special import bernoulli, binom
 
-from ..interaction_values import InteractionValues
+from ..interaction_values import InteractionValues, finalize_computed_interactions
 from ..utils import powerset
 from .indices import ALL_AVAILABLE_CONCEPTS
 
@@ -36,6 +39,7 @@ class ExactComputer:
         baseline_value: The baseline value, i.e. the emptyset prediction
         game_values: A numpy array containing the game evaluations of all subsets
         coalition_lookup: A dictionary containing the index of every coalition in ``game_values``
+
     """
 
     def __init__(
@@ -116,6 +120,7 @@ class ExactComputer:
 
         Raises:
             ValueError: If the index is not supported.
+
         """
         if order is None:
             order = self.n
@@ -125,11 +130,13 @@ class ExactComputer:
         elif index in self.available_indices:
             computation_function = self._index_mapping[index]
             computed_index: InteractionValues = computation_function(index=index, order=order)
-            computed_index.baseline_value = self.baseline_value
+            computed_index = finalize_computed_interactions(computed_index)
+
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         else:
-            raise ValueError(f"Index {index} not supported.")
+            msg = f"Index {index} not supported."
+            raise ValueError(msg)
 
     @property
     def baseline_value(self) -> float:
@@ -161,8 +168,8 @@ class ExactComputer:
 
         Returns:
             baseline value (empty prediction), all game values, and the lookup dictionary
-        """
 
+        """
         coalition_lookup = {}
         coalition_matrix = np.zeros((2**self.n, self.n), dtype=bool)
         for i, T in enumerate(powerset(self._grand_coalition_set, min_size=0, max_size=self.n)):
@@ -173,7 +180,11 @@ class ExactComputer:
         coalition_lookup = coalition_lookup
         return baseline_value, game_values, coalition_lookup
 
-    def moebius_transform(self, *args, **kwargs) -> InteractionValues:
+    def moebius_transform(
+        self,
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
+    ) -> InteractionValues:
         """Computes the Moebius transform for all :math:`2^n` coalitions of the game.
 
         Args:
@@ -181,6 +192,7 @@ class ExactComputer:
 
         Returns:
             The Moebius transform for all coalitions stored in an InteractionValues object
+
         """
         try:
             return self._computed[("Moebius", self.n)]
@@ -210,6 +222,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
+        interaction_values = finalize_computed_interactions(interaction_values)
         self._computed[("Moebius", self.n)] = copy.deepcopy(interaction_values)
         return copy.deepcopy(interaction_values)
 
@@ -228,8 +241,8 @@ class ExactComputer:
 
         Raises:
             ValueError: If the index is not supported
-        """
 
+        """
         if index in ["SII", "SGV"]:
             return 1 / (
                 (self.n - interaction_size + 1) * binom(self.n - interaction_size, coalition_size)
@@ -252,7 +265,8 @@ class ExactComputer:
             else:
                 return 0
         else:
-            raise ValueError(f"Index {index} not supported")
+            msg = f"Index {index} not supported"
+            raise ValueError(msg)
 
     def _stii_weight(self, coalition_size: int, interaction_size: int, order: int) -> float:
         """Sets the weight for the representation of STII as a CII (using discrete derivatives).
@@ -264,8 +278,8 @@ class ExactComputer:
 
         Returns:
             The weight of STII
-        """
 
+        """
         if interaction_size == order:
             return float(order / (self.n * binom(self.n - 1, coalition_size)))
         else:
@@ -279,6 +293,7 @@ class ExactComputer:
 
         Returns:
             An array of the kernel weights for ``0,...,n with "infinite weight"`` on ``0`` and ``n``.
+
         """
         fii_weights = np.zeros(self.n + 1, dtype=float)
 
@@ -301,15 +316,17 @@ class ExactComputer:
 
         Returns:
             An array with pre-computed weights for ``t=0,...,n-k``
-        """
 
+        """
         stii_weights = np.zeros(self.n - order + 1, dtype=float)
         for t in range(self.n - order + 1):
             stii_weights[t] = self._stii_weight(t, order, order)
         return stii_weights
 
     def _get_discrete_derivative(
-        self, interaction: set[int] | tuple[int], coalition: set[int] | tuple[int]
+        self,
+        interaction: set[int] | tuple[int],
+        coalition: set[int] | tuple[int],
     ) -> float:
         """Computes the discrete derivative of a coalition with respect to an interaction.
 
@@ -319,8 +336,8 @@ class ExactComputer:
 
         Returns:
             The discrete derivative of the coalition with respect to the interaction
-        """
 
+        """
         discrete_derivative = 0.0
         interaction_size = len(interaction)
         for interaction_subset in powerset(interaction):
@@ -347,6 +364,7 @@ class ExactComputer:
         Examples:
             >>> ExactComputer.get_n_interactions(3)
             array([1, 4, 7, 8])  # binom(3, 0), binom(3, 0) + binom(3, 1), etc. ...
+
         """
         n_interactions = np.zeros(n_players + 1, dtype=int)
         n_interaction = 0
@@ -365,13 +383,15 @@ class ExactComputer:
 
         Returns:
             A numpy array with all base interaction weights
-        """
 
+        """
         base_weights = np.zeros((self.n + 1, order + 1), dtype=float)
         for interaction_size in range(order + 1):
             for coalition_size in range(self.n - interaction_size + 1):
                 base_weights[coalition_size, interaction_size] = self._base_weights(
-                    coalition_size, interaction_size, index
+                    coalition_size,
+                    interaction_size,
+                    index,
                 )
         return base_weights
 
@@ -384,8 +404,8 @@ class ExactComputer:
 
         Returns:
             An InteractionValues object containing the base interactions.
-        """
 
+        """
         base_interaction_values = np.zeros(self._n_interactions[order])
         base_weights = self._get_base_weights(index, order)
         for coalition in powerset(self._grand_coalition_set):
@@ -408,7 +428,8 @@ class ExactComputer:
         if index == "CHII" and () in interaction_lookup:
             warnings.warn(
                 f"CHII is not defined for the empty set. Setting to the baseline value "
-                f"{self.baseline_value}."
+                f"{self.baseline_value}.",
+                stacklevel=2,
             )
             base_interaction_values[interaction_lookup[()]] = self.baseline_value
 
@@ -423,6 +444,7 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
+        base_interaction = finalize_computed_interactions(base_interaction)
         self._computed[(index, order)] = copy.deepcopy(base_interaction)
         return copy.deepcopy(base_interaction)
 
@@ -442,8 +464,8 @@ class ExactComputer:
 
         Returns:
             An InteractionValues object containing generalized values.
-        """
 
+        """
         base_generalized_values = np.zeros(self._n_interactions[order])
         base_weights = self._get_base_weights(index, order)
 
@@ -452,18 +474,23 @@ class ExactComputer:
             interaction_lookup[interaction] = i
 
         for i, coalition in enumerate(
-            powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1)
+            powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1),
         ):
             coalition_val = self.game_values[i]
-            for j, interaction in enumerate(
-                powerset((self._grand_coalition_set - set(coalition)), min_size=1, max_size=order)
+            for interaction in powerset(
+                (self._grand_coalition_set - set(coalition)),
+                min_size=1,
+                max_size=order,
             ):
                 coalition_weight = base_weights[len(coalition), len(interaction)]
-                base_generalized_values[
-                    interaction_lookup[tuple(sorted(interaction))]
-                ] += coalition_weight * (
-                    self.game_values[self.coalition_lookup[tuple(sorted(coalition + interaction))]]
-                    - coalition_val
+                base_generalized_values[interaction_lookup[tuple(sorted(interaction))]] += (
+                    coalition_weight
+                    * (
+                        self.game_values[
+                            self.coalition_lookup[tuple(sorted(coalition + interaction))]
+                        ]
+                        - coalition_val
+                    )
                 )
 
         # Transform into InteractionValues object
@@ -477,11 +504,14 @@ class ExactComputer:
             estimated=False,
             baseline_value=self.baseline_value,
         )
+        base_generalized_values = finalize_computed_interactions(base_generalized_values)
         self._computed[(index, order)] = copy.deepcopy(base_generalized_values)
         return copy.deepcopy(base_generalized_values)
 
     def base_aggregation(
-        self, base_interactions: InteractionValues, order: int
+        self,
+        base_interactions: InteractionValues,
+        order: int,
     ) -> InteractionValues:
         """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII
 
@@ -491,10 +521,11 @@ class ExactComputer:
 
         Returns:
             InteractionValues object containing transformed base_interactions
-        """
-        from .aggregation import aggregate_interaction_values
 
-        transformed_interactions = aggregate_interaction_values(base_interactions, order)
+        """
+        from .aggregation import aggregate_base_interaction
+
+        transformed_interactions = aggregate_base_interaction(base_interactions, order)
         return copy.deepcopy(transformed_interactions)
 
     def compute_stii(self, order: int) -> InteractionValues:
@@ -505,22 +536,23 @@ class ExactComputer:
 
         Returns:
             InteractionValues object containing STII
-        """
 
+        """
         stii_values = np.zeros(self._n_interactions[order])
         stii_values[0] = self.baseline_value  # set baseline value
 
         # create interaction lookup
         interaction_lookup = {}
         for interaction_pos, interaction in enumerate(
-            powerset(self._grand_coalition_set, max_size=order)
+            powerset(self._grand_coalition_set, max_size=order),
         ):
             interaction_lookup[interaction] = interaction_pos
 
         # lower-order interactions (size < order) are the Möbius transform, i.e. discrete derivative with empty set
         for interaction in powerset(self._grand_coalition_set, max_size=order - 1):
             stii_values[interaction_lookup[interaction]] = self._get_discrete_derivative(
-                interaction, tuple()
+                interaction,
+                (),
             )
 
         # pre-compute STII weights
@@ -561,6 +593,7 @@ class ExactComputer:
 
         Returns:
             InteractionValues object containing FSII or FBII
+
         """
         fii_weights = self._get_fii_weights(index)
         least_squares_weights = np.zeros(2**self.n, dtype=float)
@@ -569,7 +602,7 @@ class ExactComputer:
         # create interaction lookup
         interaction_lookup = {}
         for interaction_pos, interaction in enumerate(
-            powerset(self._grand_coalition_set, max_size=order)
+            powerset(self._grand_coalition_set, max_size=order),
         ):
             interaction_lookup[interaction] = interaction_pos
 
@@ -584,17 +617,18 @@ class ExactComputer:
         weight_matrix_sqrt = np.sqrt(np.diag(least_squares_weights))
         coalition_matrix_weighted_sqrt = np.dot(weight_matrix_sqrt, coalition_matrix)
 
-        if index == "FSII":
+        if index in ["FSII", "FBII"]:
             regression_response = self.game_values - self.baseline_value  # normalization
-        elif index == "FBII":
-            regression_response = self.game_values  # no normalization
         else:
-            raise ValueError(f"Index {index} not supported.")
+            msg = f"Index {index} not supported."
+            raise ValueError(msg)
 
         regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
         # solve the weighted least squares (WLSQ) problem
         fii_values, residuals, rank, singular_values = np.linalg.lstsq(
-            coalition_matrix_weighted_sqrt, regression_response_weighted_sqrt, rcond=None
+            coalition_matrix_weighted_sqrt,
+            regression_response_weighted_sqrt,
+            rcond=None,
         )
 
         # transform into InteractionValues object
@@ -605,7 +639,8 @@ class ExactComputer:
             fii_values[0] = baseline_value  # set baseline value
         if index == "FBII":
             # For FBII the empty set is computed
-            baseline_value = fii_values[0]
+            baseline_value = fii_values[0] + self.baseline_value
+            fii_values[0] = baseline_value  # set baseline value
 
         fii = InteractionValues(
             values=fii_values,
@@ -627,6 +662,7 @@ class ExactComputer:
 
         Returns:
             An array of pre-computed weights
+
         """
         weights = np.zeros(self.n, dtype=np.longdouble)
         q0den = sum([binom(self.n, s) for s in range(1, order + 1)])
@@ -640,7 +676,12 @@ class ExactComputer:
             weights[r] = qnum / qden
         # check that the checksum is satisfied
         checksum = sum([binom(self.n, i) * weights[i] for i in range((self.n - order), self.n)])
-        assert np.isclose(checksum, 1.0)
+        if not np.isclose(checksum, 1.0):
+            message = (
+                f"JointSV weights do not sum to 1.0. but to {checksum}. This is likely due "
+                f"to numerical instability."
+            )
+            warnings.warn(message, stacklevel=2)
         return weights
 
     def compute_kadd_shap(self, order: int) -> InteractionValues:
@@ -655,8 +696,8 @@ class ExactComputer:
 
         Returns:
             An InteractionValues object containing kADD-SHAP values
-        """
 
+        """
         weights = self._get_fii_weights(index="FSII")
         least_squares_weights = np.zeros(2**self.n)
         coalition_matrix = np.zeros((2**self.n, self._n_interactions[order]))
@@ -682,7 +723,9 @@ class ExactComputer:
         regression_response = self.game_values - self.baseline_value  # normalization
         regression_response_weighted_sqrt = np.dot(regression_response, weight_matrix_sqrt)
         kADD_shap_values, residuals, rank, singular_values = np.linalg.lstsq(
-            coalition_matrix_weighted_sqrt, regression_response_weighted_sqrt, rcond=None
+            coalition_matrix_weighted_sqrt,
+            regression_response_weighted_sqrt,
+            rcond=None,
         )
 
         # Set baseline value
@@ -703,8 +746,7 @@ class ExactComputer:
         return kADD_shap
 
     def compute_joint_sv(self, order: int):
-        """
-        Computes the JointSV index up to order "order" according to
+        """Computes the JointSV index up to order "order" according to
         `Harris et al. (2022) <https://openreview.net/forum?id=vcUmUvQCloe>`_.
 
         Args:
@@ -724,12 +766,14 @@ class ExactComputer:
             interaction_lookup[interaction] = i
 
         for coalition_pos, coalition in enumerate(
-            powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1)
+            powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1),
         ):
             coalition_val = self.game_values[coalition_pos]
             coalition_weight = coalition_weights[len(coalition)]
             for interaction in powerset(
-                self._grand_coalition_set - set(coalition), min_size=1, max_size=order
+                self._grand_coalition_set - set(coalition),
+                min_size=1,
+                max_size=order,
             ):
                 jointSV_values[interaction_lookup[interaction]] += coalition_weight * (
                     self.game_values[self.coalition_lookup[tuple(sorted(coalition + interaction))]]
@@ -750,8 +794,7 @@ class ExactComputer:
         return jointSV
 
     def shapley_generalized_value(self, order: int, index: str) -> InteractionValues:
-        """
-        Computes Shapley Generalized Values (i.e. Generalized Values that satisfy efficiency) after
+        """Computes Shapley Generalized Values (i.e. Generalized Values that satisfy efficiency) after
             the underlying representation in `Marichal et al. (2007) <https://doi.org/10.1016/j.dam.2006.05.002>`_.
 
         Currently, the following indices are supported:
@@ -766,13 +809,16 @@ class ExactComputer:
 
         Raises:
             ValueError: If the index is not supported.
+
         """
         if index == "JointSV":
             shapley_generalized_value = self.compute_joint_sv(order)
+            shapley_generalized_value = finalize_computed_interactions(shapley_generalized_value)
             self._computed[(index, order)] = shapley_generalized_value
             return copy.copy(shapley_generalized_value)
         else:
-            raise ValueError(f"Index {index} not supported")
+            msg = f"Index {index} not supported"
+            raise ValueError(msg)
 
     def shapley_interaction(self, index: str, order: int) -> InteractionValues:
         """Computes k-additive Shapley Interactions, i.e. probabilistic interaction indices that
@@ -794,10 +840,10 @@ class ExactComputer:
 
         Raises:
             ValueError: If the index is not supported
+
         """
         if index == "k-SII":
             sii = self.base_interaction("SII", order)
-            self._computed[("SII", order)] = sii  # nice
             shapley_interaction = self.base_aggregation(sii, order)
         elif index == "STII":
             shapley_interaction = self.compute_stii(order)
@@ -806,8 +852,9 @@ class ExactComputer:
         elif index == "kADD-SHAP":
             shapley_interaction = self.compute_kadd_shap(order)
         else:
-            raise ValueError(f"Index {index} not supported")
-
+            msg = f"Index {index} not supported"
+            raise ValueError(msg)
+        shapley_interaction = finalize_computed_interactions(shapley_interaction)
         self._computed[(index, order)] = shapley_interaction
         return copy.copy(shapley_interaction)
 
@@ -830,10 +877,16 @@ class ExactComputer:
 
         """
         base_interaction = self.base_interaction(index, order)
+        base_interaction = finalize_computed_interactions(base_interaction)
         self._computed[(index, order)] = base_interaction
         return copy.copy(base_interaction)
 
-    def probabilistic_value(self, index: str, *args, **kwargs) -> InteractionValues:
+    def probabilistic_value(
+        self,
+        index: str,
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
+    ) -> InteractionValues:
         """Computes common semi-values or probabilistic values, i.e. shapley values without
         efficiency axiom.
 
@@ -855,24 +908,27 @@ class ExactComputer:
 
         Raises:
             ValueError: If the index is not supported
+
         """
         order = 1
         if index == "BV":
             probabilistic_value = self.base_interaction(index="BII", order=order)
         elif index == "SV":
             probabilistic_value = self.base_interaction(index="SII", order=order)
-            # Change emptyset value of SII to baseline value
-            probabilistic_value.baseline_value = self.baseline_value
-            probabilistic_value.values[probabilistic_value.interaction_lookup[tuple()]] = (
-                self.baseline_value
-            )
         else:
-            raise ValueError(f"Index {index} not supported")
+            msg = f"Index {index} not supported"
+            raise ValueError(msg)
+        # Change emptyset to baseline value, due to the definitions of players
+        probabilistic_value.baseline_value = self.baseline_value
+        probabilistic_value.values[probabilistic_value.interaction_lookup[()]] = self.baseline_value
         self._computed[(index, order)] = probabilistic_value
         return copy.copy(probabilistic_value)
 
-    def compute_egalitarian_least_core(self, *args, **kwargs):
-
+    def compute_egalitarian_least_core(
+        self,
+        *args,  # noqa ARG002
+        **kwargs,  # noqa ARG002
+    ):
         from shapiq.game_theory.core import egalitarian_least_core
 
         order = 1
@@ -900,6 +956,7 @@ def get_bernoulli_weights(order: int) -> np.ndarray:
 
     Returns:
         An array containing the bernoulli weights
+
     """
     # TODO: We should import this in the kADD-SHAP approximator from here
     bernoulli_numbers = bernoulli(order)

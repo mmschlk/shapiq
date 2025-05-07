@@ -1,5 +1,7 @@
 """This module contains the network plots for the shapiq package."""
 
+from __future__ import annotations
+
 import copy
 import math
 from typing import Any
@@ -70,6 +72,7 @@ def network_plot(
         .. [1] Muschalik, M., Fumagalli, F., Hammer, B., & Hüllermeier, E. (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
 
         .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766–778.
+
     """
     fig, axis = plt.subplots(figsize=(6, 6))
     axis.axis("off")
@@ -85,10 +88,11 @@ def network_plot(
                 second_order_values[interaction] = interaction_values[interaction]
     else:
         if first_order_values is None or second_order_values is None:
-            raise ValueError(
+            msg = (
                 "Either interaction_values or first_order_values and second_order_values must be "
                 "provided. If interaction_values is provided this will be used."
             )
+            raise ValueError(msg)
 
     # get the number of features and the feature names
     n_features = first_order_values.shape[0]
@@ -174,7 +178,7 @@ def network_plot(
             center_text,
             horizontalalignment="center",
             verticalalignment="center",
-            bbox=dict(facecolor=background_color, alpha=0.5, edgecolor=line_color, pad=7),
+            bbox={"facecolor": background_color, "alpha": 0.5, "edgecolor": line_color, "pad": 7},
             color="black",
             fontsize=plt.rcParams["font.size"] + 3,
         )
@@ -208,8 +212,8 @@ def _add_weight_to_edges_in_graph(
 
     Returns:
         None
-    """
 
+    """
     # get min and max value for n_shapley_values
     min_node_value, max_node_value = np.min(first_order_values), np.max(first_order_values)
     min_edge_value, max_edge_value = np.min(second_order_values), np.max(second_order_values)
@@ -230,7 +234,7 @@ def _add_weight_to_edges_in_graph(
 
     for interaction in powerset(range(n_features), min_size=2, max_size=2):
         weight: float = float(second_order_values[interaction])
-        edge = list(sorted(interaction))
+        edge = sorted(interaction)
         edge[0] = nodes_visit_order.index(interaction[0])
         edge[1] = nodes_visit_order.index(interaction[1])
         edge = tuple(edge)
@@ -250,6 +254,7 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
 
     Returns:
         None
+
     """
     sizes = [1.0, 0.2, 0.2, 1]
     labels = ["high pos.", "low pos.", "low neg.", "high neg."]
@@ -317,7 +322,10 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
 
 
 def _add_center_image(
-    axis: plt.Axes, center_image: Image.Image, center_image_size: float, n_features: int
+    axis: plt.Axes,
+    center_image: Image.Image,
+    center_image_size: float,
+    n_features: int,
 ) -> None:
     """Adds the center image to the axis.
 
@@ -329,6 +337,7 @@ def _add_center_image(
 
     Returns:
         None
+
     """
     # plot the center image
     image_to_plot = Image.fromarray(np.asarray(copy.deepcopy(center_image)))
@@ -355,6 +364,7 @@ def _get_highest_node_index(n_nodes: int) -> int:
 
     Returns:
         int: The index of the highest node.
+
     """
     n_connections = 0
     # highest node is the last node below 1/4 of all connections in the circle
@@ -372,6 +382,7 @@ def _order_nodes(n_nodes: int) -> list[int]:
 
     Returns:
         list[int]: The order of the nodes.
+
     """
     highest_node = _get_highest_node_index(n_nodes)
     nodes_visit_order = [highest_node]

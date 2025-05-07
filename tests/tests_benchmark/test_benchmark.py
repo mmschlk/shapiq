@@ -1,5 +1,7 @@
 """This test module contains all tests for the configuration of benchmark games."""
 
+from __future__ import annotations
+
 import os
 
 import matplotlib.pyplot as plt
@@ -20,7 +22,6 @@ from shapiq.benchmark import (
 @pytest.mark.parametrize("index, n_jobs", [("SV", 2), ("k-SII", 2), ("SV", 1)])
 def test_benchmark(index, n_jobs):
     """Tests the general benchmark setup with pre-computed games."""
-
     game_identifier = "ImageClassifierLocalXAI"
     n_players = 9
     config_id = 1
@@ -38,10 +39,14 @@ def test_benchmark(index, n_jobs):
             PermutationSamplingSII(n=n_players, random_state=42, index=index),
         ]
     else:
-        raise ValueError("Wrong index for test.")
+        msg = "Wrong index for test."
+        raise ValueError(msg)
 
     games = load_games_from_configuration(
-        game_class=game_identifier, n_player_id=n_player_id, config_id=config_id, n_games=n_games
+        game_class=game_identifier,
+        n_player_id=n_player_id,
+        config_id=config_id,
+        n_games=n_games,
     )
     games = list(games)  # convert to list (the generator is consumed)
     assert games[0].n_players == n_players
@@ -70,7 +75,6 @@ def test_benchmark(index, n_jobs):
 
 def test_benchmark_config():
     """Tests the general benchmark setup with pre-computed games."""
-
     game_identifier = "ImageClassifierLocalXAI"
     n_players = 9
     config_id = 1
@@ -113,7 +117,7 @@ def test_benchmark_config():
         game_n_games=n_games,
     )
     assert data_loaded_no_path is not None
-    assert path_loaded_no_path == save_path
+    assert str(path_loaded_no_path) == save_path
     assert len(data_loaded) == len(data_loaded_no_path)
 
     fig, axis = plot_approximation_quality(data=results)

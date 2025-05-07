@@ -1,8 +1,16 @@
 """This fixtures module contains model fixtures for the tests."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
-from sklearn.ensemble import IsolationForest, RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import (
+    ExtraTreesClassifier,
+    ExtraTreesRegressor,
+    IsolationForest,
+    RandomForestClassifier,
+    RandomForestRegressor,
+)
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -59,11 +67,11 @@ def custom_model(background_reg_dataset) -> CustomModel:
 @pytest.fixture
 def lightgbm_basic(background_reg_dataset) -> Model:
     """Return a lgm basic booster"""
-    import lightgbm as lgb
+    lightgbm = pytest.importorskip("lightgbm")
 
     X, y = background_reg_dataset
-    train_data = lgb.Dataset(X, label=y)
-    model = lgb.train(params={}, train_set=train_data, num_boost_round=1)
+    train_data = lightgbm.Dataset(X, label=y)
+    model = lightgbm.train(params={}, train_set=train_data, num_boost_round=1)
     return model
 
 
@@ -87,14 +95,14 @@ def sequential_model_3_classes() -> Model:
 
 def _sequential_model(output_shape_nr, background_reg_dataset) -> Model:
     """Return a keras nn with specified output dimension"""
-    import keras
+    keras = pytest.importorskip("keras")
 
     model = keras.Sequential(
         [
             keras.layers.Input(shape=(NR_FEATURES,)),
             keras.layers.Dense(2, activation="relu", name="layer1"),
             keras.layers.Dense(output_shape_nr, name="layer2"),
-        ]
+        ],
     )
     model.compile(optimizer="adam", loss="mse")
     X, y = background_reg_dataset
@@ -105,10 +113,10 @@ def _sequential_model(output_shape_nr, background_reg_dataset) -> Model:
 @pytest.fixture
 def xgb_reg_model(background_reg_dataset) -> Model:
     """Return a simple xgboost regression model."""
-    from xgboost import XGBRegressor
+    xgboost = pytest.importorskip("xgboost")
 
     X, y = background_reg_dataset
-    model = XGBRegressor(random_state=42, n_estimators=3)
+    model = xgboost.XGBRegressor(random_state=42, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -125,10 +133,10 @@ def rf_clf_binary_model(background_clf_dataset_binary) -> RandomForestClassifier
 @pytest.fixture
 def xgb_clf_model(background_clf_dataset) -> Model:
     """Return a simple xgboost classification model."""
-    from xgboost import XGBClassifier
+    xgboost = pytest.importorskip("xgboost")
 
     X, y = background_clf_dataset
-    model = XGBClassifier(random_state=42, n_estimators=3)
+    model = xgboost.XGBClassifier(random_state=42, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -136,7 +144,7 @@ def xgb_clf_model(background_clf_dataset) -> Model:
 @pytest.fixture
 def torch_clf_model() -> Model:
     """Return a simple torch model."""
-    import torch
+    torch = pytest.importorskip("torch")
 
     model = torch.nn.Sequential(
         torch.nn.Linear(7, 10),
@@ -150,7 +158,7 @@ def torch_clf_model() -> Model:
 @pytest.fixture
 def torch_reg_model() -> Model:
     """Return a simple torch model."""
-    import torch
+    torch = pytest.importorskip("torch")
 
     model = torch.nn.Sequential(
         torch.nn.Linear(7, 10),
@@ -166,11 +174,11 @@ def tabpfn_classification_problem(
     background_clf_dataset_binary_small,
 ) -> tuple[Model, np.ndarray, np.ndarray, np.ndarray]:
     """Returns a very simple tabpfn classifier and dataset."""
-    from tabpfn import TabPFNClassifier
+    tabpfn = pytest.importorskip("tabpfn")
 
     data, labels = background_clf_dataset_binary_small
     data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
-    model = TabPFNClassifier()
+    model = tabpfn.TabPFNClassifier()
     model.fit(data, labels)
     return model, data, labels, x_test
 
@@ -180,11 +188,11 @@ def tabpfn_regression_problem(
     background_reg_dataset_small,
 ) -> tuple[Model, np.ndarray, np.ndarray, np.ndarray]:
     """Returns a very simple tabpfn regressor and dataset."""
-    from tabpfn import TabPFNRegressor
+    tabpfn = pytest.importorskip("tabpfn")
 
     data, labels = background_reg_dataset_small
     data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
-    model = TabPFNRegressor()
+    model = tabpfn.TabPFNRegressor()
     model.fit(data, labels)
     return model, data, labels, x_test
 
@@ -228,10 +236,10 @@ def lr_reg_model(background_reg_dataset) -> LinearRegression:
 @pytest.fixture
 def lightgbm_reg_model(background_reg_dataset) -> Model:
     """Return a simple lightgbm regression model."""
-    from lightgbm import LGBMRegressor
+    lightgbm = pytest.importorskip("lightgbm")
 
     X, y = background_reg_dataset
-    model = LGBMRegressor(random_state=42, n_estimators=3)
+    model = lightgbm.LGBMRegressor(random_state=42, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -239,10 +247,10 @@ def lightgbm_reg_model(background_reg_dataset) -> Model:
 @pytest.fixture
 def lightgbm_clf_model(background_clf_dataset) -> Model:
     """Return a simple lightgbm classification model."""
-    from lightgbm import LGBMClassifier
+    lightgbm = pytest.importorskip("lightgbm")
 
     X, y = background_clf_dataset
-    model = LGBMClassifier(random_state=42, n_estimators=3)
+    model = lightgbm.LGBMClassifier(random_state=42, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -283,5 +291,26 @@ def if_clf_model(if_clf_dataset) -> IsolationForest:
     """Return a simple isolation forest model."""
     X, y = if_clf_dataset
     model = IsolationForest(random_state=42, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+# Extra trees model
+@pytest.fixture
+def et_clf_model(background_clf_dataset) -> Model:
+    """Return a simple (classification) extra trees model."""
+
+    X, y = background_clf_dataset
+    model = ExtraTreesClassifier(random_state=42, max_depth=3, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def et_reg_model(background_reg_dataset) -> Model:
+    """Return a simple (regression) extra trees model."""
+
+    X, y = background_reg_dataset
+    model = ExtraTreesRegressor(random_state=42, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model

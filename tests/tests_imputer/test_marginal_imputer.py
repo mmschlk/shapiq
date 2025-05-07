@@ -1,5 +1,7 @@
 """This test module contains all tests for the marginal imputer module of the shapiq package."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -114,7 +116,6 @@ def test_joint_marginal_distribution():
 
 
 def test_raise_warning():
-
     def model(x: np.ndarray) -> np.ndarray:
         return np.sum(x, axis=1)
 

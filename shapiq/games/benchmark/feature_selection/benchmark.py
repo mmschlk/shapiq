@@ -1,5 +1,7 @@
 """This module contains all benchmark games for the feature selection setting."""
 
+from __future__ import annotations
+
 from shapiq.games.benchmark.feature_selection.base import FeatureSelection
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
@@ -22,7 +24,6 @@ class AdultCensus(FeatureSelection):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
@@ -52,6 +53,7 @@ class BikeSharing(FeatureSelection):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -90,6 +92,7 @@ class CaliforniaHousing(FeatureSelection):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -116,6 +119,3 @@ class CaliforniaHousing(FeatureSelection):
             normalize=normalize,
             verbose=verbose,
         )
-
-
-# Path: shapiq/games/benchmark/feature_selection/benchmark.py

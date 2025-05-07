@@ -1,12 +1,14 @@
 """This module contains the ensemble selection benchmarks."""
 
 from .base import EnsembleSelection, RandomForestEnsembleSelection
-from .benchmark import AdultCensus as AdultCensusEnsembleSelection
-from .benchmark import BikeSharing as BikeSharingEnsembleSelection
-from .benchmark import CaliforniaHousing as CaliforniaHousingEnsembleSelection
-from .benchmark_random_forest import AdultCensus as AdultCensusRandomForestEnsembleSelection
-from .benchmark_random_forest import BikeSharing as BikeSharingRandomForestEnsembleSelection
+from .benchmark import (
+    AdultCensus as AdultCensusEnsembleSelection,
+    BikeSharing as BikeSharingEnsembleSelection,
+    CaliforniaHousing as CaliforniaHousingEnsembleSelection,
+)
 from .benchmark_random_forest import (
+    AdultCensus as AdultCensusRandomForestEnsembleSelection,
+    BikeSharing as BikeSharingRandomForestEnsembleSelection,
     CaliforniaHousing as CaliforniaHousingRandomForestEnsembleSelection,
 )
 
@@ -20,5 +22,3 @@ __all__ = [
     "BikeSharingRandomForestEnsembleSelection",
     "CaliforniaHousingRandomForestEnsembleSelection",
 ]
-
-# Path: shapiq/games/benchmark/ensemble_selection/__init__.py

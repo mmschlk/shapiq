@@ -1,5 +1,7 @@
 """This module contains all tabular machine learning games."""
 
+from __future__ import annotations
+
 import copy
 from collections.abc import Callable
 
@@ -45,6 +47,7 @@ class GlobalExplanation(Game):
         data_shuffled: The background data shuffled column wise.
         n_samples_eval: The number of background samples to use for each evaluation of the value
             function.
+
     """
 
     def __init__(
@@ -59,7 +62,6 @@ class GlobalExplanation(Game):
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
-
         self._random_state = random_state
         self._rng = np.random.default_rng(self._random_state)
         self.n_samples_eval = n_samples_eval  # how many samples to evaluate for each coalition
@@ -100,6 +102,7 @@ class GlobalExplanation(Game):
 
         Returns:
             The worth of the coalitions as a vector of length `n_coalitions`.
+
         """
         worth = np.zeros(coalitions.shape[0], dtype=float)
         for i, coalition in enumerate(coalitions):

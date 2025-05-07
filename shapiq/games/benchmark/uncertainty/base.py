@@ -1,16 +1,17 @@
 """This module contains the base class for the uncertainty explanation game."""
 
+from __future__ import annotations
+
 import numpy as np
 from scipy.stats import entropy
 
 from shapiq.games.base import Game
 from shapiq.games.benchmark.setup import get_x_explain
 from shapiq.games.imputer import ConditionalImputer, MarginalImputer
-from shapiq.utils.types import Model
+from shapiq.utils.custom_types import Model
 
 
 class UncertaintyExplanation(Game):
-
     def __init__(
         self,
         *,
@@ -27,10 +28,11 @@ class UncertaintyExplanation(Game):
 
         # validate the inputs
         if uncertainty_to_explain not in ["total", "aleatoric", "epistemic"]:
-            raise ValueError(
+            msg = (
                 f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' "
                 f"but got {uncertainty_to_explain}."
             )
+            raise ValueError(msg)
 
         # get x_explain
         self.x = get_x_explain(x, data)
@@ -40,8 +42,9 @@ class UncertaintyExplanation(Game):
         if isinstance(model, RandomForestClassifier):
             self._predict = self._predict_rf
         else:
+            msg = f"Invalid model provided. Should be RandomForestClassifier but got {model}."
             raise ValueError(
-                f"Invalid model provided. Should be RandomForestClassifier but got {model}."
+                msg,
             )
 
         if imputer == "marginal":
@@ -62,9 +65,12 @@ class UncertaintyExplanation(Game):
                 normalize=False,
             )
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid imputer provided. Should be 'marginal' or 'conditional' but got "
                 f"{imputer}."
+            )
+            raise ValueError(
+                msg,
             )
 
         self.empty_prediction_value: float = self._imputer.empty_prediction
@@ -84,6 +90,7 @@ class UncertaintyExplanation(Game):
 
         Returns:
             The uncertainty of the predictions.
+
         """
         predictions_mean = predictions.mean(axis=0)
         if self._uncertainty_to_explain == "total":
@@ -92,18 +99,23 @@ class UncertaintyExplanation(Game):
             uncertainty = entropy(predictions, axis=2, base=2).mean(axis=0)
         elif self._uncertainty_to_explain == "epistemic":
             uncertainty = entropy(predictions_mean, axis=1, base=2) - entropy(
-                predictions, axis=2, base=2
+                predictions,
+                axis=2,
+                base=2,
             ).mean(axis=0)
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' "
                 f"but got {self._uncertainty_to_explain}."
+            )
+            raise ValueError(
+                msg,
             )
         return uncertainty
 
     def _predict_rf(self, x: np.ndarray) -> np.ndarray:
         predictions = np.array(
-            [estimator.predict_proba(x) for estimator in self._model.estimators_]
+            [estimator.predict_proba(x) for estimator in self._model.estimators_],
         )
         return self._uncertainty(predictions)
 
@@ -115,6 +127,7 @@ class UncertaintyExplanation(Game):
 
         Returns:
             The value function of the game.
+
         """
         uncertainty = self._imputer(coalitions)
         return uncertainty

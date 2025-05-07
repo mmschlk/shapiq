@@ -1,5 +1,7 @@
 """This module contains the TreeSHAPIQ explanation benchmark games."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
@@ -17,6 +19,7 @@ class AdultCensus(TreeSHAPIQXAI):
         normalize: A boolean flag to normalize/center the game values. The default value is True.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -28,12 +31,10 @@ class AdultCensus(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
-
         # TODO: add xgb to TreeSHAQ-IQ, yet
-        assert model_name in [
-            "decision_tree",
-            "random_forest",
-        ], "Model name must be either decision_tree' or 'random_forest'."
+        if model_name not in ["decision_tree", "random_forest"]:
+            msg = "Model name must be either decision_tree' or 'random_forest'."
+            raise ValueError(msg)
 
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
@@ -65,6 +66,7 @@ class BikeSharing(TreeSHAPIQXAI):
         normalize: A boolean flag to normalize/center the game values. The default value is True.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -75,12 +77,10 @@ class BikeSharing(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
-
         # TODO: add xgb to TreeSHAQ-IQ, yet
-        assert model_name in [
-            "decision_tree",
-            "random_forest",
-        ], "Model name must be either decision_tree' or 'random_forest'."
+        if model_name not in ["decision_tree", "random_forest"]:
+            msg = "Model name must be either decision_tree' or 'random_forest'."
+            raise ValueError(msg)
 
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
@@ -111,6 +111,7 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         normalize: A boolean flag to normalize/center the game values. The default value is True.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -121,12 +122,10 @@ class CaliforniaHousing(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
-
         # TODO: add xgb to TreeSHAQ-IQ, yet
-        assert model_name in [
-            "decision_tree",
-            "random_forest",
-        ], "Model name must be either decision_tree' or 'random_forest'."
+        if model_name not in ["decision_tree", "random_forest"]:
+            msg = "Model name must be either decision_tree' or 'random_forest'."
+            raise ValueError(msg)
 
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
@@ -148,7 +147,6 @@ class CaliforniaHousing(TreeSHAPIQXAI):
 
 
 class SynthData(TreeSHAPIQXAI):
-
     def __init__(
         self,
         x: int = 0,
@@ -194,11 +192,15 @@ class SynthData(TreeSHAPIQXAI):
         else:
             if classification:
                 model = RandomForestClassifier(
-                    random_state=random_state, n_estimators=10, max_depth=15
+                    random_state=random_state,
+                    n_estimators=10,
+                    max_depth=15,
                 )
             else:
                 model = RandomForestRegressor(
-                    random_state=random_state, n_estimators=10, max_depth=15
+                    random_state=random_state,
+                    n_estimators=10,
+                    max_depth=15,
                 )
         # fit the model
         model.fit(x_data, y_data)

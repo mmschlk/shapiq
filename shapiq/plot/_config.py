@@ -1,5 +1,7 @@
 """This module contains the configuration for the shapiq visualizations."""
 
+from __future__ import annotations
+
 from colour import Color
 
 __all__ = ["RED", "BLUE", "NEUTRAL", "LINES", "COLORS_K_SII", "get_color"]
@@ -32,6 +34,7 @@ def get_color(value: float) -> str:
 
     Returns:
         str: The color as a hex string.
+
     """
     if value >= 0:
         return RED.hex

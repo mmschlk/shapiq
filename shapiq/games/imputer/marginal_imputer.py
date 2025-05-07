@@ -1,9 +1,12 @@
 """Implementation of the marginal imputer."""
 
+from __future__ import annotations
+
 import warnings
 
 import numpy as np
 
+from ...utils import Model
 from .base import Imputer
 
 _too_large_sample_size_warning = (
@@ -53,11 +56,12 @@ class MarginalImputer(Imputer):
         >>> # exchange the background data
         >>> new_data = np.random.rand(1000, 4)
         >>> imputer.init_background(data=new_data)
+
     """
 
     def __init__(
         self,
-        model,
+        model: Model,
         data: np.ndarray,
         x: np.ndarray | None = None,
         sample_size: int = 100,
@@ -71,7 +75,7 @@ class MarginalImputer(Imputer):
         # setup attributes
         self.joint_marginal_distribution: bool = joint_marginal_distribution
         self.replacement_data: np.ndarray = np.zeros(
-            (1, self.n_features)
+            (1, self.n_features),
         )  # overwritten at init_background
         self.init_background(self.data)
 
@@ -88,6 +92,7 @@ class MarginalImputer(Imputer):
         Returns:
             The model's predictions on the imputed data points. The shape of the array is
                ``(n_subsets, n_outputs)``.
+
         """
         n_coalitions = coalitions.shape[0]
         replacement_data = self._sample_replacement_data(self.sample_size)
@@ -104,7 +109,7 @@ class MarginalImputer(Imputer):
         outputs[~np.any(coalitions, axis=1)] = self.empty_prediction
         return outputs
 
-    def init_background(self, data: np.ndarray) -> "MarginalImputer":
+    def init_background(self, data: np.ndarray) -> MarginalImputer:
         """Initializes the imputer to the background data.
 
         The background data is used to sample replacement values for the missing features.
@@ -123,10 +128,11 @@ class MarginalImputer(Imputer):
             >>> imputer = MarginalImputer(model=model, data=data, x=data[0])
             >>> new_data = np.random.rand(10, 3)
             >>> imputer.init_background(data=new_data)
+
         """
         self.replacement_data = np.copy(data)
         if self.sample_size > self.replacement_data.shape[0]:
-            warnings.warn(UserWarning(_too_large_sample_size_warning))
+            warnings.warn(UserWarning(_too_large_sample_size_warning), stacklevel=2)
             self.sample_size = self.replacement_data.shape[0]
         self.calc_empty_prediction()  # reset the empty prediction to the new background data
         return self
@@ -141,6 +147,7 @@ class MarginalImputer(Imputer):
         Returns:
             The replacement values as a two-dimensional array with shape
                 ``(sample_size, n_features)``.
+
         """
         replacement_data = np.copy(self.replacement_data)
         rng = np.random.default_rng(self.random_state)
@@ -160,6 +167,7 @@ class MarginalImputer(Imputer):
 
         Returns:
             The empty prediction.
+
         """
         background_data = self._sample_replacement_data()
         empty_predictions = self.predict(background_data)

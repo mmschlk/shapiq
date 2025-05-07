@@ -1,5 +1,7 @@
 """This module contains tabular benchmark games for local explanation."""
 
+from __future__ import annotations
+
 from shapiq.games.benchmark.global_xai.base import GlobalExplanation
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
@@ -20,6 +22,7 @@ class AdultCensus(GlobalExplanation):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -33,7 +36,6 @@ class AdultCensus(GlobalExplanation):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
@@ -71,6 +73,7 @@ class BikeSharing(GlobalExplanation):
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
         random_state: The random state to use for the imputer. Defaults to 42.
+
     """
 
     def __init__(
@@ -84,7 +87,6 @@ class BikeSharing(GlobalExplanation):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
@@ -122,6 +124,7 @@ class CaliforniaHousing(GlobalExplanation):
         normalize: A flag to normalize the game values. If `True`, then the game values are
             normalized and centered to be zero for the empty set of features. Defaults to `True`.
         verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
+
     """
 
     def __init__(
@@ -135,7 +138,6 @@ class CaliforniaHousing(GlobalExplanation):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
-
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,

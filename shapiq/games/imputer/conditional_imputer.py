@@ -1,5 +1,7 @@
 """Implementation of the conditional imputer."""
 
+from __future__ import annotations
+
 import warnings
 
 import numpy as np
@@ -36,6 +38,7 @@ class ConditionalImputer(Imputer):
 
     Attributes:
         empty_prediction: The model's prediction on an empty data point (all features missing).
+
     """
 
     def __init__(
@@ -53,7 +56,8 @@ class ConditionalImputer(Imputer):
     ) -> None:
         super().__init__(model, data, x, sample_size, categorical_features, random_state)
         if method != "generative":
-            raise ValueError("Currently only a generative conditional imputer is implemented.")
+            msg = "Currently only a generative conditional imputer is implemented."
+            raise ValueError(msg)
         self.method = method
         self.conditional_budget = conditional_budget
         self.conditional_threshold = conditional_threshold
@@ -64,14 +68,16 @@ class ConditionalImputer(Imputer):
         if normalize:
             self.normalization_value = self.empty_prediction
 
-    def init_background(self, data: np.ndarray) -> "ConditionalImputer":
+    def init_background(self, data: np.ndarray) -> ConditionalImputer:
         """Initializes the conditional imputer.
+
         Args:
             data: The background data to use for the imputer. The shape of the array must
                 be (n_samples, n_features).
 
         Returns:
             The initialized imputer.
+
         """
         check_import_module("xgboost")
         import xgboost
@@ -80,7 +86,8 @@ class ConditionalImputer(Imputer):
         if self.conditional_budget > 2**n_features:
             warnings.warn(
                 "`conditional_budget` is higher than `2**n_features`; setting "
-                "`conditional_budget = 2**n_features`"
+                "`conditional_budget = 2**n_features`",
+                stacklevel=2,
             )
             self.conditional_budget = 2**n_features
         X_tiled = np.repeat(data, repeats=self.conditional_budget, axis=0)
@@ -94,9 +101,11 @@ class ConditionalImputer(Imputer):
             coalition_sampler.sample(self.conditional_budget)
             coalitions_matrix.append(coalition_sampler.coalitions_matrix)
         coalitions_matrix = np.concatenate(coalitions_matrix, axis=0)
-        # (data.shape[0] * self.conditional_budget, n_features)
         X_masked = X_tiled.copy()
-        X_masked[coalitions_matrix] = np.NaN
+        try:
+            X_masked[coalitions_matrix] = np.NaN  # old numpy version
+        except AttributeError:  # interim solution since numpy changed
+            X_masked[coalitions_matrix] = np.nan  # new numpy version
         tree_embedder = xgboost.XGBRegressor(random_state=self.random_state)
         tree_embedder.fit(X_masked, X_tiled)
         self._data_embedded = tree_embedder.apply(data)
@@ -114,6 +123,7 @@ class ConditionalImputer(Imputer):
         Returns:
             The model's predictions on the imputed data points. The shape of the array is
                (n_subsets, n_outputs).
+
         """
         background_data = self._sample_background_data()
         n_coalitions = coalitions.shape[0]
@@ -134,6 +144,7 @@ class ConditionalImputer(Imputer):
         Returns:
             The sampled replacement values. The shape of the array is (sample_size, n_subsets,
                 n_features).
+
         """
         x_embedded = self._tree_embedder.apply(self._x)
         distances = hamming_distance(self._data_embedded, x_embedded)
@@ -150,6 +161,7 @@ class ConditionalImputer(Imputer):
 
         Returns:
             The empty prediction.
+
         """
         # TODO: perhaps should be self.conditional_data instead of self.data
         empty_predictions = self.predict(self.data)
@@ -157,7 +169,7 @@ class ConditionalImputer(Imputer):
         return empty_prediction
 
 
-def hamming_distance(X, x):
+def hamming_distance(X: np.ndarray, x: np.ndarray) -> np.ndarray:
     """Computes hamming distance between point x (1d) and points in X (2d).
     https://en.wikipedia.org/wiki/Hamming_distance
     """

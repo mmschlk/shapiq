@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the SV KernelSHAP regression approximator."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -22,7 +24,6 @@ def test_initialization(n):
 @pytest.mark.parametrize("n, budget", [(7, 380), (7, 380), (7, 100)])
 def test_approximate(n, budget):
     """Tests the approximation of the KernelSHAP approximator."""
-
     interaction = (1, 2)
     game = DummyGame(n, interaction)
 

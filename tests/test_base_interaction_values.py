@@ -1,5 +1,7 @@
 """This test module contains all tests regarding the InteractionValues dataclass."""
 
+from __future__ import annotations
+
 import os
 from copy import copy, deepcopy
 
@@ -8,6 +10,9 @@ import pytest
 
 from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 from shapiq.utils import powerset
+from tests.fixtures.interaction_values import (
+    get_mock_interaction_value,
+)
 
 
 @pytest.mark.parametrize(
@@ -60,9 +65,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values.interaction_lookup == interaction_lookup
 
     # test dict_values property
-    assert interaction_values.dict_values == {
-        interaction: value for interaction, value in zip(interaction_lookup, values)
-    }
+    assert interaction_values.dict_values == dict(zip(interaction_lookup, values, strict=False))
 
     # check that default values are set correctly
     interaction_values_2 = InteractionValues(
@@ -84,9 +87,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
 
     # check equality
     interaction_values_copy = copy(interaction_values)
-    interaction_values_deepcopy = deepcopy(interaction_values)
     assert interaction_values == interaction_values_copy
-    assert interaction_values == interaction_values_deepcopy
     assert interaction_values != interaction_values_2
 
     try:
@@ -96,7 +97,6 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
 
     # check that the hash is correct
     assert hash(interaction_values) == hash(interaction_values_copy)
-    assert hash(interaction_values) == hash(interaction_values_deepcopy)
     assert hash(interaction_values) != hash(interaction_values_2)
 
     # check getitem
@@ -378,7 +378,6 @@ def test_n_order_transform():
 
 def test_sparsify():
     """Tests the sparsify function of the InteractionValues dataclass."""
-
     # parameters
     values = np.array([1, 1e-1, 1e-3, 1e-4, 1, 1e-4, 1])
     n_players = 7
@@ -434,7 +433,6 @@ def test_sparsify():
 
 def test_top_k():
     """Tests the top-k selection of the InteractionValues dataclass."""
-
     # parameters
     values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
     n_players = 10
@@ -463,7 +461,8 @@ def test_top_k():
     # top-k
     k = 3
     top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k(
-        k=k, as_interaction_values=False
+        k=k,
+        as_interaction_values=False,
     )
 
     assert len(top_k_interaction) == len(sorted_top_k_interactions) == k
@@ -478,21 +477,22 @@ def test_top_k():
     # test with k > len(values)
     k = 20
     top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k(
-        k=k, as_interaction_values=False
+        k=k,
+        as_interaction_values=False,
     )
     assert len(top_k_interaction) == len(sorted_top_k_interactions) == original_length
 
     # test with k = 0
     k = 0
     top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k(
-        k=k, as_interaction_values=False
+        k=k,
+        as_interaction_values=False,
     )
     assert len(top_k_interaction) == len(sorted_top_k_interactions) == 0
 
 
 def test_from_dict():
     """Tests the from_dict method of the InteractionValues dataclass."""
-
     # parameters
     values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
     n_players = 10
@@ -528,7 +528,6 @@ def test_from_dict():
 @pytest.mark.parametrize("as_pickle", [True, False])
 def test_save_and_load(as_pickle):
     """Tests the save and load functions of the InteractionValues dataclass."""
-
     # parameters
     values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
     n_players = 10
@@ -595,10 +594,10 @@ def test_plot():
         baseline_value=0.0,
     )
 
-    _ = interaction_values.plot_network()
-    _ = interaction_values.plot_network(feature_names=["a" for _ in range(n)])
-    _ = interaction_values.plot_stacked_bar()
-    _ = interaction_values.plot_stacked_bar(feature_names=["a" for _ in range(n)])
+    _ = interaction_values.plot_network(show=False)
+    _ = interaction_values.plot_network(show=False, feature_names=["a" for _ in range(n)])
+    _ = interaction_values.plot_stacked_bar(show=False)
+    _ = interaction_values.plot_stacked_bar(show=False, feature_names=["a" for _ in range(n)])
 
     n = 5
     min_order = 1
@@ -617,11 +616,11 @@ def test_plot():
         baseline_value=0.0,
     )
     with pytest.raises(ValueError):
-        _ = interaction_values.plot_network()
+        _ = interaction_values.plot_network(show=False)
     with pytest.raises(ValueError):
-        _ = interaction_values.plot_network(feature_names=["a" for _ in range(n)])
-    _ = interaction_values.plot_stacked_bar()
-    _ = interaction_values.plot_stacked_bar(feature_names=["a" for _ in range(n)])
+        _ = interaction_values.plot_network(show=False, feature_names=["a" for _ in range(n)])
+    _ = interaction_values.plot_stacked_bar(show=False)
+    _ = interaction_values.plot_stacked_bar(show=False, feature_names=["a" for _ in range(n)])
 
 
 @pytest.mark.parametrize("subset_players", [[0, 1], [0, 1, 3, 4]])
@@ -655,7 +654,7 @@ def test_subset(subset_players):
         for key in subset_interaction_values.interaction_lookup.keys()
     )
     assert len(subset_interaction_values.values) == len(
-        subset_interaction_values.interaction_lookup
+        subset_interaction_values.interaction_lookup,
     )
     assert interaction_values.baseline_value == subset_interaction_values.baseline_value
     assert subset_interaction_values.min_order == interaction_values.min_order
@@ -673,7 +672,6 @@ def test_subset(subset_players):
 
 @pytest.mark.parametrize("aggregation", ["sum", "mean", "median", "max", "min"])
 def test_aggregation(aggregation):
-
     n_objects = 3
 
     n, min_order, max_order = 5, 1, 3
@@ -697,7 +695,8 @@ def test_aggregation(aggregation):
         interaction_values_list.append(interaction_values)
 
     aggregated_interaction_values = aggregate_interaction_values(
-        interaction_values_list, aggregation=aggregation
+        interaction_values_list,
+        aggregation=aggregation,
     )
 
     assert isinstance(aggregated_interaction_values, InteractionValues)
@@ -709,7 +708,7 @@ def test_aggregation(aggregation):
     # check that all interactions are equal to the expected value
     for interaction in powerset(range(n), 1, n):
         aggregated_value = np.array(
-            [interaction_values[interaction] for interaction_values in interaction_values_list]
+            [interaction_values[interaction] for interaction_values in interaction_values_list],
         )
         if aggregation == "sum":
             expected_value = np.sum(aggregated_value)
@@ -725,7 +724,8 @@ def test_aggregation(aggregation):
 
     # test aggregate from InteractionValues object
     aggregated_from_object = interaction_values_list[0].aggregate(
-        aggregation=aggregation, others=interaction_values_list[1:]
+        aggregation=aggregation,
+        others=interaction_values_list[1:],
     )
     assert isinstance(aggregated_from_object, InteractionValues)
     assert aggregated_from_object == aggregated_interaction_values  # same values
@@ -734,7 +734,6 @@ def test_aggregation(aggregation):
 
 def test_docs_aggregation_function():
     """Tests the aggregation function in the InteractionValues dataclass like in the docs."""
-
     iv1 = InteractionValues(
         values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
         index="SII",
@@ -772,3 +771,161 @@ def test_docs_aggregation_function():
 
     with pytest.raises(ValueError):
         _ = aggregate_interaction_values([iv1, iv2], aggregation="invalid")
+
+
+def test_get_n_order_error_all_none(iv_10_all):
+    """Tests if `get_n_order` raises ValueError if all parameters are `None`."""
+    iv = iv_10_all
+    with pytest.raises(ValueError):
+        iv.get_n_order()  # all parameters are None
+
+
+def test_get_n_order_error_min_larger_max(iv_10_all):
+    """Tests if `get_n_order` raises ValueError if min_order > max_order."""
+    iv = iv_10_all
+    with pytest.raises(ValueError):
+        iv.get_n_order(min_order=2, max_order=1)  # min > max
+
+    with pytest.raises(ValueError):
+        iv.get_n_order(order=3, min_order=3, max_order=2)  # min > max even with order
+
+
+def test_get_n_order_min_max_overrides_order(iv_10_all):
+    """Tests that min_order and max_order overrides order."""
+    iv = iv_10_all
+    min_order = 0
+    max_order = 5
+    iv_new = iv.get_n_order(order=2, min_order=min_order, max_order=max_order)
+    assert iv_new.min_order == min_order
+    assert iv_new.max_order == max_order
+    assert all(
+        min_order <= len(interaction) <= max_order
+        for interaction in iv_new.interaction_lookup.keys()
+    )
+
+
+@pytest.mark.parametrize("min_order, max_order", [(None, 3), (2, None)])
+def test_get_n_order_single_bound(min_order, max_order, iv_10_all):
+    """Tests behavior when only min or max is provided."""
+    iv = iv_10_all
+    iv_new = iv.get_n_order(min_order=min_order, max_order=max_order)
+
+    if min_order is None:
+        min_order = iv.min_order
+    if max_order is None:
+        max_order = iv.max_order
+
+    assert iv_new.min_order == min_order
+    assert iv_new.max_order == max_order
+    assert all(min_order <= len(inter) <= max_order for inter in iv_new.interaction_lookup)
+
+
+def test_get_n_order_empty_result(iv_10_all):
+    """Test that get_n_order returns an empty InteractionValues if no interactions match."""
+    iv = iv_10_all
+    # Choose min/max such that no interaction can match
+    iv_new = iv.get_n_order(min_order=11, max_order=15)
+    assert len(iv_new.interaction_lookup) == 0
+    assert iv_new.values.size == 0
+
+    # choose order to be larger than max_order
+    iv_new = iv.get_n_order(order=11)
+    assert len(iv_new.interaction_lookup) == 0
+    assert iv_new.values.size == 0
+
+
+@pytest.mark.parametrize("order", [0, 1, 2, 3, 4, 5])
+def test_get_n_order_with_only_order_param(
+    order: int,
+    iv_10_all: InteractionValues,
+    iv_300_300_0_300: InteractionValues,
+):
+    """Tests that get_n_order returns only the specified order if only order is given as a parameter."""
+    for iv in [iv_10_all, iv_300_300_0_300]:
+        iv_new = iv.get_n_order(order=order)
+        assert isinstance(iv_new, InteractionValues)
+        assert iv_new.min_order == order
+        assert iv_new.max_order == order
+
+        # check that the order is correct
+        assert all(len(interaction) == order for interaction in iv_new.interaction_lookup.keys())
+
+        # check that all interactions from the original are present
+        assert all(
+            interaction in iv_new.interaction_lookup
+            for interaction in iv.interaction_lookup.keys()
+            if len(interaction) == order
+        )
+
+        # check that all values are correct
+        assert all(
+            iv_new[interaction] == iv[interaction]
+            for interaction in iv_new.interaction_lookup.keys()
+        )
+
+
+@pytest.mark.parametrize("min_order, max_order", [(0, 1), (0, 2), (2, 3), (3, 4), (4, 4)])
+def test_get_n_order_with_only_min_max_param(
+    min_order: int,
+    max_order: int,
+    iv_10_all: InteractionValues,
+    iv_300_300_0_300: InteractionValues,
+):
+    for iv in [iv_10_all, iv_300_300_0_300]:
+        iv_new = iv.get_n_order(min_order=min_order, max_order=max_order)
+        assert isinstance(iv_new, InteractionValues)
+        assert iv_new.min_order == min_order
+        assert iv_new.max_order == max_order
+
+        # check that the order is correct
+        assert all(
+            min_order <= len(interaction) <= max_order
+            for interaction in iv_new.interaction_lookup.keys()
+        )
+
+        # check that all interactions from the original are present
+        assert all(
+            interaction in iv_new.interaction_lookup
+            for interaction in iv.interaction_lookup.keys()
+            if min_order <= len(interaction) <= max_order
+        )
+
+        # check that all values are correct
+        assert all(
+            iv_new[interaction] == iv[interaction]
+            for interaction in iv_new.interaction_lookup.keys()
+        )
+
+
+def test_copy_behaviour():
+    """Tests that InteractionValues objects are copied correctly."""
+    from copy import copy, deepcopy
+
+    # check that copy and deepcopy both work and create a copyied object
+    for copy_method in [copy, deepcopy]:
+        original = get_mock_interaction_value(n_players=10, n_interactions=20)
+        copied = copy_method(original)
+        interaction = next(iter(copied.interaction_lookup))  # we use this interaction to test later
+
+        # Structural equality: values, lookup, etc.
+        assert isinstance(copied, InteractionValues)
+        assert np.array_equal(original.values, copied.values)
+        assert original.interaction_lookup == copied.interaction_lookup
+        assert original.n_players == copied.n_players
+        assert original.min_order == copied.min_order
+        assert original.max_order == copied.max_order
+        assert original.index == copied.index
+        assert original.baseline_value == copied.baseline_value
+        assert original.estimated == copied.estimated
+        assert original[interaction] == copied[interaction]
+        assert hash(original) == hash(copied)
+        assert original == copied
+
+        # Independence: changing one doesn’t affect the other
+        copied.values[0] += 1.0
+        assert not np.array_equal(original.values, copied.values), "Values should be independent"
+        copied.interaction_lookup[interaction] = 999
+        assert original.interaction_lookup != copied.interaction_lookup, "Lookup should be different"  # fmt: skip
+        assert original.interaction_lookup[interaction] != copied.interaction_lookup[interaction]
+        assert hash(original) != hash(copied)
+        assert original != copied, "Objects should be different"

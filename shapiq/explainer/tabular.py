@@ -1,5 +1,7 @@
 """Tabular Explainer class for the shapiq package."""
 
+from __future__ import annotations
+
 import warnings
 from warnings import warn
 
@@ -15,17 +17,19 @@ from ..approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    RegressionFBII,
     RegressionFSII,
     UnbiasedKernelSHAP,
 )
 from ..approximator._base import Approximator
 from ..explainer._base import Explainer
-from ..interaction_values import InteractionValues
+from ..interaction_values import InteractionValues, finalize_computed_interactions
 
 APPROXIMATOR_CONFIGURATIONS = {
     "regression": {
         "SII": InconsistentKernelSHAPIQ,
         "FSII": RegressionFSII,
+        "FBII": RegressionFBII,
         "k-SII": InconsistentKernelSHAPIQ,
         "SV": KernelSHAP,
     },
@@ -39,6 +43,7 @@ APPROXIMATOR_CONFIGURATIONS = {
         "SII": SHAPIQ,
         "STII": SHAPIQ,
         "FSII": SHAPIQ,
+        "FBII": SHAPIQ,
         "k-SII": SHAPIQ,
         "SV": UnbiasedKernelSHAP,
     },
@@ -46,12 +51,13 @@ APPROXIMATOR_CONFIGURATIONS = {
         "SII": SVARMIQ,
         "STII": SVARMIQ,
         "FSII": SVARMIQ,
+        "FBII": SVARMIQ,
         "k-SII": SVARMIQ,
         "SV": SVARM,
     },
 }
 
-AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII", "SV"}
+AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII", "FBII", "SV"}
 
 
 class TabularExplainer(Explainer):
@@ -106,6 +112,7 @@ class TabularExplainer(Explainer):
 
     Properties:
         baseline_value: A baseline value of the explainer.
+
     """
 
     def __init__(
@@ -129,7 +136,8 @@ class TabularExplainer(Explainer):
         )
 
         if index not in AVAILABLE_INDICES:
-            raise ValueError(f"Invalid index `{index}`. " f"Valid indices are {AVAILABLE_INDICES}.")
+            msg = f"Invalid index `{index}`. Valid indices are {AVAILABLE_INDICES}."
+            raise ValueError(msg)
 
         super().__init__(model, data, class_index)
 
@@ -140,21 +148,31 @@ class TabularExplainer(Explainer):
                 "You are using a TabPFN model with the ``shapiq.TabularExplainer`` directly. This "
                 "is not recommended as it uses missing value imputation and not contextualization. "
                 "Consider using the ``shapiq.TabPFNExplainer`` instead. For more information see "
-                "the documentation and the example notebooks."
+                "the documentation and the example notebooks.",
+                stacklevel=2,
             )
 
         self._random_state = random_state
         if imputer == "marginal":
             self._imputer = MarginalImputer(
-                self.predict, self.data, random_state=random_state, **kwargs
+                self.predict,
+                self.data,
+                random_state=random_state,
+                **kwargs,
             )
         elif imputer == "conditional":
             self._imputer = ConditionalImputer(
-                self.predict, self.data, random_state=random_state, **kwargs
+                self.predict,
+                self.data,
+                random_state=random_state,
+                **kwargs,
             )
         elif imputer == "baseline":
             self._imputer = BaselineImputer(
-                self.predict, self.data, random_state=random_state, **kwargs
+                self.predict,
+                self.data,
+                random_state=random_state,
+                **kwargs,
             )
         elif (
             isinstance(imputer, MarginalImputer)
@@ -164,11 +182,12 @@ class TabularExplainer(Explainer):
         ):
             self._imputer = imputer
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid imputer {imputer}. "
                 f'Must be one of ["marginal", "baseline", "conditional"], or a valid Imputer '
                 f"object."
             )
+            raise ValueError(msg)
         self._n_features: int = self.data.shape[1]
         self._imputer.verbose = verbose  # set the verbose flag for the imputer
 
@@ -177,24 +196,22 @@ class TabularExplainer(Explainer):
         self._approximator = self._init_approximator(approximator, self.index, self._max_order)
 
     def explain_function(
-        self, x: np.ndarray, budget: int | None = None, random_state: int | None = None
+        self,
+        x: np.ndarray,
+        budget: int,
+        random_state: int | None = None,
     ) -> InteractionValues:
         """Explains the model's predictions.
 
         Args:
             x: The data point to explain as a 2-dimensional array with shape
                 (1, n_features).
-            budget: The budget to use for the approximation. Defaults to `None`, which will
-                set the budget to 2**n_features based on the number of features.
+            budget: The budget to use for the approximation. It indicates how many coalitions are sampled, thus high values indicate more accurate approximations, but induce higher computational costs.
+                In particular one should be aware of the exponential growth of the number of coalitions with the number of features i.e. 2**(n_players).
+                We abstain from giving a general recommendation for the budget, as it depends on the specific use case and the desired accuracy.
             random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
+
         """
-        if budget is None:
-            budget = 2**self._n_features
-            if budget > 2048:
-                warnings.warn(
-                    f"Using the budget of 2**n_features={budget}, which might take long\
-                              to compute. Set the `budget` parameter to suppress this warning."
-                )
         if random_state is not None:
             self._imputer._rng = np.random.default_rng(random_state)
             self._approximator._rng = np.random.default_rng(random_state)
@@ -206,6 +223,10 @@ class TabularExplainer(Explainer):
         # explain
         interaction_values = self._approximator(budget=budget, game=imputer)
         interaction_values.baseline_value = self.baseline_value
+        interaction_values = finalize_computed_interactions(
+            interaction_values,
+            target_index=self.index,
+        )
 
         return interaction_values
 
@@ -215,9 +236,11 @@ class TabularExplainer(Explainer):
         return self._imputer.empty_prediction
 
     def _init_approximator(
-        self, approximator: Approximator | str, index: str, max_order: int
+        self,
+        approximator: Approximator | str,
+        index: str,
+        max_order: int,
     ) -> Approximator:
-
         if isinstance(approximator, Approximator):  # if the approximator is already given
             return approximator
 
@@ -226,7 +249,8 @@ class TabularExplainer(Explainer):
                 if index != "SV":
                     warnings.warn(
                         "`max_order=1` but `index != 'SV'`, setting `index = 'SV'`. "
-                        "Using the KernelSHAP approximator."
+                        "Using the KernelSHAP approximator.",
+                        stacklevel=2,
                     )
                     self.index = "SV"
                 return KernelSHAP(
@@ -237,7 +261,8 @@ class TabularExplainer(Explainer):
                 if max_order != 1:
                     warnings.warn(
                         "`index='SV'` but `max_order != 1`, setting `max_order = 1`. "
-                        "Using the KernelSHAP approximator."
+                        "Using the KernelSHAP approximator.",
+                        stacklevel=2,
                     )
                     self._max_order = 1
                 return KernelSHAP(
@@ -246,6 +271,12 @@ class TabularExplainer(Explainer):
                 )
             elif index == "FSII":
                 return RegressionFSII(
+                    n=self._n_features,
+                    max_order=max_order,
+                    random_state=self._random_state,
+                )
+            elif index == "FBII":
+                return RegressionFBII(
                     n=self._n_features,
                     max_order=max_order,
                     random_state=self._random_state,
@@ -268,11 +299,12 @@ class TabularExplainer(Explainer):
         # assume that the approximator is a string
         try:
             approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
-        except KeyError:
-            raise ValueError(
+        except KeyError as error:
+            msg = (
                 f"Invalid approximator `{approximator}` or index `{index}`. "
                 f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}."
             )
+            raise ValueError(msg) from error
         # initialize the approximator class with params
         init_approximator = approximator(n=self._n_features, max_order=max_order)
         return init_approximator
