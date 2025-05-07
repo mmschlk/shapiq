@@ -14,7 +14,6 @@ from .regression import (
     RegressionFSII,
     kADDSHAP,
 )
-from .regression import InconsistentKernelSHAPIQ, KernelSHAP, KernelSHAPIQ, RegressionFSII, kADDSHAP
 from .sparse import SPEX
 
 # contains all SV approximators

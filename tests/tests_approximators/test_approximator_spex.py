@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from shapiq.approximator.sparse.spex import SPEX

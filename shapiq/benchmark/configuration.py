@@ -742,13 +742,10 @@ APPROXIMATION_NAME_TO_CLASS_MAPPING = {
 # contains all parameters that will be passed to the approximators at initialization
 APPROXIMATION_BENCHMARK_PARAMS: dict[Approximator.__class__, tuple[str]] = {}
 APPROXIMATION_BENCHMARK_PARAMS.update(
-    {approx: ("n", "random_state") for approx in SV_APPROXIMATORS},
+    dict.fromkeys(SV_APPROXIMATORS, ("n", "random_state")),
 )
 APPROXIMATION_BENCHMARK_PARAMS.update(
-    {
-        approx: ("n", "random_state", "index", "max_order")
-        for approx in SI_APPROXIMATORS + SII_APPROXIMATORS + STII_APPROXIMATORS + FSII_APPROXIMATORS
-    },
+    dict.fromkeys(SI_APPROXIMATORS + SII_APPROXIMATORS + STII_APPROXIMATORS + FSII_APPROXIMATORS, ("n", "random_state", "index", "max_order")),
 )
 
 

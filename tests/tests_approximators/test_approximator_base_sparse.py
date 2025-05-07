@@ -1,10 +1,12 @@
 """This test module contains all tests regarding the base sparse approximator."""
+from __future__ import annotations
 
 import pytest
+
 from shapiq.approximator.sparse import Sparse
+from shapiq.game_theory.indices import ALL_AVAILABLE_CONCEPTS
 from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
-from shapiq.game_theory.indices import ALL_AVAILABLE_CONCEPTS
 
 
 @pytest.mark.parametrize(
@@ -186,7 +188,7 @@ def test_approximate(
     # generate the set of expected interactions
     expected_interactions = set()
     if estimates.min_order == 0:
-        expected_interactions.update(set((i,) for i in range(n)))
+        expected_interactions.update( {(i,) for i in range(n)} )
     if estimates.max_order > 1:
         expected_interactions.add(interaction)
 

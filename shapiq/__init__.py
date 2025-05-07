@@ -7,6 +7,7 @@ __version__ = "1.2.3.9000"
 # approximator classes
 from .approximator import (
     SHAPIQ,
+    SPEX,
     SVARM,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
@@ -21,7 +22,6 @@ from .approximator import (
     StratifiedSamplingSV,
     UnbiasedKernelSHAP,
     kADDSHAP,
-    SPEX
 )
 from .benchmark import (
     BENCHMARK_CONFIGURATIONS,

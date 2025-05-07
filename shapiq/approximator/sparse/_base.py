@@ -1,16 +1,20 @@
+from __future__ import annotations
+
+import copy
 from collections.abc import Callable
-from .._base import Approximator
-from ...interaction_values import InteractionValues
-from ...game_theory.moebius_converter import MoebiusConverter
-from ...game_theory.indices import is_index_aggregated
+
+import numpy as np
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
-from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
-from sparse_transform.qsft.utils.query import get_bch_decoder
 from sparse_transform.qsft.signals.input_signal_subsampled import (
     SubsampledSignal as SubsampledSignalFourier,
 )
-import numpy as np
-import copy
+from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
+from sparse_transform.qsft.utils.query import get_bch_decoder
+
+from ...game_theory.indices import is_index_aggregated
+from ...game_theory.moebius_converter import MoebiusConverter
+from ...interaction_values import InteractionValues
+from .._base import Approximator
 
 
 class Sparse(Approximator):
@@ -54,12 +58,14 @@ class Sparse(Approximator):
         decoder_type: str = "soft",
     ) -> None:
         if transform_type.lower() not in ["fourier"]:
-            raise ValueError("transform_type must be 'fourier'")
+            msg = "transform_type must be 'fourier'"
+            raise ValueError(msg)
         self.transform_type = transform_type.lower()
         self.t = 5  # 5 could be a parameter
         self.decoder_type = "hard" if decoder_type is None else decoder_type.lower()
         if self.decoder_type not in ["soft", "hard"]:
-            raise ValueError("decoder_type must be either 'soft' or 'hard'")
+            msg = "decoder_type must be 'soft' or 'hard'"
+            raise ValueError(msg)
         # The sampling parameters for the Fourier transform
         self.query_args = {
             "query_method": "complex",
@@ -90,7 +96,7 @@ class Sparse(Approximator):
         )
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray], *args, **kwargs
+        self, budget: int, game: Callable[[np.ndarray], np.ndarray],
     ) -> InteractionValues:
         """Approximates the interaction values using a sparse transform approach.
 
@@ -231,9 +237,8 @@ class Sparse(Approximator):
 
             # If 'b' is still too low, raise an error
             if b <= 2:
-                raise ValueError(
-                    "Insufficient budget to compute the transform. Increase the budget or use a different approximator."
-                )
+                msg = "Insufficient budget to compute the transform. Increase the budget or use a different approximator."
+                raise ValueError(msg)
         # Store the final 'b' value
         self.query_args["b"] = b
         self.decoder_args["b"] = b
