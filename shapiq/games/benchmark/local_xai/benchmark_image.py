@@ -80,11 +80,15 @@ class ImageClassifier(Game):
             raise ValueError(msg)
 
         # validate inputs
-        valid_models = ["vit_144_patches", "vit_36_patches", "vit_16_patches", "vit_9_patches", "resnet_18"]
+        valid_models = [
+            "vit_144_patches",
+            "vit_36_patches",
+            "vit_16_patches",
+            "vit_9_patches",
+            "resnet_18",
+        ]
         if model_name.lower() not in valid_models:
-            msg = (
-                f"Invalid model {model_name}. The model must be one of {valid_models}"
-            )
+            msg = f"Invalid model {model_name}. The model must be one of {valid_models}"
             raise ValueError(
                 msg,
             )
@@ -104,7 +108,7 @@ class ImageClassifier(Game):
                 "vit_144_patches": 144,
                 "vit_36_patches": 36,
                 "vit_16_patches": 16,
-                "vit_9_patches": 9
+                "vit_9_patches": 9,
             }
             n_players = patch_sizes[model_name]
 

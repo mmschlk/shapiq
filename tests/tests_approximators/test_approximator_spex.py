@@ -125,6 +125,7 @@ def test_spex_vs_sparse():
     # Check that the interaction is estimated similarly
     assert abs(spex_estimates[interaction] - sparse_estimates[interaction]) < 0.1
 
+
 @pytest.mark.parametrize(
     "n, interaction, budget, correct_b, correct_t",
     [
@@ -147,6 +148,7 @@ def test_sparsity_parameter(n, interaction, budget, correct_b, correct_t):
 
     assert spex.query_args["b"] == correct_b
     assert spex.t == correct_t
+
 
 @pytest.mark.parametrize(
     "n, interaction, budget",

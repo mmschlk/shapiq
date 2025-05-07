@@ -1,4 +1,5 @@
 """This test module contains all tests regarding the base sparse approximator."""
+
 from __future__ import annotations
 
 import pytest
@@ -188,7 +189,7 @@ def test_approximate(
     # generate the set of expected interactions
     expected_interactions = set()
     if estimates.min_order == 0:
-        expected_interactions.update( {(i,) for i in range(n)} )
+        expected_interactions.update({(i,) for i in range(n)})
     if estimates.max_order > 1:
         expected_interactions.add(interaction)
 

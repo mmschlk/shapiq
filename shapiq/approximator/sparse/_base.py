@@ -81,7 +81,9 @@ class Sparse(Approximator):
             "num_repeat": 1,
             "reconstruct_method_source": "coded",
             "peeling_method": "multi-detect",
-            "reconstruct_method_channel": "identity-siso" if self.decoder_type == "soft" else "identity",
+            "reconstruct_method_channel": "identity-siso"
+            if self.decoder_type == "soft"
+            else "identity",
             "regress": "lasso",
             "res_energy_cutoff": 0.9,
             "source_decoder": get_bch_decoder(n, self.t, self.decoder_type),
@@ -96,7 +98,9 @@ class Sparse(Approximator):
         )
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray],
+        self,
+        budget: int,
+        game: Callable[[np.ndarray], np.ndarray],
     ) -> InteractionValues:
         """Approximates the interaction values using a sparse transform approach.
 
@@ -109,11 +113,12 @@ class Sparse(Approximator):
         """
         # Find the maximum value of b that fits within the given sample budget and get the used budget
         used_budget = self._set_transform_budget(budget)
-        signal = SubsampledSignalFourier(func=lambda inputs: game(inputs.astype(bool)),
-                                         n=self.n,
-                                         q=2,
-                                         query_args=self.query_args,
-                                         )
+        signal = SubsampledSignalFourier(
+            func=lambda inputs: game(inputs.astype(bool)),
+            n=self.n,
+            q=2,
+            query_args=self.query_args,
+        )
         # Extract the coefficients of the original transform
         initial_transform = {
             tuple(np.nonzero(key)[0]): np.real(value)
@@ -141,7 +146,6 @@ class Sparse(Approximator):
         if is_index_aggregated(self.index):
             output = self.aggregate_interaction_values(output)
         return output
-
 
     def _filter_order(self, result: np.ndarray) -> np.ndarray:
         """Filters the interactions to keep only those of the maximum order.
@@ -232,7 +236,9 @@ class Sparse(Approximator):
 
                 # Break if 'b' is now sufficient
                 if b > 2:
-                    self.decoder_args["source_decoder"] = get_bch_decoder(self.n, self.t, self.decoder_type)
+                    self.decoder_args["source_decoder"] = get_bch_decoder(
+                        self.n, self.t, self.decoder_type
+                    )
                     break
 
             # If 'b' is still too low, raise an error

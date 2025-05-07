@@ -147,7 +147,7 @@ class ViTModel:
         bool_mask_2d = torch.ones((12, 12), dtype=torch.int)
 
         # Calculate the size of each super-patch based on the grid size
-        patch_size = 12 // int(n_patches ** 0.5)
+        patch_size = 12 // int(n_patches**0.5)
 
         for player, is_present in enumerate(coalition):
             if is_present:
@@ -155,7 +155,7 @@ class ViTModel:
                     MAPPING_PLAYER_MASK[n_patches][player]["x"],
                     MAPPING_PLAYER_MASK[n_patches][player]["y"],
                 )
-                bool_mask_2d[y:y + patch_size, x:x + patch_size] = 0
+                bool_mask_2d[y : y + patch_size, x : x + patch_size] = 0
 
         bool_mask_1d = bool_mask_2d.flatten()
         return bool_mask_1d
@@ -163,14 +163,8 @@ class ViTModel:
 
 # constants for the boolean mask generation for the Vision Transformer model
 MAPPING_PLAYER_MASK = {
-    36: {
-        player: {"x": (player % 6) * 2, "y": (player // 6) * 2}
-        for player in range(36)
-    },
-    144: {
-        player: {"x": player % 12, "y": player // 12}
-        for player in range(144)
-    },
+    36: {player: {"x": (player % 6) * 2, "y": (player // 6) * 2} for player in range(36)},
+    144: {player: {"x": player % 12, "y": player // 12} for player in range(144)},
     16: {
         0: {"x": 0, "y": 0},
         1: {"x": 3, "y": 0},

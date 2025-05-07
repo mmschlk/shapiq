@@ -745,7 +745,10 @@ APPROXIMATION_BENCHMARK_PARAMS.update(
     dict.fromkeys(SV_APPROXIMATORS, ("n", "random_state")),
 )
 APPROXIMATION_BENCHMARK_PARAMS.update(
-    dict.fromkeys(SI_APPROXIMATORS + SII_APPROXIMATORS + STII_APPROXIMATORS + FSII_APPROXIMATORS, ("n", "random_state", "index", "max_order")),
+    dict.fromkeys(
+        SI_APPROXIMATORS + SII_APPROXIMATORS + STII_APPROXIMATORS + FSII_APPROXIMATORS,
+        ("n", "random_state", "index", "max_order"),
+    ),
 )
 
 
