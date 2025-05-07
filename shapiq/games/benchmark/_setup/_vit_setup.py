@@ -39,7 +39,7 @@ class ViTModel:
 
     def __init__(self, n_patches: int, input_image: Image, verbose: bool = True) -> None:
         # check input
-        if n_patches not in [9, 16]:
+        if n_patches not in MAPPING_PLAYER_MASK:
             msg = f"The number of patches must be either 9 or 16 and not {n_patches}"
             raise ValueError(msg)
 
@@ -145,23 +145,26 @@ class ViTModel:
 
         """
         bool_mask_2d = torch.ones((12, 12), dtype=torch.int)
+
+        # Calculate the size of each super-patch based on the grid size
+        patch_size = 12 // int(n_patches**0.5)
+
         for player, is_present in enumerate(coalition):
             if is_present:
-                if n_patches == 16:
-                    x, y = (
-                        MAPPING_PLAYER_MASK[16][player]["x"],
-                        MAPPING_PLAYER_MASK[16][player]["y"],
-                    )
-                    bool_mask_2d[y : y + 3, x : x + 3] = False
-                else:
-                    x, y = MAPPING_PLAYER_MASK[9][player]["x"], MAPPING_PLAYER_MASK[9][player]["y"]
-                    bool_mask_2d[y : y + 4, x : x + 4] = False
+                x, y = (
+                    MAPPING_PLAYER_MASK[n_patches][player]["x"],
+                    MAPPING_PLAYER_MASK[n_patches][player]["y"],
+                )
+                bool_mask_2d[y : y + patch_size, x : x + patch_size] = 0
+
         bool_mask_1d = bool_mask_2d.flatten()
         return bool_mask_1d
 
 
 # constants for the boolean mask generation for the Vision Transformer model
 MAPPING_PLAYER_MASK = {
+    36: {player: {"x": (player % 6) * 2, "y": (player // 6) * 2} for player in range(36)},
+    144: {player: {"x": player % 12, "y": player // 12} for player in range(144)},
     16: {
         0: {"x": 0, "y": 0},
         1: {"x": 3, "y": 0},

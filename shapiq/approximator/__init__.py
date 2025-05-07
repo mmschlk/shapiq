@@ -14,6 +14,7 @@ from .regression import (
     RegressionFSII,
     kADDSHAP,
 )
+from .sparse import SPEX
 
 # contains all SV approximators
 SV_APPROXIMATORS: list[Approximator.__class__] = [
@@ -24,6 +25,7 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     PermutationSamplingSV,
     KernelSHAP,
     kADDSHAP,
+    SPEX,
 ]
 
 # contains all SI approximators
@@ -44,6 +46,7 @@ SII_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
+    SPEX,
 ]
 
 # contains all approximators that can be used for STII
@@ -53,6 +56,7 @@ STII_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
+    SPEX,
 ]
 
 # contains all approximators that can be used for FSII
@@ -62,11 +66,13 @@ FSII_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
+    SPEX,
 ]
 
 # contains all approximators that can be used for FBII
 FBII_APPROXIMATORS: list[Approximator.__class__] = [
     RegressionFBII,
+    SPEX,
 ]
 
 __all__ = [
@@ -84,6 +90,7 @@ __all__ = [
     "SVARM",
     "SVARMIQ",
     "kADDSHAP",
+    "SPEX",
     "UnbiasedKernelSHAP",
     "SV_APPROXIMATORS",
     "SI_APPROXIMATORS",
