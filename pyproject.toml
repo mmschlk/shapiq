@@ -19,6 +19,8 @@ dependencies = [
     "matplotlib",
     "networkx",
     "colour",
+    "sparse-transform",
+    "galois",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -83,7 +85,6 @@ ml = [
     "joblib",
     "tensorflow; python_version < '3.13'",
     "tf-keras; python_version < '3.13'",
-    "sparse-transform",
 ]
 
 [tool.pytest.ini_options]
