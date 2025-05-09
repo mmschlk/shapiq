@@ -106,7 +106,7 @@ def validate_tree_model(
     elif safe_isinstance(model, "catboost.CatBoostRegressor") or safe_isinstance(
         model, "catboost.CatBoostClassifier"
     ):
-        tree_model = convert_catboost(model)
+        tree_model = convert_catboost(model, class_label=class_label)
     # unsupported model
     else:
         msg = f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}"

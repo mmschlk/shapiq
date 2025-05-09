@@ -531,42 +531,6 @@ def test_extra_trees_reg(et_reg_model, background_reg_data):
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
 
 
-def test_catboost_clf_bin(cb_clf_model_bin, background_clf_dataset_binary_small):
-    """Test the shapiq implementation of CatBoost vs. SHAP's implementation for CatBoost."""
-    explanation_instance = 1
-    class_label = 0  # TODO change class label
-
-    # the following code is used to get the shap values from the SHAP implementation
-    """
-    #import shap
-    #model_copy = copy.deepcopy(cb_clf_model_bin)
-    #explainer_shap = shap.TreeExplainer(model=model_copy)
-    #baseline_shap = float(explainer_shap.expected_value[class_label])
-    #x_explain_shap = copy.deepcopy(background_clf_dataset_binary_small[explanation_instance].reshape(1, -1))
-    #sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
-    #sv_shap = sv_shap_all_classes[:, class_label]
-    #print(sv_shap_all_classes, format(baseline_shap, '.20f'))
-    """  # noqa: ERA001
-    sv_shap = [-0.01382106, 0.01746474, 0.00893089, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    sv_shap = np.asarray(sv_shap)
-    baseline_shap = -0.01033820774797034915
-
-    # compute with shapiq
-    explainer_shapiq = TreeExplainer(
-        model=cb_clf_model_bin,
-        max_order=1,
-        index="SV",
-        class_index=class_label,
-    )
-    x_explain_shapiq = copy.deepcopy(background_clf_dataset_binary_small[explanation_instance])
-    sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
-    sv_shapiq_values = sv_shapiq.get_n_order_values(1)
-    baseline_shapiq = sv_shapiq.baseline_value
-
-    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
-    assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
-
-
 def test_catboost_clf(cb_clf_model, background_clf_data):
     """Test the shapiq implementation of CatBoostP vs. SHAP's implementation for CatBoost."""
     explanation_instance = 1

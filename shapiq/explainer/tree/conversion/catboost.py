@@ -4,18 +4,21 @@ from __future__ import annotations
 
 import numpy as np
 
+from ....utils import safe_isinstance
 from ....utils.custom_types import Model
 from ..base import TreeModel
 
 
 def convert_catboost(
     tree_model: Model,
+    class_label: int | None = None,
 ) -> list[TreeModel]:
     """Transforms models from the catboost package to the format used by shapiq.
      Note: part of this implementation is taken and adapted from the shap package, where it can be found in shap/explainers/_tree.py.
 
     Args:
         tree_model: The catboost model to convert.
+        class_label: The class label of the model to explain. Only used for classification models.
 
     Returns:
         The converted catboost model.
@@ -23,7 +26,7 @@ def convert_catboost(
     """
     output_type = "raw"
 
-    # workaround to obtain the single trees in the ensemble
+    # workaround to get the single trees in the ensemble
     import json
     import tempfile
     from pathlib import Path
@@ -40,6 +43,7 @@ def convert_catboost(
     for tree_index in range(num_trees):
         leaf_values_json = loaded_cb_model["oblivious_trees"][tree_index]["leaf_values"]
         leaf_values = [0] * (len(leaf_values_json) - 1) + leaf_values_json
+        leaf_values = np.array(leaf_values)
 
         children_left = [i * 2 + 1 for i in range(len(leaf_values_json) - 1)]
         children_left += [-1] * len(leaf_values_json)
@@ -47,13 +51,16 @@ def convert_catboost(
         children_right = [i * 2 for i in range(1, len(leaf_values_json))]
         children_right += [-1] * len(leaf_values_json)
 
-        total_nodes = len(children_right)  # TODO check if usefully
+        total_nodes = len(children_right)
 
+        # added to assign each node a weight. Before it was only the leafs
         leaf_weights_json = loaded_cb_model["oblivious_trees"][tree_index]["leaf_weights"]
         leaf_weights = [0] * (total_nodes - len(leaf_weights_json)) + leaf_weights_json
         leaf_weights[0] = sum(leaf_weights_json)
         for index in range(len(leaf_weights_json) - 2, 0, -1):
-            leaf_weights[index] = leaf_weights[2 * index + 1] + leaf_weights[2 * index + 2]
+            leaf_weights[index] = (
+                leaf_weights[2 * index + 1] + leaf_weights[2 * index + 2]
+            )  # each node weight is the sum of its children
 
         # split features and borders go from leafs to the root
         split_features_index_json = []
@@ -82,13 +89,23 @@ def convert_catboost(
             borders += [border] * (2**counter)
         borders += [0] * (total_nodes - len(borders))
 
+        if (safe_isinstance(tree_index, "catboost.core.Classsifier")) and class_label is not None:
+            class_label = 0
+
+        if class_label is not None:
+            # turn leaf values into probabilities
+            leaf_values = np.maximum(leaf_values, 0)  # because some values are negative
+            if np.sum(leaf_values) > 0:
+                leaf_values = leaf_values / np.sum(leaf_values)
+            output_type = "probability"
+
         trees.append(
             TreeModel(
                 children_left=np.array(children_left),
                 children_right=np.array(children_right),
                 features=np.array(split_features_index),
                 thresholds=np.array(borders),
-                values=np.array(leaf_values).reshape((-1, 1)),
+                values=leaf_values.reshape((-1, 1)),
                 node_sample_weight=np.array(leaf_weights),
                 empty_prediction=None,  # compute empty prediction later
                 original_output_type=output_type,
