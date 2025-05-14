@@ -7,6 +7,7 @@ __version__ = "1.2.3.9000"
 # approximator classes
 from .approximator import (
     SHAPIQ,
+    SPEX,
     SVARM,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
@@ -95,6 +96,7 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
+    "SPEX",
     # explainers
     "Explainer",
     "TabularExplainer",
