@@ -15,10 +15,12 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "requests",
+    "sparse-transform",
+    "galois",
     # plotting
     "matplotlib",
     "networkx",
-    "colour"
+    "colour",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},

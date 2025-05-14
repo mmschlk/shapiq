@@ -17,11 +17,14 @@ class ImageClassifier(Game):
     predicted class (the class with the highest probability on the original image) after removing
     not participating players, i.e., superpixels or patches, from the image.
 
-    Two image classifier variants are available:
-        - Vision Transformer (ViT) with 16 or 9 patches constituting the `n_players`. These model
-            ids are `vit_16_patches` and `vit_9_patches`, respectively. For this model, the image is
-            split into patches of equal size. Non-participating players are removed by setting the
-            corresponding patch to the masking token.
+    Several image classifier variants are available:
+        - Vision Transformer (ViT) with various grid sizes constituting the `n_players`:
+            - 144 patches: `vit_144_patches` (12x12 grid)
+            - 36 patches: `vit_36_patches` (6x6 grid)
+            - 16 patches: `vit_16_patches` (4x4 grid)
+            - 9 patches: `vit_9_patches` (3x3 grid)
+          For this model, the image is split into patches of equal size. Non-participating
+          players are removed by setting the corresponding patch to the masking token.
         - ResNet-18, which is a convolutional neural network based on the ResNet architecture. For
             this model individual pixels are grouped together into superpixels. Non-participating
             players, i.e., superpixels, are removed by setting the corresponding superpixel to the
@@ -34,8 +37,8 @@ class ImageClassifier(Game):
     Args:
         model_name: The model used for the game. This can be either a callable that takes an image in
             form of a numpy array or and returns the class probabilities, or a string that specifies
-            the pre-trained model to be used. The default models are 'vit_16_patches',
-            'vit_9_patches', and 'resnet_18'. Defaults to 'vit_16_patches'.
+            the pre-trained model to be used. The default models are 'vit_144_patches', 'vit_36_patches',
+            'vit_16_patches', 'vit_9_patches', and 'resnet_18'. Defaults to 'vit_16_patches'.
         n_superpixel_resnet: The approximate number of superpixels for the ResNet model to use.
             Defaults to 14. This is only used if the model is 'resnet_18'.
         x_explain_path: The image to be explained. If not provided, a random image from the benchmark set
@@ -77,11 +80,15 @@ class ImageClassifier(Game):
             raise ValueError(msg)
 
         # validate inputs
-        if model_name.lower() not in ["vit_16_patches", "vit_9_patches", "resnet_18"]:
-            msg = (
-                f"Invalid model {model_name}. The model must be one of ['vit_16_patches', "
-                f"'vit_9_patches', 'resnet_18']"
-            )
+        valid_models = [
+            "vit_144_patches",
+            "vit_36_patches",
+            "vit_16_patches",
+            "vit_9_patches",
+            "resnet_18",
+        ]
+        if model_name.lower() not in valid_models:
+            msg = f"Invalid model {model_name}. The model must be one of {valid_models}"
             raise ValueError(
                 msg,
             )
@@ -93,12 +100,18 @@ class ImageClassifier(Game):
 
         # setup the models model
         self.model_function = model_name
-        if model_name == "vit_16_patches" or model_name == "vit_9_patches":
+        if "vit" in model_name:
             from shapiq.games.benchmark._setup._vit_setup import ViTModel
 
-            n_players = 9
-            if model_name == "vit_16_patches":
-                n_players = 16
+            # Extract the number of patches from the model name
+            patch_sizes = {
+                "vit_144_patches": 144,
+                "vit_36_patches": 36,
+                "vit_16_patches": 16,
+                "vit_9_patches": 9,
+            }
+            n_players = patch_sizes[model_name]
+
             vit_model = ViTModel(n_patches=n_players, input_image=self.x_explain, verbose=verbose)
             normalization_value = vit_model.empty_value
             self.model_function = vit_model
