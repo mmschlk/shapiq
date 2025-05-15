@@ -67,7 +67,7 @@ def _draw_waterfall_plot(
     yticklabels = ["" for _ in range(num_features + 1)]
 
     # size the plot based on how many features we are plotting
-    plt.gcf().set_size_inches(8, num_features * row_height + 1.5)
+    plt.gcf().set_size_inches(8, num_features * row_height + 3.5)
 
     # see how many individual (vs. grouped at the end) features we are plotting
     if num_features == len(values):
@@ -100,7 +100,7 @@ def _draw_waterfall_plot(
 
     # add a last grouped feature to represent the impact of all the features we didn't show
     if num_features < len(values):
-        yticklabels[0] = "%d other features".format()
+        yticklabels[0] = f"{int(len(values) - num_features + 1)} other features"
         remaining_impact = base_values - loc
         if remaining_impact < 0:
             pos_inds.append(0)
@@ -147,6 +147,7 @@ def _draw_waterfall_plot(
     width = bbox.width
     bbox_to_xscale = xlen / width
     hl_scaled = bbox_to_xscale * head_length
+    dpi = fig.dpi
     renderer = fig.canvas.get_renderer()
 
     # draw the positive arrows
@@ -254,6 +255,16 @@ def _draw_waterfall_plot(
         yticklabels[:-1] + [label.split("=")[-1] for label in yticklabels[:-1]],
         fontsize=13,
     )
+
+    # Check that the y-ticks are not drawn outside the plot
+    max_label_width = (
+        max([label.get_window_extent(renderer=renderer).width for label in ax.get_yticklabels()])
+        / dpi
+    )
+    if max_label_width > 0.1 * fig.get_size_inches()[0]:
+        required_width = max_label_width / 0.1
+        fig_height = fig.get_size_inches()[1]
+        fig.set_size_inches(required_width, fig_height, forward=True)
 
     # put horizontal lines for each feature row
     for i in range(num_features):
