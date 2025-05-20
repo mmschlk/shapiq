@@ -17,12 +17,9 @@ build:
       - asdf install uv latest
       - asdf global uv latest
     create_environment:
-      - uv venv $READTHEDOCS_VIRTUALENV_PATH
-      # set the venv in uv as discussed here: https://stackoverflow.com/a/79365815
-      - export UV_PROJECT_ENVIRONMENT=$READTHEDOCS_VIRTUALENV_PATH
+      - uv venv
     install:
-      # use a cache dir for uv to speed up the build: https://docs.astral.sh/uv/concepts/cache/#cache-directory
-      - uv sync --all-extras --cache-dir $READTHEDOCS_VIRTUALENV_PATH/../../uv_cache
+      - uv sync --all-extras
     post_install:
       - uv run python docs/copy_notebooks.py
     build:
