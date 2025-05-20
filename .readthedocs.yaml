@@ -23,7 +23,7 @@ build:
       - uv venv
     install:
       - uv sync --all-extras
-    copy_notebooks:
+    post_install:
       - uv run python docs/copy_notebooks.py
-    build_docs:
+    build:
       - uv run sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html
