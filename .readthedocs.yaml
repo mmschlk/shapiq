@@ -20,17 +20,13 @@ build:
       - asdf install uv latest
       - asdf global uv latest
     create_environment:
-      - uv venv $READTHEDOCS_VIRTUALENV_PATH
+      - uv venv
     install:
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH uv sync --all-extras
+      - uv sync --all-extras
     copy_notebooks:
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH uv run python docs/copy_notebooks.py
+      - uv run python docs/copy_notebooks.py
     build_docs:
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH uv run sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html
-
-# Build documentation in the docs/ directory with Sphinx
-sphinx:
-  configuration: docs/source/conf.py
+      - uv run sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html
 
 # If using Sphinx, optionally build your docs in additional formats such as PDF
 formats:
