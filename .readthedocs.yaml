@@ -1,5 +1,6 @@
 version: 2
 
+# specify that we only build html
 formats: []
 
 build:
