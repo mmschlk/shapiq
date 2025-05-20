@@ -1,11 +1,7 @@
-# .readthedocs.yaml
-# Read the Docs configuration file
-# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
-
-# Required
 version: 2
 
-# Set the version of Python and other tools you might need
+formats: []
+
 build:
   os: ubuntu-22.04
   tools:
@@ -20,9 +16,12 @@ build:
       - asdf install uv latest
       - asdf global uv latest
     create_environment:
-      - uv venv
+      - uv venv $READTHEDOCS_VIRTUALENV_PATH
+      # set the venv in uv as discussed here: https://stackoverflow.com/a/79365815
+      - export UV_PROJECT_ENVIRONMENT=$READTHEDOCS_VIRTUALENV_PATH
     install:
-      - uv sync --all-extras
+      # use a cache dir for uv to speed up the build: https://docs.astral.sh/uv/concepts/cache/#cache-directory
+      - uv sync --all-extras --cache-dir $READTHEDOCS_VIRTUALENV_PATH/../../uv_cache
     post_install:
       - uv run python docs/copy_notebooks.py
     build:
