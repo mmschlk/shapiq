@@ -9,6 +9,7 @@ import numpy as np
 
 from ..approximator import (
     SHAPIQ,
+    SPEX,
     SVARM,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
@@ -55,6 +56,14 @@ APPROXIMATOR_CONFIGURATIONS = {
         "k-SII": SVARMIQ,
         "SV": SVARM,
     },
+    "spex": {
+        "SII": SPEX,
+        "STII": SPEX,
+        "FSII": SPEX,
+        "FBII": SPEX,
+        "k-SII": SPEX,
+        "SV": SPEX,
+    },
 }
 
 AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII", "FBII", "SV"}
@@ -86,6 +95,7 @@ class TabularExplainer(Explainer):
                 - for index ``"SV"``: :class:`~shapiq.approximator.KernelSHAP`
                 - for index ``"SII"`` or ``"k-SII"``: :class:`~shapiq.approximator.KernelSHAPIQ`
                 - for index ``"FSII"``: :class:`~shapiq.approximator.RegressionFSII`
+                - for index ``"FBII"``: :class:`~shapiq.approximator.RegressionFBII`
                 - for index ``"STII"``: :class:`~shapiq.approximator.SVARMIQ`
 
         index: The index to explain the model with. Defaults to ``"k-SII"`` which computes the
@@ -94,6 +104,7 @@ class TabularExplainer(Explainer):
                 - ``"SV"``: Shapley value
                 - ``"k-SII"``: k-Shapley Interaction Index
                 - ``"FSII"``: Faithful Shapley Interaction Index
+                - ``"FBII"``: Fast Faithful Banzhaf Interaction Index
                 - ``"STII"``: Shapley Taylor Interaction Index
                 - ``"SII"``: Shapley Interaction Index (not recommended for XAI since the values do
                     not sum up to the prediction)
@@ -206,11 +217,15 @@ class TabularExplainer(Explainer):
         Args:
             x: The data point to explain as a 2-dimensional array with shape
                 (1, n_features).
-            budget: The budget to use for the approximation. It indicates how many coalitions are sampled, thus high values indicate more accurate approximations, but induce higher computational costs.
-                In particular one should be aware of the exponential growth of the number of coalitions with the number of features i.e. 2**(n_players).
-                We abstain from giving a general recommendation for the budget, as it depends on the specific use case and the desired accuracy.
-            random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
+            budget: The budget to use for the approximation. It indicates how many coalitions are
+                sampled, thus high values indicate more accurate approximations, but induce higher
+                computational costs.
+            random_state: The random state to re-initialize Imputer and Approximator with.
+                Defaults to ``None``.
 
+        Returns:
+            An object of class :class:`~shapiq.interaction_values.InteractionValues` containing
+            the computed interaction values.
         """
         if random_state is not None:
             self._imputer._rng = np.random.default_rng(random_state)
@@ -298,7 +313,8 @@ class TabularExplainer(Explainer):
                 )
         # assume that the approximator is a string
         try:
-            approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
+            approximator_str = approximator.lower()
+            approximator = APPROXIMATOR_CONFIGURATIONS[approximator_str][index]
         except KeyError as error:
             msg = (
                 f"Invalid approximator `{approximator}` or index `{index}`. "
