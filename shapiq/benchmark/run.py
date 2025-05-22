@@ -6,20 +6,22 @@ import copy
 import multiprocessing as mp
 import warnings
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
-from shapiq.approximator._base import Approximator
 from shapiq.benchmark.metrics import get_all_metrics
-from shapiq.games.base import Game
-from shapiq.interaction_values import InteractionValues
+
+if TYPE_CHECKING:
+    from shapiq.approximator._base import Approximator
+    from shapiq.games.base import Game
+    from shapiq.interaction_values import InteractionValues
 
 BENCHMARK_RESULTS_DIR = "results"
 
-__all__ = ["run_benchmark_from_configuration", "run_benchmark", "load_benchmark_results"]
+__all__ = ["load_benchmark_results", "run_benchmark", "run_benchmark_from_configuration"]
 
 
 def _save_results(results: pd.DataFrame, save_path: str) -> None:
@@ -93,7 +95,6 @@ def run_benchmark(
         save_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not rerun_if_exists and Path(save_path).exists():
-        print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
         return pd.read_json(save_path)
 
     # check that all games have the same number of players
@@ -104,7 +105,6 @@ def run_benchmark(
 
     # check that the number of ground truth values is the same as the number of games
     if gt_values is None:
-        print("Computing the exact values for the games.")
         gt_values = []
         for game in tqdm(games, unit=" games"):
             gt_values.append(game.exact_values(index=index, order=order))
@@ -122,7 +122,6 @@ def run_benchmark(
             int(round(budget_step, 2) * max_budget)
             for budget_step in np.arange(budget_step, 1.0 + budget_step + budget_step, budget_step)
         ]
-        print("Created budget steps: ", budget_steps)
 
     # get approximators
     if approximators is None:
@@ -148,8 +147,6 @@ def run_benchmark(
             )
             for approximator_class in approximators
         ]
-    print(f"Got {len(approximators)} approximators for the benchmark.")
-    print(f"All approximators: {approximators_per_iteration}")
 
     # create the parameter space for the benchmark
     parameter_space = [
@@ -396,8 +393,7 @@ def run_benchmark_from_configuration(
     from .load import load_games_from_configuration
 
     game_class = get_game_class_from_name(game_class) if isinstance(game_class, str) else game_class
-    game_name = get_name_from_game_class(game_class)
-    print(f"Running benchmark for the game: {game_name}.")
+    get_name_from_game_class(game_class)
 
     # get configuration from the benchmark configurations
     if isinstance(game_configuration, int):
@@ -418,7 +414,6 @@ def run_benchmark_from_configuration(
     )
     if game_n_games is not None:
         games = games[:game_n_games]
-    print(f"Loaded {len(games)} games for the benchmark. Configuration ID: {config_id}.")
     if not all(game.precomputed for game in games):
         warnings.warn(
             "Not all games are pre-computed. The benchmark might take longer to run.",
@@ -434,20 +429,14 @@ def run_benchmark_from_configuration(
     benchmark_name = _make_benchmark_name(config_id, game_class, len(games), index, order)
     save_path = Path("results") / f"{benchmark_name}.json"
     Path("results").mkdir(parents=True, exist_ok=True)
-    print(
-        f"Checking if the benchmark results already exist with the name: {benchmark_name} and the "
-        f"save path: {save_path}.",
-    )
     if not rerun_if_exists and Path(save_path).exists():
-        print(f"Results for the benchmark {benchmark_name} already exist. Skipping the benchmark.")
         return
-    elif rerun_if_exists:
-        print(f"Rerunning the benchmark {benchmark_name}.")
+    if rerun_if_exists:
+        pass
     else:
-        print(f"Results for the benchmark {benchmark_name} do not exist. Running the benchmark.")
+        pass
 
     # get the exact values
-    print("Computing the exact values for the games.")
     gt_values = [game.exact_values(index=index, order=order) for game in tqdm(games, unit=" games")]
 
     # run the benchmark

@@ -4,11 +4,15 @@ of a TabPFN model.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from ..approximator._base import Approximator
 from .tabular import TabularExplainer
 from .utils import ModelType, get_predict_function_and_model_type
+
+if TYPE_CHECKING:
+    from shapiq.approximator._base import Approximator
 
 
 class TabPFNExplainer(TabularExplainer):
@@ -78,8 +82,8 @@ class TabPFNExplainer(TabularExplainer):
         class_index: int | None = None,
         approximator: str | Approximator = "auto",
         verbose: bool = False,
-    ):
-        from ..games.imputer.tabpfn_imputer import TabPFNImputer
+    ) -> None:
+        from shapiq.games.imputer.tabpfn_imputer import TabPFNImputer
 
         _predict_function, _ = get_predict_function_and_model_type(model, class_index=class_index)
         model._shapiq_predict_function = _predict_function

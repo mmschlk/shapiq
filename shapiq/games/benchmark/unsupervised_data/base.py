@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from scipy import stats
 
-from ...base import Game
+from shapiq.games.base import Game
 
 
 class UnsupervisedData(Game):
@@ -13,23 +15,27 @@ class UnsupervisedData(Game):
 
     The unsupervised data game models unsupervised data analysis problems as cooperative games. The
     players are features of the data. The value of a coalition is the total correlation explained by
-    the features in the coalition.
+    the features in the coalition. For more information, refer to the paper by Balestra et al.
+    (2022) [1]_.
 
-    For more information, refer to the paper by `Balestra et al. (2022) <https://doi.org/10.48550/arXiv.2205.09060>`_.
-
-    Args:
-        data: The data to analyze as a numpy array of shape (n_samples, n_features).
-        verbose: Whether to print additional information. Defaults to False.
-
+    References:
+        .. [1] Balestra, C., Huber, F., Mayr, A., Müller, E. (2022). Unsupervised Features Ranking via Coalitional Game Theory for Categorical Data. Cooperative game. https://arxiv.org/abs/2205.09060
     """
 
     def __init__(
         self,
+        *,
         data: np.ndarray,
         verbose: bool = False,
-        *args,  # noqa ARG002
-        **kwargs,  # noqa ARG002
+        **kwargs: dict[str, Any],  # noqa: ARG002
     ) -> None:
+        """Initialize the Unsupervised Data game.
+
+        Args:
+            data: The data to analyze as a numpy array of shape ``(n_samples, n_features)``.
+            verbose: Whether to print additional information. Defaults to ``False``.
+            **kwargs: Additional keyword arguments (not used).
+        """
         self.data = data
         self._n_features = data.shape[1]
 
@@ -59,11 +65,10 @@ class UnsupervisedData(Game):
 
         Args:
             coalitions: The coalitions to calculate the value of as a numpy array of shape
-                (n_coalitions, n_players).
+                ``(n_coalitions, n_players)``.
 
         Returns:
             The value of the coalitions as a numpy array of shape (n_coalitions,).
-
         """
         values = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
@@ -82,11 +87,10 @@ def total_correlation(data) -> float:
     entropy of the joint distribution.
 
     Args:
-        data: The data subset as a numpy array of shape (n_samples, n_features).
+        data: The data subset as a numpy array of shape ``(n_samples, n_features)``.
 
     Returns:
         The total correlation of the data subset.
-
     """
     n_samples, n_features = data.shape
 
@@ -103,6 +107,4 @@ def total_correlation(data) -> float:
         joint_frequencies = np.unique(joint_data, return_counts=True)[1]
         joint_entropy = stats.entropy(joint_frequencies)
 
-    total_corr = np.sum(entropy) - joint_entropy
-
-    return total_corr
+    return np.sum(entropy) - joint_entropy

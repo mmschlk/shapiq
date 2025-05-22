@@ -6,11 +6,12 @@
 - adds the SPEX (Sparse Exact) module in `approximator.sparse` for efficient computation of sparse interaction values [#379](https://github.com/mmschlk/shapiq/pull/379)
 - changes `budget` to be a mandatory parameter given to the `TabularExplainer.explain()` method [#355](https://github.com/mmschlk/shapiq/pull/356)
 - changes logic of `InteractionValues.get_n_order()` function to be callable with **either** the `order: int` parameter and optional assignment of `min_order: int` and `max_order: int` parameters **or** with the min/max order parameters
+- renamed `min_percentage` parameter in the force plot to `contribution_threshold` to better reflect its purpose
 
 #### Performance Improvements
 - made `InteractionValues.get_n_order()` and `InteractionValues.get_n_order_values()` function more efficient by iterating over the stored interactions and not over the powerset of all potential interactions, which made the function not usable for higher player counts (models with many features, and results obtained from `TreeExplainer`). Note, this change does not really help `get_n_order_values()` as it still needs to create a numpy array of shape `n_players` times `order`
 
-#### Testing and Infrastructure
+#### Testing and Code-Quality Improvements
 - improved the testing environment by adding a new fixture module containing mock `InteractionValues` objects to be used in the tests. This allows for more efficient and cleaner tests, as well as easier debugging of the tests
 
 #### Bug Fixes

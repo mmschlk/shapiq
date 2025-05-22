@@ -87,7 +87,7 @@ def get_mock_interaction_value(
 
 
 @pytest.mark.parametrize(
-    "n_players, n_interactions, min_order, max_order",
+    ("n_players", "n_interactions", "min_order", "max_order"),
     [
         (4, 5, 0, 4),
         (4, 5, 1, 2),

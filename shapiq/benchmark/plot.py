@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from shapiq.approximator._base import Approximator
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.approximator._base import Approximator
 
 __all__ = ["plot_approximation_quality"]
 
@@ -233,19 +236,17 @@ def plot_approximation_quality(
     bot_lim = bot_lim.split("e")[1]  # get the exponent
     bot_lim = int(bot_lim)  # get the top limit as the exponent + 1
     bot_lim = 10**bot_lim  # get the top limit in scientific notation
-    if log_scale_min < bot_lim:
-        log_scale_min = bot_lim
+    log_scale_min = max(log_scale_min, bot_lim)
 
     # make sure orders is a list
     if orders is None:
         orders = ["all"]
-    if isinstance(orders, int) or isinstance(orders, str):
+    if isinstance(orders, int | str):
         orders = [orders]
 
     # make sure approximators is a list
     if approximators is None:
         approximators = list(metric_data["approximator"].unique())
-        print("Approximators:", approximators)
 
     # set the confidence metrics
     confidence_metric_low, confidence_metric_high = confidence_metric, confidence_metric
@@ -267,7 +268,7 @@ def plot_approximation_quality(
             if log_scale_y:
                 # manually set all below log_scale_min to log_scale_min (to avoid log(0))
                 data_order[aggregation] = data_order[aggregation].apply(
-                    lambda x: log_scale_min if x < log_scale_min else x,
+                    lambda x: max(x, log_scale_min),
                 )
 
             # get the plot colors and styles
@@ -368,8 +369,7 @@ def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float, log_scale_max: flo
     top_lim = int(top_lim) + 1  # get the top limit as the exponent + 1
     top_lim = 10**top_lim  # get the top limit in scientific notation
 
-    if top_lim > log_scale_max:
-        top_lim = log_scale_max
+    top_lim = min(top_lim, log_scale_max)
 
     # set the y-axis limits
     ax.set_ylim(top=top_lim)
@@ -462,7 +462,7 @@ def add_legend(
 
     # plot the order elements
     if orders is not None:
-        if isinstance(orders, int) or isinstance(orders, str):
+        if isinstance(orders, int | str):
             orders = [orders]
         if legend_subtitle:
             axis.plot([], [], label="$\\bf{Order}$", color="none")

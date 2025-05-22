@@ -12,7 +12,7 @@ from shapiq.benchmark.metrics import get_all_metrics
 
 
 @pytest.mark.parametrize(
-    "index_gt, index_et, order_gt, order_et, warning_expected",
+    ("index_gt", "index_et", "order_gt", "order_et", "warning_expected"),
     [
         ("SV", "SV", 1, 1, False),
         ("SII", "SII", 2, 2, False),

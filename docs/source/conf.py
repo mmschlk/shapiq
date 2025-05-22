@@ -101,7 +101,7 @@ autodoc_default_options = {
     "undoc-members": True,
     "exclude-members": "__weakref__",
 }
-autoclass_content = "class"
+autoclass_content = "both"
 autodoc_inherit_docstrings = False
 
 # -- Images ----------------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ copybutton_prompt_is_regexp = True
 # based on https://stackoverflow.com/a/56428123/23972
 
 
-def docstring(_app, _what, _name, _obj, _options, lines):
+def docstring(_app, _what, _name, _obj, _options, lines) -> None:
     if len(lines) > 1 and lines[0] == "@&ismd":
         md = "\n".join(lines[1:])
         ast = commonmark.Parser().parse(md)
@@ -130,5 +130,5 @@ def docstring(_app, _what, _name, _obj, _options, lines):
         lines += rst.splitlines()
 
 
-def setup(app):
+def setup(app) -> None:
     app.connect("autodoc-process-docstring", docstring)

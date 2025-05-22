@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.special import bernoulli, binom
 
-from ...game_theory.indices import AVAILABLE_INDICES_REGRESSION
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from ...utils.sets import powerset
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.game_theory.indices import AVAILABLE_INDICES_REGRESSION
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.utils.sets import powerset
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Regression(Approximator):
@@ -46,7 +49,7 @@ class Regression(Approximator):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         if index not in AVAILABLE_INDICES_REGRESSION:
             msg = (
                 f"Index {index} not available for Regression Approximator. Choose from "
@@ -84,11 +87,11 @@ class Regression(Approximator):
         # vector that determines the kernel weights for the regression
         weight_vector = np.zeros(shape=self.n + 1)
         if self.index == "FBII":
-            for coalition_size in range(0, self.n + 1):
+            for coalition_size in range(self.n + 1):
                 weight_vector[coalition_size] = 1 / (2**self.n)
             return weight_vector
-        elif self.index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
-            for coalition_size in range(0, self.n + 1):
+        if self.index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
+            for coalition_size in range(self.n + 1):
                 if (coalition_size < interaction_size) or (
                     coalition_size > self.n - interaction_size
                 ):
@@ -100,9 +103,7 @@ class Regression(Approximator):
                     )
             return weight_vector
         msg = f"Index {self.index} not available for Regression Approximator."
-        raise ValueError(
-            msg,
-        )  # pragma: no cover
+        raise ValueError(msg)  # pragma: no cover
 
     def approximate(
         self,
@@ -167,7 +168,7 @@ class Regression(Approximator):
             min_order=self.min_order,
             max_order=self.max_order,
             n_players=self.n,
-            estimated=False if budget >= 2**self.n else True,
+            estimated=not budget >= 2**self.n,
             estimation_budget=budget,
         )
 
@@ -341,13 +342,13 @@ class Regression(Approximator):
         """
         if index == "SII":
             return self._get_bernoulli_weights(max_order=max_order)
-        elif index == "kADD-SHAP":
+        if index == "kADD-SHAP":
             return self._get_kadd_weights(max_order=max_order)
-        elif index in ["FSII", "FBII"]:
+        if index in ["FSII", "FBII"]:
             # Default weights for FSI
             weights = np.zeros((max_order + 1, max_order + 1))
             # Including the zero interaction size unharmful for FSII, due to \mu(\emptyset)= \infty thus \phi(\emptyset)=0
-            for interaction_size in range(0, max_order + 1):
+            for interaction_size in range(max_order + 1):
                 # 1 if interaction is fully contained, else 0.
                 weights[interaction_size, interaction_size] = 1
             return weights
@@ -541,7 +542,7 @@ def _get_regression_matrices(
     interaction_masks = []
     interaction_sizes = []
 
-    for interaction_size in range(0, max_order + 1):
+    for interaction_size in range(max_order + 1):
         for interaction in powerset(range(n), min_size=interaction_size, max_size=interaction_size):
             mask = np.zeros(n, dtype=int)
             mask[list(interaction)] = 1

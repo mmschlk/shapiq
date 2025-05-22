@@ -8,7 +8,7 @@ import warnings
 import numpy as np
 from scipy.special import binom
 
-from ..utils.sets import powerset
+from shapiq.utils.sets import powerset
 
 
 class CoalitionSampler:
@@ -178,7 +178,7 @@ class CoalitionSampler:
 
     @property
     def sampling_adjustment_weights(self) -> np.ndarray:
-        """Returns the weights that account for the sampling procedure
+        """Returns the weights that account for the sampling procedure.
 
         Returns:
             An array with adjusted weight for each coalition
@@ -194,11 +194,7 @@ class CoalitionSampler:
         # Create array per coalition and the total samples values, or 1, if computed
         n_coalitions_total_samples = total_samples_values[is_coalition_sampled.astype(int)]
         # Create array with the adjusted weights
-        sampling_adjustment_weights = self.coalitions_counter / (
-            self.coalitions_probability * n_coalitions_total_samples
-        )
-
-        return sampling_adjustment_weights
+        return self.coalitions_counter / (self.coalitions_probability * n_coalitions_total_samples)
 
     @property
     def coalitions_matrix(self) -> np.ndarray:
@@ -227,7 +223,7 @@ class CoalitionSampler:
 
     @property
     def coalitions_counter(self) -> np.ndarray:
-        """Returns the number of occurrences of the coalitions
+        """Returns the number of occurrences of the coalitions.
 
         Returns:
             A copy of the sampled coalitions counter of shape ``(n_coalitions,)``.
@@ -250,6 +246,7 @@ class CoalitionSampler:
             and self._sampled_coalitions_in_size_prob is not None
         ):
             return self._sampled_coalitions_size_prob * self._sampled_coalitions_in_size_prob
+        return None
 
     @property
     def coalitions_size_probability(self) -> np.ndarray:
@@ -536,7 +533,7 @@ class CoalitionSampler:
             self._is_coalition_size_sampled[coalition_size] = True
 
     def _sort_coalitions(self, value):
-        """Used to sort coalition sizes by distance to center, i.e. grand coalition and emptyset first
+        """Used to sort coalition sizes by distance to center, i.e. grand coalition and emptyset first.
 
         Args:
             value: The size of the coalition.

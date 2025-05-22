@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import copy
 import math
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from PIL import Image
 
-from ..interaction_values import InteractionValues
-from ..utils import powerset
+from shapiq.utils import powerset
+
 from ._config import BLUE, LINES, NEUTRAL, RED, get_color
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
 
 __all__ = ["network_plot"]
 
@@ -71,7 +74,7 @@ def network_plot(
     References:
         .. [1] Muschalik, M., Fumagalli, F., Hammer, B., & Hüllermeier, E. (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
 
-        .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766–778.
+        .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766-778.
 
     """
     fig, axis = plt.subplots(figsize=(6, 6))
@@ -86,13 +89,12 @@ def network_plot(
                 first_order_values[interaction[0]] = interaction_values[interaction]
             else:
                 second_order_values[interaction] = interaction_values[interaction]
-    else:
-        if first_order_values is None or second_order_values is None:
-            msg = (
-                "Either interaction_values or first_order_values and second_order_values must be "
-                "provided. If interaction_values is provided this will be used."
-            )
-            raise ValueError(msg)
+    elif first_order_values is None or second_order_values is None:
+        msg = (
+            "Either interaction_values or first_order_values and second_order_values must be "
+            "provided. If interaction_values is provided this will be used."
+        )
+        raise ValueError(msg)
 
     # get the number of features and the feature names
     n_features = first_order_values.shape[0]
@@ -190,6 +192,7 @@ def network_plot(
     if not show:
         return fig, axis
     plt.show()
+    return None
 
 
 def _add_weight_to_edges_in_graph(
@@ -264,10 +267,7 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
     plot_circles = []
     for i in range(4):
         size = sizes[i]
-        if i < 2:
-            color = RED.hex
-        else:
-            color = BLUE.hex
+        color = RED.hex if i < 2 else BLUE.hex
         circle = axis.plot([], [], c=color, marker="o", markersize=size * 8, linestyle="None")
         plot_circles.append(circle[0])
 
@@ -294,10 +294,7 @@ def _add_legend_to_axis(axis: plt.Axes) -> None:
     for i in range(4):
         size = sizes[i]
         alpha = alphas_line[i]
-        if i < 2:
-            color = RED.hex
-        else:
-            color = BLUE.hex
+        color = RED.hex if i < 2 else BLUE.hex
         line = axis.plot([], [], c=color, linewidth=size * 3, alpha=alpha)
         plot_lines.append(line[0])
 

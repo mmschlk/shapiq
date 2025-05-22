@@ -75,8 +75,8 @@ def test_call():
     # test with grand coalition all call variants
     test_coalition = test_game.grand_coalition
     assert test_game(test_coalition) == 1.0
-    assert test_game(tuple(range(0, test_game.n_players))) == 1.0
-    assert test_game([tuple(range(0, test_game.n_players))]) == 1.0
+    assert test_game(tuple(range(test_game.n_players))) == 1.0
+    assert test_game([tuple(range(test_game.n_players))]) == 1.0
     assert test_game(tuple(test_game.player_name_lookup.values())) == 1.0
     assert test_game([tuple(test_game.player_name_lookup.values())]) == 1.0
 
@@ -289,8 +289,8 @@ def test_save_and_load_with_normalization():
         empty_value = game_loaded(game_loaded.empty_coalition)
         # the output should be the same as the original game without normalization (0.0)
         assert empty_value == dummy_game_empty_output
-    except Exception as e:
-        raise e
+    except Exception:
+        raise
     finally:
         os.remove(path)
         assert not os.path.exists(path)

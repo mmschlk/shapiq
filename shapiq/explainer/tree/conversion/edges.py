@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.special import binom
 
-from ..base import EdgeTree
+from shapiq.explainer.tree.base import EdgeTree
 
 
 def create_edge_tree(
@@ -189,7 +189,7 @@ def create_edge_tree(
         return edge_heights[node_id]  # return upwards in the recursion
 
     _ = recursive_search()
-    edge_tree = EdgeTree(
+    return EdgeTree(
         parents=parents,
         ancestors=ancestors,
         ancestor_nodes=ancestor_nodes,
@@ -202,4 +202,3 @@ def create_edge_tree(
         last_feature_node_in_path=last_feature_node_in_path,
         interaction_height_store=interaction_height_store,
     )
-    return edge_tree

@@ -7,7 +7,7 @@ from warnings import warn
 
 import numpy as np
 
-from ..approximator import (
+from shapiq.approximator import (
     SHAPIQ,
     SPEX,
     SVARM,
@@ -22,9 +22,9 @@ from ..approximator import (
     RegressionFSII,
     UnbiasedKernelSHAP,
 )
-from ..approximator._base import Approximator
-from ..explainer._base import Explainer
-from ..interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.approximator._base import Approximator
+from shapiq.explainer._base import Explainer
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
 APPROXIMATOR_CONFIGURATIONS = {
     "regression": {
@@ -185,11 +185,8 @@ class TabularExplainer(Explainer):
                 random_state=random_state,
                 **kwargs,
             )
-        elif (
-            isinstance(imputer, MarginalImputer)
-            or isinstance(imputer, ConditionalImputer)
-            or isinstance(imputer, BaselineImputer)
-            or isinstance(imputer, TabPFNImputer)
+        elif isinstance(
+            imputer, MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer
         ):
             self._imputer = imputer
         else:
@@ -238,12 +235,10 @@ class TabularExplainer(Explainer):
         # explain
         interaction_values = self._approximator(budget=budget, game=imputer)
         interaction_values.baseline_value = self.baseline_value
-        interaction_values = finalize_computed_interactions(
+        return finalize_computed_interactions(
             interaction_values,
             target_index=self.index,
         )
-
-        return interaction_values
 
     @property
     def baseline_value(self) -> float:
@@ -272,7 +267,7 @@ class TabularExplainer(Explainer):
                     n=self._n_features,
                     random_state=self._random_state,
                 )
-            elif index == "SV":
+            if index == "SV":
                 if max_order != 1:
                     warnings.warn(
                         "`index='SV'` but `max_order != 1`, setting `max_order = 1`. "
@@ -284,33 +279,32 @@ class TabularExplainer(Explainer):
                     n=self._n_features,
                     random_state=self._random_state,
                 )
-            elif index == "FSII":
+            if index == "FSII":
                 return RegressionFSII(
                     n=self._n_features,
                     max_order=max_order,
                     random_state=self._random_state,
                 )
-            elif index == "FBII":
+            if index == "FBII":
                 return RegressionFBII(
                     n=self._n_features,
                     max_order=max_order,
                     random_state=self._random_state,
                 )
-            elif index == "SII" or index == "k-SII":
+            if index in ("SII", "k-SII"):
                 return KernelSHAPIQ(
                     n=self._n_features,
                     max_order=max_order,
                     random_state=self._random_state,
                     index=index,
                 )
-            else:
-                return SVARMIQ(
-                    n=self._n_features,
-                    max_order=max_order,
-                    top_order=False,
-                    random_state=self._random_state,
-                    index=index,
-                )
+            return SVARMIQ(
+                n=self._n_features,
+                max_order=max_order,
+                top_order=False,
+                random_state=self._random_state,
+                index=index,
+            )
         # assume that the approximator is a string
         try:
             approximator_str = approximator.lower()
@@ -322,5 +316,4 @@ class TabularExplainer(Explainer):
             )
             raise ValueError(msg) from error
         # initialize the approximator class with params
-        init_approximator = approximator(n=self._n_features, max_order=max_order)
-        return init_approximator
+        return approximator(n=self._n_features, max_order=max_order)

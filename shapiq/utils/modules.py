@@ -1,3 +1,5 @@
+"""Utility functions for checking module imports and class instances."""
+
 from __future__ import annotations
 
 import sys
@@ -28,20 +30,20 @@ def safe_isinstance(
     """
     if isinstance(class_path_str, str):
         class_path_strs = [class_path_str]
-    elif isinstance(class_path_str, list) or isinstance(class_path_str, tuple):
+    elif isinstance(class_path_str, list | tuple):
         class_path_strs = list(class_path_str)
     else:
         class_path_strs = [""]
 
     # try each module path in order
-    for class_path_str in class_path_strs:
-        if "." not in class_path_str:
+    for _class_path_str in class_path_strs:
+        if "." not in _class_path_str:
             msg = "class_path_str must be a string or list of strings specifying a full \
                 module path to a class. Eg, 'sklearn.ensemble.RandomForestRegressor'"
             raise ValueError(msg)
 
         # Splits on last occurrence of "."
-        module_name, class_name = class_path_str.rsplit(".", 1)
+        module_name, class_name = _class_path_str.rsplit(".", 1)
 
         # here we don't check further if the model is not imported, since we shouldn't have
         # an object of that types passed to us if the model the type is from has never been
@@ -63,8 +65,8 @@ def safe_isinstance(
     return False
 
 
-def check_import_module(name: str, functionality: str = None) -> None:
-    """Check if the optional dependency is available"""
+def check_import_module(name: str, functionality: str | None = None) -> None:
+    """Check if the optional dependency is available."""
     try:
         import_module(name)
     except ImportError as error:

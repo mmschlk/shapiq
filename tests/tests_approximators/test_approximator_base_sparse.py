@@ -11,7 +11,7 @@ from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(
-    "n, index, max_order, top_order, transform_type, decoder_type",
+    ("n", "index", "max_order", "top_order", "transform_type", "decoder_type"),
     [
         (7, "FBII", None, False, "fourier", "soft"),
         (7, "FBII", None, False, "FouRier", "Soft"),
@@ -88,7 +88,16 @@ def test_initialization(n, index, max_order, top_order, transform_type, decoder_
 
 
 @pytest.mark.parametrize(
-    "n, index, max_order, budget, transform_type, decoder_type, top_order, interaction",
+    (
+        "n",
+        "index",
+        "max_order",
+        "budget",
+        "transform_type",
+        "decoder_type",
+        "top_order",
+        "interaction",
+    ),
     [  # These test usually pass with much fewer samples, (~90% of the time with 800), but we use a bigger budget to
         # ensure that the tests are stable
         (20, "STII", None, 1600, "fourier", "soft", False, (1, 2)),  # Standard configuration (STII)
@@ -196,24 +205,18 @@ def test_approximate(
     # Check the computed interactions
     recovered_interactions = set(estimates.interaction_lookup.keys())
     zero_interactions = set()
-    if index == "STII" or index == "FBII" or index == "FSII":
+    if index in ("STII", "FBII", "FSII"):
         for interaction_key in recovered_interactions:
             if interaction_key not in expected_interactions:
                 assert estimates[interaction_key] == pytest.approx(0.0, abs=1e-2)
                 zero_interactions.add(interaction_key)
+            elif interaction_key == interaction and max_order >= len(interaction):
+                assert estimates[interaction_key] == pytest.approx(1.0, rel=0.01)
+            elif len(interaction_key) == 1 and interaction_key[0] in interaction and max_order == 1:
+                assert estimates[interaction_key] == pytest.approx(
+                    1 / n + 1 / len(interaction), rel=0.01
+                )
             else:
-                if interaction_key == interaction and max_order >= len(interaction):
-                    assert estimates[interaction_key] == pytest.approx(1.0, rel=0.01)
-                else:
-                    if (
-                        len(interaction_key) == 1
-                        and interaction_key[0] in interaction
-                        and max_order == 1
-                    ):
-                        assert estimates[interaction_key] == pytest.approx(
-                            1 / n + 1 / len(interaction), rel=0.01
-                        )
-                    else:
-                        assert estimates[interaction_key] == pytest.approx(1 / n, rel=0.01)
+                assert estimates[interaction_key] == pytest.approx(1 / n, rel=0.01)
     recovered_interactions = recovered_interactions - zero_interactions
     assert recovered_interactions == expected_interactions

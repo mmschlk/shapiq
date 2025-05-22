@@ -8,7 +8,9 @@ Note:
 
 from __future__ import annotations
 
-import matplotlib
+from typing import TYPE_CHECKING
+
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import lines
@@ -16,8 +18,10 @@ from matplotlib.font_manager import FontProperties
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
 
-from ..interaction_values import InteractionValues
 from .utils import abbreviate_feature_names, format_labels
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
 
 __all__ = ["force_plot"]
 
@@ -126,9 +130,6 @@ def _add_labels(
         Defaults to 0 indicating that all features are shown.
         min_perc: minimal percentage of the total effect that a feature must contribute to be shown. Defaults to 0.05.
         text_rotation: Degree the text should be rotated. Defaults to 0.
-
-    Returns:
-
     """
     start_text = out_value
     pre_val = out_value
@@ -165,10 +166,7 @@ def _add_labels(
         # Draw labels.
         text = feature[1]
 
-        if text_rotation != 0:
-            va_alignment = "top"
-        else:
-            va_alignment = "baseline"
+        va_alignment = "top" if text_rotation != 0 else "baseline"
 
         text_out_val = plt.text(
             start_text - sign * offset_text,
@@ -240,7 +238,7 @@ def _add_labels(
     else:
         colors = np.array([(30, 136, 229), (255, 255, 255)]) / 255.0
 
-    cm = matplotlib.colors.LinearSegmentedColormap.from_list("cm", colors)
+    cm = mpl.colors.LinearSegmentedColormap.from_list("cm", colors)
 
     _, z2 = np.meshgrid(np.linspace(0, 10), np.linspace(-10, 10))
     im = plt.imshow(
@@ -456,9 +454,6 @@ def _add_bars(
         out_value: grand total value
         pos_features: positive features
         neg_features: negative features
-
-    Returns:
-
     """
     width_bar = 0.1
     width_separators = (ax.get_xlim()[1] - ax.get_xlim()[0]) / 200
@@ -491,7 +486,10 @@ def _add_bars(
         ax.add_patch(i)
 
 
-def draw_higher_lower_element(out_value, offset_text):
+def draw_higher_lower_element(
+    out_value: float,
+    offset_text: float,
+) -> None:
     plt.text(
         out_value - offset_text,
         0.35,
@@ -529,6 +527,7 @@ def draw_higher_lower_element(out_value, offset_text):
 def _draw_force_plot(
     interaction_value: InteractionValues,
     feature_names: np.ndarray,
+    *,
     figsize: tuple[int, int],
     min_perc: float = 0.05,
     draw_higher_lower: bool = True,
@@ -623,12 +622,13 @@ def _draw_force_plot(
 
 def force_plot(
     interaction_values: InteractionValues,
+    *,
     feature_names: np.ndarray | None = None,
     abbreviate: bool = True,
     show: bool = False,
     figsize: tuple[int, int] = (15, 4),
     draw_higher_lower: bool = True,
-    min_percentage: float = 0.05,
+    contribution_threshold: float = 0.05,
 ) -> plt.Figure | None:
     """Draws a force plot for the given interaction values.
 
@@ -639,8 +639,8 @@ def force_plot(
         abbreviate: Whether to abbreviate the feature names. Defaults to ``True.``
         figsize: The size of the figure. Defaults to ``(15, 4)``.
         draw_higher_lower: Whether to draw the higher and lower indicator. Defaults to ``True``.
-        min_percentage: Define the minimum percentage of the total effect that a feature must contribute
-            to be shown in the plot. Defaults to 0.05.
+        contribution_threshold: Define the minimum percentage of the total effect that a feature
+            must contribute to be shown in the plot. Defaults to 0.05.
 
     Returns:
         plt.Figure: The figure of the plot
@@ -659,8 +659,9 @@ def force_plot(
         feature_names,
         figsize=figsize,
         draw_higher_lower=draw_higher_lower,
-        min_perc=min_percentage,
+        min_perc=contribution_threshold,
     )
     if not show:
         return plot
     plt.show()
+    return None

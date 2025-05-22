@@ -1,4 +1,4 @@
-"""This module contains the Sentiment Classification Game class, which is a subclass of the Game"""
+"""This module contains the Sentiment Classification Game class, which is a subclass of the Game."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ class SentimentAnalysis(Game):
         mask_strategy: str = "mask",
         verbose: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         # import the required modules locally (to avoid having to install them for all)
         from transformers import pipeline
 
@@ -123,9 +123,7 @@ class SentimentAnalysis(Game):
             texts.append(coalition_text)
 
         # get the sentiment of the texts
-        sentiments = self._model_call(texts)
-
-        return sentiments
+        return self._model_call(texts)
 
     def _model_call(self, input_texts: list[str]) -> np.ndarray[float]:
         """Calls the sentiment classification model with a list of texts.
@@ -143,6 +141,4 @@ class SentimentAnalysis(Game):
             output["score"] * 1 if output["label"] == "POSITIVE" else output["score"] * -1
             for output in outputs
         ]
-        sentiments = np.array(outputs, dtype=float)
-
-        return sentiments
+        return np.array(outputs, dtype=float)

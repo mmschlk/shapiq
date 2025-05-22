@@ -5,9 +5,12 @@ shapiq.
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING
 
-from ....utils.custom_types import Model
-from ..base import TreeModel
+from shapiq.explainer.tree.base import TreeModel
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
 
 
 def convert_xgboost_booster(
@@ -93,7 +96,7 @@ def _convert_xgboost_tree_as_df(
     convert_node_str_to_int = {k: v for v, k in enumerate(tree_df["ID"])}
 
     values = tree_df["Gain"].values * scaling + intercept  # add intercept to all values
-    tree_model = TreeModel(
+    return TreeModel(
         children_left=tree_df["Yes"]
         .replace(convert_node_str_to_int)
         .infer_objects(copy=False)
@@ -113,5 +116,3 @@ def _convert_xgboost_tree_as_df(
         empty_prediction=None,
         original_output_type=output_type,
     )
-
-    return tree_model

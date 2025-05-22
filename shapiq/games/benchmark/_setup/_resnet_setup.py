@@ -12,9 +12,9 @@ import copy
 import numpy as np
 import torch
 import torch.nn.functional as F  # noqa: N812
-import torchvision.transforms as transforms
 from PIL import Image
 from skimage.segmentation import slic
+from torchvision import transforms
 from torchvision.models import ResNet18_Weights, resnet18
 
 __all__ = ["ResNetModel"]
@@ -76,7 +76,7 @@ class ResNetModel:
         self.class_id: int = int(class_id)
 
         if verbose:
-            print(f"Predicted class: {self.class_label} with score: {self.class_score}")
+            pass
 
         # get background tensor for gray image
         _background_image = np.zeros(self._image_shape, dtype=np.uint8)
@@ -118,12 +118,10 @@ class ResNetModel:
             The class probability of the coalition.
 
         """
+        outputs = None
         for batch in range(0, len(coalitions), self.batch_size):
             output = self._call_batch(coalitions[batch : batch + self.batch_size])
-            if batch == 0:
-                outputs = output
-            else:
-                outputs = np.concatenate((outputs, output), axis=0)
+            outputs = output if batch == 0 else np.concatenate((outputs, output), axis=0)
         return outputs
 
     def _call_batch(self, coalitions: np.ndarray) -> np.ndarray[float]:
@@ -161,8 +159,7 @@ class ResNetModel:
         """
         with torch.no_grad():
             output = self.model(input_image)
-            output = F.softmax(output, dim=-1)
-            return output
+            return F.softmax(output, dim=-1)
 
     @staticmethod
     def get_superpixels(image: np.ndarray, n_segments: int = 14) -> tuple[int, np.ndarray]:

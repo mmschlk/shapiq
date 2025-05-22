@@ -58,7 +58,7 @@ class SHAPIQ(MonteCarlo):
         sampling_weights: float | None = None,
         pairing_trick: bool = False,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(
             n,
             max_order,
@@ -123,7 +123,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
         sampling_weights: float | None = None,
         random_state: int | None = None,
         **kwargs,  # noqa: ARG002
-    ):
+    ) -> None:
         super().__init__(
             n,
             max_order=1,

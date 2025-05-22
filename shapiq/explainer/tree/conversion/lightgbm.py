@@ -4,8 +4,12 @@ shapiq.
 
 from __future__ import annotations
 
-from ....utils.custom_types import Model
-from ..base import TreeModel
+from typing import TYPE_CHECKING
+
+from shapiq.explainer.tree.base import TreeModel
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
 
 
 def convert_lightgbm_booster(

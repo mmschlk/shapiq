@@ -6,32 +6,12 @@ from abc import abstractmethod
 
 import numpy as np
 
-from ...explainer import utils
-from ..base import Game
+from shapiq.explainer import utils
+from shapiq.games.base import Game
 
 
 class Imputer(Game):
     """Base class for Imputers.
-
-    Args:
-        model: The model to explain as a callable function expecting a data points as input and
-            returning the model's predictions.
-
-        data: The background data to use for the explainer as a 2-dimensional array
-            with shape ``(n_samples, n_features)``.
-
-        x: The explanation point to use the imputer on either as a 2-dimensional array with
-            shape ``(1, n_features)`` or as a vector with shape ``(n_features,)``.
-
-        sample_size: The number of samples to draw from the background data. Defaults to ``100`` but
-            can is usually overwritten in the subclasses.
-
-        categorical_features: A list of indices of the categorical features in the background data.
-
-        random_state: The random state to use for sampling. Defaults to ``None``.
-
-        verbose: A flag to enable verbose imputation, which will print a progress bar for model
-            evaluation. Note that this can slow down the imputation process. Defaults to ``False``.
 
     Attributes:
         n_features: The number of features in the data (equals the number of players in the game).
@@ -52,11 +32,36 @@ class Imputer(Game):
         model,
         data: np.ndarray,
         x: np.ndarray | None = None,
-        sample_size: int = 100,
-        categorical_features: list[int] = None,
+        sample_size: int | None = 100,
+        categorical_features: list[int] | None = None,
         random_state: int | None = None,
         verbose: bool = False,
     ) -> None:
+        """Initializes the base imputer.
+
+        Args:
+            model: The model to explain as a callable function expecting a data points as input and
+                returning the model's predictions.
+
+            data: The background data to use for the explainer as a 2-dimensional array with shape
+                ``(n_samples, n_features)``.
+
+            x: The explanation point to use the imputer on either as a 2-dimensional array with
+                shape ``(1, n_features)`` or as a vector with shape ``(n_features,)``.
+
+            sample_size: The number of samples to draw from the background data. Defaults to ``100``
+                but is usually overwritten in the subclasses.
+
+            categorical_features: A list of indices of the categorical features in the background
+                data.
+
+            random_state: The random state to use for sampling. Defaults to ``None``.
+
+            verbose: A flag to enable verbose imputation, which will print a progress bar for model
+                evaluation. Note that this can slow down the imputation process. Defaults to
+                ``False``.
+
+        """
         if callable(model) and not hasattr(model, "_predict_function"):
             self._predict_function = utils.predict_callable
         # shapiq.Explainer adds a _shapiq_predict_function to the model to make it callable

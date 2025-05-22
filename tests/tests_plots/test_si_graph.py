@@ -76,7 +76,7 @@ def test_si_graph_plot(
 
     fig, ax = si_graph_plot(
         example_values,
-        graph_tuple,
+        graph=graph_tuple,
         random_seed=1,
         size_factor=0.7,
         draw_threshold=draw_threshold,
@@ -89,7 +89,7 @@ def test_si_graph_plot(
 
     fig, ax = si_graph_plot(
         example_values,
-        graph_tuple,
+        graph=graph_tuple,
         random_seed=1,
         size_factor=0.7,
         draw_threshold=draw_threshold,
@@ -106,7 +106,7 @@ def test_si_graph_plot(
 
     fig, ax = si_graph_plot(
         example_values,
-        edges,
+        graph=edges,
         random_seed=1,
         size_factor=0.7,
         draw_threshold=draw_threshold,
@@ -123,7 +123,7 @@ def test_si_graph_plot(
     # different parameters
     fig, ax = si_graph_plot(
         example_values,
-        edges,
+        graph=edges,
         pos=pos,
         random_seed=1,
         draw_threshold=draw_threshold,

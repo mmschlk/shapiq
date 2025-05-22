@@ -4,11 +4,15 @@ shapiq.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from ....utils import safe_isinstance
-from ....utils.custom_types import Model
-from ..base import TreeModel
+from shapiq.explainer.tree.base import TreeModel
+from shapiq.utils import safe_isinstance
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
 
 
 def convert_sklearn_forest(
@@ -94,8 +98,7 @@ def average_path_length(isolation_forest: Model) -> float:
 
     max_samples = isolation_forest._max_samples
     # NOTE: _average_path_length func is equivalent to equation 1 in Isolation Forest paper Lui2008
-    average_path_length = _average_path_length([max_samples])
-    return average_path_length
+    return _average_path_length([max_samples])
 
 
 def convert_sklearn_isolation_forest(
@@ -189,11 +192,10 @@ def isotree_value_traversal(
                 value = level + _average_path_length(np.array([tree.n_node_samples[i]]))[0]
                 corrected_values[i, 0] = value
                 return value * tree.n_node_samples[i]
-            else:
-                value_left = _recalculate_value(tree, tree.children_left[i], level + 1)
-                value_right = _recalculate_value(tree, tree.children_right[i], level + 1)
-                corrected_values[i, 0] = (value_left + value_right) / tree.n_node_samples[i]
-                return value_left + value_right
+            value_left = _recalculate_value(tree, tree.children_left[i], level + 1)
+            value_right = _recalculate_value(tree, tree.children_right[i], level + 1)
+            corrected_values[i, 0] = (value_left + value_right) / tree.n_node_samples[i]
+            return value_left + value_right
 
         _recalculate_value(tree, 0, 0)
         if normalize:

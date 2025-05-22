@@ -143,7 +143,7 @@ def test_sklearn_if_conversion(if_clf_model):
 
 
 @pytest.mark.external_libraries
-@pytest.mark.parametrize("model_fixture, model_class", TREE_MODEL_FIXTURES)
+@pytest.mark.parametrize(("model_fixture", "model_class"), TREE_MODEL_FIXTURES)
 def test_conversion_predict_identity(model_fixture, model_class, background_reg_data, request):
     if model_class not in SUPPORTED_MODELS:
         pytest.skip(
@@ -163,7 +163,7 @@ def test_conversion_predict_identity(model_fixture, model_class, background_reg_
             if pytest.approx(prediction, abs=1e-4) == original_pred_value:
                 assert True
             else:
-                if "xgb" or "lightgbm" in model_fixture:
+                if True:
                     # xgboost sometimes predicts a different value
                     # see .test_tree_bugfix.test_xgb_predicts_with_wrong_leaf_node
                     # TODO: take a look at this in more detail, why is it hard to get efficiency

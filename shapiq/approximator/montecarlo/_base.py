@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.special import binom, factorial
 
-from ...game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from ...utils.sets import powerset
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.utils.sets import powerset
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class MonteCarlo(Approximator):
@@ -47,7 +50,7 @@ class MonteCarlo(Approximator):
         random_state: int | None = None,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray = None,
-    ):
+    ) -> None:
         if index not in AVAILABLE_INDICES_MONTE_CARLO:
             msg = (
                 f"Index {index} not available for Regression Approximator. Choose from "
@@ -112,7 +115,7 @@ class MonteCarlo(Approximator):
             min_order=self.min_order,
             max_order=self.max_order,
             baseline_value=baseline_value,
-            estimated=False if budget >= 2**self.n else True,
+            estimated=not budget >= 2**self.n,
             estimation_budget=budget,
         )
 
@@ -345,12 +348,11 @@ class MonteCarlo(Approximator):
         n_samples_helper = np.array([1, n_samples])  # n_samples for sampled coalitions, else 1
         coalitions_n_samples = n_samples_helper[self._sampler.is_coalition_sampled.astype(int)]
         # Set weights by dividing through the probabilities
-        sampling_adjustment_weights = self._sampler.coalitions_counter / (
+        return self._sampler.coalitions_counter / (
             self._sampler.coalitions_size_probability
             * self._sampler.coalitions_in_size_probability
             * coalitions_n_samples
         )
-        return sampling_adjustment_weights
 
     def _sii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Returns the SII discrete derivative weight given the coalition size and interaction size.
@@ -474,19 +476,18 @@ class MonteCarlo(Approximator):
         """
         if index == "STII":
             return self._stii_weight(coalition_size, interaction_size)
-        elif index == "FSII":
+        if index == "FSII":
             return self._fsii_weight(coalition_size, interaction_size)
-        elif index == "FBII":
+        if index == "FBII":
             return self._fbii_weight(interaction_size)
-        elif index in ["SII", "SV"]:
+        if index in ["SII", "SV"]:
             return self._sii_weight(coalition_size, interaction_size)
-        elif index == "BII":
+        if index == "BII":
             return self._bii_weight(coalition_size, interaction_size)
-        elif index == "CHII":
+        if index == "CHII":
             return self._chii_weight(coalition_size, interaction_size)
-        else:
-            msg = f"The index {index} is not supported."
-            raise ValueError(msg)
+        msg = f"The index {index} is not supported."
+        raise ValueError(msg)
 
     def _get_standard_form_weights(self, index: str) -> np.ndarray:
         """Initializes the weights for the interaction index re-written from discrete derivatives to
@@ -504,7 +505,7 @@ class MonteCarlo(Approximator):
         weights = np.zeros((self.max_order + 1, self.n + 1, self.max_order + 1))
         for order in self._order_iterator:
             # fill with values specific to each index
-            for coalition_size in range(0, self.n + 1):
+            for coalition_size in range(self.n + 1):
                 for intersection_size in range(
                     max(0, order + coalition_size - self.n),
                     min(order, coalition_size) + 1,

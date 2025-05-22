@@ -5,9 +5,8 @@ from the precomputed data (GitHub repository).
 from __future__ import annotations
 
 import time
-from collections.abc import Generator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import requests
 
@@ -21,10 +20,13 @@ from shapiq.benchmark.configuration import (
 from shapiq.benchmark.precompute import SHAPIQ_DATA_DIR
 from shapiq.games.base import Game
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
 __all__ = [
-    "load_games_from_configuration",
-    "load_game_data",
     "download_game_data",
+    "load_game_data",
+    "load_games_from_configuration",
 ]
 
 
@@ -91,9 +93,9 @@ def load_games_from_configuration(
         game_iteration = iteration_param_values[i]  # from 1 to 30
         game_iteration_value = iteration_param_values_names[i]  # i.e. the sentence or random state
         params[iteration_param] = game_iteration_value  # set the iteration parameter
-        if not game_should_be_precomputed:  # e.g. for SynthDataTreeSHAPIQXAI
-            yield game_class(**params)
-        elif not check_pre_computed and not only_pre_computed:
+        if not game_should_be_precomputed or (
+            not check_pre_computed and not only_pre_computed
+        ):  # e.g. for SynthDataTreeSHAPIQXAI
             yield game_class(**params)
         else:
             try:  # try to load the game from disk
@@ -187,9 +189,7 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
         response.raise_for_status()
     except requests.exceptions.HTTPError as error:
         msg = f"Could not download the game data from {url}. Check if configuration is correct."
-        raise FileNotFoundError(
-            msg,
-        ) from error
+        raise FileNotFoundError(msg) from error
     with Path(path).open("wb") as file:
         file.write(response.content)
         time.sleep(0.01)

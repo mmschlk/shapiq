@@ -4,17 +4,22 @@ from __future__ import annotations
 
 import copy
 from math import factorial
+from typing import TYPE_CHECKING
 
 import numpy as np
 import scipy as sp
 
-from ...game_theory.indices import get_computation_index
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from ...utils.custom_types import Model
-from ...utils.sets import generate_interaction_lookup, powerset
-from .base import EdgeTree, TreeModel
+from shapiq.game_theory.indices import get_computation_index
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.utils.sets import generate_interaction_lookup, powerset
+
 from .conversion.edges import create_edge_tree
 from .validation import validate_tree_model
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
+
+    from .base import EdgeTree, TreeModel
 
 
 class TreeSHAPIQ:
@@ -126,11 +131,11 @@ class TreeSHAPIQ:
         try:
             self._init_summary_polynomials()
             self._trivial_computation = False
-        except ValueError as error:
+        except ValueError:
             if self._n_features_in_tree == 1:
                 self._trivial_computation = True  # for one feature the computation is trivial
             else:
-                raise error
+                raise
 
         # stores the nodes that are active in the tree for a given instance (new for each instance)
         self._activations: np.ndarray[bool] = np.zeros(self._n_nodes, dtype=bool)
@@ -180,11 +185,10 @@ class TreeSHAPIQ:
             baseline_value=self.empty_prediction,
         )
 
-        shapley_interaction_values = finalize_computed_interactions(
+        return finalize_computed_interactions(
             shapley_interaction_values,
             target_index=self._index,
         )
-        return shapley_interaction_values
 
     def _compute_trivial_shapley_interaction_values(self, x) -> np.ndarray:
         """Computes the Shapley interactions for the case of only one feature in the tree.
@@ -439,7 +443,7 @@ class TreeSHAPIQ:
         n = Ns[d, :d]
         return ((E * D_power / quotient_poly)[:, :d]).dot(n) / d
 
-    def _init_summary_polynomials(self):
+    def _init_summary_polynomials(self) -> None:
         """Initializes summary polynomial variables. This function is called once during the
         initialization of the explainer.
         """
@@ -674,6 +678,7 @@ class TreeSHAPIQ:
             )
         if self._index == "BII":
             return 1 / (2 ** (self._n_features_in_tree - order))
+        return None
 
     @staticmethod
     def _get_N_id(D) -> np.ndarray[float]:
@@ -712,4 +717,3 @@ class TreeSHAPIQ:
         # add empty prediction from _tree and self to information TODO: remove one in final
         information += f"\nEmpty prediction (from _tree): {self._tree.empty_prediction}"
         information += f"\nEmpty prediction (from self): {self.empty_prediction}"
-        print(information)

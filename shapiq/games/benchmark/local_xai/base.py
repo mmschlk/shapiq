@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -10,6 +10,9 @@ from shapiq.games.base import Game
 from shapiq.games.benchmark.setup import get_x_explain
 from shapiq.games.imputer.conditional_imputer import ConditionalImputer
 from shapiq.games.imputer.marginal_imputer import MarginalImputer
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class LocalExplanation(Game):

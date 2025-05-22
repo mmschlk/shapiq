@@ -6,14 +6,20 @@ from __future__ import annotations
 
 import copy
 import warnings
+from typing import TYPE_CHECKING
 
-import numpy as np
+from shapiq.explainer._base import Explainer
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from ...utils.custom_types import Model
-from .._base import Explainer
-from .treeshapiq import TreeModel, TreeSHAPIQ
+from .treeshapiq import TreeSHAPIQ
 from .validation import validate_tree_model
+
+if TYPE_CHECKING:
+    import numpy as np
+
+    from shapiq.utils.custom_types import Model
+
+    from .base import TreeModel
 
 
 class TreeExplainer(Explainer):
@@ -48,7 +54,7 @@ class TreeExplainer(Explainer):
         min_order: int = 0,
         index: str = "k-SII",
         class_index: int | None = None,
-        **kwargs,  # noqa ARG002
+        **kwargs,  # noqa: ARG002
     ) -> None:
         super().__init__(model)
 
@@ -114,11 +120,10 @@ class TreeExplainer(Explainer):
                 final_explanation,
                 target_index=self.index,
             )
-        final_explanation = finalize_computed_interactions(
+        return finalize_computed_interactions(
             final_explanation,
             target_index=self.index,
         )
-        return final_explanation
 
     def _compute_baseline_value(self) -> float:
         """Computes the baseline value for the explainer.
@@ -129,7 +134,6 @@ class TreeExplainer(Explainer):
             The baseline value for the explainer.
 
         """
-        baseline_value = sum(
+        return sum(
             [treeshapiq.empty_prediction for treeshapiq in self._treeshapiq_explainers],
         )
-        return baseline_value

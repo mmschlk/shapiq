@@ -5,12 +5,15 @@ sampling random marginal contributions.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class OwenSamplingSV(Approximator):
@@ -48,7 +51,7 @@ class OwenSamplingSV(Approximator):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        *args,  # noqa ARG002
+        *args,  # noqa: ARG002
         **_kwargs,
     ) -> InteractionValues:
         """Approximates the Shapley values using Owen Sampling.
@@ -146,7 +149,6 @@ class OwenSamplingSV(Approximator):
         if n_anchor_points <= 0:
             msg = "The number of anchor points needs to be greater than 0."
             raise ValueError(msg)
-        elif n_anchor_points == 1:
+        if n_anchor_points == 1:
             return np.array([0.5])
-        else:
-            return np.linspace(0.0, 1.0, num=n_anchor_points)
+        return np.linspace(0.0, 1.0, num=n_anchor_points)

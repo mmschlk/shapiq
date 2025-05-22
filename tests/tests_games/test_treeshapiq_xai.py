@@ -72,7 +72,8 @@ def test_random_forest_selection(
     top_order = index in ["STII", "FSII"]  # false for k-SII and SII
     approximator = SHAPIQ(n=n_players, max_order=max_order, index=index, top_order=top_order)
     estimates = approximator.approximate(budget=budget, game=game)
-    assert estimates.estimation_budget <= budget and not estimates.estimated
+    assert estimates.estimation_budget <= budget
+    assert not estimates.estimated
     assert estimates.index == index
 
     # test against the exact computation

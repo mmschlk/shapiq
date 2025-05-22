@@ -4,18 +4,19 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.special import binom
 
-from ..approximator.sampling import CoalitionSampler
-from ..game_theory.indices import (
-    AVAILABLE_INDICES_FOR_APPROXIMATION,
-    get_computation_index,
-)
-from ..interaction_values import InteractionValues
-from ..utils.sets import generate_interaction_lookup
+from shapiq.approximator.sampling import CoalitionSampler
+from shapiq.game_theory.indices import AVAILABLE_INDICES_FOR_APPROXIMATION, get_computation_index
+from shapiq.utils.sets import generate_interaction_lookup
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.interaction_values import InteractionValues
 
 __all__ = [
     "Approximator",
@@ -165,10 +166,10 @@ class Approximator(ABC):
         weight_vector = np.zeros(shape=self.n + 1)
         if self.index in ["FBII"]:
             try:
-                for coalition_size in range(0, self.n + 1):
+                for coalition_size in range(self.n + 1):
                     weight_vector[coalition_size] = binom(self.n, coalition_size) / 2**self.n
             except OverflowError:
-                for coalition_size in range(0, self.n + 1):
+                for coalition_size in range(self.n + 1):
                     weight_vector[coalition_size] = (
                         1
                         / np.sqrt(2 * np.pi * 0.5)
@@ -179,15 +180,14 @@ class Approximator(ABC):
                     stacklevel=2,
                 )
         else:
-            for coalition_size in range(0, self.n + 1):
+            for coalition_size in range(self.n + 1):
                 if (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
                     # prioritize these subsets
                     weight_vector[coalition_size] = self._big_M
                 else:
                     # KernelSHAP sampling weights
                     weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
-        sampling_weight = weight_vector / np.sum(weight_vector)
-        return sampling_weight
+        return weight_vector / np.sum(weight_vector)
 
     def _init_result(self, dtype=float) -> np.ndarray:
         """Initializes the result array. The result array is a 1D array of size n_interactions as
@@ -200,8 +200,7 @@ class Approximator(ABC):
             The result array.
 
         """
-        result = np.zeros(len(self._interaction_lookup), dtype=dtype)
-        return result
+        return np.zeros(len(self._interaction_lookup), dtype=dtype)
 
     @property
     def _order_iterator(self) -> range:
@@ -256,15 +255,13 @@ class Approximator(ABC):
         if not isinstance(other, Approximator):
             msg = "Cannot compare Approximator with other types."
             raise ValueError(msg)
-        if (
+        return not (
             self.n != other.n
             or self.max_order != other.max_order
             or self.index != other.index
             or self.top_order != other.top_order
             or self._random_state != other._random_state
-        ):
-            return False
-        return True
+        )
 
     def __ne__(self, other: object) -> bool:
         """Checks if two Approximator objects are not equal."""

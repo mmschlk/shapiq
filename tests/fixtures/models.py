@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
+
 import pytest
 from sklearn.ensemble import (
     ExtraTreesClassifier,
@@ -15,8 +16,11 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from shapiq.explainer.tree import TreeModel
-from shapiq.utils import Model
+if TYPE_CHECKING:
+    import numpy as np
+
+    from shapiq.explainer.tree import TreeModel
+    from shapiq.utils import Model
 
 NR_FEATURES = 7  # Number of features for the tabular models
 
@@ -71,8 +75,7 @@ def lightgbm_basic(background_reg_dataset) -> Model:
 
     X, y = background_reg_dataset
     train_data = lightgbm.Dataset(X, label=y)
-    model = lightgbm.train(params={}, train_set=train_data, num_boost_round=1)
-    return model
+    return lightgbm.train(params={}, train_set=train_data, num_boost_round=1)
 
 
 @pytest.fixture
@@ -263,8 +266,7 @@ def dt_clf_model_tree_model(background_clf_dataset) -> TreeModel:
     X, y = background_clf_dataset
     model = DecisionTreeClassifier(random_state=42, max_depth=3)
     model.fit(X, y)
-    tree_model = validate_tree_model(model)
-    return tree_model
+    return validate_tree_model(model)
 
 
 @pytest.fixture

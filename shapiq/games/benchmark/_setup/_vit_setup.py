@@ -7,12 +7,16 @@ Note to developers:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import torch
 import torch.nn.functional as F  # noqa: N812
-from PIL.Image import Image
 from torch import nn
 from transformers import ViTFeatureExtractor, ViTForImageClassification
+
+if TYPE_CHECKING:
+    from PIL.Image import Image
 
 __all__ = ["ViTModel"]
 
@@ -77,7 +81,7 @@ class ViTModel:
         self.original_output = float(probit_output[0, self.class_id])
         self.original_class_name = str(model.config.id2label[self.class_id])
         if verbose:
-            print(f"Original class: {self.original_class_name} ({self.original_output:.4f})")
+            pass
 
         # call the model with no information to get empty prediction
         empty_output = self(np.zeros(self.n_patches, dtype=bool))
@@ -157,8 +161,7 @@ class ViTModel:
                 )
                 bool_mask_2d[y : y + patch_size, x : x + patch_size] = 0
 
-        bool_mask_1d = bool_mask_2d.flatten()
-        return bool_mask_1d
+        return bool_mask_2d.flatten()
 
 
 # constants for the boolean mask generation for the Vision Transformer model

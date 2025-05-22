@@ -242,7 +242,6 @@ def test_bike_bug():
 
     # if this test runs without an error, the bug is fixed
     assert True
-    return
 
 
 def test_xgboost_bug():
@@ -339,4 +338,4 @@ def test_xgb_predicts_with_wrong_leaf_node():
     # efficiency is correct as the prediction with the tree model and not like the xgb model
     assert pytest.approx(efficiency) == prediction_tree_model
     assert pytest.approx(efficiency, rel=0.0001) == prediction_left_df
-    assert not pytest.approx(efficiency, rel=0.0001) == prediction_right_df
+    assert pytest.approx(efficiency, rel=0.0001) != prediction_right_df

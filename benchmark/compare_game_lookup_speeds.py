@@ -25,13 +25,13 @@ class OldLookUpGame:
         self,
         data_folder: str,
         n: int,
-        data_id: int | str = None,
-        used_ids: set = None,
+        data_id: int | str | None = None,
+        used_ids: set | None = None,
         set_zero: bool = True,
         log_output: bool = False,
         min_max_normalize: bool = False,
-        random_seed: int = None,
-    ):
+        random_seed: int | None = None,
+    ) -> None:
         if random_seed is not None:
             random.seed(random_seed)
             np.random.seed(random_seed)
@@ -169,10 +169,6 @@ if __name__ == "__main__":
 
         ax.errorbar(int(sets), new_time_mean, yerr=new_time_std, fmt="o", c="orange")
         ax.errorbar(int(sets), old_time_mean, yerr=old_time_std, fmt="o", c="blue")
-
-        print(f"New game took {new_time_mean:.6f} ± {new_time_std:.6f} seconds.")
-        print(f"Old game took {old_time_mean:.6f} ± {old_time_std:.6f} seconds.")
-        print(f"New game was {old_time_mean / new_time_mean:.2f} times faster than the old game.")
 
     ax.errorbar(0, 0, 0, fmt="o", c="orange", label="New game")
     ax.errorbar(0, 0, 0, fmt="o", c="blue", label="Old game")

@@ -45,7 +45,7 @@ def test_soum_interations():
         assert len(soum_2_values) == M
         assert len(soum_2.linear_coefficients) == n_interactions
         assert len(soum_2.unanimity_games) == n_interactions
-        for _, base_game in soum_2.unanimity_games.items():
+        for base_game in soum_2.unanimity_games.values():
             assert len(base_game.interaction) >= min_interaction_size
         assert soum_2.max_interaction_size == n
         assert soum_2.min_interaction_size == min_interaction_size
@@ -57,7 +57,7 @@ def test_soum_interations():
         assert len(soum_3_values) == M
         assert len(soum_3.linear_coefficients) == n_interactions
         assert len(soum_3.unanimity_games) == n_interactions
-        for _, base_game in soum_3.unanimity_games.items():
+        for base_game in soum_3.unanimity_games.values():
             assert len(base_game.interaction) <= max_interaction_size
         assert soum_3.max_interaction_size == max_interaction_size
         assert soum_3.min_interaction_size == 0
@@ -75,16 +75,15 @@ def test_soum_interations():
         assert len(soum_4_values) == M
         assert len(soum_4.linear_coefficients) == n_interactions
         assert len(soum_4.unanimity_games) == n_interactions
-        for _, base_game in soum_4.unanimity_games.items():
-            assert (len(base_game.interaction) <= max_interaction_size) and (
-                len(base_game.interaction) >= min_interaction_size
-            )
+        for base_game in soum_4.unanimity_games.values():
+            assert len(base_game.interaction) <= max_interaction_size
+            assert len(base_game.interaction) >= min_interaction_size
         assert soum_4.max_interaction_size == max_interaction_size
         assert soum_4.min_interaction_size == min_interaction_size
 
 
 @pytest.mark.parametrize(
-    "n, interaction, expected",
+    ("n", "interaction", "expected"),
     [
         (
             3,
@@ -122,7 +121,7 @@ def test_soum_interations():
 def test_dummy_game(n, interaction, expected):
     """Test the DummyGame class."""
     game = DummyGame(n=n, interaction=interaction)
-    for coalition in expected.keys():
+    for coalition in expected:
         x_input = np.zeros(shape=(n,), dtype=bool)
         x_input[list(coalition)] = True
         assert game(x_input)[0] == expected[coalition]

@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import numpy as np
 from tqdm.auto import tqdm
 
-from ..explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
-from ..interaction_values import InteractionValues
+from shapiq.explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
 
 
 class Explainer:
@@ -50,17 +53,15 @@ class Explainer:
         )
         self.model = model
 
-        if data is not None:
-            if self._model_type != "tabpfn":
-                self._validate_data(data)
+        if data is not None and self._model_type != "tabpfn":
+            self._validate_data(data)
         self.data = data
 
         # if the class was not run as super
-        if self.__class__ is Explainer:
-            if self._model_type in list(get_explainers()):
-                _explainer = get_explainers()[self._model_type]
-                self.__class__ = _explainer
-                _explainer.__init__(self, model=model, data=data, class_index=class_index, **kwargs)
+        if self.__class__ is Explainer and self._model_type in list(get_explainers()):
+            _explainer = get_explainers()[self._model_type]
+            self.__class__ = _explainer
+            _explainer.__init__(self, model=model, data=data, class_index=class_index, **kwargs)
 
     def _validate_data(self, data: np.ndarray, raise_error: bool = False) -> None:
         """Validate the data for compatibility with the model.
@@ -84,15 +85,14 @@ class Explainer:
             if isinstance(pred, np.ndarray):
                 if len(pred.shape) > 1:
                     message += " The model's prediction must be a 1-dimensional array."
-                    raise ValueError()
+                    raise ValueError(message)
             else:
                 message += " The model's prediction must be a NumPy array."
-                raise ValueError()
+                raise ValueError(message)
         except Exception as e:
             if raise_error:
                 raise ValueError(message) from e
-            else:
-                warn(message, stacklevel=2)
+            warn(message, stacklevel=2)
 
     def explain(self, x: np.ndarray, **kwargs) -> InteractionValues:
         """Explain a single prediction in terms of interaction values.
@@ -106,8 +106,7 @@ class Explainer:
             The interaction values of the prediction.
 
         """
-        explanation = self.explain_function(x=x, **kwargs)
-        return explanation
+        return self.explain_function(x=x, **kwargs)
 
     @abstractmethod
     def explain_function(self, x: np.ndarray, *args, **kwargs) -> InteractionValues:

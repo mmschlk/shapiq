@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from warnings import warn
 
-import numpy as np
-
 from shapiq.games.base import Game
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class ImageClassifier(Game):
@@ -72,7 +74,7 @@ class ImageClassifier(Game):
         x_explain_path: str | None = None,
         normalize: bool = True,
         verbose: bool = False,
-        *args,  # noqa ARG002
+        *args,  # noqa: ARG002
         **_kwargs,
     ) -> None:
         if x_explain_path is None:

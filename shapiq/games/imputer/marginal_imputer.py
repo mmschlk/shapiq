@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ...utils import Model
 from .base import Imputer
+
+if TYPE_CHECKING:
+    from shapiq.utils import Model
 
 _too_large_sample_size_warning = (
     "The sample size is larger than the number of data points in the background set. "
@@ -20,23 +23,6 @@ class MarginalImputer(Imputer):
 
     The marginal imputer is used to impute the missing values of a data point by using the
     marginal distribution of the background data.
-
-    Args:
-        model: The model to explain as a callable function expecting a data points as input and
-            returning the model's predictions.
-        data: The background data to use for the explainer as a two-dimensional array
-            with shape ``(n_samples, n_features)``.
-        x: The explanation point to use the imputer to.
-        sample_size: The number of samples to draw from the background data. Only used if
-            ``sample_replacements`` is ``True``. Increasing this value will linearly increase the
-            runtime of the explainer. Defaults to ``100``.
-        joint_marginal_distribution: A flag to sample the replacement values from the joint marginal
-            distribution. If ``False``, the replacement values are sampled independently for each
-            feature. If ``True``, the replacement values are sampled from the joint marginal
-            distribution. Defaults to ``False``.
-        normalize: A flag to normalize the game values. If ``True``, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to ``True``.
-        random_state: The random state to use for sampling. Defaults to ``None``.
 
     Attributes:
         replacement_data: The data to use for imputation. To change the data, use the
@@ -63,13 +49,43 @@ class MarginalImputer(Imputer):
         self,
         model: Model,
         data: np.ndarray,
+        *,
         x: np.ndarray | None = None,
         sample_size: int = 100,
-        categorical_features: list[int] = None,
+        categorical_features: list[int] | None = None,
         joint_marginal_distribution: bool = True,
         normalize: bool = True,
         random_state: int | None = None,
     ) -> None:
+        """Initializes the marginal imputer.
+
+        Args:
+            model: The model to explain as a callable function expecting a data points as input and
+                returning the model's predictions.
+
+            data: The background data to use for the explainer as a two-dimensional array
+                with shape ``(n_samples, n_features)``.
+
+            x: The explanation point to use the imputer to.
+
+            sample_size: The number of samples to draw from the background data. Only used if
+                ``sample_replacements`` is ``True``. Increasing this value will linearly increase
+                the runtime of the explainer. Defaults to ``100``.
+
+            categorical_features: A list of indices of the categorical features. If ``None``, all
+                features are treated as continuous. Defaults to ``None``.
+
+            joint_marginal_distribution: A flag to sample the replacement values from the joint
+                marginal distribution. If ``False``, the replacement values are sampled
+                independently for each feature. If ``True``, the replacement values are sampled from
+                the joint marginal distribution. Defaults to ``False``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            random_state: The random state to use for sampling. Defaults to ``None``.
+        """
         super().__init__(model, data, x, sample_size, categorical_features, random_state)
 
         # setup attributes
@@ -159,8 +175,7 @@ class MarginalImputer(Imputer):
             return replacement_data
         # sample replacement values
         replacement_idx = rng.choice(n_samples, size=sample_size, replace=False)
-        replacement_data = replacement_data[replacement_idx]
-        return replacement_data
+        return replacement_data[replacement_idx]
 
     def calc_empty_prediction(self) -> float:
         """Runs the model on empty data points (all features missing) to get the empty prediction.

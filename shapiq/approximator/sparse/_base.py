@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
@@ -11,9 +11,12 @@ from sparse_transform.qsft.signals.input_signal_subsampled import (
 from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
 from sparse_transform.qsft.utils.query import get_bch_decoder
 
-from ...game_theory.moebius_converter import MoebiusConverter
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.game_theory.moebius_converter import MoebiusConverter
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Sparse(Approximator):
@@ -184,7 +187,7 @@ class Sparse(Approximator):
             The function also updates the internal _interaction_lookup dictionary.
         """
         moebius_interactions = InteractionValues(
-            values=np.array([moebius_transform[key] for key in moebius_transform.keys()]),
+            values=np.array([moebius_transform[key] for key in moebius_transform]),
             index="Moebius",
             min_order=self.min_order,
             max_order=self.max_order,

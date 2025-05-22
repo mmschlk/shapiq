@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class StratifiedSamplingSV(Approximator):
@@ -43,8 +46,8 @@ class StratifiedSamplingSV(Approximator):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        *args,  # noqa ARG002,
-        **kwargs,  # noqa ARG002
+        *args,  # noqa: ARG002,
+        **kwargs,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
@@ -70,7 +73,7 @@ class StratifiedSamplingSV(Approximator):
         # main sampling loop
         while used_budget < budget:
             # iterate over coalition size to which a marginal contribution can be drawn
-            for size in range(0, self.n):
+            for size in range(self.n):
                 # iterate over players for whom a marginal contribution is to be drawn
                 for player in range(self.n):
                     # check if enough budget is available to sample a marginal contribution

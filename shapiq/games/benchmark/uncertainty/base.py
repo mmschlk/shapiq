@@ -2,16 +2,34 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from scipy.stats import entropy
 
 from shapiq.games.base import Game
 from shapiq.games.benchmark.setup import get_x_explain
 from shapiq.games.imputer import ConditionalImputer, MarginalImputer
-from shapiq.utils.custom_types import Model
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
 
 
 class UncertaintyExplanation(Game):
+    """The UncertaintyExplanation class for uncertainty explanation.
+
+    The UncertaintyExplanation benchmark class is used to explain the uncertainty of a model's
+    predictions with attribution methods. This was first proposed by Watson et al. (2023) [1]_.
+
+    Attributes:
+        empty_prediction_value: The model's prediction on an empty data point (all features missing).
+        x: The explanation point to use the imputer to.
+
+    References:
+        .. [1] Watson, D., O'Hara, J., Tax, N., Mudd, R., & Guy, I. (2023). Explaining Predictive Uncertainty with Information Theoretic Shapley Values. In *Advances in Neural Information Processing Systems (NeurIPS 2023)*. https://proceedings.neurips.cc/paper_files/paper/2023/file/16e4be78e61a3897665fa01504e9f452-Paper-Conference.pdf
+
+    """
+
     def __init__(
         self,
         *,
@@ -24,6 +42,33 @@ class UncertaintyExplanation(Game):
         verbose: bool = False,
         uncertainty_to_explain: str = "total",
     ) -> None:
+        """Initialize the UncertaintyExplanation game.
+
+        Args:
+            data: The background data to use for the explainer as a two-dimensional array
+                with shape ``(n_samples, n_features)``.
+
+            model: The model to explain as a callable function expecting data points as input and
+                returning the model's predictions.
+
+            x: The explanation point to use the imputer to. If ``None``, then the first data point
+                is used. If an integer, then the data point at the given index is used. If a numpy
+                array, then the data point is used as is. Defaults to ``None``.
+
+            uncertainty_to_explain: The type of uncertainty to explain. Can be either ``'total'``,
+                ``'aleatoric'`` or ``'epistemic'``. Defaults to ``'total'``.
+
+            imputer: The imputer to use for the game. Can be either ``'marginal'`` or
+                ``'conditional'``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            random_state: The random state to use for sampling. Defaults to ``None``.
+
+            verbose: A flag to enable verbose output. Defaults to ``False``.
+        """
         from sklearn.ensemble import RandomForestClassifier
 
         # validate the inputs
@@ -43,9 +88,7 @@ class UncertaintyExplanation(Game):
             self._predict = self._predict_rf
         else:
             msg = f"Invalid model provided. Should be RandomForestClassifier but got {model}."
-            raise ValueError(
-                msg,
-            )
+            raise ValueError(msg)
 
         if imputer == "marginal":
             self._imputer = MarginalImputer(
@@ -69,9 +112,7 @@ class UncertaintyExplanation(Game):
                 f"Invalid imputer provided. Should be 'marginal' or 'conditional' but got "
                 f"{imputer}."
             )
-            raise ValueError(
-                msg,
-            )
+            raise ValueError(msg)
 
         self.empty_prediction_value: float = self._imputer.empty_prediction
         # init the base game
@@ -90,7 +131,6 @@ class UncertaintyExplanation(Game):
 
         Returns:
             The uncertainty of the predictions.
-
         """
         predictions_mean = predictions.mean(axis=0)
         if self._uncertainty_to_explain == "total":
@@ -108,9 +148,7 @@ class UncertaintyExplanation(Game):
                 f"Invalid class label provided. Should be 'total', 'aleatoric' or 'epistemic' "
                 f"but got {self._uncertainty_to_explain}."
             )
-            raise ValueError(
-                msg,
-            )
+            raise ValueError(msg)
         return uncertainty
 
     def _predict_rf(self, x: np.ndarray) -> np.ndarray:
@@ -127,7 +165,5 @@ class UncertaintyExplanation(Game):
 
         Returns:
             The value function of the game.
-
         """
-        uncertainty = self._imputer(coalitions)
-        return uncertainty
+        return self._imputer(coalitions)

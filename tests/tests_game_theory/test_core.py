@@ -99,9 +99,7 @@ def test_core_political_game_empty_core():
                 (0, 1, 2): 100,
             }
 
-            values = np.array([coalition_values[tuple(np.where(x)[0])] for x in coalitions])
-
-            return values
+            return np.array([coalition_values[tuple(np.where(x)[0])] for x in coalitions])
 
     game_political = NonConvexGame()
     coalition_lookup = {}
@@ -167,9 +165,7 @@ def test_core_political_game_existing_core():
                 (0, 1, 2): 200,
             }
 
-            values = np.array([coalition_values[tuple(np.where(x)[0])] for x in coalitions])
-
-            return values
+            return np.array([coalition_values[tuple(np.where(x)[0])] for x in coalitions])
 
     game_political = ConvexGame()
     coalition_lookup = {}

@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 import scipy as sp
 
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from ...utils import get_explicit_subsets, powerset
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.utils import get_explicit_subsets, powerset
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class PermutationSamplingSTII(Approximator):
@@ -182,8 +185,7 @@ class PermutationSamplingSTII(Approximator):
                     for i in permutations[permutation_id]:
                         if i in interaction:
                             break
-                        else:
-                            idx += 1
+                        idx += 1
                     subset = tuple(permutations[permutation_id][:idx])
                     for L in powerset(interaction):
                         subsets[subset_index, tuple(subset + L)] = True
@@ -234,8 +236,7 @@ class PermutationSamplingSTII(Approximator):
             int: The cost of a single iteration.
 
         """
-        iteration_cost = int(sp.special.binom(self.n, self.max_order) * 2**self.max_order)
-        return iteration_cost
+        return int(sp.special.binom(self.n, self.max_order) * 2**self.max_order)
 
     def _compute_lower_order_sti(
         self,
@@ -253,7 +254,7 @@ class PermutationSamplingSTII(Approximator):
 
         """
         # get all game values on the whole powerset of players up to order max_order - 1
-        lower_order_sizes = list(range(0, self.max_order))
+        lower_order_sizes = list(range(self.max_order))
         subsets = get_explicit_subsets(self.n, lower_order_sizes)
         game_values = game(subsets)
         game_values_lookup = {

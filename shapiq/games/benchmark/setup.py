@@ -216,17 +216,15 @@ class GameBenchmarkSetup:
         if verbose and model_name is not None:
             self.print_train_performance()
 
-    def print_train_performance(self):
+    def print_train_performance(self) -> None:
         """Prints the performance of the model on the test data."""
-        print(f"Trained model {self.model_name} for the {self.dataset_name} dataset.")
-        print(f"Score on training data: {self.score_function(self.x_test, self.y_test)}")
 
-    def init_decision_tree_classifier(self):
+    def init_decision_tree_classifier(self) -> None:
         """Initializes and trains a decision tree model for a classification dataset."""
         self.model = DecisionTreeClassifier(random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_random_forest_classifier(self):
+    def init_random_forest_classifier(self) -> None:
         """Initializes and trains a random forest model for a classification dataset."""
         self.model = RandomForestClassifier(
             n_estimators=self._random_forest_n_estimators,
@@ -234,31 +232,31 @@ class GameBenchmarkSetup:
         )
         self.model.fit(self.x_train, self.y_train)
 
-    def init_gradient_boosting_classifier(self):
+    def init_gradient_boosting_classifier(self) -> None:
         """Initializes and trains a gradient boosting model for a classification dataset."""
         from xgboost import XGBClassifier
 
         self.model = XGBClassifier(random_state=self.random_state, n_jobs=1)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_decision_tree_regressor(self):
+    def init_decision_tree_regressor(self) -> None:
         """Initializes and trains a decision tree model for a regression dataset."""
         self.model = DecisionTreeRegressor(random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_random_forest_regressor(self):
+    def init_random_forest_regressor(self) -> None:
         """Initializes and trains a random forest model for a regression dataset."""
         self.model = RandomForestRegressor(n_estimators=10, random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_gradient_boosting_regressor(self):
+    def init_gradient_boosting_regressor(self) -> None:
         """Initializes and trains a gradient boosting model for a regression dataset."""
         from xgboost import XGBRegressor
 
         self.model = XGBRegressor(random_state=self.random_state, n_jobs=1)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_california_neural_network(self):
+    def init_california_neural_network(self) -> None:
         """Initializes a neural network model for the California Housing dataset."""
         from ._setup._california_torch_setup import CaliforniaHousingTorchModel
 

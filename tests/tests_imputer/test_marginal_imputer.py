@@ -98,7 +98,6 @@ def test_joint_marginal_distribution():
         joint_marginal_distribution=False,
     )
     replacement_data_independent = imputer._sample_replacement_data(3)
-    print(replacement_data_independent)
 
     imputer = MarginalImputer(
         model=model,

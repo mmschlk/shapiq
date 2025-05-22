@@ -40,7 +40,7 @@ class SVARMIQ(MonteCarlo):
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(
             n,
             max_order,
@@ -82,7 +82,7 @@ class SVARM(SVARMIQ):
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
         **_kwargs,
-    ):
+    ) -> None:
         super().__init__(
             n,
             max_order=1,

@@ -162,8 +162,7 @@ def index_generalizes_sv(index: str) -> bool:
     """
     if index in ALL_AVAILABLE_CONCEPTS:
         return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "SV"
-    else:
-        return False
+    return False
 
 
 def index_generalizes_bv(index: str) -> bool:
@@ -186,8 +185,7 @@ def index_generalizes_bv(index: str) -> bool:
     """
     if index in ALL_AVAILABLE_CONCEPTS:
         return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "BV"
-    else:
-        return False
+    return False
 
 
 def get_computation_index(index: str) -> str:

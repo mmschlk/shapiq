@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
-import numpy as np
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import numpy as np
 
 WARNING_NO_CLASS_INDEX = (
     "No class_index provided. "
@@ -173,7 +175,7 @@ def get_predict_function_and_model_type(
         predictions = _predict_function(model, data)
         if predictions.ndim == 1:
             return predictions
-        elif predictions.shape[1] == 1:
+        if predictions.shape[1] == 1:
             return predictions[:, 0]
         return predictions[:, class_index]
 
@@ -212,12 +214,13 @@ def print_classes_nicely(obj):
     """Converts a list of classes into *user-readable* class names. I/O examples:
     [shapiq.explainer._base.Explainer] -> ['shapiq.Explainer']
     {'tree': shapiq.explainer.tree.explainer.TreeExplainer}  -> ['shapiq.TreeExplainer']
-    {'tree': shapiq.TreeExplainer}  -> ['shapiq.TreeExplainer']
+    {'tree': shapiq.TreeExplainer}  -> ['shapiq.TreeExplainer'].
     """
     if isinstance(obj, dict):
         return [".".join([print_class(v).split(".")[i] for i in (0, -1)]) for _, v in obj.items()]
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [".".join([print_class(v).split(".")[i] for i in (0, -1)]) for v in obj]
+    return None
 
 
 def print_class(obj):
@@ -226,9 +229,8 @@ def print_class(obj):
     type(sklearn.ensemble._forest.RandomForestRegressor) -> 'sklearn.ensemble._forest.RandomForestRegressor'
     shapiq.explainer.tree.explainer.TreeExplainer -> 'shapiq.explainer.tree.explainer.TreeExplainer'
     shapiq.TreeExplainer -> 'shapiq.explainer.tree.explainer.TreeExplainer'
-    type(shapiq.TreeExplainer) -> 'shapiq.explainer.tree.explainer.TreeExplainer'
+    type(shapiq.TreeExplainer) -> 'shapiq.explainer.tree.explainer.TreeExplainer'.
     """
     if isinstance(obj, type):
         return re.search("(?<=<class ').*(?='>)", str(obj))[0]
-    else:
-        return re.search("(?<=<class ').*(?='>)", str(type(obj)))[0]
+    return re.search("(?<=<class ').*(?='>)", str(type(obj)))[0]

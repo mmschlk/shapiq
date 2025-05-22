@@ -6,12 +6,15 @@ import os
 import pickle
 import warnings
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 from tqdm.auto import tqdm
 
-from ..interaction_values import InteractionValues
-from ..utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
+from shapiq.utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
 
 
 class Game:
@@ -97,8 +100,8 @@ class Game:
         path_to_values: Path | str | None = None,
         verbose: bool = False,
         player_names: list[str] | None = None,
-        *args,  # noqa ARG002
-        **kwargs,  # noqa ARG002
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
     ) -> None:
         # manual flag for choosing precomputed values even if not all values might be stored
         self.precompute_flag: bool = False  # flag to manually override the precomputed check
@@ -129,7 +132,7 @@ class Game:
                 )
 
         game_id: str = str(hash(self))[:8]
-        self.game_id = "_".join([self.get_game_name(), game_id])
+        self.game_id = f"{self.get_game_name()}_{game_id}"
         if path_to_values is not None:
             self.load_values(path_to_values, precomputed=True)
             self.game_id = str(path_to_values).split(os.path.sep)[-1].split(".")[0]
@@ -224,18 +227,14 @@ class Game:
                         "The array of coalitions is not correctly formatted."
                         f"It should have a length of {self.n_players}"
                     )
-                    raise TypeError(
-                        msg,
-                    )
+                    raise TypeError(msg)
                 coalitions = coalitions.reshape((1, self.n_players))
             if coalitions.shape[1] != self.n_players:  # check if players match
                 msg = (
                     f"Number of players in the coalitions ({coalitions.shape[1]}) does not match "
                     f"the number of players in the game ({self.n_players})."
                 )
-                raise TypeError(
-                    msg,
-                )
+                raise TypeError(msg)
             # TODO maybe remove this, as it might increase runtime unnecessarily
             # check that values of numpy array are either 0 or 1
             if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
@@ -247,8 +246,7 @@ class Game:
             coalitions = [coalitions]
         try:
             # convert list of tuples to one-hot encoding
-            coalitions = transform_coalitions_to_array(coalitions, self.n_players)
-            return coalitions
+            return transform_coalitions_to_array(coalitions, self.n_players)
         except (IndexError, TypeError):
             pass
         # assuming str input
@@ -260,8 +258,7 @@ class Game:
             for coalition in coalitions:
                 coal_indices = sorted([self.player_name_lookup[player] for player in coalition])
                 coalitions_from_str.append(tuple(coal_indices))
-            coalitions = transform_coalitions_to_array(coalitions_from_str, self.n_players)
-            return coalitions
+            return transform_coalitions_to_array(coalitions_from_str, self.n_players)
         except Exception as error:
             raise TypeError(error_message) from error
 
@@ -315,9 +312,7 @@ class Game:
                     f"The coalition {coalition_tuple} is not stored in the game. "
                     f"Are all values pre-computed?"
                 )
-                raise KeyError(
-                    msg,
-                ) from error
+                raise KeyError(msg) from error
         return values
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
@@ -465,9 +460,7 @@ class Game:
                 f"The number of players in the game ({self.n_players}) does not match the number "
                 f"of players in the saved game ({n_players})."
             )
-            raise ValueError(
-                msg,
-            )
+            raise ValueError(msg)
         self.n_players = int(n_players)
         self.value_storage = data["values"]
         coalition_lookup: list[tuple] = transform_array_to_coalitions(data["coalitions"])
@@ -494,8 +487,7 @@ class Game:
 
         """
         with Path(path).open("rb") as f:
-            game = pickle.load(f)
-        return game
+            return pickle.load(f)
 
     def __repr__(self) -> str:
         """Return a string representation of the game."""
@@ -581,6 +573,4 @@ class Game:
             return self.value_storage[self.coalition_lookup[tuple(sorted(item))]]
         except (KeyError, IndexError) as error:
             msg = f"The coalition {item} is not stored in the game. Is it precomputed?"
-            raise KeyError(
-                msg,
-            ) from error
+            raise KeyError(msg) from error

@@ -16,8 +16,10 @@ def test_random_game(n_players):
     coalitions = np.zeros((n_coalitions, n_players), dtype=bool)
     values = game(coalitions)
     assert values.shape == (n_coalitions,)
-    assert np.all(values >= 0) and np.all(values <= 100)
-    assert not np.all(values == 0) and not np.all(values == 100)
+    assert np.all(values >= 0)
+    assert np.all(values <= 100)
+    assert not np.all(values == 0)
+    assert not np.all(values == 100)
 
     values_second_time = game(coalitions)
     assert values_second_time.shape == (n_coalitions,)

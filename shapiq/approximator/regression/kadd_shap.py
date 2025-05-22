@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
 
 from ._base import Regression
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class kADDSHAP(Regression):
@@ -46,7 +49,7 @@ class kADDSHAP(Regression):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(
             n,
             max_order,

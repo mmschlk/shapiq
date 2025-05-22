@@ -1,26 +1,36 @@
-"""This module contains the SOUM class. The SOUM class is constructed from a linear combination of
-the UnanimityGame Class.
+"""Synthetic benchmark games based on unanimity games.
+
+This module implements synthetic cooperative games for benchmarking interaction value methods.
+It includes the Unanimity game -- a fundamental building block in cooperative game theory --
+and the Sum of Unanimity Games (SOUM), a more complex game constructed as a linear
+combination of multiple Unanimity games.
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from shapiq.games.base import Game
 from shapiq.interaction_values import InteractionValues
 
+if TYPE_CHECKING:
+    from shapiq.game_theory.moebius_converter import MoebiusConverter
+
 
 class UnanimityGame(Game):
-    """Unanimity game as basis game in cooperative game theory based on single interaction.
-    When called, it returns 1, if the coalition contains the interaction, and 0 otherwise.
+    """The Unanimity basis game.
 
-    Args:
-        interaction_binary: The interaction encoded in a binary vector of shape (n,).
+    Unanimity games are basis games from cooperative game theory. They are based on a single
+    interaction and return 1 if the coalition contains the interaction and 0 otherwise.
+
+    # TODO(mmshlk): add a reference and a formal description of the Unanimity game
+    # https://github.com/mmschlk/shapiq/issues/387
 
     Attributes:
-        n_players: The number of players.
-        interaction_binary: The interaction encoded in a binary vector
-        interaction: The interaction encoded as a tuple
+        interaction_binary: The interaction encoded in a binary vector of length ``n``.
+        interaction: The interaction encoded as a tuple.
 
     Examples:
         >>> game = UnanimityGame(np.array([0, 1, 0, 1]))
@@ -33,7 +43,12 @@ class UnanimityGame(Game):
 
     """
 
-    def __init__(self, interaction_binary: np.ndarray):
+    def __init__(self, interaction_binary: np.ndarray) -> None:
+        """Initializes the Unanimity game.
+
+        Args:
+            interaction_binary: The interaction encoded as a one-hot vector of shape ``(n,)``.
+        """
         n = len(interaction_binary)
         self.interaction_binary: np.ndarray = interaction_binary
         self.interaction: tuple[int, ...] = tuple(np.where(self.interaction_binary == 1)[0])
@@ -47,31 +62,38 @@ class UnanimityGame(Game):
 
         Returns:
             The worth of the coalition.
-
         """
-        worth = np.prod(coalitions >= self.interaction_binary, 1)
-        return worth
+        return np.prod(coalitions >= self.interaction_binary, 1)
 
 
 class SOUM(Game):
-    """The SOUM constructs a game based on linear combinations of instances of UnanimityGames.
-    When called, it returns 1, if the coalition contains the interaction, and 0 otherwise.
+    """The Sum of Unanimity Game (SOUM) game class.
 
-    Args:
-        n: The number of players.
-        n_basis_games: The number of UnanimityGames.
-        min_interaction_size: Smallest interaction size, if None then set to zero
-        max_interaction_size: Highest interaction size, if None then set to n
+    A Sum of Unanimity Game (SOUM) constructs a game based on linear combinations of so-called
+    unanimity games (:class:`~shapiq.games.benchmark.synthetic.soum.UnanimityGame`).
+
+    # TODO(mmshlk): extend description of the SOUM, add a reference and a formal description
+    # https://github.com/mmschlk/shapiq/issues/387
 
     Attributes:
         n_players: The number of players.
+
         n_basis_games: The number of Unanimity gams
-        unanimity_games: A dictionary containing instances of UnanimityGame
-        linear_coefficients: A numpy array with coefficients between -1 and 1 for the unanimity games
+
+        unanimity_games: A dictionary containing instances of :class:`~shapiq.games.benchmark.synthetic.soum.UnanimityGame`.
+
+        linear_coefficients: A numpy array with coefficients between -1 and 1 for the unanimity
+            games.
+
         min_interaction_size: The smallest interaction size
+
         max_interaction_size: The highest interaction size.
-        moebius_coefficients: The list of non-zero Möbius coefficients used to compute ground truth
-            values
+
+        converter: The MoebiusConverter object to convert the SOUM to a Möbius transform. If no
+            moebius transform is computed, this the convert is ``None``.
+
+    Properties:
+        moebius_coefficients: The (sparse) Möbius transform of the SOUM.
 
     Examples:
         >>> game = SOUM(4, 3)
@@ -85,21 +107,40 @@ class SOUM(Game):
         array([0., 0.25, 1.5, 2.])  # depending on the random linear coefficients this can vary
         >>> game.moebius_coefficients
         InteractionValues(values=array([0.25, 0.25, 0.25]), index='Moebius', max_order=4, min_order=0, ...)
-
     """
 
     def __init__(
         self,
         n: int,
         n_basis_games: int,
+        *,
         min_interaction_size: int | None = None,
         max_interaction_size: int | None = None,
         random_state: int | None = None,
         normalize: bool = False,
         verbose: bool = False,
-    ):
-        from shapiq.game_theory.moebius_converter import MoebiusConverter
+    ) -> None:
+        """Initializes the SOUM game.
 
+        Args:
+            n: The number of players in the game.
+
+            n_basis_games: The number of :class:`~shapiq.games.benchmark.synthetic.soum.UnanimityGame`
+                basis games to use. The higher the number, the more complex the SOUM becomes.
+
+            min_interaction_size: The minimum size of the interactions in the SOUM. If ``None``,
+                then the default value is used. The default value is ``0``. Defaults to ``None``.
+
+            max_interaction_size: The maximum size of the interactions in the SOUM. If ``None``,
+                then the default value is used. The default value is ``n``. Defaults to ``None``.
+
+            random_state: The random state to use for the game. If ``None``, then the default value
+                is used. The default value is ``42``. Defaults to ``None``.
+
+            normalize: A boolean flag to normalize/center the game values. Defaults to ``False``.
+
+            verbose: A flag to print information from the game. Defaults to ``False``.
+        """
         self._rng = np.random.default_rng(random_state)
 
         # set min_interaction_size and max_interaction_size to 0 and n if not specified
@@ -138,20 +179,22 @@ class SOUM(Game):
 
     @property
     def moebius_coefficients(self) -> InteractionValues:
+        """Return the (sparse) Möbius transform of the SOUM."""
         if self._moebius_coefficients is None:
             self._moebius_coefficients = self.moebius_transform()
         return self._moebius_coefficients
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """Computes the worth of the coalition for the SOUM, i.e. sums up all linear coefficients,
-        if coalition contains the interaction of the corresponding unanimity game.
+        """Computes the worth of the coalition for the SOUM.
+
+        The worth of a coalition for the SOUM sums up all linear coefficients, if a coalition
+        contains the interaction of a corresponding unanimity game.
 
         Args:
-            coalitions: The coalition as a binary vector of shape (coalition_size, n).
+            coalitions: The coalition as a binary vector of shape ``(coalition_size, n)``.
 
         Returns:
             The worth of the coalition.
-
         """
         worth = np.zeros(coalitions.shape[0])
         for i, game in self.unanimity_games.items():
@@ -173,14 +216,13 @@ class SOUM(Game):
 
         if self.converter is None:
             self.converter = MoebiusConverter(self.moebius_coefficients)
-        values = self.converter(index, order)
-        return values
+        return self.converter(index, order)
 
     def moebius_transform(self):
-        """Computes the (sparse) Möbius transform of the SOUM from the UnanimityGames. Used for
-        ground truth calculations for interaction indices.
+        """Computes the (sparse) Möbius transform of the SOUM.
 
-        Args:
+        The Möbius transform is computed for the SOUM via its UnanimityGames. This is helpful for
+        ground truth calculations of interaction indices.
 
         Returns:
             An InteractionValues object containing all non-zero Möbius coefficients of the SOUM.
@@ -207,7 +249,7 @@ class SOUM(Game):
         except KeyError:
             baseline_value = 0.0
 
-        moebius_coefficients = InteractionValues(
+        return InteractionValues(
             values=moebius_coefficients_values,
             index="Moebius",
             max_order=self.n_players,
@@ -217,5 +259,3 @@ class SOUM(Game):
             estimated=False,
             baseline_value=baseline_value,
         )
-
-        return moebius_coefficients

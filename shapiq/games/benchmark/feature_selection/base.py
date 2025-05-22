@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from shapiq.games.base import Game
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class FeatureSelection(Game):
@@ -73,13 +75,12 @@ class FeatureSelection(Game):
         self._y_test = y_test
 
         # sanity check on  input params
-        if score_function is None:
-            if loss_function is None or predict_function is None:
-                msg = (
-                    "If score function is not provided, then 'predict_function' and 'loss_function'"
-                    " must be provided."
-                )
-                raise ValueError(msg)
+        if score_function is None and (loss_function is None or predict_function is None):
+            msg = (
+                "If score function is not provided, then 'predict_function' and 'loss_function'"
+                " must be provided."
+            )
+            raise ValueError(msg)
 
         # setup callables
         self._fit_function = fit_function

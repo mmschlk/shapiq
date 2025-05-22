@@ -16,7 +16,7 @@ from tests.fixtures.interaction_values import (
 
 
 @pytest.mark.parametrize(
-    "index, n, min_order, max_order, estimation_budget, estimated",
+    ("index", "n", "min_order", "max_order", "estimation_budget", "estimated"),
     [
         ("STII", 5, 1, 2, 100, True),
         ("FSII", 5, 1, 2, 100, True),
@@ -456,8 +456,6 @@ def test_top_k():
     for i in range(n_players):
         assert interaction_values[(i,)] == values[i]
 
-    print(interaction_values)
-
     # top-k
     k = 3
     top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k(
@@ -651,7 +649,7 @@ def test_subset(subset_players):
     assert subset_interaction_values.n_players == n - n_players_in_subset
     assert all(
         all(p in subset_players for p in key)
-        for key in subset_interaction_values.interaction_lookup.keys()
+        for key in subset_interaction_values.interaction_lookup
     )
     assert len(subset_interaction_values.values) == len(
         subset_interaction_values.interaction_lookup,
@@ -799,12 +797,11 @@ def test_get_n_order_min_max_overrides_order(iv_10_all):
     assert iv_new.min_order == min_order
     assert iv_new.max_order == max_order
     assert all(
-        min_order <= len(interaction) <= max_order
-        for interaction in iv_new.interaction_lookup.keys()
+        min_order <= len(interaction) <= max_order for interaction in iv_new.interaction_lookup
     )
 
 
-@pytest.mark.parametrize("min_order, max_order", [(None, 3), (2, None)])
+@pytest.mark.parametrize(("min_order", "max_order"), [(None, 3), (2, None)])
 def test_get_n_order_single_bound(min_order, max_order, iv_10_all):
     """Tests behavior when only min or max is provided."""
     iv = iv_10_all
@@ -848,23 +845,22 @@ def test_get_n_order_with_only_order_param(
         assert iv_new.max_order == order
 
         # check that the order is correct
-        assert all(len(interaction) == order for interaction in iv_new.interaction_lookup.keys())
+        assert all(len(interaction) == order for interaction in iv_new.interaction_lookup)
 
         # check that all interactions from the original are present
         assert all(
             interaction in iv_new.interaction_lookup
-            for interaction in iv.interaction_lookup.keys()
+            for interaction in iv.interaction_lookup
             if len(interaction) == order
         )
 
         # check that all values are correct
         assert all(
-            iv_new[interaction] == iv[interaction]
-            for interaction in iv_new.interaction_lookup.keys()
+            iv_new[interaction] == iv[interaction] for interaction in iv_new.interaction_lookup
         )
 
 
-@pytest.mark.parametrize("min_order, max_order", [(0, 1), (0, 2), (2, 3), (3, 4), (4, 4)])
+@pytest.mark.parametrize(("min_order", "max_order"), [(0, 1), (0, 2), (2, 3), (3, 4), (4, 4)])
 def test_get_n_order_with_only_min_max_param(
     min_order: int,
     max_order: int,
@@ -879,21 +875,19 @@ def test_get_n_order_with_only_min_max_param(
 
         # check that the order is correct
         assert all(
-            min_order <= len(interaction) <= max_order
-            for interaction in iv_new.interaction_lookup.keys()
+            min_order <= len(interaction) <= max_order for interaction in iv_new.interaction_lookup
         )
 
         # check that all interactions from the original are present
         assert all(
             interaction in iv_new.interaction_lookup
-            for interaction in iv.interaction_lookup.keys()
+            for interaction in iv.interaction_lookup
             if min_order <= len(interaction) <= max_order
         )
 
         # check that all values are correct
         assert all(
-            iv_new[interaction] == iv[interaction]
-            for interaction in iv_new.interaction_lookup.keys()
+            iv_new[interaction] == iv[interaction] for interaction in iv_new.interaction_lookup
         )
 
 

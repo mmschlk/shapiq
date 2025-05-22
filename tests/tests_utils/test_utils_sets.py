@@ -18,7 +18,7 @@ from shapiq.utils import (
 
 
 @pytest.mark.parametrize(
-    "iterable, min_size, max_size, expected",
+    ("iterable", "min_size", "max_size", "expected"),
     [
         ([1, 2, 3], 0, None, [(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]),
         ([1, 2, 3], 1, None, [(1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]),
@@ -37,7 +37,7 @@ def test_powerset(iterable, min_size, max_size, expected):
 
 
 @pytest.mark.parametrize(
-    "order, n, expected",
+    ("order", "n", "expected"),
     [
         (1, 5, ([(1, 4), (2, 3)], None)),
         (2, 5, ([(2, 3)], None)),
@@ -53,7 +53,7 @@ def test_pairing(order, n, expected):
 
 
 @pytest.mark.parametrize(
-    "order, n, budget, q, expected",
+    ("order", "n", "budget", "q", "expected"),
     [
         (1, 6, 100, [0, 1, 1, 1, 1, 1, 0], ([1, 5, 2, 4, 3], [], 38)),
         (1, 6, 60, [0, 1, 1, 1, 1, 1, 0], ([1, 5, 2, 4], [3], 18)),
@@ -71,7 +71,7 @@ def test_split_subsets_budget(budget, order, n, q, expected):
 
 
 @pytest.mark.parametrize(
-    "n, subset_sizes, expected",
+    ("n", "subset_sizes", "expected"),
     [
         (3, [1, 2], [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2)]),
         (3, [1, 2, 3], [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)]),
@@ -94,7 +94,7 @@ def test_get_explicit_subsets(n, subset_sizes, expected):
 
 
 @pytest.mark.parametrize(
-    "n, min_order, max_order, expected",
+    ("n", "min_order", "max_order", "expected"),
     [
         (3, 1, 1, {(0,): 0, (1,): 1, (2,): 2}),
         (3, 2, 2, {(0, 1): 0, (0, 2): 1, (1, 2): 2}),
@@ -111,7 +111,7 @@ def test_generate_interaction_lookup(n, min_order, max_order, expected):
 
 
 @pytest.mark.parametrize(
-    "coalitions, n_player, expected",
+    ("coalitions", "n_player", "expected"),
     [
         (
             [(0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)],
@@ -136,7 +136,7 @@ def test_transform_coalitions_to_array(coalitions, n_player, expected):
 
 
 @pytest.mark.parametrize(
-    "coalitions, expected",
+    ("coalitions", "expected"),
     [
         (
             np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]]),
@@ -162,7 +162,7 @@ def test_transform_array_to_coalitions(coalitions, expected):
 
 
 @pytest.mark.parametrize(
-    "n, max_order, min_order, expected",
+    ("n", "max_order", "min_order", "expected"),
     [
         (3, None, 0, 8),
         (3, 1, 1, 3),

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
 
 from ._base import Regression
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class KernelSHAP(Regression):
@@ -59,7 +62,7 @@ class KernelSHAP(Regression):
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
         **kwargs,  # noqa: ARG002
-    ):
+    ) -> None:
         super().__init__(
             n,
             max_order=1,

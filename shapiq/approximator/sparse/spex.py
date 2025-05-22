@@ -34,7 +34,7 @@ class SPEX(Sparse):
         random_state: int | None = None,
         decoder_type: str = "soft",
         transform_error: int = 5,
-    ):
+    ) -> None:
         super().__init__(
             n=n,
             max_order=max_order,

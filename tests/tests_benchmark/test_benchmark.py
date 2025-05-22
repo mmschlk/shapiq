@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ from shapiq.benchmark import (
 )
 
 
-@pytest.mark.parametrize("index, n_jobs", [("SV", 2), ("k-SII", 2), ("SV", 1)])
+@pytest.mark.parametrize(("index", "n_jobs"), [("SV", 2), ("k-SII", 2), ("SV", 1)])
 def test_benchmark(index, n_jobs):
     """Tests the general benchmark setup with pre-computed games."""
     game_identifier = "ImageClassifierLocalXAI"
@@ -67,7 +68,8 @@ def test_benchmark(index, n_jobs):
     assert os.path.exists(save_path)
 
     fig, axis = plot_approximation_quality(data=results)
-    assert isinstance(fig, plt.Figure) and isinstance(axis, plt.Axes)
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(axis, plt.Axes)
 
     # clean up
     os.remove(save_path)
@@ -121,7 +123,8 @@ def test_benchmark_config():
     assert len(data_loaded) == len(data_loaded_no_path)
 
     fig, axis = plot_approximation_quality(data=results)
-    assert isinstance(fig, plt.Figure) and isinstance(axis, plt.Axes)
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(axis, plt.Axes)
 
     # clean up
     os.remove(save_path)
@@ -141,10 +144,8 @@ def test_download_games():
     # check that dir and file do not exist
     save_dir = os.path.join(SHAPIQ_DATA_DIR, game_name, str(n_players))
     save_path = os.path.join(save_dir, file_name + ".npz")
-    try:
+    with contextlib.suppress(FileNotFoundError):
         os.remove(save_path)
-    except FileNotFoundError:
-        pass
 
     # check that file does not exist
     assert not os.path.exists(save_path)

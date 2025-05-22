@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from colour import Color
 
-__all__ = ["RED", "BLUE", "NEUTRAL", "LINES", "COLORS_K_SII", "get_color"]
+__all__ = ["BLUE", "COLORS_K_SII", "LINES", "NEUTRAL", "RED", "get_color"]
 
 RED = Color("#ff0d57")
 BLUE = Color("#1e88e5")

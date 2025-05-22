@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import numpy as np
 import pandas as pd
+
+if TYPE_CHECKING:
+    import numpy as np
 
 GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
@@ -128,7 +131,7 @@ def load_bike_sharing(
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
     dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
-    dataset.dropna(inplace=True)
+    dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)
     x_data = dataset
@@ -200,7 +203,7 @@ def load_adult_census(
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
     dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
-    dataset.dropna(inplace=True)
+    dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)
     x_data = dataset.astype(float)

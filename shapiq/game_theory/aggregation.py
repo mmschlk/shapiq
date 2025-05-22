@@ -1,5 +1,5 @@
 """Aggregation functions for summarizing base interaction indices into
-efficient indices useful for explanations
+efficient indices useful for explanations.
 """
 
 from __future__ import annotations
@@ -9,8 +9,8 @@ import warnings
 import numpy as np
 import scipy as sp
 
-from ..interaction_values import InteractionValues
-from ..utils.sets import powerset
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import powerset
 
 
 def _change_index(index: str) -> str:
@@ -25,8 +25,7 @@ def _change_index(index: str) -> str:
     """
     if index in ["SV", "BV"]:  # no change for probabilistic values like SV or BV
         return index
-    new_index = "-".join(("k", index))
-    return new_index
+    return f"k-{index}"
 
 
 def aggregate_base_interaction(
@@ -139,7 +138,7 @@ def aggregate_to_one_dimension(interactions: InteractionValues) -> tuple[np.ndar
     pos_values = np.zeros(shape=(n,), dtype=float)
     neg_values = np.zeros(shape=(n,), dtype=float)
 
-    for interaction in interactions.interaction_lookup.keys():
+    for interaction in interactions.interaction_lookup:
         if len(interaction) == 0:
             continue  # skip the empty set
         interaction_value = interactions[interaction] / len(interaction)  # distribute uniformly

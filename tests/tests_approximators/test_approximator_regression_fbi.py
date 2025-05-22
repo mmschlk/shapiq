@@ -13,11 +13,9 @@ from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
-    "n, max_order",
+    ("n", "max_order"),
     [
         (3, 1),
-        (3, 1),
-        (3, 2),
         (3, 2),
         (7, 2),  # used in subsequent tests
         (10, 3),

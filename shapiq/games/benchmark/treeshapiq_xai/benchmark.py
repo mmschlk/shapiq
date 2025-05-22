@@ -2,25 +2,17 @@
 
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
 
 from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
 from shapiq.games.benchmark.treeshapiq_xai.base import TreeSHAPIQXAI
 
+if TYPE_CHECKING:
+    import numpy as np
+
 
 class AdultCensus(TreeSHAPIQXAI):
-    """The Adult Census dataset as a TreeSHAP-IQ explanation game.
-
-    Args:
-        x: The feature vector to be explained.
-        model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree' and 'random_forest'.
-        class_label: The class label to be explained. The default value is None.
-        normalize: A boolean flag to normalize/center the game values. The default value is True.
-        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
-
-    """
+    """The Adult Census dataset as a TreeSHAP-IQ explanation game."""
 
     def __init__(
         self,
@@ -31,7 +23,27 @@ class AdultCensus(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
-        # TODO: add xgb to TreeSHAQ-IQ, yet
+        """Initializes the Adult Census TreeSHAP-IQ explanation game.
+
+        Args:
+            x: The feature vector to be explained. If ``None``, then the first data point is used.
+                If an integer, then the data point at the given index is used. If a numpy array,
+                then the data point is used as is. Defaults to ``None``.
+
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'`` and ``'random_forest'``.
+
+            class_label: The class label to use for the model. If ``None``, then the default
+                behaviour of :class:`~shapiq.explainer.tree.TreeExplainer` is used.
+
+            normalize: A boolean flag to normalize/center the game values. The default value is
+                ``True``.
+
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                ``True``.
+
+            random_state: The random state to use for the imputer. Defaults to ``42``.
+        """
         if model_name not in ["decision_tree", "random_forest"]:
             msg = "Model name must be either decision_tree' or 'random_forest'."
             raise ValueError(msg)
@@ -57,27 +69,35 @@ class AdultCensus(TreeSHAPIQXAI):
 
 
 class BikeSharing(TreeSHAPIQXAI):
-    """The Bike Sharing dataset as a TreeSHAP-IQ explanation game.
-
-    Args:
-        x: The feature vector to be explained.
-        model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree' and 'random_forest'.
-        normalize: A boolean flag to normalize/center the game values. The default value is True.
-        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
-
-    """
+    """The Bike Sharing dataset as a TreeSHAP-IQ explanation game."""
 
     def __init__(
         self,
+        *,
         x: np.ndarray | int | None = None,
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
-        # TODO: add xgb to TreeSHAQ-IQ, yet
+        """Initializes the Bike Sharing TreeSHAP-IQ explanation game.
+
+        Args:
+            x: The feature vector to be explained. If ``None``, then the first data point is used.
+                If an integer, then the data point at the given index is used. If a numpy array,
+                then the data point is used as is. Defaults to ``None``.
+
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'`` and ``'random_forest'``.
+
+            normalize: A boolean flag to normalize/center the game values. The default value is
+                ``True``.
+
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                ``True``.
+
+            random_state: The random state to use for the imputer. Defaults to ``42``.
+        """
         if model_name not in ["decision_tree", "random_forest"]:
             msg = "Model name must be either decision_tree' or 'random_forest'."
             raise ValueError(msg)
@@ -102,27 +122,35 @@ class BikeSharing(TreeSHAPIQXAI):
 
 
 class CaliforniaHousing(TreeSHAPIQXAI):
-    """The California Housing dataset as a TreeSHAP-IQ explanation game.
-
-    Args:
-        x: The feature vector to be explained.
-        model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree' and 'random_forest'.
-        normalize: A boolean flag to normalize/center the game values. The default value is True.
-        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
-
-    """
+    """The California Housing dataset as a TreeSHAP-IQ explanation game."""
 
     def __init__(
         self,
+        *,
         x: np.ndarray | int | None = None,
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
-        # TODO: add xgb to TreeSHAQ-IQ, yet
+        """Initializes the California Housing TreeSHAP-IQ explanation game.
+
+        Args:
+            x: The feature vector to be explained. If ``None``, then the first data point is used.
+                If an integer, then the data point at the given index is used. If a numpy array,
+                then the data point is used as is. Defaults to ``None``.
+
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'`` and ``'random_forest'``.
+
+            normalize: A boolean flag to normalize/center the game values. The default value is
+                ``True``.
+
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                ``True``.
+
+            random_state: The random state to use for the imputer. Defaults to ``42``.
+        """
         if model_name not in ["decision_tree", "random_forest"]:
             msg = "Model name must be either decision_tree' or 'random_forest'."
             raise ValueError(msg)
@@ -147,8 +175,11 @@ class CaliforniaHousing(TreeSHAPIQXAI):
 
 
 class SynthData(TreeSHAPIQXAI):
+    """A synthetic dataset as a TreeSHAP-IQ explanation game."""
+
     def __init__(
         self,
+        *,
         x: int = 0,
         n_features: int = 30,
         classification: bool = True,
@@ -157,6 +188,27 @@ class SynthData(TreeSHAPIQXAI):
         verbose: bool = True,
         random_state: int | None = 42,
     ) -> None:
+        """Initializes the synthetic dataset TreeSHAP-IQ explanation game.
+
+        Args:
+            x: The index of the data point to be explained. Defaults to ``0``.
+
+            n_features: The number of features in the synthetic dataset. Defaults to ``30``.
+
+            classification: A flag to indicate if the dataset is a classification or regression
+                task. Defaults to ``True`` (classification).
+
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'`` and ``'random_forest'``.
+
+            normalize: A boolean flag to normalize/center the game values. The default value is
+                ``True``.
+
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                ``True``.
+
+            random_state: The random state to use for the imputer. Defaults to ``42``.
+        """
         from sklearn.datasets import make_classification, make_regression
         from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
         from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -189,19 +241,18 @@ class SynthData(TreeSHAPIQXAI):
                 model = DecisionTreeClassifier(random_state=random_state, max_depth=15)
             else:
                 model = DecisionTreeRegressor(random_state=random_state, max_depth=15)
+        elif classification:
+            model = RandomForestClassifier(
+                random_state=random_state,
+                n_estimators=10,
+                max_depth=15,
+            )
         else:
-            if classification:
-                model = RandomForestClassifier(
-                    random_state=random_state,
-                    n_estimators=10,
-                    max_depth=15,
-                )
-            else:
-                model = RandomForestRegressor(
-                    random_state=random_state,
-                    n_estimators=10,
-                    max_depth=15,
-                )
+            model = RandomForestRegressor(
+                random_state=random_state,
+                n_estimators=10,
+                max_depth=15,
+            )
         # fit the model
         model.fit(x_data, y_data)
 

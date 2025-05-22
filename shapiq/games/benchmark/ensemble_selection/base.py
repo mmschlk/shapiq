@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.stats import mode
@@ -13,7 +13,11 @@ from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq.games.base import Game
-from shapiq.utils.custom_types import Model
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.utils.custom_types import Model
 
 
 class EnsembleSelection(Game):
@@ -114,14 +118,12 @@ class EnsembleSelection(Game):
                         f"Invalid ensemble member provided. Got {member} but expected one of "
                         f"{self.available_members}."
                     )
-                    raise ValueError(
-                        msg,
-                    )
+                    raise ValueError(msg)
             self.player_names: list[str] = ensemble_members
             self.ensemble_members = self._init_ensemble_members()  # initialize the ensemble members
-            for member_id, member in self.ensemble_members.items():  # fit the ensemble members
+            for member in self.ensemble_members.values():  # fit the ensemble members
                 if verbose:
-                    print(f"Fitting ensemble member {member_id + 1} ({member})  ...")
+                    pass
                 member.fit(x_train, y_train)
         else:
             self.player_names: list[str] = [str(member) for member in ensemble_members]

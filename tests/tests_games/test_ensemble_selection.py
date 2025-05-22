@@ -26,7 +26,7 @@ ENSEMBLE_MEMBERS_VERY_FAST = ["regression", "decision_tree", "regression", "deci
 
 
 @pytest.mark.parametrize(
-    "task, loss_function",
+    ("task", "loss_function"),
     [
         ("regression", "r2_score"),
         ("regression", "mean_squared_error"),

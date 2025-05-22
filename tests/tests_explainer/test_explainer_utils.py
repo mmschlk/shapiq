@@ -25,7 +25,7 @@ def _utils_get_model(model, label, x_data):
 
 
 @pytest.mark.external_libraries
-@pytest.mark.parametrize("model_name, label", TABULAR_MODEL_FIXTURES)
+@pytest.mark.parametrize(("model_name", "label"), TABULAR_MODEL_FIXTURES)
 def test_tabular_get_predict_function_and_model_type(
     model_name,
     label,
@@ -49,7 +49,7 @@ def test_tabular_get_predict_function_and_model_type(
     reason="Tensorflow is not available.",
 )
 @pytest.mark.external_libraries
-@pytest.mark.parametrize("model_name, label", TABULAR_TENSORFLOW_MODEL_FIXTURES)
+@pytest.mark.parametrize(("model_name", "label"), TABULAR_TENSORFLOW_MODEL_FIXTURES)
 def test_tensorflow_get_predict_function_and_model_type(
     model_name,
     label,
@@ -63,7 +63,7 @@ def test_tensorflow_get_predict_function_and_model_type(
 
 
 @pytest.mark.external_libraries
-@pytest.mark.parametrize("model_name, label", TABULAR_TORCH_MODEL_FIXTURES)
+@pytest.mark.parametrize(("model_name", "label"), TABULAR_TORCH_MODEL_FIXTURES)
 def test_torch_get_predict_function_and_model_type(
     model_name,
     label,
@@ -77,7 +77,7 @@ def test_torch_get_predict_function_and_model_type(
 
 
 @pytest.mark.external_libraries
-@pytest.mark.parametrize("model_fixture, model_class", TREE_MODEL_FIXTURES)
+@pytest.mark.parametrize(("model_fixture", "model_class"), TREE_MODEL_FIXTURES)
 def test_tree_get_predict_function_and_model_type(
     model_fixture,
     model_class,
@@ -120,7 +120,7 @@ def test_class_index():
     def _model(x: np.ndarray):
         return np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
 
-    for i in range(0, 4):
+    for i in range(4):
         pred_fun, label = get_predict_function_and_model_type(_model, "custom_model", i)
         return_value = pred_fun(_model, np.array([[11, 22, 33, 44], [11, 22, 33, 44]]))
         assert return_value[0] == i + 1
@@ -140,14 +140,10 @@ def test_class_index_errors():
 
 
 def _valid_sig(param: inspect.Parameter):
-    return (
-        param.annotation == np.ndarray
-        or param.annotation == inspect._empty
-        or param.annotation == Any
-    )
+    return param.annotation in (np.ndarray, inspect._empty, Any)
 
 
-def callable_check():  # todo useful addition?
+def callable_check():  # TODO useful addition?
     # call with false signature
     model_with_false_call = ModelWithFalseCall()
     call_signature = inspect.signature(model_with_false_call)

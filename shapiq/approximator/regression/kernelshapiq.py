@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
 
 from ._base import Regression
+
+if TYPE_CHECKING:
+    import numpy as np
 
 AVAILABLE_INDICES_KERNELSHAPIQ = {"k-SII", "SII"}
 
@@ -125,9 +128,7 @@ class InconsistentKernelSHAPIQ(Regression):
                 f"Index {index} not available for KernelSHAP-IQ. Choose from "
                 f"{AVAILABLE_INDICES_KERNELSHAPIQ}."
             )
-            raise ValueError(
-                msg,
-            )
+            raise ValueError(msg)
         super().__init__(
             n,
             max_order,

@@ -47,14 +47,10 @@ if __name__ == "__main__":
     omit_regex = args.omit_regex
 
     # print the arguments --------------------------------------------------------------------------
-    print(f"indices_order: {indices_order}")
-    print(f"rerun_if_exists: {rerun_if_exists}")
-    print(f"n_jobs: {n_jobs}")
-    print(f"omit_regex: {omit_regex}")
 
     # get all configurations that are not omitted by the name --------------------------------------
     all_game_names = []
-    for game_name in GAME_NAME_TO_CLASS_MAPPING.keys():
+    for game_name in GAME_NAME_TO_CLASS_MAPPING:
         omit = False
         for omit_regex_str in omit_regex:
             if omit_regex_str in game_name:
@@ -71,10 +67,8 @@ if __name__ == "__main__":
             for n_player_id, config_per_player_id in enumerate(all_game_class_configs):
                 player_id_configs = config_per_player_id["configurations"]
                 n_players = config_per_player_id["n_players"]
-                for i, config in enumerate(player_id_configs):
+                for i, _config in enumerate(player_id_configs):
                     config_id = i + 1
-                    print()
-                    print(f"Pre-computing game: {game_name}, config {config} with ID {config_id}")
                     n_configs_tried += 1
                     try:
                         run_benchmark_from_configuration(
@@ -89,9 +83,6 @@ if __name__ == "__main__":
                             rerun_if_exists=rerun_if_exists,
                         )
                         n_runs_done += 1
-                        print(f"Ran {n_runs_done} out of {n_configs_tried} configurations.")
                     except Exception as e:
                         logging.exception(f"Error occurred: {e}. Continuing.")
                         continue
-
-    print(f"Ran {n_runs_done} out of {n_configs_tried} configurations.")

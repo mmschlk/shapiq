@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from shapiq.games.base import Game
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class DatasetValuation(Game):
