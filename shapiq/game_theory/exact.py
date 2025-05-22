@@ -1,12 +1,10 @@
-"""ExactComputer class for a plethora of game theoretic concepts
-like interaction indices or generalized values.
-"""
+"""ExactComputer class for a plethora of game theoretic concepts like interaction indices or generalized values."""
 
 from __future__ import annotations
 
 import copy
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.special import bernoulli, binom
@@ -815,15 +813,14 @@ class ExactComputer:
         raise ValueError(msg)
 
     def shapley_interaction(self, index: str, order: int) -> InteractionValues:
-        """Computes k-additive Shapley Interactions, i.e. probabilistic interaction indices that
-            depend on the order k.
+        """Computes k-additive Shapley Interactions, i.e. probabilistic interaction indices that depend on the order k.
 
         According to the underlying representation using discrete derivatives from
-        `Fujimoto et al. (2006) <https://doi.org/10.1016/j.geb.2005.03.002>`_, the following indices are supported:
-            - k-SII: k-Shapley Values `Bordt & von Luxburg (2023) <https://proceedings.mlr.press/v206/bordt23a.html>`_
-            - STII:  Shapley-Taylor Interaction Index `Sundararajan et al. (2020) <https://proceedings.mlr.press/v119/sundararajan20a.html>`_
-            - FSII: Faithful Shapley Interaction Index `Tsai et al. (2023) <https://jmlr.org/papers/v24/22-0202.html>`_
-            - kADD-SHAP: k-additive Shapley Values `Pelegrina et al. (2023) <https://doi.org/10.1016/j.artint.2023.104014>`_
+        `Fujimoto et al. (2006) [1]_, the following indices are supported:
+            - k-SII: k-Shapley Values `Bordt & von Luxburg (2023)` [2]_
+            - STII:  Shapley-Taylor Interaction Index `Sundararajan et al. (2020)` [3]_
+            - FSII: Faithful Shapley Interaction Index `Tsai et al. (2023)` [4]_
+            - kADD-SHAP: k-additive Shapley Values `Pelegrina et al. (2023)` [5]_
 
         Args:
             order: The highest order of interactions
@@ -834,6 +831,13 @@ class ExactComputer:
 
         Raises:
             ValueError: If the index is not supported
+
+        References:
+            .. [1] Fujimoto et al. (2006). https://doi.org/10.1016/j.geb.2005.03.002
+            .. [2] Bordt & von Luxburg (2023). https://proceedings.mlr.press/v206/bordt23a.html
+            .. [3] Sundararajan et al. (2020). https://proceedings.mlr.press/v119/sundararajan20a.html
+            .. [4] Tsai et al. (2023). https://jmlr.org/papers/v24/22-0202.html
+            .. [5] Pelegrina et al. (2023). https://doi.org/10.1016/j.artint.2023.104014
 
         """
         if index == "k-SII":
@@ -853,14 +857,13 @@ class ExactComputer:
         return copy.copy(shapley_interaction)
 
     def shapley_base_interaction(self, index: str, order: int) -> InteractionValues:
-        """Computes Shapley Base Interactions, i.e. probabilistic interaction indices that do not
-            depend on the order.
+        """Computes Shapley Base Interactions, i.e. probabilistic interaction indices not depending on the order.
 
         According to the underlying representation using discrete derivatives from
-        `Fujimoto et al. (2006) <https://doi.org/10.1016/j.geb.2005.03.002>`_, the following indices are supported:
-            - SII: Shapley Interaction Index `Grabisch & Roubens (1999) <https://link.springer.com/article/10.1007/s001820050125>`_
-            - BII: Banzhaf Interaction Index `Grabisch & Roubens (1999) <https://link.springer.com/article/10.1007/s001820050125>`_
-            - CHII: Chaining Interaction Index `Marichal & Roubens (1999) <https://link.springer.com/chapter/10.1007/978-94-017-0647-6_5>`_
+        `Fujimoto et al. (2006) [Fui06]_, the following indices are supported:
+            - SII: Shapley Interaction Index `Grabisch & Roubens (1999)` [Gra99]_
+            - BII: Banzhaf Interaction Index `Grabisch & Roubens (1999)` [Gra99]_
+            - CHII: Chaining Interaction Index `Marichal & Roubens (1999)` [Mar99]_
 
         Args:
             order: The highest order of interactions
@@ -868,6 +871,11 @@ class ExactComputer:
 
         Returns:
             An InteractionValues object containing interaction values
+
+        References:
+            .. [Fui06] Fujimoto et al. (2006). https://doi.org/10.1016/j.geb.2005.03.002
+            .. [Gra99] Grabisch & Roubens (1999). An axiomatic approach to the concept of interaction among players in cooperative games. Game Theory 28, 547–565. https://link.springer.com/article/10.1007/s001820050125
+            .. [Mar99] Marichal & Roubens (1999). https://link.springer.com/chapter/10.1007/978-94-017-0647-6_5
 
         """
         base_interaction = self.base_interaction(index, order)
@@ -881,8 +889,7 @@ class ExactComputer:
         *args,  # noqa: ARG002
         **kwargs,  # noqa: ARG002
     ) -> InteractionValues:
-        """Computes common semi-values or probabilistic values, i.e. shapley values without
-        efficiency axiom.
+        """Computes common semi-values or probabilistic values depending on the index.
 
         These semi-values are special forms of interaction indices and generalized values for
         ``order = 1``. According to the underlying representation using marginal contributions; cf.
@@ -895,7 +902,8 @@ class ExactComputer:
 
         Args:
             index: The interaction index
-            args and kwargs: Additional arguments and keyword arguments (not used)
+            *args: Additional positional arguments (not used)
+            **kwargs: Additional keyword arguments (not used)
 
         Returns:
             An InteractionValues object containing probabilistic values
@@ -920,9 +928,18 @@ class ExactComputer:
 
     def compute_egalitarian_least_core(
         self,
-        *args,  # noqa: ARG002
-        **kwargs,  # noqa: ARG002
-    ):
+        *args: list[Any],  # noqa: ARG002
+        **kwargs: dict[str, Any],  # noqa: ARG002
+    ) -> InteractionValues:
+        """Computes the egalitarian least core of the game.
+
+        Args:
+            *args: Additional positional arguments (not used).
+            **kwargs: Additional keyword arguments (not used).
+
+        Returns:
+            The egalitarian least core of the game.
+        """
         from shapiq.game_theory.core import egalitarian_least_core
 
         order = 1
@@ -942,17 +959,18 @@ class ExactComputer:
 
 
 def get_bernoulli_weights(order: int) -> np.ndarray:
-    """Returns the bernoulli weights in the k-additive approximation via SII, e.g. used in
-    kADD-SHAP.
+    """Returns the bernoulli weights in the k-additive approximation via SII.
+
+    For some indices like ``'kADD-SHAP'``, the weights must be scaled with the Bernoulli numbers.
 
     Args:
-        order: The highest order of interactions
+        order: The highest order of interactions.
 
     Returns:
-        An array containing the bernoulli weights
+        An array containing the bernoulli weights for the k-additive approximation.
 
     """
-    # TODO: We should import this in the kADD-SHAP approximator from here
+    # TODO(mmshlk): We should import this in the kADD-SHAP approximator from here
     bernoulli_numbers = bernoulli(order)
     weights = np.zeros((order + 1, order + 1))
     for interaction_size in range(1, order + 1):

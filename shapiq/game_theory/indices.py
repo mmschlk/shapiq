@@ -1,6 +1,4 @@
-"""Summary of all interaction indices and game theoretic concepts available
-in ``shapiq``.
-"""
+"""Summary of all interaction indices and game-theoretic concepts available in ``shapiq``."""
 
 from __future__ import annotations
 
@@ -264,8 +262,10 @@ def is_index_aggregated(index: str) -> bool:
 
 
 def is_empty_value_the_baseline(index: str) -> bool:
-    """Checks if the empty value stored in the interaction values is the baseline value. This is
-    only not the case for the Shapley Interaction Index and Banzhaf values.
+    """Check if empty prediction is the baseline.
+
+    Checks if the empty value stored in the interaction values is the baseline value. This is only
+    not the case for the Shapley Interaction Index and Banzhaf values.
 
     Args:
         index: The interaction index.

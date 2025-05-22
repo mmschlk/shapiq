@@ -1,5 +1,8 @@
-"""Note this should not be directly imported in the module as it depends on torch which is not
-installed by default.
+"""Setup for the CaliforniaHousing dataset's neural network model.
+
+Note:
+    Note this should not be directly imported in the module as it depends on ``torch`` which is not
+    installed by default.
 """
 
 from __future__ import annotations

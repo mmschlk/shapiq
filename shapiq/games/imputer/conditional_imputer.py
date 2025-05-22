@@ -176,7 +176,7 @@ class ConditionalImputer(Imputer):
             The empty prediction.
 
         """
-        # TODO: perhaps should be self.conditional_data instead of self.data
+        # TODO(mmshlk): perhaps should be self.conditional_data instead of self.data
         empty_predictions = self.predict(self.data)
         return float(np.mean(empty_predictions))
 

@@ -101,9 +101,9 @@ src = ["tests", "shapiq", "docs"]
 
 
 [tool.ruff.lint]
-extend-safe-fixes = ["ALL"]  # Dangerous on large codebases
+# extend-safe-fixes = ["ALL"]  # Dangerous on large codebases
 select = [
-    #"ALL",  # all checks
+     # "ALL",  # all checks
 #    "A",  # flake8-builtins: checks for shadowing builtins and related to builtins
 #    "W",  # pycodestyle: checks for code style guidelines
 #    "E",  # pycodestyle: checks for code style guidelines
@@ -131,13 +131,13 @@ select = [
 #    "FIX",  # flake8-fixme: checks for TODOs and FIXMEs
 #    "FA",  # require from __future__ import annotations import when using type hints
 #    #"ANN",  # TODO: add this or include mypy
-#     "D",  # TODO: include this in the near future
+   # "D",  # TODO: include this in the near future
 ]
 ignore = [
     "E501",  # Line too long
     "N803",  # Variable X in function should be lowercase
     "N806",  # Variable X in function should be lowercase
-    "S301",  # exclude pickle restriction, atm. games are unpickled this will need to be fixed
+    "S301",  # exclude pickle restriction, atm. games are unpickled this will need to be fixed # TODO: must be fixed in the future
     "COM812",  # this is redundant with the formatter which anyways does this (must be excluded) in the future # TODO: add remove pickle calls and remove this exclusion
     "FIX002",  # we use TODOs atm to track potential code improvements  # TODO: add this in the future
     "PLR0913",  # Too many arguments are passed to function
@@ -145,7 +145,6 @@ ignore = [
     "PLR0912",  # Too many branches in function
     "PLR2004",  # Magic values in comparison ... this gets flaged with all checks for two-way interactions
     "C901",  # Too complex functions
-    # "D107",  # Missing docstring in __init__: We document the class in the class docstring
 ]
 exclude = [
     ".bzr",
@@ -181,6 +180,7 @@ exclude = [
 # Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
+    "ALL",
     "S101", # we need asserts in tests
     "D",    # test docstrings don't matter too much
     "E501", # line too long
@@ -190,7 +190,6 @@ exclude = [
     "N",  # type hints are excludes in tests
     "PTH",  # we can use os for now
     "S",  # in tests we can use some security issues for now
-    "ALL"
 ]
 "*.ipynb" = [
     "E402",  # Module level import not at top of file (its .ipynb)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from shapiq.games.base import Game
@@ -17,26 +19,14 @@ class SentimentAnalysis(Game):
     sentiment) and 1 (strong positive sentiment).
 
     Note:
-        This benchmark game requires the `transformers` package to be installed. You can install it
-        via pip:
-        ```bash
-        pip install transformers
-        ```
-
-    Args:
-        input_text: The input text to be classified.
-        normalize: Whether to normalize the game. Defaults to True.
-        mask_strategy: The strategy to handle the tokens not in the coalition. Either 'remove' or
-            'mask'. Defaults to 'mask'. With 'remove', the tokens not in the coalition are removed
-            from the text. With 'mask', the tokens not in the coalition are replaced by the
-            mask_token_id.
+        This benchmark game requires the ``transformers`` package to be installed.
 
     Attributes:
-        n_players: The number of players in the game.
         original_input_text: The original input text (as given in the constructor).
         input_text: The input text after tokenization took place (may differ from the original).
         original_model_output: The sentiment of the original input text in the range [-1, 1].
         normalization_value: The score used for normalization.
+        mask_strategy: The strategy to use for the tokens not in the coalition.
 
     Properties:
         normalize: Whether the game is normalized.
@@ -53,16 +43,25 @@ class SentimentAnalysis(Game):
         0.6615
         >>> game(np.asarray([1, 1, 1, 1, 1, 1], dtype=bool))
         0.6615
-
     """
 
     def __init__(
         self,
         input_text: str,
+        *,
         mask_strategy: str = "mask",
         verbose: bool = False,
-        **kwargs,
+        **kwargs: dict[str, Any],
     ) -> None:
+        """Initialize the Sentiment Classification Game.
+
+        Args:
+            input_text: The input text to analyze as a string.
+            mask_strategy: The strategy to use for the tokens not in the coalition. Can be either
+                ``"remove"`` or ``"mask"``. Defaults to ``"mask"``.
+            verbose: Whether to print additional information. Defaults to ``False``.
+            **kwargs: Additional keyword arguments (not used).
+        """
         # import the required modules locally (to avoid having to install them for all)
         from transformers import pipeline
 

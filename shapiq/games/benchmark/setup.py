@@ -29,34 +29,17 @@ AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 class GameBenchmarkSetup:
     """Class to load and prepare models and datasets for the benchmark games.
 
-    Note:
-        Depending on the models, this game requires the `scikit-learn` or `torch` packages to be
-        installed.
+    This class is used to load and prepare the models and datasets for the benchmark games. It can
+    be used with a variaty of datasets and models and is typically used to set up inside subclasses
+    the benchmark games. The class loads the dataset and the model, splits the dataset into a
+    training and test set, and prepares the model for training. The class also provides a number of
+    attributes to access the dataset and model information (e.g. number of features, feature
+    names, model name, etc.).
 
-    Args:
-        dataset_name: The dataset to load the models for. Available datasets are 'adult_census',
-            'bike_sharing', and 'california_housing'.
-        model_name: If specified, the name of the model to load. Defaults to `None`, which means that
-            no model will be loaded. Available models for the datasets are the following:
-            - 'adult_census': 'decision_tree', 'random_forest', 'gradient_boosting'
-            - 'bike_sharing': 'decision_tree', 'random_forest', 'gradient_boosting'
-            - 'california_housing': 'decision_tree', 'random_forest', 'gradient_boosting',
-                'neural_network'
-        loss_function: If specified, the loss function to use for the game (as a string). Defaults to
-            `None`, which means 'r2_score' for regression and 'accuracy_score' for classification.
-            Available loss functions are:
-            - 'mean_squared_error'
-            - 'mean_absolute_error'
-            - 'log_loss'
-            - 'r2_score'
-            - 'accuracy_score'
-            - 'roc_auc_score'
-            - 'f1_score'
-        verbose: Whether to print the predicted class and score. Defaults to True.
-        test_size: The size of the validation set. Defaults to 0.2.
-        random_state: The random state to use for all random operations. Defaults to 42.
-        random_forest_n_estimators: The number of estimators to use for the random forest model if
-            the model is a random forest. Defaults to 10.
+
+    Note:
+        Depending on the models, this game requires the ``scikit-learn`` or ``torch`` packages to be
+        installed.
 
     Attributes:
         dataset_name: The name of the dataset.
@@ -93,7 +76,6 @@ class GameBenchmarkSetup:
         >>> setup.n_features
         14
         >>> setup.fit_function # returns a callable
-
     """
 
     def __init__(
@@ -106,6 +88,42 @@ class GameBenchmarkSetup:
         random_state: int | None = 42,
         random_forest_n_estimators: int = 10,
     ) -> None:
+        """Initializes the GameBenchmarkSetup class.
+
+        Args:
+            dataset_name: The dataset to load the models for. Available datasets are
+                ``'adult_census'``,``'bike_sharing'``, and ``'california_housing'``.
+
+            model_name: If specified, the name of the model to load. Defaults to ``None``, which
+                means that no model will be loaded. Available models for the datasets are the
+                following:
+                - ``'adult_census'``: '``decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'bike_sharing'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'california_housing'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``, ``'neural_network'``
+
+            loss_function: If specified, the loss function to use for the game (as a string).
+                Defaults to ``None``, which means ``'r2_score'`` for regression and
+                ``'accuracy_score'`` for classification. Available loss functions are:
+                - ``'mean_squared_error'``
+                - ``'mean_absolute_error'``
+                - ``'log_loss'``
+                - ``'r2_score'``
+                - ``'accuracy_score'``
+                - ``'roc_auc_score'``
+                - ``'f1_score'``
+
+            verbose: Whether to print the predicted class and score. Defaults to True.
+
+            test_size: The size of the validation set. Defaults to 0.2.
+
+            random_state: The random state to use for all random operations. Defaults to ``42``.
+
+            random_forest_n_estimators: The number of estimators to use for the random forest model
+                if the model is a random forest. Defaults to ``10``.
+        """
         self.random_state = random_state
 
         # load the dataset

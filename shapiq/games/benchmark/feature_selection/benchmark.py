@@ -7,15 +7,7 @@ from shapiq.games.benchmark.setup import GameBenchmarkSetup
 
 
 class AdultCensus(FeatureSelection):
-    """The Adult Census dataset as a Feature Selection benchmark game.
-
-    model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-        are 'decision_tree', 'random_forest', and 'gradient_boosting'.
-    normalize: A flag to normalize the game values. If `True`, then the game values are
-        normalized and centered to be zero for the empty set of features. Defaults to `True`.
-    verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
-    random_state: The random state to use for the imputer. Defaults to 42.
-    """
+    """The Adult Census dataset as a Feature Selection benchmark game."""
 
     def __init__(
         self,
@@ -24,6 +16,21 @@ class AdultCensus(FeatureSelection):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
+        """Initialize the Adult Census Feature Selection benchmark game.
+
+        Args:
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                ``True``.
+
+            random_state: The random state to use for the imputer. Defaults to ``42``.
+        """
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
@@ -44,17 +51,7 @@ class AdultCensus(FeatureSelection):
 
 
 class BikeSharing(FeatureSelection):
-    """The Bike Sharing dataset as a Feature Selection benchmark game.
-
-    Args:
-        model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`.
-        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
-
-    """
+    """The Bike Sharing dataset as a Feature Selection benchmark game."""
 
     def __init__(
         self,
@@ -63,6 +60,21 @@ class BikeSharing(FeatureSelection):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
+        """Initialize the Bike Sharing Feature Selection benchmark game.
+
+        Args:
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                ``True``.
+
+            random_state: The random state to use for the imputer. Defaults to ``42``.
+        """
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
@@ -83,17 +95,7 @@ class BikeSharing(FeatureSelection):
 
 
 class CaliforniaHousing(FeatureSelection):
-    """The California Housing dataset as a Feature Selection benchmark game.
-
-    Args:
-        model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`.
-        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
-
-    """
+    """The California Housing dataset as a Feature Selection benchmark game."""
 
     def __init__(
         self,
@@ -102,6 +104,21 @@ class CaliforniaHousing(FeatureSelection):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
+        """Initialize the California Housing Feature Selection benchmark game.
+
+        Args:
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                ``True``.
+
+            random_state: The random state to use for the imputer. Defaults to ``42``.
+        """
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,

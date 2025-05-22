@@ -132,8 +132,7 @@ class ViTModel:
 
     @staticmethod
     def _transform_coalition_into_bool_mask(coalition: np.ndarray, n_patches: int) -> torch.Tensor:
-        """Transforms a coalition of players (i.e. super-patches) into a boolean mask for the Vision
-        Transformer model.
+        """Transforms a coalition of players (i.e. super-patches) into a boolean mask.
 
         The Vision Transformer model uses a 1D boolean mask to mask out patches that are not part of
         for the prediction. The underlying model operates on 12x12 (i.e. 144) patches. To reduce the

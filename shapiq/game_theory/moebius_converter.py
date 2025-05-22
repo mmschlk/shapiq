@@ -1,6 +1,4 @@
-"""MoebiusConverter class for computing exact Shapley Interactions
-using the (sparse) Möbius representation..
-"""
+"""MoebiusConverter class for computing exact Shapley Interactions from Möbius coefficients."""
 
 from __future__ import annotations
 
@@ -18,12 +16,15 @@ if TYPE_CHECKING:
 
 
 class MoebiusConverter:
-    """Computes exact Shapley Interactions using the (sparse) Möbius representation.
-    This is much faster than exact computation, if Möbius representation is sparse.
+    """Computes a variety of game-theoretic concepts exactly from Möbius coefficients.
 
-    Args:
-        moebius_coefficients: An InteractionValues objects containing the (sparse) Möbius
-            coefficients.
+    The MöbiusConverter class is used to compute various game-theoretic concepts like Shapley
+    values, Shapley interactions, Banzhaf interactions, and many more from a collection of Möbius
+    coefficients (also called Möbius Interactions, MI) of a game. The MoebiusConverter is built
+    with the idea that some games
+
+    Computes exact Shapley Interactions using the (sparse) Möbius representation.
+    This is much faster than exact computation, if Möbius representation is sparse.
 
     Attributes:
         n: The number of players.
@@ -33,6 +34,12 @@ class MoebiusConverter:
     """
 
     def __init__(self, moebius_coefficients: InteractionValues) -> None:
+        """Initialize the MoebiusConverter.
+
+        Args:
+            moebius_coefficients: An InteractionValues object containing the (potentially sparse)
+                Möbius coefficients.
+        """
         self.moebius_coefficients: InteractionValues = moebius_coefficients
         self.n = self.moebius_coefficients.n_players
         self._computed: dict[tuple[str, int], InteractionValues] = {}  # will store all computations
@@ -335,13 +342,12 @@ def _get_moebius_distribution_weight(
     order: int,
     index: str,
 ) -> float:
-    """Return the distribution weights for the Möbius coefficients onto the lower-order interaction
-    indices.
+    """Return the distribution weights for the Möbius coefficients onto the lower-order interaction indices.
 
     Args:
-        moebius_size: The size of the Möbius coefficient
-        interaction_size: The size of the interaction
-        order: The order of the explanation
+        moebius_size: The size of the Möbius coefficient.
+        interaction_size: The size of the interaction.
+        order: The order of the explanation.
         index: The interaction index, e.g. SII, k-SII, FSII.
 
     Returns:

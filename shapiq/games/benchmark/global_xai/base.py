@@ -20,26 +20,8 @@ class GlobalExplanation(Game):
     worth of coalitions of features towards the model's performance. The players are individual
     features, and the worth of a coalition is the performance of the model on a random subset of the
     data where missing features are removed by setting the feature values to a random value from the
-    background data. For more details, we highly recommend reading the
-    [SAGE paper](https://arxiv.org/abs/2004.00668) by Covert et al. (2020) or the
-    [blog post](https://iancovert.com/blog/understanding-shap-sage/).
-
-    Args:
-        data: The background data used to fit the imputer. Should be a 2d matrix of shape
-            (n_samples, n_features).
-        model: The model to explain as a callable function expecting data points as input and
-            returning the model's predictions. The input should be a 2d matrix of shape
-            (n_samples, n_features) and the output a 1d matrix of shape (n_samples).
-        loss_function: The loss function to use for the game as a callable function that takes the
-            true values and the predictions as input and returns the loss.
-        n_samples_eval: The number of background samples to use for each evaluation of the value
-            function. The higher the slower. The number of model evaluations is `n_samples_eval *
-            n_coalitions`. Defaults to 10.
-        n_samples_empty: The number of samples to use for the empty subset of features. Defaults to
-            200.
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
+    background data. For more details, we highly recommend reading the SAGE paper [1]_ or the
+    related blog post [2]_.
 
     Attributes:
         empty_loss: The model's prediction on an empty data point (all features missing).
@@ -51,6 +33,9 @@ class GlobalExplanation(Game):
         n_samples_eval: The number of background samples to use for each evaluation of the value
             function.
 
+    References:
+        .. [1] Covert, I., Lundberg, S., Lee, S.-L. (2020). Understanding Global Feature Contributions With Additive Importance Measures. https://arxiv.org/abs/2004.00668
+        .. [2] https://iancovert.com/blog/understanding-shap-sage/
     """
 
     def __init__(
@@ -65,6 +50,34 @@ class GlobalExplanation(Game):
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
+        """Initialize the GlobalExplanation game.
+
+        Args:
+            data: The background data used to fit the imputer. Should be a 2d matrix of shape
+                ``(n_samples, n_features)``.
+
+            model: The model to explain as a callable function expecting data points as input and
+                returning the model's predictions. The input should be a 2d matrix of shape
+                ``(n_samples, n_features)`` and the output a 1d vector of shape ``(n_samples,)``.
+
+            loss_function: The loss function to use for the game as a callable function that takes the
+                true values and the predictions as input and returns the loss.
+
+            n_samples_eval: The number of background samples to use for each evaluation of the value
+                function. The number of model evaluations is ``n_samples_eval * n_coalitions``.
+                Defaults to ``10``.
+
+            n_samples_empty: The number of samples to use for the empty subset of features. Defaults
+                to ``200``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print information of the game. Defaults to ``False``.
+
+            random_state: The random state to use for the imputer. Defaults to ``42``.
+        """
         self._random_state = random_state
         self._rng = np.random.default_rng(self._random_state)
         self.n_samples_eval = n_samples_eval  # how many samples to evaluate for each coalition
@@ -97,8 +110,11 @@ class GlobalExplanation(Game):
         )
 
     def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray:
-        """Evaluates the model on a random subset of the data where missing features are removed
-            by setting the feature values to a random value from the background data.
+        """Return the worth of the coalitions for the global explanation game.
+
+        The worth of a coalition in the global explanation game is the performance of the model as
+        measured by the loss function on a random subset of the data where the features not part of
+        the coalition are replaced by shuffled values from the background data.
 
         Args:
             coalitions: The coalitions as a one-hot matrix for which the game is to be evaluated.

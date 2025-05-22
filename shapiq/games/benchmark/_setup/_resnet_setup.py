@@ -107,8 +107,9 @@ class ResNetModel:
             self._superpixel_masks[i, :, :] = torch.tensor(mask, dtype=torch.bool)
 
     def __call__(self, coalitions: np.ndarray) -> np.ndarray[float]:
-        """Returns the class probability of the coalition of superpixels. Superpixels not in the
-        coalition are masked with a gray background.
+        """Returns the class probability of the coalition of superpixels.
+
+        Superpixels not in the coalition are masked with a gray background.
 
         Args:
             coalitions: A 2d matrix of coalition of players (i.e. super-patches) in shape
@@ -163,8 +164,10 @@ class ResNetModel:
 
     @staticmethod
     def get_superpixels(image: np.ndarray, n_segments: int = 14) -> tuple[int, np.ndarray]:
-        """Returns the number of superpixels and the superpixel mask by running SLIC and retrying
-        with randomized values if the number of superpixels does not match the desired number.
+        """Run SLIC and return the number of superpixels and the superpixel mask.
+
+        Runs SLIC and retrying with randomized values if the number of superpixels does not match
+        the desired number.
 
         Args:
             image: The image.

@@ -49,9 +49,8 @@ class DummyGame(Game):
         super().__init__(n, normalize=False)
         self.access_counter = 0
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray[float]:
-        """Returns the size of the coalition divided by the number of players plus the interaction
-        term.
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+        """Return the size of the coalition divided by the number of players plus the interaction term.
 
         Args:
             coalitions: The coalition as a binary vector of shape (coalition_size, n).

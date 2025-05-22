@@ -6,7 +6,7 @@ import os
 import pickle
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -18,23 +18,9 @@ if TYPE_CHECKING:
 
 
 class Game:
-    """Base class for games/benchmarks in the ``shapiq`` package.
+    """Base class for games/benchmarks/imputers in the ``shapiq`` package.
 
     This class implements some common methods and attributes that all games should have.
-
-    Args:
-        n_players: The number of players in the game.
-        normalize: Whether the game values should be normalized. Defaults to ``True``.
-        normalization_value: The value to normalize and center the game values with such that the
-            value for the empty coalition is zero. Defaults to ``None``.  If ``normalization`` is set
-            to ``False`` this value is not required. Otherwise, the value is needed to normalize and
-            center the game. If no value is provided, the game raises a warning.
-        path_to_values: The path to load the game values from. If the path is provided, the game
-            values are loaded from the given path. Defaults to ``None``.
-        verbose: Whether to show a progress bar for the evaluation. Defaults to ``False``. Note
-            that this only has an effect if the game is not precomputed and may slow down the
-            evaluation.
-        args, kwargs: Additional arguments are not used.
 
     Properties:
         n_values_stored: The number of values stored in the game.
@@ -56,7 +42,8 @@ class Game:
 
     Note:
         This class is a base class and all games should inherit from this class and implement the
-        `value_function` methods. Only use this class directly for dealing with precomputed games.
+            `value_function` methods. Usually, this Game class is only directly used when dealing
+            with precomputed / stored games.
 
     Examples:
         >>> from shapiq.games import Game
@@ -95,14 +82,43 @@ class Game:
     def __init__(
         self,
         n_players: int | None = None,
+        *,
         normalize: bool = True,
         normalization_value: float | None = None,
         path_to_values: Path | str | None = None,
         verbose: bool = False,
         player_names: list[str] | None = None,
-        *args,  # noqa: ARG002
-        **kwargs,  # noqa: ARG002
+        **kwargs: dict[str, Any],  # noqa: ARG002
     ) -> None:
+        """Initialize the Game class.
+
+        Args:
+            n_players: The number of players in the game.
+
+            normalize: Whether the game values should be normalized / centered. Defaults to
+                ``True``. If ``True``, the game values are normalized such that the value for the
+                empty coalition is zero. If ``False``, the game values are not normalized and the
+                value for the empty coalition is not guaranteed to be zero. This is useful for
+                algorithms that require the game values to be centered.
+
+            normalization_value: The value to normalize and center the game values with such that the
+                value for the empty coalition is zero. Defaults to ``None``.  If ``normalization`` is set
+                to ``False`` this value is not required. Otherwise, the value is needed to normalize and
+                center the game. If no value is provided, the game raises a warning.
+
+            path_to_values: The path to load the game values from. If the path is provided, the game
+                values are loaded from the given path. Defaults to ``None``.
+
+            verbose: Whether to show a progress bar for the evaluation. Defaults to ``False``. Note
+                that this only has an effect if the game is not precomputed and may slow down the
+                evaluation.
+
+            player_names: An optional list of player names. If provided, the coalitions can be
+                provided as strings instead of integers.
+
+            kwargs: Additional keyword arguments (not used).
+
+        """
         # manual flag for choosing precomputed values even if not all values might be stored
         self.precompute_flag: bool = False  # flag to manually override the precomputed check
 
@@ -273,18 +289,23 @@ class Game:
         ),
         verbose: bool = False,
     ) -> np.ndarray:
-        """Calls the game's value function with the given coalitions and returns the output of the
-        value function.
+        """Calls the game with the given coalitions.
+
+        Calls the game's value function with the given coalitions and returns the output of the
+        value function. The call also checks if the coalitions are in the correct format and
+        converts if necessary. If the game is precomputed, the values are looked up in internal
+        storage without calling the value function.
 
         Args:
-            coalitions: The coalitions to evaluate.
+            coalitions: The coalitions to evaluate as a one-hot matrix or a list of tuples.
+
             verbose: Whether to show a progress bar for the evaluation. Defaults to ``False``.
 
         Returns:
             The values of the coalitions.
 
         """
-        coalitions = self._check_coalitions(coalitions)  # validate and convert input coalitions
+        coalitions = self._check_coalitions(coalitions)
         verbose = verbose or self.verbose
         if not self.precomputed and not verbose:
             values = self.value_function(coalitions)
@@ -296,7 +317,7 @@ class Game:
                 coalition = coalition.reshape((1, self.n_players))
                 values[i] = self.value_function(coalition)[0]
         else:
-            values = self._lookup_coalitions(coalitions)  # lookup the values present in the storage
+            values = self._lookup_coalitions(coalitions)
         return values - self.normalization_value
 
     def _lookup_coalitions(self, coalitions: np.ndarray) -> np.ndarray:
@@ -316,8 +337,11 @@ class Game:
         return values
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """The value function of the game, which models the behavior of the game. The value function
-        is the core of the game and should be implemented in the inheriting class.
+        """Returns the value of the coalitions.
+
+        The value function of the game, which models the behavior of the game. The value function
+        is the core of the game and should be implemented in the inheriting class. A value function
+        should return the worth of a coalition of players.
 
         Args:
             coalitions: The coalitions to evaluate.
