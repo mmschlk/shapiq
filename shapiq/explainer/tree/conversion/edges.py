@@ -1,6 +1,4 @@
-"""Conversion functions to parse a tree model into the edge representation used by the
-TreeSHAP-IQ algorithm to compute the interaction values of a tree-based model.
-"""
+"""Conversion functions to parse a :class:`~shapiq.explainer.tree.base.TreeModel` into the :class:`~shapiq.explainer.tree.base.EdgeTree` format."""
 
 from __future__ import annotations
 

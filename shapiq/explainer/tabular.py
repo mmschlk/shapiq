@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING, Literal
 from warnings import warn
 
 import numpy as np
@@ -25,6 +26,12 @@ from shapiq.approximator import (
 from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
+
+    from shapiq.games.imputer.base import Imputer
+
 
 APPROXIMATOR_CONFIGURATIONS = {
     "regression": {
@@ -66,8 +73,6 @@ APPROXIMATOR_CONFIGURATIONS = {
     },
 }
 
-AVAILABLE_INDICES = {"SII", "k-SII", "STII", "FSII", "FBII", "SV"}
-
 
 class TabularExplainer(Explainer):
     """The tabular explainer as the main interface for the shapiq package.
@@ -75,47 +80,6 @@ class TabularExplainer(Explainer):
     The ``TabularExplainer`` class is the main interface for the ``shapiq`` package and tabular
     data. It can be used to explain the predictions of any model by estimating the Shapley
     interaction values.
-
-    Args:
-        model: The model to be explained as a callable function expecting data points as input and
-            returning 1-dimensional predictions.
-
-        data: A background dataset to be used for imputation.
-
-        class_index: The class index of the model to explain. Defaults to ``None``, which will set
-            the class index to ``1`` per default for classification models and is ignored for
-            regression models.
-
-        imputer: Either an object of class Imputer or a string from ``["marginal", "conditional"]``.
-            Defaults to ``"marginal"``, which innitializes the default MarginalImputer.
-
-        approximator: An approximator object to use for the explainer. Defaults to ``"auto"``
-            which will automatically choose the approximator based on the number of features and
-            the desired index.
-                - for index ``"SV"``: :class:`~shapiq.approximator.KernelSHAP`
-                - for index ``"SII"`` or ``"k-SII"``: :class:`~shapiq.approximator.KernelSHAPIQ`
-                - for index ``"FSII"``: :class:`~shapiq.approximator.RegressionFSII`
-                - for index ``"FBII"``: :class:`~shapiq.approximator.RegressionFBII`
-                - for index ``"STII"``: :class:`~shapiq.approximator.SVARMIQ`
-
-        index: The index to explain the model with. Defaults to ``"k-SII"`` which computes the
-            k-Shapley Interaction Index. If ``max_order`` is set to 1, this corresponds to the
-            Shapley value (``index="SV"``). Options are:
-                - ``"SV"``: Shapley value
-                - ``"k-SII"``: k-Shapley Interaction Index
-                - ``"FSII"``: Faithful Shapley Interaction Index
-                - ``"FBII"``: Fast Faithful Banzhaf Interaction Index
-                - ``"STII"``: Shapley Taylor Interaction Index
-                - ``"SII"``: Shapley Interaction Index (not recommended for XAI since the values do
-                    not sum up to the prediction)
-
-        max_order: The maximum interaction order to be computed. Defaults to ``2``. Set to ``1`` for
-            no interactions (single feature importance).
-
-        random_state: The random state to initialize Imputer and Approximator with. Defaults to
-            ``None``.
-
-        **kwargs: Additional keyword-only arguments passed to the imputer.
 
     Attributes:
         index: Type of Shapley interaction index to use.
@@ -128,27 +92,76 @@ class TabularExplainer(Explainer):
 
     def __init__(
         self,
-        model,
+        model: Model,
         data: np.ndarray,
+        *,
         class_index: int | None = None,
-        imputer="marginal",
-        approximator: str | Approximator = "auto",
-        index: str = "k-SII",
+        imputer: Imputer | Literal["marginal", "baseline", "conditional"] = "marginal",
+        approximator: Approximator
+        | Literal["auto", "spex", "montecarlo", "svarm", "permutation", "regression"] = "auto",
+        index: Literal["SII", "k-SII", "STII", "FSII", "FBII", "SV"] = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
         verbose: bool = False,
         **kwargs,
     ) -> None:
+        """Initializes the TabularExplainer.
+
+        Args:
+            model: The model to be explained as a callable function expecting data points as input
+                and returning 1-dimensional predictions.
+
+            data: A background dataset to be used for imputation.
+
+            class_index: The class index of the model to explain. Defaults to ``None``, which will
+                set the class index to ``1`` per default for classification models and is ignored
+                for regression models.
+
+            imputer: Either an :class:`~shapiq.games.imputer.Imputer` as implemented in the
+                :mod:`~shapiq.games.imputer` module, or a literal string from
+                ``["marginal", "baseline", "conditional"]``. Defaults to ``"marginal"``, which
+                initializes the default
+                :class:`~shapiq.games.imputer.marginal_imputer.MarginalImputer` with its default
+                parameters or as provided in ``kwargs``.
+
+            approximator: An :class:`~shapiq.approximator.Approximator` object to use for the
+                explainer or a literal string from
+                ``["auto", "spex", "montecarlo", "svarm", "permutation"]``. Defaults to ``"auto"``
+                which will automatically choose the approximator based on the number of features and
+                the desired index.
+                    - for index ``"SV"``: :class:`~shapiq.approximator.KernelSHAP`
+                    - for index ``"SII"`` or ``"k-SII"``: :class:`~shapiq.approximator.KernelSHAPIQ`
+                    - for index ``"FSII"``: :class:`~shapiq.approximator.RegressionFSII`
+                    - for index ``"FBII"``: :class:`~shapiq.approximator.RegressionFBII`
+                    - for index ``"STII"``: :class:`~shapiq.approximator.SVARMIQ`
+
+            index: The index to explain the model with. Defaults to ``"k-SII"`` which computes the
+                k-Shapley Interaction Index. If ``max_order`` is set to 1, this corresponds to the
+                Shapley value (``index="SV"``). Options are:
+                    - ``"SV"``: Shapley value
+                    - ``"k-SII"``: k-Shapley Interaction Index
+                    - ``"FSII"``: Faithful Shapley Interaction Index
+                    - ``"FBII"``: Faithful Banzhaf Interaction Index (becomes ``BV`` for order 1)
+                    - ``"STII"``: Shapley Taylor Interaction Index
+                    - ``"SII"``: Shapley Interaction Index
+
+            max_order: The maximum interaction order to be computed. Defaults to ``2``. Set to
+                ``1`` for no interactions (single feature importance).
+
+            random_state: The random state to initialize Imputer and Approximator with. Defaults to
+                ``None``.
+
+            verbose: Whether to show a progress bar during the computation. Defaults to ``False``.
+
+            **kwargs: Additional keyword-only arguments passed to the imputers implemented in
+                :mod:`~shapiq.games.imputer`.
+        """
         from shapiq.games.imputer import (
             BaselineImputer,
             ConditionalImputer,
             MarginalImputer,
             TabPFNImputer,
         )
-
-        if index not in AVAILABLE_INDICES:
-            msg = f"Invalid index `{index}`. Valid indices are {AVAILABLE_INDICES}."
-            raise ValueError(msg)
 
         super().__init__(model, data, class_index)
 

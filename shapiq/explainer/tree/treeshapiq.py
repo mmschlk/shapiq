@@ -23,44 +23,63 @@ if TYPE_CHECKING:
 
 
 class TreeSHAPIQ:
-    """The explainer for tree-based models using the TreeSHAP-IQ algorithm. For a detailed presentation
-    of the algorithm, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
+    """The TreeSHAP-IQ computation class.
+
+    This class implements the TreeSHAP-IQ algorithm for computing Shapley Interaction values for
+    tree-based models. It is used internally by the
+    :class:`~shapiq.explainer.tree.explainer.TreeExplainer`. The TreeSHAP-IQ algorithm is presented
+    in `Muschalik et al. (2024)` [Mus24]_.
 
     TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.
-    It is based on the Linear TreeSHAP algorithm by `Yu et al. (2022) <https://doi.org/10.48550/arXiv.2209.08192>`_,
-    but extended to compute Shapley Interaction values up to a given order. TreeSHAP-IQ needs to
-    visit each node only once and makes use of polynomial arithmetic to compute the Shapley
-    Interaction values efficiently.
-
-    Args:
-        model: A single tree model to explain. Note that unlike the ``TreeExplainer`` class,
-            TreeSHAP-IQ only supports a single tree. It can be a dictionary representation of the tree,
-            a ``TreeModel`` object, or any other single tree model supported by the
-            ``shapiq.explainer.tree.validation.validate_tree_model`` function.
-        max_order: The maximum interaction order to be computed. An interaction order of ``1``
-            corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
-            interaction values up to that order. Defaults to ``2``.
-        min_order: The minimum interaction order to be computed. Defaults to ``1``.
-        index: The type of interaction to be computed. It can be one of
-            ``["k-SII", "SII", "STII", "FSII", "BII"]``. All indices apart from ``"BII"`` will
-            reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
-        verbose: Whether to print information about the tree during initialization. Defaults to
-            False.
+    It is based on the Linear TreeSHAP algorithm by `Yu et al. (2022)` [Yu22]_, but extended to
+    compute Shapley Interaction values up to a given order. TreeSHAP-IQ needs to visit each node
+    only once and makes use of polynomial arithmetic to compute the Shapley Interaction values
+    efficiently.
 
     Note:
         This class is not intended to be used directly. Instead, use the ``TreeExplainer`` class to
         explain tree-based models which internally uses then the TreeSHAP-IQ algorithm.
+
+    References:
+        .. [Yu22] Peng Yu, Chao Xu, Albert Bifet, Jesse Read Linear Tree Shap (2022). In: Proceedings of 36th Conference on Neural Information Processing Systems. https://openreview.net/forum?id=OzbkiUo24g
+        .. [Mus24] Maximilian Muschalik, Fabian Fumagalli, Barbara Hammer, & Eyke Hüllermeier (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. In: Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
 
     """
 
     def __init__(
         self,
         model: dict | TreeModel | Model,
+        *,
         max_order: int = 2,
         min_order: int = 1,
         index: str = "k-SII",
         verbose: bool = False,
     ) -> None:
+        """Initializes the TreeSHAP-IQ explainer.
+
+        Args:
+            model: A single tree model to explain. Note that unlike the
+                :class:`~shapiq.explainer.tree.explainer.TreeExplainer` class, TreeSHAP-IQ only
+                supports a single tree. It can be a dictionary representation of the tree, a
+                :class:`~shapiq.explainer.tree.base.TreeModel` object, or any other single tree
+                model supported by the :meth:`~shapiq.explainer.tree.validation.validate_tree_model`
+                function.
+
+            max_order: The maximum interaction order to be computed. An interaction order of ``1``
+                corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
+                interaction values up to that order. Defaults to ``2``.
+
+            min_order: The minimum interaction order to be computed. Defaults to ``1``. Note that
+                setting min_order currently does not have any effect on the computation.
+
+            index: The type of interaction to be computed. It can be one of
+                ``['k-SII', 'SII', 'STII', 'FSII', 'BII']``. All indices apart from ``'BII'`` will
+                reduce to the ``'SV'`` (Shapley value) for order 1. Defaults to ``'k-SII'``.
+
+            verbose: Whether to print information about the tree during initialization. Defaults to
+                ``False``.
+
+        """
         # set parameters
         self._root_node_id = 0
         self.verbose = verbose
@@ -77,7 +96,7 @@ class TreeSHAPIQ:
 
         # validate and parse model
         validated_model = validate_tree_model(model)  # the parsed and validated model
-        # TODO: add support for other sample weights
+        # TODO(mmshlk): add support for other sample weights https://github.com/mmschlk/shapiq/issues/99
         self._tree: TreeModel = copy.deepcopy(validated_model)
         self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
@@ -138,7 +157,7 @@ class TreeSHAPIQ:
                 raise
 
         # stores the nodes that are active in the tree for a given instance (new for each instance)
-        self._activations: np.ndarray[bool] = np.zeros(self._n_nodes, dtype=bool)
+        self._activations: np.ndarray = np.zeros(self._n_nodes, dtype=bool)
 
         # print tree information
         if self.verbose:
@@ -146,6 +165,8 @@ class TreeSHAPIQ:
 
     def explain(self, x: np.ndarray) -> InteractionValues:
         """Computes the Shapley Interaction values for a given instance ``x`` and interaction order.
+
+        Note:
             This function is the main explanation function of this class.
 
         Args:
@@ -222,20 +243,31 @@ class TreeSHAPIQ:
         quotient_poly_down: np.ndarray[float] = None,
         depth: int = 0,
     ) -> None:
-        """Computes the Shapley Interaction values for a given instance x and interaction
-        order. This function is called recursively for each node in the tree.
+        """Computes the Shapley Interaction values for a given instance x and interaction order.
+
+        Note:
+            This function is called recursively for each node in the tree.
 
         Args:
             x: The instance to be explained.
+
             order: The interaction order for which the Shapley Interaction values should be
                 computed. Defaults to ``1``.
+
             node_id: The node ID of the current node in the tree. Defaults to ``0``.
-            summary_poly_down: The summary polynomial for the current node. Defaults to ``None`` (init).
-            summary_poly_up: The summary polynomial propagated up the tree. Defaults to ``None`` (init).
+
+            summary_poly_down: The summary polynomial for the current node. Defaults to ``None``
+                (at init time).
+
+            summary_poly_up: The summary polynomial propagated up the tree. Defaults to ``None``
+                (at init time).
+
             interaction_poly_down: The interaction polynomial for the current node. Defaults to
-                ``None`` (init).
+                ``None`` (at init time).
+
             quotient_poly_down: The quotient polynomial for the current node. Defaults to ``None``
-                (init).
+                (at init time).
+
             depth: The depth of the current node in the tree. Defaults to ``0``.
 
         """
@@ -444,8 +476,10 @@ class TreeSHAPIQ:
         return ((E * D_power / quotient_poly)[:, :d]).dot(n) / d
 
     def _init_summary_polynomials(self) -> None:
-        """Initializes summary polynomial variables. This function is called once during the
-        initialization of the explainer.
+        """Initializes the summary polynomial variables.
+
+        Note:
+            This function is called once during the initialization of the explainer.
         """
         for order in range(1, self._max_order + 1):
             subset_ancestors: dict[int, np.ndarray] = self._precalculate_interaction_ancestors(
@@ -467,24 +501,31 @@ class TreeSHAPIQ:
     def _get_polynomials(
         self,
         order: int,
-        summary_poly_down: np.ndarray[float] = None,
-        summary_poly_up: np.ndarray[float] = None,
-        interaction_poly_down: np.ndarray[float] = None,
-        quotient_poly_down: np.ndarray[float] = None,
+        summary_poly_down: np.ndarray[float] | None = None,
+        summary_poly_up: np.ndarray[float] | None = None,
+        interaction_poly_down: np.ndarray[float] | None = None,
+        quotient_poly_down: np.ndarray[float] | None = None,
     ) -> tuple[np.ndarray[float], np.ndarray[float], np.ndarray[float], np.ndarray[float]]:
-        """Retrieves the polynomials for a given interaction order. It initializes the polynomials
-            for the first call of the recursive explanation function.
+        """Retrieves the polynomials for a given interaction order.
+
+        This function initializes the polynomials for the first call of the recursive explanation
+        function.
 
         Args:
             order: The interaction order for which the polynomials should be loaded.
+
             summary_poly_down: The summary polynomial for the current node. Defaults to ``None``.
+
             summary_poly_up: The summary polynomial propagated up the tree. Defaults to ``None``.
-            interaction_poly_down: The interaction polynomial for the current node. Defaults to ``None``.
+
+            interaction_poly_down: The interaction polynomial for the current node. Defaults to
+                ``None``.
+
             quotient_poly_down: The quotient polynomial for the current node. Defaults to ``None``.
 
         Returns:
-            tuple: The summary polynomial down, the summary polynomial up, the interaction polynomial
-                down, and the quotient polynomial down.
+            The summary polynomial down, the summary polynomial up, the interaction polynomial down,
+                and the quotient polynomial down.
 
         """
         if summary_poly_down is None:
@@ -513,8 +554,9 @@ class TreeSHAPIQ:
         return summary_poly_down, summary_poly_up, interaction_poly_down, quotient_poly_down
 
     def _prepare_variables_for_order(self, interaction_order: int) -> None:
-        """Retrieves the precomputed variables for a given interaction order. This function is
-            called before the recursive explanation function is called.
+        """Retrieves the precomputed variables for a given interaction order.
+
+        This function is called before the recursive explanation function is called.
 
         Args:
             interaction_order (int): The interaction order for which the storage variables should be
@@ -570,7 +612,7 @@ class TreeSHAPIQ:
         # stores interactions that include feature i (needs to be updated when feature i appears)
         interaction_updates: dict[int, list[tuple]] = {}
         # stores position of interactions that include feature i
-        interaction_update_positions: dict[int, np.ndarray[int]] = {}
+        interaction_update_positions: dict[int, np.ndarray] = {}
 
         # prepare the interaction updates and positions
         for feature_i in range(n_features):
@@ -598,10 +640,12 @@ class TreeSHAPIQ:
 
     def _precalculate_interaction_ancestors(
         self,
-        interaction_order,
-        n_features,
+        interaction_order: int,
+        n_features: int,
     ) -> dict[int, np.ndarray]:
-        """Calculates the position of the ancestors of the interactions for the tree for a given
+        """Computes the ancestors of the interactions for a given order of interactions.
+
+        Calculates the position of the ancestors of the interactions for the tree for a given
         order of interactions.
 
         Args:
@@ -615,14 +659,12 @@ class TreeSHAPIQ:
         """
         # stores position of interactions
         counter_interaction = 0
-        subset_ancestors: dict[int, np.ndarray[int]] = {}
+        subset_ancestors: dict[int, np.ndarray] = {}
 
         for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
             subset_ancestors[node_id] = np.full(
-                int(sp.special.binom(n_features, interaction_order)),
-                -1,
-                dtype=int,
-            )
+                int(sp.special.binom(n_features, interaction_order)), -1, dtype=int
+            )  # noqa E501
         for S in powerset(range(n_features), interaction_order, interaction_order):
             for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
                 subset_ancestor = -1

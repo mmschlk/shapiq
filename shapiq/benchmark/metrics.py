@@ -38,8 +38,7 @@ def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
 
 
 def compute_diff_metrics(ground_truth: InteractionValues, estimated: InteractionValues) -> dict:
-    """Computes metrics via the difference between the ground truth and estimated interaction
-    values.
+    """Compute metrics via the difference between the ground truth and estimated interaction values.
 
     Computes the following metrics:
         - Mean Squared Error (MSE)

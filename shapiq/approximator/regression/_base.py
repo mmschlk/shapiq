@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.special import bernoulli, binom
@@ -109,8 +109,8 @@ class Regression(Approximator):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        *args,  # noqa: ARG002
-        **kwargs,  # noqa: ARG002
+        *args: list[Any] | None,  # noqa: ARG002
+        **kwargs: dict[str, Any] | None,  # noqa: ARG002
     ) -> InteractionValues:
         """The main approximation routine for the regression approximators.
 
@@ -124,8 +124,12 @@ class Regression(Approximator):
 
         Args:
             budget: The budget of the approximation.
+
             game: The game to be approximated.
-            *args and **kwargs: Additional arguments not used.
+
+            *args: Additional positional arguments (not used for compatibility).
+
+            **kwargs: Additional arguments (not used for compatibility).
 
         Returns:
             The `InteractionValues` object containing the estimated interaction values.
@@ -178,7 +182,7 @@ class Regression(Approximator):
         self,
         kernel_weights_dict: dict,
         game_values: np.ndarray,
-    ) -> np.ndarray[float]:
+    ) -> np.ndarray:
         """The main regression routine for the KernelSHAP-IQ approximator.
 
         This method solves for each interaction_size up to self.max_order separate regression
@@ -329,7 +333,9 @@ class Regression(Approximator):
         return shapley_interactions_values
 
     def _get_regression_coefficient_weights(self, max_order: int, index: str) -> np.ndarray:
-        """Pre-computes the regression coefficient weights based on the index and the max_order.
+        """Get the regression coefficient weights.
+
+        Pre-computes the regression coefficient weights based on the index and the max_order.
         Bernoulli weights for SII and kADD-SHAP. Binary weights for FSI.
 
         Args:
@@ -418,11 +424,14 @@ class Regression(Approximator):
         return weight
 
     def _kadd_weights(self, intersection_size: int, interaction_size: int) -> float:
-        """Computes the weights of SII in the k-additive approximation.
-        Similar to _bernoulli_weights but sum ranges from zero.
+        """Get the k-additive weights.
 
-        The weights are based on the size of the interaction and
-        the size of the intersection of the interaction and the coalition.
+        Computes the weights of SII in the k-additive approximation. The weights are based on the
+        size of the interaction and the size of the intersection of the interaction and the
+        coalition.
+
+        Note:
+            Similar to ``_bernoulli_weights`` but sum ranges from zero.
 
         Args:
             intersection_size: The size of the intersection
@@ -446,6 +455,7 @@ class Regression(Approximator):
         Args:
             coalitions: A binary coalition matrix for which the ground truth weights should be
                 computed
+            interaction_size: The size of the interaction
 
         Returns:
             An array of weights with weights per coalition and per interaction
@@ -498,8 +508,10 @@ class Regression(Approximator):
         interaction_size: int,
         intersection_size: int,
     ) -> float:
-        """Returns the ground truth SII weight for a given coalition size, interaction size and
-            its intersection size.
+        """Get the SII weights.
+
+        Returns the ground truth SII weight for a given coalition size, interaction size and its
+        intersection size.
 
         Args:
             coalition_size: The size of the coalition.
@@ -568,8 +580,10 @@ def _get_regression_matrices(
 
 
 def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: np.ndarray) -> np.ndarray:
-    """Solves the regression problem using the weighted least squares method. Returns all
-    approximated interactions.
+    """Solves the Shapley regression problem.
+
+    Solves the regression problem using the weighted least squares method. Returns all approximated
+    interactions.
 
     Args:
         X: The regression matrix of shape ``[n_coalitions, n_interactions]``.

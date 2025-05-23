@@ -22,8 +22,9 @@ def _create_folder() -> None:
 
 
 def _try_load(csv_file_name: str) -> pd.DataFrame:
-    """Try to load a dataset from the local folder. If it does not exist, load it from GitHub and
-    save it to the local folder.
+    """Try to load a dataset from the local folder.
+
+    If it does not exist, load it from GitHub and save it to the local folder.
 
     Args:
         csv_file_name: The name of the csv file to load.

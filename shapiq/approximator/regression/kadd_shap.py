@@ -16,16 +16,6 @@ class kADDSHAP(Regression):
     Estimates the kADD-SHAP values using the kADD-SHAP regression algorithm. The Algorithm is
     described in Pelegrina et al. (2023)[1]_ and is related to Inconsistent KernelSHAP-IQ[2]_.
 
-    Args:
-        n: The number of players.
-        max_order: The interaction order of the approximation. Defaults to ``2``.
-        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
-            to ``False``.
-        sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to ``None``.
-        random_state: The random state of the estimator. Defaults to ``None``.
-
     See Also:
         - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
             approximator for estimating the Shapley values.
@@ -46,10 +36,28 @@ class kADDSHAP(Regression):
         self,
         n: int,
         max_order: int = 2,
+        *,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
     ) -> None:
+        """Initialize the kADD-SHAP approximator.
+
+        Args:
+            n: The number of players.
+
+            max_order: The interaction order of the approximation. Defaults to ``2``.
+
+            pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure.
+                Defaults to ``False``.
+
+            sampling_weights: An optional array of weights for the sampling procedure. The weights
+                must be of shape ``(n + 1,)`` and are used to determine the probability of sampling
+                a coalition of a certain size. Defaults to ``None``.
+
+            random_state: The random state of the estimator. Defaults to ``None``.
+
+        """
         super().__init__(
             n,
             max_order,

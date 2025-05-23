@@ -1,4 +1,6 @@
-"""This module contains all utility functions to load benchmark games from the configurations or
+"""Utility functions to load benchmark games.
+
+This module contains all utility functions to load benchmark games from the configurations or
 from the precomputed data (GitHub repository).
 """
 

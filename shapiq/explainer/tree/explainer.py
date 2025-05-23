@@ -1,12 +1,15 @@
-"""TreeExplainer class that uses the TreeSHAPIQ algorithm for
-computing any-order Shapley Interactions for tree ensembles.
+"""Implementation of the TreeExplainer class.
+
+The :class:`~shapiq.explainer.tree.explainer.TreeSHAPIQ` uses the
+:class:`~shapiq.explainer.tree.treeshapiq.TreeSHAPIQ` algorithm for computing any-order Interactions
+for tree ensembles.
 """
 
 from __future__ import annotations
 
 import copy
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from shapiq.explainer._base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
@@ -23,39 +26,60 @@ if TYPE_CHECKING:
 
 
 class TreeExplainer(Explainer):
-    """The explainer for tree-based models using the TreeSHAP-IQ algorithm.
-    For details, refer to `Muschalik et al. (2024) <https://doi.org/10.48550/arXiv.2401.12069>`_.
+    """The TreeExplainer class for tree-based models.
+
+    The explainer for tree-based models using the
+    :class:`~shapiq.explainer.tree.treeshapiq.TreeSHAPIQ` algorithm. For details, refer to
+    `Muschalik et al. (2024)` [Mus24]_.
 
     TreeSHAP-IQ is an algorithm for computing Shapley Interaction values for tree-based models.
-    It is based on the Linear TreeSHAP algorithm by `Yu et al. (2022) <https://doi.org/10.48550/arXiv.2209.08192>`_,
-    but extended to compute Shapley Interaction values up to a given order. TreeSHAP-IQ needs to
-    visit each node only once and makes use of polynomial arithmetic to compute the Shapley
-    Interaction values efficiently.
+    It is based on the Linear TreeSHAP algorithm by `Yu et al. (2022)` [Yu22]_, but extended to
+    compute Shapley Interaction values up to a given order. TreeSHAP-IQ needs to visit each node
+    only once and makes use of polynomial arithmetic to compute the Shapley Interaction values
+    efficiently.
 
-    Args:
-        model: A tree-based model to explain.
-        max_order: The maximum interaction order to be computed. An interaction order of ``1``
-            corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
-            interaction values up to that order. Defaults to ``2``.
-        min_order: The minimum interaction order to be computed. Defaults to ``1``.
-        index: The type of interaction to be computed. It can be one of
-            ``["k-SII", "SII", "STII", "FSII", "BII", "SV"]``. All indices apart from ``"BII"`` will
-            reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
-        class_index: The class index of the model to explain. Defaults to ``None``, which will set
-            the class index to ``1`` per default for classification models and is ignored for
-            regression models.
+    The TreeExplainer can be used with a variety of tree-based models, including
+    ``scikit-learn``, ``XGBoost``, and ``LightGBM``. The explainer can handle both regression and
+    classification models.
+
+    References:
+        .. [Yu22] Peng Yu, Chao Xu, Albert Bifet, Jesse Read Linear Tree Shap (2022). In: Proceedings of 36th Conference on Neural Information Processing Systems. https://openreview.net/forum?id=OzbkiUo24g
+        .. [Mus24] Maximilian Muschalik, Fabian Fumagalli, Barbara Hammer, & Eyke Hüllermeier (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. In: Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
 
     """
 
     def __init__(
         self,
-        model: dict | TreeModel | list | Model,
+        model: dict | TreeModel | list[TreeModel] | Model,
+        *,
         max_order: int = 2,
         min_order: int = 0,
         index: str = "k-SII",
         class_index: int | None = None,
-        **kwargs,  # noqa: ARG002
+        **kwargs: dict[str, Any] | None,  # noqa: ARG002
     ) -> None:
+        """Initializes the TreeExplainer.
+
+        Args:
+            model: A tree-based model to explain.
+
+            max_order: The maximum interaction order to be computed. An interaction order of ``1``
+                corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
+                interaction values up to that order. Defaults to ``2``.
+
+            min_order: The minimum interaction order to be computed. Defaults to ``1``.
+
+            index: The type of interaction to be computed. It can be one of
+                ``["k-SII", "SII", "STII", "FSII", "BII", "SV"]``. All indices apart from ``"BII"``
+                will reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
+
+            class_index: The class index of the model to explain. Defaults to ``None``, which will
+                set the class index to ``1`` per default for classification models and is ignored
+                for regression models.
+
+            **kwargs: Additional keyword arguments are ignored.
+
+        """
         super().__init__(model)
 
         if index == "SV" and max_order > 1:
@@ -69,7 +93,7 @@ class TreeExplainer(Explainer):
         # validate and parse model
         validated_model = validate_tree_model(model, class_label=class_index)
         self._trees: list[TreeModel] = copy.deepcopy(validated_model)
-        # TODO trees are made instance of list here, but in validation they are also but then converted back into single element if list is length 1
+        # TODO(mmshlk) trees are made instance of list here, but in validation they are also but then converted back into single element if list is length 1
         if not isinstance(self._trees, list):
             self._trees = [self._trees]
         self._n_trees = len(self._trees)

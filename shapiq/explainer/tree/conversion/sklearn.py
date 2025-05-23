@@ -1,6 +1,4 @@
-"""Functions for converting scikit-learn decision trees to the format used by
-shapiq.
-"""
+"""Functions for converting scikit-learn decision trees to the format used by shapiq."""
 
 from __future__ import annotations
 
@@ -97,7 +95,6 @@ def average_path_length(isolation_forest: Model) -> float:
     from sklearn.ensemble._iforest import _average_path_length
 
     max_samples = isolation_forest._max_samples
-    # NOTE: _average_path_length func is equivalent to equation 1 in Isolation Forest paper Lui2008
     return _average_path_length([max_samples])
 
 

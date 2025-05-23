@@ -218,6 +218,28 @@ def test_against_shap_linear():
     assert np.allclose(shap_values, shapiq_values, atol=1e-5)
 
 
+def test_explain_X_progressbar():
+    """Tests if the progress bar is shown when verbose is set to True."""
+
+    n_samples = 3
+    dim = 5
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(n_samples, dim))
+
+    def model(X: np.ndarray):
+        return np.dot(X, np.ones(dim))
+
+    explainer = TabularExplainer(
+        model=model,
+        data=X,
+        random_state=42,
+        index="SV",
+        max_order=1,
+    )
+    _ = explainer.explain_X(X, budget=2**dim, verbose=True)
+    _ = explainer.explain_X(X, budget=2**dim, verbose=False)
+
+
 @pytest.mark.parametrize("approximator", APPROXIMATOR)
 def test_explain_sv(dt_reg_model, background_reg_data, approximator):
     """Tests if init and compute works for SV for different estimators."""

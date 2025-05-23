@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 from ._base import Regression
 
 if TYPE_CHECKING:
+    from typing import Any
+
     import numpy as np
 
 
@@ -17,18 +19,9 @@ class KernelSHAP(Regression):
     the Shapley values by solving a weighted regression problem, where the Shapley values are the
     coefficients of the regression problem.
 
-    Args:
-        n: The number of players.
-        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
-            to ``False``.
-        sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to ``None``.
-        random_state: The random state of the estimator. Defaults to ``None``.
-
     Example:
         >>> from shapiq.games.benchmark import DummyGame
-        >>> from approximator import KernelSHAP
+        >>> from shapiq.approximator import KernelSHAP
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = KernelSHAP(n=5)
         >>> approximator.approximate(budget=100, game=game)
@@ -58,11 +51,28 @@ class KernelSHAP(Regression):
     def __init__(
         self,
         n: int,
+        *,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-        **kwargs,  # noqa: ARG002
+        **kwargs: dict[str, Any] | None,  # noqa: ARG002
     ) -> None:
+        """Initialize the KernelSHAP approximator.
+
+        Args:
+            n: The number of players.
+
+            pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure.
+                Defaults to ``False``.
+
+            sampling_weights: An optional array of weights for the sampling procedure. The weights
+                must be of shape ``(n + 1,)`` and are used to determine the probability of sampling
+                a coalition of a certain size. Defaults to ``None``.
+
+            random_state: The random state of the estimator. Defaults to ``None``.
+
+            **kwargs: Additional keyword arguments (not used only for compatibility).
+        """
         super().__init__(
             n,
             max_order=1,

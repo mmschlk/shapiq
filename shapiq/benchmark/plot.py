@@ -83,12 +83,17 @@ def create_application_name(setup: str, abbrev: bool = False) -> str:
 
 
 def abbreviate_application_name(application_name: str, new_line: bool = False) -> str:
-    """Abbreviate the application name by taking the first three characters after each capital
+    """Abbreviate the application name.
+
+    Abbreviate the application name by taking the first three characters after each capital
     letter and adding a dot. The last character is not abbreviated.
 
     Args:
         application_name: The application name to abbreviate.
-        new_line: Whether to add a new line after each abbreviation. Defaults to `False`.
+        new_line: Whether to add a new line after each abbreviation. Defaults to ``False``.
+
+    Returns:
+        The abbreviated application name.
 
     Example:
         >>> abbreviate_application_name("LocalExplanation")

@@ -12,6 +12,8 @@ from tqdm.auto import tqdm
 from shapiq.explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from shapiq.interaction_values import InteractionValues
 
 
@@ -127,21 +129,40 @@ class Explainer:
     def explain_X(
         self,
         X: np.ndarray,
-        n_jobs=None,
-        random_state=None,
-        **kwargs,
+        *,
+        n_jobs: int | None = None,
+        random_state: int | None = None,
+        verbose: bool = False,
+        **kwargs: dict[str, Any],
     ) -> list[InteractionValues]:
-        """Explain multiple predictions in terms of interaction values.
+        """Explain multiple predictions at once.
+
+        This method is a wrapper around the ``explain`` method. It allows to explain multiple
+        predictions at once. It is a convenience method that uses the ``joblib`` library to
+        parallelize the computation of the interaction values.
 
         Args:
-            X: A 2-dimensional matrix of inputs to be explained.
-            n_jobs: Number of jobs for ``joblib.Parallel``.
-            random_state: The random state to re-initialize Imputer and Approximator with. Defaults to ``None``.
+            X: A 2-dimensional matrix of inputs to be explained with shape (n_samples, n_features).
+
+            n_jobs: Number of jobs for ``joblib.Parallel``. Defaults to ``None``, which will
+                use no parallelization. If set to ``-1``, all available cores will be used.
+
+            random_state: The random state to re-initialize Imputer and Approximator with. Defaults
+                to ``None``.
+
+            verbose: Whether to print a progress bar. Defaults to ``False``.
+
+            **kwargs: Additional keyword-only arguments passed to the explainer's
+                ``explain_function`` method.
+
+        Returns:
+            A list of interaction values for each prediction in the input matrix ``X``.
 
         """
         if len(X.shape) != 2:
             msg = "The `X` must be a 2-dimensional matrix."
             raise TypeError(msg)
+
         if random_state is not None:
             if hasattr(self, "_imputer"):
                 self._imputer._rng = np.random.default_rng(random_state)
@@ -149,7 +170,8 @@ class Explainer:
                 self._approximator._rng = np.random.default_rng(random_state)
                 if hasattr(self._approximator, "_sampler"):
                     self._approximator._sampler._rng = np.random.default_rng(random_state)
-        if n_jobs:
+
+        if n_jobs:  # parallelization with joblib
             import joblib
 
             parallel = joblib.Parallel(n_jobs=n_jobs)
@@ -158,15 +180,20 @@ class Explainer:
             )
         else:
             ivs = []
-            for i in tqdm(range(X.shape[0])):
+            pbar = tqdm(total=X.shape[0], desc="Explaining") if verbose else None
+            for i in range(X.shape[0]):
                 ivs.append(self.explain(X[i, :], **kwargs))
+                if pbar is not None:
+                    pbar.update(1)
         return ivs
 
     def predict(self, x: np.ndarray) -> np.ndarray:
-        """Provides a unified prediction interface.
+        """Provides a unified prediction interface for the explainer.
 
         Args:
             x: An instance/point/sample/observation to be explained.
 
+        Returns:
+            The model's prediction for the given data point as a vector.
         """
         return self._shapiq_predict_function(self.model, x)

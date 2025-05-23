@@ -82,6 +82,10 @@ class TreeModel:
         )
 
     def __post_init__(self) -> None:
+        """Clean-up after the initialization of the TreeModel dataclass.
+
+        The method sets up the tree model with the information provided in the constructor.
+        """
         # setup leaf mask
         if self.leaf_mask is None:
             self.leaf_mask = np.asarray(self.children_left == -1)
@@ -208,6 +212,7 @@ class EdgeTree:
     has_ancestors: np.ndarray[bool] | None = None
 
     def __post_init__(self) -> None:
+        """Clean-up after the initialization of the EdgeTree dataclass."""
         # setup has ancestors
         if self.has_ancestors is None:
             self.has_ancestors = self.ancestors > -1

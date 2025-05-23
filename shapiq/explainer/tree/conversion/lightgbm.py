@@ -1,10 +1,8 @@
-"""Functions for converting lightgbm decision trees to the format used by
-shapiq.
-"""
+"""Functions for converting lightgbm decision trees to the format used by shapiq."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from shapiq.explainer.tree.base import TreeModel
 
@@ -34,7 +32,6 @@ def convert_lightgbm_booster(
     # https://stackoverflow.com/q/63490533
     # https://stackoverflow.com/q/41433209
     convert_feature_str_to_int = {k: v for v, k in enumerate(tree_booster.feature_name())}
-    output_type = "raw"
     if tree_booster.params["objective"] == "multiclass":
         # choose only trees for the selected class (lightgbm grows n_estimators*n_class trees)
         n_class = tree_booster.num_model_per_iteration()
@@ -48,21 +45,22 @@ def convert_lightgbm_booster(
     )
 
     return [
-        _convert_lightgbm_tree_as_df(tree_df=tree_df, output_type=output_type, scaling=scaling)
+        _convert_lightgbm_tree_as_df(tree_df=tree_df, output_type="raw", scaling=scaling)
         for _, tree_df in booster_df.groupby("tree_index")
     ]
 
 
 def _convert_lightgbm_tree_as_df(
     tree_df: Model,
-    output_type: str,
+    output_type: Literal["raw", "probability"] = "raw",
     scaling: float = 1.0,
 ) -> TreeModel:
     """Convert a lightgbm decision tree to the format used by shapiq.
 
     Args:
         tree_df: The lightgbm decision tree model formatted as a data frame.
-        output_type: Either ``"raw"`` or ``"probability"``. Currently unused.
+        output_type: The type of output to be used. Can be one of ``["raw", "probability"]``.
+            Defaults to ``"raw"``.
         scaling: The scaling factor for the tree values.
 
     Returns:

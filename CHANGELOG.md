@@ -7,12 +7,15 @@
 - changes `budget` to be a mandatory parameter given to the `TabularExplainer.explain()` method [#355](https://github.com/mmschlk/shapiq/pull/356)
 - changes logic of `InteractionValues.get_n_order()` function to be callable with **either** the `order: int` parameter and optional assignment of `min_order: int` and `max_order: int` parameters **or** with the min/max order parameters
 - renamed `min_percentage` parameter in the force plot to `contribution_threshold` to better reflect its purpose
+- adds ``verbose`` parameter to the ``Explainer``'s ``explain_X()`` method to control weather a progress bar is shown or not which is defaulted to ``False``.
 
 #### Performance Improvements
 - made `InteractionValues.get_n_order()` and `InteractionValues.get_n_order_values()` function more efficient by iterating over the stored interactions and not over the powerset of all potential interactions, which made the function not usable for higher player counts (models with many features, and results obtained from `TreeExplainer`). Note, this change does not really help `get_n_order_values()` as it still needs to create a numpy array of shape `n_players` times `order`
 
 #### Testing and Code-Quality Improvements
 - improved the testing environment by adding a new fixture module containing mock `InteractionValues` objects to be used in the tests. This allows for more efficient and cleaner tests, as well as easier debugging of the tests
+- removed check and error message if the ``index`` parameter is not in the list of available indices in the ``TabularExplainer`` since the type hints were replaced by Literals
+- removed multiple instances where ``shapiq`` tests if some approximators/explainers can be instantiated with certain indices or not in favor of using Literals in the ``__init__`` method of the approximator classes. This allows for better type hinting and IDE support, as well as cleaner code.
 
 #### Bug Fixes
 - fixed a bug in the `shapiq.waterfall_plot` function that caused the plot to not display correctly resulting in cutoff y_ticks. Additionally, the file was renamed from `watefall.py` to `waterfall.py` to match the function name

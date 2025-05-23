@@ -88,7 +88,9 @@ def pre_compute_from_configuration(
     n_player_id: int = 0,
     n_jobs: int = 1,
 ) -> list[str]:
-    """Pre-compute the game data for the given game class and configuration if it is not already
+    """Pre-compute the game data for the given game class and configuration.
+
+    Pre-compute the game data for the given game class and configuration if it is not already
     pre-computed.
 
     This function will pre-compute the game data for the given game class and configuration. The

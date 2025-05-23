@@ -1,6 +1,4 @@
-"""Aggregation functions for summarizing base interaction indices into
-efficient indices useful for explanations.
-"""
+"""Aggregation functions for summarizing base interaction indices into efficient indices useful for explanations."""
 
 from __future__ import annotations
 

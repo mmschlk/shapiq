@@ -286,8 +286,10 @@ def load_benchmark_results(
     game_n_player_id: int | None = None,
     game_n_games: int | None = None,
 ) -> tuple[pd.DataFrame, Path]:
-    """Loads the benchmark results from a JSON file which either specified by the save path or
-    the benchmark configuration.
+    """Load the benchmark results from a JSON file.
+
+    Loads the benchmark results from a JSON file which either specified by the save path or the
+    benchmark configuration.
 
     Args:
         save_path: The path to the JSON file to load the results from. Defaults to None.

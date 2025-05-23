@@ -16,18 +16,40 @@ from .indices import ALL_AVAILABLE_CONCEPTS
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from .. import Game
 
 __all__ = ["ExactComputer", "get_bernoulli_weights"]
 
 
 class ExactComputer:
-    """Computes exact Shapley Interactions for specified game by evaluating the powerset of all
-    :math:`2^n` coalitions.
+    """Computes a variety of game-theoretic values exactly.
 
-    The ExactComputer class computes a variety of game theoretic concepts like interaction indices
-    or generalized values. Currently, the following indices and values are supported:
+    The ExactComputer class computes exact values for cooperative games with a small number of
+    players. Most game-theoretic concepts like the Shapley value, Banzhaf value, or the various
+    interaction indices require the evaluation of the game on all possible :math:`2^n` coalitions.
+    This is feasible for small games (e.g. 5-14 players).
+
+    Currently, the following game-theoretic concepts are supported:
         - The Moebius Transform (Moebius)
-        - Shapley Interaction Index (SII)
+        - The Co-Moebius Transform (Co-Moebius)
+        - The Shapley Value (SV) [Sha53]_
+        - The Banzhaf Value (BV) [Ban64]_
+        - Shapley Interaction Index (SII) [Gra99]_
+        - Banzhaf Interaction Index (BII) [Gra99]_
+        - Chaining Interaction Index (CHII) [Mar99]_
+        - k-Shapley Interaction Index (k-SII) [Bor23]_
+        - Shapley Taylor Interaction Index (STII) [Sun20]_
+        - Faithful Shapley Interaction Index (FSII) [Tsa23]_
+        - Faithful Banzhaf Interaction Index (FBII) [Tsa23]_
+        - k-additive Shapley Interaction Index (kADD-SHAP) [Pel23]_
+        - Shapley Generalized Value (SGV) [Mar00]_
+        - Banzhaf Generalized Value (BGV) [Mar00]_
+        - Chaining Generalized Value (CHGV) [Mar07]_
+        - Internal Generalized Value (IGV) [Mar07]_
+        - External Generalized Value (EGV) [Mar07]_
+        - Joint Shapley Value (JointSV) [Har22]_
+        - Egalitarian Least Core (ELC) [Yan21]_
+
 
     Args:
         n_players: The number of players in the game.
@@ -37,19 +59,51 @@ class ExactComputer:
 
     Attributes:
         n: The number of players.
-        game_fun: The callable game
-        baseline_value: The baseline value, i.e. the emptyset prediction
-        game_values: A numpy array containing the game evaluations of all subsets
-        coalition_lookup: A dictionary containing the index of every coalition in ``game_values``
+        game_fun: The callable game function.
+
+
+    Properties:
+        baseline_value: The baseline value of the game (empty coalition).
+        coalition_lookup: A dictionary mapping coalitions to their indices in the game values.
+        game_values: The game values for all coalitions.
+
+    References:
+        .. [Sha53] Lloyd S. Shapley (1953). A Value for n-Person Games. Princeton University Press, pp. 307-318. https://doi.org/10.1515/9781400881970-018
+        .. [Ban64] John F. Banzhaf III (1964). Weighted voting doesn't work: A mathematical analysis. Rutgers L. Rev., 19, 317.
+        .. [Dub81] Pradeep Dubey, Abraham Neyman, Robert James Weber (1981) Value Theory Without Efficiency. In: Mathematics of Operations Research 6(1):122-128. Value Theory Without Efficiency. Mathematics of Operations Research 6(1):122-128. https://doi.org/10.1287/moor.6.1.122
+        .. [Gra99] Michel Grabisch, Marc Roubens (1999). An axiomatic approach to the concept of interaction among players in cooperative games. In: Game Theory 28:547-565. https://link.springer.com/article/10.1007/s001820050125
+        .. [Mar99] Jean-Luc Marichal, Marc Roubens (1999). The Chaining Interaction Index among Players in Cooperative Games. In: Meskens, N., Roubens, M. (eds) Advances in Decision Analysis. Mathematical Modelling: Theory and Applications, vol 4. Springer, Dordrecht. https://link.springer.com/chapter/10.1007/978-94-017-0647-6_5
+        .. [Mar00] Jean-Luc Marichal (2000). The influence of variables on pseudo-Boolean functions with applications to game theory and multicriteria decision making. In: Discrete Applied Mathematics 107(1-3):139-164. https://doi.org/10.1016/S0166-218X(00)00264-X
+        .. [Fui06] Katsushige Fujimoto, Ivan Kojadinovic, Jean-Luc Marichal (2006). Axiomatic characterizations of probabilistic and cardinal-probabilistic interaction indices. In: Games and Economic Behavior 55(1):72-99. https://doi.org/10.1016/j.geb.2005.03.002
+        .. [Mar07] Jean-Luc Marichal, Ivan Kojadinovic, Katsushige Fujimoto (2007). Axiomatic characterizations of generalized values. In: Discrete Applied Mathematics 155(1):26-43. https://doi.org/10.1016/j.dam.2006.05.002
+        .. [Web09] Robert James Weber (2009). Probabilistic values for games. In: Roth AE, ed. The Shapley Value: Essays in Honor of Lloyd S. Shapley. Cambridge University Press. 1988:101-120. https://doi.org/10.1017/CBO9780511528446.008
+        .. [Sun20] Mukund Sundararajan, Kedar Dhamdhere, Ashish Agarwal (2020). In: Proceedings of the 37th International Conference on Machine Learning, PMLR 119:9259-9268. https://proceedings.mlr.press/v119/sundararajan20a.html
+        .. [Yan21] Tom Yan, Ariel D. Procaccia (2021). If You Like Shapley Then You’ll Love the Core. In: Proceedings of the AAAI Conference on Artificial Intelligence 35(6):5751-5759. https://doi.org/10.1609/aaai.v35i6.16721
+        .. [Har22] Chris Harris, Richard Pymar, Colin Rowat (2022). Joint Shapley values: a measure of joint feature importance. In: Proceedings of The Tenth International Conference on Learning Representations. https://openreview.net/forum?id=vcUmUvQCloe
+        .. [Bor23] Sebastian Bordt, Ulrike von Luxburg (2023). In: Proceedings of The 26th International Conference on Artificial Intelligence and Statistics, PMLR 206:709-745. https://proceedings.mlr.press/v206/bordt23a.html
+        .. [Tsa23] Che-Ping Tsai, Chih-Kuan Yeh, Pradeep Ravikumar (2023). Faith-Shap: The Faithful Shapley Interaction Index. In: Journal of Machine Learning Research 24(94):1−42. https://jmlr.org/papers/v24/22-0202.html
+        .. [Pel23] Guilherme Dean Pelegrina, Leonardo Tomazeli Duarte, Michel Grabisch (2023). A k-additive Choquet integral-based approach to approximate the SHAP values for local interpretability in machine learning. In: Artificial Intelligence 325:104014. https://doi.org/10.1016/j.artint.2023.104014
 
     """
 
+    # TODO(mmshlk): if we init with a Game object, we do not need to provide the n_players. Hence,
+    # TODO(mmshlk): we could make the n_players optional
+    # TODO(mmshlk): issue: https://github.com/mmschlk/shapiq/issues/388
     def __init__(
         self,
         n_players: int,
-        game: Callable[[np.ndarray], np.ndarray[float]],
+        game: Game | Callable[[np.ndarray], np.ndarray],
+        *,
         evaluate_game: bool = False,
     ) -> None:
+        """Initialize the ExactComputer class.
+
+        Args:
+            n_players: The number of players in the game.
+            game: A callable game that takes a binary matrix of shape ``(n_coalitions, n_players)``
+                and returns a numpy array of shape ``(n_coalitions,)`` containing the game values.
+            evaluate_game: whether to compute the values at init (if True) or first call (False)
+        """
         # set parameter attributes
         self.n: int = n_players
         self.game_fun = game
@@ -81,6 +135,8 @@ class ExactComputer:
             "STII": self.shapley_interaction,
             "FSII": self.shapley_interaction,
             "kADD-SHAP": self.shapley_interaction,
+            # faithful interaction
+            "FBII": self.compute_fii,
             # base_generalized_value
             "SGV": self.base_generalized_value,
             "BGV": self.base_generalized_value,
@@ -96,7 +152,6 @@ class ExactComputer:
             "BV": self.probabilistic_value,
             # shapley_generalized_value
             "JointSV": self.shapley_generalized_value,
-            "FBII": self.compute_fii,
             # The Core
             "ELC": self.compute_egalitarian_least_core,
         }
@@ -104,9 +159,11 @@ class ExactComputer:
         self.available_concepts: dict[str, dict] = ALL_AVAILABLE_CONCEPTS
 
     def __repr__(self) -> str:
+        """String Representation of the ExactComputer class."""
         return f"ExactComputer(n_players={self.n}, game_fun={self.game_fun})"
 
     def __str__(self) -> str:
+        """String representation of the ExactComputer class."""
         return f"ExactComputer(n_players={self.n})"
 
     def __call__(self, index: str, order: int | None = None) -> InteractionValues:
@@ -141,18 +198,21 @@ class ExactComputer:
 
     @property
     def baseline_value(self) -> float:
+        """Return the baseline value of the game (empty coalition)."""
         if not self._game_is_computed:
             self._evaluate_game()
         return self._baseline_value
 
     @property
     def coalition_lookup(self) -> dict[tuple[int], int]:
+        """Return the coalition lookup dictionary."""
         if not self._game_is_computed:
             self._evaluate_game()
         return self._coalition_lookup
 
     @property
-    def game_values(self) -> np.ndarray[float]:
+    def game_values(self) -> np.ndarray:
+        """Return the game values for all possible coalitions."""
         if not self._game_is_computed:
             self._evaluate_game()
         return self._game_values
@@ -183,13 +243,14 @@ class ExactComputer:
 
     def moebius_transform(
         self,
-        *args,  # noqa: ARG002
-        **kwargs,  # noqa: ARG002
+        *args: list[Any],  # noqa: ARG002
+        **kwargs: dict[str, Any],  # noqa: ARG002
     ) -> InteractionValues:
         """Computes the Moebius transform for all :math:`2^n` coalitions of the game.
 
         Args:
-            args and kwargs: Additional arguments and keyword arguments (not used)
+            *args: Additional arguments (not used, only for API compatibility)
+            **kwargs: Additional keyword arguments (not used, only for API compatibility)
 
         Returns:
             The Moebius transform for all coalitions stored in an InteractionValues object
@@ -228,9 +289,10 @@ class ExactComputer:
         return copy.deepcopy(interaction_values)
 
     def _base_weights(self, coalition_size: int, interaction_size: int, index: str) -> float:
-        """Computes the weight of different indices in their common representation. For example, the
-            weight of the discrete derivative of S given T in SII or the weight of the marginal
-            contribution of S given T in SGV.
+        """Computes the weight of different indices in their common representation.
+
+        For example, the weight of the discrete derivative of S given T in SII or the weight of the
+        marginal contribution of S given T in SGV.
 
         Args:
             coalition_size: The size of the coalition from ``0,...,n-interaction_size``
@@ -348,8 +410,10 @@ class ExactComputer:
 
     @staticmethod
     def get_n_interactions(n_players: int) -> np.ndarray:
-        """Pre-computes an array that contains the number of interactions up to the size of the
-            index (e.g. ``n_interactions[4]`` is the number of interactions up to size ``4``).
+        """Pre-computes the number of interactions for all coalition sizes.
+
+        Pre-computes an array that contains the number of interactions up to the size of the index
+        (e.g. ``n_interactions[4]`` is the number of interactions up to size ``4``).
 
         Args:
             n_players: The number of players
@@ -370,8 +434,10 @@ class ExactComputer:
         return n_interactions
 
     def _get_base_weights(self, index: str, order: int) -> np.ndarray:
-        """Pre-computes all base weights for all coalition sizes (i.e. ``0, ..., n-s``) and all
-            interaction sizes (i.e. ``1, ..., order``).
+        """Pre-compute all base weights for all coalition and interaction sizes.
+
+        Pre-compute all base weights for all coalition sizes  (i.e. ``0, ..., n-s``) and all
+        interaction sizes (i.e. ``1, ..., order``).
 
         Args:
             index: The interaction index
@@ -392,7 +458,9 @@ class ExactComputer:
         return base_weights
 
     def base_interaction(self, index: str, order: int) -> InteractionValues:
-        """Computes interactions based on representation with discrete derivatives, e.g. SII, BII.
+        """Computes interactions based on representation with discrete derivatives.
+
+        Interactions based on the discrete derivative are base interactions like SII or BII.
 
         Args:
             index: The interaction index
@@ -445,14 +513,16 @@ class ExactComputer:
         return copy.deepcopy(base_interaction)
 
     def base_generalized_value(self, index: str, order: int) -> InteractionValues:
-        """Computes Base Generalized Values, i.e. probabilistic generalized values that do not
-            depend on the order.
+        """Compute Base Generalized Values.
 
-        According to the underlying representation using marginal contributions from
-        `Marichal et al. (2007) <https://doi.org/10.1016/j.dam.2006.05.002>`_, the following indices are supported:
-            - SGV: Shapley Generalized Value `Jean-Luc Marichal (2000) <https://doi.org/10.1016/S0166-218X(00)00264-X>`_
-            - BGV: Banzhaf Generalized Value `Jean-Luc Marichal (2000) <https://doi.org/10.1016/S0166-218X(00)00264-X>`_
-            - CHGV: Chaining Generalized Value `Marichal et al. (2007) <https://doi.org/10.1016/j.dam.2006.05.002>`_
+        Base Generalized Values are probabilistic generalized values that do not depend on the
+        order. According to the underlying representation using marginal contributions from
+        [Mar07]_, the following indices are supported:
+            - SGV: Shapley Generalized Value [Mar00]_
+            - BGV: Banzhaf Generalized Value [Mar00]_
+            - CHGV: Chaining Generalized Value [Mar07]_
+            - IGV: Internal Generalized Value [Mar07]_
+            - EGV: External Generalized Value [Mar07]_
 
         Args:
             order: The highest order of interactions
@@ -512,8 +582,9 @@ class ExactComputer:
         """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII.
 
         Args:
-            base_interactions: InteractionValues object containing interactions up to order ``order``
-            order: The highest order of interactions considered
+            base_interactions: InteractionValues object containing interactions up to order
+                ``order``.
+            order: The highest order of interactions considered.
 
         Returns:
             InteractionValues object containing transformed base_interactions
@@ -525,7 +596,7 @@ class ExactComputer:
         return copy.deepcopy(transformed_interactions)
 
     def compute_stii(self, order: int) -> InteractionValues:
-        """Computes the STII index up to order ``order``.
+        """Compute the STII index up to order ``order`` after [Sun20]_.
 
         Args:
             order: The highest order of interactions
@@ -580,8 +651,7 @@ class ExactComputer:
         return copy.deepcopy(stii)
 
     def compute_fii(self, index: str, order: int) -> InteractionValues:
-        """Computes the FSII index up to order ``order`` after
-            `Tsai et al. (2023) <https://jmlr.org/papers/v24/22-0202.html>`_.
+        """Compute the FSII or FBII indices up to order ``order`` after [Tsa23]_.
 
         Args:
             order: The highest order of interactions
@@ -633,10 +703,13 @@ class ExactComputer:
             # TODO: could be removed in future, but requires testing
             baseline_value = self.baseline_value
             fii_values[0] = baseline_value  # set baseline value
-        if index == "FBII":
+        elif index == "FBII":
             # For FBII the empty set is computed
             baseline_value = fii_values[0] + self.baseline_value
             fii_values[0] = baseline_value  # set baseline value
+        else:
+            msg = f"Index {index} not supported."
+            raise ValueError(msg)
 
         fii = InteractionValues(
             values=fii_values,
@@ -681,11 +754,10 @@ class ExactComputer:
         return weights
 
     def compute_kadd_shap(self, order: int) -> InteractionValues:
-        """Computes the kADD-SHAP index up to order "order". This is similar to FSII except that the
-            coalition matrix contains the Bernoulli weights.
+        """Computes the kADD-SHAP index up to order "order".
 
-        The implementation is according to
-        `Pelegrina et al. (2023) <https://doi.org/10.1016/j.artint.2023.104014>`_.
+        The kADD-SHAP index is similar to FSII except that the coalition matrix contains the
+        Bernoulli weights. The implementation is according to [Pel23]_.
 
         Args:
             order: The highest order of interactions
@@ -740,8 +812,7 @@ class ExactComputer:
         )
 
     def compute_joint_sv(self, order: int):
-        """Computes the JointSV index up to order "order" according to
-        `Harris et al. (2022) <https://openreview.net/forum?id=vcUmUvQCloe>`_.
+        """Computes the JointSV index up to an order according to [Har22]_.
 
         Args:
             order: The highest order of interactions
@@ -787,11 +858,11 @@ class ExactComputer:
         )
 
     def shapley_generalized_value(self, order: int, index: str) -> InteractionValues:
-        """Computes Shapley Generalized Values (i.e. Generalized Values that satisfy efficiency) after
-            the underlying representation in `Marichal et al. (2007) <https://doi.org/10.1016/j.dam.2006.05.002>`_.
+        """Computes Shapley Generalized Values.
 
-        Currently, the following indices are supported:
-            - JointSV `Harris et al. (2022) <https://openreview.net/forum?id=vcUmUvQCloe>`_
+        The underlying representation of Shapley Generalized Values (i.e. Generalized Values that
+        satisfy efficiency) is presented in [Mar07]_. The following indices are supported:
+            - JointSV [Har22]_
 
         Args:
             order: The highest order of interactions
@@ -815,12 +886,12 @@ class ExactComputer:
     def shapley_interaction(self, index: str, order: int) -> InteractionValues:
         """Computes k-additive Shapley Interactions, i.e. probabilistic interaction indices that depend on the order k.
 
-        According to the underlying representation using discrete derivatives from
-        `Fujimoto et al. (2006) [1]_, the following indices are supported:
-            - k-SII: k-Shapley Values `Bordt & von Luxburg (2023)` [2]_
-            - STII:  Shapley-Taylor Interaction Index `Sundararajan et al. (2020)` [3]_
-            - FSII: Faithful Shapley Interaction Index `Tsai et al. (2023)` [4]_
-            - kADD-SHAP: k-additive Shapley Values `Pelegrina et al. (2023)` [5]_
+        According to the underlying representation using discrete derivatives from [Fui06]_, the
+        following indices are supported:
+            - k-SII: k-Shapley Values [Bor23]_
+            - STII:  Shapley-Taylor Interaction Index [Sun20]_
+            - FSII: Faithful Shapley Interaction Index [Tsa23]_
+            - kADD-SHAP: k-additive Shapley Values [Pel23]_
 
         Args:
             order: The highest order of interactions
@@ -831,13 +902,6 @@ class ExactComputer:
 
         Raises:
             ValueError: If the index is not supported
-
-        References:
-            .. [1] Fujimoto et al. (2006). https://doi.org/10.1016/j.geb.2005.03.002
-            .. [2] Bordt & von Luxburg (2023). https://proceedings.mlr.press/v206/bordt23a.html
-            .. [3] Sundararajan et al. (2020). https://proceedings.mlr.press/v119/sundararajan20a.html
-            .. [4] Tsai et al. (2023). https://jmlr.org/papers/v24/22-0202.html
-            .. [5] Pelegrina et al. (2023). https://doi.org/10.1016/j.artint.2023.104014
 
         """
         if index == "k-SII":
@@ -859,11 +923,11 @@ class ExactComputer:
     def shapley_base_interaction(self, index: str, order: int) -> InteractionValues:
         """Computes Shapley Base Interactions, i.e. probabilistic interaction indices not depending on the order.
 
-        According to the underlying representation using discrete derivatives from
-        `Fujimoto et al. (2006) [Fui06]_, the following indices are supported:
-            - SII: Shapley Interaction Index `Grabisch & Roubens (1999)` [Gra99]_
-            - BII: Banzhaf Interaction Index `Grabisch & Roubens (1999)` [Gra99]_
-            - CHII: Chaining Interaction Index `Marichal & Roubens (1999)` [Mar99]_
+        According to the underlying representation using discrete derivatives from [Fui06]_, the
+        following indices are supported:
+            - SII: Shapley Interaction Index [Gra99]_
+            - BII: Banzhaf Interaction Index [Gra99]_
+            - CHII: Chaining Interaction Index [Mar99]_
 
         Args:
             order: The highest order of interactions
@@ -871,11 +935,6 @@ class ExactComputer:
 
         Returns:
             An InteractionValues object containing interaction values
-
-        References:
-            .. [Fui06] Fujimoto et al. (2006). https://doi.org/10.1016/j.geb.2005.03.002
-            .. [Gra99] Grabisch & Roubens (1999). An axiomatic approach to the concept of interaction among players in cooperative games. Game Theory 28, 547–565. https://link.springer.com/article/10.1007/s001820050125
-            .. [Mar99] Marichal & Roubens (1999). https://link.springer.com/chapter/10.1007/978-94-017-0647-6_5
 
         """
         base_interaction = self.base_interaction(index, order)
@@ -886,24 +945,22 @@ class ExactComputer:
     def probabilistic_value(
         self,
         index: str,
-        *args,  # noqa: ARG002
-        **kwargs,  # noqa: ARG002
+        *args: list[Any],  # noqa: ARG002
+        **kwargs: dict[str, Any],  # noqa: ARG002
     ) -> InteractionValues:
         """Computes common semi-values or probabilistic values depending on the index.
 
         These semi-values are special forms of interaction indices and generalized values for
         ``order = 1``. According to the underlying representation using marginal contributions; cf.
-        semi-values `Dubey et al. (1981) <https://doi.org/10.1287/moor.6.1.122>`_, or
-        probabilistic values `Robert J. Weber (2009) <https://doi.org/10.1017/CBO9780511528446.008>`_ for the following indices
-        are currently supported:
-            - SV: Shapley value: Shapley, L. S. (1953) "17. A Value for n-Person Games" Princeton University Press, pp. 307-318
-            - BV: Banzhaf value: Banzhaf III, J. F. (1964). "Weighted voting doesn't work: A
-                mathematical analysis" Rutgers L. Rev., 19, 317.
+        semi-values [Dub81]_, or probabilistic values [Web09]_ for the following indices are
+        supported:
+            - SV: Shapley value [Sha53]_
+            - BV: Banzhaf value [Ban64]_
 
         Args:
             index: The interaction index
-            *args: Additional positional arguments (not used)
-            **kwargs: Additional keyword arguments (not used)
+            *args: Additional positional arguments (not used, only for API compatibility)
+            **kwargs: Additional keyword arguments (not used, only for API compatibility)
 
         Returns:
             An InteractionValues object containing probabilistic values
@@ -931,11 +988,17 @@ class ExactComputer:
         *args: list[Any],  # noqa: ARG002
         **kwargs: dict[str, Any],  # noqa: ARG002
     ) -> InteractionValues:
-        """Computes the egalitarian least core of the game.
+        """Computes the egalitarian least core (ELC) of the game.
+
+        The egalitarian least core (ELC) is a solution concept in cooperative game theory that
+        distributes the total value of the grand coalition among the players in a way that
+        minimizes the maximum excess of any coalition. It is a refinement of the core and
+        represents a fair distribution of the total value of the grand coalition. The ELC is
+        implemented after [Yan21]_.
 
         Args:
-            *args: Additional positional arguments (not used).
-            **kwargs: Additional keyword arguments (not used).
+            *args: Additional positional arguments (not used, only for API compatibility).
+            **kwargs: Additional keyword arguments (not used, only for API compatibility).
 
         Returns:
             The egalitarian least core of the game.
