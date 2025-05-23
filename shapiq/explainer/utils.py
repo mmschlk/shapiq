@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     import numpy as np
+
+    from shapiq.utils.custom_types import Model
 
 WARNING_NO_CLASS_INDEX = (
     "No class_index provided. "
@@ -33,10 +35,10 @@ def get_explainers() -> dict[str, Any]:
 
 
 def get_predict_function_and_model_type(
-    model: ModelType,
+    model: Model,
     model_class: str | None = None,
     class_index: int | None = None,
-) -> tuple[Callable[[ModelType, np.ndarray], np.ndarray], str]:
+) -> tuple[Callable[[Model, np.ndarray], np.ndarray], str]:
     """Get the predict function and model type for a given model.
 
     The prediction function is used in the explainer to predict the model's output for a given data
@@ -158,7 +160,7 @@ def get_predict_function_and_model_type(
     if class_index is None:
         class_index = 1
 
-    def _predict_function_with_class_index(model: ModelType, data: np.ndarray) -> np.ndarray:
+    def _predict_function_with_class_index(model: Model, data: np.ndarray) -> np.ndarray:
         """A wrapper prediction function to retrieve class_index predictions for classifiers.
 
         Note:
@@ -182,34 +184,34 @@ def get_predict_function_and_model_type(
     return _predict_function_with_class_index, _model_type
 
 
-def predict_callable(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_callable(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a model that is callable."""
     return model(data)
 
 
-def predict(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a model that has a ``predict`` method."""
     return model.predict(data)
 
 
-def predict_proba(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_proba(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a model that has a ``predict_proba`` method."""
     return model.predict_proba(data)
 
 
-def predict_xgboost(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_xgboost(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with an XGBoost model."""
     from xgboost import DMatrix
 
     return model.predict(DMatrix(data))
 
 
-def predict_tensorflow(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_tensorflow(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a TensorFlow model."""
     return model.predict(data, verbose=0)
 
 
-def predict_torch(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_torch(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a PyTorch model."""
     import torch
 

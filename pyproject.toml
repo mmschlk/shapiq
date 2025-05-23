@@ -131,7 +131,7 @@ select = [
 #    "FIX",  # flake8-fixme: checks for TODOs and FIXMEs
 #    "FA",  # require from __future__ import annotations import when using type hints
 #    #"ANN",  # TODO: add this or include mypy
- #   "D",  # TODO: include this in the near future
+ #  "D",  # TODO: include this in the near future
 ]
 ignore = [
     "E501",  # Line too long
