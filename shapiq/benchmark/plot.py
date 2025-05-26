@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 __all__ = ["plot_approximation_quality"]
 
 
-# TODO: add the plot colors and styles for different approximators as well
 STYLE_DICT: dict[str, dict[str, str]] = {
     # permutation sampling
     "PermutationSamplingSII": {"color": "#7d53de", "marker": "o"},
@@ -62,7 +61,7 @@ METRICS_LIMITS = {
 METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
 
 
-def create_application_name(setup: str, abbrev: bool = False) -> str:
+def create_application_name(setup: str, *, abbrev: bool = False) -> str:
     """Create an application name from the setup string."""
     application_name = "".join(setup.split("_")[0:2])
     application_name = application_name.replace("Game", "")
@@ -82,7 +81,7 @@ def create_application_name(setup: str, abbrev: bool = False) -> str:
     return application_name
 
 
-def abbreviate_application_name(application_name: str, new_line: bool = False) -> str:
+def abbreviate_application_name(application_name: str, *, new_line: bool = False) -> str:
     """Abbreviate the application name.
 
     Abbreviate the application name by taking the first three characters after each capital
@@ -156,7 +155,7 @@ def get_game_title_name(game_name: str) -> str:
     return words.strip()
 
 
-def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
+def agg_percentile(q: float) -> Callable[[np.ndarray], np.floating]:
     """Get the aggregation function for the given percentile.
 
     Args:
@@ -167,7 +166,7 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
     """
 
-    def quantile(x) -> float:
+    def quantile(x: np.ndarray) -> np.floating:
         """Performs the aggregation function for the given percentile."""
         return np.percentile(x, q)
 
@@ -311,7 +310,7 @@ def plot_approximation_quality(
 
     # add the legend
     if legend:
-        add_legend(ax, approximators, orders)
+        add_legend(ax, approximators, orders=orders)
 
     # set the y-axis limits
     if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE:
@@ -437,6 +436,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 def add_legend(
     axis: plt.Axes,
     approximators: list[str | Approximator],
+    *,
     orders: list[int | str] | None = None,
     legend_subtitle: bool = True,
     loc: str = "best",

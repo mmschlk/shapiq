@@ -757,7 +757,7 @@ class InteractionValues:
         return aggregate_interaction_values([self, *others], aggregation)
 
     def plot_network(
-        self, *, show: bool = True, **kwargs: dict[str, Any]
+        self, *, show: bool = True, **kwargs: Any
     ) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues on a graph.
 
@@ -782,7 +782,7 @@ class InteractionValues:
         raise ValueError(msg)
 
     def plot_si_graph(
-        self, *, show: bool = True, **kwargs: dict[str, Any]
+        self, *, show: bool = True, **kwargs: Any
     ) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues as a SI graph.
 
@@ -797,7 +797,7 @@ class InteractionValues:
         return si_graph_plot(self, show=show, **kwargs)
 
     def plot_stacked_bar(
-        self, *, show: bool = True, **kwargs: dict[str, Any]
+        self, *, show: bool = True, **kwargs: Any
     ) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues on a graph.
 
@@ -880,7 +880,7 @@ class InteractionValues:
         words: list[str],
         *,
         show: bool = True,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> tuple[plt.Figure, plt.Axes] | None:
         """Plots the first order effects (attributions) of a sentence or paragraph.
 
@@ -895,7 +895,7 @@ class InteractionValues:
 
         return sentence_plot(self, words, show=show, **kwargs)
 
-    def plot_upset(self, *, show: bool = True, **kwargs: dict[str, Any]) -> plt.Figure | None:
+    def plot_upset(self, *, show: bool = True, **kwargs: Any) -> plt.Figure | None:
         """Plots the upset plot.
 
         For arguments, see shapiq.plot.upset_plot().

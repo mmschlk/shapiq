@@ -44,6 +44,7 @@ class MonteCarlo(Approximator):
         n: int,
         max_order: int,
         index: str,
+        *,
         stratify_coalition_size: bool = True,
         stratify_intersection: bool = True,
         top_order: bool = False,
@@ -401,7 +402,7 @@ class MonteCarlo(Approximator):
         try:
             return interaction_size / coalition_size
         except ZeroDivisionError:
-            return 0.0  # TODO: check if this is correct (if coalition_size == 0, return 0)
+            return 0.0
 
     def _stii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Returns the STII discrete derivative weight given the coalition size and interaction size.

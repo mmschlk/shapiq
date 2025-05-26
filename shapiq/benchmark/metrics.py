@@ -32,9 +32,9 @@ def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
         new_interaction = copy.deepcopy(interaction)
         empty_index = new_interaction.interaction_lookup[()]
         new_interaction.values[empty_index] = 0
-        return new_interaction
     except KeyError:
         return interaction
+    return new_interaction
 
 
 def compute_diff_metrics(ground_truth: InteractionValues, estimated: InteractionValues) -> dict:

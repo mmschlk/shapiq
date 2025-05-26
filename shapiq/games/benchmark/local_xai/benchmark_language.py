@@ -51,7 +51,7 @@ class SentimentAnalysis(Game):
         *,
         mask_strategy: str = "mask",
         verbose: bool = False,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """Initialize the Sentiment Classification Game.
 

@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .base import Imputer
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
 
 
 class BaselineImputer(Imputer):
@@ -41,9 +45,10 @@ class BaselineImputer(Imputer):
 
     def __init__(
         self,
-        model,
+        model: Model,
         data: np.ndarray,
         x: np.ndarray | None = None,
+        *,
         categorical_features: list[int] | None = None,
         normalize: bool = True,
         random_state: int | None = None,
@@ -71,7 +76,14 @@ class BaselineImputer(Imputer):
             random_state: The random state to use for sampling. Defaults to ``None``.
 
         """
-        super().__init__(model, data, x, 1, categorical_features, random_state)
+        super().__init__(
+            model=model,
+            data=data,
+            x=x,
+            sample_size=1,
+            categorical_features=categorical_features,
+            random_state=random_state,
+        )
 
         # setup attributes
         self.baseline_values: np.ndarray = np.zeros((1, self.n_features))  # will be overwritten

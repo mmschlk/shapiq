@@ -32,9 +32,10 @@ def cooking_game():
 
         def value_function(self, coalitions: np.ndarray) -> np.ndarray:
             """Defines the worth of a coalition as a lookup in the characteristic function."""
-            output = []
-            for coalition in coalitions:
-                output.append(self.characteristic_function[tuple(np.where(coalition)[0])])
+            output = [
+                self.characteristic_function[tuple(np.where(coalition)[0])]
+                for coalition in coalitions
+            ]
             return np.array(output)
 
     return CookingGame()

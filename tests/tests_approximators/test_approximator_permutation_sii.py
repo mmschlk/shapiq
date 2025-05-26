@@ -25,9 +25,9 @@ def test_initialization(n, max_order, top_order, index, expected):
     """Tests the initialization of the PermutationSamplingSII approximator."""
     if index == "something":
         with pytest.raises(ValueError):
-            _ = PermutationSamplingSII(n, max_order, index, top_order)
+            _ = PermutationSamplingSII(n, max_order, index, top_order=top_order)
         return
-    approximator = PermutationSamplingSII(n, max_order, index, top_order)
+    approximator = PermutationSamplingSII(n, max_order, index, top_order=top_order)
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order == top_order
@@ -50,7 +50,7 @@ def test_approximate(n, max_order, top_order, budget, batch_size, index):
     """Tests the approximation of the PermutationSamplingSII approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = PermutationSamplingSII(n, max_order, index, top_order, random_state=42)
+    approximator = PermutationSamplingSII(n, max_order, index, top_order=top_order, random_state=42)
     estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == max_order

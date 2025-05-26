@@ -211,7 +211,7 @@ class TreeSHAPIQ:
             target_index=self._index,
         )
 
-    def _compute_trivial_shapley_interaction_values(self, x) -> np.ndarray:
+    def _compute_trivial_shapley_interaction_values(self, x: np.ndarray) -> np.ndarray:
         """Computes the Shapley interactions for the case of only one feature in the tree.
 
         Computing the Shapley interactions for the case of only one feature in the tree is trivial
@@ -275,7 +275,7 @@ class TreeSHAPIQ:
         # manually formatted for better readability in formulas and equations
         # reset activations for new calculations
         if node_id == 0:
-            self._activations.fill(False)
+            self._activations.fill(False)  # noqa: FBT003
 
         # get polynomials if None
         polynomials = self._get_polynomials(
@@ -447,14 +447,26 @@ class TreeSHAPIQ:
                     self.shapley_interactions[interactions_with_ancestor_to_update] -= update
 
     @staticmethod
-    def _psi_ancestor(E, D_power, quotient_poly, Ns, degree) -> np.ndarray[float]:
+    def _psi_ancestor(
+        E: np.ndarray,
+        D_power: np.ndarray,
+        quotient_poly: np.ndarray,
+        Ns: np.ndarray,
+        degree: int,
+    ) -> np.ndarray:
         """Similar to _psi but with ancestors."""
         d = degree + 1
         n = Ns[d].T  # Variant of _psi that can deal with multiple inputs in degree
         return np.diag((E * D_power / quotient_poly).dot(n)) / (d)
 
     @staticmethod
-    def _psi(E, D_power, quotient_poly, Ns, degree) -> np.ndarray[float]:
+    def _psi(
+        E: np.ndarray,
+        D_power: np.ndarray,
+        quotient_poly: np.ndarray,
+        Ns: np.ndarray,
+        degree: int,
+    ) -> np.ndarray[float]:
         """Computes the psi function for the TreeSHAP-IQ algorithm.
 
         It scales the interaction polynomials with the summary polynomial and the quotient
@@ -493,10 +505,10 @@ class TreeSHAPIQ:
 
             self.D_powers_store[order] = self._cache(self.D_store[order])
             if self._index in ("SV", "SII", "k-SII"):
-                self.Ns_store[order] = self._get_N(self.D_store[order])
+                self.Ns_store[order] = self._get_n_matrix(self.D_store[order])
             else:
-                self.Ns_store[order] = self._get_N_cii(self.D_store[order], order)
-            self.Ns_id_store[order] = self._get_N_id(self.D_store[order])
+                self.Ns_store[order] = self._get_n_cii_matrix(self.D_store[order], order)
+            self.Ns_id_store[order] = self._get_n_id_matrix(self.D_store[order])
 
     def _get_polynomials(
         self,
@@ -658,26 +670,25 @@ class TreeSHAPIQ:
 
         """
         # stores position of interactions
-        counter_interaction = 0
         subset_ancestors: dict[int, np.ndarray] = {}
 
         for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
             subset_ancestors[node_id] = np.full(
                 int(sp.special.binom(n_features, interaction_order)), -1, dtype=int
-            )  # noqa E501
-        for S in powerset(range(n_features), interaction_order, interaction_order):
+            )
+        for i, S in enumerate(powerset(range(n_features), interaction_order, interaction_order)):
             for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
                 subset_ancestor = -1
-                for i in S:
+                for feature in S:
                     subset_ancestor = max(
                         subset_ancestor,
-                        self._edge_tree.ancestor_nodes[node_id][i],
+                        self._edge_tree.ancestor_nodes[node_id][feature],
                     )
-                subset_ancestors[node_id][counter_interaction] = subset_ancestor
-            counter_interaction += 1
+                subset_ancestors[node_id][i] = subset_ancestor
         return subset_ancestors
 
-    def _get_N(self, interpolated_poly: np.ndarray[float]) -> np.ndarray[float]:
+    @staticmethod
+    def _get_n_matrix(interpolated_poly: np.ndarray) -> np.ndarray:
         """Computes the N matrix for the Shapley interaction values.
 
         Args:
@@ -691,11 +702,12 @@ class TreeSHAPIQ:
         Ns = np.zeros((depth + 1, depth))
         for i in range(1, depth + 1):
             Ns[i, :i] = np.linalg.inv(np.vander(interpolated_poly[:i]).T).dot(
-                1.0 / self._get_norm_weight(i - 1),
+                1.0 / np.array([sp.special.binom(i - 1, k) for k in range(i)])
             )
         return Ns
 
-    def _get_N_cii(self, interpolated_poly, order) -> np.ndarray[float]:
+    def _get_n_cii_matrix(self, interpolated_poly: np.ndarray, order: int) -> np.ndarray:
+        """Computes the N matrix for the CII index."""
         depth = interpolated_poly.shape[0]
         Ns = np.zeros((depth + 1, depth))
         for i in range(1, depth + 1):
@@ -704,8 +716,16 @@ class TreeSHAPIQ:
             )
         return Ns
 
-    def _get_subset_weight_cii(self, t, order) -> float | None:
-        # TODO: add docstring
+    def _get_subset_weight_cii(self, t: int, order: int) -> float | None:
+        """Computes the weight for a given subset size and interaction order.
+
+        Args:
+            t: The size of the subset.
+            order: The interaction order.
+
+        Returns:
+            float | None: The weight for the subset, or None if the index is not supported.
+        """
         if self._index == "STII":
             return self._max_order / (
                 self._n_features_in_tree * sp.special.binom(self._n_features_in_tree - 1, t)
@@ -723,18 +743,13 @@ class TreeSHAPIQ:
         return None
 
     @staticmethod
-    def _get_N_id(D) -> np.ndarray[float]:
-        # TODO: add docstring and rename variables
+    def _get_n_id_matrix(D: np.ndarray) -> np.ndarray:
+        """Computes N_id matrix."""
         depth = D.shape[0]
         Ns_id = np.zeros((depth + 1, depth))
         for i in range(1, depth + 1):
-            Ns_id[i, :i] = np.linalg.inv(np.vander(D[:i]).T).dot(np.ones(i))  # TODO remove ()
+            Ns_id[i, :i] = np.linalg.inv(np.vander(D[:i]).T).dot(np.ones(i))
         return Ns_id
-
-    @staticmethod
-    def _get_norm_weight(M) -> np.ndarray[float]:
-        # TODO: add docstring and rename variables
-        return np.array([sp.special.binom(M, i) for i in range(M + 1)])
 
     @staticmethod
     def _cache(interpolated_poly: np.ndarray[float]) -> np.ndarray[float]:

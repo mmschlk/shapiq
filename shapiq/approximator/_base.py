@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Literal, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from scipy.special import binom
@@ -16,8 +16,8 @@ from shapiq.utils.sets import generate_interaction_lookup
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.interaction_values import InteractionValues
     from shapiq.games.base import Game
+    from shapiq.interaction_values import InteractionValues
 
 __all__ = [
     "Approximator",
@@ -51,6 +51,7 @@ class Approximator(ABC):
         n: int,
         max_order: int,
         index: Literal["SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII"],
+        *,
         top_order: bool,
         min_order: int = 0,
         pairing_trick: bool = False,
@@ -136,7 +137,7 @@ class Approximator(ABC):
         self,
         budget: int,
         game: Game | Callable[[np.ndarray], np.ndarray],
-        **kwargs,
+        **kwargs: Any,
     ) -> InteractionValues:
         """Calls the approximate method.
 
@@ -157,9 +158,9 @@ class Approximator(ABC):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
         *args: Any,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> InteractionValues:
         """Approximates the interaction values.
 
@@ -167,8 +168,11 @@ class Approximator(ABC):
 
         Args:
             budget: The budget for the approximation.
+
             game: The game function.
+
             *args: Additional positional arguments.
+
             **kwargs: Additional keyword arguments.
 
         Returns:
@@ -217,7 +221,7 @@ class Approximator(ABC):
                     weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
         return weight_vector / np.sum(weight_vector)
 
-    def _init_result(self, dtype=float) -> np.ndarray:
+    def _init_result(self, dtype: np.dtype | float = float) -> np.ndarray:
         """Initializes the result array for the approximation.
 
         Initializes the result array. The result array is a 1D array of size n_interactions as
@@ -286,7 +290,7 @@ class Approximator(ABC):
         """Checks if two Approximator objects are equal."""
         if not isinstance(other, Approximator):
             msg = "Cannot compare Approximator with other types."
-            raise ValueError(msg)
+            raise TypeError(msg)
         return not (
             self.n != other.n
             or self.max_order != other.max_order
@@ -309,7 +313,7 @@ class Approximator(ABC):
         return hash(self)
 
     @property
-    def interaction_lookup(self):
+    def interaction_lookup(self) -> dict[tuple[int, ...], int]:
         return self._interaction_lookup
 
     @staticmethod

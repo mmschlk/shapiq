@@ -64,7 +64,7 @@ class ImageClassifier(Game):
         x_explain_path: str | None = None,
         normalize: bool = True,
         verbose: bool = False,
-        **kwargs: dict[str, Any],  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the Image Classifier game.
 

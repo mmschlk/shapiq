@@ -81,6 +81,7 @@ class GameBenchmarkSetup:
     def __init__(
         self,
         dataset_name: str,
+        *,
         model_name: str | None = None,
         loss_function: str | None = None,
         verbose: bool = True,
@@ -315,7 +316,9 @@ def get_x_explain(x: np.ndarray | int | None, x_set: np.ndarray) -> np.ndarray:
 
     """
     if x is None:
-        x = x_set[np.random.randint(0, x_set.shape[0])]
+        rng = np.random.default_rng()
+        idx = rng.choice(x_set.shape[0])
+        x = x_set[idx]
     if isinstance(x, int):
         x = x_set[x]
     return x

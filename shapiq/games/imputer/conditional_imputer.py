@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -10,6 +11,11 @@ from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.utils.modules import check_import_module
 
 from .base import Imputer
+
+if TYPE_CHECKING:
+    from typing import Literal
+
+    from shapiq.utils.custom_types import Model
 
 
 class ConditionalImputer(Imputer):
@@ -25,15 +31,16 @@ class ConditionalImputer(Imputer):
 
     def __init__(
         self,
-        model,
+        model: Model,
         data: np.ndarray,
         x: np.ndarray | None = None,
+        *,
         sample_size: int = 10,
         conditional_budget: int = 128,
         conditional_threshold: float = 0.05,
         normalize: bool = True,
         categorical_features: list[int] | None = None,
-        method="generative",
+        method: Literal["generative"] = "generative",
         random_state: int | None = None,
     ) -> None:
         """Initializes the conditional imputer.
@@ -63,11 +70,19 @@ class ConditionalImputer(Imputer):
             categorical_features: A list of indices of the categorical features in the background
                 data. Currently unused.
 
-            method: Defaults to ``'generative'``.
+            method: The method to use for the conditional imputer. Currently only ``"generative"``
+                is implemented. Defaults to ``"generative"``.
 
             random_state: The random state to use for sampling. Defaults to ``None``.
         """
-        super().__init__(model, data, x, sample_size, categorical_features, random_state)
+        super().__init__(
+            model=model,
+            data=data,
+            x=x,
+            sample_size=sample_size,
+            categorical_features=categorical_features,
+            random_state=random_state,
+        )
         if method != "generative":
             msg = "Currently only a generative conditional imputer is implemented."
             raise ValueError(msg)
@@ -176,7 +191,6 @@ class ConditionalImputer(Imputer):
             The empty prediction.
 
         """
-        # TODO(mmshlk): perhaps should be self.conditional_data instead of self.data
         empty_predictions = self.predict(self.data)
         return float(np.mean(empty_predictions))
 

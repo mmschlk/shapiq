@@ -88,7 +88,7 @@ class Game:
         path_to_values: Path | str | None = None,
         verbose: bool = False,
         player_names: list[str] | None = None,
-        **kwargs: dict[str, Any],  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the Game class.
 
@@ -251,7 +251,6 @@ class Game:
                     f"the number of players in the game ({self.n_players})."
                 )
                 raise TypeError(msg)
-            # TODO maybe remove this, as it might increase runtime unnecessarily
             # check that values of numpy array are either 0 or 1
             if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
                 msg = "The values in the array of coalitions are not binary."
@@ -287,6 +286,7 @@ class Game:
             | tuple[int, ...]
             | tuple[str, ...]
         ),
+        *,
         verbose: bool = False,
     ) -> np.ndarray:
         """Calls the game with the given coalitions.
@@ -305,7 +305,7 @@ class Game:
             The values of the coalitions.
 
         """
-        coalitions = self._check_coalitions(coalitions)
+        coalitions: np.ndarray = self._check_coalitions(coalitions)
         verbose = verbose or self.verbose
         if not self.precomputed and not verbose:
             values = self.value_function(coalitions)
@@ -314,8 +314,7 @@ class Game:
             for i, coalition in enumerate(
                 tqdm(coalitions, desc="Evaluating game", unit=" coalition"),
             ):
-                coalition = coalition.reshape((1, self.n_players))
-                values[i] = self.value_function(coalition)[0]
+                values[i] = self.value_function(coalition.reshape((1, self.n_players)))[0]
         else:
             values = self._lookup_coalitions(coalitions)
         return values - self.normalization_value
@@ -459,7 +458,7 @@ class Game:
             normalization_value=self.normalization_value,
         )
 
-    def load_values(self, path: Path | str, precomputed: bool = False) -> None:
+    def load_values(self, path: Path | str, *, precomputed: bool = False) -> None:
         """Loads the game values from the given path.
 
         Args:
@@ -580,7 +579,7 @@ class Game:
             self._grand_coalition_value_property = float(self(self.grand_coalition))
         return self._grand_coalition_value_property
 
-    def __getitem__(self, item: tuple[int, ...]):
+    def __getitem__(self, item: tuple[int, ...]) -> float:
         """Return the value of the given coalition. Only retrieves precomputed/store values.
 
         Args:

@@ -10,11 +10,11 @@ if TYPE_CHECKING:
     import numpy as np
 
 
-class kADDSHAP(Regression):
+class kADDSHAP(Regression):  # noqa: N801
     """The kADD-SHAP regression approximator for estimating the kADD-SHAP values.
 
     Estimates the kADD-SHAP values using the kADD-SHAP regression algorithm. The Algorithm is
-    described in Pelegrina et al. (2023)[1]_ and is related to Inconsistent KernelSHAP-IQ[2]_.
+    described in Pelegrina et al. (2023) [1]_ and is related to Inconsistent KernelSHAP-IQ [2]_.
 
     See Also:
         - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP

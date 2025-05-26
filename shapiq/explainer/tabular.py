@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
 import numpy as np
@@ -28,9 +28,8 @@ from shapiq.explainer._base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
 if TYPE_CHECKING:
-    from shapiq.utils.custom_types import Model
-
     from shapiq.games.imputer.base import Imputer
+    from shapiq.utils.custom_types import Model
 
 
 APPROXIMATOR_CONFIGURATIONS = {
@@ -103,7 +102,7 @@ class TabularExplainer(Explainer):
         max_order: int = 2,
         random_state: int | None = None,
         verbose: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Initializes the TabularExplainer.
 
@@ -238,9 +237,9 @@ class TabularExplainer(Explainer):
             the computed interaction values.
         """
         if random_state is not None:
-            self._imputer._rng = np.random.default_rng(random_state)
-            self._approximator._rng = np.random.default_rng(random_state)
-            self._approximator._sampler._rng = np.random.default_rng(random_state)
+            self._imputer._rng = np.random.default_rng(random_state)  # noqa: SLF001
+            self._approximator._rng = np.random.default_rng(random_state)  # noqa: SLF001
+            self._approximator._sampler._rng = np.random.default_rng(random_state)  # noqa: SLF001
 
         # initialize the imputer with the explanation point
         imputer = self._imputer.fit(x)

@@ -94,7 +94,7 @@ def average_path_length(isolation_forest: Model) -> float:
     """
     from sklearn.ensemble._iforest import _average_path_length
 
-    max_samples = isolation_forest._max_samples
+    max_samples = isolation_forest._max_samples  # noqa: SLF001
     return _average_path_length([max_samples])
 
 
@@ -163,6 +163,7 @@ def convert_isolation_tree(
 def isotree_value_traversal(
     tree: Model,
     tree_features: np.ndarray,
+    *,
     normalize: bool = False,
     scaling: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -184,7 +185,7 @@ def isotree_value_traversal(
     corrected_values = tree.value.copy()
     if safe_isinstance(tree, "sklearn.tree._tree.Tree"):
 
-        def _recalculate_value(tree, i, level):
+        def _recalculate_value(tree: Model, i: int, level: int = 0) -> float:
             if tree.children_left[i] == -1 and tree.children_right[i] == -1:
                 value = level + _average_path_length(np.array([tree.n_node_samples[i]]))[0]
                 corrected_values[i, 0] = value

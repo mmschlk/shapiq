@@ -41,7 +41,7 @@ class ViTModel:
 
     """
 
-    def __init__(self, n_patches: int, input_image: Image, verbose: bool = True) -> None:
+    def __init__(self, n_patches: int, input_image: Image, *, verbose: bool = True) -> None:
         # check input
         if n_patches not in MAPPING_PLAYER_MASK:
             msg = f"The number of patches must be either 9 or 16 and not {n_patches}"

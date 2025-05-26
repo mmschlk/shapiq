@@ -112,13 +112,10 @@ class ModelWithFalseCall:
 
     def __call__(self, string: str, double: float):
         """A dummy call method that does not match the expected signature."""
-        pass
 
 
 class NonCallableModel:
     """A dummy model that does not implement a __call__ method."""
-
-    pass
 
 
 def test_exceptions_get_predict_function_and_model_type(background_reg_data):

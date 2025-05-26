@@ -18,7 +18,7 @@ def create_edge_tree(
     n_features: int,
     max_interaction: int,
     subset_updates_pos_store: dict[int, dict[int, np.ndarray[int]]],
-):
+) -> EdgeTree:
     """Extracts edge information recursively from the tree information.
 
     Parses the tree recursively to create an edge-based representation of the tree. It
@@ -48,15 +48,15 @@ def create_edge_tree(
     """
     # variables to be filled with recursive function
     parents = np.full(n_nodes, -1, dtype=int)
-    ancestors: np.ndarray[int] = np.full(n_nodes, -1, dtype=int)
+    ancestors: np.ndarray = np.full(n_nodes, -1, dtype=int)
 
-    ancestor_nodes: dict[int, np.ndarray[int]] = {}
+    ancestor_nodes: dict[int, np.ndarray] = {}
 
-    p_e_values: np.ndarray[float] = np.ones(n_nodes, dtype=float)
-    p_e_storages: np.ndarray[float] = np.ones((n_nodes, n_features), dtype=float)
-    split_weights: np.ndarray[float] = np.ones(n_nodes, dtype=float)
-    empty_predictions: np.ndarray[float] = np.zeros(n_nodes, dtype=float)
-    edge_heights: np.ndarray[int] = np.full_like(children_left, -1, dtype=int)
+    p_e_values: np.ndarray = np.ones(n_nodes, dtype=float)
+    p_e_storages: np.ndarray = np.ones((n_nodes, n_features), dtype=float)
+    split_weights: np.ndarray = np.ones(n_nodes, dtype=float)
+    empty_predictions: np.ndarray = np.zeros(n_nodes, dtype=float)
+    edge_heights: np.ndarray = np.full_like(children_left, -1, dtype=int)
     max_depth: list[int] = [0]
     interaction_height_store = {
         i: np.zeros((n_nodes, int(binom(n_features, i))), dtype=int)
@@ -64,15 +64,16 @@ def create_edge_tree(
     }
 
     features_last_seen_in_tree: dict[int, int] = {}
-
-    last_feature_node_in_path: np.ndarray[bool] = np.full_like(children_left, False, dtype=bool)
+    last_feature_node_in_path: np.ndarray = np.full_like(
+        children_left, fill_value=False, dtype=bool
+    )
 
     def recursive_search(
         node_id: int = 0,
         depth: int = 0,
         prod_weight: float = 1.0,
-        seen_features: np.ndarray[int] = None,
-    ):
+        seen_features: np.ndarray = None,
+    ) -> int:
         """Traverses the tree recursively and collects all relevant information.
 
         Args:
@@ -84,16 +85,13 @@ def create_edge_tree(
                 Maps the feature id to the node id where the feature was last seen on the way.
 
         Returns:
-            int: The edge height of the current node.
+            The edge height of the current node.
 
         """
         # if root node, initialize seen_features and p_e_storage
         if seen_features is None:
-            seen_features: np.ndarray[int] = np.full(
-                n_features,
-                -1,
-                dtype=int,
-            )  # maps feature_id to ancestor node_id
+            # map feature_id to ancestor node_id
+            seen_features: np.ndarray = np.full(n_features, -1, dtype=int)
 
         # update the maximum depth of the tree
         max_depth[0] = max(max_depth[0], depth)

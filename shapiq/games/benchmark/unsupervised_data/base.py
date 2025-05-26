@@ -27,7 +27,7 @@ class UnsupervisedData(Game):
         *,
         data: np.ndarray,
         verbose: bool = False,
-        **kwargs: dict[str, Any],  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the Unsupervised Data game.
 
@@ -80,7 +80,7 @@ class UnsupervisedData(Game):
         return values
 
 
-def total_correlation(data) -> float:
+def total_correlation(data: np.ndarray) -> float:
     """Compute the total correlation of a data subset.
 
     The total correlation is the sum of the entropies of the marginal distributions minus the joint

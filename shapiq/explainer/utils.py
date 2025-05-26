@@ -242,7 +242,7 @@ def print_classes_nicely(obj: list[Any] | dict[str, Any]) -> list[str] | None:
     return None
 
 
-def print_class(obj: Any) -> str:
+def print_class(obj: object) -> str:
     """Converts a class or class type into a *user-readable* class name.
 
     I/O Examples:

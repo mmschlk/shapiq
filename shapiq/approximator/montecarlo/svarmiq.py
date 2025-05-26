@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ._base import MonteCarlo
+
+if TYPE_CHECKING:
+    from typing import Any
 
 
 class SVARMIQ(MonteCarlo):
@@ -15,7 +20,6 @@ class SVARMIQ(MonteCarlo):
 
     References:
         .. [Kol24a] Kolpaczki, P., Muschalik M., Fumagalli, F., Hammer, B., and Hüllermeier, E., (2024). SVARM-IQ: Efficient Approximation of Any-order Shapley Interactions through Stratification. Proceedings of The 27th International Conference on Artificial Intelligence and Statistics, PMLR 238:3520-3528. url: https://proceedings.mlr.press/v238/kolpaczki24a
-
         .. [Kol24b] Kolpaczki, P., Bengs, V., Muschalik, M., & Hüllermeier, E. (2024). Approximating the Shapley Value without Marginal Contributions. Proceedings of the AAAI Conference on Artificial Intelligence, 38(12), 13246-13255. https://doi.org/10.1609/aaai.v38i12.29225
 
     """
@@ -25,6 +29,7 @@ class SVARMIQ(MonteCarlo):
         n: int,
         max_order: int = 2,
         index: str = "k-SII",
+        *,
         top_order: bool = False,
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
@@ -34,16 +39,23 @@ class SVARMIQ(MonteCarlo):
 
         Args:
             n: The number of players.
+
             max_order: The interaction order of the approximation. Defaults to ``2``.
+
             index: The interaction index to be used. Choose from ``['k-SII', 'SII']``. Defaults to
                 ``'k-SII'``.
+
             top_order: If ``True``, the top-order interactions are estimated. Defaults to ``False``.
+
             pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure.
                 Defaults to ``False``.
+
             sampling_weights: An optional array of weights for the sampling procedure. The weights
                 must be of shape ``(n + 1,)`` and are used to determine the probability of sampling
                 a coalition of a certain size. Defaults to ``None``.
+
             random_state: The random state of the estimator. Defaults to ``None``.
+
         """
         super().__init__(
             n,
@@ -72,22 +84,27 @@ class SVARM(SVARMIQ):
     def __init__(
         self,
         n: int,
+        *,
         random_state: int | None = None,
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
-        **_kwargs,
+        **kwargs: dict[str | Any] | None,  # noqa: ARG002
     ) -> None:
         """Initialize the SVARM approximator.
 
         Args:
             n: The number of players.
+
             random_state: The random state of the estimator. Defaults to ``None``.
+
             pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure.
                 Defaults to ``False``.
+
             sampling_weights: An optional array of weights for the sampling procedure. The weights
                 must be of shape ``(n + 1,)`` and are used to determine the probability of sampling
                 a coalition of a certain size. Defaults to ``None``.
-            **_kwargs: Additional keyword arguments (not used only for compatibility).
+
+            **kwargs: Additional keyword arguments (not used only for compatibility).
         """
         super().__init__(
             n,

@@ -31,7 +31,7 @@ class TabPFNExplainer(TabularExplainer):
 
     References:
         .. [Run24] Rundel, D., Kobialka, J., von Crailsheim, C., Feurer, M., Nagler, T., Rügamer, D. (2024). Interpretable Machine Learning for TabPFN. In: Longo, L., Lapuschkin, S., Seifert, C. (eds) Explainable Artificial Intelligence. xAI 2024. Communications in Computer and Information Science, vol 2154. Springer, Cham. https://doi.org/10.1007/978-3-031-63797-1_23
-        .. [Hol25] Hollmann, N., Müller, S., Purucker, L. et al. Accurate predictions on small data with a tabular foundation model. Nature 637, 319–326 (2025). https://doi.org/10.1038/s41586-024-08328-6
+        .. [Hol25] Hollmann, N., Müller, S., Purucker, L. et al. Accurate predictions on small data with a tabular foundation model. Nature 637, 319-326 (2025). https://doi.org/10.1038/s41586-024-08328-6
 
     """
 
@@ -105,7 +105,7 @@ class TabPFNExplainer(TabularExplainer):
         from shapiq.games.imputer.tabpfn_imputer import TabPFNImputer
 
         _predict_function, _ = get_predict_function_and_model_type(model, class_index=class_index)
-        model._shapiq_predict_function = _predict_function
+        model._shapiq_predict_function = _predict_function  # noqa: SLF001
 
         # check that data and labels have the same number of samples
         if data.shape[0] != labels.shape[0]:
@@ -152,6 +152,6 @@ class TabPFNExplainer(TabularExplainer):
 
         try:
             importlib.import_module("tabpfn")
-            return True
         except ImportError:
             return False
+        return True

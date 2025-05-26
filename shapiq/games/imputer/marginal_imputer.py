@@ -86,7 +86,14 @@ class MarginalImputer(Imputer):
 
             random_state: The random state to use for sampling. Defaults to ``None``.
         """
-        super().__init__(model, data, x, sample_size, categorical_features, random_state)
+        super().__init__(
+            model=model,
+            data=data,
+            x=x,
+            sample_size=sample_size,
+            categorical_features=categorical_features,
+            random_state=random_state,
+        )
 
         # setup attributes
         self.joint_marginal_distribution: bool = joint_marginal_distribution

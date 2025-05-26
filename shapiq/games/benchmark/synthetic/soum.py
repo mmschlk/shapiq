@@ -218,7 +218,7 @@ class SOUM(Game):
             self.converter = MoebiusConverter(self.moebius_coefficients)
         return self.converter(index, order)
 
-    def moebius_transform(self):
+    def moebius_transform(self) -> InteractionValues:
         """Computes the (sparse) Möbius transform of the SOUM.
 
         The Möbius transform is computed for the SOUM via its UnanimityGames. This is helpful for
@@ -231,9 +231,9 @@ class SOUM(Game):
         # fill the moebius coefficients dict from the game
         moebius_coefficients_dict = {}
         for i, game in self.unanimity_games.items():
-            try:
+            if game.interaction in moebius_coefficients_dict:
                 moebius_coefficients_dict[game.interaction] += self.linear_coefficients[i]
-            except KeyError:
+            else:
                 moebius_coefficients_dict[game.interaction] = self.linear_coefficients[i]
 
         # generate the lookup for the moebius values
@@ -244,10 +244,7 @@ class SOUM(Game):
             moebius_coefficients_lookup[key] = i
 
         # handle baseline value and set to 0 if no empty set is present
-        try:
-            baseline_value = moebius_coefficients_dict[()]
-        except KeyError:
-            baseline_value = 0.0
+        baseline_value = moebius_coefficients_dict.get((), 0.0)
 
         return InteractionValues(
             values=moebius_coefficients_values,

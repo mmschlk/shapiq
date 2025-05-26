@@ -55,7 +55,7 @@ class KernelSHAP(Regression):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the KernelSHAP approximator.
 

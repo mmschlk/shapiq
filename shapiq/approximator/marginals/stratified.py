@@ -12,6 +12,8 @@ from shapiq.interaction_values import InteractionValues, finalize_computed_inter
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.games.base import Game
+
 
 class StratifiedSamplingSV(Approximator):
     """The Stratifield Sampling algorithm for estimating the Shapley values.
@@ -34,7 +36,7 @@ class StratifiedSamplingSV(Approximator):
         self,
         n: int,
         random_state: int | None = None,
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the Stratified Sampling SV approximator.
 
@@ -53,9 +55,9 @@ class StratifiedSamplingSV(Approximator):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
         *args: Any,  # noqa: ARG002
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 

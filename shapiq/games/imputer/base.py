@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from shapiq.explainer import utils
 from shapiq.games.base import Game
+
+if TYPE_CHECKING:
+    from shapiq.utils import Model
 
 
 class Imputer(Game):
@@ -29,9 +33,10 @@ class Imputer(Game):
     @abstractmethod
     def __init__(
         self,
-        model,
+        model: Model,
         data: np.ndarray,
         x: np.ndarray | None = None,
+        *,
         sample_size: int | None = 100,
         categorical_features: list[int] | None = None,
         random_state: int | None = None,
@@ -66,7 +71,7 @@ class Imputer(Game):
             self._predict_function = utils.predict_callable
         # shapiq.Explainer adds a _shapiq_predict_function to the model to make it callable
         elif hasattr(model, "_shapiq_predict_function"):
-            self._predict_function = model._shapiq_predict_function
+            self._predict_function = model._shapiq_predict_function  # noqa: SLF001
         else:
             msg = "The model must be callable or have a predict function."
             raise ValueError(msg)

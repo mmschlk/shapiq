@@ -43,6 +43,8 @@ class CoalitionSampler:
         adjusted_sampling_weights: The adjusted sampling weights without zero-weighted coalition sizes.
             The array is of shape ``(n_sizes_to_sample,)``.
 
+        _rng: The random number generator used for sampling.
+
 
     Properties:
         sampled: A flag indicating whether the sampling process has been executed.
@@ -421,7 +423,7 @@ class CoalitionSampler:
         )
         self.adjusted_sampling_weights /= np.sum(self.adjusted_sampling_weights)  # probability
 
-    def execute_empty_grand_coalition(self, sampling_budget):
+    def execute_empty_grand_coalition(self, sampling_budget: int) -> int:
         """Sets the empty and grand coalition to be computed.
 
         Ensures empty and grand coalition are prioritized and computed independent of
@@ -563,7 +565,7 @@ class CoalitionSampler:
         for coalition_size in self._coalitions_to_sample:
             self._is_coalition_size_sampled[coalition_size] = True
 
-    def _sort_coalitions(self, value):
+    def _sort_coalitions(self, value: int) -> float:
         """Used to sort coalition sizes by distance to center, i.e. grand coalition and emptyset first.
 
         Args:

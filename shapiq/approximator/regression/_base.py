@@ -45,6 +45,7 @@ class Regression(Approximator):
         n: int,
         max_order: int,
         index: str,
+        *,
         sii_consistent: bool = True,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
@@ -109,8 +110,8 @@ class Regression(Approximator):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        *args: list[Any] | None,  # noqa: ARG002
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        *args: Any | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """The main approximation routine for the regression approximators.
 
@@ -203,7 +204,6 @@ class Regression(Approximator):
         coalitions_matrix = self._sampler.coalitions_matrix
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
         coalitions_size = np.sum(coalitions_matrix, axis=1)
-        sampling_adjustment_weights = sampling_adjustment_weights
 
         # set up the storage mechanisms
         empty_coalition_value = float(game_values[coalitions_size == 0][0])
@@ -449,7 +449,9 @@ class Regression(Approximator):
             )
         return weight
 
-    def _get_ground_truth_sii_weights(self, coalitions, interaction_size: int) -> np.ndarray:
+    def _get_ground_truth_sii_weights(
+        self, coalitions: np.ndarray, interaction_size: int
+    ) -> np.ndarray:
         """Returns the ground truth SII weights for the coalitions per interaction.
 
         Args:

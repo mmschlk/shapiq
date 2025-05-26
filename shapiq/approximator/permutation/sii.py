@@ -30,6 +30,7 @@ class PermutationSamplingSII(Approximator):
         n: int,
         max_order: int = 2,
         index: str = "SII",
+        *,
         top_order: bool = False,
         random_state: int | None = None,
     ) -> None:

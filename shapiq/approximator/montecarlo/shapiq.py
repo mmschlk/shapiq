@@ -46,11 +46,12 @@ class SHAPIQ(MonteCarlo):
         n: int,
         max_order: int = 2,
         index: str = "k-SII",
+        *,
         top_order: bool = False,
         sampling_weights: float | None = None,
         pairing_trick: bool = False,
         random_state: int | None = None,
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the SHAPIQ approximator.
 
@@ -127,10 +128,11 @@ class UnbiasedKernelSHAP(SHAPIQ):
     def __init__(
         self,
         n: int,
+        *,
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
         random_state: int | None = None,
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the UnbiasedKernelSHAP approximator.
 

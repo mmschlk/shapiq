@@ -71,10 +71,7 @@ SI_APPROXIMATORS_ORDERING = {
 
 def sort_values(list_to_sort: list[str], ordering: dict[str, int]) -> list[str]:
     """Sort the application names according to the APPLICATION_ORDERING."""
-    sorted_list = []
-    for name in list_to_sort:
-        if name in ordering:
-            sorted_list.append(name)
+    sorted_list = [name for name in list_to_sort if name in ordering]
     sorted_list = sorted(sorted_list, key=lambda x: ordering[x])
     for name in list_to_sort:
         if name not in sorted_list:
@@ -95,7 +92,7 @@ def _get_best_approximator(df: pd.DataFrame) -> dict[str, list[tuple]]:
                     "approximator"
                 ].unique()
                 for approx in best_approx_per_budget:
-                    best_at_budget.append((approx, budget))
+                    best_at_budget.append((approx, budget))  # noqa: PERF401
         else:
             best_value = df.groupby("budget")[metric].min()
             best_at_budget = []
@@ -181,7 +178,7 @@ def create_eval_csv(n_evals: int | None = None) -> pd.DataFrame:
     return results_df
 
 
-def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False) -> None:
+def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", *, save: bool = False) -> None:
     """Summarizes the benchmark results by plotting a collection of stacked bar plots.
 
     For each metric, this function plots a stacked bar plot showing the percentage of the best

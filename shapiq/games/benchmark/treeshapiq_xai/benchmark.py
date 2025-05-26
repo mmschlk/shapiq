@@ -16,6 +16,7 @@ class AdultCensus(TreeSHAPIQXAI):
 
     def __init__(
         self,
+        *,
         x: np.ndarray | int | None = None,
         model_name: str = "decision_tree",
         class_label: int | None = None,

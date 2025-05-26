@@ -21,6 +21,7 @@ class OldLookUpGame:
         self,
         data_folder: str,
         n: int,
+        *,
         data_id: int | str | None = None,
         used_ids: set | None = None,
         set_zero: bool = True,
@@ -44,7 +45,7 @@ class OldLookUpGame:
         """
         if random_seed is not None:
             random.seed(random_seed)
-            np.random.seed(random_seed)
+            np.random.seed(random_seed)  # noqa: NPY002
         self.n = n
         self.log_output = log_output
 
@@ -96,15 +97,15 @@ class OldLookUpGame:
         if set_zero:
             self.empty_value = self.set_call(set())
 
-    def set_call(self, S):
+    def set_call(self, S: set[int] | list[int] | np.ndarray[int] | tuple[int, ...]) -> float:
         """Get the value of a coalition S."""
         S_id = "s_" + "_".join([str(player) for player in sorted(S)])
         output = self.storage[S_id] - self.empty_value
         if self.log_output:
             return float(np.log(output))
-        return output
+        return float(output)
 
-    def get_name(self):
+    def get_name(self) -> str:
         """Get the name of the game instance."""
         return self.game_name
 

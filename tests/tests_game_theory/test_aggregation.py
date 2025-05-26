@@ -17,12 +17,12 @@ from shapiq.games.benchmark import DummyGame
     ("sii_approximator", "ksii_approximator"),
     [
         (
-            PermutationSamplingSII(7, 2, "SII", False, random_state=42),
-            PermutationSamplingSII(7, 2, "k-SII", False, random_state=42),
+            PermutationSamplingSII(7, 2, "SII", top_order=False, random_state=42),
+            PermutationSamplingSII(7, 2, "k-SII", top_order=False, random_state=42),
         ),
         (
-            SHAPIQ(7, 2, "SII", False, random_state=42),
-            SHAPIQ(7, 2, "k-SII", False, random_state=42),
+            SHAPIQ(7, 2, "SII", top_order=False, random_state=42),
+            SHAPIQ(7, 2, "k-SII", top_order=False, random_state=42),
         ),
     ],
 )
@@ -54,7 +54,7 @@ def test_k_one_dim_aggregate():
     n = 7
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    estimator = SHAPIQ(7, 2, "k-SII", False, random_state=42)
+    estimator = SHAPIQ(7, 2, "k-SII", top_order=False, random_state=42)
     k_sii_estimates = estimator.approximate(2**n, game)
 
     efficiency = np.sum(k_sii_estimates.values)

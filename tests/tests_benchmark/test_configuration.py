@@ -30,13 +30,13 @@ def test_getting_games():
 def test_loading():
     """Test loading benchmark games from configuration."""
     game_class = GAME_NAME_TO_CLASS_MAPPING["CaliforniaHousingLocalXAI"]
-    _ = next(load_games_from_configuration(game_class, 1, 1))
-    _ = next(load_games_from_configuration(game_class, 1, 1, only_pre_computed=True))
+    _ = next(load_games_from_configuration(game_class, 1, n_games=1))
+    _ = next(load_games_from_configuration(game_class, 1, n_games=1, only_pre_computed=True))
     _ = next(
         load_games_from_configuration(
             game_class,
             1,
-            1,
+            n_games=1,
             only_pre_computed=False,
             check_pre_computed=False,
         ),
@@ -45,7 +45,7 @@ def test_loading():
         load_games_from_configuration(
             game_class,
             {"model_name": "decision_tree", "imputer": "marginal"},
-            1,
+            n_games=1,
         ),
     )
 

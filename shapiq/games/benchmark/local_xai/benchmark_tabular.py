@@ -70,7 +70,8 @@ class AdultCensus(LocalExplanation):
         if class_to_explain is None:
             class_to_explain = int(np.argmax(self.setup.predict_function(x.reshape(1, -1))))
 
-        def predict_function(x):
+        def predict_function(x: np.ndarray) -> np.ndarray:
+            """Predict function for the model."""
             return self.setup.predict_function(x)[:, class_to_explain]
 
         # call the super constructor

@@ -42,6 +42,7 @@ def run_benchmark(
     index: str,
     order: int,
     games: list[Game],
+    *,
     gt_values: list[InteractionValues] | None = None,
     approximators: list[Approximator] | list[Approximator.__class__] | list[str] | None = None,
     budget_steps: list[int] | None = None,
@@ -158,7 +159,7 @@ def run_benchmark(
     ]
 
     # shuffle the parameter space for better estimation of the time
-    new_indices = np.random.permutation(len(parameter_space))
+    new_indices = np.random.default_rng().permutation(len(parameter_space))
     parameter_space_shuffled = [parameter_space[i] for i in new_indices]
     parameter_space = parameter_space_shuffled
 
@@ -209,7 +210,9 @@ def run_benchmark(
     return results_df
 
 
-def _run_benchmark(args) -> dict[str, str | int | float | InteractionValues]:
+def _run_benchmark(
+    args: tuple[int, Approximator, Game, InteractionValues, int],
+) -> dict[str, str | int | float | InteractionValues]:
     """Run the benchmark for a given set of parameters.
 
     Args:
@@ -345,8 +348,8 @@ def load_benchmark_results(
         )
         save_path = Path(BENCHMARK_RESULTS_DIR) / benchmark_name
 
-    df = pd.read_json(save_path)
-    return df, save_path
+    data_df = pd.read_json(save_path)
+    return data_df, save_path
 
 
 def run_benchmark_from_configuration(

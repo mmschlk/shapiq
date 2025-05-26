@@ -35,6 +35,7 @@ __all__ = [
 def load_games_from_configuration(
     game_class: Game.__class__ | str,
     config_id: int | dict[str, Any],
+    *,
     n_games: int | None = None,
     n_player_id: int = 0,
     check_pre_computed: bool = True,

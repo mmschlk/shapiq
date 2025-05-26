@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 from copy import copy, deepcopy
 
@@ -90,10 +91,8 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values == interaction_values_copy
     assert interaction_values != interaction_values_2
 
-    try:
+    with contextlib.suppress(TypeError):
         assert interaction_values == 1  # expected to fail with TypeError
-    except TypeError:
-        pass
 
     # check that the hash is correct
     assert hash(interaction_values) == hash(interaction_values_copy)
@@ -916,7 +915,7 @@ def test_copy_behaviour():
         assert hash(original) == hash(copied)
         assert original == copied
 
-        # Independence: changing one doesn’t affect the other
+        # Independence: changing one doesn't affect the other
         copied.values[0] += 1.0
         assert not np.array_equal(original.values, copied.values), "Values should be independent"
         copied.interaction_lookup[interaction] = 999

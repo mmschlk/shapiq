@@ -83,6 +83,6 @@ if __name__ == "__main__":
                             rerun_if_exists=rerun_if_exists,
                         )
                         n_runs_done += 1
-                    except Exception as e:
-                        logging.exception(f"Error occurred: {e}. Continuing.")
+                    except Exception:
+                        logging.exception("Error occurred: Continuing.")
                         continue

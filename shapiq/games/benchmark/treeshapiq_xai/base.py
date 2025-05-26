@@ -26,6 +26,7 @@ class TreeSHAPIQXAI(Game):
         self,
         x: np.ndarray,
         tree_model: Model,
+        *,
         class_label: int | None = None,
         normalize: bool = True,
         verbose: bool = True,

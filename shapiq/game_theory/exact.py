@@ -16,7 +16,8 @@ from .indices import ALL_AVAILABLE_CONCEPTS
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from .. import Game
+
+    from shapiq.games.base import Game
 
 __all__ = ["ExactComputer", "get_bernoulli_weights"]
 
@@ -78,17 +79,15 @@ class ExactComputer:
         .. [Mar07] Jean-Luc Marichal, Ivan Kojadinovic, Katsushige Fujimoto (2007). Axiomatic characterizations of generalized values. In: Discrete Applied Mathematics 155(1):26-43. https://doi.org/10.1016/j.dam.2006.05.002
         .. [Web09] Robert James Weber (2009). Probabilistic values for games. In: Roth AE, ed. The Shapley Value: Essays in Honor of Lloyd S. Shapley. Cambridge University Press. 1988:101-120. https://doi.org/10.1017/CBO9780511528446.008
         .. [Sun20] Mukund Sundararajan, Kedar Dhamdhere, Ashish Agarwal (2020). In: Proceedings of the 37th International Conference on Machine Learning, PMLR 119:9259-9268. https://proceedings.mlr.press/v119/sundararajan20a.html
-        .. [Yan21] Tom Yan, Ariel D. Procaccia (2021). If You Like Shapley Then You’ll Love the Core. In: Proceedings of the AAAI Conference on Artificial Intelligence 35(6):5751-5759. https://doi.org/10.1609/aaai.v35i6.16721
+        .. [Yan21] Tom Yan, Ariel D. Procaccia (2021). If You Like Shapley Then You'll Love the Core. In: Proceedings of the AAAI Conference on Artificial Intelligence 35(6):5751-5759. https://doi.org/10.1609/aaai.v35i6.16721
         .. [Har22] Chris Harris, Richard Pymar, Colin Rowat (2022). Joint Shapley values: a measure of joint feature importance. In: Proceedings of The Tenth International Conference on Learning Representations. https://openreview.net/forum?id=vcUmUvQCloe
         .. [Bor23] Sebastian Bordt, Ulrike von Luxburg (2023). In: Proceedings of The 26th International Conference on Artificial Intelligence and Statistics, PMLR 206:709-745. https://proceedings.mlr.press/v206/bordt23a.html
-        .. [Tsa23] Che-Ping Tsai, Chih-Kuan Yeh, Pradeep Ravikumar (2023). Faith-Shap: The Faithful Shapley Interaction Index. In: Journal of Machine Learning Research 24(94):1−42. https://jmlr.org/papers/v24/22-0202.html
+        .. [Tsa23] Che-Ping Tsai, Chih-Kuan Yeh, Pradeep Ravikumar (2023). Faith-Shap: The Faithful Shapley Interaction Index. In: Journal of Machine Learning Research 24(94):1-42. https://jmlr.org/papers/v24/22-0202.html
         .. [Pel23] Guilherme Dean Pelegrina, Leonardo Tomazeli Duarte, Michel Grabisch (2023). A k-additive Choquet integral-based approach to approximate the SHAP values for local interpretability in machine learning. In: Artificial Intelligence 325:104014. https://doi.org/10.1016/j.artint.2023.104014
 
     """
 
-    # TODO(mmshlk): if we init with a Game object, we do not need to provide the n_players. Hence,
-    # TODO(mmshlk): we could make the n_players optional
-    # TODO(mmshlk): issue: https://github.com/mmschlk/shapiq/issues/388
+    # TODO(mmshlk): if we init with a Game object, we do not need to provide the n_players. Hence, we could make the n_players optional issue: https://github.com/mmschlk/shapiq/issues/388
     def __init__(
         self,
         n_players: int,
@@ -204,7 +203,7 @@ class ExactComputer:
         return self._baseline_value
 
     @property
-    def coalition_lookup(self) -> dict[tuple[int], int]:
+    def coalition_lookup(self) -> dict[tuple[int, ...], int]:
         """Return the coalition lookup dictionary."""
         if not self._game_is_computed:
             self._evaluate_game()
@@ -224,7 +223,7 @@ class ExactComputer:
         self._coalition_lookup = computed_game[2]
         self._game_is_computed = True
 
-    def compute_game_values(self) -> tuple[float, np.ndarray[float], dict[tuple[int], int]]:
+    def compute_game_values(self) -> tuple[float, np.ndarray, dict[tuple[int], int]]:
         """Evaluates the game on the powerset of all coalitions.
 
         Returns:
@@ -238,13 +237,12 @@ class ExactComputer:
             coalition_matrix[i, T] = True  # one-hot-encode the coalition
         game_values = self.game_fun(coalition_matrix)  # compute the game values
         baseline_value = float(game_values[0])  # set the baseline value
-        coalition_lookup = coalition_lookup
         return baseline_value, game_values, coalition_lookup
 
     def moebius_transform(
         self,
-        *args: list[Any],  # noqa: ARG002
-        **kwargs: dict[str, Any],  # noqa: ARG002
+        *args: Any,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Computes the Moebius transform for all :math:`2^n` coalitions of the game.
 
@@ -484,9 +482,10 @@ class ExactComputer:
                     * self.game_values[coalition_pos]
                 )
 
-        interaction_lookup = {}
-        for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order)):
-            interaction_lookup[interaction] = i
+        interaction_lookup = {
+            interaction: i
+            for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order))
+        }
 
         # CHII is un-defined for empty set
         if index == "CHII" and () in interaction_lookup:
@@ -535,9 +534,10 @@ class ExactComputer:
         base_generalized_values = np.zeros(self._n_interactions[order])
         base_weights = self._get_base_weights(index, order)
 
-        interaction_lookup = {}
-        for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order)):
-            interaction_lookup[interaction] = i
+        interaction_lookup = {
+            interaction: i
+            for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order))
+        }
 
         for i, coalition in enumerate(
             powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1),
@@ -609,11 +609,10 @@ class ExactComputer:
         stii_values[0] = self.baseline_value  # set baseline value
 
         # create interaction lookup
-        interaction_lookup = {}
-        for interaction_pos, interaction in enumerate(
-            powerset(self._grand_coalition_set, max_size=order),
-        ):
-            interaction_lookup[interaction] = interaction_pos
+        interaction_lookup = {
+            interaction: i
+            for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order))
+        }
 
         # lower-order interactions (size < order) are the Möbius transform, i.e. discrete derivative with empty set
         for interaction in powerset(self._grand_coalition_set, max_size=order - 1):
@@ -666,11 +665,10 @@ class ExactComputer:
         coalition_matrix = np.zeros((2**self.n, self._n_interactions[order]), dtype=bool)
 
         # create interaction lookup
-        interaction_lookup = {}
-        for interaction_pos, interaction in enumerate(
-            powerset(self._grand_coalition_set, max_size=order),
-        ):
-            interaction_lookup[interaction] = interaction_pos
+        interaction_lookup = {
+            interaction: i
+            for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order))
+        }
 
         coalition_store = {}
         # Set least squares matrices
@@ -700,7 +698,6 @@ class ExactComputer:
         # transform into InteractionValues object
         if index == "FSII":
             # For FSII ensure empty set is set to baseline
-            # TODO: could be removed in future, but requires testing
             baseline_value = self.baseline_value
             fii_values[0] = baseline_value  # set baseline value
         elif index == "FBII":
@@ -771,9 +768,10 @@ class ExactComputer:
         coalition_matrix = np.zeros((2**self.n, self._n_interactions[order]))
         bernoulli_weights = get_bernoulli_weights(order)
 
-        interaction_lookup = {}
-        for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order)):
-            interaction_lookup[interaction] = i
+        interaction_lookup = {
+            interaction: i
+            for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order))
+        }
 
         for coalition_pos, coalition in enumerate(powerset(self._grand_coalition_set)):
             least_squares_weights[coalition_pos] = weights[len(coalition)]
@@ -811,7 +809,7 @@ class ExactComputer:
             baseline_value=self.baseline_value,
         )
 
-    def compute_joint_sv(self, order: int):
+    def compute_joint_sv(self, order: int) -> InteractionValues:
         """Computes the JointSV index up to an order according to [Har22]_.
 
         Args:
@@ -826,9 +824,10 @@ class ExactComputer:
         jointSV_values[0] = self.baseline_value
         coalition_weights = self.get_jointsv_weights(order)
 
-        interaction_lookup = {}
-        for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order)):
-            interaction_lookup[interaction] = i
+        interaction_lookup = {
+            interaction: i
+            for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order))
+        }
 
         for coalition_pos, coalition in enumerate(
             powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1),
@@ -945,8 +944,8 @@ class ExactComputer:
     def probabilistic_value(
         self,
         index: str,
-        *args: list[Any],  # noqa: ARG002
-        **kwargs: dict[str, Any],  # noqa: ARG002
+        *args: Any,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Computes common semi-values or probabilistic values depending on the index.
 
@@ -985,8 +984,8 @@ class ExactComputer:
 
     def compute_egalitarian_least_core(
         self,
-        *args: list[Any],  # noqa: ARG002
-        **kwargs: dict[str, Any],  # noqa: ARG002
+        *args: Any,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Computes the egalitarian least core (ELC) of the game.
 
@@ -1033,7 +1032,7 @@ def get_bernoulli_weights(order: int) -> np.ndarray:
         An array containing the bernoulli weights for the k-additive approximation.
 
     """
-    # TODO(mmshlk): We should import this in the kADD-SHAP approximator from here
+    # TODO(mmshlk): We should import this in the kADD-SHAP approximator from here https://github.com/mmschlk/shapiq/issues/390
     bernoulli_numbers = bernoulli(order)
     weights = np.zeros((order + 1, order + 1))
     for interaction_size in range(1, order + 1):

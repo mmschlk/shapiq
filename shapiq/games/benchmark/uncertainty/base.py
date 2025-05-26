@@ -88,7 +88,7 @@ class UncertaintyExplanation(Game):
             self._predict = self._predict_rf
         else:
             msg = f"Invalid model provided. Should be RandomForestClassifier but got {model}."
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         if imputer == "marginal":
             self._imputer = MarginalImputer(

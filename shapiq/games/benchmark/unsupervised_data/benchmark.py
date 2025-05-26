@@ -14,9 +14,9 @@ class AdultCensus(UnsupervisedData):
 
     def __init__(
         self,
+        *,
         verbose: bool = False,
-        *args: Any,  # noqa: ARG002
-        **kwargs: dict[str, Any],  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the Adult Census UnsupervisedData game.
 
@@ -37,16 +37,15 @@ class BikeSharing(UnsupervisedData):
 
     def __init__(
         self,
+        *,
         verbose: bool = False,
-        *args: Any,  # noqa: ARG002
-        **kwargs: dict[str, Any],  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the Bike Sharing UnsupervisedData game.
 
         Args:
             verbose: A flag to enable verbose imputation, which will print a progress bar for model
                 predictions. Defaults to ``False``.
-            *args: Additional positional arguments (not used).
             **kwargs: Additional keyword arguments (not used).
         """
         setup = GameBenchmarkSetup("bike_sharing", verbose=verbose)
@@ -60,16 +59,15 @@ class CaliforniaHousing(UnsupervisedData):
 
     def __init__(
         self,
+        *,
         verbose: bool = False,
-        *args: Any,  # noqa: ARG002
-        **kwargs: dict[str, Any],  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the California Housing UnsupervisedData game.
 
         Args:
             verbose: A flag to enable verbose imputation, which will print a progress bar for model
                 predictions. Defaults to ``False``.
-            *args: Additional positional arguments (not used).
             **kwargs: Additional keyword arguments (not used).
         """
         setup = GameBenchmarkSetup("california_housing", verbose=verbose)

@@ -33,6 +33,7 @@ class DataValuation(Game):
 
     def __init__(
         self,
+        *,
         n_data_points: int,
         x_data: np.ndarray,
         y_data: np.ndarray,
@@ -73,8 +74,6 @@ class DataValuation(Game):
 
         """
         # set the random state
-        if random_state is not None:
-            np.random.seed(random_state)
         rng = np.random.default_rng(random_state)
 
         # randomly sample n_data_points from the data and create training and test data

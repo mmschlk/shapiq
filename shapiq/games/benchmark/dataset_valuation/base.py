@@ -98,13 +98,15 @@ class DatasetValuation(Game):
             )
             raise ValueError(msg)
 
+        rng = np.random.default_rng(random_state)
+
         if isinstance(player_sizes, str):
             if player_sizes == "uniform":
                 player_sizes = [1 / n_players for _ in range(n_players)]
             elif player_sizes == "increasing":
                 player_sizes = [i / n_players for i in range(1, n_players + 1)]
             elif player_sizes == "random":
-                player_sizes = np.random.rand(n_players)
+                player_sizes = rng.random(n_players)
             else:
                 msg = "player_sizes must be 'uniform', 'increasing', 'random', or a list."
                 raise ValueError(
@@ -113,10 +115,6 @@ class DatasetValuation(Game):
         elif player_sizes is None:
             player_sizes = [1 / n_players for _ in range(n_players)]
         player_sizes = np.array(player_sizes) / np.sum(player_sizes)
-
-        if random_state is not None:
-            np.random.seed(random_state)
-        rng = np.random.default_rng(random_state)
 
         # get the holdout set (if not provided)
         if x_test is None or y_test is None:

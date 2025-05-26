@@ -87,7 +87,7 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     },
     "BV": {
         "name": "Banzhaf Value",
-        "source": "Banzhaf III, J. F. (1965). Weighted Voting Doesn’t Work: A Mathematical "
+        "source": "Banzhaf III, J. F. (1965). Weighted Voting Doesn`t Work: A Mathematical "
         "Analysis. Rutgers Law Review, 19, 317-343.",  # no doi
         "generalizes": None,
     },
@@ -213,7 +213,7 @@ def get_computation_index(index: str) -> str:
     if "k-" in index:
         return index.split("-")[1]  # remove the k- prefix
     if index == "SV":  # for SV we return SII with max order 1
-        return "SII"  # TODO this may break with FSII and KernelSHAP
+        return "SII"
     if index == "BV":  # for SV we return SII with max order 1
         return "BII"
     return index

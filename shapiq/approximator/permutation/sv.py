@@ -39,7 +39,7 @@ class PermutationSamplingSV(Approximator):
         self,
         n: int,
         random_state: int | None = None,
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the Permutation Sampling approximator for Shapley values.
 

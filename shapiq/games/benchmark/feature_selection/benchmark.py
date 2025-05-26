@@ -11,6 +11,7 @@ class AdultCensus(FeatureSelection):
 
     def __init__(
         self,
+        *,
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = False,
@@ -55,6 +56,7 @@ class BikeSharing(FeatureSelection):
 
     def __init__(
         self,
+        *,
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = False,
@@ -99,6 +101,7 @@ class CaliforniaHousing(FeatureSelection):
 
     def __init__(
         self,
+        *,
         model_name: str = "decision_tree",
         normalize: bool = True,
         verbose: bool = False,

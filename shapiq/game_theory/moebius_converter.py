@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from scipy.special import binom
@@ -87,7 +87,9 @@ class MoebiusConverter:
         msg = f"Index {index} not supported."
         raise ValueError(msg)
 
-    def base_aggregation(self, base_interactions: InteractionValues, order: int):
+    def base_aggregation(
+        self, base_interactions: InteractionValues, order: int
+    ) -> InteractionValues:
         """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII.
 
         Args:
@@ -103,7 +105,7 @@ class MoebiusConverter:
         aggregated_interactions = aggregate_base_interaction(base_interactions, order)
         return copy.copy(aggregated_interactions)
 
-    def moebius_to_base_interaction(self, index: str, order: int):
+    def moebius_to_base_interaction(self, index: str, order: int) -> InteractionValues:
         """Computes a base interaction index, e.g. SII or BII.
 
         Args:
@@ -162,7 +164,11 @@ class MoebiusConverter:
             estimated=self.moebius_coefficients.estimated,
         )
 
-    def stii_routine(self, order: int, **_kwargs):
+    def stii_routine(
+        self,
+        order: int,
+        **kwargs: Any,  # noqa: ARG002
+    ) -> InteractionValues:
         """Computes STII. Routine to distribute the Moebius coefficients onto all STII interactions.
 
         The lower-order interactions are equal to their Moebius coefficients, whereas the top-order
@@ -170,7 +176,7 @@ class MoebiusConverter:
 
         Args:
             order: The order of the explanation
-            **_kwargs: Additional keyword arguments are not used.
+            **kwargs: Additional keyword arguments are not used.
 
         Returns:
             An InteractionValues object containing the STII interactions.
@@ -230,7 +236,7 @@ class MoebiusConverter:
             baseline_value=self.moebius_coefficients[()],
         )
 
-    def fii_routine(self, index: str, order: int):
+    def fii_routine(self, index: str, order: int) -> InteractionValues:
         """Computes FII. Routine to distribute the Moebius coefficients onto all FSII interactions.
 
         The higher-order interactions (``size > order``) are distributed onto all FSII interactions
@@ -304,7 +310,7 @@ class MoebiusConverter:
             baseline_value=fii_dict[()],
         )
 
-    def moebius_to_shapley_interaction(self, index: str, order: int):
+    def moebius_to_shapley_interaction(self, index: str, order: int) -> InteractionValues:
         """Converts the Möbius coefficients to Shapley Interactions up to order k.
 
         Args:
@@ -340,7 +346,7 @@ def _get_moebius_distribution_weight(
     moebius_size: int,
     interaction_size: int,
     order: int,
-    index: str,
+    index: Literal["SII", "STII", "FSII", "FBII"],
 ) -> float:
     """Return the distribution weights for the Möbius coefficients onto the lower-order interaction indices.
 
@@ -348,7 +354,7 @@ def _get_moebius_distribution_weight(
         moebius_size: The size of the Möbius coefficient.
         interaction_size: The size of the interaction.
         order: The order of the explanation.
-        index: The interaction index, e.g. SII, k-SII, FSII.
+        index: The interaction index.
 
     Returns:
         A distribution weight for the given combination.
@@ -358,38 +364,58 @@ def _get_moebius_distribution_weight(
 
     """
     if index == "SII":
-        return 1 / (moebius_size - interaction_size + 1)
+        return _sii_distribution_weight(moebius_size, interaction_size)
     if index == "STII":
-        if moebius_size <= order:
-            if moebius_size == interaction_size:
-                return 1
-            return 0
-        if interaction_size == order:
-            return 1 / binom(moebius_size, moebius_size - interaction_size)
-        return 0
+        return _stii_distribution_weight(moebius_size, interaction_size, order)
     if index == "FSII":
-        if moebius_size <= order:
-            if moebius_size == interaction_size:
-                return 1
-            return 0
-        return (
-            (-1) ** (order - interaction_size)
-            * (interaction_size / (order + interaction_size))
-            * (
-                binom(order, interaction_size)
-                * binom(moebius_size - 1, order)
-                / binom(moebius_size + order - 1, order + interaction_size)
-            )
-        )
+        return _fsii_distribution_weight(moebius_size, interaction_size, order)
     if index == "FBII":
-        if moebius_size <= order:
-            if moebius_size == interaction_size:
-                return 1
-            return 0
-        return (
-            (-1) ** (order - interaction_size)
-            * (1 / 2) ** (moebius_size - interaction_size)
-            * binom(moebius_size - interaction_size - 1, order - interaction_size)
-        )
+        return _fbii_distribution_weight(moebius_size, interaction_size, order)
     msg = f"Index {index} not supported."
     raise ValueError(msg)
+
+
+def _sii_distribution_weight(moebius_size: int, interaction_size: int) -> float:
+    """Return the distribution weight for SII."""
+    return 1 / (moebius_size - interaction_size + 1)
+
+
+def _stii_distribution_weight(moebius_size: int, interaction_size: int, order: int) -> float:
+    """Return the distribution weight for STII."""
+    if moebius_size <= order:
+        if moebius_size == interaction_size:
+            return 1
+        return 0
+    if interaction_size == order:
+        return 1 / binom(moebius_size, moebius_size - interaction_size)
+    return 0
+
+
+def _fsii_distribution_weight(moebius_size: int, interaction_size: int, order: int) -> float:
+    """Return the distribution weight for FSII."""
+    if moebius_size <= order:
+        if moebius_size == interaction_size:
+            return 1
+        return 0
+    return (
+        (-1) ** (order - interaction_size)
+        * (interaction_size / (order + interaction_size))
+        * (
+            binom(order, interaction_size)
+            * binom(moebius_size - 1, order)
+            / binom(moebius_size + order - 1, order + interaction_size)
+        )
+    )
+
+
+def _fbii_distribution_weight(moebius_size: int, interaction_size: int, order: int) -> float:
+    """Return the distribution weight for FBII."""
+    if moebius_size <= order:
+        if moebius_size == interaction_size:
+            return 1
+        return 0
+    return (
+        (-1) ** (order - interaction_size)
+        * (1 / 2) ** (moebius_size - interaction_size)
+        * binom(moebius_size - interaction_size - 1, order - interaction_size)
+    )

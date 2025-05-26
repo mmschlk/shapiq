@@ -12,6 +12,8 @@ from shapiq.interaction_values import InteractionValues, finalize_computed_inter
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.games.base import Game
+
 
 class OwenSamplingSV(Approximator):
     """Owen Sampling approximator for the Shapley values.
@@ -37,7 +39,7 @@ class OwenSamplingSV(Approximator):
         n: int,
         n_anchor_points: int = 10,
         random_state: int | None = None,
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the Owen Sampling SV approximator.
 
@@ -60,9 +62,9 @@ class OwenSamplingSV(Approximator):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
         *args: Any,  # noqa: ARG002
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the Shapley values using Owen Sampling.
 
@@ -147,7 +149,7 @@ class OwenSamplingSV(Approximator):
         )
 
     @staticmethod
-    def get_anchor_points(n_anchor_points: int):
+    def get_anchor_points(n_anchor_points: int) -> np.ndarray:
         """Returns the anchor points for the Owen Sampling approximation.
 
         Args:

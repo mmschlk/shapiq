@@ -314,9 +314,7 @@ class RandomForestEnsembleSelection(EnsembleSelection):
                 "Invalid random forest provided. Expected a RandomForestClassifier or "
                 "RandomForestRegressor as provided by the scikit-learn package."
             )
-            raise ValueError(
-                msg,
-            )
+            raise TypeError(msg)
 
         # get the ensemble members
         ensemble_members = random_forest.estimators_

@@ -56,7 +56,7 @@ class TreeExplainer(Explainer):
         min_order: int = 0,
         index: str = "k-SII",
         class_index: int | None = None,
-        **kwargs: dict[str, Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the TreeExplainer.
 
@@ -93,7 +93,6 @@ class TreeExplainer(Explainer):
         # validate and parse model
         validated_model = validate_tree_model(model, class_label=class_index)
         self._trees: list[TreeModel] = copy.deepcopy(validated_model)
-        # TODO(mmshlk) trees are made instance of list here, but in validation they are also but then converted back into single element if list is length 1
         if not isinstance(self._trees, list):
             self._trees = [self._trees]
         self._n_trees = len(self._trees)
@@ -111,7 +110,7 @@ class TreeExplainer(Explainer):
     def explain_function(
         self,
         x: np.ndarray,
-        **kwargs,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Computes the Shapley Interaction values for a single instance.
 

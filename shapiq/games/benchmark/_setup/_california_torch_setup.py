@@ -34,7 +34,7 @@ class SmallNeuralNetwork(nn.Module):
             nn.Linear(5, 1),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
 

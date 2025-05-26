@@ -48,6 +48,7 @@ class ResNetModel:
     def __init__(
         self,
         input_image: Image.Image,
+        *,
         n_superpixels: int = 14,
         verbose: bool = True,
         batch_size: int = 50,
