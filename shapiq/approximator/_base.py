@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, Any
 
 import numpy as np
 from scipy.special import binom
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from shapiq.interaction_values import InteractionValues
+    from shapiq.games.base import Game
 
 __all__ = [
     "Approximator",
@@ -29,21 +30,6 @@ class Approximator(ABC):
     Approximators are used to estimate the interaction values of a model or any value function.
     Different approximators can be used to estimate different interaction indices. Some can be used
     to estimate all indices.
-
-    Args:
-        n: The number of players.
-        max_order: The interaction order of the approximation.
-        min_order: The minimum interaction order, default is ``0``.
-        index: The interaction index to be estimated. Available indices are ``['SII', 'k-SII', 'STII',
-            'FSII']``.
-        top_order: If ``True``, the approximation is performed only for the top order interactions. If
-            ``False``, the approximation is performed for all orders up to the specified order.
-        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure. Defaults
-            to ``False``.
-        sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
-             of a certain size. Defaults to ``None``.
-        random_state: The random state to use for the approximation. Defaults to ``None``.
 
     Attributes:
         n: The number of players.
@@ -64,7 +50,7 @@ class Approximator(ABC):
         self,
         n: int,
         max_order: int,
-        index: str,
+        index: Literal["SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII"],
         top_order: bool,
         min_order: int = 0,
         pairing_trick: bool = False,
@@ -72,6 +58,35 @@ class Approximator(ABC):
         random_state: int | None = None,
         initialize_dict: bool = True,
     ) -> None:
+        """Initialize the Approximator.
+
+        Args:
+            n: The number of players.
+
+            max_order: The maximum interaction order of the approximation.
+
+            index: The interaction index to be estimated.
+
+            top_order: If True, the approximation is performed only for the top order interactions.
+                If False, the approximation is performed for all orders up to the specified order.
+
+            min_order: The minimum interaction order of the approximation. Defaults to ``0``.
+
+            pairing_trick: If True, the pairing trick is applied to the sampling procedure.
+                Defaults to ``False``.
+
+            sampling_weights: An optional array of weights for the sampling procedure. The weights
+                must be of shape ``(n + 1,)`` and are used to determine the probability of sampling
+                a coalition of a certain size. Defaults to ``None``.
+
+            random_state: The random state to use for the approximation. Defaults to ``None``. If
+                not ``None``, the random state is used to seed the random number generator.
+
+            initialize_dict: If True, initializes the interaction lookup dictionary. Defaults to
+                ``True``. Note this is often ``True`` for estimators that estimate all interactions
+                for each order. This is set to ``False`` for example in
+                :class:`~shapiq.approximator.sparse.SPEX`.
+        """
         # check if index can be approximated
         self.index: str = index
         self.approximation_index: str = get_computation_index(index)
@@ -120,10 +135,22 @@ class Approximator(ABC):
     def __call__(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
         **kwargs,
     ) -> InteractionValues:
-        """Calls the approximate method."""
+        """Calls the approximate method.
+
+        This method is a wrapper around the `approximate` method. It is used to call the
+        approximator with the given budget and game function.
+
+        Args:
+            budget: The budget for the approximation.
+
+            game: The game function as a callable that takes a set of players and returns the value.
+
+            **kwargs: Additional keyword arguments to pass to the `approximate` method.
+
+        """
         return self.approximate(budget=budget, game=game, **kwargs)
 
     @abstractmethod
@@ -131,15 +158,18 @@ class Approximator(ABC):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: dict[str, Any],
     ) -> InteractionValues:
-        """Approximates the interaction values. Abstract method that needs to be implemented for
-        each approximator.
+        """Approximates the interaction values.
+
+        Abstract method that needs to be implemented for each approximator.
 
         Args:
             budget: The budget for the approximation.
             game: The game function.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
 
         Returns:
             The interaction values.
@@ -149,9 +179,7 @@ class Approximator(ABC):
 
         """
         msg = "The approximate method must be implemented in the subclass."
-        raise NotImplementedError(
-            msg,
-        )  # pragma: no cover
+        raise NotImplementedError(msg)  # pragma: no cover
 
     def _init_sampling_weights(self) -> np.ndarray:
         """Initializes the weights for sampling subsets.
@@ -190,7 +218,9 @@ class Approximator(ABC):
         return weight_vector / np.sum(weight_vector)
 
     def _init_result(self, dtype=float) -> np.ndarray:
-        """Initializes the result array. The result array is a 1D array of size n_interactions as
+        """Initializes the result array for the approximation.
+
+        Initializes the result array. The result array is a 1D array of size n_interactions as
         determined by the interaction_lookup dictionary.
 
         Args:
@@ -214,7 +244,9 @@ class Approximator(ABC):
 
     @staticmethod
     def _calc_iteration_count(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
-        """Computes the number of iterations and the size of the last batch given the batch size and
+        """Calculate the number of iterations and the size of the last batch.
+
+        Computes the number of iterations and the size of the last batch given the batch size and
         the budget.
 
         Args:

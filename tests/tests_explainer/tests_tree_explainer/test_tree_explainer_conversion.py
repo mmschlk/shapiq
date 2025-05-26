@@ -1,6 +1,4 @@
-"""This test module collects all tests for the conversions of the supported tree models for the
-TreeExplainer class.
-"""
+"""This test module collects all tests for the conversions of the supported tree models for the TreeExplainer class."""
 
 from __future__ import annotations
 
@@ -145,6 +143,7 @@ def test_sklearn_if_conversion(if_clf_model):
 @pytest.mark.external_libraries
 @pytest.mark.parametrize(("model_fixture", "model_class"), TREE_MODEL_FIXTURES)
 def test_conversion_predict_identity(model_fixture, model_class, background_reg_data, request):
+    """Tests whether the conversion of the model to a tree explainer is correct."""
     if model_class not in SUPPORTED_MODELS:
         pytest.skip(
             f"skipped test, {model_class} not in the supported models for the tree explainer.",

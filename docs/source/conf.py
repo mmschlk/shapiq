@@ -1,3 +1,5 @@
+"""shapiq documentation build configuration file."""
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -122,6 +124,7 @@ copybutton_prompt_is_regexp = True
 
 
 def docstring(_app, _what, _name, _obj, _options, lines) -> None:
+    """Convert Markdown in docstrings to reStructuredText."""
     if len(lines) > 1 and lines[0] == "@&ismd":
         md = "\n".join(lines[1:])
         ast = commonmark.Parser().parse(md)
@@ -131,4 +134,5 @@ def docstring(_app, _what, _name, _obj, _options, lines) -> None:
 
 
 def setup(app) -> None:
+    """Setup function for the Sphinx extension to convert Markdown in docstrings to reStructuredText."""
     app.connect("autodoc-process-docstring", docstring)

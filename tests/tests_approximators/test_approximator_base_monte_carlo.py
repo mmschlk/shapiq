@@ -1,6 +1,4 @@
-"""This test module contains all tests regarding the base monte-carlo approximator many other
-approximators are based on.
-"""
+"""This test module contains all tests regarding the base monte-carlo approximator many other approximators are based on."""
 
 from __future__ import annotations
 

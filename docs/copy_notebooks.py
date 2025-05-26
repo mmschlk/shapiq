@@ -1,3 +1,5 @@
+"""Copy notebooks from examples/api_examples to docs/source/api_examples."""
+
 import os
 import shutil
 

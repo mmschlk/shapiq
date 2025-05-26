@@ -57,6 +57,8 @@ def test_conditional_imputer_init():
 
 
 def test_conditional_imputer_value_function():
+    """Test the value function of the conditional imputer."""
+
     def model(x: np.ndarray) -> np.ndarray:
         return np.asarray([np.random.uniform(0, 1) for _ in range(x.shape[0])])
 

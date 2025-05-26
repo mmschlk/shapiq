@@ -1,4 +1,4 @@
-"""This module contains all tests regarding the base Regression approximator"""
+"""This module contains all tests regarding the base Regression approximator."""
 
 from __future__ import annotations
 

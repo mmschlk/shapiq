@@ -56,6 +56,8 @@ def test_marginal_imputer_init():
 
 
 def test_marginal_imputer_value_function():
+    """Test the value function of the marginal imputer."""
+
     def model(x: np.ndarray) -> np.ndarray:
         return np.sum(x, axis=1)
 
@@ -115,6 +117,8 @@ def test_joint_marginal_distribution():
 
 
 def test_raise_warning():
+    """Test that a warning is raised when the model is not compatible with the data."""
+
     def model(x: np.ndarray) -> np.ndarray:
         return np.sum(x, axis=1)
 

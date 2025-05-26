@@ -275,7 +275,9 @@ def test_xgboost_bug():
 
 @pytest.mark.skip("Seems to be resolved")
 def test_xgb_predicts_with_wrong_leaf_node():
-    """This test illustrates that the predictions of the xgboost model do not perfectly align
+    """Test that the xgboost model does not predict with the correct leaf node.
+
+    This test illustrates that the predictions of the xgboost model do not perfectly align
     with the xgboost models internal representation.
 
     Sometimes the model goes in a wrong direction in the path. This test illustrates this where

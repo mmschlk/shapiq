@@ -1,3 +1,5 @@
+"""Tests for the utility functions in the explainer module."""
+
 from __future__ import annotations
 
 import inspect
@@ -32,6 +34,7 @@ def test_tabular_get_predict_function_and_model_type(
     background_reg_dataset,
     request,
 ):
+    """Tests whether the tabular model is recognized as a tabular model."""
     model = request.getfixturevalue(model_name)
     x_data, y = background_reg_dataset
     predict_function, model_type = _utils_get_model(model, label, x_data)
@@ -56,6 +59,7 @@ def test_tensorflow_get_predict_function_and_model_type(
     background_reg_dataset,
     request,
 ):
+    """Tests whether the tensorflow model is recognized as a tabular model."""
     model = request.getfixturevalue(model_name)
     x_data, _ = background_reg_dataset
     predict_function, model_type = _utils_get_model(model, label, x_data)
@@ -70,6 +74,7 @@ def test_torch_get_predict_function_and_model_type(
     background_reg_dataset,
     request,
 ):
+    """Tests whether the torch model is recognized as a tabular model."""
     model = request.getfixturevalue(model_name)
     x_data, _ = background_reg_dataset
     predict_function, model_type = _utils_get_model(model, label, x_data)
@@ -84,6 +89,7 @@ def test_tree_get_predict_function_and_model_type(
     background_reg_dataset,
     request,
 ):
+    """Tests whether the tree model is recognized as a tree model."""
     model = request.getfixturevalue(model_fixture)
     x_data, y = background_reg_dataset
     predict_function, model_type = _utils_get_model(model, model_class, x_data)
@@ -94,6 +100,7 @@ def test_tree_get_predict_function_and_model_type(
 
 
 def test_all_supported_tree_models_recognized():
+    """Test that all supported tree models are recognized as tree models."""
     model = Mock()
     for label in SUPPORTED_MODELS:
         predict_function, model_type = get_predict_function_and_model_type(model, label)
@@ -101,15 +108,21 @@ def test_all_supported_tree_models_recognized():
 
 
 class ModelWithFalseCall:
+    """A dummy model that has a __call__ method but does not match the expected signature."""
+
     def __call__(self, string: str, double: float):
+        """A dummy call method that does not match the expected signature."""
         pass
 
 
 class NonCallableModel:
+    """A dummy model that does not implement a __call__ method."""
+
     pass
 
 
 def test_exceptions_get_predict_function_and_model_type(background_reg_data):
+    """Test the exceptions in get_predict_function_and_model_type."""
     # neither call nor predict functions
     model_without_call = NonCallableModel()
     with pytest.raises(TypeError):
@@ -117,6 +130,8 @@ def test_exceptions_get_predict_function_and_model_type(background_reg_data):
 
 
 def test_class_index():
+    """Test the class index in get_predict_function_and_model_type."""
+
     def _model(x: np.ndarray):
         return np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
 
@@ -128,6 +143,8 @@ def test_class_index():
 
 @pytest.mark.skip("not possible to implement right now")
 def test_class_index_errors():
+    """Test the exceptions for the class index in get_predict_function_and_model_type."""
+
     def _model(x: np.ndarray):
         return np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
 
@@ -141,11 +158,3 @@ def test_class_index_errors():
 
 def _valid_sig(param: inspect.Parameter):
     return param.annotation in (np.ndarray, inspect._empty, Any)
-
-
-def callable_check():  # TODO useful addition?
-    # call with false signature
-    model_with_false_call = ModelWithFalseCall()
-    call_signature = inspect.signature(model_with_false_call)
-    if not any(_valid_sig(param) for param in call_signature.parameters.values()):
-        raise TypeError

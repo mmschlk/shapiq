@@ -1,3 +1,5 @@
+"""Tests for the SPEX approximator."""
+
 from __future__ import annotations
 
 import pytest

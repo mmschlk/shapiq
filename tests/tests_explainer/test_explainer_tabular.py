@@ -220,7 +220,6 @@ def test_against_shap_linear():
 
 def test_explain_X_progressbar():
     """Tests if the progress bar is shown when verbose is set to True."""
-
     n_samples = 3
     dim = 5
     rng = np.random.default_rng(42)

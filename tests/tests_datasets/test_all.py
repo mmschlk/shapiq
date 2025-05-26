@@ -9,6 +9,7 @@ from shapiq.datasets import load_adult_census, load_bike_sharing, load_californi
 
 
 def test_load_bike():
+    """Test loading the Bike Sharing dataset."""
     x_data, y_data = load_bike_sharing()
     assert isinstance(x_data, DataFrame)
     assert isinstance(y_data, Series)
@@ -19,6 +20,7 @@ def test_load_bike():
 
 
 def test_load_adult_census():
+    """Test loading the Adult Census dataset."""
     x_data, y_data = load_adult_census()
     assert isinstance(x_data, DataFrame)
     assert isinstance(y_data, Series)
@@ -29,6 +31,7 @@ def test_load_adult_census():
 
 
 def test_load_california_housing():
+    """Test loading the California housing dataset."""
     x_data, y_data = load_california_housing()
     assert isinstance(x_data, DataFrame)
     assert isinstance(y_data, Series)

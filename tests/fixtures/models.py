@@ -55,22 +55,26 @@ TREE_MODEL_FIXTURES = [
 
 
 class CustomModel:
+    """A mock custom model that returns the second element of the dataset when called."""
+
     def __init__(self, data: tuple[np.ndarray, np.ndarray]):
+        """Initialize the custom model with the dataset."""
         self.data = data
 
     def __call__(self, *args, **kwargs):
+        """Call the model to return the second element of the dataset."""
         return self.data[1]
 
 
 @pytest.fixture
 def custom_model(background_reg_dataset) -> CustomModel:
-    """Return a callable mock custom model"""
+    """Return a callable mock custom model."""
     return CustomModel(background_reg_dataset)
 
 
 @pytest.fixture
 def lightgbm_basic(background_reg_dataset) -> Model:
-    """Return a lgm basic booster"""
+    """Return a lgm basic booster."""
     lightgbm = pytest.importorskip("lightgbm")
 
     X, y = background_reg_dataset
@@ -80,24 +84,24 @@ def lightgbm_basic(background_reg_dataset) -> Model:
 
 @pytest.fixture
 def sequential_model_1_class() -> Model:
-    """Return a keras nn with output dimension 1"""
+    """Return a keras nn with output dimension 1."""
     return _sequential_model(1)
 
 
 @pytest.fixture
 def sequential_model_2_classes() -> Model:
-    """Return a keras nn with output dimension 2"""
+    """Return a keras nn with output dimension 2."""
     return _sequential_model(2)
 
 
 @pytest.fixture
 def sequential_model_3_classes() -> Model:
-    """Return a keras nn with output dimension 3"""
+    """Return a keras nn with output dimension 3."""
     return _sequential_model(3)
 
 
 def _sequential_model(output_shape_nr, background_reg_dataset) -> Model:
-    """Return a keras nn with specified output dimension"""
+    """Return a keras nn with specified output dimension."""
     keras = pytest.importorskip("keras")
 
     model = keras.Sequential(
@@ -301,7 +305,6 @@ def if_clf_model(if_clf_dataset) -> IsolationForest:
 @pytest.fixture
 def et_clf_model(background_clf_dataset) -> Model:
     """Return a simple (classification) extra trees model."""
-
     X, y = background_clf_dataset
     model = ExtraTreesClassifier(random_state=42, max_depth=3, n_estimators=3)
     model.fit(X, y)
@@ -311,7 +314,6 @@ def et_clf_model(background_clf_dataset) -> Model:
 @pytest.fixture
 def et_reg_model(background_reg_dataset) -> Model:
     """Return a simple (regression) extra trees model."""
-
     X, y = background_reg_dataset
     model = ExtraTreesRegressor(random_state=42, max_depth=3, n_estimators=3)
     model.fit(X, y)

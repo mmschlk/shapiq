@@ -48,7 +48,9 @@ def paper_game():
     from shapiq.games.base import Game
 
     class PaperGame(Game):
-        """A game with 11 players, where each coalition must contain at least 2 players and with
+        """A simple game with 11 players.
+
+        A game with 11 players, where each coalition must contain at least 2 players and with
         probability 0.1 of two players not cooperating.
         """
 

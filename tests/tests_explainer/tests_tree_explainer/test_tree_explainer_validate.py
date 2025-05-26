@@ -1,6 +1,4 @@
-"""This test module contains all tests for the validation functions of the tree explainer
-implementation.
-"""
+"""This test module contains all tests for the validation functions of the tree explainer implementation."""
 
 from __future__ import annotations
 
@@ -39,6 +37,7 @@ def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model, 
 @pytest.mark.external_libraries
 @pytest.mark.parametrize(("model_fixture", "model_class"), TREE_MODEL_FIXTURES)
 def test_validate_model_fixtures(model_fixture, model_class, request):
+    """Test the validation of the model fixtures."""
     if model_class not in SUPPORTED_MODELS:
         return
     model = request.getfixturevalue(model_fixture)

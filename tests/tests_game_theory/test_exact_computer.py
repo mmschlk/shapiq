@@ -12,6 +12,7 @@ from shapiq.games.benchmark.synthetic.soum import SOUM
 
 
 def test_exact_computer_on_soum():
+    """Tests the ExactComputer on the SOUM game."""
     for _ in range(20):
         n = np.random.randint(low=2, high=10)
         order = np.random.randint(low=1, high=min(n, 5))
@@ -434,7 +435,7 @@ def test_no_artefact_interaction(index, order):
     ],
 )
 def test_generalized_null_player(index, order):
-    """This test checks that the null players don't get any attribution in the generalized values"""
+    """This test checks that the null players don't get any attribution in the generalized values."""
     # implicit in above test for the rest of the indices
     n = 5
     if order is None:

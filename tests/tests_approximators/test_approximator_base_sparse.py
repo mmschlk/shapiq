@@ -25,7 +25,6 @@ from shapiq.interaction_values import InteractionValues
 )
 def test_initialization(n, index, max_order, top_order, transform_type, decoder_type):
     """Tests the initialization of the Sparse approximator."""
-
     if index == "wrong_index":
         with pytest.raises(ValueError):
             _ = Sparse(

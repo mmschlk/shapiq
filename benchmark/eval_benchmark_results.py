@@ -1,4 +1,6 @@
-"""This script evaluates and summarizes all benchmark results by iterating over all result
+"""Evaluate and summarize benchmark results.
+
+This script evaluates and summarizes all benchmark results by iterating over all result
 dataframes and computing summary statistics such as 'percentage of approximator being the best' or
 ranking at highest budget. The results are then saved to a csv file.
 """
@@ -17,7 +19,7 @@ try:
 except ImportError:  # add shapiq to the path
     sys.path.insert(0, str(Path(__file__).parent.parent))
     os.makedirs("eval", exist_ok=True)
-    from shapiq.games.benchmark.plot import abbreviate_application_name, create_application_name
+    from shapiq.benchmark.plot import abbreviate_application_name, create_application_name
 
 EVAL_DIR = Path(__file__).parent / "eval"
 BENCHMARK_RESULTS_DIR = Path(__file__).parent / "results"
@@ -109,7 +111,7 @@ def _get_best_approximator(df: pd.DataFrame) -> dict[str, list[tuple]]:
 
 def create_eval_csv(n_evals: int | None = None) -> pd.DataFrame:
     """Create a summary csv file from all benchmark results."""
-    from shapiq.games.benchmark.run import load_benchmark_results
+    from shapiq.benchmark.run import load_benchmark_results
 
     # get all files in the benchmark results directory
     all_benchmark_results = list(os.listdir(BENCHMARK_RESULTS_DIR))

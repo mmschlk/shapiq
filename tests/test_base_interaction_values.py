@@ -623,7 +623,7 @@ def test_plot():
 
 @pytest.mark.parametrize("subset_players", [[0, 1], [0, 1, 3, 4]])
 def test_subset(subset_players):
-    """Test Subset function"""
+    """Test Subset function."""
     n = 7
     min_order = 1
     max_order = 3
@@ -670,8 +670,8 @@ def test_subset(subset_players):
 
 @pytest.mark.parametrize("aggregation", ["sum", "mean", "median", "max", "min"])
 def test_aggregation(aggregation):
+    """Tests the aggregation of InteractionValues."""
     n_objects = 3
-
     n, min_order, max_order = 5, 1, 3
     interaction_values_list = []
     for _ in range(n_objects):
@@ -867,6 +867,7 @@ def test_get_n_order_with_only_min_max_param(
     iv_10_all: InteractionValues,
     iv_300_300_0_300: InteractionValues,
 ):
+    """Tests that get_n_order returns the correct interactions when only min and max are given."""
     for iv in [iv_10_all, iv_300_300_0_300]:
         iv_new = iv.get_n_order(min_order=min_order, max_order=max_order)
         assert isinstance(iv_new, InteractionValues)

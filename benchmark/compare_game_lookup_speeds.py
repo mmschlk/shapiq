@@ -1,6 +1,4 @@
-"""This module compares the new benchmark games lookup speed with the old benchmark games lookup
-speed.
-"""
+"""This module compares the new benchmark games lookup speed with the old benchmark games lookup speed."""
 
 import os
 import random
@@ -17,9 +15,7 @@ from shapiq.utils.sets import powerset, transform_coalitions_to_array
 
 
 class OldLookUpGame:
-    """Wrapper for the Machine Learning Game to use precomputed model outputs for faster runtime in
-    experimental settings.
-    """
+    """Wrapper for the Machine Learning Game to use precomputed model outputs for faster runtime in experimental settings."""
 
     def __init__(
         self,
@@ -32,6 +28,20 @@ class OldLookUpGame:
         min_max_normalize: bool = False,
         random_seed: int | None = None,
     ) -> None:
+        """Initialize the old lookup game.
+
+        Args:
+            data_folder: The folder containing the precomputed value function calls.
+                Defaults to "OldSentimentAnalysis(Game)".
+            n: The number of players in the game.
+            data_id: The ID of the data file to use. If ``None``, a random file is selected.
+            used_ids: A set of already used IDs to avoid using the same instance twice.
+            set_zero: Whether to set the empty coalition value to zero (v_0({}) = 0).
+            log_output: Whether to return the logarithm of the output values.
+            min_max_normalize: Whether to normalize the values to [0, 1].
+            random_seed: A seed for reproducibility. Defaults to ``None``.
+
+        """
         if random_seed is not None:
             random.seed(random_seed)
             np.random.seed(random_seed)
@@ -87,6 +97,7 @@ class OldLookUpGame:
             self.empty_value = self.set_call(set())
 
     def set_call(self, S):
+        """Get the value of a coalition S."""
         S_id = "s_" + "_".join([str(player) for player in sorted(S)])
         output = self.storage[S_id] - self.empty_value
         if self.log_output:
@@ -94,6 +105,7 @@ class OldLookUpGame:
         return output
 
     def get_name(self):
+        """Get the name of the game instance."""
         return self.game_name
 
 

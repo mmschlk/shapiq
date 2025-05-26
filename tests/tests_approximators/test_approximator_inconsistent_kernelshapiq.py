@@ -1,6 +1,4 @@
-"""This test module contains all tests regarding the Inconsistent KernelSHAP-IQ regression
-approximator.
-"""
+"""This test module contains all tests regarding the Inconsistent KernelSHAP-IQ regression approximator."""
 
 from __future__ import annotations
 

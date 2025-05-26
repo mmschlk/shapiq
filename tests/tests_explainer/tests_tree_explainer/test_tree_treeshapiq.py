@@ -137,6 +137,7 @@ def test_edge_case_params():
 
 
 def test_no_bug_with_one_feature_tree():
+    """Test that the TreeExplainer does not raise an error with a tree that has only one feature."""
     # create the dataset
     X = np.array(
         [

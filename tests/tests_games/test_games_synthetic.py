@@ -1,4 +1,4 @@
-"""This test module tests the SOUM Game class"""
+"""This test module tests the SOUM Game class."""
 
 from __future__ import annotations
 

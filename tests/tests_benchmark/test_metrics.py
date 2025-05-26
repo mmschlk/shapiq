@@ -23,6 +23,7 @@ from shapiq.benchmark.metrics import get_all_metrics
     ],
 )
 def test_computation(index_gt, index_et, order_gt, order_et, warning_expected):
+    """Test the computation of error metrics with different indices and orders."""
     n_players = 5
 
     gt = [random.random() for _ in powerset(range(n_players), min_size=0, max_size=order_gt)]

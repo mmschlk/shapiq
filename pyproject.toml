@@ -131,7 +131,7 @@ select = [
 #    "FIX",  # flake8-fixme: checks for TODOs and FIXMEs
 #    "FA",  # require from __future__ import annotations import when using type hints
 #    #"ANN",  # TODO: add this or include mypy
- #  "D",  # TODO: include this in the near future
+  "D",  # TODO: include this in the near future
 ]
 ignore = [
     "E501",  # Line too long
@@ -180,9 +180,9 @@ exclude = [
 # Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
-    "ALL",
+    #"ALL",
     "S101", # we need asserts in tests
-    "D",    # test docstrings don't matter too much
+    # "D",    # test docstrings don't matter too much
     "E501", # line too long
     "ANN",  # type annotations
     "ARG",  # some functions are not used
@@ -195,6 +195,7 @@ exclude = [
     "E402",  # Module level import not at top of file (its .ipynb)
     "T20",  # notebooks can have print statements
     "I002",  # notebooks do not have to import required modules
+    "D",  # docstrings are not required in notebooks
 ]
 "docs/source/*.py" = [
     "A001",  # some conf.py variables shadow builtins which is okay here

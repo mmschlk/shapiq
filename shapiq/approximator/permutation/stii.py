@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import scipy as sp
@@ -19,12 +19,6 @@ if TYPE_CHECKING:
 class PermutationSamplingSTII(Approximator):
     """Permutation Sampling approximator for the Shapley Taylor Index (STII).
 
-    Args:
-        n: The number of players.
-        max_order: The interaction order of the approximation.
-        random_state: The random state to use for the permutation sampling.
-            Defaults to ``None``.
-
     See Also:
         - :class:`~shapiq.approximator.permutation.sii.PermutationSamplingSII`: The Permutation
             Sampling approximator for the SII index
@@ -33,7 +27,7 @@ class PermutationSamplingSTII(Approximator):
 
     Example:
         >>> from shapiq.games.benchmark import DummyGame
-        >>> from approximator import PermutationSamplingSTII
+        >>> from shapiq.approximator import PermutationSamplingSTII
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = PermutationSamplingSTII(n=5, max_order=2)
         >>> approximator.approximate(budget=200, game=game)
@@ -61,6 +55,16 @@ class PermutationSamplingSTII(Approximator):
     """
 
     def __init__(self, n: int, max_order: int, random_state: int | None = None) -> None:
+        """Initialize the Permutation Sampling approximator for STII.
+
+        Args:
+            n: The number of players.
+
+            max_order: The interaction order of the approximation.
+
+            random_state: The random state to use for the permutation sampling. Defaults to
+                ``None``.
+        """
         super().__init__(
             n=n,
             max_order=max_order,
@@ -75,16 +79,18 @@ class PermutationSamplingSTII(Approximator):
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
         batch_size: int = 1,
-        *args,  # noqa: ARG002
-        **kwargs,  # noqa: ARG002
+        *args: list[Any],  # noqa: ARG002
+        **kwargs: dict[str, Any] | None,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the interaction values.
 
         Args:
             budget: The budget for the approximation.
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``1``.
-            args and kwargs: Additional arguments and keyword arguments not used in this method.
+            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``.
+                Defaults to ``1``.
+            *args: Additional positional arguments (not used in this method).
+            **kwargs: Additional keyword arguments (not used in this method).
 
         Returns:
             InteractionValues: The estimated interaction values.
@@ -229,7 +235,9 @@ class PermutationSamplingSTII(Approximator):
         return finalize_computed_interactions(interactions, target_index=self.index)
 
     def _compute_iteration_cost(self) -> int:
-        """Computes the cost of performing a single iteration of the permutation sampling given
+        """Computes the cost of a single iteration of the permutation sampling.
+
+        Computes the cost of performing a single iteration of the permutation sampling given
         the order, the number of players, and the STII index.
 
         Returns:
