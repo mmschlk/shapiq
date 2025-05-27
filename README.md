@@ -19,11 +19,13 @@
 Shapley Interaction Quantification (`shapiq`) is a Python package for (1) approximating any-order Shapley interactions, (2) benchmarking game-theoretical algorithms for machine learning, (3) explaining feature interactions of model predictions. `shapiq` extends the well-known [shap](https://github.com/shap/shap) package for both researchers working on game theory in machine learning, as well as the end-users explaining models. SHAP-IQ extends individual Shapley values by quantifying the **synergy** effect between entities (aka **players** in the jargon of game theory) like explanatory features, data points, or weak learners in ensemble models. Synergies between players give a more comprehensive view of machine learning models.
 
 ## 🛠️ Install
-`shapiq` is intended to work with **Python 3.10 and above**. Installation can be done via `uv` and `pip`:
-
+`shapiq` is intended to work with **Python 3.10 and above**.
+Installation can be done via `uv` :
 ```sh
 uv add shapiq
 ```
+
+or via `pip`:
 
 ```sh
 pip install shapiq
@@ -37,6 +39,7 @@ If you are interested in the underlying game theoretic algorithms, then check ou
 ### Compute any-order feature interactions
 
 Explain your models with Shapley interactions:
+Just load your data and model, and then use a `shapiq.Explainer` to compute Shapley interactions.
 
 ```python
 import shapiq
@@ -135,7 +138,7 @@ The pseudo-code above can produce the following plot (here also an image is adde
 
 ### Explain TabPFN
 
-With ``shapiq`` you can also [``TabPFN``](https://github.com/PriorLabs/TabPFN) by making use of the _remove-and-recontextualize_ explanation paradigm implemented in ``shapiq.TabPFNExplainer``.
+With ``shapiq`` you can also explain [``TabPFN``](https://github.com/PriorLabs/TabPFN) by making use of the _remove-and-recontextualize_ explanation paradigm implemented in ``shapiq.TabPFNExplainer``.
 
 ```python
 import tabpfn, shapiq
@@ -156,6 +159,8 @@ fsii_values.plot_force()               # plot the force plot
   <img width="800px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/fsii_tabpfn_force_plot_example.png" alt="Force Plot of FSII values as derived from the example tabpfn notebook">
 </p>
 
+### Use SPEX (SParse EXplainer)
+For large-scale use-cases it might to check out the [👓``SPEX``](https://shapiq.readthedocs.io/en/latest/api/shapiq.approximator.sparse.html#shapiq.approximator.sparse.SPEX) approximator.
 
 ## 📖 Documentation with tutorials
 The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io.
