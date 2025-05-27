@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -599,7 +600,9 @@ def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: np.ndarray) -
     try:
         # try solving via solve function
         WX = kernel_weights[:, np.newaxis] * X
-        phi = np.linalg.solve(X.T @ WX, WX.T @ y)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            phi = np.linalg.solve(X.T @ WX, WX.T @ y)
     except np.linalg.LinAlgError:
         # solve WLSQ via lstsq function and throw warning
         W_sqrt = np.sqrt(kernel_weights)

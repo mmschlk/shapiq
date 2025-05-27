@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
 import numpy as np
+from overrides import overrides
 
 from shapiq.approximator import (
     SHAPIQ,
@@ -215,6 +216,7 @@ class TabularExplainer(Explainer):
         self._max_order: int = max_order
         self._approximator = self._init_approximator(approximator, self.index, self._max_order)
 
+    @overrides
     def explain_function(
         self,
         x: np.ndarray,

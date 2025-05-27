@@ -8,8 +8,6 @@
 - changes logic of `InteractionValues.get_n_order()` function to be callable with **either** the `order: int` parameter and optional assignment of `min_order: int` and `max_order: int` parameters **or** with the min/max order parameters [#372](https://github.com/mmschlk/shapiq/pull/372)
 - renamed `min_percentage` parameter in the force plot to `contribution_threshold` to better reflect its purpose [#391](https://github.com/mmschlk/shapiq/pull/391)
 - adds ``verbose`` parameter to the ``Explainer``'s ``explain_X()`` method to control weather a progress bar is shown or not which is defaulted to ``False``. [#391](https://github.com/mmschlk/shapiq/pull/391)
-
-#### Performance Improvements
 - made `InteractionValues.get_n_order()` and `InteractionValues.get_n_order_values()` function more efficient by iterating over the stored interactions and not over the powerset of all potential interactions, which made the function not usable for higher player counts (models with many features, and results obtained from `TreeExplainer`). Note, this change does not really help `get_n_order_values()` as it still needs to create a numpy array of shape `n_players` times `order` [#372](https://github.com/mmschlk/shapiq/pull/372)
 
 #### Testing, Code-Quality and Documentation
@@ -18,7 +16,7 @@
 - removed check and error message if the ``index`` parameter is not in the list of available indices in the ``TabularExplainer`` since the type hints were replaced by Literals [#391](https://github.com/mmschlk/shapiq/pull/391)
 - removed multiple instances where ``shapiq`` tests if some approximators/explainers can be instantiated with certain indices or not in favor of using Literals in the ``__init__`` method of the approximator classes. This allows for better type hinting and IDE support, as well as cleaner code. [#391](https://github.com/mmschlk/shapiq/pull/391)
 - Added documentation for all public modules, classes, and functions in the code base to improve the documentation quality and make it easier to understand how to use the package. [#391](https://github.com/mmschlk/shapiq/pull/391)
-
+- suppress a ``RuntimeWarning`` in ``Regression`` approximators ``solve_regression()``method when the solver is not able to find good interim solutions for the regression problem.
 #### Bug Fixes
 - fixed a bug in the `shapiq.waterfall_plot` function that caused the plot to not display correctly resulting in cutoff y_ticks. Additionally, the file was renamed from `watefall.py` to `waterfall.py` to match the function name [#377](https://github.com/mmschlk/shapiq/pull/377)
 

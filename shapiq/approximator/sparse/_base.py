@@ -19,6 +19,9 @@ from shapiq.interaction_values import InteractionValues, finalize_computed_inter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import Any
+
+    from shapiq.games.base import Game
 
 
 class Sparse(Approximator):
@@ -127,13 +130,15 @@ class Sparse(Approximator):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the interaction values using a sparse transform approach.
 
         Args:
             budget: The budget for the approximation.
             game: The game function that returns the values for the coalitions.
+            **kwargs: Additional keyword arguments (not used).
 
         Returns:
             The approximated Shapley interaction values.
