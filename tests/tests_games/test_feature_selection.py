@@ -17,7 +17,8 @@ from shapiq.games.benchmark import (
 )
 
 
-def loss_function(y_pred, y_test):
+def _loss_function(y_pred, y_test):
+    """A simple loss function for regression tasks."""
     return np.mean(np.square(y_pred - y_test))
 
 
@@ -50,7 +51,7 @@ def test_basic_function(background_reg_dataset):
         y_test=y_data,
         fit_function=model.fit,
         predict_function=model.predict,
-        loss_function=loss_function,
+        loss_function=_loss_function,
     )
 
     game.precompute()

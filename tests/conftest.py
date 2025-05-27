@@ -49,7 +49,7 @@ def interaction_values_list():
     min_order = 0
     max_order = n_players
     iv_list = []
-    for i in range(n_objects):
+    for _ in range(n_objects):
         values = []
         interaction_lookup = {}
         for i, interaction in enumerate(

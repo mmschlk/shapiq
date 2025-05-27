@@ -33,7 +33,7 @@ def test_approximator_init():
 
     assert hash(approximator) == hash(approximator_copy)
     assert hash(approximator) != hash(approximator_deepcopy)
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         _ = approximator == 1
 
     id_approx = approximator.approximator_id

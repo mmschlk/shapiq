@@ -3,22 +3,24 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Collection, Iterable
 from itertools import chain, combinations
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.special import binom
 
+if TYPE_CHECKING:
+    from collections.abc import Collection, Iterable
+
 __all__ = [
-    "powerset",
-    "pair_subset_sizes",
-    "split_subsets_budget",
-    "get_explicit_subsets",
-    "generate_interaction_lookup",
-    "transform_coalitions_to_array",
-    "transform_array_to_coalitions",
     "count_interactions",
+    "generate_interaction_lookup",
+    "get_explicit_subsets",
+    "pair_subset_sizes",
+    "powerset",
+    "split_subsets_budget",
+    "transform_array_to_coalitions",
+    "transform_coalitions_to_array",
 ]
 
 
@@ -148,7 +150,7 @@ def split_subsets_budget(
             incomplete_subsets.remove(subset_size_1)
             incomplete_subsets.remove(subset_size_2)
             weight_vector[subset_size_1], weight_vector[subset_size_2] = 0, 0  # zero used sizes
-            if not np.sum(weight_vector) == 0:
+            if np.sum(weight_vector) != 0:
                 weight_vector /= np.sum(weight_vector)  # re-normalize into probability vector
             budget -= subset_budget * 2
         else:  # if the budget is not sufficient, return the current state
@@ -223,15 +225,11 @@ def generate_interaction_lookup(
         {('A',): 0, ('B',): 1, ('C',): 2, ('A', 'B'): 3, ('A', 'C'): 4, ('B', 'C'): 5}
 
     """
-    if isinstance(players, int):
-        players = set(range(players))
-    else:
-        players = set(players)
-    interaction_lookup = {
+    players = set(range(players)) if isinstance(players, int) else set(players)
+    return {
         interaction: i
         for i, interaction in enumerate(powerset(players, min_size=min_order, max_size=max_order))
     }
-    return interaction_lookup
 
 
 def transform_coalitions_to_array(

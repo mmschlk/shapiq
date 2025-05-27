@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
-__all__ = ["abbreviate_feature_names", "format_value", "format_labels"]
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+__all__ = ["abbreviate_feature_names", "format_labels", "format_value"]
 
 
 def format_value(
@@ -61,10 +64,9 @@ def format_labels(
     """
     if len(feature_tuple) == 0:
         return "Base Value"
-    elif len(feature_tuple) == 1:
+    if len(feature_tuple) == 1:
         return str(feature_mapping[feature_tuple[0]])
-    else:
-        return " x ".join([str(feature_mapping[f]) for f in feature_tuple])
+    return " x ".join([str(feature_mapping[f]) for f in feature_tuple])
 
 
 def abbreviate_feature_names(feature_names: Iterable[str]) -> list[str]:
@@ -78,8 +80,8 @@ def abbreviate_feature_names(feature_names: Iterable[str]) -> list[str]:
 
     """
     abbreviated_names = []
-    for name in feature_names:
-        name = str(name)
+    for _name in feature_names:
+        name = str(_name)
         name = name.strip()
         capital_letters = sum(1 for c in name if c.isupper())
         seperator_chars = (" ", "_", "-", ".")

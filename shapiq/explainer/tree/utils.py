@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-__all__ = ["get_conditional_sample_weights", "compute_empty_prediction"]
+__all__ = ["compute_empty_prediction", "get_conditional_sample_weights"]
 
 
 def get_conditional_sample_weights(

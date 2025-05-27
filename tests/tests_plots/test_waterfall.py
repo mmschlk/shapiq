@@ -12,7 +12,6 @@ def test_waterfall_cooking_game(cooking_game):
     """Test the waterfall plot function with concrete values from the cooking game."""
     exact_computer = ExactComputer(n_players=cooking_game.n_players, game=cooking_game)
     interaction_values = exact_computer(index="k-SII", order=2)
-    print(interaction_values.dict_values)
     waterfall_plot(interaction_values, show=False)
     plt.close("all")
 

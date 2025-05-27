@@ -17,7 +17,7 @@ from shapiq.games.benchmark import (
 
 
 @pytest.mark.parametrize(
-    "cluster_method, score_method",
+    ("cluster_method", "score_method"),
     [
         ("kmeans", "calinski_harabasz_score"),
         ("kmeans", "silhouette_score"),
@@ -108,7 +108,7 @@ def test_base_class(cluster_method, score_method):
 
 
 @pytest.mark.parametrize(
-    "cluster_method, score_method",
+    ("cluster_method", "score_method"),
     [
         ("kmeans", "calinski_harabasz_score"),
         ("agglomerative", "silhouette_score"),
@@ -128,7 +128,7 @@ def test_california(cluster_method, score_method):
 
 
 @pytest.mark.parametrize(
-    "cluster_method, score_method",
+    ("cluster_method", "score_method"),
     [
         ("kmeans", "calinski_harabasz_score"),
         ("agglomerative", "silhouette_score"),
@@ -145,7 +145,7 @@ def test_bike(cluster_method, score_method):
 
 
 @pytest.mark.parametrize(
-    "cluster_method, score_method",
+    ("cluster_method", "score_method"),
     [
         ("kmeans", "calinski_harabasz_score"),
         ("agglomerative", "silhouette_score"),

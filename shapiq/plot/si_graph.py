@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
@@ -10,8 +11,10 @@ import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
-from ..interaction_values import InteractionValues
 from ._config import get_color
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
 
 NORMAL_NODE_SIZE = 0.125  # 0.125
 BASE_ALPHA_VALUE = 1.0  # the transparency level for the highest interaction
@@ -23,9 +26,10 @@ __all__ = ["si_graph_plot"]
 
 
 def _normalize_value(
-    value: float,
+    value: float | np.ndarray,
     max_value: float,
     base_value: float,
+    *,
     cubic_scaling: bool = False,
 ) -> float:
     """Scale a value between 0 and 1 based on the maximum value and a base value.
@@ -46,8 +50,7 @@ def _normalize_value(
     ratio = abs(value) / abs(max_value)  # ratio is always positive in [0, 1]
     if cubic_scaling:
         ratio = ratio**3
-    alpha = ratio * base_value
-    return alpha
+    return ratio * base_value
 
 
 def _draw_fancy_hyper_edges(
@@ -189,6 +192,7 @@ def _draw_explanation_nodes(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
+    *,
     nodes: list | None = None,
     normal_node_size: float = NORMAL_NODE_SIZE,
     node_area_scaling: bool = False,
@@ -314,14 +318,15 @@ def _adjust_position(
     # adjust the positions if the nodes are too close together
     min_edge_distance = normal_node_size + normal_node_size / 2
     if min_distance < min_edge_distance:
-        for node in pos:
-            pos[node] = pos[node] * min_edge_distance / min_distance
+        for node, position in pos.items():
+            pos[node] = position * min_edge_distance / min_distance
 
     return pos
 
 
 def si_graph_plot(
     interaction_values: InteractionValues,
+    *,
     graph: list[tuple] | nx.Graph | None = None,
     n_interactions: int | None = None,
     draw_threshold: float = 0.0,
@@ -468,7 +473,7 @@ def si_graph_plot(
                 interaction_value,
                 max_interaction,
                 BASE_ALPHA_VALUE,
-                cubic_scaling,
+                cubic_scaling=cubic_scaling,
             ),
             "interaction": interaction,
             "weight": interaction_strength * compactness,
@@ -476,7 +481,7 @@ def si_graph_plot(
                 interaction_value,
                 max_interaction,
                 base_size * size_factor,
-                cubic_scaling,
+                cubic_scaling=cubic_scaling,
             ),
         }
 
@@ -546,3 +551,4 @@ def si_graph_plot(
     if not show:
         return fig, ax
     plt.show()
+    return None

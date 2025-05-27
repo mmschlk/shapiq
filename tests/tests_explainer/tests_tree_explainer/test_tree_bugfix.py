@@ -242,7 +242,6 @@ def test_bike_bug():
 
     # if this test runs without an error, the bug is fixed
     assert True
-    return
 
 
 def test_xgboost_bug():
@@ -276,7 +275,9 @@ def test_xgboost_bug():
 
 @pytest.mark.skip("Seems to be resolved")
 def test_xgb_predicts_with_wrong_leaf_node():
-    """This test illustrates that the predictions of the xgboost model do not perfectly align
+    """Test that the xgboost model does not predict with the correct leaf node.
+
+    This test illustrates that the predictions of the xgboost model do not perfectly align
     with the xgboost models internal representation.
 
     Sometimes the model goes in a wrong direction in the path. This test illustrates this where
@@ -299,17 +300,17 @@ def test_xgb_predicts_with_wrong_leaf_node():
     assert x_explain_left[1] < x_explain[1]  # make sure the value is smaller
 
     # parse the xgboost model
-    df = booster.trees_to_dataframe()
-    threshold = df[df["Node"] == 0]["Split"].values[0]
-    feature_id = df[df["Node"] == 0]["Feature"].values[0]
+    data_df = booster.trees_to_dataframe()
+    threshold = data_df[data_df["Node"] == 0]["Split"].values[0]
+    feature_id = data_df[data_df["Node"] == 0]["Feature"].values[0]
     intercept = model.intercept_[0]
-    prediction_left_df = df[df["Node"] == 1]["Gain"].values[0] + intercept
-    prediction_right_df = df[df["Node"] == 2]["Gain"].values[0] + intercept
+    prediction_left_df = data_df[data_df["Node"] == 1]["Gain"].values[0] + intercept
+    prediction_right_df = data_df[data_df["Node"] == 2]["Gain"].values[0] + intercept
 
     # make sure the xgboost model is using the features we are playing around with
     assert feature_id == "f1"  # feature 1 is used
     assert x_explain[1] < threshold  # feature value is < threshold (this instance should go left)
-    assert len(df) == 3  # only 3 nodes in the tree (one decision node and two leaf nodes)
+    assert len(data_df) == 3  # only 3 nodes in the tree (one decision node and two leaf nodes)
 
     # get the predictions of the xgboost model
     prediction_xgb = model.predict(x_explain.reshape(1, -1))
@@ -339,4 +340,4 @@ def test_xgb_predicts_with_wrong_leaf_node():
     # efficiency is correct as the prediction with the tree model and not like the xgb model
     assert pytest.approx(efficiency) == prediction_tree_model
     assert pytest.approx(efficiency, rel=0.0001) == prediction_left_df
-    assert not pytest.approx(efficiency, rel=0.0001) == prediction_right_df
+    assert pytest.approx(efficiency, rel=0.0001) != prediction_right_df

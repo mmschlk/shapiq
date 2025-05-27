@@ -44,7 +44,8 @@ def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
     )
     game_values = game(test_coalitions)
     assert game.n_players == n_players
-    assert len(game.data_sets) == n_players and len(game.target_sets) == n_players
+    assert len(game.data_sets) == n_players
+    assert len(game.target_sets) == n_players
     assert game.normalization_value == 0.0  # default value
     assert len(game.data_sets[0]) == pytest.approx(len(x_train) * player_sizes[0], abs=1)
     assert len(game.data_sets[1]) == pytest.approx(len(x_train) * player_sizes[1], abs=1)
@@ -71,7 +72,8 @@ def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
     game_values = game(test_coalitions)
     assert game.n_players == n_players
     assert np.allclose(game.player_sizes, np.array([0.25, 0.25, 0.25, 0.25]))  # default is uniform
-    assert len(game.data_sets) == n_players and len(game.target_sets) == n_players
+    assert len(game.data_sets) == n_players
+    assert len(game.target_sets) == n_players
     assert game_values[0] == 0.0
     assert len(game_values) == 4
 

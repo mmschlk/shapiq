@@ -11,11 +11,9 @@ from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(
-    "n, max_order, iteration_cost",
+    ("n", "max_order", "iteration_cost"),
     [
         (3, 1, 6),
-        (3, 1, 6),
-        (3, 2, 12),
         (3, 2, 12),
         (7, 2, 84),  # used in subsequent tests
         (10, 3, 960),
@@ -33,7 +31,7 @@ def test_initialization(n, max_order, iteration_cost):
 
 
 @pytest.mark.parametrize(
-    "n, max_order, budget, batch_size",
+    ("n", "max_order", "budget", "batch_size"),
     [
         (7, 2, 380, 2),
         (7, 2, 500, 2),

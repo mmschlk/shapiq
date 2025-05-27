@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from shapiq.approximator._base import Approximator
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.approximator._base import Approximator
 
 __all__ = ["plot_approximation_quality"]
 
 
-# TODO: add the plot colors and styles for different approximators as well
 STYLE_DICT: dict[str, dict[str, str]] = {
     # permutation sampling
     "PermutationSamplingSII": {"color": "#7d53de", "marker": "o"},
@@ -59,7 +61,7 @@ METRICS_LIMITS = {
 METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
 
 
-def create_application_name(setup: str, abbrev: bool = False) -> str:
+def create_application_name(setup: str, *, abbrev: bool = False) -> str:
     """Create an application name from the setup string."""
     application_name = "".join(setup.split("_")[0:2])
     application_name = application_name.replace("Game", "")
@@ -79,13 +81,18 @@ def create_application_name(setup: str, abbrev: bool = False) -> str:
     return application_name
 
 
-def abbreviate_application_name(application_name: str, new_line: bool = False) -> str:
-    """Abbreviate the application name by taking the first three characters after each capital
+def abbreviate_application_name(application_name: str, *, new_line: bool = False) -> str:
+    """Abbreviate the application name.
+
+    Abbreviate the application name by taking the first three characters after each capital
     letter and adding a dot. The last character is not abbreviated.
 
     Args:
         application_name: The application name to abbreviate.
-        new_line: Whether to add a new line after each abbreviation. Defaults to `False`.
+        new_line: Whether to add a new line after each abbreviation. Defaults to ``False``.
+
+    Returns:
+        The abbreviated application name.
 
     Example:
         >>> abbreviate_application_name("LocalExplanation")
@@ -148,7 +155,7 @@ def get_game_title_name(game_name: str) -> str:
     return words.strip()
 
 
-def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
+def agg_percentile(q: float) -> Callable[[np.ndarray], np.floating]:
     """Get the aggregation function for the given percentile.
 
     Args:
@@ -159,7 +166,7 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
     """
 
-    def quantile(x) -> float:
+    def quantile(x: np.ndarray) -> np.floating:
         """Performs the aggregation function for the given percentile."""
         return np.percentile(x, q)
 
@@ -233,19 +240,17 @@ def plot_approximation_quality(
     bot_lim = bot_lim.split("e")[1]  # get the exponent
     bot_lim = int(bot_lim)  # get the top limit as the exponent + 1
     bot_lim = 10**bot_lim  # get the top limit in scientific notation
-    if log_scale_min < bot_lim:
-        log_scale_min = bot_lim
+    log_scale_min = max(log_scale_min, bot_lim)
 
     # make sure orders is a list
     if orders is None:
         orders = ["all"]
-    if isinstance(orders, int) or isinstance(orders, str):
+    if isinstance(orders, int | str):
         orders = [orders]
 
     # make sure approximators is a list
     if approximators is None:
         approximators = list(metric_data["approximator"].unique())
-        print("Approximators:", approximators)
 
     # set the confidence metrics
     confidence_metric_low, confidence_metric_high = confidence_metric, confidence_metric
@@ -267,7 +272,7 @@ def plot_approximation_quality(
             if log_scale_y:
                 # manually set all below log_scale_min to log_scale_min (to avoid log(0))
                 data_order[aggregation] = data_order[aggregation].apply(
-                    lambda x: log_scale_min if x < log_scale_min else x,
+                    lambda x: max(x, log_scale_min),
                 )
 
             # get the plot colors and styles
@@ -305,7 +310,7 @@ def plot_approximation_quality(
 
     # add the legend
     if legend:
-        add_legend(ax, approximators, orders)
+        add_legend(ax, approximators, orders=orders)
 
     # set the y-axis limits
     if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE:
@@ -368,8 +373,7 @@ def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float, log_scale_max: flo
     top_lim = int(top_lim) + 1  # get the top limit as the exponent + 1
     top_lim = 10**top_lim  # get the top limit in scientific notation
 
-    if top_lim > log_scale_max:
-        top_lim = log_scale_max
+    top_lim = min(top_lim, log_scale_max)
 
     # set the y-axis limits
     ax.set_ylim(top=top_lim)
@@ -432,6 +436,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 def add_legend(
     axis: plt.Axes,
     approximators: list[str | Approximator],
+    *,
     orders: list[int | str] | None = None,
     legend_subtitle: bool = True,
     loc: str = "best",
@@ -462,7 +467,7 @@ def add_legend(
 
     # plot the order elements
     if orders is not None:
-        if isinstance(orders, int) or isinstance(orders, str):
+        if isinstance(orders, int | str):
             orders = [orders]
         if legend_subtitle:
             axis.plot([], [], label="$\\bf{Order}$", color="none")

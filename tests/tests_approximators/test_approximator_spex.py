@@ -1,3 +1,5 @@
+"""Tests for the SPEX approximator."""
+
 from __future__ import annotations
 
 import pytest
@@ -22,7 +24,7 @@ def test_initialization_defaults():
 
 
 @pytest.mark.parametrize(
-    "n, index, max_order, top_order, decoder_type",
+    ("n", "index", "max_order", "top_order", "decoder_type"),
     [
         (7, "STII", 2, False, "soft"),
         (7, "FBII", 3, True, "hard"),
@@ -53,7 +55,7 @@ def test_initialization_custom(n, index, max_order, top_order, decoder_type):
 
 
 @pytest.mark.parametrize(
-    "n, interaction, budget",
+    ("n", "interaction", "budget"),
     [
         (10, (1, 2), 1000),
         (7, (0, 3, 5), 800),
@@ -127,7 +129,7 @@ def test_spex_vs_sparse():
 
 
 @pytest.mark.parametrize(
-    "n, interaction, budget, correct_b, correct_t",
+    ("n", "interaction", "budget", "correct_b", "correct_t"),
     [
         (10, (1, 2), 1000, 3, 5),
         (10, (1, 2), 450, 3, 3),
@@ -147,11 +149,11 @@ def test_sparsity_parameter(n, interaction, budget, correct_b, correct_t):
     _ = spex.approximate(budget, game)
 
     assert spex.query_args["b"] == correct_b
-    assert spex.transform_error == correct_t
+    assert spex.transform_tolerance == correct_t
 
 
 @pytest.mark.parametrize(
-    "n, interaction, budget",
+    ("n", "interaction", "budget"),
     [
         (10, (1, 2), 100),
         (7, (0, 3, 5), 20),

@@ -13,11 +13,9 @@ from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
-    "n, max_order",
+    ("n", "max_order"),
     [
         (3, 1),
-        (3, 1),
-        (3, 2),
         (3, 2),
         (7, 2),  # used in subsequent tests
         (10, 3),
@@ -78,8 +76,10 @@ def test_approximate_bv_equality(cooking_game):
 
 
 def test_approximate_fbii(paper_game):
-    """Tests the approximation of the RegressionFBII approximator to be equal to the results from
-    http://jmlr.org/papers/v24/22-0202.html.
+    """Tests the approximation of the RegressionFBII approximator.
+
+    This test checks the approximation of the RegressionFBII approximator to be equal to the results
+    from http://jmlr.org/papers/v24/22-0202.html.
     """
     n_players = 11
     game = paper_game

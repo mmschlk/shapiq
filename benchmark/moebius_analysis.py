@@ -22,6 +22,7 @@ def plot_box_plot(
     max_size: int | None = None,
     save_path: str | None = None,
     title: str = "Box plot of the interaction values",
+    *,
     showfliers: bool = True,
 ) -> None:
     """Plot a box plot of the interaction values."""

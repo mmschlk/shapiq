@@ -23,7 +23,7 @@ from shapiq.games.benchmark import (
 
 
 @pytest.mark.parametrize(
-    "task, loss_function",
+    ("task", "loss_function"),
     [
         ("regression", "r2_score"),
         ("regression", "mean_squared_error"),

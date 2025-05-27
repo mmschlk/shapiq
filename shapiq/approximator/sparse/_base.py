@@ -1,7 +1,9 @@
+"""Base Sparse approximator for fourier-based interaction computation."""
+
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
@@ -11,60 +13,85 @@ from sparse_transform.qsft.signals.input_signal_subsampled import (
 from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
 from sparse_transform.qsft.utils.query import get_bch_decoder
 
-from ...game_theory.moebius_converter import MoebiusConverter
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.game_theory.moebius_converter import MoebiusConverter
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Any
+
+    from shapiq.games.base import Game
 
 
 class Sparse(Approximator):
-    """Approximator for interaction values using sparse transformation techniques.
+    """Approximator interface using sparse transformation techniques.
 
     This class implements a sparse approximation method for computing various interaction indices
     using sparse Fourier transforms. It efficiently estimates interaction values with a limited
-    sample budget by leveraging sparsity in the Fourier domain.
+    sample budget by leveraging sparsity in the Fourier domain. The notion of sparse approximation
+    is described in [Kan25]_.
+
+    See Also:
+        - :class:`~shapiq.approximator.sparse.SPEX` for a specific implementation of the
+            sparse approximation using Fourier transforms described in [Kan25]_.
 
     Attributes:
-        transform_type: Type of transform used (currently only "fourier" is supported).
-        transform_error: Error tolerance parameter for the sparse Fourier transform.
+        transform_type: Type of transform used (currently only ``"fourier"`` is supported).
+        transform_tolerance: Error tolerance parameter for the sparse Fourier transform.
         query_args: Parameters for querying the signal.
         decoder_args: Parameters for decoding the transform.
 
-    Args:
-        n: Number of players/features.
-        index: Type of interaction index to compute (e.g., "STII", "FBII", "FSII").
-        max_order: Maximum interaction order to compute. It is not suggested to use this parameter
-            since sparse approximation dynamically and implicitly adjusts the order based on the
-            budget and function.
-        top_order: If True, only compute interactions of exactly max_order.
-            If False, compute interactions up to max_order. Defaults to False.
-        random_state: Random seed for reproducibility. Defaults to None.
-        transform_type: Type of transform to use. Currently only "fourier"
-            is supported. Defaults to "fourier".
-        decoder_type: Type of decoder to use, either "soft" or "hard".
-            Defaults to "soft"
-        transform_error: Error tolerance parameter for the sparse Fourier transform.
-            Higher values increase accuracy but require more samples. Defaults to 5.
-
     Raises:
         ValueError: If transform_type is not "fourier" or if decoder_type is not "soft" or "hard".
+
+    References:
+        .. [Kan25] Kang, J.S., Butler, L., Agarwal. A., Erginbas, Y.E., Pedarsani, R., Ramchandran, K., Yu, Bin (2025). SPEX: Scaling Feature Interaction Explanations for LLMs https://arxiv.org/abs/2502.13870
+
     """
 
     def __init__(
         self,
         n: int,
-        index: str,
+        index: Literal["SII", "k-SII", "FBII", "FSII", "STII", "SV"],
+        *,
         max_order: int | None = None,
         top_order: bool = False,
         random_state: int | None = None,
-        transform_type: str = "fourier",
-        decoder_type: str = "soft",
-        transform_error: int = 5,
+        transform_type: Literal["fourier"] = "fourier",
+        decoder_type: Literal["soft", "hard"] = "soft",
+        transform_tolerance: int = 5,
     ) -> None:
+        """Initialize the Sparse approximator.
+
+        Args:
+            n: Number of players (features).
+
+            max_order: Maximum interaction order to consider. Defaults to ``None``, which means
+                that all orders up to ``n`` will be considered.
+
+            index: The Interaction index to use. All indices supported by shapiq's
+                :class:`~shapiq.game_theory.moebius_converter.MoebiusConverter` are supported.
+
+            top_order: If ``True``, only reports interactions of exactly order ``max_order``.
+                Otherwise, reports all interactions up to order ``max_order``. Defaults to
+                ``False``.
+
+            random_state: Seed for random number generator. Defaults to ``None``.
+
+            transform_type: Type of transform to use. Currently only "fourier" is supported.
+
+            decoder_type: Type of decoder to use, either "soft" or "hard". Defaults to "soft".
+
+            transform_tolerance: Error tolerance parameter for the sparse Fourier transform.
+                Higher values increase accuracy but require more samples. Defaults to ``5``.
+
+        """
         if transform_type.lower() not in ["fourier"]:
             msg = "transform_type must be 'fourier'"
             raise ValueError(msg)
         self.transform_type = transform_type.lower()
-        self.transform_error = transform_error
+        self.transform_tolerance = transform_tolerance
         self.decoder_type = "hard" if decoder_type is None else decoder_type.lower()
         if self.decoder_type not in ["soft", "hard"]:
             msg = "decoder_type must be 'soft' or 'hard'"
@@ -77,7 +104,7 @@ class Sparse(Approximator):
             "subsampling_method": "qsft",
             "delays_method_channel": "identity-siso",
             "num_repeat": 1,
-            "t": self.transform_error,
+            "t": self.transform_tolerance,
         }
         self.decoder_args = {
             "num_subsample": 3,
@@ -89,7 +116,7 @@ class Sparse(Approximator):
             else "identity",
             "regress": "lasso",
             "res_energy_cutoff": 0.9,
-            "source_decoder": get_bch_decoder(n, self.transform_error, self.decoder_type),
+            "source_decoder": get_bch_decoder(n, self.transform_tolerance, self.decoder_type),
         }
         super().__init__(
             n=n,
@@ -103,13 +130,15 @@ class Sparse(Approximator):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the interaction values using a sparse transform approach.
 
         Args:
             budget: The budget for the approximation.
             game: The game function that returns the values for the coalitions.
+            **kwargs: Additional keyword arguments (not used).
 
         Returns:
             The approximated Shapley interaction values.
@@ -184,7 +213,7 @@ class Sparse(Approximator):
             The function also updates the internal _interaction_lookup dictionary.
         """
         moebius_interactions = InteractionValues(
-            values=np.array([moebius_transform[key] for key in moebius_transform.keys()]),
+            values=np.array([moebius_transform[key] for key in moebius_transform]),
             index="Moebius",
             min_order=self.min_order,
             max_order=self.max_order,
@@ -216,31 +245,31 @@ class Sparse(Approximator):
             ValueError: If the budget is too low to compute the transform with acceptable parameters.
         """
         b = SubsampledSignalFourier.get_b_for_sample_budget(
-            budget, self.n, self.transform_error, 2, self.query_args
+            budget, self.n, self.transform_tolerance, 2, self.query_args
         )
         used_budget = SubsampledSignalFourier.get_number_of_samples(
-            self.n, b, self.transform_error, 2, self.query_args
+            self.n, b, self.transform_tolerance, 2, self.query_args
         )
 
         if b <= 2:
-            while self.transform_error > 2:
-                self.transform_error -= 1
-                self.query_args["t"] = self.transform_error
+            while self.transform_tolerance > 2:
+                self.transform_tolerance -= 1
+                self.query_args["t"] = self.transform_tolerance
 
                 # Recalculate 'b' with the updated 't'
                 b = SubsampledSignalFourier.get_b_for_sample_budget(
-                    budget, self.n, self.transform_error, 2, self.query_args
+                    budget, self.n, self.transform_tolerance, 2, self.query_args
                 )
 
                 # Compute the used budget
                 used_budget = SubsampledSignalFourier.get_number_of_samples(
-                    self.n, b, self.transform_error, 2, self.query_args
+                    self.n, b, self.transform_tolerance, 2, self.query_args
                 )
 
                 # Break if 'b' is now sufficient
                 if b > 2:
                     self.decoder_args["source_decoder"] = get_bch_decoder(
-                        self.n, self.transform_error, self.decoder_type
+                        self.n, self.transform_tolerance, self.decoder_type
                     )
                     break
 

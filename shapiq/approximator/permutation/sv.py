@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class PermutationSamplingSV(Approximator):
@@ -36,8 +39,18 @@ class PermutationSamplingSV(Approximator):
         self,
         n: int,
         random_state: int | None = None,
-        **kwargs,  # noqa ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
+        """Initialize the Permutation Sampling approximator for Shapley values.
+
+        Args:
+            n: The number of players.
+
+            random_state: The random state to use for the permutation sampling. Defaults to
+                ``None``.
+
+            **kwargs: Additional keyword arguments (not used for compatibility)
+        """
         super().__init__(n=n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = n - 1
 

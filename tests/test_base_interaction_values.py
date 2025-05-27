@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 from copy import copy, deepcopy
 
@@ -16,7 +17,7 @@ from tests.fixtures.interaction_values import (
 
 
 @pytest.mark.parametrize(
-    "index, n, min_order, max_order, estimation_budget, estimated",
+    ("index", "n", "min_order", "max_order", "estimation_budget", "estimated"),
     [
         ("STII", 5, 1, 2, 100, True),
         ("FSII", 5, 1, 2, 100, True),
@@ -90,10 +91,8 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values == interaction_values_copy
     assert interaction_values != interaction_values_2
 
-    try:
+    with contextlib.suppress(TypeError):
         assert interaction_values == 1  # expected to fail with TypeError
-    except TypeError:
-        pass
 
     # check that the hash is correct
     assert hash(interaction_values) == hash(interaction_values_copy)
@@ -456,8 +455,6 @@ def test_top_k():
     for i in range(n_players):
         assert interaction_values[(i,)] == values[i]
 
-    print(interaction_values)
-
     # top-k
     k = 3
     top_k_interaction, sorted_top_k_interactions = interaction_values.get_top_k(
@@ -625,7 +622,7 @@ def test_plot():
 
 @pytest.mark.parametrize("subset_players", [[0, 1], [0, 1, 3, 4]])
 def test_subset(subset_players):
-    """Test Subset function"""
+    """Test Subset function."""
     n = 7
     min_order = 1
     max_order = 3
@@ -651,7 +648,7 @@ def test_subset(subset_players):
     assert subset_interaction_values.n_players == n - n_players_in_subset
     assert all(
         all(p in subset_players for p in key)
-        for key in subset_interaction_values.interaction_lookup.keys()
+        for key in subset_interaction_values.interaction_lookup
     )
     assert len(subset_interaction_values.values) == len(
         subset_interaction_values.interaction_lookup,
@@ -672,8 +669,8 @@ def test_subset(subset_players):
 
 @pytest.mark.parametrize("aggregation", ["sum", "mean", "median", "max", "min"])
 def test_aggregation(aggregation):
+    """Tests the aggregation of InteractionValues."""
     n_objects = 3
-
     n, min_order, max_order = 5, 1, 3
     interaction_values_list = []
     for _ in range(n_objects):
@@ -799,12 +796,11 @@ def test_get_n_order_min_max_overrides_order(iv_10_all):
     assert iv_new.min_order == min_order
     assert iv_new.max_order == max_order
     assert all(
-        min_order <= len(interaction) <= max_order
-        for interaction in iv_new.interaction_lookup.keys()
+        min_order <= len(interaction) <= max_order for interaction in iv_new.interaction_lookup
     )
 
 
-@pytest.mark.parametrize("min_order, max_order", [(None, 3), (2, None)])
+@pytest.mark.parametrize(("min_order", "max_order"), [(None, 3), (2, None)])
 def test_get_n_order_single_bound(min_order, max_order, iv_10_all):
     """Tests behavior when only min or max is provided."""
     iv = iv_10_all
@@ -848,29 +844,29 @@ def test_get_n_order_with_only_order_param(
         assert iv_new.max_order == order
 
         # check that the order is correct
-        assert all(len(interaction) == order for interaction in iv_new.interaction_lookup.keys())
+        assert all(len(interaction) == order for interaction in iv_new.interaction_lookup)
 
         # check that all interactions from the original are present
         assert all(
             interaction in iv_new.interaction_lookup
-            for interaction in iv.interaction_lookup.keys()
+            for interaction in iv.interaction_lookup
             if len(interaction) == order
         )
 
         # check that all values are correct
         assert all(
-            iv_new[interaction] == iv[interaction]
-            for interaction in iv_new.interaction_lookup.keys()
+            iv_new[interaction] == iv[interaction] for interaction in iv_new.interaction_lookup
         )
 
 
-@pytest.mark.parametrize("min_order, max_order", [(0, 1), (0, 2), (2, 3), (3, 4), (4, 4)])
+@pytest.mark.parametrize(("min_order", "max_order"), [(0, 1), (0, 2), (2, 3), (3, 4), (4, 4)])
 def test_get_n_order_with_only_min_max_param(
     min_order: int,
     max_order: int,
     iv_10_all: InteractionValues,
     iv_300_300_0_300: InteractionValues,
 ):
+    """Tests that get_n_order returns the correct interactions when only min and max are given."""
     for iv in [iv_10_all, iv_300_300_0_300]:
         iv_new = iv.get_n_order(min_order=min_order, max_order=max_order)
         assert isinstance(iv_new, InteractionValues)
@@ -879,21 +875,19 @@ def test_get_n_order_with_only_min_max_param(
 
         # check that the order is correct
         assert all(
-            min_order <= len(interaction) <= max_order
-            for interaction in iv_new.interaction_lookup.keys()
+            min_order <= len(interaction) <= max_order for interaction in iv_new.interaction_lookup
         )
 
         # check that all interactions from the original are present
         assert all(
             interaction in iv_new.interaction_lookup
-            for interaction in iv.interaction_lookup.keys()
+            for interaction in iv.interaction_lookup
             if min_order <= len(interaction) <= max_order
         )
 
         # check that all values are correct
         assert all(
-            iv_new[interaction] == iv[interaction]
-            for interaction in iv_new.interaction_lookup.keys()
+            iv_new[interaction] == iv[interaction] for interaction in iv_new.interaction_lookup
         )
 
 
@@ -921,7 +915,7 @@ def test_copy_behaviour():
         assert hash(original) == hash(copied)
         assert original == copied
 
-        # Independence: changing one doesn’t affect the other
+        # Independence: changing one doesn't affect the other
         copied.values[0] += 1.0
         assert not np.array_equal(original.values, copied.values), "Values should be independent"
         copied.interaction_lookup[interaction] = 999

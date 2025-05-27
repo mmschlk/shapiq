@@ -56,6 +56,7 @@ def test_network_plot():
 
 
 def test_network_plot_with_image_or_text():
+    """Tests whether the network plot can be created with an image or text."""
     first_order_values = np.asarray([0.1, -0.2, 0.3, 0.4, 0.5, 0.6])
     second_order_values = np.random.rand(6, 6) - 0.5
     n_features = len(first_order_values)

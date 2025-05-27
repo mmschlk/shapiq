@@ -1,3 +1,5 @@
+"""shapiq documentation build configuration file."""
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -101,7 +103,7 @@ autodoc_default_options = {
     "undoc-members": True,
     "exclude-members": "__weakref__",
 }
-autoclass_content = "class"
+autoclass_content = "both"
 autodoc_inherit_docstrings = False
 
 # -- Images ----------------------------------------------------------------------------------------
@@ -121,7 +123,8 @@ copybutton_prompt_is_regexp = True
 # based on https://stackoverflow.com/a/56428123/23972
 
 
-def docstring(_app, _what, _name, _obj, _options, lines):
+def docstring(_app, _what, _name, _obj, _options, lines) -> None:
+    """Convert Markdown in docstrings to reStructuredText."""
     if len(lines) > 1 and lines[0] == "@&ismd":
         md = "\n".join(lines[1:])
         ast = commonmark.Parser().parse(md)
@@ -130,5 +133,6 @@ def docstring(_app, _what, _name, _obj, _options, lines):
         lines += rst.splitlines()
 
 
-def setup(app):
+def setup(app) -> None:
+    """Setup function for the Sphinx extension to convert Markdown in docstrings to reStructuredText."""
     app.connect("autodoc-process-docstring", docstring)
