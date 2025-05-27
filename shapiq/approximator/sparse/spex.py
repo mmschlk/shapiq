@@ -27,7 +27,7 @@ class SPEX(Sparse):
         top_order: bool = False,
         random_state: int | None = None,
         decoder_type: Literal["soft", "hard"] = "soft",
-        transform_tolerance: int = 5,
+        degree_parameter: int = 5,
     ) -> None:
         """Initialize the SPEX approximator.
 
@@ -47,8 +47,13 @@ class SPEX(Sparse):
 
             decoder_type: Type of decoder to use, either "soft" or "hard". Defaults to "soft".
 
-            transform_tolerance: Error tolerance parameter for the sparse Fourier transform.
-                Higher values increase accuracy but require more samples. Defaults to ``5``.
+            degree_parameter: A parameter that controls the maximum degree of the interactions to
+                extract during execution of the algorithm. Note that this is a soft limit, and in
+                practice, the algorithm may extract interactions of order
+                ``degree_parameter + sqrt(degree_parameter)``. We typically find that there is
+                little value going beyond ``5``. Defaults to ``5``. Note that increasing this
+                parameter will need more ``budget`` in the :meth:`approximate` of
+                :class:`~shapiq.approximator.sparse.Sparse`.
 
         """
         super().__init__(
@@ -59,5 +64,5 @@ class SPEX(Sparse):
             random_state=random_state,
             transform_type="fourier",
             decoder_type=decoder_type,
-            transform_tolerance=transform_tolerance,
+            degree_parameter=degree_parameter,
         )

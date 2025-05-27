@@ -38,7 +38,7 @@ class Sparse(Approximator):
 
     Attributes:
         transform_type: Type of transform used (currently only ``"fourier"`` is supported).
-        transform_tolerance: Error tolerance parameter for the sparse Fourier transform.
+        degree_parameter: Error tolerance parameter for the sparse Fourier transform.
         query_args: Parameters for querying the signal.
         decoder_args: Parameters for decoding the transform.
 
@@ -60,7 +60,7 @@ class Sparse(Approximator):
         random_state: int | None = None,
         transform_type: Literal["fourier"] = "fourier",
         decoder_type: Literal["soft", "hard"] = "soft",
-        transform_tolerance: int = 5,
+        degree_parameter: int = 5,
     ) -> None:
         """Initialize the Sparse approximator.
 
@@ -83,15 +83,19 @@ class Sparse(Approximator):
 
             decoder_type: Type of decoder to use, either "soft" or "hard". Defaults to "soft".
 
-            transform_tolerance: Error tolerance parameter for the sparse Fourier transform.
-                Higher values increase accuracy but require more samples. Defaults to ``5``.
+            degree_parameter: A parameter that controls the maximum degree of the interactions to
+                extract during execution of the algorithm. Note that this is a soft limit, and in
+                practice, the algorithm may extract interactions of order
+                ``degree_parameter + sqrt(degree_parameter)``. We typically find that there is
+                little value going beyond ``5``. Defaults to ``5``. Note that increasing this
+                parameter will need more ``budget`` in the :meth:`approximate` method.
 
         """
         if transform_type.lower() not in ["fourier"]:
             msg = "transform_type must be 'fourier'"
             raise ValueError(msg)
         self.transform_type = transform_type.lower()
-        self.transform_tolerance = transform_tolerance
+        self.degree_parameter = degree_parameter
         self.decoder_type = "hard" if decoder_type is None else decoder_type.lower()
         if self.decoder_type not in ["soft", "hard"]:
             msg = "decoder_type must be 'soft' or 'hard'"
@@ -104,7 +108,7 @@ class Sparse(Approximator):
             "subsampling_method": "qsft",
             "delays_method_channel": "identity-siso",
             "num_repeat": 1,
-            "t": self.transform_tolerance,
+            "t": self.degree_parameter,
         }
         self.decoder_args = {
             "num_subsample": 3,
@@ -116,7 +120,7 @@ class Sparse(Approximator):
             else "identity",
             "regress": "lasso",
             "res_energy_cutoff": 0.9,
-            "source_decoder": get_bch_decoder(n, self.transform_tolerance, self.decoder_type),
+            "source_decoder": get_bch_decoder(n, self.degree_parameter, self.decoder_type),
         }
         super().__init__(
             n=n,
@@ -245,31 +249,31 @@ class Sparse(Approximator):
             ValueError: If the budget is too low to compute the transform with acceptable parameters.
         """
         b = SubsampledSignalFourier.get_b_for_sample_budget(
-            budget, self.n, self.transform_tolerance, 2, self.query_args
+            budget, self.n, self.degree_parameter, 2, self.query_args
         )
         used_budget = SubsampledSignalFourier.get_number_of_samples(
-            self.n, b, self.transform_tolerance, 2, self.query_args
+            self.n, b, self.degree_parameter, 2, self.query_args
         )
 
         if b <= 2:
-            while self.transform_tolerance > 2:
-                self.transform_tolerance -= 1
-                self.query_args["t"] = self.transform_tolerance
+            while self.degree_parameter > 2:
+                self.degree_parameter -= 1
+                self.query_args["t"] = self.degree_parameter
 
                 # Recalculate 'b' with the updated 't'
                 b = SubsampledSignalFourier.get_b_for_sample_budget(
-                    budget, self.n, self.transform_tolerance, 2, self.query_args
+                    budget, self.n, self.degree_parameter, 2, self.query_args
                 )
 
                 # Compute the used budget
                 used_budget = SubsampledSignalFourier.get_number_of_samples(
-                    self.n, b, self.transform_tolerance, 2, self.query_args
+                    self.n, b, self.degree_parameter, 2, self.query_args
                 )
 
                 # Break if 'b' is now sufficient
                 if b > 2:
                     self.decoder_args["source_decoder"] = get_bch_decoder(
-                        self.n, self.transform_tolerance, self.decoder_type
+                        self.n, self.degree_parameter, self.decoder_type
                     )
                     break
 
