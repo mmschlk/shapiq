@@ -1,4 +1,6 @@
-"""shapiq is a library creating explanations for machine learning models based on
+"""shapiq: Shapley Interactions for Machine Learning.
+
+shapiq is a library creating explanations for machine learning models based on
 the well established Shapley value and its generalization to interaction.
 """
 
@@ -7,6 +9,7 @@ __version__ = "1.2.3.9000"
 # approximator classes
 from .approximator import (
     SHAPIQ,
+    SPEX,
     SVARM,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
@@ -95,6 +98,7 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
+    "SPEX",
     # explainers
     "Explainer",
     "TabularExplainer",

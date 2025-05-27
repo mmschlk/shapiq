@@ -21,7 +21,7 @@ def test_initialization(n):
     assert approximator.iteration_cost == 1
 
 
-@pytest.mark.parametrize("budget, order", [(100, 1), (100, 2), (100, 3), (100, 4)])
+@pytest.mark.parametrize(("budget", "order"), [(100, 1), (100, 2), (100, 3), (100, 4)])
 def test_approximate(budget, order):
     """Tests the approximation of the kADDSHAP approximator."""
     n = 7

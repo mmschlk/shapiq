@@ -15,11 +15,13 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "requests",
+    "sparse-transform",
+    "galois",
     # plotting
     "matplotlib",
     "networkx",
     "colour",
-    "pillow"
+    "pillow",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -100,44 +102,23 @@ src = ["tests", "shapiq", "docs"]
 
 
 [tool.ruff.lint]
-# extend-safe-fixes = ["ALL"]  # Dangerous on large codebases
-select = [
-    "A",  # flake8-builtins: checks for shadowing builtins and related to builtins
-    "W",  # pycodestyle: checks for code style guidelines
-    "E",  # pycodestyle: checks for code style guidelines
-    "F",  # pyflakes: checks for code style guidelines
-    "I",  # isort: checks that imports are sorted correctly
-    "UP",  # pyupgrade: detects code problems with regarding python versions
-    "B",  # flake8-bugbear: detects code smells
-    "ARG",  # unused arguments
-    "INP",  # implicit-namespace-package: all packes should have an __init__.py
-    "ERA",  # eradicate: there should not be any dead code (out-commented code)
-    "PTH",  # pathlib: checks for pathlib usage instead of conventional os usage
-    "ASYNC",  # flake8-async: checks for async usage
-    "S",  # flake8-bandit: checks for code simplification
-    "FAST",  # wrong usage of FastAPI
-    "YTT",  # flake8-2020: misuse of sys.version or sys.version_info
-    "N812",  # TODO: add further N codes
-    "BLE",  # blind-except: checks for usage of blind excepts
-    "COM",  # flake8-commas: checks for comma errors
-    "C4",  # flake8-comprehensions: checks for better list/set/dict comprehensions
-    # "CPY",  # for the time being we do not have copy-right notices in the top of the file so we do not need to include this
-    "DTZ",  # flake8-datetimez: checks for datetime usage
-    "T10",  # flake8-debugger: checks for usage of debugger
-    "EM",  # flake8-errmsg: checks for error message handling
-    "EXE", # flake8-executable: checks for executable files
-    "FIX",  # flake8-fixme: checks for TODOs and FIXMEs
-    "FA",  # require from __future__ import annotations import when using type hints
-    #"ANN",  # TODO: add this or include mypy
-    # "D",  # TODO: include this in the near future
-]
+# we allow star arguments to be of type Any e.g. def func(*args: Any, **kwargs: Any) -> None: is ok
+flake8-annotations.allow-star-arg-any = true
+select = ["ALL"]
 ignore = [
     "E501",  # Line too long
     "N803",  # Variable X in function should be lowercase
     "N806",  # Variable X in function should be lowercase
-    "S301",  # exclude pickle restriction, atm. games are unpickled this will need to be fixed
+    "S301",  # exclude pickle restriction, atm. games are unpickled this will need to be fixed # TODO: must be fixed in the future
     "COM812",  # this is redundant with the formatter which anyways does this (must be excluded) in the future # TODO: add remove pickle calls and remove this exclusion
     "FIX002",  # we use TODOs atm to track potential code improvements  # TODO: add this in the future
+    "PLR0913",  # Too many arguments are passed to function
+    "PLR0915", # Too many statements in function
+    "PLR0912",  # Too many branches in function
+    "PLR2004",  # Magic values in comparison ... this gets flaged with all checks for two-way interactions
+    "C901",  # Too complex functions
+    "PLR0911",  # too many return statements in function
+    "N802",  # Function name should be lowercase
 ]
 exclude = [
     ".bzr",
@@ -173,6 +154,7 @@ exclude = [
 # Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
+    # "ALL",
     "S101", # we need asserts in tests
     "D",    # test docstrings don't matter too much
     "E501", # line too long
@@ -182,14 +164,22 @@ exclude = [
     "N",  # type hints are excludes in tests
     "PTH",  # we can use os for now
     "S",  # in tests we can use some security issues for now
+    "PT", # we can use print statements in tests
+    "NPY",
+    "SLF",  # private members are okay in tests
+    "TRY",
 ]
 "*.ipynb" = [
     "E402",  # Module level import not at top of file (its .ipynb)
     "T20",  # notebooks can have print statements
     "I002",  # notebooks do not have to import required modules
+    "D",  # docstrings are not required in notebooks
+    "SLF001",  # private members are okay in notebooks
+    "ANN001",  # type annotations are not required in notebooks
 ]
 "docs/source/*.py" = [
     "A001",  # some conf.py variables shadow builtins which is okay here
+    "ANN001",  # some magic functions I don't want to annotate
     "INP",  # docs can be an implicit package (does not need to be imported)
     "I002",  # benchmark code does not have to import required modules
 ]

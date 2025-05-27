@@ -1,36 +1,36 @@
-"""This module contains the Owen Sampling approximation method for the Shapley value by
-Okhrati and Lipani (2020). It estimates the Shapley values in its integral representation by
-sampling random marginal contributions.
-"""
+"""The Owen Sampling approximator for the Shapley value."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.games.base import Game
 
 
 class OwenSamplingSV(Approximator):
-    """The Owen Sampling algorithm estimates the Shapley values (SV) by sampling random marginal
+    """Owen Sampling approximator for the Shapley values.
+
+    The Owen Sampling algorithm estimates the Shapley values (SV) by sampling random marginal
     contributions for each player and each coalition size. The marginal contributions are used to
-    update an integral representation of the SV. For more information, see
-    `Okhrati and Lipani (2020) <https://doi.org/10.48550/arXiv.2010.12082>`_.
+    update an integral representation of the SV. For more information, see [Okh20]_.
     The number of anchor points M at which the integral is to be palpated share the available budget
     for each player equally. A higher `n_anchor_points` increases the resolution of the integral
     reducing bias while reducing the accuracy of the estimation at each point.
 
-    Args:
-        n: The number of players.
-        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
-        n_anchor_points: Number of anchor points at which the integral is to be palpated.
-
     Attributes:
         n: The number of players.
-        _grand_coalition_array: The array of players (starting from ``0`` to ``n``).
         iteration_cost: The cost of a single iteration of the approximator.
+
+    References:
+        .. [Okh20] Ramin Okhrati, Aldo Lipani (2020). A Multilinear Sampling Algorithm to Estimate Shapley Values. arXiv preprint arXiv:2010.12082. https://doi.org/10.48550/arXiv.2010.12082
 
     """
 
@@ -39,7 +39,22 @@ class OwenSamplingSV(Approximator):
         n: int,
         n_anchor_points: int = 10,
         random_state: int | None = None,
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
+        """Initialize the Owen Sampling SV approximator.
+
+        Args:
+            n: The number of players.
+
+            n_anchor_points: The number of anchor points at which the integral is to be palpated.
+                Defaults to ``10``.
+
+            random_state: The random state to use for the permutation sampling. Defaults to
+                ``None``.
+
+            **kwargs: Additional arguments not used.
+
+        """
         super().__init__(n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = 2
         self.n_anchor_points = n_anchor_points
@@ -47,16 +62,20 @@ class OwenSamplingSV(Approximator):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
-        *args,  # noqa ARG002
-        **_kwargs,
+        game: Game | Callable[[np.ndarray], np.ndarray],
+        *args: Any,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the Shapley values using Owen Sampling.
 
         Args:
             budget: The number of game evaluations for approximation
+
             game: The game function as a callable that takes a set of players and returns the value.
-            args and kwargs: Additional arguments and keyword arguments not used in this method.
+
+            *args: Additional positional arguments not used in this method.
+
+            **kwargs: Additional keyword arguments not used in this method.
 
         Returns:
             The estimated interaction values.
@@ -130,7 +149,7 @@ class OwenSamplingSV(Approximator):
         )
 
     @staticmethod
-    def get_anchor_points(n_anchor_points: int):
+    def get_anchor_points(n_anchor_points: int) -> np.ndarray:
         """Returns the anchor points for the Owen Sampling approximation.
 
         Args:
@@ -146,7 +165,6 @@ class OwenSamplingSV(Approximator):
         if n_anchor_points <= 0:
             msg = "The number of anchor points needs to be greater than 0."
             raise ValueError(msg)
-        elif n_anchor_points == 1:
+        if n_anchor_points == 1:
             return np.array([0.5])
-        else:
-            return np.linspace(0.0, 1.0, num=n_anchor_points)
+        return np.linspace(0.0, 1.0, num=n_anchor_points)

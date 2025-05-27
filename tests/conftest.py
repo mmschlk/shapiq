@@ -51,7 +51,7 @@ def interaction_values_list():
     min_order = 0
     max_order = n_players
     iv_list = []
-    for i in range(n_objects):
+    for _ in range(n_objects):
         values = []
         interaction_lookup = {}
         for i, interaction in enumerate(
@@ -75,7 +75,7 @@ def interaction_values_list():
 
 @pytest.fixture(scope="module")
 def example_values():
-    example_values = InteractionValues(
+    return InteractionValues(
         n_players=4,
         values=np.array(
             [
@@ -121,4 +121,3 @@ def example_values():
         min_order=0,
         max_order=4,
     )
-    return example_values

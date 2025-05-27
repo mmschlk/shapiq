@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from ...utils.custom_types import Model
-from ...utils.modules import safe_isinstance
+from typing import TYPE_CHECKING
+
+from shapiq.utils.modules import safe_isinstance
+
 from .base import TreeModel
 from .conversion.lightgbm import convert_lightgbm_booster
 from .conversion.sklearn import (
@@ -12,6 +14,9 @@ from .conversion.sklearn import (
     convert_sklearn_tree,
 )
 from .conversion.xgboost import convert_xgboost_booster
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
 
 SUPPORTED_MODELS = {
     "sklearn.tree.DecisionTreeRegressor",

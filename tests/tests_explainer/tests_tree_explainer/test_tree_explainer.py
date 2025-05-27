@@ -164,7 +164,7 @@ def test_xgboost_reg(xgb_reg_model, background_reg_data):
     # explainer_shap = shap.TreeExplainer(model=xgb_reg_model)
     # x_explain_shap = background_reg_data[explanation_instance].reshape(1, -1)
     # sv_shap = explainer_shap.shap_values(x_explain_shap)[0]
-    """  # noqa: ERA001
+    """
     sv_shap = [-2.555832, 28.50987, 1.7708225, -7.8653603, 10.7955885, -0.1877861, 4.549199]
     sv_shap = np.asarray(sv_shap)
 
@@ -198,7 +198,7 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0][:, class_label]
     # print(sv_shap)
-    """  # noqa: ERA001
+    """
     sv = [-0.00545454, -0.15837783, -0.17675081, -0.24213657, 0.00247543, 0.00988865, -0.01564346]
     sv_shap = np.array(sv)
 
@@ -237,7 +237,7 @@ def test_random_forest_reg(rf_reg_model, background_reg_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0]
     # print(sv_shap_all_classes, baseline_shap)
-    """  # noqa: ERA001
+    """
     sv_shap = [25.8278293, -77.40235947, 0.0, 21.7067263, -4.85542565, 0.0, 4.91330141]
     sv_shap = np.asarray(sv_shap)
     baseline_shap = -0.713665621534487
@@ -268,7 +268,7 @@ def test_random_forest_shap(rf_clf_model, background_clf_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0][:, class_label]
     # print(sv_shap_all_classes, baseline_shap)
-    """  # noqa: ERA001
+    """
     sv_shap = [-0.00537992, 0.0, -0.08206514, -0.03122057, 0.0025626, 0.03182904, 0.03782473]
     sv_shap = np.asarray(sv_shap)
     baseline_shap = 0.32000000000000006
@@ -307,7 +307,7 @@ def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0][:, class_label]
     # print(sv_shap_all_classes, baseline_shap)
-    """  # noqa: ERA001
+    """
     sv_shap = [0.0, 0.0, -0.05747963, -0.20128496, 0.0, 0.0, 0.01560273]
     sv_shap = np.asarray(sv_shap)
     baseline_shap = -1.0862557008895362
@@ -323,8 +323,6 @@ def test_lightgbm_clf_shap(lightgbm_clf_model, background_clf_data):
     sv_shapiq = explainer_shapiq.explain(x=x_explain_shapiq)
     sv_shapiq_values = sv_shapiq.get_n_order_values(1)
     baseline_shapiq = sv_shapiq.baseline_value
-
-    print(sv_shapiq_values, baseline_shapiq)
 
     assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
@@ -458,7 +456,7 @@ def test_decision_stumps(background_reg_dataset, background_clf_dataset):
 
         efficiency = sum(explanation.values)
 
-        if isinstance(model, RandomForestClassifier) or isinstance(model, DecisionTreeClassifier):
+        if isinstance(model, RandomForestClassifier | DecisionTreeClassifier):
             pred = model.predict_proba(x_explain.reshape(1, -1))[0, 0]
         elif isinstance(model, XGBClassifier):
             pred = model.predict(x_explain.reshape(1, -1), output_margin=True)[0, 0]
@@ -483,7 +481,7 @@ def test_extra_trees_clf(et_clf_model, background_clf_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0][:, class_label]
     # print(sv_shap_all_classes, format(baseline_shap, '.20f'))
-    """  # noqa: ERA001
+    """
     sv_shap = [0.00207427, 0.00949552, -0.00108266, -0.03825587, -0.02694092, 0.0170296, 0.02046364]
     sv_shap = np.asarray(sv_shap)
     baseline_shap = 0.34000000000000002
@@ -515,10 +513,9 @@ def test_extra_trees_reg(et_reg_model, background_reg_data):
     # sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
     # sv_shap = sv_shap_all_classes[0]
     # print(sv_shap_all_classes, format(baseline_shap, '.20f'))
-    """  # noqa: ERA001
+    """
     sv_shap = [19.28673017, -19.87182634, 0.0, 10.89201698, -9.62498263, 0.35992212, 42.31290091]
     sv_shap = np.asarray(sv_shap)
-    print(sv_shap)
     baseline_shap = -2.56682283435175007
 
     # compute with shapiq

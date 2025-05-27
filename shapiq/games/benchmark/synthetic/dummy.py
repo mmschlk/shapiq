@@ -1,6 +1,8 @@
-"""This module contains the DummyGame class. The DummyGame class is mainly used for testing
-purposes. It returns the size of the coalition divided by the number of players plus an additional
-interaction term.
+"""Provides a simple cooperative game used for testing and benchmarking.
+
+The DummyGame returns the size of a coalition relative to the total number of players, optionally
+including an interaction term. It is designed to verify the behavior of algorithms operating on
+cooperative games.
 """
 
 from __future__ import annotations
@@ -15,11 +17,6 @@ class DummyGame(Game):
 
     When called, the `DummyGame` returns the size of the coalition divided by the number of players
     plus an additional (optional) interaction term.
-
-    Args:
-        n: The number of players.
-        interaction: The interaction of the game as a tuple of player indices. Defaults to an empty
-            tuple.
 
     Attributes:
         n: The number of players.
@@ -36,7 +33,14 @@ class DummyGame(Game):
 
     """
 
-    def __init__(self, n: int, interaction: set | tuple = ()):
+    def __init__(self, n: int, interaction: set | tuple = ()) -> None:
+        """Initializes the DummyGame class.
+
+        Args:
+            n: The number of players.
+            interaction: The interaction of the game as a tuple of player indices. Defaults to an
+                empty tuple.
+        """
         self.n = n
         self.N = set(range(self.n))
         self.interaction: tuple = tuple(sorted(interaction))
@@ -45,9 +49,8 @@ class DummyGame(Game):
         super().__init__(n, normalize=False)
         self.access_counter = 0
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray[float]:
-        """Returns the size of the coalition divided by the number of players plus the interaction
-        term.
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+        """Return the size of the coalition divided by the number of players plus the interaction term.
 
         Args:
             coalitions: The coalition as a binary vector of shape (coalition_size, n).

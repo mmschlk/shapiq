@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import matplotlib.patches as mpatches
@@ -10,11 +11,14 @@ import matplotlib.path as mpath
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
-from PIL import Image
 
-from ..interaction_values import InteractionValues
 from ._config import get_color
 from .utils import add_image_in_center
+
+if TYPE_CHECKING:
+    from PIL.Image import Image
+
+    from shapiq.interaction_values import InteractionValues
 
 NORMAL_NODE_SIZE = 0.125  # 0.125
 BASE_ALPHA_VALUE = 1.0  # the transparency level for the highest interaction
@@ -22,7 +26,7 @@ BASE_SIZE = 0.05  # the size of the highest interaction edge (with scale factor 
 ADJUST_NODE_ALPHA = True
 LABEL_OFFSET = 0.07
 
-__all__ = ["si_graph_plot", "get_legend"]
+__all__ = ["get_legend", "si_graph_plot"]
 
 
 def si_graph_plot(
@@ -46,9 +50,9 @@ def si_graph_plot(
     adjust_node_pos: bool = False,
     spring_k: float | None = None,
     compactness: float = 1e10,
-    center_image: Image.Image | np.ndarray | None = None,
+    center_image: Image | np.ndarray | None = None,
     center_image_size: float = 0.4,
-    feature_image_patches: dict[int, Image.Image] | list[Image.Image] | None = None,
+    feature_image_patches: dict[int, Image] | list[Image] | None = None,
     feature_image_patches_size: float = 0.2,
 ) -> tuple[plt.figure, plt.axis] | None:
     """Plots the interaction values as an explanation graph.
@@ -61,51 +65,83 @@ def si_graph_plot(
 
     Args:
         interaction_values: The interaction values to plot.
+
         show: Whether to show or return the plot. Defaults to ``True``.
-        n_interactions: The number of interactions to plot. If ``None``, all interactions are plotted
-            according to the draw_threshold.
+
+        n_interactions: The number of interactions to plot. If ``None``, all interactions are
+            plotted according to the draw_threshold.
+
         draw_threshold: The threshold to draw an edge (i.e. only draw explanations with an
             interaction value higher than this threshold).
+
         interaction_direction: The sign of the interaction values to plot. If ``None``, all
             interactions are plotted. Possible values are ``"positive"`` and
             ``"negative"``. Defaults to ``None``.
-        min_max_order: Only show interactions of min <= size <= max. First order interactions are always shown.
-            To use maximum order of interaction values, set max to -1. Defaults to ``(1, -1)``.
+
+        min_max_order: Only show interactions of min <= size <= max. First order interactions are
+            always shown. To use maximum order of interaction values, set max to -1. Defaults to
+            ``(1, -1)``.
+
         size_factor: The factor to scale the explanations by (a higher value will make the
             interactions and main effects larger). Defaults to ``1.0``.
+
         node_size_scaling: The scaling factor for the node sizes. This can be used to make the nodes
             larger or smaller depending on how the graph looks. Defaults to ``1.0`` (no scaling).
-            Values between ``0.0`` and ``1.0`` will make the nodes smaller, higher values will make the nodes larger.
+            Values between ``0.0`` and ``1.0`` will make the nodes smaller, higher values will make
+            the nodes larger.
+
         min_max_interactions: The minimum and maximum interaction values to use for scaling the
             interactions as a tuple ``(min, max)``. If ``None``, the minimum and maximum interaction
             values are used. Defaults to ``None``.
-        feature_names: The feature names used for plotting. List/dict mapping index of the player as index/key to name.
-            If no feature names are provided, the feature indices are used instead. Defaults to ``None``.
+
+        feature_names: The feature names used for plotting. List/dict mapping index of the player as
+            index/key to name. If no feature names are provided, the feature indices are used
+            instead. Defaults to ``None``.
+
         graph: The underlying graph structure as a list of edge tuples or a networkx graph. If a
             networkx graph is provided, the nodes are used as the players and the edges are used as
             the connections between the players. Defaults to ``None``, which creates a graph with
             all nodes from the interaction values without any edges between them.
-        plot_original_nodes: If set to ``True``, nodes are shown as white circles with the label inside,
-            large first-order-effects appear as halos around the node. Set to ``False``, only the explanation nodes are
-            shown, their labels next to them. Defaults to ``False``.
+
+        plot_original_nodes: If set to ``True``, nodes are shown as white circles with the label
+            inside, large first-order-effects appear as halos around the node. Set to ``False``,
+            only the explanation nodes are shown, their labels next to them. Defaults to ``False``.
+
         plot_explanation: Whether to plot the explanation or only the original graph. Defaults to
             ``True``.
+
         pos: The positions of the nodes in the graph. If ``None``, the spring layout is used to
             position the nodes. Defaults to ``None``.
+
         circular_layout: plot the players in a circle according to their order.
+
         random_seed: The random seed to use for layout of the graph (if not circular).
+
         adjust_node_pos: Whether to adjust the node positions such that the nodes are at least
             ``NORMAL_NODE_SIZE`` apart. Defaults to ``False``.
+
         spring_k: The spring constant for the spring layout. If `None`, the spring constant is
             calculated based on the number of nodes in the graph. Defaults to ``None``.
+
         compactness: A scaling factor for the underlying spring layout. A higher compactness value
             will move the interactions closer to the graph nodes. If your graph looks weird, try
             adjusting this value, e.g. ``[0.1, 1.0, 10.0, 100.0, 1000.0]``. Defaults to ``1e10``.
-        feature_image_patches: A dictionary/list containing the image patches to be displayed instead of of
-            the feature labels in the network. The keys/indices of the list are the feature indices and the values are
-            the feature images. If explicit feature names are provided, they are displayed on top of the image.
-            Defaults to ``None``.
+
+        center_image: An optional image to be displayed in the center of the graph. If provided,
+            the image displayed with size ``center_image_size``. If the number of features is
+            a perfect square, we assume a vision transformer style grid was used and overlay the
+            image with a grid of feature image patches. Defaults to ``None``.
+
+        center_image_size: The size of the center image. Defaults to ``0.4``. Adjust this value
+            to make the image larger or smaller in the center of the graph.
+
+        feature_image_patches: A dictionary/list containing the image patches to be displayed
+            instead of the feature labels in the network. The keys/indices of the list are the
+            feature indices and the values are the feature images. If explicit feature names are
+            provided, they are displayed on top of the image. Defaults to ``None``.
+
         feature_image_patches_size: The size of the feature image patches. Defaults to ``0.2``.
+
     Returns:
         The figure and axis of the plot if ``show`` is ``False``. Otherwise, ``None``.
 
@@ -129,7 +165,7 @@ def si_graph_plot(
 
     player_ids = {
         interaction[0]
-        for interaction in interaction_values.interaction_lookup.keys()
+        for interaction in interaction_values.interaction_lookup
         if len(interaction) == 1
     }
 
@@ -230,7 +266,7 @@ def si_graph_plot(
                 explanation_graph.add_edge(player, player_last, **attributes)
 
     # position first the original graph structure
-    if isinstance(graph, nx.Graph) or isinstance(graph, list):
+    if isinstance(graph, nx.Graph | list):
         circular_layout = False
     if pos is None:
         if circular_layout:
@@ -311,11 +347,14 @@ def si_graph_plot(
     if not show:
         return fig, ax
     plt.show()
+    return None
 
 
 def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
-    """Returns a tuple of legends, a legend for first order (nodes) and one for higher order (edges) interactions. If an
-        axis is provided, it adds the legend to the axis.
+    """Gets the legend for the SI graph plot.
+
+    Returns a tuple of legends, a legend for first order (nodes) and one for higher order (edges)
+    interactions. If an axis is provided, it adds the legend to the axis.
 
     Args:
         axis (plt.Axes): The axis to add the legend to.
@@ -381,7 +420,7 @@ def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
 
 
 def _normalize_value(
-    value: float,
+    value: float | np.ndarray,
     max_value: float,
     base_value: float,
 ) -> float:
@@ -399,8 +438,7 @@ def _normalize_value(
 
     """
     ratio = abs(value) / abs(max_value)  # ratio is always positive in [0, 1]
-    alpha = ratio * base_value
-    return alpha
+    return ratio * base_value
 
 
 def _draw_fancy_hyper_edges(
@@ -622,17 +660,27 @@ def _draw_graph_labels(
     ax: plt.axis,
     pos: dict,
     graph: nx.Graph,
+    *,
     nodes: list | None = None,
-    normal_node_size=1.0,
-    plot_white_nodes=False,
+    normal_node_size: float = 1.0,
+    plot_white_nodes: bool = False,
 ) -> None:
     """Adds labels to the nodes of the graph.
 
     Args:
         ax: The axis to draw the labels on.
+
         pos: The positions of the nodes.
+
         graph: The graph to draw the labels on.
+
         nodes: The nodes to draw the labels on. If ``None`` (default), all nodes are drawn.
+
+        normal_node_size: The size of the nodes. Defaults to ``1.0``.
+
+        plot_white_nodes: If set to ``True``, the nodes are drawn as white circles with the label
+            inside. If set to ``False``, the labels are drawn next to the nodes. Defaults to
+            ``False``.
 
     """
     for node in graph.nodes:
@@ -714,7 +762,7 @@ def _adjust_position(
     # adjust the positions if the nodes are too close together
     min_edge_distance = normal_node_size + normal_node_size / 2
     if min_distance < min_edge_distance:
-        for node in pos:
-            pos[node] = pos[node] * min_edge_distance / min_distance
+        for node, position in pos.items():
+            pos[node] = position * min_edge_distance / min_distance
 
     return pos

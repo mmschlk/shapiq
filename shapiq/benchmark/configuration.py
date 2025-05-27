@@ -36,7 +36,7 @@ information:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from shapiq.approximator import (
     FSII_APPROXIMATORS,
@@ -46,7 +46,6 @@ from shapiq.approximator import (
     SV_APPROXIMATORS,
     Approximator,
 )
-from shapiq.games.base import Game
 from shapiq.games.benchmark import (
     SOUM,
     AdultCensusDatasetValuation,
@@ -81,6 +80,9 @@ from shapiq.games.benchmark import (
     # not to be precomputed
     SynthDataTreeSHAPIQXAI,
 )
+
+if TYPE_CHECKING:
+    from shapiq.games.base import Game
 
 # default params that will be passed to any game
 BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS: dict[str, Any] = {
@@ -742,13 +744,13 @@ APPROXIMATION_NAME_TO_CLASS_MAPPING = {
 # contains all parameters that will be passed to the approximators at initialization
 APPROXIMATION_BENCHMARK_PARAMS: dict[Approximator.__class__, tuple[str]] = {}
 APPROXIMATION_BENCHMARK_PARAMS.update(
-    {approx: ("n", "random_state") for approx in SV_APPROXIMATORS},
+    dict.fromkeys(SV_APPROXIMATORS, ("n", "random_state")),
 )
 APPROXIMATION_BENCHMARK_PARAMS.update(
-    {
-        approx: ("n", "random_state", "index", "max_order")
-        for approx in SI_APPROXIMATORS + SII_APPROXIMATORS + STII_APPROXIMATORS + FSII_APPROXIMATORS
-    },
+    dict.fromkeys(
+        SI_APPROXIMATORS + SII_APPROXIMATORS + STII_APPROXIMATORS + FSII_APPROXIMATORS,
+        ("n", "random_state", "index", "max_order"),
+    ),
 )
 
 
@@ -786,7 +788,7 @@ def get_game_class_from_name(game_name: str) -> Game.__class__:
 
 
 def get_name_from_game_class(game_class: Game.__class__) -> str:
-    """Get the name of the game from the class of the game
+    """Get the name of the game from the class of the game.
 
     Args:
         game_class: The class of the game.
@@ -810,14 +812,6 @@ def print_benchmark_configurations() -> None:
     for game_identifier in game_identifiers:
         game_class = GAME_NAME_TO_CLASS_MAPPING[game_identifier]
         config_per_player_id = BENCHMARK_CONFIGURATIONS[game_class]
-        print(f"Game: {game_identifier}")
-        for player_id, configurations in enumerate(config_per_player_id):
-            print(f"Player ID: {player_id}")
-            print(f"Number of Players: {configurations['n_players']}")
-            print(f"Number of configurations: {len(configurations['configurations'])}")
-            print(f"Is the Benchmark Pre-computed: {configurations['precompute']}")
-            print(f"Iteration Parameter: {configurations['iteration_parameter']}")
-            print("Configurations:")
-            for i, configuration in enumerate(configurations["configurations"]):
-                print(f"Configuration {i + 1}: {configuration}")
-        print()
+        for _player_id, configurations in enumerate(config_per_player_id):
+            for _i, _configuration in enumerate(configurations["configurations"]):
+                pass

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
-from PIL import Image
 
-from ..interaction_values import InteractionValues
+if TYPE_CHECKING:
+    from PIL.Image import Image
+
+    from shapiq.interaction_values import InteractionValues
 
 __all__ = ["network_plot"]
 
@@ -16,7 +18,7 @@ def network_plot(
     interaction_values: InteractionValues | None = None,
     *,
     feature_names: list[Any] | dict[int, Any] | None = None,
-    feature_image_patches: dict[int, Image.Image] | list[Image.Image] | None = None,
+    feature_image_patches: dict[int, Image] | list[Image] | None = None,
     feature_image_patches_size: float | dict[int, float] | None = 0.2,
     show: bool = False,
 ) -> tuple[plt.Figure, plt.Axes] | None:
@@ -35,14 +37,18 @@ def network_plot(
 
     Args:
         interaction_values: The interaction values as an interaction object.
-        feature_names: The feature names used for plotting. List/dict mapping index of the player as index/key to name.
-            If no feature names are provided, the feature indices are used instead. Defaults to ``None``.
-        feature_image_patches: A dictionary/list containing the image patches to be displayed instead of
-            the feature labels in the network. The keys/indices of the list are the feature indices and the values are
-            the feature images. If explicit feature names are provided, they are displayed on top of the image.
-            Defaults to ``None``.
-        feature_image_patches_size: The size of the feature image patches.
-            Defaults to ``0.2``.
+
+        feature_names: The feature names used for plotting. List/dict mapping index of the player as
+            index/key to name. If no feature names are provided, the feature indices are used
+            instead. Defaults to ``None``.
+
+        feature_image_patches: A dictionary/list containing the image patches to be displayed
+            instead of the feature labels in the network. The keys/indices of the list are the
+            feature indices and the values are the feature images. If explicit feature names are
+            provided, they are displayed on top of the image. Defaults to ``None``.
+
+        feature_image_patches_size: The size of the feature image patches. Defaults to ``0.2``.
+
         show: Whether to show the plot. Defaults to ``False``. If ``False``, the figure and the axis
             containing the plot are returned, otherwise ``None``.
 
@@ -52,7 +58,7 @@ def network_plot(
     References:
         .. [1] Muschalik, M., Fumagalli, F., Hammer, B., & Hüllermeier, E. (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
 
-        .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766–778.
+        .. [2] Inglis, A.; Parnell, A.; and Hurley, C. B. 2022. Visualizing Variable Importance and Variable Interaction Effects in Machine Learning Models. Journal of Computational and Graphical Statistics, 31(3): 766-778.
 
     """
     from . import si_graph_plot
@@ -68,3 +74,4 @@ def network_plot(
     if not show:
         return fig, ax
     plt.show()
+    return None

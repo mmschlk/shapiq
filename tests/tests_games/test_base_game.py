@@ -16,9 +16,7 @@ def test_call():
     """This test tests the call function of the base game class."""
 
     class TestGame(Game):
-        """This is a test game class that inherits from the base game class.
-        Its value function is the amount of players divided by the number of players.
-        """
+        """A simple test game that implements the value function."""
 
         def __init__(self, n, **kwargs):
             super().__init__(n_players=n, normalization_value=0, **kwargs)
@@ -75,8 +73,8 @@ def test_call():
     # test with grand coalition all call variants
     test_coalition = test_game.grand_coalition
     assert test_game(test_coalition) == 1.0
-    assert test_game(tuple(range(0, test_game.n_players))) == 1.0
-    assert test_game([tuple(range(0, test_game.n_players))]) == 1.0
+    assert test_game(tuple(range(test_game.n_players))) == 1.0
+    assert test_game([tuple(range(test_game.n_players))]) == 1.0
     assert test_game(tuple(test_game.player_name_lookup.values())) == 1.0
     assert test_game([tuple(test_game.player_name_lookup.values())]) == 1.0
 
@@ -97,7 +95,7 @@ def test_call():
 
 
 def test_precompute():
-    """This test tests the precompute function of the base game class"""
+    """This test tests the precompute function of the base game class."""
     n_players = 6
     dummy_game = DummyGame(n=n_players, interaction=(0, 1))
 
@@ -289,8 +287,8 @@ def test_save_and_load_with_normalization():
         empty_value = game_loaded(game_loaded.empty_coalition)
         # the output should be the same as the original game without normalization (0.0)
         assert empty_value == dummy_game_empty_output
-    except Exception as e:
-        raise e
+    except Exception:
+        raise
     finally:
         os.remove(path)
         assert not os.path.exists(path)

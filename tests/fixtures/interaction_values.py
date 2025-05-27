@@ -87,7 +87,7 @@ def get_mock_interaction_value(
 
 
 @pytest.mark.parametrize(
-    "n_players, n_interactions, min_order, max_order",
+    ("n_players", "n_interactions", "min_order", "max_order"),
     [
         (4, 5, 0, 4),
         (4, 5, 1, 2),
@@ -167,8 +167,11 @@ def test_mock_is_quick_for_large_params():
 
 
 def test_mock_interactions_all_correctly_inferred():
-    """Test that the number of interactions is correctly inferred if n_interactions is larger than
-    the number of possible interactions."""
+    """Test that the number of interactions is correctly inferred.
+
+    Test that the number of interactions is correctly inferred if n_interactions is larger than
+    the number of possible interactions.
+    """
     n_players = 4
     n_interactions = 2**n_players * 2  # twice the number of possible interactions
     possible_interactions = count_interactions(n_players, min_order=0, max_order=n_players)

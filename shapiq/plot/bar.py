@@ -11,7 +11,8 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..interaction_values import InteractionValues, aggregate_interaction_values
+from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
+
 from ._config import BLUE, RED
 from .utils import abbreviate_feature_names, format_labels, format_value
 
@@ -179,6 +180,7 @@ def _bar(
 
 def bar_plot(
     list_of_interaction_values: list[InteractionValues],
+    *,
     feature_names: np.ndarray | None = None,
     show: bool = False,
     abbreviate: bool = True,
@@ -196,7 +198,8 @@ def bar_plot(
         feature_names: The feature names used for plotting. If no feature names are provided, the
             feature indices are used instead. Defaults to ``None``.
         show: Whether ``matplotlib.pyplot.show()`` is called before returning. Default is ``True``.
-            Setting this to ``False`` allows the plot to be customized further after it has been created.
+            Setting this to ``False`` allows the plot to be customized further after it has been
+            created.
         abbreviate: Whether to abbreviate the feature names. Defaults to ``True``.
         max_display: The maximum number of features to display. Defaults to ``10``. If set to
             ``None``, all features are displayed.
@@ -204,6 +207,8 @@ def bar_plot(
             into a global explanation (``True``) or to plot them as separate bars (``False``).
             Defaults to ``True``. If only one InteractionValues object is provided, this parameter
             is ignored.
+        plot_base_value: Whether to include the base value in the plot or not. Defaults to
+            ``False``.
 
     Returns:
         If ``show`` is ``False``, the function returns the axis of the plot. Otherwise, it returns
@@ -253,3 +258,4 @@ def bar_plot(
     if not show:
         return ax
     plt.show()
+    return None

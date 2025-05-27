@@ -1,4 +1,8 @@
-"""conversions of interaction values to different indices"""
+"""Game theory module of ``shapiq``.
+
+This module contains the implementation of various game-theoretic concepts and algorithms.
+
+"""
 
 from .aggregation import aggregate_base_interaction
 from .core import egalitarian_least_core
@@ -26,4 +30,3 @@ __all__ = [
     "egalitarian_least_core",
     "MoebiusConverter",
 ]
-# todo complete list

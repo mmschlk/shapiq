@@ -32,9 +32,10 @@ def cooking_game():
 
         def value_function(self, coalitions: np.ndarray) -> np.ndarray:
             """Defines the worth of a coalition as a lookup in the characteristic function."""
-            output = []
-            for coalition in coalitions:
-                output.append(self.characteristic_function[tuple(np.where(coalition)[0])])
+            output = [
+                self.characteristic_function[tuple(np.where(coalition)[0])]
+                for coalition in coalitions
+            ]
             return np.array(output)
 
     return CookingGame()
@@ -48,7 +49,9 @@ def paper_game():
     from shapiq.games.base import Game
 
     class PaperGame(Game):
-        """A game with 11 players, where each coalition must contain at least 2 players and with
+        """A simple game with 11 players.
+
+        A game with 11 players, where each coalition must contain at least 2 players and with
         probability 0.1 of two players not cooperating.
         """
 

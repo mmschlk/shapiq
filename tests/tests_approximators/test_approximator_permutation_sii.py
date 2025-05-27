@@ -10,7 +10,7 @@ from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(
-    "n, max_order, top_order, index, expected",
+    ("n", "max_order", "top_order", "index", "expected"),
     [
         (3, 1, True, "SII", 6),
         (3, 1, False, "SII", 6),
@@ -25,9 +25,9 @@ def test_initialization(n, max_order, top_order, index, expected):
     """Tests the initialization of the PermutationSamplingSII approximator."""
     if index == "something":
         with pytest.raises(ValueError):
-            _ = PermutationSamplingSII(n, max_order, index, top_order)
+            _ = PermutationSamplingSII(n, max_order, index, top_order=top_order)
         return
-    approximator = PermutationSamplingSII(n, max_order, index, top_order)
+    approximator = PermutationSamplingSII(n, max_order, index, top_order=top_order)
     assert approximator.n == n
     assert approximator.max_order == max_order
     assert approximator.top_order == top_order
@@ -38,7 +38,7 @@ def test_initialization(n, max_order, top_order, index, expected):
 
 @pytest.mark.parametrize("index", ["SII", "k-SII"])
 @pytest.mark.parametrize(
-    "n, max_order, top_order, budget, batch_size",
+    ("n", "max_order", "top_order", "budget", "batch_size"),
     [
         (7, 2, False, 380, 10),
         (7, 2, False, 500, 10),
@@ -50,7 +50,7 @@ def test_approximate(n, max_order, top_order, budget, batch_size, index):
     """Tests the approximation of the PermutationSamplingSII approximator."""
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    approximator = PermutationSamplingSII(n, max_order, index, top_order, random_state=42)
+    approximator = PermutationSamplingSII(n, max_order, index, top_order=top_order, random_state=42)
     estimates = approximator.approximate(budget, game, batch_size=batch_size)
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == max_order

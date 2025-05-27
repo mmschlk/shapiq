@@ -1,6 +1,4 @@
-"""Summary of all interaction indices and game theoretic concepts available
-in ``shapiq``.
-"""
+"""Summary of all interaction indices and game-theoretic concepts available in ``shapiq``."""
 
 from __future__ import annotations
 
@@ -89,7 +87,7 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     },
     "BV": {
         "name": "Banzhaf Value",
-        "source": "Banzhaf III, J. F. (1965). Weighted Voting Doesn’t Work: A Mathematical "
+        "source": "Banzhaf III, J. F. (1965). Weighted Voting Doesn`t Work: A Mathematical "
         "Analysis. Rutgers Law Review, 19, 317-343.",  # no doi
         "generalizes": None,
     },
@@ -124,6 +122,7 @@ ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 
 AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII", "FBII"}
 AVAILABLE_INDICES_MONTE_CARLO = {"k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII"}
+AVAILABLE_INDICES_SPARSE = {"SII", "STII", "FSII", "SV", "BII", "FBII"}
 
 AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = {
     "SII",
@@ -161,8 +160,7 @@ def index_generalizes_sv(index: str) -> bool:
     """
     if index in ALL_AVAILABLE_CONCEPTS:
         return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "SV"
-    else:
-        return False
+    return False
 
 
 def index_generalizes_bv(index: str) -> bool:
@@ -185,8 +183,7 @@ def index_generalizes_bv(index: str) -> bool:
     """
     if index in ALL_AVAILABLE_CONCEPTS:
         return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "BV"
-    else:
-        return False
+    return False
 
 
 def get_computation_index(index: str) -> str:
@@ -216,7 +213,7 @@ def get_computation_index(index: str) -> str:
     if "k-" in index:
         return index.split("-")[1]  # remove the k- prefix
     if index == "SV":  # for SV we return SII with max order 1
-        return "SII"  # TODO this may break with FSII and KernelSHAP
+        return "SII"
     if index == "BV":  # for SV we return SII with max order 1
         return "BII"
     return index
@@ -265,8 +262,10 @@ def is_index_aggregated(index: str) -> bool:
 
 
 def is_empty_value_the_baseline(index: str) -> bool:
-    """Checks if the empty value stored in the interaction values is the baseline value. This is
-    only not the case for the Shapley Interaction Index and Banzhaf values.
+    """Check if empty prediction is the baseline.
+
+    Checks if the empty value stored in the interaction values is the baseline value. This is only
+    not the case for the Shapley Interaction Index and Banzhaf values.
 
     Args:
         index: The interaction index.

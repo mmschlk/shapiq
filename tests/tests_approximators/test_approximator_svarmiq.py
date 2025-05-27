@@ -10,7 +10,7 @@ from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(
-    "n, max_order, index, top_order",
+    ("n", "max_order", "index", "top_order"),
     [
         (7, 2, "SII", False),
         (7, 2, "SII", True),
@@ -33,7 +33,7 @@ def test_initialization(n, max_order, index, top_order):
 
 
 @pytest.mark.parametrize(
-    "n, max_order, top_order, budget",
+    ("n", "max_order", "top_order", "budget"),
     [(7, 2, False, 100), (7, 2, True, 100), (7, 2, False, 300)],
 )
 def test_approximate_sii(n, max_order, top_order, budget):

@@ -58,11 +58,6 @@ if __name__ == "__main__":
     n_jobs = args.n_jobs
     verbose = args.verbose
 
-    print(
-        f"Pre-computing game data for {game}, configuration ID: {config_id}, player ID: "
-        f"{n_player_id}, n_jobs: {n_jobs}, verbose: {verbose}.",
-    )
-
     if verbose:
         BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS["verbose"] = True
 

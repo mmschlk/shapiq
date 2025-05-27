@@ -7,11 +7,11 @@ import importlib.util
 import pytest
 
 __all__ = [
+    "skip_if_no_keras",
+    "skip_if_no_lightgbm",
     "skip_if_no_tabpfn",
     "skip_if_no_tensorflow",
-    "skip_if_no_keras",
     "skip_if_no_xgboost",
-    "skip_if_no_lightgbm",
 ]
 
 

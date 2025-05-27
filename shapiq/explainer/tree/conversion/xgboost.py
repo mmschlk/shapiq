@@ -1,13 +1,14 @@
-"""Functions for converting xgboost decision trees to the format used by
-shapiq.
-"""
+"""Functions for converting xgboost decision trees to the format used by shapiq."""
 
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING, Literal
 
-from ....utils.custom_types import Model
-from ..base import TreeModel
+from shapiq.explainer.tree.base import TreeModel
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
 
 
 def convert_xgboost_booster(
@@ -41,7 +42,6 @@ def convert_xgboost_booster(
     # https://github.com/shap/shap/blob/77e92c3c110e816b768a0ec2acfbf4cc08ee13db/shap/explainers/_tree.py#L1992
     scaling = 1.0
     booster_df = tree_booster.trees_to_dataframe()
-    output_type = "raw"
 
     if tree_booster.feature_names:
         feature_names = tree_booster.feature_names
@@ -66,7 +66,7 @@ def convert_xgboost_booster(
         _convert_xgboost_tree_as_df(
             tree_df=tree_df,
             intercept=intercept,
-            output_type=output_type,
+            output_type="raw",
             scaling=scaling,
         )
         for _, tree_df in booster_df.groupby("Tree")
@@ -76,14 +76,16 @@ def convert_xgboost_booster(
 def _convert_xgboost_tree_as_df(
     tree_df: Model,
     intercept: float,
-    output_type: str,
+    output_type: Literal["raw", "probability"] = "raw",
     scaling: float = 1.0,
 ) -> TreeModel:
     """Convert a xgboost decision tree to the format used by shapiq.
 
     Args:
         tree_df: The xgboost decision tree model formatted as a data frame.
-        output_type: Either "raw" or "probability". Currently unused.
+        intercept: The intercept of the model.
+        output_type: The type of output to be used. Can be one of ``["raw", "probability"]``.
+            Defaults to ``"raw"``.
         scaling: The scaling factor for the tree values.
 
     Returns:
@@ -93,7 +95,7 @@ def _convert_xgboost_tree_as_df(
     convert_node_str_to_int = {k: v for v, k in enumerate(tree_df["ID"])}
 
     values = tree_df["Gain"].values * scaling + intercept  # add intercept to all values
-    tree_model = TreeModel(
+    return TreeModel(
         children_left=tree_df["Yes"]
         .replace(convert_node_str_to_int)
         .infer_objects(copy=False)
@@ -113,5 +115,3 @@ def _convert_xgboost_tree_as_df(
         empty_prediction=None,
         original_output_type=output_type,
     )
-
-    return tree_model

@@ -1,23 +1,29 @@
-"""Note this should not be directly imported in the module as it depends on torch which is not
-installed by default.
+"""Setup for the CaliforniaHousing dataset's neural network model.
+
+Note:
+    Note this should not be directly imported in the module as it depends on ``torch`` which is not
+    installed by default.
 """
 
 from __future__ import annotations
 
 import warnings
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import numpy as np
 import torch
 from sklearn.metrics import r2_score
 from torch import nn
 from torch.optim import Adam
 
+if TYPE_CHECKING:
+    import numpy as np
+
 __all__ = ["CaliforniaHousingTorchModel"]
 
 
 class SmallNeuralNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.model = nn.Sequential(
             nn.Linear(8, 50),
@@ -28,13 +34,12 @@ class SmallNeuralNetwork(nn.Module):
             nn.Linear(5, 1),
         )
 
-    def forward(self, x):
-        x = self.model(x)
-        return x
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.model(x)
 
 
 class CaliforniaHousingTorchModel:
-    def __init__(self, n_epochs: int = 100):
+    def __init__(self, n_epochs: int = 100) -> None:
         # instantiate the model
         self.torch_model = SmallNeuralNetwork()
         try:

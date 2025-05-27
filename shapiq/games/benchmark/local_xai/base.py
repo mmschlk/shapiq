@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -11,6 +11,9 @@ from shapiq.games.benchmark.setup import get_x_explain
 from shapiq.games.imputer.conditional_imputer import ConditionalImputer
 from shapiq.games.imputer.marginal_imputer import MarginalImputer
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 class LocalExplanation(Game):
     """The LocalExplanation game class.
@@ -18,22 +21,8 @@ class LocalExplanation(Game):
     The `LocalExplanation` game is a game that performs local explanation of a model at a specific
     data point as a coalition game. The game evaluates the model's prediction on feature subsets
     around a specific data point. Therein, marginal imputation is used to impute the missing values
-    of the data point (for more information see `MarginalImputer`).
-
-    Args:
-        x: The data point to explain. Can be an index of the background data or a 1d matrix of shape
-             (n_features). Defaults to `None` which will select a random data point from the
-             background data.
-        data: The background data used to fit the imputer. Should be a 2d matrix of shape
-            (n_samples, n_features).
-        imputer: The imputer to use. Defaults to 'marginal'. Available imputers are 'marginal'
-            and 'conditional'.
-        model: The model to explain as a callable function expecting data points as input and
-            returning the model's predictions. The input should be a 2d matrix of shape
-            (n_samples, n_features) and the output a 1d matrix of shape (n_samples).
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
+    of the data point (for more information see :class:`~shapiq.games.imputer.MarginalImputer` and
+    :class:`~shapiq.games.imputer.ConditionalImputer`).
 
     Attributes:
         x: The data point to explain.
@@ -69,15 +58,41 @@ class LocalExplanation(Game):
 
     def __init__(
         self,
-        *,
         data: np.ndarray,
         model: Callable[[np.ndarray], np.ndarray],
+        *,
         x: np.ndarray | int = None,
         imputer: MarginalImputer | ConditionalImputer | str = "marginal",
         normalize: bool = True,
         random_state: int | None = 42,
         verbose: bool = False,
     ) -> None:
+        """Initialize the LocalExplanation game.
+
+        Args:
+            data: The background data used to fit the imputer. Should be a 2d matrix of shape
+                ``(n_samples, n_features)``.
+
+            model: The model to explain as a callable function expecting data points as input and
+                returning the model's predictions. The input should be a 2d matrix of shape
+                ``(n_samples, n_features)`` and the output a 1d matrix of shape ``(n_samples,)``.
+
+            imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
+                ``'marginal'`` and ``'conditional'``.
+
+            x: The data point to explain. Can be an index of the background data or a 1d matrix of
+                shape ``(n_features,)``. Defaults to ``None`` which will select a random data point
+                from the background data.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print the validation score of the model if trained. Defaults to
+                ``True``.
+
+            random_state: The random state to use for the imputer. Defaults to ``42``.
+        """
         # get x_explain
         self.x = get_x_explain(x, data)
 

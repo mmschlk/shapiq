@@ -8,13 +8,17 @@ Note:
 
 from __future__ import annotations
 
-import matplotlib
+from typing import TYPE_CHECKING
+
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..interaction_values import InteractionValues
 from ._config import BLUE, RED
 from .utils import abbreviate_feature_names, format_labels, format_value
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
 
 __all__ = ["waterfall_plot"]
 
@@ -23,6 +27,7 @@ def _draw_waterfall_plot(
     values: np.ndarray,
     base_values: float,
     feature_names: list[str],
+    *,
     max_display: int = 10,
     show: bool = False,
 ) -> plt.Axes | None:
@@ -67,13 +72,10 @@ def _draw_waterfall_plot(
     yticklabels = ["" for _ in range(num_features + 1)]
 
     # size the plot based on how many features we are plotting
-    plt.gcf().set_size_inches(8, num_features * row_height + 1.5)
+    plt.gcf().set_size_inches(8, num_features * row_height + 3.5)
 
     # see how many individual (vs. grouped at the end) features we are plotting
-    if num_features == len(values):
-        num_individual = num_features
-    else:
-        num_individual = num_features - 1
+    num_individual = num_features if num_features == len(values) else num_features - 1
 
     # compute the locations of the individual features and plot the dashed connecting lines
     for i in range(num_individual):
@@ -100,7 +102,7 @@ def _draw_waterfall_plot(
 
     # add a last grouped feature to represent the impact of all the features we didn't show
     if num_features < len(values):
-        yticklabels[0] = "%d other features".format()
+        yticklabels[0] = f"{int(len(values) - num_features + 1)} other features"
         remaining_impact = base_values - loc
         if remaining_impact < 0:
             pos_inds.append(0)
@@ -147,6 +149,7 @@ def _draw_waterfall_plot(
     width = bbox.width
     bbox_to_xscale = xlen / width
     hl_scaled = bbox_to_xscale * head_length
+    dpi = fig.dpi
     renderer = fig.canvas.get_renderer()
 
     # draw the positive arrows
@@ -255,6 +258,16 @@ def _draw_waterfall_plot(
         fontsize=13,
     )
 
+    # Check that the y-ticks are not drawn outside the plot
+    max_label_width = (
+        max([label.get_window_extent(renderer=renderer).width for label in ax.get_yticklabels()])
+        / dpi
+    )
+    if max_label_width > 0.1 * fig.get_size_inches()[0]:
+        required_width = max_label_width / 0.1
+        fig_height = fig.get_size_inches()[1]
+        fig.set_size_inches(required_width, fig_height, forward=True)
+
     # put horizontal lines for each feature row
     for i in range(num_features):
         plt.axhline(i, color="#cccccc", lw=0.5, dashes=(1, 5), zorder=-1)
@@ -309,11 +322,11 @@ def _draw_waterfall_plot(
     tick_labels = ax3.xaxis.get_majorticklabels()
     tick_labels[0].set_transform(
         tick_labels[0].get_transform()
-        + matplotlib.transforms.ScaledTranslation(-10 / 72.0, 0, fig.dpi_scale_trans),
+        + mpl.transforms.ScaledTranslation(-10 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_transform(
         tick_labels[1].get_transform()
-        + matplotlib.transforms.ScaledTranslation(12 / 72.0, 0, fig.dpi_scale_trans),
+        + mpl.transforms.ScaledTranslation(12 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_color("#999999")
     ax3.spines["right"].set_visible(False)
@@ -324,11 +337,11 @@ def _draw_waterfall_plot(
     tick_labels = ax2.xaxis.get_majorticklabels()
     tick_labels[0].set_transform(
         tick_labels[0].get_transform()
-        + matplotlib.transforms.ScaledTranslation(-20 / 72.0, 0, fig.dpi_scale_trans),
+        + mpl.transforms.ScaledTranslation(-20 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_transform(
         tick_labels[1].get_transform()
-        + matplotlib.transforms.ScaledTranslation(22 / 72.0, -1 / 72.0, fig.dpi_scale_trans),
+        + mpl.transforms.ScaledTranslation(22 / 72.0, -1 / 72.0, fig.dpi_scale_trans),
     )
 
     tick_labels[1].set_color("#999999")
@@ -341,12 +354,13 @@ def _draw_waterfall_plot(
 
     if show:
         plt.show()
-    else:
-        return plt.gca()
+        return None
+    return plt.gca()
 
 
 def waterfall_plot(
     interaction_values: InteractionValues,
+    *,
     feature_names: np.ndarray[str] | None = None,
     show: bool = False,
     max_display: int = 10,
