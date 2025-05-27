@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from warnings import warn
 
 import matplotlib.patches as mpatches
@@ -13,6 +14,7 @@ from PIL import Image
 
 from ..interaction_values import InteractionValues
 from ._config import get_color
+from .utils import add_image_in_center
 
 NORMAL_NODE_SIZE = 0.125  # 0.125
 BASE_ALPHA_VALUE = 1.0  # the transparency level for the highest interaction
@@ -44,8 +46,10 @@ def si_graph_plot(
     adjust_node_pos: bool = False,
     spring_k: float | None = None,
     compactness: float = 1e10,
+    center_image: Image.Image | np.ndarray | None = None,
+    center_image_size: float = 0.4,
     feature_image_patches: dict[int, Image.Image] | list[Image.Image] | None = None,
-    feature_image_patches_size: float | None = 0.2,
+    feature_image_patches_size: float = 0.2,
 ) -> tuple[plt.figure, plt.axis] | None:
     """Plots the interaction values as an explanation graph.
 
@@ -283,6 +287,21 @@ def si_graph_plot(
             original_graph,
             normal_node_size=normal_node_size,
             plot_white_nodes=plot_original_nodes,
+        )
+
+    # add the center image
+    if center_image is not None:
+        n_features = interaction_values.n_players
+        if feature_image_patches is not None:
+            n_features = len(feature_image_patches)
+        # if the number is not a square we should not draw a grid, otherwise we assume a grid
+        if math.isqrt(n_features) ** 2 != n_features:
+            n_features = None
+        add_image_in_center(
+            image=center_image,
+            axis=ax,
+            size=center_image_size,
+            n_features=n_features,
         )
 
     # tidy up the plot
