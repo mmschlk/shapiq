@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, Any
 import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:
-    from PIL.Image import Image
-
     from shapiq.interaction_values import InteractionValues
 
 __all__ = ["network_plot"]
@@ -18,9 +16,8 @@ def network_plot(
     interaction_values: InteractionValues | None = None,
     *,
     feature_names: list[Any] | dict[int, Any] | None = None,
-    feature_image_patches: dict[int, Image] | list[Image] | None = None,
-    feature_image_patches_size: float | dict[int, float] | None = 0.2,
     show: bool = False,
+    **kwargs: Any,
 ) -> tuple[plt.Figure, plt.Axes] | None:
     """Draws the interaction network plot[1]_.
 
@@ -42,15 +39,12 @@ def network_plot(
             index/key to name. If no feature names are provided, the feature indices are used
             instead. Defaults to ``None``.
 
-        feature_image_patches: A dictionary/list containing the image patches to be displayed
-            instead of the feature labels in the network. The keys/indices of the list are the
-            feature indices and the values are the feature images. If explicit feature names are
-            provided, they are displayed on top of the image. Defaults to ``None``.
-
-        feature_image_patches_size: The size of the feature image patches. Defaults to ``0.2``.
-
         show: Whether to show the plot. Defaults to ``False``. If ``False``, the figure and the axis
             containing the plot are returned, otherwise ``None``.
+
+        **kwargs: Additional keyword arguments passed to the plotting function of
+            :meth:`shapiq.plot.si_graph_plot.si_graph_plot`. See the documentation of that
+            function for more details on the available keyword arguments.
 
     Returns:
         The figure and the axis containing the plot if ``show=False``.
@@ -66,10 +60,9 @@ def network_plot(
     fig, ax = si_graph_plot(
         interaction_values=interaction_values,
         feature_names=feature_names,
-        feature_image_patches=feature_image_patches,
-        feature_image_patches_size=feature_image_patches_size,
         show=False,
         min_max_order=(1, 2),
+        **kwargs,
     )
     if not show:
         return fig, ax

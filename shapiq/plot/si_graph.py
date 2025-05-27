@@ -53,7 +53,7 @@ def si_graph_plot(
     center_image: Image | np.ndarray | None = None,
     center_image_size: float = 0.4,
     feature_image_patches: dict[int, Image] | list[Image] | None = None,
-    feature_image_patches_size: float = 0.2,
+    feature_image_patches_size: float | dict[int, float] = 0.2,
 ) -> tuple[plt.figure, plt.axis] | None:
     """Plots the interaction values as an explanation graph.
 

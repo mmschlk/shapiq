@@ -761,7 +761,14 @@ class InteractionValues:
     ) -> tuple[plt.Figure, plt.Axes] | None:
         """Visualize InteractionValues on a graph.
 
-        For arguments, see shapiq.plots.network_plot().
+        Note:
+            For arguments, see :func:`shapiq.plot.network.network_plot` and
+                :func:`shapiq.plot.si_graph.si_graph_plot`.
+
+        Args:
+            show: Whether to show the plot. Defaults to ``True``.
+
+            **kwargs: Additional keyword arguments to pass to the plotting function.
 
         Returns:
             If show is ``False``, the function returns a tuple with the figure and the axis of the
