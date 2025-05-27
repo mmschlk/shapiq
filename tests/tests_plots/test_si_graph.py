@@ -28,7 +28,7 @@ def test_si_graph_plot(
     fig, ax = example_values.plot_si_graph(show=False)
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
-    plt.close(fig)
+    plt.close("all")
 
     fig, ax = si_graph_plot(
         example_values,
@@ -43,6 +43,7 @@ def test_si_graph_plot(
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+    plt.close("all")
 
     fig, ax = si_graph_plot(
         example_values,
@@ -57,6 +58,7 @@ def test_si_graph_plot(
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+    plt.close("all")
 
     edges = nx.Graph()
     edges.add_edges_from([(1, 2), (2, 3), (3, 4), (2, 4), (1, 4)])
@@ -77,7 +79,7 @@ def test_si_graph_plot(
 
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
-    plt.close(fig)
+    plt.close("all")
 
     # different parameters
     fig, ax = si_graph_plot(
@@ -96,7 +98,7 @@ def test_si_graph_plot(
 
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
-    plt.close(fig)
+    plt.close("all")
 
     fig, ax = si_graph_plot(
         example_values,
@@ -115,7 +117,7 @@ def test_si_graph_plot(
 
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
-    plt.close(fig)
+    plt.close("all")
 
 
 def test_feature_imgs(example_values):
@@ -130,6 +132,7 @@ def test_feature_imgs(example_values):
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+    plt.close("all")
 
     img_dict = {index: img_list[index] for index in range(n)}
     graph = [(i, i + 1) for i in range(n - 1)]
@@ -140,6 +143,7 @@ def test_feature_imgs(example_values):
     )
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+    plt.close("all")
 
 
 def test_feature_names(example_values):
@@ -148,6 +152,7 @@ def test_feature_names(example_values):
     fig, ax = example_values.plot_si_graph(feature_names=feature_names, show=False)
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+    plt.close("all")
 
 
 def test_legend(example_values):
@@ -157,6 +162,6 @@ def test_legend(example_values):
         show=False,
     )
     get_legend(ax)
-    plt.show()
     assert isinstance(fig, plt.Figure)
     assert isinstance(ax, plt.Axes)
+    plt.close("all")
