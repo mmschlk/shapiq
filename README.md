@@ -159,7 +159,7 @@ fsii_values.plot_force()               # plot the force plot
   <img width="800px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/fsii_tabpfn_force_plot_example.png" alt="Force Plot of FSII values as derived from the example tabpfn notebook">
 </p>
 
-### Use SPEX (SParse EXplainer)
+### Use SPEX (SParse EXplainer) <img src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/spex_logo.svg" alt="spex_logo" align="right" height="175px"/>
 For large-scale use-cases you can also check out the [👓``SPEX``](https://shapiq.readthedocs.io/en/latest/api/shapiq.approximator.sparse.html#shapiq.approximator.sparse.SPEX) approximator.
 
 ```python
