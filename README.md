@@ -151,7 +151,7 @@ explainer = shapiq.TabPFNExplainer(   # setup the explainer
     labels=labels,
     index="FSII"
 )
-fsii_values = explainer.explain(X[0])  # explain with Faithful Shapley values
+fsii_values = explainer.explain(data[0])  # explain with Faithful Shapley values
 fsii_values.plot_force()               # plot the force plot
 ```
 
@@ -160,7 +160,27 @@ fsii_values.plot_force()               # plot the force plot
 </p>
 
 ### Use SPEX (SParse EXplainer)
-For large-scale use-cases it might to check out the [👓``SPEX``](https://shapiq.readthedocs.io/en/latest/api/shapiq.approximator.sparse.html#shapiq.approximator.sparse.SPEX) approximator.
+For large-scale use-cases you can also check out the [👓``SPEX``](https://shapiq.readthedocs.io/en/latest/api/shapiq.approximator.sparse.html#shapiq.approximator.sparse.SPEX) approximator.
+
+```python
+# load your data and model with large number of features
+data, model, n_features = ...
+
+# use the SPEX approximator directly
+approximator = shapiq.SPEX(n=n_features, index="FBII", max_order=2)
+approximator.approximate(budget=2000, game=model.predict)
+
+# or use SPEX with an explainer
+explainer = shapiq.Explainer(
+    model=model,
+    data=data,
+    index="FBII",
+    max_order=2,
+    approximator="spex"  # specify SPEX as approximator
+)
+explanation = explainer.explain(data[0])
+```
+
 
 ## 📖 Documentation with tutorials
 The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io.
