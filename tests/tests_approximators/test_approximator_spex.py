@@ -149,7 +149,7 @@ def test_sparsity_parameter(n, interaction, budget, correct_b, correct_t):
     _ = spex.approximate(budget, game)
 
     assert spex.query_args["b"] == correct_b
-    assert spex.transform_tolerance == correct_t
+    assert spex.degree_parameter == correct_t
 
 
 @pytest.mark.parametrize(
