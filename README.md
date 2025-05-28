@@ -168,7 +168,7 @@ data, model, n_features = ...
 
 # use the SPEX approximator directly
 approximator = shapiq.SPEX(n=n_features, index="FBII", max_order=2)
-approximator.approximate(budget=2000, game=model.predict)
+fbii_scores = approximator.approximate(budget=2000, game=model.predict)
 
 # or use SPEX with an explainer
 explainer = shapiq.Explainer(
