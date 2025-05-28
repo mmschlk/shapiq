@@ -40,11 +40,11 @@ class Sparse(Approximator):
         transform_type: Type of transform used (currently only ``"fourier"`` is supported).
 
         degree_parameter: A parameter that controls the maximum degree of the interactions to
-                extract during execution of the algorithm. Note that this is a soft limit, and in
-                practice, the algorithm may extract interactions of order
-                ``degree_parameter + sqrt(degree_parameter)``. We typically find that there is
-                little value going beyond ``5``. Defaults to ``5``. Note that increasing this
-                parameter will need more ``budget`` in the :meth:`approximate` method.
+            extract during execution of the algorithm. Note that this is a soft limit, and in
+            practice, the algorithm may extract interactions of any degree. We typically find
+            that there is little value going beyond ``5``. Defaults to ``5``. Note that
+            increasing this parameter will need more ``budget`` in the :meth:`approximate`
+            method.
 
         query_args: Parameters for querying the signal.
 
@@ -93,10 +93,10 @@ class Sparse(Approximator):
 
             degree_parameter: A parameter that controls the maximum degree of the interactions to
                 extract during execution of the algorithm. Note that this is a soft limit, and in
-                practice, the algorithm may extract interactions of order
-                ``degree_parameter + sqrt(degree_parameter)``. We typically find that there is
-                little value going beyond ``5``. Defaults to ``5``. Note that increasing this
-                parameter will need more ``budget`` in the :meth:`approximate` method.
+                practice, the algorithm may extract interactions of any degree. We typically find
+                that there is little value going beyond ``5``. Defaults to ``5``. Note that
+                increasing this parameter will need more ``budget`` in the :meth:`approximate`
+                method.
 
         """
         if transform_type.lower() not in ["fourier"]:
