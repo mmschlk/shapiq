@@ -38,31 +38,36 @@ def convert_catboost(
             loaded_cb_model = json.load(fh)
 
     num_trees = len(loaded_cb_model["oblivious_trees"])
+    num_classes = len(loaded_cb_model["model_info"]["class_params"]["class_names"])
 
     trees = []
     for tree_index in range(num_trees):
+        # get the values for all nodes
         leaf_values_json = loaded_cb_model["oblivious_trees"][tree_index]["leaf_values"]
-        leaf_values = [0] * (len(leaf_values_json) - 1) + leaf_values_json
-        leaf_values = np.array(leaf_values)
+        node_values = [0] * (len(leaf_values_json) - num_classes) + leaf_values_json
+        node_values = np.array(node_values)
 
-        children_left = [i * 2 + 1 for i in range(len(leaf_values_json) - 1)]
-        children_left += [-1] * len(leaf_values_json)
+        total_nodes = int(len(node_values) / num_classes)
 
-        children_right = [i * 2 for i in range(1, len(leaf_values_json))]
-        children_right += [-1] * len(leaf_values_json)
+        node_values = node_values.reshape((-1, num_classes))  # reshape to match number of classes
 
-        total_nodes = len(children_right)
+        # get the children
+        children_left = list(range(1, total_nodes, 2))
+        children_left += [-1] * (total_nodes - len(children_left))
 
-        # added to assign each node a weight. Before it was only the leafs
+        children_right = list(range(2, total_nodes + 1, 2))
+        children_right += [-1] * (total_nodes - len(children_right))
+
+        # add a weight to each node
         leaf_weights_json = loaded_cb_model["oblivious_trees"][tree_index]["leaf_weights"]
-        leaf_weights = [0] * (total_nodes - len(leaf_weights_json)) + leaf_weights_json
+        leaf_weights = [0] * (len(leaf_weights_json) - 1) + leaf_weights_json
         leaf_weights[0] = sum(leaf_weights_json)
         for index in range(len(leaf_weights_json) - 2, 0, -1):
             leaf_weights[index] = (
                 leaf_weights[2 * index + 1] + leaf_weights[2 * index + 2]
             )  # each node weight is the sum of its children
 
-        # split features and borders go from leafs to the root
+        # split features and borders from leafs to the root
         split_features_index_json = []
         borders_json = []
 
@@ -90,13 +95,16 @@ def convert_catboost(
         borders += [0] * (total_nodes - len(borders))
 
         if (safe_isinstance(tree_index, "catboost.core.Classsifier")) and class_label is not None:
-            class_label = 0
+            class_label = 1
 
-        if class_label is not None:
-            # turn leaf values into probabilities
-            leaf_values = np.maximum(leaf_values, 0)  # because some values are negative
-            if np.sum(leaf_values) > 0:
-                leaf_values = leaf_values / np.sum(leaf_values)
+        # make probabilities
+        if class_label is not None:  # TODO check if correct
+            row_sums = np.sum(node_values, axis=1, keepdims=True)
+            zero_mask = row_sums == 0  # remember rows with only 0
+            normalized = np.divide(node_values, row_sums, where=~zero_mask)
+            node_values = normalized[:, class_label]
+            node_values[zero_mask.flatten()] = 0
+
             output_type = "probability"
 
         trees.append(
@@ -105,7 +113,7 @@ def convert_catboost(
                 children_right=np.array(children_right),
                 features=np.array(split_features_index),
                 thresholds=np.array(borders),
-                values=leaf_values.reshape((-1, 1)),
+                values=node_values,
                 node_sample_weight=np.array(leaf_weights),
                 empty_prediction=None,  # compute empty prediction later
                 original_output_type=output_type,
