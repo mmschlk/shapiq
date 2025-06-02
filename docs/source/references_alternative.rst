@@ -1,0 +1,5 @@
+📚 Bibliography
+===============
+
+.. bibliography::
+   :cited:
