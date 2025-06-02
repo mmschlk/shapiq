@@ -60,7 +60,7 @@ def si_graph_plot(
     An explanation graph is an undirected graph where the nodes represent players and the edges
     represent interactions between the players. The size of the nodes and edges represent the
     strength of the interaction values. The color of the edges represents the sign of the
-    interaction values (red for positive and blue for negative). The SI-graph plot is introduced by
+    interaction values (red for positive and blue for negative). The SI-graph plot is presented in
     :footcite:t:`muschalikShapleyInteractions2024`.
 
     Args:
