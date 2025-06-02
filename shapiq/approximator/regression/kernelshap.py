@@ -76,7 +76,7 @@ class KernelSHAP(Regression):
         super().__init__(
             n,
             max_order=1,
-            index="SII",
+            index="SV",
             random_state=random_state,
             pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,

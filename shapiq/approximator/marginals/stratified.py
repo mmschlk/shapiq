@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import numpy as np
 
@@ -31,6 +31,8 @@ class StratifiedSamplingSV(Approximator):
         .. [Mal13] Maleki, S., Tran-Thanh, L., Hines, G., Rahwan, T., and Rogers, A, (2013). Bounding the Estimation Error of Sampling-based Shapley Value Approximation With/Without Stratifying
 
     """
+
+    valid_indices: ClassVar[set[Literal["SV"]]] = {"SV"}
 
     def __init__(
         self,

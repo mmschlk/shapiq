@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, get_args
 
 import numpy as np
 from scipy.special import binom
 
 from shapiq.approximator.sampling import CoalitionSampler
-from shapiq.game_theory.indices import AVAILABLE_INDICES_FOR_APPROXIMATION, get_computation_index
+from shapiq.game_theory.indices import get_computation_index
 from shapiq.utils.sets import generate_interaction_lookup
 
 if TYPE_CHECKING:
@@ -21,6 +21,11 @@ if TYPE_CHECKING:
 
 __all__ = [
     "Approximator",
+]
+
+
+ValidApproximationIndices = Literal[
+    "SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII", "kADD-SHAP", "CHII"
 ]
 
 
@@ -39,18 +44,23 @@ class Approximator(ABC):
         index: The interaction index to be estimated.
         top_order: If True, the approximation is performed only for the top order interactions. If
             False, the approximation is performed for all orders up to the specified order.
-        min_order: The minimum order of the approximation. If top_order is ``True``, ``min_order`` is equal
-            to max_order. Otherwise, ``min_order`` is equal to ``0``.
+        min_order: The minimum order of the approximation. If top_order is ``True``, ``min_order``
+            is equal to max_order. Otherwise, ``min_order`` is equal to ``0``.
         iteration_cost: The cost of a single iteration of the approximator.
 
     """
+
+    valid_indices: ClassVar[set[ValidApproximationIndices]] = set(
+        get_args(ValidApproximationIndices)
+    )
+    """The valid indices for the base approximator."""
 
     @abstractmethod
     def __init__(
         self,
         n: int,
         max_order: int,
-        index: Literal["SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII"],
+        index: ValidApproximationIndices,
         *,
         top_order: bool,
         min_order: int = 0,
@@ -88,15 +98,14 @@ class Approximator(ABC):
                 for each order. This is set to ``False`` for example in
                 :class:`~shapiq.approximator.sparse.SPEX`.
         """
+        # check if index is valid
+        if index not in self.valid_indices:
+            msg = f"Invalid index '{index}'. Valid indices are: {self.valid_indices}."
+            raise ValueError(msg)
+
         # check if index can be approximated
         self.index: str = index
         self.approximation_index: str = get_computation_index(index)
-        if self.approximation_index not in AVAILABLE_INDICES_FOR_APPROXIMATION:
-            msg = (
-                f"Index {self.index} cannot be approximated. Available indices are"
-                f"{AVAILABLE_INDICES_FOR_APPROXIMATION}."
-            )
-            raise ValueError(msg)
 
         # get approximation parameters
         self.n: int = n

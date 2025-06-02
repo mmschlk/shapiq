@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, get_args
 
 import numpy as np
 from scipy.special import binom
@@ -13,6 +13,9 @@ from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+
+ValidMoebiusConverterIndices = Literal["k-SII", "STII", "FSII", "FBII", "SII", "SV"]
 
 
 class MoebiusConverter:
@@ -32,6 +35,10 @@ class MoebiusConverter:
             coefficients.
 
     """
+
+    valid_indices: ClassVar[set[ValidMoebiusConverterIndices]] = set(
+        get_args(ValidMoebiusConverterIndices)
+    )
 
     def __init__(self, moebius_coefficients: InteractionValues) -> None:
         """Initialize the MoebiusConverter.
@@ -56,7 +63,6 @@ class MoebiusConverter:
             # Banzhaf Interactions
             "FBII": self.fii_routine,
         }
-        self.available_indices: set[str] = set(self._index_mapping.keys())
 
     def __call__(self, index: str, order: int | None = None) -> InteractionValues:
         """Calls the MoebiusConverter of the specified index or value.
@@ -79,7 +85,7 @@ class MoebiusConverter:
 
         if (index, order) in self._computed:  # if index is already computed, return it
             return copy.deepcopy(self._computed[(index, order)])
-        if index in self.available_indices:  # if index is supported, compute it
+        if index in self.valid_indices:  # if index is supported, compute it
             computation_function = self._index_mapping[index]
             computed_index: InteractionValues = computation_function(index=index, order=order)
             self._computed[(index, order)] = computed_index

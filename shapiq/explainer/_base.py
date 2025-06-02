@@ -4,16 +4,24 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from typing import TYPE_CHECKING
-from warnings import warn
 
-import numpy as np
 from tqdm.auto import tqdm
 
-from shapiq.explainer.utils import get_explainers, get_predict_function_and_model_type, print_class
+from .utils import (
+    get_explainers,
+    get_predict_function_and_model_type,
+    print_class,
+    set_random_state,
+)
+from .validation import validate_data_predict_function
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Any
 
+    import numpy as np
+
+    from shapiq.games.base import Game
     from shapiq.interaction_values import InteractionValues
     from shapiq.utils import Model
 
@@ -35,7 +43,7 @@ class Explainer:
 
     def __init__(
         self,
-        model: Model,
+        model: Model | Game | Callable[[np.ndarray], np.ndarray],
         data: np.ndarray | None = None,
         class_index: int | None = None,
         **kwargs: Any,
@@ -62,14 +70,12 @@ class Explainer:
         """
         self._model_class = print_class(model)
         self._shapiq_predict_function, self._model_type = get_predict_function_and_model_type(
-            model,
-            self._model_class,
-            class_index,
+            model, self._model_class, class_index
         )
         self.model = model
 
-        if data is not None and self._model_type != "tabpfn":
-            self._validate_data(data, raise_error=False)
+        if data is not None:
+            validate_data_predict_function(data, predict_function=self.predict, raise_error=False)
         self.data = data
 
         # if the class was not run as super
@@ -77,48 +83,6 @@ class Explainer:
             _explainer = get_explainers()[self._model_type]
             self.__class__ = _explainer
             _explainer.__init__(self, model=model, data=data, class_index=class_index, **kwargs)
-
-    def _validate_data(self, data: np.ndarray, *, raise_error: bool = False) -> None:
-        """Validate the data for compatibility with the model.
-
-        Args:
-            data: A 2-dimensional matrix of inputs to be explained.
-            raise_error: Whether to raise an error if the data is not compatible with the model or
-                only print a warning. Defaults to ``False``.
-
-        Raises:
-            TypeError: If the data is not a NumPy array.
-
-        """
-        message = ""
-
-        # check input data type
-        if not isinstance(data, np.ndarray):
-            message += " The `data` must be a NumPy array."
-
-        try:
-            data_to_pred = data[0:1, :]
-        except Exception as e:
-            message += " The `data` must have at least one sample and be 2-dimensional."
-            raise TypeError(message) from e
-
-        try:
-            pred = self.predict(data_to_pred)
-        except Exception as e:
-            message += f" The model's prediction failed with the following error: {e}."
-            raise TypeError(message) from e
-
-        if isinstance(pred, np.ndarray):
-            if len(pred.shape) != 1:
-                message += " The model's prediction must be a 1-dimensional array."
-        else:
-            message += " The model's prediction must be a NumPy array."
-
-        if message != "":
-            message = "The `data` and the model must be compatible." + message
-            if raise_error:
-                raise TypeError(message)
-            warn(message, stacklevel=2)
 
     def explain(self, x: np.ndarray, **kwargs: Any) -> InteractionValues:
         """Explain a single prediction in terms of interaction values.
@@ -186,13 +150,7 @@ class Explainer:
             msg = "The `X` must be a 2-dimensional matrix."
             raise TypeError(msg)
 
-        if random_state is not None:
-            if hasattr(self, "_imputer"):
-                self._imputer._rng = np.random.default_rng(random_state)  # noqa: SLF001
-            if hasattr(self, "_approximator"):
-                self._approximator._rng = np.random.default_rng(random_state)  # noqa: SLF001
-                if hasattr(self._approximator, "_sampler"):
-                    self._approximator._sampler._rng = np.random.default_rng(random_state)  # noqa: SLF001
+        set_random_state(random_state=random_state, object_with_rng=self)
 
         if n_jobs:  # parallelization with joblib
             import joblib

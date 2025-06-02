@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal, get_args
 
 import numpy as np
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
@@ -14,7 +14,7 @@ from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_
 from sparse_transform.qsft.utils.query import get_bch_decoder
 
 from shapiq.approximator._base import Approximator
-from shapiq.game_theory.moebius_converter import MoebiusConverter
+from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
 if TYPE_CHECKING:
@@ -22,6 +22,8 @@ if TYPE_CHECKING:
     from typing import Any
 
     from shapiq.games.base import Game
+
+ValidSparseIndices = ValidMoebiusConverterIndices
 
 
 class Sparse(Approximator):
@@ -58,10 +60,13 @@ class Sparse(Approximator):
 
     """
 
+    valid_indices: ClassVar[set[ValidSparseIndices]] = set(get_args(ValidSparseIndices))
+    """The valid indices for the SPEX approximator."""
+
     def __init__(
         self,
         n: int,
-        index: Literal["SII", "k-SII", "FBII", "FSII", "STII", "SV"],
+        index: ValidSparseIndices,
         *,
         max_order: int | None = None,
         top_order: bool = False,

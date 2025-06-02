@@ -74,12 +74,28 @@ def test_init_params_error_and_warning(dt_reg_model, background_reg_data):
             model=model_function,
             data=background_reg_data,
             max_order=1,
+            index="k-SII",  # not SV and order is 1
+        )
+    with pytest.warns():
+        TabularExplainer(
+            model=model_function,
+            data=background_reg_data,
+            max_order=1,
+            index="FBII",  # not BV and order is 1
         )
     with pytest.warns():
         TabularExplainer(
             model=model_function,
             data=background_reg_data,
             index="SV",
+            max_order=2,  # higher than 1 and index is SV or BV
+        )
+    with pytest.warns():
+        TabularExplainer(
+            model=model_function,
+            data=background_reg_data,
+            index="BV",
+            max_order=2,  # higher than 1 and index is SV or BV
         )
 
 

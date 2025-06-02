@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+
+import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import Any
 
-    import numpy as np
-
+    from shapiq.games.base import Game
     from shapiq.utils.custom_types import Model
 
 WARNING_NO_CLASS_INDEX = (
@@ -27,15 +29,22 @@ def get_explainers() -> dict[str, Any]:
         A dictionary of all available explainer classes.
 
     """
+    from shapiq.explainer.agnostic import AgnosticExplainer
     from shapiq.explainer.tabpfn import TabPFNExplainer
     from shapiq.explainer.tabular import TabularExplainer
     from shapiq.explainer.tree.explainer import TreeExplainer
 
-    return {"tabular": TabularExplainer, "tree": TreeExplainer, "tabpfn": TabPFNExplainer}
+    return {
+        "tabular": TabularExplainer,
+        "tree": TreeExplainer,
+        "tabpfn": TabPFNExplainer,
+        "game": AgnosticExplainer,
+        "imputer": AgnosticExplainer,
+    }
 
 
 def get_predict_function_and_model_type(
-    model: Model,
+    model: Model | Game | Callable[[np.ndarray], np.ndarray],
     model_class: str | None = None,
     class_index: int | None = None,
 ) -> tuple[Callable[[Model, np.ndarray], np.ndarray], str]:
@@ -59,13 +68,26 @@ def get_predict_function_and_model_type(
         A tuple of the predict function and the model type.
 
     """
-    from . import tree
+    from shapiq.games.base import Game
+    from shapiq.games.imputer.base import Imputer
+
+    from .tree import TreeModel
 
     if model_class is None:
         model_class = print_class(model)
 
     _model_type = "tabular"  # default
     _predict_function = None
+
+    if isinstance(model, Imputer) or model_class == "shapiq.games.imputer.base.Imputer":
+        _predict_function = model._predict_function  # noqa: SLF001
+        _model_type = "imputer"
+        return _predict_function, _model_type
+
+    if isinstance(model, Game) or model_class == "shapiq.games.base.Game":
+        _predict_function = RuntimeError("Games cannot be used for prediction.")
+        _model_type = "game"
+        return _predict_function, _model_type
 
     if callable(model):
         _predict_function = predict_callable
@@ -142,10 +164,10 @@ def get_predict_function_and_model_type(
     elif _predict_function is None and hasattr(model, "predict"):
         _predict_function = predict
     # extraction for tree models
-    elif isinstance(model, tree.TreeModel):  # test scenario
+    elif isinstance(model, TreeModel):  # test scenario
         _predict_function = model.compute_empty_prediction
         _model_type = "tree"
-    elif isinstance(model, list) and all(isinstance(m, tree.TreeModel) for m in model):
+    elif isinstance(model, list) and all(isinstance(m, TreeModel) for m in model):
         _predict_function = model[0].compute_empty_prediction
         _model_type = "tree"
     elif _predict_function is None:
@@ -262,3 +284,88 @@ def print_class(obj: object) -> str:
     if isinstance(obj, type):
         return re.search("(?<=<class ').*(?='>)", str(obj))[0]
     return re.search("(?<=<class ').*(?='>)", str(type(obj)))[0]
+
+
+def set_random_state_old(random_state: int | None, object_with_rng: object) -> None:
+    """Sets the random state for all rng objects in the explainer.
+
+    Args:
+        random_state: The random state to re-initialize, Explainer, Imputer and Approximator with.
+            Defaults to ``None`` which does not change the random state.
+        object_with_rng: The object to set the random state for.
+    """
+    # TODO(mmshlk): write semantic test for this method
+    if random_state is not None:
+        if hasattr(object_with_rng, "_rng"):  # default attribute
+            object_with_rng._rng = np.random.default_rng(random_state)  # noqa: SLF001
+        # explainer can have an imputer
+        if hasattr(object_with_rng, "_imputer"):
+            object_with_rng._imputer._rng = np.random.default_rng(random_state)  # noqa: SLF001
+        # explainer can have an approximator
+        if hasattr(object_with_rng, "_approximator"):
+            object_with_rng._approximator._rng = np.random.default_rng(random_state)  # noqa: SLF001
+            # approximators inside an explainer can have a sampler
+            if hasattr(object_with_rng._approximator, "_sampler"):  # noqa: SLF001
+                object_with_rng._approximator._sampler._rng = np.random.default_rng(random_state)  # noqa: SLF001
+        # appoximators can have a sampler
+        if hasattr(object_with_rng, "_sampler"):
+            object_with_rng._sampler._rng = np.random.default_rng(random_state)  # noqa: SLF001
+
+
+def set_random_state(random_state: int | None, object_with_rng: object) -> None:
+    """Sets the random state for all random number generator objects recursively.
+
+    This function searches for attributes named "_rng" or "rng" in the given object and its
+    nested attributes and re-initializes them with the specified random state.
+
+    Args:
+        random_state: The random state to use for reinitialization.
+            Defaults to ``None`` which does not change any random state.
+        object_with_rng: The object to inspect and modify random states for.
+    """
+    if random_state is None:
+        return
+
+    from shapiq.approximator._base import Approximator
+    from shapiq.explainer._base import Explainer
+    from shapiq.games.base import Game
+    from shapiq.games.imputer.base import Imputer
+
+    # set to avoid circular references
+    visited = set()
+
+    def _is_shapiq_object(obj: object) -> bool:
+        """Check if the object is from shapiq library."""
+        return isinstance(obj, (Explainer | Game | Imputer | Approximator))
+
+    def _set_rng_recursive(obj: object) -> None:
+        # avoid circular references or None objects
+        if obj is None or id(obj) in visited:
+            return
+
+        visited.add(id(obj))
+
+        # only process shapiq objects
+        if not _is_shapiq_object(obj):
+            return
+
+        # set RNG attributes directly
+        for attr_name in ["_rng", "rng"]:
+            if hasattr(obj, attr_name):
+                setattr(obj, attr_name, np.random.default_rng(random_state))
+
+        # process child objects that might be shapiq objects
+        for attr_name in dir(obj):
+            # skip dunder attributes and methods
+            if attr_name.startswith("__") or callable(getattr(obj.__class__, attr_name, None)):
+                continue
+
+            try:
+                attr_value = getattr(obj, attr_name)
+                # Recursively process object attributes that are shapiq objects
+                if hasattr(attr_value, "__dict__"):
+                    _set_rng_recursive(attr_value)
+            except (AttributeError, TypeError):
+                continue
+
+    _set_rng_recursive(object_with_rng)

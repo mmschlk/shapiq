@@ -2,76 +2,22 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
 import numpy as np
 from overrides import overrides
 
-from shapiq.approximator import (
-    SHAPIQ,
-    SPEX,
-    SVARM,
-    SVARMIQ,
-    InconsistentKernelSHAPIQ,
-    KernelSHAP,
-    KernelSHAPIQ,
-    PermutationSamplingSII,
-    PermutationSamplingSTII,
-    PermutationSamplingSV,
-    RegressionFBII,
-    RegressionFSII,
-    UnbiasedKernelSHAP,
-)
-from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
+from .configuration import setup_approximator
+from .validation import validate_index_and_max_order
+
 if TYPE_CHECKING:
+    from shapiq.approximator._base import Approximator
     from shapiq.games.imputer.base import Imputer
     from shapiq.utils.custom_types import Model
-
-
-APPROXIMATOR_CONFIGURATIONS = {
-    "regression": {
-        "SII": InconsistentKernelSHAPIQ,
-        "FSII": RegressionFSII,
-        "FBII": RegressionFBII,
-        "k-SII": InconsistentKernelSHAPIQ,
-        "SV": KernelSHAP,
-    },
-    "permutation": {
-        "SII": PermutationSamplingSII,
-        "STII": PermutationSamplingSTII,
-        "k-SII": PermutationSamplingSII,
-        "SV": PermutationSamplingSV,
-    },
-    "montecarlo": {
-        "SII": SHAPIQ,
-        "STII": SHAPIQ,
-        "FSII": SHAPIQ,
-        "FBII": SHAPIQ,
-        "k-SII": SHAPIQ,
-        "SV": UnbiasedKernelSHAP,
-    },
-    "svarm": {
-        "SII": SVARMIQ,
-        "STII": SVARMIQ,
-        "FSII": SVARMIQ,
-        "FBII": SVARMIQ,
-        "k-SII": SVARMIQ,
-        "SV": SVARM,
-    },
-    "spex": {
-        "SII": SPEX,
-        "STII": SPEX,
-        "FSII": SPEX,
-        "FBII": SPEX,
-        "k-SII": SPEX,
-        "SV": SPEX,
-    },
-}
 
 
 class TabularExplainer(Explainer):
@@ -97,8 +43,8 @@ class TabularExplainer(Explainer):
         *,
         class_index: int | None = None,
         imputer: Imputer | Literal["marginal", "baseline", "conditional"] = "marginal",
-        approximator: Approximator
-        | Literal["auto", "spex", "montecarlo", "svarm", "permutation", "regression"] = "auto",
+        approximator: Literal["auto", "spex", "montecarlo", "svarm", "permutation", "regression"]
+        | Approximator = "auto",
         index: Literal["SII", "k-SII", "STII", "FSII", "FBII", "SV"] = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
@@ -212,9 +158,10 @@ class TabularExplainer(Explainer):
         self._n_features: int = self.data.shape[1]
         self._imputer.verbose = verbose  # set the verbose flag for the imputer
 
-        self.index = index
-        self._max_order: int = max_order
-        self._approximator = self._init_approximator(approximator, self.index, self._max_order)
+        self.index, self._max_order = validate_index_and_max_order(index, max_order)
+        self._approximator = setup_approximator(
+            approximator, self.index, self._max_order, self._n_features, self._random_state
+        )
 
     @overrides
     def explain_function(
@@ -228,9 +175,11 @@ class TabularExplainer(Explainer):
         Args:
             x: The data point to explain as a 2-dimensional array with shape
                 (1, n_features).
+
             budget: The budget to use for the approximation. It indicates how many coalitions are
                 sampled, thus high values indicate more accurate approximations, but induce higher
                 computational costs.
+
             random_state: The random state to re-initialize Imputer and Approximator with.
                 Defaults to ``None``.
 
@@ -258,76 +207,3 @@ class TabularExplainer(Explainer):
     def baseline_value(self) -> float:
         """Returns the baseline value of the explainer."""
         return self._imputer.empty_prediction
-
-    def _init_approximator(
-        self,
-        approximator: Approximator | str,
-        index: str,
-        max_order: int,
-    ) -> Approximator:
-        if isinstance(approximator, Approximator):  # if the approximator is already given
-            return approximator
-
-        if approximator == "auto":
-            if max_order == 1:
-                if index != "SV":
-                    warnings.warn(
-                        "`max_order=1` but `index != 'SV'`, setting `index = 'SV'`. "
-                        "Using the KernelSHAP approximator.",
-                        stacklevel=2,
-                    )
-                    self.index = "SV"
-                return KernelSHAP(
-                    n=self._n_features,
-                    random_state=self._random_state,
-                )
-            if index == "SV":
-                if max_order != 1:
-                    warnings.warn(
-                        "`index='SV'` but `max_order != 1`, setting `max_order = 1`. "
-                        "Using the KernelSHAP approximator.",
-                        stacklevel=2,
-                    )
-                    self._max_order = 1
-                return KernelSHAP(
-                    n=self._n_features,
-                    random_state=self._random_state,
-                )
-            if index == "FSII":
-                return RegressionFSII(
-                    n=self._n_features,
-                    max_order=max_order,
-                    random_state=self._random_state,
-                )
-            if index == "FBII":
-                return RegressionFBII(
-                    n=self._n_features,
-                    max_order=max_order,
-                    random_state=self._random_state,
-                )
-            if index in ("SII", "k-SII"):
-                return KernelSHAPIQ(
-                    n=self._n_features,
-                    max_order=max_order,
-                    random_state=self._random_state,
-                    index=index,
-                )
-            return SVARMIQ(
-                n=self._n_features,
-                max_order=max_order,
-                top_order=False,
-                random_state=self._random_state,
-                index=index,
-            )
-        # assume that the approximator is a string
-        try:
-            approximator_str = approximator.lower()
-            approximator = APPROXIMATOR_CONFIGURATIONS[approximator_str][index]
-        except KeyError as error:
-            msg = (
-                f"Invalid approximator `{approximator}` or index `{index}`. "
-                f"Valid configuration are described in {APPROXIMATOR_CONFIGURATIONS}."
-            )
-            raise ValueError(msg) from error
-        # initialize the approximator class with params
-        return approximator(n=self._n_features, max_order=max_order)

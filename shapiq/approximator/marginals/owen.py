@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import numpy as np
 
@@ -33,6 +33,9 @@ class OwenSamplingSV(Approximator):
         .. [Okh20] Ramin Okhrati, Aldo Lipani (2020). A Multilinear Sampling Algorithm to Estimate Shapley Values. arXiv preprint arXiv:2010.12082. https://doi.org/10.48550/arXiv.2010.12082
 
     """
+
+    valid_indices: ClassVar[set[Literal["SV"]]] = {"SV"}
+    """The valid indices for this approximator."""
 
     def __init__(
         self,

@@ -4,18 +4,20 @@ from __future__ import annotations
 
 import copy
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, get_args
 
 import numpy as np
 from scipy.special import bernoulli, binom
 
 from shapiq.approximator._base import Approximator
-from shapiq.game_theory.indices import AVAILABLE_INDICES_REGRESSION
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+
+ValidRegressionIndices = Literal["SV", "SII", "k-SII", "FSII", "kADD-SHAP", "BV", "FBII"]
 
 
 class Regression(Approximator):
@@ -24,40 +26,46 @@ class Regression(Approximator):
     Regression approximators are based on a representation of the interaction index as a solution
     to a weighted least square problem. The objective of this optimization problem is approximated
     and then solved exactly. For the Shapley value this method is known as KernelSHAP.
-
-    Args:
-        n: The number of players.
-        max_order: The interaction order of the approximation.
-        index: The interaction index to be estimated. Available indices are ``['SII', 'k-SII', 'STII',
-            'FSII']``.
-        sii_consistent: If ``True``, the KernelSHAP-IQ method is used for SII, else Inconsistent
-            KernelSHAP-IQ. Defaults to ``True``.
-        pairing_trick: If `True`, the pairing trick is applied to the sampling procedure. Defaults
-            to ``False``.
-        sampling_weights: An optional array of weights for the sampling procedure. The weights must
-            be of shape ``(n + 1,)`` and are used to determine the probability of sampling a coalition
-            of a certain size. Defaults to ``None``.
-        random_state: The random state to use for the approximation. Defaults to ``None``.
-
     """
+
+    #: will be validated in parent Approximator class
+    valid_indices: ClassVar[set[ValidRegressionIndices]] = set(get_args(ValidRegressionIndices))
+    """The valid indices for the regression approximator. Overrides the valid indices of the base
+    class Approximator."""
 
     def __init__(
         self,
         n: int,
         max_order: int,
-        index: str,
+        index: ValidRegressionIndices,
         *,
         sii_consistent: bool = True,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
     ) -> None:
-        if index not in AVAILABLE_INDICES_REGRESSION:
-            msg = (
-                f"Index {index} not available for Regression Approximator. Choose from "
-                f"{AVAILABLE_INDICES_REGRESSION}."
-            )
-            raise ValueError(msg)
+        """Initialize the Regression approximator.
+
+        Args:
+            n: The number of players.
+
+            max_order: The interaction order of the approximation.
+
+            index: The interaction index to be estimated. Available indices are ``[FSII, SII, k-SII,
+                kADD-SHAP, FBII, SV, BV]``. Defaults to ``k-SII``.
+
+            sii_consistent: If ``True``, the KernelSHAP-IQ method is used for SII, else Inconsistent
+                KernelSHAP-IQ. Defaults to ``True``.
+
+            pairing_trick: If `True`, the pairing trick is applied to the sampling procedure.
+                Defaults to ``False``.
+
+            sampling_weights: An optional array of weights for the sampling procedure. The weights
+                must be of shape ``(n + 1,)`` and are used to determine the probability of sampling
+                a coalition of a certain size. Defaults to ``None``.
+
+            random_state: The random state to use for the approximation. Defaults to ``None``.
+        """
         super().__init__(
             n,
             min_order=0,
@@ -69,9 +77,8 @@ class Regression(Approximator):
             sampling_weights=sampling_weights,
         )
         self._bernoulli_numbers = bernoulli(self.n)  # used for SII
-        self._sii_consistent = (
-            sii_consistent  # used for SII, if False, then Inconsistent KernelSHAP-IQ is used
-        )
+        # used for SII, if False, then Inconsistent KernelSHAP-IQ is used
+        self._sii_consistent = sii_consistent
 
     def _init_kernel_weights(self, interaction_size: int) -> np.ndarray:
         """Initializes the kernel weights for the regression in KernelSHAP-IQ.
@@ -88,11 +95,11 @@ class Regression(Approximator):
         """
         # vector that determines the kernel weights for the regression
         weight_vector = np.zeros(shape=self.n + 1)
-        if self.index == "FBII":
+        if self.approximation_index == "FBII":
             for coalition_size in range(self.n + 1):
                 weight_vector[coalition_size] = 1 / (2**self.n)
             return weight_vector
-        if self.index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
+        if self.approximation_index in ["k-SII", "SII", "kADD-SHAP", "FSII"]:
             for coalition_size in range(self.n + 1):
                 if (coalition_size < interaction_size) or (
                     coalition_size > self.n - interaction_size
@@ -148,11 +155,7 @@ class Regression(Approximator):
         # query the game for the coalitions
         game_values = game(self._sampler.coalitions_matrix)
 
-        index_approximation = self.index
-        if self.index == "k-SII":
-            index_approximation = "SII"  # for k-SII, SII values are approximated and aggregated
-
-        if index_approximation == "SII" and self._sii_consistent:
+        if self.approximation_index == "SII" and self._sii_consistent:
             shapley_interactions_values = self.kernel_shap_iq_routine(
                 kernel_weights_dict=kernel_weights_dict,
                 game_values=game_values,
@@ -161,14 +164,14 @@ class Regression(Approximator):
             shapley_interactions_values = self.regression_routine(
                 kernel_weights=kernel_weights_dict[1],
                 game_values=game_values,
-                index_approximation=index_approximation,
+                index_approximation=self.approximation_index,
             )
 
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
         interactions = InteractionValues(
             values=shapley_interactions_values,
-            index=index_approximation,
+            index=self.approximation_index,
             interaction_lookup=self.interaction_lookup,
             baseline_value=baseline_value,
             min_order=self.min_order,

@@ -119,6 +119,7 @@ ignore = [
     "C901",  # Too complex functions
     "PLR0911",  # too many return statements in function
     "N802",  # Function name should be lowercase
+    "TD003"  # Not all Todos need an issue link #TODO: add this in the future
 ]
 exclude = [
     ".bzr",

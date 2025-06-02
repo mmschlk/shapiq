@@ -27,15 +27,6 @@ def test_tabpfn_explainer_clf(tabpfn_classification_problem):
     explanation = explainer.explain(x=x_explain, budget=BUDGET_NR_FEATURES_SMALL)
     assert isinstance(explanation, InteractionValues)
 
-    # test that bare explainer gets turned into TabPFNExplainer
-    explainer = Explainer(model=model, data=data, labels=labels, x_test=x_test)
-    assert isinstance(explainer, TabPFNExplainer)
-
-    # test that TabularExplainer works as well
-    with pytest.warns(UserWarning):
-        explainer = TabularExplainer(model=model, data=data, class_index=1, imputer="baseline")
-        assert isinstance(explainer, TabularExplainer)
-
 
 @skip_if_no_tabpfn
 @pytest.mark.external_libraries
@@ -55,11 +46,33 @@ def test_tabpfn_explainer_reg(tabpfn_regression_problem):
     explanation = explainer.explain(x=x_explain, budget=BUDGET_NR_FEATURES_SMALL)
     assert isinstance(explanation, InteractionValues)
 
-    # test that bare explainer gets turned into TabPFNExplainer
-    explainer = Explainer(model=model, data=data, labels=labels, x_test=x_test)
-    assert isinstance(explainer, TabPFNExplainer)
 
-    # test that TabularExplainer works as well
-    with pytest.warns(UserWarning):
-        explainer = TabularExplainer(model=model, data=data, class_index=1, imputer="baseline")
-        assert isinstance(explainer, TabularExplainer)
+@skip_if_no_tabpfn
+@pytest.mark.external_libraries
+def test_tabpfn_bare_explainer(tabpfn_classification_problem, tabpfn_regression_problem):
+    """Test that the TabPFNExplainer can be initialized without data and labels."""
+
+    def _run_test(problem):
+        """Helper function to run the test."""
+        model, data, labels, x_test = problem
+        explainer = Explainer(model=model, data=data, labels=labels, x_test=x_test)
+        assert isinstance(explainer, TabPFNExplainer)
+
+    _run_test(tabpfn_regression_problem)
+    _run_test(tabpfn_classification_problem)
+
+
+@skip_if_no_tabpfn
+@pytest.mark.external_libraries
+def test_tabpfn_user_warning(tabpfn_regression_problem, tabpfn_classification_problem):
+    """Test that the TabularExplainer can be used with TabPFN models but raises a UserWarning."""
+
+    def _run_test(problem):
+        """Helper function to run the test."""
+        model, data, _, _ = problem
+        with pytest.warns(UserWarning):
+            explainer = TabularExplainer(model=model, data=data, class_index=1, imputer="baseline")
+            assert isinstance(explainer, TabularExplainer)
+
+    _run_test(tabpfn_regression_problem)
+    _run_test(tabpfn_regression_problem)
