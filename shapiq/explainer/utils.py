@@ -286,7 +286,7 @@ def print_class(obj: object) -> str:
     return re.search("(?<=<class ').*(?='>)", str(type(obj)))[0]
 
 
-def set_random_state_old(random_state: int | None, object_with_rng: object) -> None:
+def set_random_state(random_state: int | None, object_with_rng: object) -> None:
     """Sets the random state for all rng objects in the explainer.
 
     Args:
@@ -312,7 +312,7 @@ def set_random_state_old(random_state: int | None, object_with_rng: object) -> N
             object_with_rng._sampler._rng = np.random.default_rng(random_state)  # noqa: SLF001
 
 
-def set_random_state(random_state: int | None, object_with_rng: object) -> None:
+def set_random_state_new(random_state: int | None, object_with_rng: object) -> None:
     """Sets the random state for all random number generator objects recursively.
 
     This function searches for attributes named "_rng" or "rng" in the given object and its
