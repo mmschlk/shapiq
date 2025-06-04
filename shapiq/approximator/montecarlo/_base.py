@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.special import binom, factorial
 
-from ...game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from ...utils.sets import powerset
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.utils.sets import powerset
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class MonteCarlo(Approximator):
@@ -41,13 +44,14 @@ class MonteCarlo(Approximator):
         n: int,
         max_order: int,
         index: str,
+        *,
         stratify_coalition_size: bool = True,
         stratify_intersection: bool = True,
         top_order: bool = False,
         random_state: int | None = None,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray = None,
-    ):
+    ) -> None:
         if index not in AVAILABLE_INDICES_MONTE_CARLO:
             msg = (
                 f"Index {index} not available for Regression Approximator. Choose from "
@@ -112,7 +116,7 @@ class MonteCarlo(Approximator):
             min_order=self.min_order,
             max_order=self.max_order,
             baseline_value=baseline_value,
-            estimated=False if budget >= 2**self.n else True,
+            estimated=not budget >= 2**self.n,
             estimation_budget=budget,
         )
 
@@ -187,7 +191,8 @@ class MonteCarlo(Approximator):
 
     def _intersection_stratification(self, interaction: tuple[int, ...]) -> np.ndarray:
         """Computes the adjusted sampling weights for all coalitions and a single interactions.
-         The approach uses intersection stratification over all subsets of the interaction.
+
+        The approach uses intersection stratification over all subsets of the interaction.
 
         Args:
             interaction: The interaction for the intersection stratification.
@@ -277,7 +282,9 @@ class MonteCarlo(Approximator):
         return sampling_adjustment_weights
 
     def _svarmiq_routine(self, interaction: tuple[int, ...]) -> np.ndarray:
-        """Computes the adjusted sampling weights for the SVARM-IQ monte carlo routine.
+        """Apply the SVARM-IQ routine to compute the sampling adjustment weights.
+
+        Computes the adjusted sampling weights for the SVARM-IQ monte carlo routine.
         The method deploys both, intersection and coalition size stratification.
         For details, refer to `Kolpaczki et al. (2024) <https://doi.org/10.48550/arXiv.2401.13371>`_.
 
@@ -331,10 +338,12 @@ class MonteCarlo(Approximator):
         return sampling_adjustment_weights
 
     def _shapiq_routine(self) -> np.ndarray:
-        """Computes the adjusted sampling weights for the SHAP-IQ monte carlo routine.
+        """Apply the SHAP-IQ routine to compute the sampling adjustment weights.
+
+        Computes the adjusted sampling weights for the SHAP-IQ monte carlo routine.
         The method deploys no stratification and returns the relative counts divided by the
-        probabilities.
-        For details, refer to `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
+        probabilities. For details, refer to
+        `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
 
         Returns:
             The sampling adjustment weights for the SHAP-IQ routine.
@@ -345,12 +354,11 @@ class MonteCarlo(Approximator):
         n_samples_helper = np.array([1, n_samples])  # n_samples for sampled coalitions, else 1
         coalitions_n_samples = n_samples_helper[self._sampler.is_coalition_sampled.astype(int)]
         # Set weights by dividing through the probabilities
-        sampling_adjustment_weights = self._sampler.coalitions_counter / (
+        return self._sampler.coalitions_counter / (
             self._sampler.coalitions_size_probability
             * self._sampler.coalitions_in_size_probability
             * coalitions_n_samples
         )
-        return sampling_adjustment_weights
 
     def _sii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Returns the SII discrete derivative weight given the coalition size and interaction size.
@@ -381,8 +389,7 @@ class MonteCarlo(Approximator):
         return 1 / 2 ** (coalition_size - interaction_size)
 
     def _chii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Returns the CHII discrete derivative weight given the coalition size and interaction
-        size.
+        """Returns the CHII discrete derivative weight given the coalition size and interaction size.
 
         Args:
             coalition_size: The size of the subset.
@@ -395,11 +402,10 @@ class MonteCarlo(Approximator):
         try:
             return interaction_size / coalition_size
         except ZeroDivisionError:
-            return 0.0  # TODO: check if this is correct (if coalition_size == 0, return 0)
+            return 0.0
 
     def _stii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Returns the STII discrete derivative weight given the coalition size and interaction
-        size.
+        """Returns the STII discrete derivative weight given the coalition size and interaction size.
 
         For details, refer to `Dhamdhere et al. (2020) <https://doi.org/10.48550/arXiv.1902.05622>`_.
 
@@ -416,8 +422,7 @@ class MonteCarlo(Approximator):
         return 1.0 * (coalition_size == 0)
 
     def _fsii_weight(self, coalition_size: int, interaction_size: int) -> float:
-        """Returns the FSII discrete derivative weight given the coalition size and interaction
-        size.
+        """Returns the FSII discrete derivative weight given the coalition size and interaction size.
 
         The representation is based on the FSII representation according to Theorem 19 by
         `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
@@ -442,8 +447,7 @@ class MonteCarlo(Approximator):
         raise ValueError(msg)
 
     def _fbii_weight(self, interaction_size: int) -> float:
-        """Returns the FSII discrete derivative weight given the coalition size and interaction
-        size.
+        """Returns the FSII discrete derivative weight given the coalition size and interaction size.
 
         The representation is based on the FBII representation according to Theorem 17 by
         `Tsai et al. (2023) <https://doi.org/10.48550/arXiv.2203.00870>`_.
@@ -474,22 +478,23 @@ class MonteCarlo(Approximator):
         """
         if index == "STII":
             return self._stii_weight(coalition_size, interaction_size)
-        elif index == "FSII":
+        if index == "FSII":
             return self._fsii_weight(coalition_size, interaction_size)
-        elif index == "FBII":
+        if index == "FBII":
             return self._fbii_weight(interaction_size)
-        elif index in ["SII", "SV"]:
+        if index in ["SII", "SV"]:
             return self._sii_weight(coalition_size, interaction_size)
-        elif index == "BII":
+        if index == "BII":
             return self._bii_weight(coalition_size, interaction_size)
-        elif index == "CHII":
+        if index == "CHII":
             return self._chii_weight(coalition_size, interaction_size)
-        else:
-            msg = f"The index {index} is not supported."
-            raise ValueError(msg)
+        msg = f"The index {index} is not supported."
+        raise ValueError(msg)
 
     def _get_standard_form_weights(self, index: str) -> np.ndarray:
-        """Initializes the weights for the interaction index re-written from discrete derivatives to
+        """Computes the standard form weights for the interaction index.
+
+        Initializes the weights for the interaction index re-written from discrete derivatives to
         standard form. Standard form according to Theorem 1 by
         `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
 
@@ -504,7 +509,7 @@ class MonteCarlo(Approximator):
         weights = np.zeros((self.max_order + 1, self.n + 1, self.max_order + 1))
         for order in self._order_iterator:
             # fill with values specific to each index
-            for coalition_size in range(0, self.n + 1):
+            for coalition_size in range(self.n + 1):
                 for intersection_size in range(
                     max(0, order + coalition_size - self.n),
                     min(order, coalition_size) + 1,

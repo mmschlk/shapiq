@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 
-from ..interaction_values import InteractionValues
 from ._config import BLUE, RED
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from shapiq.interaction_values import InteractionValues
 
 
 def upset_plot(
     interaction_values: InteractionValues,
+    *,
     n_interactions: int = 20,
     feature_names: Sequence[str] | None = None,
     color_matrix: bool = False,
@@ -112,10 +117,9 @@ def upset_plot(
             linewidth=0,
         )
         # add the interaction to the matrix
-        x_pos = [x_pos for _ in range(len(interaction))]
         y_pos = [feature_pos[feature] for feature in interaction]
         ax[1].plot(
-            x_pos,
+            [x_pos for _ in range(len(interaction))],
             y_pos,
             color="black" if not color_matrix else color,
             marker="o",
@@ -154,3 +158,4 @@ def upset_plot(
     if not show:
         return fig
     plt.show()
+    return None

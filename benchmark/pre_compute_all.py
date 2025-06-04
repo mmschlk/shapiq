@@ -58,7 +58,7 @@ if __name__ == "__main__":
         # get all configurations that include the dataset in the name
         all_game_names = [
             game_name
-            for game_name in GAME_NAME_TO_CLASS_MAPPING.keys()
+            for game_name in GAME_NAME_TO_CLASS_MAPPING
             if game in game_name and game_name not in omit_games
         ]
         for game_name in all_game_names:
@@ -69,16 +69,10 @@ if __name__ == "__main__":
                 n_players = config_per_player_id["n_players"]
                 precompute = config_per_player_id["precompute"]
                 if not precompute:
-                    print(
-                        f"Skipping pre-computation for game: {game_name} as it should not be "
-                        f"pre-computed.",
-                    )
                     continue
                 if n_players > max_n_players:
                     continue
                 for _, config in enumerate(player_id_configs):
-                    print()
-                    print(f"Pre-computing game: {game_name}, config {config}.")
                     pre_compute_from_configuration(
                         game_class,
                         configuration=config,

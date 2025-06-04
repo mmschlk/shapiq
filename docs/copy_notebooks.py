@@ -1,3 +1,5 @@
+"""Copy notebooks from examples/api_examples to docs/source/api_examples."""
+
 import os
 import shutil
 
@@ -11,5 +13,3 @@ dst_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "source", "api
 if os.path.exists(dst_dir):
     shutil.rmtree(dst_dir)
 shutil.copytree(src_dir, dst_dir)
-
-print(f"Copied notebooks from {src_dir} to {dst_dir}")

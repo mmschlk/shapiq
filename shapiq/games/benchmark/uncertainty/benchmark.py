@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
 
 from shapiq.games.benchmark.setup import GameBenchmarkSetup, get_x_explain
 from shapiq.games.benchmark.uncertainty.base import UncertaintyExplanation
 
+if TYPE_CHECKING:
+    import numpy as np
+
 
 class AdultCensus(UncertaintyExplanation):
+    """The Adult Census dataset as an UncertaintyExplanation benchmark game."""
+
     def __init__(
         self,
         *,
@@ -20,6 +25,30 @@ class AdultCensus(UncertaintyExplanation):
         verbose: bool = False,
         random_state: int | None = 42,
     ) -> None:
+        """Initializes the Adult Census UncertaintyExplanation benchmark game.
+
+        Args:
+            model_name: The model to use for the game. Can only be ``'random_forest'``.
+                Defaults to ``'random_forest'``.
+
+            x: The explanation point to use the imputer to. If ``None``, then the first data point
+                is used. If an integer, then the data point at the given index is used. If a numpy
+                array, then the data point is used as is. Defaults to ``None``.
+
+            uncertainty_to_explain: The type of uncertainty to explain. Can be either ``'total'``,
+                ``'aleatoric'`` or ``'epistemic'``. Defaults to ``'total'``.
+
+            imputer: The imputer to use for the game. Can be either ``'marginal'`` or
+                ``'conditional'``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            random_state: The random state to use for sampling. Defaults to ``None``.
+
+            verbose: A flag to enable verbose output. Defaults to ``False``.
+        """
         from sklearn.ensemble import RandomForestClassifier
 
         self.setup = GameBenchmarkSetup(
@@ -36,9 +65,6 @@ class AdultCensus(UncertaintyExplanation):
         else:
             msg = f"Invalid model name provided. Should be 'random_forest' but got {model_name}."
             raise ValueError(msg)
-
-        print(f"Trained model {model_name} for the adult_census dataset.")
-        print(f"Score on training data: {model.score(self.setup.x_test, self.setup.y_test)}")
 
         # get x_explain
         x = get_x_explain(x, self.setup.x_test)

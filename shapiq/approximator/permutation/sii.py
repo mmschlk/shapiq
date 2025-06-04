@@ -2,25 +2,20 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ...interaction_values import InteractionValues, finalize_computed_interactions
-from ...utils.sets import powerset
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.utils.sets import powerset
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class PermutationSamplingSII(Approximator):
     """Permutation Sampling approximator for the SII (and k-SII) index.
-
-    Args:
-        n: The number of players.
-        max_order: The interaction order of the approximation. Defaults to ``2``.
-        index: The interaction index to compute.
-        top_order: Whether to approximate only the top order interactions (``True``) or all orders up
-            to the specified order (``False``, default).
-        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
     See Also:
         - :class:`~shapiq.approximator.permutation.stii.PermutationSamplingSTII`: The Permutation
@@ -35,9 +30,26 @@ class PermutationSamplingSII(Approximator):
         n: int,
         max_order: int = 2,
         index: str = "SII",
+        *,
         top_order: bool = False,
         random_state: int | None = None,
     ) -> None:
+        """Initialize the Permutation Sampling approximator for SII (and k-SII).
+
+        Args:
+            n: The number of players.
+
+            max_order: The interaction order of the approximation. Defaults to ``2``.
+
+            index: The interaction index to compute. Must be either ``'SII'`` or ``'k-SII'``.
+
+            top_order: Whether to approximate only the top order interactions (``True``) or all
+                orders up to the specified order (``False``, default).
+
+            random_state: The random state to use for the permutation sampling. Defaults to
+                ``None``.
+
+        """
         if index not in ["SII", "k-SII"]:
             msg = f"Invalid index {index}. Must be either 'SII' or 'k-SII'."
             raise ValueError(msg)
@@ -51,7 +63,9 @@ class PermutationSamplingSII(Approximator):
         self.iteration_cost: int = self._compute_iteration_cost()
 
     def _compute_iteration_cost(self) -> int:
-        """Computes the cost of performing a single iteration of the permutation sampling given
+        """Compute the cost of a single iteration of the permutation sampling.
+
+        Computes the cost of performing a single iteration of the permutation sampling given
         the order, the number of players, and the SII index.
 
         Returns:

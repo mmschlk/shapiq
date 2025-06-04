@@ -1,6 +1,4 @@
-"""This test module contains all tests regarding the base monte-carlo approximator many other
-approximators are based on.
-"""
+"""This test module contains all tests regarding the base monte-carlo approximator many other approximators are based on."""
 
 from __future__ import annotations
 
@@ -12,7 +10,7 @@ from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(
-    "n, max_order, index, top_order, stratify_intersection, stratify_coalition_size",
+    ("n", "max_order", "index", "top_order", "stratify_intersection", "stratify_coalition_size"),
     [
         (7, 2, "SII", False, True, False),
         (7, 2, "wrong_index", False, False, True),
@@ -66,7 +64,7 @@ def test_initialization(
 
 
 @pytest.mark.parametrize(
-    "n, index, max_order, budget, stratify_intersection, stratify_coalition_size",
+    ("n", "index", "max_order", "budget", "stratify_intersection", "stratify_coalition_size"),
     [
         (7, "SII", 2, 100, False, False),
         (7, "SII", 2, 100, True, False),
@@ -104,9 +102,6 @@ def test_approximate(n, index, max_order, budget, stratify_intersection, stratif
     assert game.access_counter <= budget + 2
 
     # for order 2 (max_order) the interaction between player 1 and 2 is the most important (1.0)
-    if index == "SV":
-        interaction_estimate = estimates[(interaction[0],)]
-    else:
-        interaction_estimate = estimates[interaction]
+    interaction_estimate = estimates[interaction[0],] if index == "SV" else estimates[interaction]
 
     assert interaction_estimate != 0

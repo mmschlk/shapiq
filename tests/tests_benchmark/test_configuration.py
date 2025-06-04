@@ -13,11 +13,13 @@ from shapiq.benchmark.load import download_game_data, load_games_from_configurat
 
 
 def test_print_config():
+    """Test printing the benchmark configurations."""
     print_benchmark_configurations()
     assert True
 
 
 def test_getting_games():
+    """Test getting game names from the GAME_NAME_TO_CLASS_MAPPING."""
     game_class = GAME_NAME_TO_CLASS_MAPPING["AdultCensusLocalXAI"]
     get_name_from_game_class(game_class)
 
@@ -26,14 +28,15 @@ def test_getting_games():
 
 
 def test_loading():
+    """Test loading benchmark games from configuration."""
     game_class = GAME_NAME_TO_CLASS_MAPPING["CaliforniaHousingLocalXAI"]
-    _ = next(load_games_from_configuration(game_class, 1, 1))
-    _ = next(load_games_from_configuration(game_class, 1, 1, only_pre_computed=True))
+    _ = next(load_games_from_configuration(game_class, 1, n_games=1))
+    _ = next(load_games_from_configuration(game_class, 1, n_games=1, only_pre_computed=True))
     _ = next(
         load_games_from_configuration(
             game_class,
             1,
-            1,
+            n_games=1,
             only_pre_computed=False,
             check_pre_computed=False,
         ),
@@ -42,7 +45,7 @@ def test_loading():
         load_games_from_configuration(
             game_class,
             {"model_name": "decision_tree", "imputer": "marginal"},
-            1,
+            n_games=1,
         ),
     )
 
@@ -51,6 +54,7 @@ def test_loading():
 
 
 def test_download():
+    """Test the download functionality for benchmark games."""
     game_name = "CaliforniaHousing_GlobalExplanation_Game"
     name = "model_name=decision_tree_loss_function=r2_score_1"
     download_game_data(game_name=game_name, n_players=8, file_name=name)

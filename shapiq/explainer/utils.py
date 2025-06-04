@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import numpy as np
+
+    from shapiq.utils.custom_types import Model
 
 WARNING_NO_CLASS_INDEX = (
     "No class_index provided. "
@@ -14,8 +18,6 @@ WARNING_NO_CLASS_INDEX = (
     "Please provide the class_index to explain a different class. "
     "Disregard this warning for regression models."
 )
-
-ModelType = TypeVar("ModelType")
 
 
 def get_explainers() -> dict[str, Any]:
@@ -33,10 +35,10 @@ def get_explainers() -> dict[str, Any]:
 
 
 def get_predict_function_and_model_type(
-    model: ModelType,
+    model: Model,
     model_class: str | None = None,
     class_index: int | None = None,
-) -> tuple[Callable[[ModelType, np.ndarray], np.ndarray], str]:
+) -> tuple[Callable[[Model, np.ndarray], np.ndarray], str]:
     """Get the predict function and model type for a given model.
 
     The prediction function is used in the explainer to predict the model's output for a given data
@@ -158,9 +160,11 @@ def get_predict_function_and_model_type(
     if class_index is None:
         class_index = 1
 
-    def _predict_function_with_class_index(model: ModelType, data: np.ndarray) -> np.ndarray:
+    def _predict_function_with_class_index(model: Model, data: np.ndarray) -> np.ndarray:
         """A wrapper prediction function to retrieve class_index predictions for classifiers.
-        Regression models are not affected by this function.
+
+        Note:
+            Regression models are not affected by this function.
 
         Args:
             model: The model to predict with.
@@ -173,62 +177,88 @@ def get_predict_function_and_model_type(
         predictions = _predict_function(model, data)
         if predictions.ndim == 1:
             return predictions
-        elif predictions.shape[1] == 1:
+        if predictions.shape[1] == 1:
             return predictions[:, 0]
         return predictions[:, class_index]
 
     return _predict_function_with_class_index, _model_type
 
 
-def predict_callable(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_callable(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes predictions with a model that is callable."""
     return model(data)
 
 
-def predict(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes predictions with a model that has a ``predict`` method."""
     return model.predict(data)
 
 
-def predict_proba(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_proba(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes predictions with a model that has a ``predict_proba`` method."""
     return model.predict_proba(data)
 
 
-def predict_xgboost(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_xgboost(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes predictions with an XGBoost model."""
     from xgboost import DMatrix
 
     return model.predict(DMatrix(data))
 
 
-def predict_tensorflow(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_tensorflow(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes predictions with a TensorFlow model."""
     return model.predict(data, verbose=0)
 
 
-def predict_torch(model: ModelType, data: np.ndarray) -> np.ndarray:
+def predict_torch(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes predictions with a PyTorch model."""
     import torch
 
     return model(torch.from_numpy(data).float()).detach().numpy()
 
 
-def print_classes_nicely(obj):
-    """Converts a list of classes into *user-readable* class names. I/O examples:
-    [shapiq.explainer._base.Explainer] -> ['shapiq.Explainer']
-    {'tree': shapiq.explainer.tree.explainer.TreeExplainer}  -> ['shapiq.TreeExplainer']
-    {'tree': shapiq.TreeExplainer}  -> ['shapiq.TreeExplainer']
+def print_classes_nicely(obj: list[Any] | dict[str, Any]) -> list[str] | None:
+    """Converts a collection of classes into *user-readable* class names.
+
+    I/O examples:
+        - ``[shapiq.explainer._base.Explainer]`` -> ``['shapiq.Explainer']``
+        - ``{'tree': shapiq.explainer.tree.explainer.TreeExplainer}``  -> ``['shapiq.TreeExplainer']``
+        - ``{'tree': shapiq.TreeExplainer}  -> ``['shapiq.TreeExplainer']``.
+
+    Args:
+        obj: The objects as a list or dictionary to convert. Can be a class or a class type.
+        Can be a list or dictionary of classes or class types.
+
+    Returns:
+        The user-readable class names as a list. If the input is not a list or dictionary, returns
+            ``None``.
+
     """
     if isinstance(obj, dict):
         return [".".join([print_class(v).split(".")[i] for i in (0, -1)]) for _, v in obj.items()]
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [".".join([print_class(v).split(".")[i] for i in (0, -1)]) for v in obj]
+    return None
 
 
-def print_class(obj):
-    """Converts a class or class type into a *user-readable* class name. I/O examples:
-    sklearn.ensemble._forest.RandomForestRegressor -> 'sklearn.ensemble._forest.RandomForestRegressor'
-    type(sklearn.ensemble._forest.RandomForestRegressor) -> 'sklearn.ensemble._forest.RandomForestRegressor'
-    shapiq.explainer.tree.explainer.TreeExplainer -> 'shapiq.explainer.tree.explainer.TreeExplainer'
-    shapiq.TreeExplainer -> 'shapiq.explainer.tree.explainer.TreeExplainer'
-    type(shapiq.TreeExplainer) -> 'shapiq.explainer.tree.explainer.TreeExplainer'
+def print_class(obj: object) -> str:
+    """Converts a class or class type into a *user-readable* class name.
+
+    I/O Examples:
+        - ``sklearn.ensemble._forest.RandomForestRegressor`` -> ``'sklearn.ensemble._forest.RandomForestRegressor'``
+        - ``type(sklearn.ensemble._forest.RandomForestRegressor)`` -> ``'sklearn.ensemble._forest.RandomForestRegressor'``
+        - ``shapiq.explainer.tree.explainer.TreeExplainer`` -> ``'shapiq.explainer.tree.explainer.TreeExplainer'``
+        - ``shapiq.TreeExplainer`` -> ``'shapiq.explainer.tree.explainer.TreeExplainer'``
+        - ``type(shapiq.TreeExplainer)`` -> ``'shapiq.explainer.tree.explainer.TreeExplainer'``
+
+    Args:
+        obj: The object to convert. Can be a class or a class type.
+
+    Returns:
+        The user-readable class name.
+
     """
     if isinstance(obj, type):
         return re.search("(?<=<class ').*(?='>)", str(obj))[0]
-    else:
-        return re.search("(?<=<class ').*(?='>)", str(type(obj)))[0]
+    return re.search("(?<=<class ').*(?='>)", str(type(obj)))[0]

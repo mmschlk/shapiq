@@ -1,5 +1,7 @@
-"""This integration test module contains all tests regarding the import-ability of the package.
-(I.e. it checks whether all modules can be imported without errors.)
+"""Test for import-ability of the shapiq package.
+
+This integration test module contains all tests regarding the import-ability of the package.
+(I.e. it checks whether all modules can be imported without errors.).
 """
 
 from __future__ import annotations

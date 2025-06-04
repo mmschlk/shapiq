@@ -21,7 +21,7 @@ def test_initialization(n):
     assert approximator.iteration_cost == 1
 
 
-@pytest.mark.parametrize("n, budget", [(7, 380), (7, 380), (7, 100)])
+@pytest.mark.parametrize(("n", "budget"), [(7, 380), (7, 100)])
 def test_approximate(n, budget):
     """Tests the approximation of the KernelSHAP approximator."""
     interaction = (1, 2)

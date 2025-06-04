@@ -39,7 +39,7 @@ def test_init_params(dt_reg_model, background_reg_data, index, max_order, impute
         assert explainer._approximator.__class__.__name__ == "RegressionFSII"
     elif index == "FBII":
         assert explainer._approximator.__class__.__name__ == "RegressionFBII"
-    elif index == "SII" or index == "k-SII":
+    elif index in ("SII", "k-SII"):
         assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
     else:
         assert explainer._approximator.__class__.__name__ == "SVARMIQ"
@@ -113,7 +113,7 @@ def test_init_params_approx(dt_reg_model, background_reg_data):
 
 
 @pytest.mark.parametrize("approximator", APPROXIMATOR)
-@pytest.mark.parametrize("max_order", MAX_ORDERS + [1])
+@pytest.mark.parametrize("max_order", [*MAX_ORDERS, 1])
 def test_init_params_approx_params(dt_reg_model, background_reg_data, approximator, max_order):
     """Test the initialization of the tabular explainer."""
     explainer = TabularExplainer(
@@ -193,7 +193,7 @@ def test_against_shap_linear():
     # explainer_shap = shap.explainers.Exact(model, X)
     # shap_values = explainer_shap(X).values
     # print(shap_values)
-    """  # noqa: ERA001
+    """
     shap_values = np.array(
         [
             [-0.29565839, -0.36698085, -0.55970434, 0.22567077, 0.05852208],
@@ -216,6 +216,27 @@ def test_against_shap_linear():
     shapiq_values = np.array([values.get_n_order_values(1) for values in shapiq_values])
 
     assert np.allclose(shap_values, shapiq_values, atol=1e-5)
+
+
+def test_explain_X_progressbar():
+    """Tests if the progress bar is shown when verbose is set to True."""
+    n_samples = 3
+    dim = 5
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(n_samples, dim))
+
+    def model(X: np.ndarray):
+        return np.dot(X, np.ones(dim))
+
+    explainer = TabularExplainer(
+        model=model,
+        data=X,
+        random_state=42,
+        index="SV",
+        max_order=1,
+    )
+    _ = explainer.explain_X(X, budget=2**dim, verbose=True)
+    _ = explainer.explain_X(X, budget=2**dim, verbose=False)
 
 
 @pytest.mark.parametrize("approximator", APPROXIMATOR)

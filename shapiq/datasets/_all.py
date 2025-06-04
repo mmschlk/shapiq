@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import numpy as np
 import pandas as pd
+
+if TYPE_CHECKING:
+    import numpy as np
 
 GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
@@ -19,8 +22,9 @@ def _create_folder() -> None:
 
 
 def _try_load(csv_file_name: str) -> pd.DataFrame:
-    """Try to load a dataset from the local folder. If it does not exist, load it from GitHub and
-    save it to the local folder.
+    """Try to load a dataset from the local folder.
+
+    If it does not exist, load it from GitHub and save it to the local folder.
 
     Args:
         csv_file_name: The name of the csv file to load.
@@ -40,6 +44,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
 
 
 def load_california_housing(
+    *,
     to_numpy: bool = False,
 ) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the California housing dataset.
@@ -68,7 +73,7 @@ def load_california_housing(
 
 
 def load_bike_sharing(
-    to_numpy: bool = False,
+    *, to_numpy: bool = False
 ) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the bike-sharing dataset from openml and preprocess it.
 
@@ -128,7 +133,7 @@ def load_bike_sharing(
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
     dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
-    dataset.dropna(inplace=True)
+    dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)
     x_data = dataset
@@ -139,7 +144,7 @@ def load_bike_sharing(
 
 
 def load_adult_census(
-    to_numpy: bool = False,
+    *, to_numpy: bool = False
 ) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
     """Load the adult census dataset from the UCI Machine Learning Repository.
 
@@ -200,7 +205,7 @@ def load_adult_census(
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
     dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
-    dataset.dropna(inplace=True)
+    dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)
     x_data = dataset.astype(float)

@@ -20,7 +20,7 @@ def test_initialization(n):
     assert approximator.min_order == 0
 
 
-@pytest.mark.parametrize("n, budget", [(7, 100), (7, 300)])
+@pytest.mark.parametrize(("n", "budget"), [(7, 100), (7, 300)])
 def test_approximate_sii(n, budget):
     """Tests the approximation of the SVARM SV approximation."""
     interaction = (1, 2)

@@ -10,7 +10,7 @@ from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
-    "n, m, expected",
+    ("n", "m", "expected"),
     [
         (5, 1, [0.5]),
         (5, 2, [0.0, 1.0]),
@@ -34,10 +34,8 @@ def test_anchorpoints(n, m, expected):
 
 
 @pytest.mark.parametrize(
-    "n, m, budget",
+    ("n", "m", "budget"),
     [
-        (5, 3, 102),
-        (5, 3, 102),
         (5, 3, 102),
         (5, 3, 100),
         (5, 3, 1000),

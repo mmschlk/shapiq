@@ -1,7 +1,9 @@
+"""Base Sparse approximator for fourier-based interaction computation."""
+
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
@@ -11,57 +13,97 @@ from sparse_transform.qsft.signals.input_signal_subsampled import (
 from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
 from sparse_transform.qsft.utils.query import get_bch_decoder
 
-from ...game_theory.indices import is_index_aggregated
-from ...game_theory.moebius_converter import MoebiusConverter
-from ...interaction_values import InteractionValues
-from .._base import Approximator
+from shapiq.approximator._base import Approximator
+from shapiq.game_theory.moebius_converter import MoebiusConverter
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Any
+
+    from shapiq.games.base import Game
 
 
 class Sparse(Approximator):
-    """Approximator for interaction values using sparse transformation techniques.
+    """Approximator interface using sparse transformation techniques.
 
     This class implements a sparse approximation method for computing various interaction indices
     using sparse Fourier transforms. It efficiently estimates interaction values with a limited
-    sample budget by leveraging sparsity in the Fourier domain.
+    sample budget by leveraging sparsity in the Fourier domain. The notion of sparse approximation
+    is described in [Kan25]_.
+
+    See Also:
+        - :class:`~shapiq.approximator.sparse.SPEX` for a specific implementation of the
+            sparse approximation using Fourier transforms described in [Kan25]_.
 
     Attributes:
-        transform_type (str): Type of transform used (currently only "fourier" is supported).
-        t (int): Error parameter for the sparse Fourier transform (currently fixed to 5).
-        query_args (dict): Parameters for querying the signal.
-        decoder_args (dict): Parameters for decoding the transform.
+        transform_type: Type of transform used (currently only ``"fourier"`` is supported).
 
-    Args:
-        n (int): Number of players/features.
-        index (str): Type of interaction index to compute (e.g., "STII", "FBII", "FSII").
-        max_order (int, optional): Maximum interaction order to compute. It is not suggested to use this parameter
-            since sparse approximation dynamically and implicitly adjusts the order based on the budget and function.
-        top_order (bool, optional): If True, only compute interactions of exactly max_order.
-            If False, compute interactions up to max_order. Defaults to False.
-        random_state (int, optional): Random seed for reproducibility. Defaults to None.
-        transform_type (str, optional): Type of transform to use. Currently only "fourier"
-            is supported. Defaults to "fourier".
-        decoder_type (str, optional): Type of decoder to use, either "soft" or "hard".
-            Defaults to "soft"
+        degree_parameter: A parameter that controls the maximum degree of the interactions to
+            extract during execution of the algorithm. Note that this is a soft limit, and in
+            practice, the algorithm may extract interactions of any degree. We typically find
+            that there is little value going beyond ``5``. Defaults to ``5``. Note that
+            increasing this parameter will need more ``budget`` in the :meth:`approximate`
+            method.
+
+        query_args: Parameters for querying the signal.
+
+        decoder_args: Parameters for decoding the transform.
 
     Raises:
         ValueError: If transform_type is not "fourier" or if decoder_type is not "soft" or "hard".
+
+    References:
+        .. [Kan25] Kang, J.S., Butler, L., Agarwal. A., Erginbas, Y.E., Pedarsani, R., Ramchandran, K., Yu, Bin (2025). SPEX: Scaling Feature Interaction Explanations for LLMs https://arxiv.org/abs/2502.13870
+
     """
 
     def __init__(
         self,
         n: int,
-        index: str,
+        index: Literal["SII", "k-SII", "FBII", "FSII", "STII", "SV"],
+        *,
         max_order: int | None = None,
         top_order: bool = False,
         random_state: int | None = None,
-        transform_type: str = "fourier",
-        decoder_type: str = "soft",
+        transform_type: Literal["fourier"] = "fourier",
+        decoder_type: Literal["soft", "hard"] = "soft",
+        degree_parameter: int = 5,
     ) -> None:
+        """Initialize the Sparse approximator.
+
+        Args:
+            n: Number of players (features).
+
+            max_order: Maximum interaction order to consider. Defaults to ``None``, which means
+                that all orders up to ``n`` will be considered.
+
+            index: The Interaction index to use. All indices supported by shapiq's
+                :class:`~shapiq.game_theory.moebius_converter.MoebiusConverter` are supported.
+
+            top_order: If ``True``, only reports interactions of exactly order ``max_order``.
+                Otherwise, reports all interactions up to order ``max_order``. Defaults to
+                ``False``.
+
+            random_state: Seed for random number generator. Defaults to ``None``.
+
+            transform_type: Type of transform to use. Currently only "fourier" is supported.
+
+            decoder_type: Type of decoder to use, either "soft" or "hard". Defaults to "soft".
+
+            degree_parameter: A parameter that controls the maximum degree of the interactions to
+                extract during execution of the algorithm. Note that this is a soft limit, and in
+                practice, the algorithm may extract interactions of any degree. We typically find
+                that there is little value going beyond ``5``. Defaults to ``5``. Note that
+                increasing this parameter will need more ``budget`` in the :meth:`approximate`
+                method.
+
+        """
         if transform_type.lower() not in ["fourier"]:
             msg = "transform_type must be 'fourier'"
             raise ValueError(msg)
         self.transform_type = transform_type.lower()
-        self.t = 5  # 5 could be a parameter
+        self.degree_parameter = degree_parameter
         self.decoder_type = "hard" if decoder_type is None else decoder_type.lower()
         if self.decoder_type not in ["soft", "hard"]:
             msg = "decoder_type must be 'soft' or 'hard'"
@@ -74,7 +116,7 @@ class Sparse(Approximator):
             "subsampling_method": "qsft",
             "delays_method_channel": "identity-siso",
             "num_repeat": 1,
-            "t": self.t,
+            "t": self.degree_parameter,
         }
         self.decoder_args = {
             "num_subsample": 3,
@@ -86,7 +128,7 @@ class Sparse(Approximator):
             else "identity",
             "regress": "lasso",
             "res_energy_cutoff": 0.9,
-            "source_decoder": get_bch_decoder(n, self.t, self.decoder_type),
+            "source_decoder": get_bch_decoder(n, self.degree_parameter, self.decoder_type),
         }
         super().__init__(
             n=n,
@@ -100,18 +142,20 @@ class Sparse(Approximator):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the interaction values using a sparse transform approach.
 
         Args:
             budget: The budget for the approximation.
             game: The game function that returns the values for the coalitions.
+            **kwargs: Additional keyword arguments (not used).
 
         Returns:
             The approximated Shapley interaction values.
         """
-        # Find the maximum value of b that fits within the given sample budget and get the used budget
+        # Find the max value of b that fits within the given sample budget and get the used budget
         used_budget = self._set_transform_budget(budget)
         signal = SubsampledSignalFourier(
             func=lambda inputs: game(inputs.astype(bool)),
@@ -142,10 +186,8 @@ class Sparse(Approximator):
             estimation_budget=used_budget,
             baseline_value=self.interaction_lookup.get((), 0.0),
         )
-        # Update the interaction lookup to reflect the filtered results
-        if is_index_aggregated(self.index):
-            output = self.aggregate_interaction_values(output)
-        return output
+        # finalize the interactions
+        return finalize_computed_interactions(output, target_index=self.index)
 
     def _filter_order(self, result: np.ndarray) -> np.ndarray:
         """Filters the interactions to keep only those of the maximum order.
@@ -172,17 +214,18 @@ class Sparse(Approximator):
         return np.array(filtered_results)
 
     def _process_moebius(self, moebius_transform: dict[tuple, float]) -> np.ndarray:
-        """Processes the Moebius transform to extract the desired index.
+        """Convert the Moebius transform into the desired index.
 
         Args:
-            moebius_transform: The Moebius transform to process (dict mapping tuples to float values).
+            moebius_transform: The Moebius transform to process as a dict mapping tuples to float
+                values.
 
         Returns:
             np.ndarray: The converted interaction values based on the specified index.
             The function also updates the internal _interaction_lookup dictionary.
         """
         moebius_interactions = InteractionValues(
-            values=np.array([moebius_transform[key] for key in moebius_transform.keys()]),
+            values=np.array([moebius_transform[key] for key in moebius_transform]),
             index="Moebius",
             min_order=self.min_order,
             max_order=self.max_order,
@@ -207,43 +250,47 @@ class Sparse(Approximator):
             budget: The maximum number of samples allowed for the approximation.
 
         Returns:
-            int: The actual number of samples that will be used, which is less than or equal to the budget.
+            int: The actual number of samples that will be used, which is less than or equal to the
+                budget.
 
         Raises:
             ValueError: If the budget is too low to compute the transform with acceptable parameters.
         """
         b = SubsampledSignalFourier.get_b_for_sample_budget(
-            budget, self.n, self.t, 2, self.query_args
+            budget, self.n, self.degree_parameter, 2, self.query_args
         )
         used_budget = SubsampledSignalFourier.get_number_of_samples(
-            self.n, b, self.t, 2, self.query_args
+            self.n, b, self.degree_parameter, 2, self.query_args
         )
 
         if b <= 2:
-            while self.t > 2:
-                self.t -= 1
-                self.query_args["t"] = self.t
+            while self.degree_parameter > 2:
+                self.degree_parameter -= 1
+                self.query_args["t"] = self.degree_parameter
 
                 # Recalculate 'b' with the updated 't'
                 b = SubsampledSignalFourier.get_b_for_sample_budget(
-                    budget, self.n, self.t, 2, self.query_args
+                    budget, self.n, self.degree_parameter, 2, self.query_args
                 )
 
                 # Compute the used budget
                 used_budget = SubsampledSignalFourier.get_number_of_samples(
-                    self.n, b, self.t, 2, self.query_args
+                    self.n, b, self.degree_parameter, 2, self.query_args
                 )
 
                 # Break if 'b' is now sufficient
                 if b > 2:
                     self.decoder_args["source_decoder"] = get_bch_decoder(
-                        self.n, self.t, self.decoder_type
+                        self.n, self.degree_parameter, self.decoder_type
                     )
                     break
 
             # If 'b' is still too low, raise an error
             if b <= 2:
-                msg = "Insufficient budget to compute the transform. Increase the budget or use a different approximator."
+                msg = (
+                    "Insufficient budget to compute the transform. Increase the budget or use a "
+                    "different approximator."
+                )
                 raise ValueError(msg)
         # Store the final 'b' value
         self.query_args["b"] = b

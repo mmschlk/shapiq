@@ -14,15 +14,15 @@ from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
-    "sii_approximator, ksii_approximator",
+    ("sii_approximator", "ksii_approximator"),
     [
         (
-            PermutationSamplingSII(7, 2, "SII", False, random_state=42),
-            PermutationSamplingSII(7, 2, "k-SII", False, random_state=42),
+            PermutationSamplingSII(7, 2, "SII", top_order=False, random_state=42),
+            PermutationSamplingSII(7, 2, "k-SII", top_order=False, random_state=42),
         ),
         (
-            SHAPIQ(7, 2, "SII", False, random_state=42),
-            SHAPIQ(7, 2, "k-SII", False, random_state=42),
+            SHAPIQ(7, 2, "SII", top_order=False, random_state=42),
+            SHAPIQ(7, 2, "k-SII", top_order=False, random_state=42),
         ),
     ],
 )
@@ -54,15 +54,17 @@ def test_k_one_dim_aggregate():
     n = 7
     interaction = (1, 2)
     game = DummyGame(n, interaction)
-    estimator = SHAPIQ(7, 2, "k-SII", False, random_state=42)
+    estimator = SHAPIQ(7, 2, "k-SII", top_order=False, random_state=42)
     k_sii_estimates = estimator.approximate(2**n, game)
 
     efficiency = np.sum(k_sii_estimates.values)
 
     # check one dim transform
     pos_values, neg_values = aggregate_to_one_dimension(k_sii_estimates)
-    assert pos_values.shape == (n,) and neg_values.shape == (n,)
-    assert np.all(pos_values >= 0) and np.all(neg_values <= 0)
+    assert pos_values.shape == (n,)
+    assert neg_values.shape == (n,)
+    assert np.all(pos_values >= 0)
+    assert np.all(neg_values <= 0)
     sum_of_both = np.sum(pos_values) + np.sum(neg_values)
 
     assert sum_of_both == pytest.approx(efficiency, 0.01)

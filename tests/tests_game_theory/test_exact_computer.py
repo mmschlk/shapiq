@@ -12,6 +12,7 @@ from shapiq.games.benchmark.synthetic.soum import SOUM
 
 
 def test_exact_computer_on_soum():
+    """Tests the ExactComputer on the SOUM game."""
     for _ in range(20):
         n = np.random.randint(low=2, high=10)
         order = np.random.randint(low=1, high=min(n, 5))
@@ -91,7 +92,7 @@ def test_exact_computer_on_soum():
 
 
 @pytest.mark.parametrize(
-    "index, order",
+    ("index", "order"),
     [("ELC", 1)],
 )
 def test_exact_elc_computer_call(index, order):
@@ -113,7 +114,7 @@ def test_exact_elc_computer_call(index, order):
 
 
 @pytest.mark.parametrize(
-    "index, order",
+    ("index", "order"),
     [
         ("SV", 1),
         ("BV", 1),
@@ -204,7 +205,7 @@ def original_game():
 
 # (fails for [CHII-2] bc empty set is nan)
 @pytest.mark.parametrize(
-    "index, order",
+    ("index", "order"),
     [
         ("SV", 1),
         ("BV", 1),
@@ -261,7 +262,7 @@ def test_warning_cii():
 
 
 @pytest.mark.parametrize(
-    "index, order",
+    ("index", "order"),
     [
         ("SV", 1),
         ("BV", 1),
@@ -318,15 +319,15 @@ def test_player_symmetry(index, order):
 
     # symmetry of players with same attribution
     for coalition in powerset(range(n - 2)):
-        coalition_with_first = (0,) + tuple([player + 1 for player in coalition])
-        coalition_with_last = tuple([player + 1 for player in coalition]) + (4,)
+        coalition_with_first = (0, *tuple([player + 1 for player in coalition]))
+        coalition_with_last = (*tuple([player + 1 for player in coalition]), 4)
         assert (
             interaction_values[coalition_with_first] - interaction_values[coalition_with_last]
         ) < 10e-7
 
 
 @pytest.mark.parametrize(
-    "index, order",
+    ("index", "order"),
     [
         ("SV", 1),
         ("BV", 1),
@@ -378,14 +379,14 @@ def test_null_player(index, order):
 
     # no attribution for coalitions which include the null players.
     for coalition in powerset(range(n - 2)):
-        coalition_with_first = (0,) + tuple([player + 1 for player in coalition])
-        coalition_with_last = tuple([player + 1 for player in coalition]) + (4,)
+        coalition_with_first = (0, *tuple([player + 1 for player in coalition]))
+        coalition_with_last = (*tuple([player + 1 for player in coalition]), 4)
         assert interaction_values[coalition_with_first] < 10e-7
         assert interaction_values[coalition_with_last] < 10e-7
 
 
 @pytest.mark.parametrize(
-    "index, order",
+    ("index", "order"),
     [
         ("SV", 1),
         ("BV", 1),
@@ -423,7 +424,7 @@ def test_no_artefact_interaction(index, order):
 
 
 @pytest.mark.parametrize(
-    "index, order",
+    ("index", "order"),
     [
         ("SGV", 2),
         ("BGV", 2),
@@ -434,7 +435,7 @@ def test_no_artefact_interaction(index, order):
     ],
 )
 def test_generalized_null_player(index, order):
-    """This test checks that the null players don't get any attribution in the generalized values"""
+    """This test checks that the null players don't get any attribution in the generalized values."""
     # implicit in above test for the rest of the indices
     n = 5
     if order is None:

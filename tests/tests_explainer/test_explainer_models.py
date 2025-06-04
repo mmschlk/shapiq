@@ -232,6 +232,7 @@ def test_lightgbm_clf(lightgbm_clf_model, background_clf_data):
 
 
 def test_isoforest_clf(if_clf_model, if_clf_dataset):
+    """Test the explainer with a basic isolation forest classification model."""
     x_data = if_clf_dataset[0]
 
     x_explain = x_data[0]

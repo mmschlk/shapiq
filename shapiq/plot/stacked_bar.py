@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,11 +14,14 @@ from ._config import COLORS_K_SII
 
 __all__ = ["stacked_bar_plot"]
 
-from shapiq.interaction_values import InteractionValues
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
 
 
 def stacked_bar_plot(
     interaction_values: InteractionValues,
+    *,
     feature_names: list[Any] | None = None,
     max_order: int | None = None,
     title: str | None = None,
@@ -118,19 +122,16 @@ def stacked_bar_plot(
         axis.bar(x, height=abs(values_neg[order]), bottom=reference_neg, color=COLORS_K_SII[order])
         axis.axhline(y=0, color="black", linestyle="solid", linewidth=0.5)
         reference_pos += values_pos[order]
-        try:
+        with contextlib.suppress(IndexError):
             reference_neg += values_neg[order + 1]
-        except IndexError:
-            pass
-        min_max_values[0] = min(min_max_values[0], min(reference_neg))
-        min_max_values[1] = max(min_max_values[1], max(reference_pos))
+        min_max_values[0] = min(min_max_values[0], *reference_neg)
+        min_max_values[1] = max(min_max_values[1], *reference_pos)
 
     # add a legend to the plots
-    legend_elements = []
-    for order in range(max_order):
-        legend_elements.append(
-            Patch(facecolor=COLORS_K_SII[order], edgecolor="black", label=f"Order {order + 1}"),
-        )
+    legend_elements = [
+        Patch(facecolor=COLORS_K_SII[order], edgecolor="black", label=f"Order {order + 1}")
+        for order in range(max_order)
+    ]
     axis.legend(handles=legend_elements, loc="upper center", ncol=min(max_order, 4))
 
     x_ticks_labels = list(feature_names)  # might be unnecessary
@@ -155,3 +156,4 @@ def stacked_bar_plot(
     if not show:
         return fig, axis
     plt.show()
+    return None

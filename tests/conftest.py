@@ -5,6 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from shapiq import InteractionValues
+
 from .fixtures.models import (
     TABULAR_MODEL_FIXTURES,
     TABULAR_TENSORFLOW_MODEL_FIXTURES,
@@ -49,7 +51,7 @@ def interaction_values_list():
     min_order = 0
     max_order = n_players
     iv_list = []
-    for i in range(n_objects):
+    for _ in range(n_objects):
         values = []
         interaction_lookup = {}
         for i, interaction in enumerate(
@@ -69,3 +71,53 @@ def interaction_values_list():
         )
         iv_list.append(iv)
     return iv_list
+
+
+@pytest.fixture(scope="module")
+def example_values():
+    return InteractionValues(
+        n_players=4,
+        values=np.array(
+            [
+                0.0,  # ()
+                -0.2,  # (1)
+                0.4,  # (2)
+                0.2,  # (3)
+                -0.1,  # (4)
+                0.2,  # (1, 2)
+                -0.2,  # (1, 3)
+                0.2,  # (1, 4)
+                0.2,  # (2, 3)
+                -0.2,  # (2, 4)
+                0.2,  # (3, 4)
+                0.4,  # (1, 2, 3)
+                0.0,  # (1, 2, 4)
+                0.0,  # (1, 3, 4)
+                0.0,  # (2, 3, 4)
+                -0.1,  # (1, 2, 3, 4)
+            ],
+            dtype=float,
+        ),
+        index="k-SII",
+        interaction_lookup={
+            (): 0,
+            (1,): 1,
+            (2,): 2,
+            (3,): 3,
+            (4,): 4,
+            (1, 2): 5,
+            (1, 3): 6,
+            (1, 4): 7,
+            (2, 3): 8,
+            (2, 4): 9,
+            (3, 4): 10,
+            (1, 2, 3): 11,
+            (1, 2, 4): 12,
+            (1, 3, 4): 13,
+            (2, 3, 4): 14,
+            (1, 2, 3, 4): 15,
+        },
+        baseline_value=0,
+        min_order=0,
+        max_order=4,
+    )
