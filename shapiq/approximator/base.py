@@ -163,6 +163,17 @@ class Approximator(ABC):
         """
         return self.approximate(budget=budget, game=game, **kwargs)
 
+    def set_random_state(self, random_state: int | None = None) -> None:
+        """Sets the random state for the approximator.
+
+        Args:
+            random_state: The random state to set. If ``None``, no random state is set.
+
+        """
+        self._random_state = random_state
+        self._rng = np.random.default_rng(seed=random_state)
+        self._sampler.set_random_state(random_state)
+
     @abstractmethod
     def approximate(
         self,
@@ -323,6 +334,7 @@ class Approximator(ABC):
 
     @property
     def interaction_lookup(self) -> dict[tuple[int, ...], int]:
+        """Returns the interaction lookup dictionary."""
         return self._interaction_lookup
 
     @staticmethod

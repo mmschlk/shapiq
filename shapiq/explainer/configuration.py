@@ -19,7 +19,7 @@ from shapiq import (
     UnbiasedKernelSHAP,
     kADDSHAP,
 )
-from shapiq.approximator._base import Approximator, ValidApproximationIndices
+from shapiq.approximator.base import Approximator, ValidApproximationIndices
 from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
 
 if TYPE_CHECKING:

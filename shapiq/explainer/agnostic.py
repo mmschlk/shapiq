@@ -7,9 +7,8 @@ from typing import TYPE_CHECKING
 from shapiq.games.base import Game
 from shapiq.games.imputer.base import Imputer
 
-from ._base import Explainer
+from .base import Explainer
 from .configuration import setup_approximator
-from .utils import set_random_state
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -17,7 +16,7 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-    from shapiq.approximator._base import Approximator
+    from shapiq.approximator.base import Approximator
     from shapiq.interaction_values import InteractionValues
 
 
@@ -28,6 +27,9 @@ class AgnosticExplainer(Explainer):
     It uses the game-based approach to explain the model's predictions.
 
     """
+
+    game: Game | Callable[[np.ndarray], np.ndarray]
+    """The cooperative game to be explained, either as a Game instance or a callable value function."""
 
     def __init__(
         self,
@@ -79,7 +81,7 @@ class AgnosticExplainer(Explainer):
             n_players = game.n_players
 
         self.game = game
-        self._approximator = setup_approximator(
+        self.approximator = setup_approximator(
             approximator=approximator,
             max_order=max_order,
             index=index,
@@ -100,11 +102,14 @@ class AgnosticExplainer(Explainer):
         """Explain the function using the game-based approach.
 
         Args:
-            budget: The budget used for the approximation.
+            budget: The budget used for the approximation / computation of interaction values.
 
-            x: The data point to explain. If not provided, the game will be used as is.
+            x: An optional data point to explain. This is only usable if the game is a
+                :class:`~shapiq.games.imputer.base.Imputer`. If provided, the imputer will be fitted
+                to this data point before computing the interaction values. Defaults to ``None``.
 
-            random_state: The random state to use for reproducibility.
+            random_state: An optional random state for reproducibility. Defaults to ``None``. If
+                ``None``, no random state is set for the game or approximator.
 
             **kwargs: Additional keyword arguments (not used, only for compatibility).
 
@@ -113,6 +118,8 @@ class AgnosticExplainer(Explainer):
         """
         if x is not None and isinstance(self.game, Imputer):
             self.game.fit(x=x)
-            set_random_state(random_state, self.game)
-        set_random_state(random_state, object_with_rng=self)
-        return self._approximator(game=self.game, budget=budget)
+            if random_state is not None:
+                self.game.set_random_state(random_state=random_state)
+        if random_state is not None:
+            self.approximator.set_random_state(random_state=random_state)
+        return self.approximator(game=self.game, budget=budget)

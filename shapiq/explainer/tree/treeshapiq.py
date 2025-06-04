@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from shapiq.utils.custom_types import Model
 
     from .base import EdgeTree, TreeModel
+    from .custom_types import TreeSHAPIQIndices
 
 
 class TreeSHAPIQ:
@@ -52,7 +53,7 @@ class TreeSHAPIQ:
         *,
         max_order: int = 2,
         min_order: int = 1,
-        index: str = "k-SII",
+        index: TreeSHAPIQIndices = "k-SII",
         verbose: bool = False,
     ) -> None:
         """Initializes the TreeSHAP-IQ explainer.

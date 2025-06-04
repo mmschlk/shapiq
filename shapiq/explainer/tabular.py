@@ -5,19 +5,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
-import numpy as np
 from overrides import overrides
 
-from shapiq.explainer._base import Explainer
+from shapiq.explainer.base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
 from .configuration import setup_approximator
-from .validation import validate_index_and_max_order
 
 if TYPE_CHECKING:
-    from shapiq.approximator._base import Approximator
+    import numpy as np
+
+    from shapiq.approximator.base import Approximator
     from shapiq.games.imputer.base import Imputer
     from shapiq.utils.custom_types import Model
+
+    from .custom_types import ExplainerIndices
 
 
 class TabularExplainer(Explainer):
@@ -45,7 +47,7 @@ class TabularExplainer(Explainer):
         imputer: Imputer | Literal["marginal", "baseline", "conditional"] = "marginal",
         approximator: Literal["auto", "spex", "montecarlo", "svarm", "permutation", "regression"]
         | Approximator = "auto",
-        index: Literal["SII", "k-SII", "STII", "FSII", "FBII", "SV"] = "k-SII",
+        index: ExplainerIndices = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
         verbose: bool = False,
@@ -109,7 +111,7 @@ class TabularExplainer(Explainer):
             TabPFNImputer,
         )
 
-        super().__init__(model, data, class_index)
+        super().__init__(model, data, class_index, index=index, max_order=max_order)
 
         # get class for self
         class_name = self.__class__.__name__
@@ -122,32 +124,31 @@ class TabularExplainer(Explainer):
                 stacklevel=2,
             )
 
-        self._random_state = random_state
         if imputer == "marginal":
-            self._imputer = MarginalImputer(
+            self.imputer = MarginalImputer(
                 self.predict,
-                self.data,
+                self._data,
                 random_state=random_state,
                 **kwargs,
             )
         elif imputer == "conditional":
-            self._imputer = ConditionalImputer(
+            self.imputer = ConditionalImputer(
                 self.predict,
-                self.data,
+                self._data,
                 random_state=random_state,
                 **kwargs,
             )
         elif imputer == "baseline":
-            self._imputer = BaselineImputer(
+            self.imputer = BaselineImputer(
                 self.predict,
-                self.data,
+                self._data,
                 random_state=random_state,
                 **kwargs,
             )
         elif isinstance(
             imputer, MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer
         ):
-            self._imputer = imputer
+            self.imputer = imputer
         else:
             msg = (
                 f"Invalid imputer {imputer}. "
@@ -155,12 +156,11 @@ class TabularExplainer(Explainer):
                 f"object."
             )
             raise ValueError(msg)
-        self._n_features: int = self.data.shape[1]
-        self._imputer.verbose = verbose  # set the verbose flag for the imputer
+        self._n_features: int = self._data.shape[1]
+        self.imputer.verbose = verbose  # set the verbose flag for the imputer
 
-        self.index, self._max_order = validate_index_and_max_order(index, max_order)
-        self._approximator = setup_approximator(
-            approximator, self.index, self._max_order, self._n_features, self._random_state
+        self.approximator = setup_approximator(
+            approximator, self._index, self._max_order, self._n_features, random_state
         )
 
     @overrides
@@ -168,6 +168,7 @@ class TabularExplainer(Explainer):
         self,
         x: np.ndarray,
         budget: int,
+        *,
         random_state: int | None = None,
     ) -> InteractionValues:
         """Explains the model's predictions.
@@ -181,29 +182,26 @@ class TabularExplainer(Explainer):
                 computational costs.
 
             random_state: The random state to re-initialize Imputer and Approximator with.
-                Defaults to ``None``.
+                Defaults to ``None``, which will not set a random state.
 
         Returns:
             An object of class :class:`~shapiq.interaction_values.InteractionValues` containing
             the computed interaction values.
         """
-        if random_state is not None:
-            self._imputer._rng = np.random.default_rng(random_state)  # noqa: SLF001
-            self._approximator._rng = np.random.default_rng(random_state)  # noqa: SLF001
-            self._approximator._sampler._rng = np.random.default_rng(random_state)  # noqa: SLF001
+        self.set_random_state(random_state)
 
         # initialize the imputer with the explanation point
-        imputer = self._imputer.fit(x)
+        self.imputer.fit(x)
 
         # explain
-        interaction_values = self._approximator(budget=budget, game=imputer)
+        interaction_values = self.approximator(budget=budget, game=self.imputer)
         interaction_values.baseline_value = self.baseline_value
         return finalize_computed_interactions(
             interaction_values,
-            target_index=self.index,
+            target_index=self._index,
         )
 
     @property
     def baseline_value(self) -> float:
         """Returns the baseline value of the explainer."""
-        return self._imputer.empty_prediction
+        return self.imputer.empty_prediction

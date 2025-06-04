@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, get_args
 import numpy as np
 from scipy.special import bernoulli, binom
 
-from shapiq.approximator._base import Approximator
+from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 from shapiq.utils.sets import powerset
 

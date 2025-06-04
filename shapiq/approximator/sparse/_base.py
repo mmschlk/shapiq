@@ -13,7 +13,7 @@ from sparse_transform.qsft.signals.input_signal_subsampled import (
 from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
 from sparse_transform.qsft.utils.query import get_bch_decoder
 
-from shapiq.approximator._base import Approximator
+from shapiq.approximator.base import Approximator
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 

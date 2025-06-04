@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import numpy as np
 
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
 
+    from shapiq.explainer.base import Explainer
     from shapiq.games.base import Game
     from shapiq.utils.custom_types import Model
 
@@ -21,25 +22,26 @@ WARNING_NO_CLASS_INDEX = (
     "Disregard this warning for regression models."
 )
 
+ExplainerTypes = Literal["tabular", "tree", "tabpfn", "game"]
 
-def get_explainers() -> dict[str, Any]:
+
+def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
     """Return a dictionary of all available explainer classes.
 
     Returns:
         A dictionary of all available explainer classes.
 
     """
-    from shapiq.explainer.agnostic import AgnosticExplainer
-    from shapiq.explainer.tabpfn import TabPFNExplainer
-    from shapiq.explainer.tabular import TabularExplainer
-    from shapiq.explainer.tree.explainer import TreeExplainer
+    import shapiq.explainer.agnostic as ag
+    import shapiq.explainer.tabpfn as tp
+    import shapiq.explainer.tabular as tb
+    import shapiq.explainer.tree.explainer as tr
 
     return {
-        "tabular": TabularExplainer,
-        "tree": TreeExplainer,
-        "tabpfn": TabPFNExplainer,
-        "game": AgnosticExplainer,
-        "imputer": AgnosticExplainer,
+        "tabular": tb.TabularExplainer,
+        "tree": tr.TreeExplainer,
+        "tabpfn": tp.TabPFNExplainer,
+        "game": ag.AgnosticExplainer,
     }
 
 
@@ -47,7 +49,10 @@ def get_predict_function_and_model_type(
     model: Model | Game | Callable[[np.ndarray], np.ndarray],
     model_class: str | None = None,
     class_index: int | None = None,
-) -> tuple[Callable[[Model, np.ndarray], np.ndarray], str]:
+) -> tuple[
+    Callable[[Model, np.ndarray], np.ndarray] | RuntimeError,
+    ExplainerTypes,
+]:
     """Get the predict function and model type for a given model.
 
     The prediction function is used in the explainer to predict the model's output for a given data
@@ -69,7 +74,6 @@ def get_predict_function_and_model_type(
 
     """
     from shapiq.games.base import Game
-    from shapiq.games.imputer.base import Imputer
 
     from .tree import TreeModel
 
@@ -79,15 +83,9 @@ def get_predict_function_and_model_type(
     _model_type = "tabular"  # default
     _predict_function = None
 
-    if isinstance(model, Imputer) or model_class == "shapiq.games.imputer.base.Imputer":
-        _predict_function = model._predict_function  # noqa: SLF001
-        _model_type = "imputer"
-        return _predict_function, _model_type
-
     if isinstance(model, Game) or model_class == "shapiq.games.base.Game":
         _predict_function = RuntimeError("Games cannot be used for prediction.")
-        _model_type = "game"
-        return _predict_function, _model_type
+        return _predict_function, "game"
 
     if callable(model):
         _predict_function = predict_callable
@@ -203,7 +201,13 @@ def get_predict_function_and_model_type(
             return predictions[:, 0]
         return predictions[:, class_index]
 
-    return _predict_function_with_class_index, _model_type
+    # validate model type before returning
+    if _model_type not in list(get_args(ExplainerTypes)):
+        msg = f"Model type {_model_type} is not supported."
+        raise ValueError(msg)
+    _model_type_literal = cast(ExplainerTypes, _model_type)
+
+    return _predict_function_with_class_index, _model_type_literal
 
 
 def predict_callable(model: Model, data: np.ndarray) -> np.ndarray:
@@ -310,62 +314,3 @@ def set_random_state(random_state: int | None, object_with_rng: object) -> None:
         # appoximators can have a sampler
         if hasattr(object_with_rng, "_sampler"):
             object_with_rng._sampler._rng = np.random.default_rng(random_state)  # noqa: SLF001
-
-
-def set_random_state_new(random_state: int | None, object_with_rng: object) -> None:
-    """Sets the random state for all random number generator objects recursively.
-
-    This function searches for attributes named "_rng" or "rng" in the given object and its
-    nested attributes and re-initializes them with the specified random state.
-
-    Args:
-        random_state: The random state to use for reinitialization.
-            Defaults to ``None`` which does not change any random state.
-        object_with_rng: The object to inspect and modify random states for.
-    """
-    if random_state is None:
-        return
-
-    from shapiq.approximator._base import Approximator
-    from shapiq.explainer._base import Explainer
-    from shapiq.games.base import Game
-    from shapiq.games.imputer.base import Imputer
-
-    # set to avoid circular references
-    visited = set()
-
-    def _is_shapiq_object(obj: object) -> bool:
-        """Check if the object is from shapiq library."""
-        return isinstance(obj, (Explainer | Game | Imputer | Approximator))
-
-    def _set_rng_recursive(obj: object) -> None:
-        # avoid circular references or None objects
-        if obj is None or id(obj) in visited:
-            return
-
-        visited.add(id(obj))
-
-        # only process shapiq objects
-        if not _is_shapiq_object(obj):
-            return
-
-        # set RNG attributes directly
-        for attr_name in ["_rng", "rng"]:
-            if hasattr(obj, attr_name):
-                setattr(obj, attr_name, np.random.default_rng(random_state))
-
-        # process child objects that might be shapiq objects
-        for attr_name in dir(obj):
-            # skip dunder attributes and methods
-            if attr_name.startswith("__") or callable(getattr(obj.__class__, attr_name, None)):
-                continue
-
-            try:
-                attr_value = getattr(obj, attr_name)
-                # Recursively process object attributes that are shapiq objects
-                if hasattr(attr_value, "__dict__"):
-                    _set_rng_recursive(attr_value)
-            except (AttributeError, TypeError):
-                continue
-
-    _set_rng_recursive(object_with_rng)

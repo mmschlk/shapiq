@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from shapiq import InteractionValues
 from shapiq.approximator import RegressionFSII
 from shapiq.explainer import TabularExplainer
 from tests.fixtures.data import BUDGET_NR_FEATURES
@@ -31,18 +32,17 @@ def test_init_params(dt_reg_model, background_reg_data, index, max_order, impute
         imputer=imputer,
     )
     assert explainer.index == index
-    assert explainer._approximator.index == index
-    assert explainer._max_order == max_order
-    assert explainer._random_state == 42
+    assert explainer.approximator.index == index
+    assert explainer.max_order == max_order
     # test defaults
     if index == "FSII":
-        assert explainer._approximator.__class__.__name__ == "RegressionFSII"
+        assert explainer.approximator.__class__.__name__ == "RegressionFSII"
     elif index == "FBII":
-        assert explainer._approximator.__class__.__name__ == "RegressionFBII"
+        assert explainer.approximator.__class__.__name__ == "RegressionFBII"
     elif index in ("SII", "k-SII"):
-        assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
+        assert explainer.approximator.__class__.__name__ == "KernelSHAPIQ"
     else:
-        assert explainer._approximator.__class__.__name__ == "SVARMIQ"
+        assert explainer.approximator.__class__.__name__ == "SVARMIQ"
 
 
 def test_auto_params(dt_reg_model, background_reg_data):
@@ -53,10 +53,9 @@ def test_auto_params(dt_reg_model, background_reg_data):
         data=background_reg_data,
     )
     assert explainer.index == "k-SII"
-    assert explainer._approximator.index == "k-SII"
-    assert explainer._max_order == 2
-    assert explainer._random_state is None
-    assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
+    assert explainer.approximator.index == "k-SII"
+    assert explainer.max_order == 2
+    assert explainer.approximator.__class__.__name__ == "KernelSHAPIQ"
 
 
 def test_init_params_error_and_warning(dt_reg_model, background_reg_data):
@@ -115,7 +114,7 @@ def test_init_params_approx(dt_reg_model, background_reg_data):
         model=model_function,
         data=data,
     )
-    assert explainer._approximator.__class__.__name__ == "RegressionFSII"
+    assert explainer.approximator.__class__.__name__ == "RegressionFSII"
 
     # init explainer with manual approximator
     approximator = RegressionFSII(n=9, max_order=2)
@@ -124,8 +123,8 @@ def test_init_params_approx(dt_reg_model, background_reg_data):
         data=data,
         approximator=approximator,
     )
-    assert explainer._approximator.__class__.__name__ == "RegressionFSII"
-    assert explainer._approximator == approximator
+    assert explainer.approximator.__class__.__name__ == "RegressionFSII"
+    assert explainer.approximator == approximator
 
 
 @pytest.mark.parametrize("approximator", APPROXIMATOR)
@@ -139,7 +138,7 @@ def test_init_params_approx_params(dt_reg_model, background_reg_data, approximat
         max_order=max_order,
     )
     iv = explainer.explain(background_reg_data[0], budget=BUDGET_NR_FEATURES)
-    assert iv.__class__.__name__ == "InteractionValues"
+    assert isinstance(iv, InteractionValues)
 
 
 BUDGETS = [2**5, 2**8, BUDGET_NR_FEATURES]

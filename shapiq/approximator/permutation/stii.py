@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 import numpy as np
 import scipy as sp
 
-from shapiq.approximator._base import Approximator
+from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 from shapiq.utils import get_explicit_subsets, powerset
 

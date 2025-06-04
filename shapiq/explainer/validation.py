@@ -16,6 +16,8 @@ from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_s
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from .custom_types import ExplainerIndices
+
 
 def validate_data_predict_function(
     data: np.ndarray,
@@ -71,9 +73,9 @@ def validate_data_predict_function(
 
 
 def validate_index_and_max_order(
-    index: str,
+    index: ExplainerIndices,
     max_order: int,
-) -> tuple[str, int]:
+) -> tuple[ExplainerIndices, int]:
     """Validate the index and max_order combination.
 
     Args:
@@ -88,15 +90,19 @@ def validate_index_and_max_order(
     return validated_index, validated_max_order
 
 
-def validate_index(index: str, max_order: int) -> str:
+def validate_index(index: ExplainerIndices, max_order: int) -> ExplainerIndices:
     """Validate the index and max_order combination.
 
     Args:
-        index: The index to be used.
+        index: The index to be validated.
         max_order: The maximum order of the index.
 
     Returns:
         The validated index.
+
+    Raises:
+        ValueError: If the index is not valid.
+        Warning: If the index generalizes to SV or BV and max_order is 1.
     """
     is_index_valid(index, raise_error=True)
     msg = f"Mismatch between max_order={max_order} and index={index}. "
@@ -111,12 +117,12 @@ def validate_index(index: str, max_order: int) -> str:
     return index
 
 
-def validate_max_order(index: str, max_order: int) -> int:
+def validate_max_order(index: ExplainerIndices, max_order: int) -> int:
     """Validate the max_order for the selected index.
 
     Args:
         index: The index to be used.
-        max_order: The maximum order of the index.
+        max_order: The maximum order to be validated.
 
     Returns:
         The validated max_order.
