@@ -328,7 +328,7 @@ def test_exact_computer_call():
     assert sv.max_order == order
 
 
-def test_compute_with_and_without_normalization():
+def test_compute():
     """Tests the compute function with and without returned normalization."""
     normalization_value = 1.0  # not zero
 
@@ -341,13 +341,7 @@ def test_compute_with_and_without_normalization():
     game.normalization_value = normalization_value
     assert game.normalize
 
-    # Test without returned normalization
-    result = game.compute(coalitions=coalitions, return_normalization=False)
-    assert len(result[0]) == len(coalitions)
-    assert len(result) == 2  # game_values and coalition_lookup
-
-    # Test with returned normalization
-    result = game.compute(coalitions=coalitions, return_normalization=True)
+    result = game.compute(coalitions=coalitions)
     assert len(result[0]) == len(coalitions)
     assert result[2] == 1.0  # normalization_value
     assert len(result) == 3  # game_values, normalization_value and coalition_lookup

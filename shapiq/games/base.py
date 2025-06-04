@@ -420,13 +420,12 @@ class Game:
         self.precompute_flag = True
 
     def compute(
-        self, coalitions: np.ndarray | None = None, *, return_normalization: bool = False
-    ) -> tuple:
+        self, coalitions: np.ndarray | None = None
+    ) -> tuple[np.ndarray, dict[tuple[int, ...], int], float]:
         """Compute the game values for all or a given set of coalitions.
 
         Args:
             coalitions: The coalitions to evaluate.
-            return_normalization: Whether to return the normalization value. Defaults to ``False``.
 
         Returns:
             A tuple containing:
@@ -436,12 +435,9 @@ class Game:
 
         """
         coalitions: np.ndarray = self._check_coalitions(coalitions)
-        values = self.value_function(coalitions)
-        game_values = values - self.normalization_value
+        game_values = self.value_function(coalitions)
 
-        if return_normalization:
-            return (game_values, self.coalition_lookup, self.normalization_value)
-        return game_values, self.coalition_lookup
+        return game_values, self.coalition_lookup, self.normalization_value
 
     def save_values(self, path: Path | str) -> None:
         """Saves the game values to the given path.
