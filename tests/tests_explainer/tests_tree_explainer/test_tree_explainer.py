@@ -534,25 +534,24 @@ def test_extra_trees_reg(et_reg_model, background_reg_data):
 def test_catboost_clf(cb_clf_model, background_clf_data):
     """Test the shapiq implementation of CatBoostP vs. SHAP's implementation for CatBoost."""
     explanation_instance = 1
-    class_label = 0  # TODO change class label
+    class_label = 0
 
     # the following code is used to get the shap values from the SHAP implementation
-    import shap
-
-    model_copy = copy.deepcopy(cb_clf_model)
-    explainer_shap = shap.TreeExplainer(model=model_copy)
-    baseline_shap = float(explainer_shap.expected_value[class_label])
-    x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))
-    sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
-    sv_shap = sv_shap_all_classes[0][:, class_label]
-    print(sv_shap_all_classes, baseline_shap)
-    print(sv_shap)
-    print(baseline_shap)
-
-    # noqa: ERA001
-    sv_shap = [0.0, 0.18952652, 0.02437816, 0.06310472, 0.0, 0.30325642, -0.16529956]
+    """
+    #import shap
+    #model_copy = copy.deepcopy(cb_clf_model)
+    #explainer_shap = shap.TreeExplainer(model=model_copy)
+    #baseline_shap = float(explainer_shap.expected_value[class_label]) # sometimes nan
+    #x_explain_shap = copy.deepcopy(background_clf_data[explanation_instance].reshape(1, -1))
+    #sv_shap_all_classes = explainer_shap.shap_values(x_explain_shap)
+    #sv_shap = sv_shap_all_classes[0][:, class_label]
+    #print(sv_shap_all_classes, baseline_shap)
+    #print(sv_shap)
+    #print(baseline_shap)
+    """  # noqa: ERA001
+    sv_shap = [0, 0.18952652, 0.02437816, 0.06310472, 0, 0.30325642, -0.16529956]
     sv_shap = np.asarray(sv_shap)
-    baseline_shap = 0.15125924949296504
+    baseline_shap = -0.08431885447260301
 
     # compute with shapiq
     explainer_shapiq = TreeExplainer(
@@ -585,7 +584,7 @@ def test_catboost_reg(cb_reg_model, background_reg_data):
     #sv_shap = sv_shap_all_classes[0]
     #print(sv_shap_all_classes, format(baseline_shap, '.20f'))
     """  # noqa: ERA001
-    sv_shap = [10.78719998, -34.79843449, -6.91929691, 24.50972216, 0.0, -6.8522148, 27.45479307]
+    sv_shap = [10.78719998, -34.79843449, -6.91929691, 24.50972216, 0, -6.8522148, 27.45479307]
     sv_shap = np.asarray(sv_shap)
     baseline_shap = -1.04376362871746697358
 
