@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from ....utils import safe_isinstance
-from ....utils.custom_types import Model
-from ..base import TreeModel
+from shapiq.explainer.tree.base import TreeModel
+from shapiq.utils import safe_isinstance
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
 
 SUPPORTED_CATBOOST_MODELS = {"catboost.CatBoostClassifier", "catboost.CatBoostRegressor"}
 
@@ -16,6 +20,7 @@ def convert_catboost(
     class_label: int | None = None,
 ) -> list[TreeModel]:
     """Transforms models from the catboost package to the format used by shapiq.
+
      Note: part of this implementation is taken and adapted from the shap package, where it can be found in shap/explainers/_tree.py.
 
     Args:
@@ -117,7 +122,7 @@ def convert_catboost(
         if class_label is not None:
             row_sums = np.sum(node_values, axis=1, keepdims=True)
             zero_mask = row_sums == 0  # remember rows with only 0
-            normalized = np.divide(node_values, row_sums, where=~zero_mask)
+            normalized = np.divide(node_values, row_sums, where=~zero_mask)  # avoid division by 0
             node_values = normalized[:, class_label]
             node_values[zero_mask.flatten()] = 0
 
