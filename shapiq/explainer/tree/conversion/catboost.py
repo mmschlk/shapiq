@@ -121,7 +121,7 @@ def convert_catboost(
         # make probabilities
         if class_label is not None:
             row_sums = np.sum(node_values, axis=1, keepdims=True)
-            zero_mask = row_sums == 0  # remember rows with only 0
+            zero_mask = row_sums == 0
             normalized = np.divide(node_values, row_sums, where=~zero_mask)  # avoid division by 0
             node_values = normalized[:, class_label]
             node_values[zero_mask.flatten()] = 0
