@@ -8,6 +8,8 @@ from ....utils import safe_isinstance
 from ....utils.custom_types import Model
 from ..base import TreeModel
 
+SUPPORTED_CATBOOST_MODELS = {"catboost.CatBoostClassifier", "catboost.CatBoostRegressor"}
+
 
 def convert_catboost(
     tree_model: Model,
@@ -25,6 +27,15 @@ def convert_catboost(
 
     """
     output_type = "raw"
+    model_type = "undefined"
+
+    if safe_isinstance(tree_model, "catboost.CatBoostClassifier"):
+        model_type = "classifier"
+    elif safe_isinstance(tree_model, "catboost.CatBoostRegressor"):
+        model_type = "regressor"
+    else:
+        msg = f"Unsupported model type. Supported mode types are {SUPPORTED_CATBOOST_MODELS}"
+        raise ValueError(msg)
 
     # workaround to get the single trees in the ensemble
     import json
@@ -38,7 +49,12 @@ def convert_catboost(
             loaded_cb_model = json.load(fh)
 
     num_trees = len(loaded_cb_model["oblivious_trees"])
-    num_classes = len(loaded_cb_model["model_info"]["class_params"]["class_names"])
+
+    # determine number of classes or set to 1 for regression
+    if model_type == "classifier":
+        num_classes = len(loaded_cb_model["model_info"]["class_params"]["class_names"])
+    elif model_type == "regressor":
+        num_classes = 1
 
     trees = []
     for tree_index in range(num_trees):
@@ -94,11 +110,11 @@ def convert_catboost(
             borders += [border] * (2**counter)
         borders += [0] * (total_nodes - len(borders))
 
-        if (safe_isinstance(tree_index, "catboost.core.Classsifier")) and class_label is not None:
-            class_label = 1
+        if model_type == "classifier" and class_label is not None:
+            class_label = 0
 
         # make probabilities
-        if class_label is not None:  # TODO check if correct
+        if class_label is not None:
             row_sums = np.sum(node_values, axis=1, keepdims=True)
             zero_mask = row_sums == 0  # remember rows with only 0
             normalized = np.divide(node_values, row_sums, where=~zero_mask)
