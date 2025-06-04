@@ -419,6 +419,30 @@ class Game:
         self.coalition_lookup = coalitions_dict
         self.precompute_flag = True
 
+    def compute(
+        self, coalitions: np.ndarray | None = None, *, return_normalization: bool = False
+    ) -> tuple:
+        """Compute the game values for all or a given set of coalitions.
+
+        Args:
+            coalitions: The coalitions to evaluate.
+            return_normalization: Whether to return the normalization value. Defaults to ``False``.
+
+        Returns:
+            A tuple containing:
+            - np.ndarray: The values of the coalitions.
+            - dict[tuple[int, ...], int]: The lookup of the coalitions
+            - float: The normalization value (optional, if return_normalization is 'True')
+
+        """
+        coalitions: np.ndarray = self._check_coalitions(coalitions)
+        values = self.value_function(coalitions)
+        game_values = values - self.normalization_value
+
+        if return_normalization:
+            return (game_values, self.coalition_lookup, self.normalization_value)
+        return game_values, self.coalition_lookup
+
     def save_values(self, path: Path | str) -> None:
         """Saves the game values to the given path.
 
