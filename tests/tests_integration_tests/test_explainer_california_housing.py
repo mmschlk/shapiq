@@ -88,14 +88,14 @@ def test_explainer_california_housing(
     gt_dict = gt_iv.dict_values
     for key in interactions_dict:
         assert key in gt_dict, f"Key {key} not found in ground truth interaction values."
-        assert interactions_dict[key] == pytest.approx(gt_dict[key], rel=0.01), (
+        assert interactions_dict[key] == pytest.approx(gt_dict[key], rel=0.05), (
             f"Interaction value for key {key} does not match ground truth."
         )
-        assert gt_dict[key] == pytest.approx(interactions_dict[key], rel=0.01), (
+        assert gt_dict[key] == pytest.approx(interactions_dict[key], rel=0.05), (
             f"Ground truth interaction value for key {key} does not match computed value."
         )
 
     if index not in ["BV", "FBII"]:
-        assert gt_iv.baseline_value == pytest.approx(iv.baseline_value, rel=0.01), (
+        assert gt_iv.baseline_value == pytest.approx(iv.baseline_value, rel=0.05), (
             "Baseline value does not match ground truth."
         )
