@@ -326,3 +326,22 @@ def test_exact_computer_call():
     sv = game.exact_values(index=index, order=order)
     assert sv.index == index
     assert sv.max_order == order
+
+
+def test_compute():
+    """Tests the compute function with and without returned normalization."""
+    normalization_value = 1.0  # not zero
+
+    n_players = 3
+    game = DummyGame(n=n_players, interaction=(0, 1))
+
+    coalitions = np.array([[1, 0, 0], [0, 1, 1]])
+
+    # Make sure normalization value is added
+    game.normalization_value = normalization_value
+    assert game.normalize
+
+    result = game.compute(coalitions=coalitions)
+    assert len(result[0]) == len(coalitions)
+    assert result[2] == 1.0  # normalization_value
+    assert len(result) == 3  # game_values, normalization_value and coalition_lookup
