@@ -117,7 +117,7 @@ def setup_approximator_automatically(
     if max_order == 1 and (index == "SV" or index_generalizes_sv(index)):
         return KernelSHAP(n=n_players, random_state=random_state)
     if max_order == 1 and (index == "BV" or index_generalizes_bv(index)):
-        return RegressionFBII(n=n_players, random_state=random_state)
+        return RegressionFBII(n=n_players, max_order=1, random_state=random_state)
     if index == "FSII":
         return RegressionFSII(n=n_players, max_order=max_order, random_state=random_state)
     if index == "FBII":

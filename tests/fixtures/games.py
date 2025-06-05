@@ -89,6 +89,8 @@ def get_california_housing_imputer() -> MarginalImputer:
         x=x_explain,
         random_state=42,
         normalize=False,
+        sample_size=100,
+        joint_marginal_distribution=True,
     )
     imputer_hash = hash(
         (

@@ -4,4 +4,4 @@ from __future__ import annotations
 
 from typing import Literal
 
-ExplainerIndices = Literal["SII", "k-SII", "STII", "FSII", "FBII", "SV", "BV"]
+ExplainerIndices = Literal["SV", "BV", "SII", "k-SII", "STII", "FSII", "FBII"]

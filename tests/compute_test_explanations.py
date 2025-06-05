@@ -19,7 +19,7 @@ from tests.fixtures.models import get_california_housing_random_forest
 
 if __name__ == "__main__":
     RANDOM_SEED = 42
-    SAVE_PATH = Path(__file__).parent / "data" / "interaction_values"
+    SAVE_PATH = Path(__file__).parent / "data" / "interaction_values" / "california_housing"
     SAVE_PATH.mkdir(parents=True, exist_ok=True)
     print(f"Creating and saving interaction values to {SAVE_PATH}")
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     # compute interaction values for all indices that are in the ExplainerIndices
     interaction_indices = list(get_args(ExplainerIndices))
-    orders = [1, 2, 3]
+    orders = list(range(1, imputer.n_players + 1))
     for index in interaction_indices:
         if index in value_indices:
             continue
