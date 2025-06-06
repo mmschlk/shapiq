@@ -4,4 +4,6 @@ from __future__ import annotations
 
 from typing import Literal
 
-ExplainerIndices = Literal["SV", "BV", "SII", "k-SII", "STII", "FSII", "FBII"]
+ExplainerIndices = Literal["SV", "SII", "k-SII", "STII", "FSII", "BV", "BII", "FBII"]
+TabularExplainerIndices = ExplainerIndices
+TreeSHAPIQIndices = ExplainerIndices

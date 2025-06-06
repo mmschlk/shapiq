@@ -17,10 +17,10 @@ from .conversion.edges import create_edge_tree
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
+    from shapiq.explainer.custom_types import TreeSHAPIQIndices
     from shapiq.utils.custom_types import Model
 
     from .base import EdgeTree, TreeModel
-    from .custom_types import TreeSHAPIQIndices
 
 
 class TreeSHAPIQ:

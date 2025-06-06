@@ -19,10 +19,10 @@ from .validation import validate_tree_model
 if TYPE_CHECKING:
     import numpy as np
 
+    from shapiq.explainer.custom_types import TreeSHAPIQIndices
     from shapiq.utils.custom_types import Model
 
     from .base import TreeModel
-    from .custom_types import TreeSHAPIQIndices
 
 
 class TreeExplainer(Explainer):
