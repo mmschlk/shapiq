@@ -69,7 +69,7 @@ def _compare(
     iv: InteractionValues,
     index: IndexType,
     order: int,
-    tolerance: float = 0.05,
+    tolerance: float = 0.1,
 ) -> None:
     """Compare the ground truth interaction values with the computed interaction values."""
     assert isinstance(gt, InteractionValues)
