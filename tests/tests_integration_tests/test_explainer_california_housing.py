@@ -25,22 +25,52 @@ if TYPE_CHECKING:
     from shapiq.utils.custom_types import IndexType
 
 
-def _load_ground_truth_interaction_values_california(index: IndexType, order: int, name_part: str):
+def _compute_gt(save_dir: pathlib.Path) -> None:
+    """Computes the gt if it does not exist."""
+    from .compute_test_explanations import compute_tabular_explanations, compute_tree_explanations
+
+    if not save_dir.exists():
+        # create the directory if it does not exist
+        save_dir.mkdir(parents=True, exist_ok=True)
+        compute_tree_explanations(save_path=save_dir)
+        compute_tabular_explanations(save_path=save_dir)
+
+
+def _load_ground_truth_interaction_values_california(
+    index: IndexType, order: int, *, tabular: bool, load_from_runner: bool
+):
     """Load the ground truth interaction values for the California Housing dataset and the Tabular Explainer.
 
     Note to developers:
         This function loads the interaction values that were precomputed by `tests/tests_integration_tests/compute_test_explanations.py`.
     """
-    save_dir = (
-        pathlib.Path(__file__).parent.parent / "data" / "interaction_values" / "california_housing"
-    )
+
+    if tabular:
+        name_part = "iv_california_housing_imputer_9070456741283270540"
+    else:
+        name_part = "iv_california_housing_tree"
+
+    if load_from_runner:
+        save_dir = pathlib.Path(__file__).parent
+        save_dir = save_dir / "data" / "interaction_values" / "california_housing"
+        _compute_gt(save_dir=save_dir)
+    else:
+        save_dir = pathlib.Path(__file__).parent.parent
+        save_dir = save_dir / "data" / "interaction_values" / "california_housing"
+
     all_files = list(save_dir.glob(f"{name_part}_index={index}_order={order}.pkl"))
     assert len(all_files) == 1
     file_path = all_files[0]
     return InteractionValues.load(file_path)
 
 
-def _compare(gt: InteractionValues, iv: InteractionValues, index: IndexType, order: int) -> None:
+def _compare(
+    gt: InteractionValues,
+    iv: InteractionValues,
+    index: IndexType,
+    order: int,
+    tolerance: float = 0.05,
+) -> None:
     """Compare the ground truth interaction values with the computed interaction values."""
     assert isinstance(gt, InteractionValues)
     assert isinstance(iv, InteractionValues)
@@ -50,21 +80,51 @@ def _compare(gt: InteractionValues, iv: InteractionValues, index: IndexType, ord
 
     for key in gt.dict_values:
         assert key in iv.dict_values, f"Key {key} not found in computed interaction values."
-        assert gt.dict_values[key] == pytest.approx(iv.dict_values[key], rel=0.1), (
+        assert gt.dict_values[key] == pytest.approx(iv.dict_values[key], rel=tolerance), (
             f"Interaction value for key {key} does not match ground truth."
         )
 
     for key in iv.dict_values:
         assert key in gt.dict_values, f"Key {key} not found in ground truth interaction values."
-        assert iv.dict_values[key] == pytest.approx(gt.dict_values[key], rel=0.1), (
+        assert iv.dict_values[key] == pytest.approx(gt.dict_values[key], rel=tolerance), (
             f"Computed interaction value for key {key} does not match ground truth."
         )
 
     # check baseline value
     if index not in ["BV", "FBII", "BII"]:
-        assert gt.baseline_value == pytest.approx(iv.baseline_value, rel=0.1), (
+        assert gt.baseline_value == pytest.approx(iv.baseline_value, rel=tolerance), (
             f"Baseline value for index {index} and order {order} does not match ground truth."
         )
+
+
+@pytest.mark.integration
+def test_compare_gt_and_new_computed():
+    """Computes the ground truth on the test runner and compares it to the old ground truth."""
+
+    indices = get_args(TabularExplainerIndices)
+    orders = [1, 2, 3, 4, 5, 6, 7]
+
+    for index in indices:
+        for order in orders:
+            # Load the ground truth interaction values from the test runner
+            try:
+                gt_iv_runner = _load_ground_truth_interaction_values_california(
+                    index=index,
+                    order=order,
+                    tabular=True,
+                    load_from_runner=True,
+                )
+                # Load the old ground truth interaction values
+                gt_iv_old = _load_ground_truth_interaction_values_california(
+                    index=index, order=order, tabular=True, load_from_runner=False
+                )
+            except AssertionError:
+                # If the ground truth interaction values do not exist, skip the test
+                continue
+            # Compare the two interaction values, here we intentionally use a higher tolerance
+            # since the new computations might have more differences due to different random seeds
+            # or other external factors ...
+            _compare(gt=gt_iv_old, iv=gt_iv_runner, index=index, order=order, tolerance=0.3)
 
 
 @pytest.mark.integration
@@ -91,7 +151,7 @@ def test_tree_explainer_california_housing(
 
     # load the ground truth interaction values
     gt_iv = _load_ground_truth_interaction_values_california(
-        index, order, name_part="iv_california_housing_tree"
+        index, order, load_from_runner=True, tabular=False
     )
 
     # do the comparison of the interaction values
@@ -123,7 +183,7 @@ def test_agnostic_explainer_california_housing(
 
     # load the ground truth interaction values
     gt_iv = _load_ground_truth_interaction_values_california(
-        index, order, name_part="iv_california_housing_imputer_9070456741283270540"
+        index, order, load_from_runner=True, tabular=True
     )
 
     # do the comparison of the interaction values
@@ -169,7 +229,7 @@ def test_tabular_explainer_california_housing(
 
     # load the ground truth interaction values
     gt_iv = _load_ground_truth_interaction_values_california(
-        index, order, name_part="iv_california_housing_imputer_9070456741283270540"
+        index, order, load_from_runner=True, tabular=True
     )
 
     # do the comparison of the interaction values

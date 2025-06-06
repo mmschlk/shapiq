@@ -24,7 +24,9 @@ if TYPE_CHECKING:
     from shapiq.games.base import Game
 
 
-def _compute_values(game: Game, interaction_indices: list[ExplainerIndices], save_name: str):
+def _compute_values(
+    game: Game, interaction_indices: list[ExplainerIndices], save_name: str, save_path: Path
+) -> None:
     """Compute interaction values for the given game and save them to disk."""
 
     exact_computer = ExactComputer(game=game, n_players=game.n_players, evaluate_game=True)
@@ -32,13 +34,13 @@ def _compute_values(game: Game, interaction_indices: list[ExplainerIndices], sav
     for index in value_indices:
         iv = exact_computer(index=index, order=1)
         iv = iv.get_n_order(order=1)
-        iv.save(path=SAVE_PATH / f"{save_name}_index={index}_order=1.pkl")
+        iv.save(path=save_path / f"{save_name}_index={index}_order=1.pkl")
         print(f"Interaction values for index {index} (order 1):")
         print(iv)
 
     # compute Moebius as well
     iv = exact_computer(index="Moebius", order=game.n_players)
-    iv.save(path=SAVE_PATH / f"{save_name}_index=Moebius_order={game.n_players}.pkl")
+    iv.save(path=save_path / f"{save_name}_index=Moebius_order={game.n_players}.pkl")
     print("Moebius interaction values:")
     print(iv)
 
@@ -50,12 +52,12 @@ def _compute_values(game: Game, interaction_indices: list[ExplainerIndices], sav
         for order in orders:
             iv = exact_computer(index=index, order=order)
             iv = iv.get_n_order(min_order=1, max_order=order)
-            iv.save(path=SAVE_PATH / f"{save_name}_index={index}_order={order}.pkl")
+            iv.save(path=save_path / f"{save_name}_index={index}_order={order}.pkl")
             print(f"Interaction values for index {index} (order {order}):")
             print(iv)
 
 
-def compute_tabular_explanations(random_seed: int = 42):
+def compute_tabular_explanations(save_path: Path):
     """Compute explanations for the California Housing dataset using the Tabular Explainer."""
     x_train, y_train, x_test, y_test, x_explain = get_california_housing_train_test_explain()
     model = get_california_housing_random_forest()
@@ -78,10 +80,11 @@ def compute_tabular_explanations(random_seed: int = 42):
         game=imputer,
         interaction_indices=list(get_args(TabularExplainerIndices)),
         save_name=f"iv_california_housing_imputer_{imputer_hash}",
+        save_path=save_path,
     )
 
 
-def compute_tree_explanations(random_seed: int = 42):
+def compute_tree_explanations(save_path: Path):
     """Compute explanations for the California Housing dataset using the TreeSHAPIQ Explainer."""
     x_train, y_train, x_test, y_test, x_explain = get_california_housing_train_test_explain()
     model = get_california_housing_random_forest()
@@ -100,6 +103,7 @@ def compute_tree_explanations(random_seed: int = 42):
         game=game,
         interaction_indices=list(get_args(TreeSHAPIQIndices)),
         save_name="iv_california_housing_tree",
+        save_path=save_path,
     )
 
 
@@ -109,7 +113,7 @@ if __name__ == "__main__":
     print(f"Creating and saving interaction values to {SAVE_PATH}")
 
     # compute the TreeSHAPIQ explanations for the California Housing dataset
-    compute_tree_explanations(random_seed=42)
+    compute_tree_explanations(save_path=SAVE_PATH)
 
     # compute the tabular explanations for the California Housing dataset
-    compute_tabular_explanations(random_seed=42)
+    compute_tabular_explanations(save_path=SAVE_PATH)
