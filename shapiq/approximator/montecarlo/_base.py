@@ -109,7 +109,7 @@ class MonteCarlo(Approximator):
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
         interactions = InteractionValues(
-            shapley_interactions_values,
+            values=shapley_interactions_values,
             index=self.approximation_index,
             n_players=self.n,
             interaction_lookup=self.interaction_lookup,
