@@ -34,14 +34,15 @@ def _load_ground_truth_interaction_values(index: IndexType, order: int):
     return InteractionValues.load(file_path)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("index", get_args(ExplainerIndices))
 @pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
-@pytest.mark.integration
 def test_explainer_california_housing(
     index: IndexType,
     order: int,
     california_housing_train_test_explain: tuple[np.ndarray, ...],
     california_housing_rf_model: RandomForestRegressor,
+    california_housing_imputer,
 ):
     """Test the explainer on the California Housing dataset."""
     # prepare the expected index based on the order and index
@@ -52,7 +53,7 @@ def test_explainer_california_housing(
 
     # skip tests for indices that are not possible
     if expected_index in ["BV", "SV"] and order > 1:
-        return  # the test is not applicable for higher orders (should be skipped)
+        pytest.skip("Skipping test for BV and SV indices with order > 1.")
 
     x_train, y_train, x_test, y_test, x_explain = california_housing_train_test_explain
     n_features = x_train.shape[1]
@@ -95,7 +96,7 @@ def test_explainer_california_housing(
             f"Ground truth interaction value for key {key} does not match computed value."
         )
 
-    if index not in ["BV", "FBII"]:
+    if index not in ["BV", "FBII", "BII"]:
         assert gt_iv.baseline_value == pytest.approx(iv.baseline_value, rel=0.05), (
             "Baseline value does not match ground truth."
         )

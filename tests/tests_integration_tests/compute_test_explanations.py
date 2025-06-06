@@ -11,15 +11,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import get_args
 
-import shapiq
-from fixtures.games import get_california_housing_imputer
 from shapiq.explainer.custom_types import ExplainerIndices
+from shapiq.game_theory.exact import ExactComputer
 from tests.fixtures.data import get_california_housing_train_test_explain
+from tests.fixtures.games import get_california_housing_imputer
 from tests.fixtures.models import get_california_housing_random_forest
 
 if __name__ == "__main__":
     RANDOM_SEED = 42
-    SAVE_PATH = Path(__file__).parent / "data" / "interaction_values" / "california_housing"
+    SAVE_PATH = Path(__file__).parent.parent / "data" / "interaction_values" / "california_housing"
     SAVE_PATH.mkdir(parents=True, exist_ok=True)
     print(f"Creating and saving interaction values to {SAVE_PATH}")
 
@@ -41,9 +41,7 @@ if __name__ == "__main__":
     )
     print("Imputer hash:", imputer_hash)
     imputer.verbose = True
-    exact_computer = shapiq.ExactComputer(
-        game=imputer, n_players=imputer.n_players, evaluate_game=True
-    )
+    exact_computer = ExactComputer(game=imputer, n_players=imputer.n_players, evaluate_game=True)
     save_name = f"iv_california_housing_imputer_{imputer_hash}"
     value_indices = ["SV", "BV"]
     for index in value_indices:

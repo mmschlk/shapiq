@@ -374,18 +374,17 @@ class MonteCarlo(Approximator):
             (self.n - interaction_size + 1) * binom(self.n - interaction_size, coalition_size)
         )
 
-    def _bii_weight(self, coalition_size: int, interaction_size: int) -> float:
+    def _bii_weight(self, interaction_size: int) -> float:
         """Returns the BII discrete derivative weight given the coalition size and interaction size.
 
         Args:
-            coalition_size: The size of the subset.
             interaction_size: The size of the interaction.
 
         Returns:
             The weight for the interaction type.
 
         """
-        return 1 / 2 ** (coalition_size - interaction_size)
+        return 1 / 2 ** (self.n - interaction_size)
 
     def _chii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Returns the CHII discrete derivative weight given the coalition size and interaction size.
@@ -484,7 +483,7 @@ class MonteCarlo(Approximator):
         if index in ["SII", "SV"]:
             return self._sii_weight(coalition_size, interaction_size)
         if index in ["BII", "BV"]:
-            return self._bii_weight(coalition_size, interaction_size)
+            return self._bii_weight(interaction_size)
         if index == "CHII":
             return self._chii_weight(coalition_size, interaction_size)
         msg = f"The index {index} is not supported."
