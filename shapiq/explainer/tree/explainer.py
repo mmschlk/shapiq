@@ -13,13 +13,12 @@ from typing import TYPE_CHECKING, Any
 from shapiq.explainer.base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
-from .treeshapiq import TreeSHAPIQ
+from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
     import numpy as np
 
-    from shapiq.explainer.custom_types import TreeSHAPIQIndices
     from shapiq.utils.custom_types import Model
 
     from .base import TreeModel

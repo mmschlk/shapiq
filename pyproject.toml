@@ -93,7 +93,9 @@ testpaths = ["tests"]
 minversion = "8.0"
 
 [tool.coverage.report]
-directory = "tests"
+exclude_lines = [
+    "if TYPE_CHECKING",
+]
 
 [tool.ruff]
 line-length = 100

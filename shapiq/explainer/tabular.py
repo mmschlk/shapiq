@@ -11,6 +11,7 @@ from shapiq.explainer.base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
 from .configuration import setup_approximator
+from .custom_types import ExplainerIndices
 
 if TYPE_CHECKING:
     import numpy as np
@@ -19,7 +20,9 @@ if TYPE_CHECKING:
     from shapiq.games.imputer.base import Imputer
     from shapiq.utils.custom_types import Model
 
-    from .custom_types import ExplainerIndices
+TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
+TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
+TabularExplainerIndices = ExplainerIndices
 
 
 class TabularExplainer(Explainer):
@@ -44,10 +47,9 @@ class TabularExplainer(Explainer):
         data: np.ndarray,
         *,
         class_index: int | None = None,
-        imputer: Imputer | Literal["marginal", "baseline", "conditional"] = "marginal",
-        approximator: Literal["auto", "spex", "montecarlo", "svarm", "permutation", "regression"]
-        | Approximator = "auto",
-        index: ExplainerIndices = "k-SII",
+        imputer: Imputer | TabularExplainerImputers = "marginal",
+        approximator: Literal["auto"] | TabularExplainerApproximators | Approximator = "auto",
+        index: TabularExplainerIndices = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
         verbose: bool = False,

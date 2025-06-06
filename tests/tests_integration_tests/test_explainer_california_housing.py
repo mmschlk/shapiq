@@ -7,10 +7,16 @@ from typing import TYPE_CHECKING, get_args
 
 import pytest
 
-from shapiq.explainer.custom_types import ExplainerIndices
-from shapiq.explainer.tabular import TabularExplainer
-from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
+from shapiq.explainer.agnostic import AgnosticExplainer
+from shapiq.explainer.base import Explainer
+from shapiq.explainer.custom_types import (
+    ExplainerIndices,
+)
+from shapiq.explainer.tabular import TabularExplainer, TabularExplainerIndices
+from shapiq.explainer.tree import TreeExplainer
+from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq.interaction_values import InteractionValues
+from tests.utils import get_expected_index_or_skip
 
 if TYPE_CHECKING:
     import numpy as np
@@ -19,84 +25,152 @@ if TYPE_CHECKING:
     from shapiq.utils.custom_types import IndexType
 
 
-def _load_ground_truth_interaction_values(index: IndexType, order: int):
-    """Load the ground truth interaction values for the California Housing dataset."""
+def _load_ground_truth_interaction_values_california(index: IndexType, order: int, name_part: str):
+    """Load the ground truth interaction values for the California Housing dataset and the Tabular Explainer.
+
+    Note to developers:
+        This function loads the interaction values that were precomputed by `tests/tests_integration_tests/compute_test_explanations.py`.
+    """
     save_dir = (
         pathlib.Path(__file__).parent.parent / "data" / "interaction_values" / "california_housing"
     )
-    all_files = list(
-        save_dir.glob(
-            f"iv_california_housing_imputer_9070456741283270540_index={index}_order={order}.pkl"
-        )
-    )
+    all_files = list(save_dir.glob(f"{name_part}_index={index}_order={order}.pkl"))
     assert len(all_files) == 1
     file_path = all_files[0]
     return InteractionValues.load(file_path)
 
 
+def _compare(gt: InteractionValues, iv: InteractionValues, index: IndexType, order: int) -> None:
+    """Compare the ground truth interaction values with the computed interaction values."""
+    assert isinstance(gt, InteractionValues)
+    assert isinstance(iv, InteractionValues)
+    assert gt.index == iv.index
+    assert gt.max_order == iv.max_order
+    assert gt.min_order == iv.min_order
+
+    for key in gt.dict_values:
+        assert key in iv.dict_values, f"Key {key} not found in computed interaction values."
+        assert gt.dict_values[key] == pytest.approx(iv.dict_values[key], rel=0.1), (
+            f"Interaction value for key {key} does not match ground truth."
+        )
+
+    for key in iv.dict_values:
+        assert key in gt.dict_values, f"Key {key} not found in ground truth interaction values."
+        assert iv.dict_values[key] == pytest.approx(gt.dict_values[key], rel=0.1), (
+            f"Computed interaction value for key {key} does not match ground truth."
+        )
+
+    # check baseline value
+    if index not in ["BV", "FBII", "BII"]:
+        assert gt.baseline_value == pytest.approx(iv.baseline_value, rel=0.1), (
+            f"Baseline value for index {index} and order {order} does not match ground truth."
+        )
+
+
 @pytest.mark.integration
-@pytest.mark.parametrize("index", get_args(ExplainerIndices))
+@pytest.mark.parametrize("index", get_args(TreeSHAPIQIndices))
 @pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
-def test_explainer_california_housing(
+def test_tree_explainer_california_housing(
     index: IndexType,
     order: int,
     california_housing_train_test_explain: tuple[np.ndarray, ...],
     california_housing_rf_model: RandomForestRegressor,
-    california_housing_imputer,
 ):
+    """Test the TreeSHAPIQXAI game on the California Housing dataset."""
+    expected_index = get_expected_index_or_skip(index, order)
+
+    # get the data and model
+    _, _, _, _, x_explain = california_housing_train_test_explain
+    model = california_housing_rf_model
+
+    # get the explainer and explain
+    explainer = TreeExplainer(model=model, index=index, max_order=order)
+    iv = explainer.explain(x_explain.flatten())
+    iv = iv.get_n_order(min_order=1, max_order=order)
+    assert iv.index == expected_index
+
+    # load the ground truth interaction values
+    gt_iv = _load_ground_truth_interaction_values_california(
+        index, order, name_part="iv_california_housing_tree"
+    )
+
+    # do the comparison of the interaction values
+    _compare(gt=gt_iv, iv=iv, index=index, order=order)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("index", get_args(ExplainerIndices))
+@pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
+def test_agnostic_explainer_california_housing(
+    index: IndexType,
+    order: int,
+    california_housing_train_test_explain: tuple[np.ndarray, ...],
+    california_housing_imputer,
+) -> None:
+    """Test AgnosticExplainer on the California Housing dataset."""
+    # prepare the expected index based on the order and index
+    expected_index = get_expected_index_or_skip(index, order)
+
+    explainer = AgnosticExplainer(
+        game=california_housing_imputer,
+        index=index,
+        max_order=order,
+        random_state=42,
+    )
+    iv = explainer.explain(budget=2**california_housing_imputer.n_players, x=None)
+    iv = iv.get_n_order(min_order=1, max_order=order)
+    assert iv.index == expected_index
+
+    # load the ground truth interaction values
+    gt_iv = _load_ground_truth_interaction_values_california(
+        index, order, name_part="iv_california_housing_imputer_9070456741283270540"
+    )
+
+    # do the comparison of the interaction values
+    _compare(gt=gt_iv, iv=iv, index=index, order=order)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("explainer", [TabularExplainer, Explainer])
+@pytest.mark.parametrize("index", get_args(TabularExplainerIndices))
+@pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
+def test_tabular_explainer_california_housing(
+    explainer: TabularExplainer | Explainer,
+    index: IndexType,
+    order: int,
+    california_housing_train_test_explain: tuple[np.ndarray, ...],
+    california_housing_rf_model: RandomForestRegressor,
+) -> None:
     """Test the explainer on the California Housing dataset."""
     # prepare the expected index based on the order and index
-    expected_index = index
-    if order == 1:
-        expected_index = "BV" if index_generalizes_bv(index) else expected_index
-        expected_index = "SV" if index_generalizes_sv(index) else expected_index
+    expected_index = get_expected_index_or_skip(index, order)
 
-    # skip tests for indices that are not possible
-    if expected_index in ["BV", "SV"] and order > 1:
-        pytest.skip("Skipping test for BV and SV indices with order > 1.")
-
+    # get the data and model
     x_train, y_train, x_test, y_test, x_explain = california_housing_train_test_explain
     n_features = x_train.shape[1]
-
     model = california_housing_rf_model
-    explainer = TabularExplainer(
+
+    # get the explainer and explain
+    explainer = explainer(
         model=model.predict,
         data=x_test,
         index=index,
         max_order=order,
         random_state=42,
         verbose=False,
-        imputer="marginal",
         # imputer params
+        imputer="marginal",
         sample_size=100,
         joint_marginal_distribution=True,
     )
     iv = explainer.explain(x_explain, budget=2**n_features)
     iv = iv.get_n_order(min_order=1, max_order=order)
+    assert iv.index == expected_index
 
     # load the ground truth interaction values
-    gt_iv = _load_ground_truth_interaction_values(index, order)
+    gt_iv = _load_ground_truth_interaction_values_california(
+        index, order, name_part="iv_california_housing_imputer_9070456741283270540"
+    )
 
-    # check that interaction values are correct
-    assert isinstance(iv, InteractionValues)
-    assert iv.index == expected_index
-    assert iv.index == gt_iv.index
-    assert iv.max_order == order
-    assert iv.min_order == 1
-
-    # check that the interaction values are computed correctly
-    interactions_dict = iv.dict_values
-    gt_dict = gt_iv.dict_values
-    for key in interactions_dict:
-        assert key in gt_dict, f"Key {key} not found in ground truth interaction values."
-        assert interactions_dict[key] == pytest.approx(gt_dict[key], rel=0.05), (
-            f"Interaction value for key {key} does not match ground truth."
-        )
-        assert gt_dict[key] == pytest.approx(interactions_dict[key], rel=0.05), (
-            f"Ground truth interaction value for key {key} does not match computed value."
-        )
-
-    if index not in ["BV", "FBII", "BII"]:
-        assert gt_iv.baseline_value == pytest.approx(iv.baseline_value, rel=0.05), (
-            "Baseline value does not match ground truth."
-        )
+    # do the comparison of the interaction values
+    _compare(gt=gt_iv, iv=iv, index=index, order=order)

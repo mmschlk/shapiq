@@ -148,7 +148,7 @@ class Explainer:
         """The maximum interaction order the explainer is using."""
         return self._max_order
 
-    def explain(self, x: np.ndarray, **kwargs: Any) -> InteractionValues:
+    def explain(self, x: np.ndarray | None = None, **kwargs: Any) -> InteractionValues:
         """Explain a single prediction in terms of interaction values.
 
         Args:

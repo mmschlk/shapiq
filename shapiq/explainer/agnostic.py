@@ -9,6 +9,7 @@ from shapiq.games.imputer.base import Imputer
 
 from .base import Explainer
 from .configuration import setup_approximator
+from .custom_types import ExplainerIndices
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -18,6 +19,11 @@ if TYPE_CHECKING:
 
     from shapiq.approximator.base import Approximator
     from shapiq.interaction_values import InteractionValues
+
+    from .tabular import TabularExplainerApproximators
+
+
+AgnosticExplainerIndices = ExplainerIndices
 
 
 class AgnosticExplainer(Explainer):
@@ -36,10 +42,9 @@ class AgnosticExplainer(Explainer):
         game: Game | Callable[[np.ndarray], np.ndarray],
         *,
         n_players: int | None = None,
-        index: str = "k-SII",
+        index: AgnosticExplainerIndices = "k-SII",
         max_order: int = 2,
-        approximator: Approximator
-        | Literal["auto", "regression", "spex", "svarm", "montecarlo", "permutation"] = "auto",
+        approximator: Approximator | Literal["auto"] | TabularExplainerApproximators = "auto",
         random_state: int | None = None,
     ) -> None:
         """Initialize the AgnosticExplainer.
@@ -80,6 +85,8 @@ class AgnosticExplainer(Explainer):
         if n_players is None:
             n_players = game.n_players
 
+        super().__init__(model=game, data=None, class_index=None)
+
         self.game = game
         self.approximator = setup_approximator(
             approximator=approximator,
@@ -88,8 +95,6 @@ class AgnosticExplainer(Explainer):
             n_players=n_players,
             random_state=random_state,
         )
-
-        super().__init__(model=game, data=None, class_index=None)
 
     def explain_function(
         self,
@@ -122,4 +127,4 @@ class AgnosticExplainer(Explainer):
                 self.game.set_random_state(random_state=random_state)
         if random_state is not None:
             self.approximator.set_random_state(random_state=random_state)
-        return self.approximator(game=self.game, budget=budget)
+        return self.approximator.approximate(game=self.game, budget=budget)

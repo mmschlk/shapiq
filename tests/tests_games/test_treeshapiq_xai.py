@@ -20,7 +20,7 @@ from shapiq.utils.sets import powerset
 @pytest.mark.parametrize("task", ["clf", "reg"])
 @pytest.mark.parametrize("max_order", [2, 3])
 @pytest.mark.parametrize("index", ["k-SII", "SII", "STII"])
-def test_random_forest_selection(
+def test_treeshapiq_local_xai_game(
     index,
     max_order,
     task,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 from math import factorial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import scipy as sp
@@ -17,10 +17,12 @@ from .conversion.edges import create_edge_tree
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
-    from shapiq.explainer.custom_types import TreeSHAPIQIndices
     from shapiq.utils.custom_types import Model
 
     from .base import EdgeTree, TreeModel
+
+
+TreeSHAPIQIndices = Literal["SV", "SII", "k-SII"]
 
 
 class TreeSHAPIQ:
@@ -73,9 +75,7 @@ class TreeSHAPIQ:
             min_order: The minimum interaction order to be computed. Defaults to ``1``. Note that
                 setting min_order currently does not have any effect on the computation.
 
-            index: The type of interaction to be computed. It can be one of
-                ``['k-SII', 'SII', 'STII', 'FSII', 'BII']``. All indices apart from ``'BII'`` will
-                reduce to the ``'SV'`` (Shapley value) for order 1. Defaults to ``'k-SII'``.
+            index: The type of interaction to be computed.
 
             verbose: Whether to print information about the tree during initialization. Defaults to
                 ``False``.
@@ -443,7 +443,7 @@ class TreeSHAPIQ:
                     if to_update.shape == (1, 1):
                         update *= to_update[0]  # cast out shape of (1, 1) to float
                     else:
-                        update *= to_update
+                        update *= to_update  # something errors here for CII
                     # fmt: on
                     self.shapley_interactions[interactions_with_ancestor_to_update] -= update
 
@@ -772,6 +772,5 @@ class TreeSHAPIQ:
         information += f"\nNumber of features: {self._n_features_in_tree}"
         information += f"\nMaximum interaction order: {self._max_order}"
         information += f"\nInteraction index: {self._index}"
-        # add empty prediction from _tree and self to information TODO: remove one in final
         information += f"\nEmpty prediction (from _tree): {self._tree.empty_prediction}"
         information += f"\nEmpty prediction (from self): {self.empty_prediction}"
