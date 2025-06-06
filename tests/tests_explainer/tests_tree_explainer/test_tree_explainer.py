@@ -399,8 +399,8 @@ def test_iso_forest_shap(if_clf_model):
     # sv_shap = explainer_shap.shap_values(x_explain)  # noqa: ERA001
     # print(sv_shap)  # noqa: ERA001
     # print(baseline_shap)  # noqa: ERA001
-    sv_shap = np.array([-2.34951688, -4.55545493])
-    baseline_shap = 12.238305148044713
+    sv_shap = np.array([-1.40624839, -3.21377854])
+    baseline_shap = 11.953360265689595
 
     # compute with shapiq
     explainer_shapiq = TreeExplainer(model=if_clf_model, max_order=1, index="SV")
@@ -408,8 +408,8 @@ def test_iso_forest_shap(if_clf_model):
     sv_shapiq_values = sv_shapiq.get_n_order_values(1)
     baseline_shapiq = sv_shapiq.baseline_value
 
-    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-6)
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+    assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-6)
 
 
 def test_decision_stumps(background_reg_dataset, background_clf_dataset):

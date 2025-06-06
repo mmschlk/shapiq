@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from ._base import Regression
 
@@ -31,6 +31,9 @@ class kADDSHAP(Regression):  # noqa: N801
         .. [2] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., and Hammer, B. (2024). KernelSHAP-IQ: Weighted Least Square Optimization for Shapley Interactions. In Proceedings of the 41 st International Conference on Machine Learning. url: https://openreview.net/forum?id=d5jXW2H4gg
 
     """
+
+    valid_indices: ClassVar[set[Literal["kADD-SHAP"]]] = {"kADD-SHAP"}
+    """The valid indices for this approximator."""
 
     def __init__(
         self,

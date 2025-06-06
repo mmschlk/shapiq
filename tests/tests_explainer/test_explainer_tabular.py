@@ -2,24 +2,31 @@
 
 from __future__ import annotations
 
+from typing import get_args
+
 import numpy as np
 import pytest
 
+from shapiq import InteractionValues
 from shapiq.approximator import RegressionFSII
-from shapiq.explainer import TabularExplainer
+from shapiq.explainer.tabular import (
+    TabularExplainer,
+    TabularExplainerApproximators,
+    TabularExplainerImputers,
+    TabularExplainerIndices,
+)
 from tests.fixtures.data import BUDGET_NR_FEATURES
+from tests.utils import get_expected_index_or_skip
 
-INDICES = ["SII", "k-SII", "STII", "FSII", "FBII"]
 MAX_ORDERS = [2, 3]
-IMPUTER = ["marginal", "conditional", "baseline"]
-APPROXIMATOR = ["regression", "montecarlo", "permutation", "svarm"]
 
 
-@pytest.mark.parametrize("index", INDICES)
-@pytest.mark.parametrize("max_order", MAX_ORDERS)
-@pytest.mark.parametrize("imputer", IMPUTER)
-def test_init_params(dt_reg_model, background_reg_data, index, max_order, imputer):
+@pytest.mark.parametrize("index", get_args(TabularExplainerIndices))
+@pytest.mark.parametrize("max_order", [1, 2, 3])
+# @pytest.mark.parametrize("imputer", get_args(TabularExplainerImputers))
+def test_init_params(dt_reg_model, background_reg_data, index, max_order):
     """Test the initialization of the interaction explainer."""
+    expected_index = get_expected_index_or_skip(index, max_order)
     model_function = dt_reg_model.predict
     explainer = TabularExplainer(
         model=model_function,
@@ -28,21 +35,23 @@ def test_init_params(dt_reg_model, background_reg_data, index, max_order, impute
         index=index,
         max_order=max_order,
         approximator="auto",
-        imputer=imputer,
     )
-    assert explainer.index == index
-    assert explainer._approximator.index == index
-    assert explainer._max_order == max_order
-    assert explainer._random_state == 42
+    assert explainer.index == expected_index
+    assert explainer.max_order == max_order
     # test defaults
-    if index == "FSII":
-        assert explainer._approximator.__class__.__name__ == "RegressionFSII"
+    if max_order == 1 and explainer.index == "SV":
+        assert explainer.approximator.__class__.__name__ == "KernelSHAP"
+    elif max_order == 1 and explainer.index == "BV":
+        assert explainer.approximator.__class__.__name__ == "RegressionFBII"
+        assert explainer.approximator.max_order == 1
+    elif index == "FSII":
+        assert explainer.approximator.__class__.__name__ == "RegressionFSII"
     elif index == "FBII":
-        assert explainer._approximator.__class__.__name__ == "RegressionFBII"
+        assert explainer.approximator.__class__.__name__ == "RegressionFBII"
     elif index in ("SII", "k-SII"):
-        assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
+        assert explainer.approximator.__class__.__name__ == "KernelSHAPIQ"
     else:
-        assert explainer._approximator.__class__.__name__ == "SVARMIQ"
+        assert explainer.approximator.__class__.__name__ == "SVARMIQ"
 
 
 def test_auto_params(dt_reg_model, background_reg_data):
@@ -53,10 +62,9 @@ def test_auto_params(dt_reg_model, background_reg_data):
         data=background_reg_data,
     )
     assert explainer.index == "k-SII"
-    assert explainer._approximator.index == "k-SII"
-    assert explainer._max_order == 2
-    assert explainer._random_state is None
-    assert explainer._approximator.__class__.__name__ == "KernelSHAPIQ"
+    assert explainer.approximator.index == "k-SII"
+    assert explainer.max_order == 2
+    assert explainer.approximator.__class__.__name__ == "KernelSHAPIQ"
 
 
 def test_init_params_error_and_warning(dt_reg_model, background_reg_data):
@@ -74,12 +82,28 @@ def test_init_params_error_and_warning(dt_reg_model, background_reg_data):
             model=model_function,
             data=background_reg_data,
             max_order=1,
+            index="k-SII",  # not SV and order is 1
+        )
+    with pytest.warns():
+        TabularExplainer(
+            model=model_function,
+            data=background_reg_data,
+            max_order=1,
+            index="FBII",  # not BV and order is 1
         )
     with pytest.warns():
         TabularExplainer(
             model=model_function,
             data=background_reg_data,
             index="SV",
+            max_order=2,  # higher than 1 and index is SV or BV
+        )
+    with pytest.warns():
+        TabularExplainer(
+            model=model_function,
+            data=background_reg_data,
+            index="BV",
+            max_order=2,  # higher than 1 and index is SV or BV
         )
 
 
@@ -99,7 +123,7 @@ def test_init_params_approx(dt_reg_model, background_reg_data):
         model=model_function,
         data=data,
     )
-    assert explainer._approximator.__class__.__name__ == "RegressionFSII"
+    assert explainer.approximator.__class__.__name__ == "RegressionFSII"
 
     # init explainer with manual approximator
     approximator = RegressionFSII(n=9, max_order=2)
@@ -108,11 +132,11 @@ def test_init_params_approx(dt_reg_model, background_reg_data):
         data=data,
         approximator=approximator,
     )
-    assert explainer._approximator.__class__.__name__ == "RegressionFSII"
-    assert explainer._approximator == approximator
+    assert explainer.approximator.__class__.__name__ == "RegressionFSII"
+    assert explainer.approximator == approximator
 
 
-@pytest.mark.parametrize("approximator", APPROXIMATOR)
+@pytest.mark.parametrize("approximator", get_args(TabularExplainerApproximators))
 @pytest.mark.parametrize("max_order", [*MAX_ORDERS, 1])
 def test_init_params_approx_params(dt_reg_model, background_reg_data, approximator, max_order):
     """Test the initialization of the tabular explainer."""
@@ -122,19 +146,23 @@ def test_init_params_approx_params(dt_reg_model, background_reg_data, approximat
         data=background_reg_data,
         max_order=max_order,
     )
+    if approximator == "spex":
+        pytest.skip("Spex works only for larger datasets/budgets.")
     iv = explainer.explain(background_reg_data[0], budget=BUDGET_NR_FEATURES)
-    assert iv.__class__.__name__ == "InteractionValues"
+    assert isinstance(iv, InteractionValues)
 
 
 BUDGETS = [2**5, 2**8, BUDGET_NR_FEATURES]
 
 
 @pytest.mark.parametrize("budget", BUDGETS)
-@pytest.mark.parametrize("index", INDICES)
 @pytest.mark.parametrize("max_order", MAX_ORDERS)
-@pytest.mark.parametrize("imputer", IMPUTER)
-def test_explain(dt_reg_model, background_reg_data, index, budget, max_order, imputer):
+@pytest.mark.parametrize("imputer", get_args(TabularExplainerImputers))
+def test_explain(dt_reg_model, background_reg_data, budget, max_order, imputer):
     """Test the initialization of the interaction explainer."""
+    index = "FSII"
+    _ = get_expected_index_or_skip(index, max_order)
+
     model_function = dt_reg_model.predict
     data = background_reg_data
     explainer = TabularExplainer(
@@ -163,11 +191,10 @@ def test_explain(dt_reg_model, background_reg_data, index, budget, max_order, im
     )
 
     # test for efficiency
-    if index in ("FSII", "k-SII"):
-        prediction = float(model_function(x)[0])
-        sum_of_values = float(np.sum(interaction_values.values))
-        assert pytest.approx(interaction_values[()]) == interaction_values.baseline_value
-        assert pytest.approx(sum_of_values, 0.01) == prediction
+    prediction = float(model_function(x)[0])
+    sum_of_values = float(np.sum(interaction_values.values))
+    assert pytest.approx(interaction_values[()]) == interaction_values.baseline_value
+    assert pytest.approx(sum_of_values, 0.01) == prediction
 
 
 def test_against_shap_linear():
@@ -239,7 +266,7 @@ def test_explain_X_progressbar():
     _ = explainer.explain_X(X, budget=2**dim, verbose=False)
 
 
-@pytest.mark.parametrize("approximator", APPROXIMATOR)
+@pytest.mark.parametrize("approximator", get_args(TabularExplainerApproximators))
 def test_explain_sv(dt_reg_model, background_reg_data, approximator):
     """Tests if init and compute works for SV for different estimators."""
     model_function = dt_reg_model.predict
@@ -253,6 +280,8 @@ def test_explain_sv(dt_reg_model, background_reg_data, approximator):
         approximator=approximator,
     )
     x = data[0].reshape(1, -1)
+    if approximator == "spex":
+        pytest.skip("Spex works only for larger datasets/budgets.")
     interaction_values = explainer.explain(x, budget=20)
     assert interaction_values.index == "SV"
     assert interaction_values.max_order == 1

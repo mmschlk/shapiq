@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, Literal, get_args
 
 import numpy as np
 from scipy.special import binom, factorial
 
-from shapiq.approximator._base import Approximator
-from shapiq.game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
+from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+
+ValidMonteCarloIndices = Literal["k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII", "BV"]
 
 
 class MonteCarlo(Approximator):
@@ -39,11 +41,14 @@ class MonteCarlo(Approximator):
 
     """
 
+    valid_indices: ClassVar[set[ValidMonteCarloIndices]] = set(get_args(ValidMonteCarloIndices))
+    """The valid indices for this approximator."""
+
     def __init__(
         self,
         n: int,
         max_order: int,
-        index: str,
+        index: Literal["k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII", "BV"] = "k-SII",
         *,
         stratify_coalition_size: bool = True,
         stratify_intersection: bool = True,
@@ -52,12 +57,6 @@ class MonteCarlo(Approximator):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray = None,
     ) -> None:
-        if index not in AVAILABLE_INDICES_MONTE_CARLO:
-            msg = (
-                f"Index {index} not available for Regression Approximator. Choose from "
-                f"{AVAILABLE_INDICES_MONTE_CARLO}."
-            )
-            raise ValueError(msg)
         if index in ["FSII", "FBII"]:
             top_order = True
         super().__init__(
@@ -375,18 +374,17 @@ class MonteCarlo(Approximator):
             (self.n - interaction_size + 1) * binom(self.n - interaction_size, coalition_size)
         )
 
-    def _bii_weight(self, coalition_size: int, interaction_size: int) -> float:
+    def _bii_weight(self, interaction_size: int) -> float:
         """Returns the BII discrete derivative weight given the coalition size and interaction size.
 
         Args:
-            coalition_size: The size of the subset.
             interaction_size: The size of the interaction.
 
         Returns:
             The weight for the interaction type.
 
         """
-        return 1 / 2 ** (coalition_size - interaction_size)
+        return 1 / 2 ** (self.n - interaction_size)
 
     def _chii_weight(self, coalition_size: int, interaction_size: int) -> float:
         """Returns the CHII discrete derivative weight given the coalition size and interaction size.
@@ -484,8 +482,8 @@ class MonteCarlo(Approximator):
             return self._fbii_weight(interaction_size)
         if index in ["SII", "SV"]:
             return self._sii_weight(coalition_size, interaction_size)
-        if index == "BII":
-            return self._bii_weight(coalition_size, interaction_size)
+        if index in ["BII", "BV"]:
+            return self._bii_weight(interaction_size)
         if index == "CHII":
             return self._chii_weight(coalition_size, interaction_size)
         msg = f"The index {index} is not supported."
