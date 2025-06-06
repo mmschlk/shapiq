@@ -92,11 +92,6 @@ ml = [
 testpaths = ["tests"]
 minversion = "8.0"
 
-[tool.coverage.report]
-exclude_lines = [
-    "if TYPE_CHECKING",
-]
-
 [tool.ruff]
 line-length = 100
 target-version = "py310"
