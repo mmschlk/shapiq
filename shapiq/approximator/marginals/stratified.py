@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -139,7 +139,7 @@ class StratifiedSamplingSV(Approximator):
             idx = self._interaction_lookup[(player,)]
             result_to_finalize[idx] = result[player]
 
-        interactions = InteractionValues(
+        return InteractionValues(
             n_players=self.n,
             values=result_to_finalize,
             index=self.approximation_index,
@@ -149,6 +149,5 @@ class StratifiedSamplingSV(Approximator):
             max_order=self.max_order,
             estimated=True,
             estimation_budget=used_budget,
+            target_index=self.index,
         )
-
-        return finalize_computed_interactions(interactions, target_index=self.index)

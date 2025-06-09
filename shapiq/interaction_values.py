@@ -100,6 +100,8 @@ class InteractionValues:
         )
 
         self.values, self.interaction_lookup, self.interactions = self._finalize_attributions(
+            values=self.values,
+            interaction_lookup=self.interaction_lookup,
             interactions=self.interactions,
         )
 
@@ -107,7 +109,7 @@ class InteractionValues:
         self,
         values: np.ndarray | dict[tuple[int, ...], float],
         interaction_lookup: dict[tuple[int, ...], int],
-    ) -> tuple[np.ndarray | dict[tuple[int, ...], int], dict[tuple[int, ...], float]]:
+    ) -> tuple[np.ndarray, dict[tuple[int, ...], int], dict[tuple[int, ...], float]]:
         """Preprocess the attributions for the InteractionValues object.
 
         This method validates the attributions provided to the InteractionValues object and populates
@@ -137,7 +139,10 @@ class InteractionValues:
         return values, interaction_lookup, interactions
 
     def _finalize_attributions(
-        self, interactions: dict[tuple[int, ...], float]
+        self,
+        values: np.ndarray,
+        interaction_lookup: dict[tuple[int, ...], int],
+        interactions: dict[tuple[int, ...], float],
     ) -> tuple[np.ndarray, dict[tuple[int, ...], int], dict[tuple[int, ...], float]]:
         """Finalizes computed attributions to be interpretable.
 
@@ -170,10 +175,7 @@ class InteractionValues:
         """
         from .game_theory.aggregation import aggregate_base_attributions
 
-        # aggregate the interactions if necessary
-        interaction_lookup = None
-
-        if is_index_aggregated(self.target_index) and self.target_index != interactions.index:
+        if is_index_aggregated(self.target_index) and self.target_index != self.index:
             values, interaction_lookup, interactions, self.index, self.min_order = (
                 aggregate_base_attributions(
                     interactions=interactions,
@@ -191,6 +193,7 @@ class InteractionValues:
                 if is_empty_value_the_baseline(self.index):
                     # insert the empty value given in baseline into the values
                     interactions[()] = self.baseline_value
+                    values[interaction_lookup[()]] = self.baseline_value
                 else:  # manually set baseline to the empty value
                     self.baseline_value = interactions[()]
 
@@ -199,10 +202,8 @@ class InteractionValues:
             # TODO(mmshlk): this might not be what we really want to do always: what if empty and baseline are different?
             # https://github.com/mmschlk/shapiq/issues/385
             interactions[()] = self.baseline_value
-        values, interaction_lookup, interactions = self._populate_attributions(
-            interactions,
-            interaction_lookup,
-        )
+            values[interaction_lookup[()]] = self.baseline_value
+
         return values, interaction_lookup, interactions
 
     def _validate_attributions(
@@ -259,10 +260,12 @@ class InteractionValues:
             interaction_lookup = self._populate_interaction_lookup(interaction_lookup)
             interactions = copy.deepcopy(values)
             values = self._populate_values(interactions)
-        if isinstance(values, np.ndarray):
+        elif isinstance(values, np.ndarray):
             interaction_lookup = self._populate_interaction_lookup(interaction_lookup)
             interactions = self._populate_interacations(values, interaction_lookup)
-
+        else:
+            msg = f"Values must be a numpy array or dictionary. Got {type(values)}."
+            raise TypeError(msg)
         if self.min_order == 0 and () not in interaction_lookup:
             interaction_lookup[()] = len(interaction_lookup)
             values = np.concatenate((values, np.array([self.baseline_value])))
@@ -384,8 +387,8 @@ class InteractionValues:
         Returns:
             int | float: The validated baseline value.
         """
-        if not isinstance(baseline_value, int | float):
-            msg = f"Baseline value must be provided as a number. Got {baseline_value}."
+        if not isinstance(baseline_value, int | float | np.number):
+            msg = f"Baseline value must be provided as a number. Got {type(baseline_value)}."
             raise TypeError(msg)
         return baseline_value
 
@@ -1324,65 +1327,5 @@ def aggregate_interaction_values(
         estimated=True,
         estimation_budget=None,
         baseline_value=baseline_value,
+        target_index=interaction_values[0].target_index,
     )
-
-
-def finalize_computed_interactions(
-    interactions: InteractionValues,
-    target_index: str | None = None,
-) -> InteractionValues:
-    """Finalizes computed InteractionValues to be interpretable.
-
-    This function takes care of the following:
-        - Aggregates the interactions if necessary. (e.g. from SII to k-SII)
-        - Adjusts the baseline and empty value if necessary. (e.g. for Shapley indices the baseline
-            value is the prediction of the model without any features - also called empty value, for
-            Banzhaf the baseline value is not the empty prediction as Banzhaf does not fulfill the
-            efficiency property)
-
-    Args:
-        interactions: The InteractionValues to finalize.
-        target_index: The index to which the InteractionValues should be finalized. Defaults to
-            ``None`` which means that the InteractionValues are finalized to the index of the
-            InteractionValues object.
-
-    Returns:
-        The interaction values.
-
-    Note:
-        If you develop new approximators and computation methods, you should finalize the
-        InteractionValues object before returning it to the user.
-
-    Raises:
-        ValueError: If the baseline value is not provided for SII and k-SII.
-
-    """
-    from .game_theory.aggregation import aggregate_base_interaction
-
-    if target_index is None:
-        target_index = interactions.index
-
-    # aggregate the interactions if necessary
-    if is_index_aggregated(target_index) and target_index != interactions.index:
-        interactions = aggregate_base_interaction(interactions)
-
-    # adjust the baseline and empty value if necessary
-    if () in interactions.interaction_lookup:
-        idx = interactions.interaction_lookup[()]
-        empty_value = interactions[idx]
-        if empty_value != interactions.baseline_value and interactions.index != "SII":
-            if is_empty_value_the_baseline(interactions.index):
-                # insert the empty value given in baseline into the values
-                interactions[idx] = interactions.baseline_value
-            else:  # manually set baseline to the empty value
-                interactions.baseline_value = interactions[idx]
-    # empty not in interactions but min_order is 0 (should be in the interactions)
-    elif interactions.min_order == 0:
-        # TODO(mmshlk): this might not be what we really want to do always: what if empty and baseline are different?
-        # https://github.com/mmschlk/shapiq/issues/385
-        interactions.interaction_lookup[()] = len(interactions.interaction_lookup)
-        interactions.values = np.concatenate(
-            (interactions.values, np.array([interactions.baseline_value])),
-        )
-
-    return interactions

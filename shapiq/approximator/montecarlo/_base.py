@@ -9,7 +9,7 @@ from scipy.special import binom, factorial
 
 from shapiq.approximator._base import Approximator
 from shapiq.game_theory.indices import AVAILABLE_INDICES_MONTE_CARLO
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
@@ -108,7 +108,7 @@ class MonteCarlo(Approximator):
 
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
-        interactions = InteractionValues(
+        return InteractionValues(
             values=shapley_interactions_values,
             index=self.approximation_index,
             n_players=self.n,
@@ -118,9 +118,8 @@ class MonteCarlo(Approximator):
             baseline_value=baseline_value,
             estimated=not budget >= 2**self.n,
             estimation_budget=budget,
+            target_index=self.index,
         )
-
-        return finalize_computed_interactions(interactions, target_index=self.index)
 
     def monte_carlo_routine(
         self,

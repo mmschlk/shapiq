@@ -140,11 +140,12 @@ def aggregate_base_interaction(
         2
 
     """
+    order = order or base_interactions.max_order
     aggregated_values, lookup, transformed_interactions, new_index, new_min_order = (
         aggregate_base_attributions(
             interactions=base_interactions.interactions,
             index=base_interactions.index,
-            order=order or base_interactions.max_order,
+            order=order,
             min_order=base_interactions.min_order,
             baseline_value=base_interactions.baseline_value,
         )

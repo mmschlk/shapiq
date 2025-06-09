@@ -26,7 +26,7 @@ from shapiq.approximator import (
 )
 from shapiq.approximator._base import Approximator
 from shapiq.explainer._base import Explainer
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
     from shapiq.games.imputer.base import Imputer
@@ -249,8 +249,16 @@ class TabularExplainer(Explainer):
         # explain
         interaction_values = self._approximator(budget=budget, game=imputer)
         interaction_values.baseline_value = self.baseline_value
-        return finalize_computed_interactions(
-            interaction_values,
+        return InteractionValues(
+            values=interaction_values.interactions,
+            interaction_lookup=interaction_values.interaction_lookup,
+            baseline_value=interaction_values.baseline_value,
+            min_order=interaction_values.min_order,
+            max_order=interaction_values.max_order,
+            n_players=interaction_values.n_players,
+            estimated=interaction_values.estimated,
+            estimation_budget=interaction_values.estimation_budget,
+            index=interaction_values.index,
             target_index=self.index,
         )
 

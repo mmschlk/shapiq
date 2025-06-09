@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -88,7 +88,7 @@ class PermutationSamplingSV(Approximator):
             result[interaction_index] = full_val - empty_val
             counts[interaction_index] = 1
 
-            interactions = InteractionValues(
+            return InteractionValues(
                 values=result,
                 interaction_lookup=self._interaction_lookup,
                 baseline_value=empty_val,
@@ -98,9 +98,8 @@ class PermutationSamplingSV(Approximator):
                 index=self.approximation_index,
                 estimated=True,
                 estimation_budget=used_budget,
+                target_index=self.index,
             )
-
-            return finalize_computed_interactions(interactions, target_index=self.index)
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
@@ -160,7 +159,7 @@ class PermutationSamplingSV(Approximator):
 
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        interactions = InteractionValues(
+        return InteractionValues(
             values=result,
             interaction_lookup=self._interaction_lookup,
             baseline_value=empty_val,
@@ -170,6 +169,5 @@ class PermutationSamplingSV(Approximator):
             index=self.approximation_index,
             estimated=True,
             estimation_budget=used_budget,
+            target_index=self.index,
         )
-
-        return finalize_computed_interactions(interactions, target_index=self.index)

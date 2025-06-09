@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from shapiq.approximator._base import Approximator
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
@@ -169,7 +169,7 @@ class PermutationSamplingSII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        interactions = InteractionValues(
+        return InteractionValues(
             n_players=self.n,
             values=result,
             index=self.approximation_index,
@@ -179,6 +179,5 @@ class PermutationSamplingSII(Approximator):
             max_order=self.max_order,
             estimated=True,
             estimation_budget=used_budget,
+            target_index=self.index,
         )
-
-        return finalize_computed_interactions(interactions, target_index=self.index)
