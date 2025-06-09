@@ -152,8 +152,8 @@ def aggregate_base_interaction(
     )
 
     return InteractionValues(
+        values=transformed_interactions,
         n_players=base_interactions.n_players,
-        values=aggregated_values,
         index=new_index,
         interaction_lookup=lookup,
         baseline_value=base_interactions.baseline_value,

@@ -119,9 +119,13 @@ class PermutationSamplingSTII(Approximator):
                 stacklevel=2,
             )
 
+            interaction = {
+                interaction: result[idx] for interaction, idx in self._interaction_lookup.items()
+            }
+
             return InteractionValues(
+                values=interaction,
                 n_players=self.n,
-                values=result,
                 index=self.approximation_index,
                 interaction_lookup=self._interaction_lookup,
                 baseline_value=0.0,
@@ -152,9 +156,13 @@ class PermutationSamplingSTII(Approximator):
                 stacklevel=2,
             )
 
+            interaction = {
+                interaction: result[idx] for interaction, idx in self._interaction_lookup.items()
+            }
+
             return InteractionValues(
+                values=interaction,
                 n_players=self.n,
-                values=result,
                 index=self.approximation_index,
                 interaction_lookup=self._interaction_lookup,
                 baseline_value=empty_value,
@@ -219,9 +227,12 @@ class PermutationSamplingSTII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
+        interaction = {
+            interaction: result[idx] for interaction, idx in self._interaction_lookup.items()
+        }
         return InteractionValues(
+            values=interaction,
             n_players=self.n,
-            values=result,
             index=self.approximation_index,
             interaction_lookup=self._interaction_lookup,
             baseline_value=empty_value,

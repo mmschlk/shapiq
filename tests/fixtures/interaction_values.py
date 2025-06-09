@@ -71,11 +71,11 @@ def get_mock_interaction_value(
         raise ValueError(msg)
 
     # create a random array of interaction values with the same size as the interaction lookup
-    values = rng.uniform(-1, 1, len(interaction_lookup))
+    interactions = {interaction: rng.uniform(-1, 1) for interaction in interaction_lookup}
 
     # return the interaction values as an InteractionValues object
     return InteractionValues(
-        values=values,
+        values=interactions,
         index=index,
         interaction_lookup=interaction_lookup,
         n_players=n_players,

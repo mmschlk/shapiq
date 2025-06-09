@@ -261,6 +261,11 @@ class InteractionValues:
             interactions = copy.deepcopy(values)
             values = self._populate_values(interactions)
         elif isinstance(values, np.ndarray):
+            warn(
+                "The usage of numpy arrays is deprecated. Use dictionaries instead mapping interactions to their repective values. Will be removed in 2.0",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             interaction_lookup = self._populate_interaction_lookup(interaction_lookup)
             interactions = self._populate_interacations(values, interaction_lookup)
         else:
@@ -635,7 +640,7 @@ class InteractionValues:
     def __copy__(self) -> InteractionValues:
         """Returns a copy of the InteractionValues object."""
         return InteractionValues(
-            values=copy.deepcopy(self.values),
+            values=copy.deepcopy(self.interactions),
             index=self.index,
             max_order=self.max_order,
             estimated=self.estimated,
@@ -662,36 +667,40 @@ class InteractionValues:
                 or self.min_order != other.min_order
                 or self.max_order != other.max_order
             ):  # different interactions but addable
-                interaction_lookup = {**self.interaction_lookup}
-                position = len(self.interaction_lookup)
-                values_to_add = []
-                added_values = self.values.copy()
-                for interaction in other.interaction_lookup:
-                    if interaction not in interaction_lookup:
-                        interaction_lookup[interaction] = position
-                        position += 1
-                        values_to_add.append(other[interaction])
+                added_interactions = self.interactions.copy()
+                for interaction in other.interactions:
+                    if interaction not in added_interactions:
+                        added_interactions[interaction] = other.interactions[interaction]
                     else:
-                        added_values[interaction_lookup[interaction]] += other[interaction]
-                added_values = np.concatenate((added_values, np.asarray(values_to_add)))
+                        added_interactions[interaction] += other.interactions[interaction]
+                interaction_lookup = {
+                    interaction: i for i, interaction in enumerate(added_interactions)
+                }
                 # adjust n_players, min_order, and max_order
                 n_players = max(self.n_players, other.n_players)
                 min_order = min(self.min_order, other.min_order)
                 max_order = max(self.max_order, other.max_order)
                 baseline_value = self.baseline_value + other.baseline_value
             else:  # basic case with same interactions
-                added_values = self.values + other.values
+                added_interactions = {
+                    interaction: self.interactions[interaction] + other.interactions[interaction]
+                    for interaction in self.interactions
+                }
                 interaction_lookup = self.interaction_lookup
                 baseline_value = self.baseline_value + other.baseline_value
         elif isinstance(other, int | float):
-            added_values = self.values.copy() + other
+            added_interactions = {
+                interaction: self.interactions[interaction] + other
+                for interaction in self.interactions
+            }
             interaction_lookup = self.interaction_lookup.copy()
             baseline_value = self.baseline_value + other
         else:
             msg = f"Cannot add InteractionValues with object of type {type(other)}."
             raise TypeError(msg)
+
         return InteractionValues(
-            values=added_values,
+            values=added_interactions,
             index=self.index,
             max_order=max_order,
             n_players=n_players,
@@ -708,8 +717,9 @@ class InteractionValues:
 
     def __neg__(self) -> InteractionValues:
         """Negates the InteractionValues object."""
+        interactions = {interaction: -value for interaction, value in self.interactions.items()}
         return InteractionValues(
-            values=-self.values,
+            values=interactions,
             index=self.index,
             max_order=self.max_order,
             n_players=self.n_players,
@@ -730,8 +740,11 @@ class InteractionValues:
 
     def __mul__(self, other: float) -> InteractionValues:
         """Multiplies an InteractionValues object by a scalar."""
+        interactions = {
+            interaction: value * other for interaction, value in self.interactions.items()
+        }
         return InteractionValues(
-            values=self.values * other,
+            values=interactions,
             index=self.index,
             max_order=self.max_order,
             n_players=self.n_players,
@@ -748,8 +761,9 @@ class InteractionValues:
 
     def __abs__(self) -> InteractionValues:
         """Returns the absolute values of the InteractionValues object."""
+        interactions = {interaction: abs(value) for interaction, value in self.interactions.items()}
         return InteractionValues(
-            values=np.abs(self.values),
+            values=interactions,
             index=self.index,
             max_order=self.max_order,
             n_players=self.n_players,
@@ -858,17 +872,15 @@ class InteractionValues:
             msg = f"min_order ({min_order}) must be less than or equal to max_order ({max_order})."
             raise ValueError(msg)
 
-        new_values = []
-        new_interaction_lookup = {}
-        for interaction in self.interaction_lookup:
+        new_interactions = {}
+        for interaction, values in self.interactions.items():
             if len(interaction) < min_order or len(interaction) > max_order:
                 continue
-            interaction_idx = len(new_interaction_lookup)
-            new_values.append(self[interaction])
-            new_interaction_lookup[interaction] = interaction_idx
+            new_interactions[interaction] = values
+        new_interaction_lookup = {interaction: i for i, interaction in enumerate(new_interactions)}
 
         return InteractionValues(
-            values=np.array(new_values),
+            values=new_interactions,
             index=self.index,
             max_order=max_order,
             n_players=self.n_players,
@@ -907,17 +919,15 @@ class InteractionValues:
             {(1,): 0.2}
 
         """
-        keys = self.interaction_lookup.keys()
-        idx, keys_in_subset = [], []
-        for i, key in enumerate(keys):
-            if all(p in players for p in key):
-                idx.append(i)
-                keys_in_subset.append(key)
-        new_values = self.values[idx]
-        new_interaction_lookup = {key: index for index, key in enumerate(keys_in_subset)}
+        new_interactions = {
+            interaction: value
+            for interaction, value in self.interactions.items()
+            if all(player in players for player in interaction)
+        }
+        new_interaction_lookup = {interaction: i for i, interaction in enumerate(new_interactions)}
         n_players = self.n_players - len(players)
         return InteractionValues(
-            values=new_values,
+            values=new_interactions,
             index=self.index,
             max_order=self.max_order,
             n_players=n_players,
@@ -949,7 +959,7 @@ class InteractionValues:
             # save object as npz file
             np.savez(
                 path,
-                values=self.values,
+                values=self.interactions,
                 index=self.index,
                 max_order=self.max_order,
                 n_players=self.n_players,
@@ -988,7 +998,7 @@ class InteractionValues:
         try:
             data = np.load(path, allow_pickle=True)
             return InteractionValues(
-                values=data["values"],
+                values=data["values"].item(),
                 index=str(data["index"]),
                 max_order=int(data["max_order"]),
                 n_players=int(data["n_players"]),
@@ -1035,7 +1045,7 @@ class InteractionValues:
 
         """
         return {
-            "values": self.values,
+            "values": self.interactions,
             "index": self.index,
             "max_order": self.max_order,
             "n_players": self.n_players,
@@ -1298,6 +1308,8 @@ def aggregate_interaction_values(
         msg = f"Aggregation method {method} is not supported."
         raise ValueError(msg)
 
+    new_interactions = {}
+
     # get all keys from all InteractionValues objects
     all_keys = set()
     for iv in interaction_values:
@@ -1305,12 +1317,11 @@ def aggregate_interaction_values(
     all_keys = sorted(all_keys)
 
     # aggregate the values
-    new_values = np.zeros(len(all_keys), dtype=float)
     new_lookup = {}
     for i, key in enumerate(all_keys):
         new_lookup[key] = i
         values = [iv[key] for iv in interaction_values]
-        new_values[i] = _aggregate(values, aggregation)
+        new_interactions[key] = _aggregate(values, aggregation)
 
     max_order = max([iv.max_order for iv in interaction_values])
     min_order = min([iv.min_order for iv in interaction_values])
@@ -1318,7 +1329,7 @@ def aggregate_interaction_values(
     baseline_value = _aggregate([iv.baseline_value for iv in interaction_values], aggregation)
 
     return InteractionValues(
-        values=new_values,
+        values=new_interactions,
         index=interaction_values[0].index,
         max_order=max_order,
         n_players=n_players,

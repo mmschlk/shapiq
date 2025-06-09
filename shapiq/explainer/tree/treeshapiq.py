@@ -195,6 +195,10 @@ class TreeSHAPIQ:
                 # append the computed Shapley Interaction values to the result
                 interactions = np.append(interactions, self.shapley_interactions.copy())
 
+        interactions = {
+            interaction: interactions[idx]
+            for interaction, idx in self._interactions_lookup_relevant.items()
+        }
         return InteractionValues(
             values=interactions,
             index=self._base_index,

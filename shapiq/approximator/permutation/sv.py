@@ -88,8 +88,11 @@ class PermutationSamplingSV(Approximator):
             result[interaction_index] = full_val - empty_val
             counts[interaction_index] = 1
 
+            interaction = {
+                interaction: result[idx] for interaction, idx in self._interaction_lookup.items()
+            }
             return InteractionValues(
-                values=result,
+                values=interaction,
                 interaction_lookup=self._interaction_lookup,
                 baseline_value=empty_val,
                 min_order=self.min_order,
@@ -159,8 +162,11 @@ class PermutationSamplingSV(Approximator):
 
         result = np.divide(result, counts, out=result, where=counts != 0)
 
+        interaction = {
+            interaction: result[idx] for interaction, idx in self._interaction_lookup.items()
+        }
         return InteractionValues(
-            values=result,
+            values=interaction,
             interaction_lookup=self._interaction_lookup,
             baseline_value=empty_val,
             min_order=self.min_order,

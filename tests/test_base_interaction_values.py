@@ -28,13 +28,14 @@ from tests.fixtures.interaction_values import (
 )
 def test_initialization(index, n, min_order, max_order, estimation_budget, estimated):
     """Tests the initialization of the InteractionValues dataclass."""
-    interaction_lookup = {interaction: i for i, interaction in enumerate(powerset(range(n), 1, 2))}
-    values = np.random.rand(len(interaction_lookup))
+    interactions = {interaction: np.random.rand() for interaction in powerset(range(n), 1, 2)}
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
+    values = np.array(list(interactions.values()))
     baseline_value = 2.0
     if index == "something":
         with pytest.warns(UserWarning):
             interaction_values = InteractionValues(
-                values=values,
+                values=interactions,
                 index=index,
                 n_players=n,
                 min_order=min_order,
@@ -46,7 +47,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
             )
     else:
         interaction_values = InteractionValues(
-            values=values,
+            values=interactions,
             index=index,
             n_players=n,
             min_order=min_order,
@@ -61,6 +62,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values.min_order == min_order
     assert interaction_values.max_order == max_order
     assert np.all(interaction_values.values == values)
+    assert interaction_values.interactions == interactions
     assert interaction_values.estimation_budget == estimation_budget
     assert interaction_values.estimated == estimated
     assert interaction_values.interaction_lookup == interaction_lookup
@@ -69,8 +71,9 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     assert interaction_values.dict_values == dict(zip(interaction_lookup, values, strict=False))
 
     # check that default values are set correctly
+    interactions = {interaction: np.random.rand() for interaction in interaction_lookup}
     interaction_values_2 = InteractionValues(
-        values=np.random.rand(len(interaction_lookup)),
+        values=interactions,
         index=index,
         n_players=n,
         min_order=min_order,
@@ -78,6 +81,9 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
         baseline_value=baseline_value,
     )
     assert interaction_values_2.estimation_budget is None  # default value is None
+    assert interaction_values_2.values is not None
+    assert interaction_values_2.values.size == len(interaction_lookup)  # values size matches lookup
+    assert interaction_values_2.interactions == interactions
     assert interaction_values_2.estimated is True  # default value is True
     assert interaction_values_2.interaction_lookup == interaction_lookup  # automatically generated
 
@@ -131,7 +137,7 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
     # test baseline value initialization
     with pytest.raises(TypeError):
         InteractionValues(
-            values=values,
+            values=interactions,
             index=index,
             n_players=n,
             min_order=min_order,
@@ -149,13 +155,15 @@ def test_add():
     n = 5
     min_order = 1
     max_order = 2
-    interaction_lookup = {
-        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    interactions = {
+        interaction: np.random.rand() for interaction in powerset(range(n), min_order, max_order)
     }
-    values = np.random.rand(len(interaction_lookup))
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
+    values = np.array(list(interactions.values()))
+
     values_copy = deepcopy(values)
     interaction_values_first = InteractionValues(
-        values=values,
+        values=interactions,
         index=index,
         n_players=n,
         min_order=min_order,
@@ -179,7 +187,7 @@ def test_add():
 
     # test adding InteractionValues with different indices
     interaction_values_second = InteractionValues(
-        values=values,
+        values=interactions,
         index="STII",
         n_players=n,
         min_order=min_order,
@@ -192,13 +200,16 @@ def test_add():
 
     # test adding InteractionValues with different interactions
     n_players_second = n + 1
-    interaction_lookup_second = {
-        interaction: i
-        for i, interaction in enumerate(powerset(range(n_players_second), min_order, max_order))
+    interactions_second = {
+        interaction: np.random.rand()
+        for interaction in powerset(range(n_players_second), min_order, max_order)
     }
-    values_second = np.random.rand(len(interaction_lookup_second))
+    interaction_lookup_second = {
+        interaction: i for i, interaction in enumerate(interactions_second.keys())
+    }
+
     interaction_values_second = InteractionValues(
-        values=values_second,
+        values=interactions_second,
         index=index,
         n_players=n_players_second,
         min_order=min_order,
@@ -231,13 +242,15 @@ def test_sub():
     n = 5
     min_order = 1
     max_order = 2
-    interaction_lookup = {
-        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    interactions = {
+        interaction: np.random.rand() for interaction in powerset(range(n), min_order, max_order)
     }
-    values = np.random.rand(len(interaction_lookup))
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
+    values = np.array(list(interactions.values()))
+
     values_copy = deepcopy(values)
     interaction_values_first = InteractionValues(
-        values=values,
+        values=interactions,
         index=index,
         n_players=n,
         min_order=min_order,
@@ -264,12 +277,14 @@ def test_mul():
     n = 5
     min_order = 1
     max_order = 2
-    interaction_lookup = {
-        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    interactions = {
+        interaction: np.random.rand() for interaction in powerset(range(n), min_order, max_order)
     }
-    values = np.random.rand(len(interaction_lookup))
+
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
+
     interaction_values_first = InteractionValues(
-        values=values,
+        values=interactions,
         index=index,
         n_players=n,
         min_order=min_order,
@@ -293,12 +308,13 @@ def test_sum():
     n = 5
     min_order = 1
     max_order = 2
-    interaction_lookup = {
-        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    interactions = {
+        interaction: np.random.rand() for interaction in powerset(range(n), min_order, max_order)
     }
-    values = np.random.rand(len(interaction_lookup))
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
+
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index=index,
         n_players=n,
         min_order=min_order,
@@ -316,12 +332,12 @@ def test_abs():
     n = 5
     min_order = 1
     max_order = 2
-    interaction_lookup = {
-        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    interactions = {
+        interaction: -np.random.rand() for interaction in powerset(range(n), min_order, max_order)
     }
-    values = (-1) * np.random.rand(len(interaction_lookup))
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index=index,
         n_players=n,
         min_order=min_order,
@@ -339,12 +355,12 @@ def test_n_order_transform():
     n = 5
     min_order = 1
     max_order = 3
-    interaction_lookup = {
-        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    interactions = {
+        interaction: np.random.rand() for interaction in powerset(range(n), min_order, max_order)
     }
-    values = np.random.rand(len(interaction_lookup))
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index=index,
         n_players=n,
         min_order=min_order,
@@ -378,14 +394,23 @@ def test_n_order_transform():
 def test_sparsify():
     """Tests the sparsify function of the InteractionValues dataclass."""
     # parameters
-    values = np.array([1, 1e-1, 1e-3, 1e-4, 1, 1e-4, 1])
+    interactions = {
+        (0,): 1,
+        (1,): 1e-1,
+        (2,): 1e-3,
+        (3,): 1e-4,  # will be removed
+        (4,): 1,
+        (5,): 1e-4,  # will be removed
+        (6,): 1,
+    }
+    values = np.array(list(interactions.values()))
     n_players = 7
-    interaction_lookup = {(i,): i for i in range(len(values))}
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     original_length = len(values)
 
     # create InteractionValues object
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index="SV",
         n_players=n_players,
         min_order=1,
@@ -433,14 +458,26 @@ def test_sparsify():
 def test_top_k():
     """Tests the top-k selection of the InteractionValues dataclass."""
     # parameters
-    values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
+    interactions = {
+        (0,): 1,
+        (1,): 2,
+        (2,): 3,
+        (3,): 4,
+        (4,): 5,
+        (5,): 6,
+        (6,): 8,
+        (7,): 7,
+        (8,): 9,
+        (9,): 10,
+    }
+    values = np.array(list(interactions.values()))
     n_players = 10
-    interaction_lookup = {(i,): i for i in range(len(values))}
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     original_length = len(values)
 
     # create InteractionValues object
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index="SV",
         n_players=n_players,
         min_order=1,
@@ -491,13 +528,24 @@ def test_top_k():
 def test_from_dict():
     """Tests the from_dict method of the InteractionValues dataclass."""
     # parameters
-    values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
+    interactions = {
+        (0,): 1,
+        (1,): 2,
+        (2,): 3,
+        (3,): 4,
+        (4,): 5,
+        (5,): 6,
+        (6,): 8,
+        (7,): 7,
+        (8,): 9,
+        (9,): 10,
+    }
     n_players = 10
-    interaction_lookup = {(i,): i for i in range(len(values))}
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
 
     # create InteractionValues object
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index="SV",
         n_players=n_players,
         min_order=1,
@@ -508,7 +556,7 @@ def test_from_dict():
 
     # create dict
     interaction_values_dict = interaction_values.to_dict()
-    assert np.equal(interaction_values_dict["values"], values).all()
+    assert np.equal(interaction_values_dict["values"], interactions).all()
     assert interaction_values_dict["index"] == "SV"
     assert interaction_values_dict["n_players"] == n_players
     assert interaction_values_dict["min_order"] == 1
@@ -526,14 +574,26 @@ def test_from_dict():
 def test_save_and_load(as_pickle):
     """Tests the save and load functions of the InteractionValues dataclass."""
     # parameters
-    values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
+    interactions = {
+        (0,): 1,
+        (1,): 2,
+        (2,): 3,
+        (3,): 4,
+        (4,): 5,
+        (5,): 6,
+        (6,): 8,
+        (7,): 7,
+        (8,): 9,
+        (9,): 10,
+    }
+    values = np.array(list(interactions.values()))
     n_players = 10
-    interaction_lookup = {(i,): i for i in range(len(values))}
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     original_length = len(values)
 
     # create InteractionValues object
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index="SV",
         n_players=n_players,
         min_order=1,
@@ -577,12 +637,12 @@ def test_plot():
     n = 5
     min_order = 1
     max_order = 2
-    interaction_lookup = {
-        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    interactions = {
+        interaction: np.random.rand() for interaction in powerset(range(n), min_order, max_order)
     }
-    values = np.random.rand(len(interaction_lookup))
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index="SII",
         n_players=n,
         min_order=min_order,
@@ -599,12 +659,12 @@ def test_plot():
     n = 5
     min_order = 1
     max_order = 1
-    interaction_lookup = {
-        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    interactions = {
+        interaction: np.random.rand() for interaction in powerset(range(n), min_order, max_order)
     }
-    values = np.random.rand(len(interaction_lookup))
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index="SII",
         n_players=n,
         min_order=min_order,
@@ -626,12 +686,12 @@ def test_subset(subset_players):
     n = 7
     min_order = 1
     max_order = 3
-    values = np.random.rand(2**n - 1)
-    interaction_lookup = {
-        interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+    interactions = {
+        interaction: np.random.rand() for interaction in powerset(range(n), min_order, max_order)
     }
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index="SII",
         max_order=max_order,
         n_players=n,
@@ -674,12 +734,13 @@ def test_aggregation(aggregation):
     n, min_order, max_order = 5, 1, 3
     interaction_values_list = []
     for _ in range(n_objects):
-        values = np.random.rand(2**n - 1)
-        interaction_lookup = {
-            interaction: i for i, interaction in enumerate(powerset(range(n), min_order, max_order))
+        interactions = {
+            interaction: np.random.rand()
+            for interaction in powerset(range(n), min_order, max_order)
         }
+        interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
         interaction_values = InteractionValues(
-            values=values,
+            values=interactions,
             index="SII",
             max_order=max_order,
             n_players=n,
@@ -731,24 +792,41 @@ def test_aggregation(aggregation):
 
 def test_docs_aggregation_function():
     """Tests the aggregation function in the InteractionValues dataclass like in the docs."""
+    interactions = {
+        (0,): 0.1,
+        (1,): 0.2,
+        (2,): 0.3,
+        (0, 1): 0.4,
+        (0, 2): 0.5,
+        (1, 2): 0.6,
+    }
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     iv1 = InteractionValues(
-        values=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        values=interactions,
         index="SII",
         n_players=3,
         min_order=1,
         max_order=2,
-        interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4, (1, 2): 5},
+        interaction_lookup=interaction_lookup,
         baseline_value=0.0,
     )
 
     # this does not contain the (1, 2) interaction (i.e. is 0)
+    interactions = {
+        (0,): 0.2,
+        (1,): 0.3,
+        (2,): 0.4,
+        (0, 1): 0.5,
+        (0, 2): 0.6,
+    }
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
     iv2 = InteractionValues(
-        values=np.array([0.2, 0.3, 0.4, 0.5, 0.6]),
+        values=interactions,
         index="SII",
         n_players=3,
         min_order=1,
         max_order=2,
-        interaction_lookup={(0,): 0, (1,): 1, (2,): 2, (0, 1): 3, (0, 2): 4},
+        interaction_lookup=interaction_lookup,
         baseline_value=1.0,
     )
 

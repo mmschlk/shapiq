@@ -176,8 +176,12 @@ class Sparse(Approximator):
         if self.top_order:
             result = self._filter_order(result)
 
+        interactions = {
+            interaction: result[idx] for interaction, idx in self.interaction_lookup.items()
+        }
+
         return InteractionValues(
-            values=result,
+            values=interactions,
             index=self.approximation_index,
             min_order=self.min_order,
             max_order=self.max_order,
@@ -225,7 +229,7 @@ class Sparse(Approximator):
             The function also updates the internal _interaction_lookup dictionary.
         """
         moebius_interactions = InteractionValues(
-            values=np.array([moebius_transform[key] for key in moebius_transform]),
+            values=moebius_transform,
             index="Moebius",
             min_order=self.min_order,
             max_order=self.max_order,

@@ -131,9 +131,14 @@ class OwenSamplingSV(Approximator):
             idx = self._interaction_lookup[(player,)]
             result_to_finalize[idx] = result[player]
 
+        interactions = {
+            interaction: result_to_finalize[idx]
+            for interaction, idx in self._interaction_lookup.items()
+        }
+
         return InteractionValues(
+            values=interactions,
             n_players=self.n,
-            values=result_to_finalize,
             index=self.approximation_index,
             interaction_lookup=self._interaction_lookup,
             baseline_value=empty_value,

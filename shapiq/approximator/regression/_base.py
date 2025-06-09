@@ -166,8 +166,13 @@ class Regression(Approximator):
 
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
+        shapley_interactions = {
+            interaction: shapley_interactions_values[idx]
+            for interaction, idx in self.interaction_lookup.items()
+        }
+
         return InteractionValues(
-            values=shapley_interactions_values,
+            values=shapley_interactions,
             index=index_approximation,
             interaction_lookup=self.interaction_lookup,
             baseline_value=baseline_value,

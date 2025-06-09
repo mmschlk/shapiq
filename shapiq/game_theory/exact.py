@@ -259,14 +259,12 @@ class ExactComputer:
             pass
 
         # compute the Moebius transform
-        moebius_transform = np.zeros(2**self.n)
-        coalition_lookup = {}
-        for interaction_pos, interaction in enumerate(powerset(self._grand_coalition_set)):
-            coalition_lookup[interaction] = interaction_pos
+        moebius_transform = {interaction: 0 for interaction in powerset(self._grand_coalition_set)}
+        for interaction in moebius_transform:
             interaction_size = len(interaction)
             for coalition in powerset(interaction):
                 coalition_pos = self.coalition_lookup[coalition]
-                moebius_transform[interaction_pos] += (-1) ** (
+                moebius_transform[interaction] += (-1) ** (
                     interaction_size - len(coalition)
                 ) * self.game_values[coalition_pos]
 
@@ -277,7 +275,6 @@ class ExactComputer:
             max_order=self.n,
             min_order=0,
             n_players=self.n,
-            interaction_lookup=coalition_lookup,
             estimated=False,
             baseline_value=self.baseline_value,
         )
@@ -466,33 +463,30 @@ class ExactComputer:
             An InteractionValues object containing the base interactions.
 
         """
-        base_interaction_values = np.zeros(self._n_interactions[order])
+        base_interaction_values = {
+            interaction: 0 for interaction in powerset(self._grand_coalition_set, max_size=order)
+        }
         base_weights = self._get_base_weights(index, order)
         for coalition in powerset(self._grand_coalition_set):
             coalition_size = len(coalition)
             coalition_pos = self.coalition_lookup[coalition]
-            for j, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order)):
+            for interaction in base_interaction_values:
                 interaction_size = len(interaction)
                 coalition_cap_interaction = len(set(coalition).intersection(set(interaction)))
-                base_interaction_values[j] += (
+                base_interaction_values[interaction] += (
                     (-1) ** (interaction_size - coalition_cap_interaction)
                     * base_weights[coalition_size - coalition_cap_interaction, interaction_size]
                     * self.game_values[coalition_pos]
                 )
 
-        interaction_lookup = {
-            interaction: i
-            for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order))
-        }
-
         # CHII is un-defined for empty set
-        if index == "CHII" and () in interaction_lookup:
+        if index == "CHII" and () in base_interaction_values:
             warnings.warn(
                 f"CHII is not defined for the empty set. Setting to the baseline value "
                 f"{self.baseline_value}.",
                 stacklevel=2,
             )
-            base_interaction_values[interaction_lookup[()]] = self.baseline_value
+            base_interaction_values[()] = self.baseline_value
 
         # Transform into InteractionValues object and store in computed dictionary
         base_interaction = InteractionValues(
@@ -501,7 +495,6 @@ class ExactComputer:
             max_order=order,
             min_order=0,
             n_players=self.n,
-            interaction_lookup=interaction_lookup,
             estimated=False,
             baseline_value=self.baseline_value,
         )
@@ -528,13 +521,10 @@ class ExactComputer:
             An InteractionValues object containing generalized values.
 
         """
-        base_generalized_values = np.zeros(self._n_interactions[order])
-        base_weights = self._get_base_weights(index, order)
-
-        interaction_lookup = {
-            interaction: i
-            for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order))
+        base_generalized_values = {
+            interaction: 0.0 for interaction in powerset(self._grand_coalition_set, max_size=order)
         }
+        base_weights = self._get_base_weights(index, order)
 
         for i, coalition in enumerate(
             powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1),
@@ -546,14 +536,9 @@ class ExactComputer:
                 max_size=order,
             ):
                 coalition_weight = base_weights[len(coalition), len(interaction)]
-                base_generalized_values[interaction_lookup[tuple(sorted(interaction))]] += (
-                    coalition_weight
-                    * (
-                        self.game_values[
-                            self.coalition_lookup[tuple(sorted(coalition + interaction))]
-                        ]
-                        - coalition_val
-                    )
+                base_generalized_values[interaction] += coalition_weight * (
+                    self.game_values[self.coalition_lookup[tuple(sorted(coalition + interaction))]]
+                    - coalition_val
                 )
 
         # Transform into InteractionValues object
@@ -563,7 +548,6 @@ class ExactComputer:
             max_order=order,
             min_order=0,
             n_players=self.n,
-            interaction_lookup=interaction_lookup,
             estimated=False,
             baseline_value=self.baseline_value,
         )
@@ -601,8 +585,10 @@ class ExactComputer:
             InteractionValues object containing STII
 
         """
-        stii_values = np.zeros(self._n_interactions[order])
-        stii_values[0] = self.baseline_value  # set baseline value
+        stii_values = {
+            interaction: 0.0 for interaction in powerset(self._grand_coalition_set, max_size=order)
+        }
+        stii_values[()] = self.baseline_value  # set baseline value
 
         # create interaction lookup
         interaction_lookup = {
@@ -612,7 +598,7 @@ class ExactComputer:
 
         # lower-order interactions (size < order) are the Möbius transform, i.e. discrete derivative with empty set
         for interaction in powerset(self._grand_coalition_set, max_size=order - 1):
-            stii_values[interaction_lookup[interaction]] = self._get_discrete_derivative(
+            stii_values[interaction] = self._get_discrete_derivative(
                 interaction,
                 (),
             )
@@ -622,11 +608,10 @@ class ExactComputer:
 
         # top-order STII interactions
         for interaction in powerset(self._grand_coalition_set, min_size=order, max_size=order):
-            interaction_pos = interaction_lookup[interaction]
             for coalition_pos, coalition in enumerate(powerset(self._grand_coalition_set)):
                 coalition_size = len(coalition)
                 intersection_size = len(set(coalition).intersection(set(interaction)))
-                stii_values[interaction_pos] += (
+                stii_values[interaction] += (
                     (-1) ** (order - intersection_size)
                     * stii_weights[coalition_size - intersection_size]
                     * self.game_values[coalition_pos]
@@ -704,8 +689,12 @@ class ExactComputer:
             msg = f"Index {index} not supported."
             raise ValueError(msg)
 
+        interactions = {
+            interaction: fii_values[idx] for interaction, idx in interaction_lookup.items()
+        }
+
         fii = InteractionValues(
-            values=fii_values,
+            values=interactions,
             index=index,
             max_order=order,
             min_order=0,
@@ -793,9 +782,13 @@ class ExactComputer:
         # Set baseline value
         kADD_shap_values[0] = self.baseline_value
 
+        kADD_interactions = {
+            interaction: kADD_shap_values[idx] for interaction, idx in interaction_lookup.items()
+        }
+
         # Transform into InteractionValues object
         return InteractionValues(
-            values=kADD_shap_values,
+            values=kADD_interactions,
             index="kADD-SHAP",
             max_order=order,
             min_order=0,
@@ -815,15 +808,14 @@ class ExactComputer:
             An InteractionValues object containing kADD-SHAP values
 
         """
-        jointSV_values = np.zeros(self._n_interactions[order])
+        jointSV_values = {
+            interaction: 0 for interaction in powerset(self._grand_coalition_set, max_size=order)
+        }
         # Set baseline value
-        jointSV_values[0] = self.baseline_value
+        jointSV_values[()] = self.baseline_value
         coalition_weights = self.get_jointsv_weights(order)
 
-        interaction_lookup = {
-            interaction: i
-            for i, interaction in enumerate(powerset(self._grand_coalition_set, max_size=order))
-        }
+        interaction_lookup = {interaction: i for i, interaction in enumerate(jointSV_values)}
 
         for coalition_pos, coalition in enumerate(
             powerset(self._grand_coalition_set, min_size=0, max_size=self.n - 1),
@@ -835,7 +827,7 @@ class ExactComputer:
                 min_size=1,
                 max_size=order,
             ):
-                jointSV_values[interaction_lookup[interaction]] += coalition_weight * (
+                jointSV_values[interaction] += coalition_weight * (
                     self.game_values[self.coalition_lookup[tuple(sorted(coalition + interaction))]]
                     - coalition_val
                 )
