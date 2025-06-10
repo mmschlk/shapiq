@@ -94,14 +94,16 @@ class InteractionValues:
         self.baseline_value = self._validate_baseline_value(baseline_value)
         self.index, self.target_index = self._index_preprocessing(index, target_index)
 
-        self.values, self.interaction_lookup, self.interactions = self._preprocessing_attributions(
-            values=values,
-            interaction_lookup=interaction_lookup,
+        self._values, self._interaction_lookup, self.interactions = (
+            self._preprocessing_attributions(
+                values=values,
+                interaction_lookup=interaction_lookup,
+            )
         )
 
-        self.values, self.interaction_lookup, self.interactions = self._finalize_attributions(
-            values=self.values,
-            interaction_lookup=self.interaction_lookup,
+        self._values, self._interaction_lookup, self.interactions = self._finalize_attributions(
+            values=self._values,
+            interaction_lookup=self._interaction_lookup,
             interactions=self.interactions,
         )
 
@@ -424,10 +426,28 @@ class InteractionValues:
     @property
     def dict_values(self) -> dict[tuple[int, ...], float]:
         """Getter for the dict directly mapping from all interactions to scores."""
-        return {
-            interaction: float(self.values[self.interaction_lookup[interaction]])
-            for interaction in self.interaction_lookup
-        }
+        return self.interactions
+
+    @property
+    def values(self) -> np.ndarray:
+        """Getter for the values of the InteractionValues object.
+
+        Returns:
+            The values of the InteractionValues object as a numpy array.
+
+        """
+        return self._values
+
+    @property
+    def interaction_lookup(self) -> dict[tuple[int, ...], int]:
+        """Getter for the interaction lookup of the InteractionValues object.
+
+        Returns:
+            The interaction lookup of the InteractionValues object as a dictionary mapping interactions
+            to their index in the values vector.
+
+        """
+        return self._interaction_lookup
 
     def sparsify(self, threshold: float = 1e-3) -> None:
         """Manually sets values close to zero actually to zero (removing values).
@@ -445,8 +465,11 @@ class InteractionValues:
             if index not in interactions_to_remove:
                 interaction = tuple(sorted(_interaction))
                 new_interaction_lookup[interaction] = len(new_interaction_lookup)
-        self.values = new_values
-        self.interaction_lookup = new_interaction_lookup
+
+        self._values, self._interaction_lookup, self.interactions = self._populate_attributions(
+            values=new_values,
+            interaction_lookup=new_interaction_lookup,
+        )
 
     def get_top_k_interactions(self, k: int) -> InteractionValues:
         """Returns the top k interactions.
