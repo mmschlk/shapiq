@@ -202,7 +202,10 @@ class InteractionValues:
             # TODO(mmshlk): this might not be what we really want to do always: what if empty and baseline are different?
             # https://github.com/mmschlk/shapiq/issues/385
             interactions[()] = self.baseline_value
-            values[interaction_lookup[()]] = self.baseline_value
+            if () not in interaction_lookup:
+                # In the case the "user given" interaction_lookup does not contain the empty, we place it at the beginning
+                interaction_lookup[()] = 0
+            values = np.insert(values, interaction_lookup[()], self.baseline_value)
 
         return values, interaction_lookup, interactions
 
@@ -225,7 +228,7 @@ class InteractionValues:
         """
         if values is None:
             msg = "Values must be provided."
-            raise ValueError(msg)
+            raise TypeError(msg)
         if (
             values is not None
             and not isinstance(values, np.ndarray)
@@ -261,11 +264,12 @@ class InteractionValues:
             interactions = copy.deepcopy(values)
             values = self._populate_values(interactions)
         elif isinstance(values, np.ndarray):
-            warn(
-                "The usage of numpy arrays is deprecated. Use dictionaries instead mapping interactions to their repective values. Will be removed in 2.0",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+            if interaction_lookup is None:
+                warn(
+                    "The usage of a numpy array for values can be dangerous. To make sure that each value is associated to the correct coaltion, consider using a dictionary instead. Ofcourse setting the interaction_lookup would also be possible. ",
+                    UserWarning,
+                    stacklevel=2,
+                )
             interaction_lookup = self._populate_interaction_lookup(interaction_lookup)
             interactions = self._populate_interacations(values, interaction_lookup)
         else:

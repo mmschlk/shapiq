@@ -145,6 +145,68 @@ def test_initialization(index, n, min_order, max_order, estimation_budget, estim
             interaction_lookup=interaction_lookup,
             baseline_value="None",
         )
+
+    # assert values is not None
+    with pytest.raises(TypeError):
+        InteractionValues(
+            values=None,  # should not be None
+            index=index,
+            n_players=n,
+            min_order=min_order,
+            max_order=max_order,
+            interaction_lookup=interaction_lookup,
+            baseline_value=baseline_value,
+        )
+
+    # assert that values is either numpy array or dict
+    with pytest.raises(TypeError):
+        InteractionValues(
+            values=12,
+            index=index,
+            n_players=n,
+            min_order=min_order,
+            max_order=max_order,
+            interaction_lookup=interaction_lookup,
+            baseline_value=10,  # should be float
+        )
+
+    # assert that interaction_lookup is a dict
+    with pytest.raises(TypeError):
+        InteractionValues(
+            values=interactions,
+            index=index,
+            n_players=n,
+            min_order=min_order,
+            max_order=max_order,
+            interaction_lookup=[1, 2, 3],  # should be a dict
+            baseline_value=baseline_value,
+        )
+
+    # assert that index is a string
+    with pytest.raises(TypeError):
+        InteractionValues(
+            values=interactions,
+            index=123,  # should be a string
+            n_players=n,
+            min_order=min_order,
+            max_order=max_order,
+            interaction_lookup=interaction_lookup,
+            baseline_value=baseline_value,
+        )
+
+    # assert that empty value i filled up if not provided
+    interaction_values = InteractionValues(
+        values={(1,): 1, (2,): 2, (1, 2): 3},
+        index="SV",
+        n_players=2,
+        min_order=0,
+        max_order=2,
+    )
+    assert all(
+        interaction_values.values == np.array([0, 1, 2, 3])
+    )  # should fill up empty values with 0
+    assert interaction_values.interaction_lookup[()] is not None
+    assert interaction_values.interactions[()] == 0
     # expected behavior of interactions is 0 for emptyset
     assert interaction_values[()] == 0
 

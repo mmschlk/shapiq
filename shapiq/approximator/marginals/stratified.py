@@ -139,13 +139,8 @@ class StratifiedSamplingSV(Approximator):
             idx = self._interaction_lookup[(player,)]
             result_to_finalize[idx] = result[player]
 
-        interactions = {
-            interaction: result_to_finalize[idx]
-            for interaction, idx in self._interaction_lookup.items()
-        }
-
         return InteractionValues(
-            values=interactions,
+            values=result_to_finalize,
             n_players=self.n,
             index=self.approximation_index,
             interaction_lookup=self._interaction_lookup,

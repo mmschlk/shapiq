@@ -227,11 +227,8 @@ class PermutationSamplingSTII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        interaction = {
-            interaction: result[idx] for interaction, idx in self._interaction_lookup.items()
-        }
         return InteractionValues(
-            values=interaction,
+            values=result,
             n_players=self.n,
             index=self.approximation_index,
             interaction_lookup=self._interaction_lookup,
