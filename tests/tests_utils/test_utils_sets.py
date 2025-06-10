@@ -8,7 +8,7 @@ import pytest
 from shapiq.utils import (
     count_interactions,
     generate_interaction_lookup,
-    generate_interaction_lookup_from_coalition,
+    generate_interaction_lookup_from_coalitions,
     get_explicit_subsets,
     pair_subset_sizes,
     powerset,
@@ -112,17 +112,34 @@ def test_generate_interaction_lookup(n, min_order, max_order, expected):
 
 
 @pytest.mark.parametrize(
-    ("coalition", "min_order", "max_order", "expected"),
+    ("coalitions", "expected"),
     [
-        (np.array([1, 0, 1]), 1, 2, {(0,): 0, (2,): 1, (0, 2): 2}),
-        (np.array([1, 1, 0]), 1, 3, {(0,): 0, (1,): 1, (0, 1): 2}),
-        (np.array([0, 0, 1]), 1, 1, {(2,): 0}),
-        (np.array([1, 1, 1]), 2, 3, {(0, 1): 0, (0, 2): 1, (1, 2): 2, (0, 1, 2): 3}),
+        (
+            np.array([[1, 0, 1], [0, 1, 1], [1, 1, 0], [0, 0, 1]]),
+            {(0, 2): 0, (1, 2): 1, (0, 1): 2, (2,): 3},
+        ),
+        (
+            np.array([[1, 1, 1], [0, 1, 0], [1, 0, 0], [0, 0, 1]]),
+            {(0, 1, 2): 0, (1,): 1, (0,): 2, (2,): 3},
+        ),
+        (
+            np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            {(0,): 0, (1,): 1, (2,): 2},
+        ),
+        (
+            np.array([[1, 1, 0, 1], [0, 0, 1, 1], [1, 0, 1, 0]]),
+            {(0, 1, 3): 0, (2, 3): 1, (0, 2): 2},
+        ),
+        (
+            np.array([[0, 0, 0], [1, 1, 1]]),
+            {(): 0, (0, 1, 2): 1},
+        ),
     ],
 )
-def test_generate_interaction_lookup_from_coalition(coalition, min_order, max_order, expected):
-    """Tests the generate_interaction_lookup_from_coalition function"""
-    assert generate_interaction_lookup_from_coalition(coalition, min_order, max_order) == expected
+def test_generate_interaction_lookup_from_coalitions(coalitions, expected):
+    """Tests the generate_interaction_lookup_from_coalitions function."""
+    result = generate_interaction_lookup_from_coalitions(coalitions)
+    assert result == expected
 
 
 @pytest.mark.parametrize(

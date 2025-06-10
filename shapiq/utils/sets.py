@@ -232,35 +232,29 @@ def generate_interaction_lookup(
     }
 
 
-def generate_interaction_lookup_from_coalition(
-    coalition: np.ndarray, min_order: int, max_order: int
-) -> dict[tuple[Any], int]:
-    """Generates a lookup dictionary for interactions based on a coalition.
+def generate_interaction_lookup_from_coalitions(
+    coalitions: np.ndarray,
+) -> dict[tuple[Any, ...], int]:
+    """Generates a lookup dictionary for interactions based on an array of coalitions.
 
     Args:
-        coalition: A coalition of players.
-        min_order: The minimum order of the approximation.
-        max_order: The maximum order of the approximation.
+        coalitions: An array of player coalitions.
 
     Returns:
         A dictionary that maps interactions to their index in the values vector
 
     Example:
-        >>> generate_interaction_lookup_from_coalition(np.array([1, 0, 1]), 1, 2)
-        {(0,): 0, (2,): 1, (0, 2): 2}
-        >>> genrate_interaction_lookup_from_coalition(np.array([1, 1, 0]), 1, 3)
-        {(0,): 0, (1,): 1, (0, 1): 2}
-        >>> genrate_interaction_lookup_from_coalition(np.array([0, 0, 1]), 1, 1)
-        {(2,): 0}
-        >>> generate_interaction_lookup_from_coalition(np.array([1, 1, 1]), 2, 3)
-        {(0, 1): 0, (0, 2): 1, (1, 2): 2, (0, 1, 2): 3}
+        >>> coalitions = np.array([
+        ...     [1, 0, 1],
+        ...     [0, 1, 1],
+        ...     [1, 1, 0],
+        ...     [0, 0, 1]
+        ... ])
+        >>> generate_interaction_lookup_from_coalitions(coalitions)
+        {(0, 2): 0, (1, 2): 1, (0, 1): 2, (2,): 3}
 
     """
-    players = np.where(coalition)[0]
-    return {
-        interaction: i
-        for i, interaction in enumerate(powerset(players, min_size=min_order, max_size=max_order))
-    }
+    return {tuple(np.where(coalition)[0]): idx for idx, coalition in enumerate(coalitions)}
 
 
 def transform_coalitions_to_array(
