@@ -342,6 +342,11 @@ def test_compute():
     assert game.normalize
 
     result = game.compute(coalitions=coalitions)
-    assert len(result[0]) == len(coalitions)
-    assert result[2] == 1.0  # normalization_value
+    assert len(result[0]) == len(coalitions)  # number of coalitions is correct
+    assert result[2] == normalization_value
     assert len(result) == 3  # game_values, normalization_value and coalition_lookup
+
+    # check if the game values are correct and that they are not normalized from compute
+    game_values = result[0]
+    assert game(coalitions[0]) + normalization_value == pytest.approx(game_values[0])
+    assert game(coalitions[1]) + normalization_value == pytest.approx(game_values[1])
