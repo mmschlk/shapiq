@@ -429,9 +429,18 @@ class Game:
 
         Returns:
             A tuple containing:
-            - np.ndarray: The values of the coalitions.
-            - dict[tuple[int, ...], int]: The lookup of the coalitions
-            - float: The normalization value (optional, if return_normalization is 'True')
+            - The computed game values in the same order of the coalitions.
+            - A lookup dictionary mapping from coalitions to the indices in the array.
+            - The normalization value used to center/normalize the game values.
+
+        Note:
+            This method does not change the state of the game and does not normalize the values.
+
+        Examples:
+            >>> from shapiq.games.benchmark import DummyGame
+            >>> game = DummyGame(4, interaction=(1, 2))
+            >>> game.compute(np.array([[0, 1, 0, 0], [0, 1, 1, 0]], dtype=bool))
+            (array([0.25, 1.5]), {(1): 0, (1, 2): 1.5}, 0.0)
 
         """
         coalitions: np.ndarray = self._check_coalitions(coalitions)
