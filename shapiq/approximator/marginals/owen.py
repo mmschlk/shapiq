@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -34,7 +34,7 @@ class OwenSamplingSV(Approximator):
 
     """
 
-    valid_indices: ClassVar[set[Literal["SV"]]] = {"SV"}
+    valid_indices: tuple[Literal["SV"]] = ("SV",)
     """The valid indices for this approximator."""
 
     def __init__(

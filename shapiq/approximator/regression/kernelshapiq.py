@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, get_args
 
-from ._base import Regression
+from .base import Regression
 
 if TYPE_CHECKING:
     import numpy as np
@@ -43,7 +43,7 @@ class KernelSHAPIQ(Regression):
 
     """
 
-    valid_indices: ValidKernelSHAPIQIndices = tuple(get_args(ValidKernelSHAPIQIndices))
+    valid_indices: tuple[ValidKernelSHAPIQIndices] = tuple(get_args(ValidKernelSHAPIQIndices))
     """The valid indices for the KernelSHAPIQ approximator."""
 
     def __init__(

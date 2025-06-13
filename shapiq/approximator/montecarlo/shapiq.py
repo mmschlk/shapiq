@@ -7,9 +7,9 @@ KernelSHAP is a more specific variant of the ShapIQ interaction method.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Literal
+from typing import Any, Literal
 
-from ._base import MonteCarlo, ValidMonteCarloIndices
+from .base import MonteCarlo, ValidMonteCarloIndices
 
 
 class SHAPIQ(MonteCarlo):
@@ -126,7 +126,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
 
     """
 
-    valid_indices: ClassVar[set[Literal["SV"]]] = {"SV"}
+    valid_indices: tuple[Literal["SV"]] = ("SV",)
     """Valid indices for the UnbiasedKernelSHAP approximator."""
 
     def __init__(

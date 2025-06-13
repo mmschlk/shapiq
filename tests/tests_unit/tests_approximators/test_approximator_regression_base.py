@@ -7,7 +7,7 @@ from typing import get_args
 import pytest
 
 from shapiq.approximator.regression import Regression
-from shapiq.approximator.regression._base import ValidRegressionIndices
+from shapiq.approximator.regression.base import ValidRegressionIndices
 
 
 def test_basic_functions():

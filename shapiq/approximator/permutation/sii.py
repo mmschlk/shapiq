@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 
@@ -28,10 +28,8 @@ class PermutationSamplingSII(Approximator):
     """
 
     #: override the valid indices for this approximator
-    valid_indices: ClassVar[set[ValidPermutationSIIIndices]] = set(
-        get_args(ValidPermutationSIIIndices)
-    )
-    """The valid indices for this approximator."""
+    valid_indices: tuple[ValidPermutationSIIIndices] = tuple(get_args(ValidPermutationSIIIndices))
+    """The valid indices for this permutation sampling approximator."""
 
     def __init__(
         self,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 from scipy.special import binom, factorial
@@ -26,22 +26,9 @@ class MonteCarlo(Approximator):
     sampling. The sum may be stratified by coalition size or by the intersection size of the
     coalition and the interaction. The standard form for approximation is based on Theorem 1 by
     `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
-
-    Args:
-        n: The number of players.
-        max_order: The interaction order of the approximation.
-        index: The interaction index to be estimated. Available indices are ``['SII', 'k-SII', 'STII',
-            'FSII']``.
-        stratify_coalition_size: If ``True`` (default), then each coalition size is estimated separately.
-        stratify_intersection: If ``True`` (default), then each coalition is stratified by the intersection
-            with the interaction.
-        top_order: If ``True``, then only highest order interaction values are computed, e.g. required
-            for ``'FSII'``. Defaults to ``False``.
-        random_state: The random state to use for the approximation. Defaults to ``None``.
-
     """
 
-    valid_indices: ClassVar[set[ValidMonteCarloIndices]] = set(get_args(ValidMonteCarloIndices))
+    valid_indices: tuple[ValidMonteCarloIndices] = tuple(get_args(ValidMonteCarloIndices))
     """The valid indices for this approximator."""
 
     def __init__(
@@ -57,6 +44,32 @@ class MonteCarlo(Approximator):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray = None,
     ) -> None:
+        """Initialize the MonteCarlo approximator.
+
+        Args:
+            n: The number of players.
+
+            max_order: The interaction order of the approximation.
+
+            index: The interaction index to be estimated.
+
+            stratify_coalition_size: If ``True`` (default), then each coalition size is estimated
+                separately.
+
+            stratify_intersection: If ``True`` (default), then each coalition is stratified by the
+                intersection with the interaction.
+
+            top_order: If ``True``, then only highest order interaction values are computed, e.g.
+                required for ``'FSII'``. Defaults to ``False``.
+
+            random_state: The random state to use for the approximation. Defaults to ``None``.
+
+            pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure.
+
+            sampling_weights: An optional array of weights for the sampling procedure. The weights
+                must be of shape ``(n + 1,)`` and are used to determine the probability of sampling
+                a coalition of a certain size. Defaults to ``None``.
+        """
         if index in ["FSII", "FBII"]:
             top_order = True
         super().__init__(

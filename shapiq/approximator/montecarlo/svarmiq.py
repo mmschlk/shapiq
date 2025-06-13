@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Literal, get_args
+from typing import Any, Literal, get_args
 
-from ._base import MonteCarlo, ValidMonteCarloIndices
+from .base import MonteCarlo, ValidMonteCarloIndices
 
 
 class SVARMIQ(MonteCarlo):
@@ -81,7 +81,8 @@ class SVARM(SVARMIQ):
 
     """
 
-    valid_indices: ClassVar[set[ValidIndicesSVARM]] = set(get_args(ValidIndicesSVARM))
+    valid_indices: tuple[ValidIndicesSVARM] = tuple(get_args(ValidIndicesSVARM))
+    """The valid indices for the SVARM approximator."""
 
     def __init__(
         self,

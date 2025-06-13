@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, get_args
 
-from ._base import Regression
+from .base import Regression
 
 if TYPE_CHECKING:
     from typing import Any
@@ -34,7 +34,7 @@ class RegressionFSII(Regression):
 
     """
 
-    valid_indices: ValidRegressionFSIIIndices = tuple(get_args(ValidRegressionFSIIIndices))
+    valid_indices: tuple[ValidRegressionFSIIIndices] = tuple(get_args(ValidRegressionFSIIIndices))
     """The valid indices for the RegressionFSII approximator."""
 
     def __init__(

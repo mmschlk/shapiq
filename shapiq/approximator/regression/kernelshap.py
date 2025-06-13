@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from ._base import Regression
+from .base import Regression
 
 if TYPE_CHECKING:
     from typing import Any

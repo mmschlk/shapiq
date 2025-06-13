@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from ._base import Regression
+from .base import Regression
 
 if TYPE_CHECKING:
     import numpy as np

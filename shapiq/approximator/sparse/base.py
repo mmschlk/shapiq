@@ -60,7 +60,7 @@ class Sparse(Approximator):
 
     """
 
-    valid_indices: ValidSparseIndices = tuple(get_args(ValidSparseIndices))
+    valid_indices: tuple[ValidSparseIndices] = tuple(get_args(ValidSparseIndices))
     """The valid indices for the SPEX approximator."""
 
     def __init__(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from ._base import Sparse, ValidSparseIndices
+from .base import Sparse, ValidSparseIndices
 
 
 class SPEX(Sparse):
