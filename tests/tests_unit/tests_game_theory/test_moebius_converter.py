@@ -24,7 +24,7 @@ def test_soum_moebius_conversion():
 
         shapley_interactions = {}
         for index in ["STII", "k-SII", "FSII"]:
-            shapley_interactions[index] = moebius_converter.moebius_to_shapley_interaction(
+            shapley_interactions[index] = moebius_converter._moebius_to_shapley_interaction(
                 index=index,
                 order=order,
             )

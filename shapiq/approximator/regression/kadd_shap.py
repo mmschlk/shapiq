@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from ._base import Regression
 
@@ -32,7 +32,7 @@ class kADDSHAP(Regression):  # noqa: N801
 
     """
 
-    valid_indices: ClassVar[set[Literal["kADD-SHAP"]]] = {"kADD-SHAP"}
+    valid_indices: Literal["kADD-SHAP"] = ("kADD-SHAP",)
     """The valid indices for this approximator."""
 
     def __init__(
@@ -43,6 +43,7 @@ class kADDSHAP(Regression):  # noqa: N801
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the kADD-SHAP approximator.
 
@@ -60,6 +61,7 @@ class kADDSHAP(Regression):  # noqa: N801
 
             random_state: The random state of the estimator. Defaults to ``None``.
 
+            **kwargs: Additional keyword arguments (not used, only for compatibility).
         """
         super().__init__(
             n,

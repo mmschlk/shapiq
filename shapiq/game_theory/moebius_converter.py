@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, get_args
+from typing import Any, Literal, get_args
 
 import numpy as np
 from scipy.special import binom
@@ -11,11 +11,7 @@ from scipy.special import binom
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-
-ValidMoebiusConverterIndices = Literal["k-SII", "STII", "FSII", "FBII", "SII", "SV"]
+ValidMoebiusConverterIndices = Literal["k-SII", "STII", "FSII", "FBII", "SII", "SV", "BV"]
 
 
 class MoebiusConverter:
@@ -36,9 +32,7 @@ class MoebiusConverter:
 
     """
 
-    valid_indices: ClassVar[set[ValidMoebiusConverterIndices]] = set(
-        get_args(ValidMoebiusConverterIndices)
-    )
+    valid_indices: ValidMoebiusConverterIndices = tuple(get_args(ValidMoebiusConverterIndices))
 
     def __init__(self, moebius_coefficients: InteractionValues) -> None:
         """Initialize the MoebiusConverter.
@@ -49,22 +43,12 @@ class MoebiusConverter:
         """
         self.moebius_coefficients: InteractionValues = moebius_coefficients
         self.n = self.moebius_coefficients.n_players
-        self._computed: dict[tuple[str, int], InteractionValues] = {}  # will store all computations
-        # setup callable mapping from index to computation
-        self._index_mapping: dict[str, Callable[[str, int], InteractionValues]] = {
-            # shapley_interaction
-            "k-SII": self.moebius_to_shapley_interaction,
-            "STII": self.moebius_to_shapley_interaction,
-            "FSII": self.moebius_to_shapley_interaction,
-            # shapley_base_interaction
-            "SII": self.moebius_to_base_interaction,
-            # Shapley value
-            "SV": self.moebius_to_base_interaction,
-            # Banzhaf Interactions
-            "FBII": self.fii_routine,
-        }
+        # will store all computations
+        self._computed: dict[tuple[ValidMoebiusConverterIndices, int], InteractionValues] = {}
 
-    def __call__(self, index: str, order: int | None = None) -> InteractionValues:
+    def __call__(
+        self, index: ValidMoebiusConverterIndices, order: int | None = None
+    ) -> InteractionValues:
         """Calls the MoebiusConverter of the specified index or value.
 
         Args:
@@ -86,16 +70,14 @@ class MoebiusConverter:
         if (index, order) in self._computed:  # if index is already computed, return it
             return copy.deepcopy(self._computed[(index, order)])
         if index in self.valid_indices:  # if index is supported, compute it
-            computation_function = self._index_mapping[index]
-            computed_index: InteractionValues = computation_function(index=index, order=order)
+            computed_index: InteractionValues = self.compute(index=index, order=order)
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
         msg = f"Index {index} not supported."
         raise ValueError(msg)
 
-    def base_aggregation(
-        self, base_interactions: InteractionValues, order: int
-    ) -> InteractionValues:
+    @staticmethod
+    def _base_aggregation(base_interactions: InteractionValues, order: int) -> InteractionValues:
         """Transform Base Interactions into Interactions satisfying efficiency, e.g. SII to k-SII.
 
         Args:
@@ -111,7 +93,42 @@ class MoebiusConverter:
         aggregated_interactions = aggregate_base_interaction(base_interactions, order)
         return copy.copy(aggregated_interactions)
 
-    def moebius_to_base_interaction(self, index: str, order: int) -> InteractionValues:
+    def compute(self, index: ValidMoebiusConverterIndices, order: int) -> InteractionValues:
+        """Compute the interaction values for the given index and order.
+
+        Args:
+            index: The index or value to compute
+            order: The order of the interaction index.
+
+        Returns:
+            The desired interaction values or generalized values.
+
+        """
+        match index:
+            case "SV":
+                return self._moebius_to_base_interaction(index="SV", order=1)
+            case "BV":
+                return self._fii_routine(index="FBII", order=1)
+            case "k-SII":
+                return self._moebius_to_k_sii(order=order)
+            case "STII":
+                return self._stii_routine(order=order)
+            case "SII":
+                return self._moebius_to_base_interaction(index="SII", order=order)
+            case "FBII":
+                return self._fii_routine(index="FBII", order=order)
+            case "FSII":
+                return self._fii_routine(index="FSII", order=order)
+            case _:
+                msg = (
+                    f"Invalid index. Index `{index}` is not supported. "
+                    f"Supported indices are: {self.valid_indices}."
+                )
+                raise ValueError(msg)
+
+    def _moebius_to_base_interaction(
+        self, index: Literal["SII", "SV"], order: int
+    ) -> InteractionValues:
         """Computes a base interaction index, e.g. SII or BII.
 
         Args:
@@ -170,7 +187,7 @@ class MoebiusConverter:
             estimated=self.moebius_coefficients.estimated,
         )
 
-    def stii_routine(
+    def _stii_routine(
         self,
         order: int,
         **kwargs: Any,  # noqa: ARG002
@@ -189,7 +206,6 @@ class MoebiusConverter:
 
         """
         stii_dict = {}
-        index = "STII"
 
         # Pre-compute weights
         distribution_weights = np.zeros((self.n + 1, order + 1))
@@ -199,7 +215,7 @@ class MoebiusConverter:
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
                 distribution_weights[moebius_size, interaction_size] = (
-                    _get_moebius_distribution_weight(moebius_size, interaction_size, order, index)
+                    _get_moebius_distribution_weight(moebius_size, interaction_size, order, "STII")
                 )
 
         for moebius_set, moebius_val in zip(
@@ -235,14 +251,14 @@ class MoebiusConverter:
         return InteractionValues(
             values=stii_values,
             interaction_lookup=stii_lookup,
-            index=index,
+            index="STII",
             min_order=0,
             max_order=order,
             n_players=self.n,
             baseline_value=self.moebius_coefficients[()],
         )
 
-    def fii_routine(self, index: str, order: int) -> InteractionValues:
+    def _fii_routine(self, index: Literal["FSII", "FBII"], order: int) -> InteractionValues:
         """Computes FII. Routine to distribute the Moebius coefficients onto all FSII interactions.
 
         The higher-order interactions (``size > order``) are distributed onto all FSII interactions
@@ -316,36 +332,30 @@ class MoebiusConverter:
             baseline_value=fii_dict[()],
         )
 
-    def moebius_to_shapley_interaction(self, index: str, order: int) -> InteractionValues:
-        """Converts the Möbius coefficients to Shapley Interactions up to order k.
+    def _moebius_to_k_sii(
+        self,
+        order: int,
+    ) -> InteractionValues:
+        """Computes k-SII from Möbius coefficients.
+
+        This method computes the k-Shapley Interaction Index (k-SII) from the Möbius coefficients by
+        first computing the SII and then aggregating the values to k-SII.
 
         Args:
-            index: The Shapley Interaction index, e.g. k-SII, STII, FSII
-            order: The order of the explanation
+            order: The order of the explanation.
 
         Returns:
-            An InteractionValues object containing the Shapley interactions
+            An InteractionValues object containing the k-SII interactions.
 
         """
-        if index == "STII":
-            shapley_interactions = self.stii_routine(order)
-        elif index in ["FSII", "FBII"]:
-            shapley_interactions = self.fii_routine(index, order)
-        elif index == "k-SII":
-            # The distribution formula for k-SII is not correct. We therefore compute SII and
-            # aggregate the values.
-            base_interactions = self.moebius_to_base_interaction(order=order, index="SII")
-            self._computed["SII"] = base_interactions
-            shapley_interactions = self.base_aggregation(
-                base_interactions=base_interactions,
-                order=order,
-            )
-        else:
-            msg = f"Index {index} not supported. Please choose from STII, FSII, k-SII."
-            raise ValueError(msg)
-
-        self._computed[index] = shapley_interactions
-        return copy.copy(shapley_interactions)
+        sii = self._moebius_to_base_interaction(order=order, index="SII")
+        self._computed[("SII", order)] = sii
+        k_sii = self._base_aggregation(
+            base_interactions=sii,
+            order=order,
+        )
+        self._computed[("k-SII", order)] = k_sii
+        return copy.copy(k_sii)
 
 
 def _get_moebius_distribution_weight(

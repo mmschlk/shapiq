@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 from scipy.special import binom
@@ -50,9 +50,7 @@ class Approximator(ABC):
 
     """
 
-    valid_indices: ClassVar[set[ValidApproximationIndices]] = set(
-        get_args(ValidApproximationIndices)
-    )
+    valid_indices: tuple[ValidApproximationIndices] = tuple(get_args(ValidApproximationIndices))
     """The valid indices for the base approximator."""
 
     @abstractmethod

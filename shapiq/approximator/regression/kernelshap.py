@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from ._base import Regression
 
@@ -47,6 +47,8 @@ class KernelSHAP(Regression):
         .. [1] Lundberg, S., and Lee, S.-I. (2017). A Unified Approach to Interpreting Model Predictions. In Proceedings of The 31st Conference on Neural Information Processing Systems. url: https://proceedings.neurips.cc/paper_files/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf
 
     """
+
+    valid_indices: tuple[Literal["SV"]] = ("SV",)
 
     def __init__(
         self,

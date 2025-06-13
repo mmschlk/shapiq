@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Literal
 
 from shapiq import (
     SHAPIQ,
@@ -22,11 +22,10 @@ from shapiq import (
 from shapiq.approximator.base import Approximator, ValidApproximationIndices
 from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
 
-if TYPE_CHECKING:
-    from typing import Literal
-
-
-APPROXIMATOR_CONFIGURATIONS = {
+ValidApproximatorTypes = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
+APPROXIMATOR_CONFIGURATIONS: dict[
+    ValidApproximatorTypes, dict[ValidApproximationIndices, type[Approximator]]
+] = {
     "regression": {
         "SII": KernelSHAPIQ,
         "FSII": RegressionFSII,
@@ -114,9 +113,9 @@ def setup_approximator_automatically(
     """
     if choose_spex(max_order=max_order, n_players=n_players):
         return SPEX(n=n_players, max_order=max_order, index=index, random_state=random_state)
-    if max_order == 1 and (index == "SV" or index_generalizes_sv(index)):
+    if index == "SV" or (max_order == 1 and (index == "SV" or index_generalizes_sv(index))):
         return KernelSHAP(n=n_players, random_state=random_state)
-    if max_order == 1 and (index == "BV" or index_generalizes_bv(index)):
+    if index == "BV" or (max_order == 1 and (index == "BV" or index_generalizes_bv(index))):
         return RegressionFBII(n=n_players, max_order=1, random_state=random_state)
     if index == "FSII":
         return RegressionFSII(n=n_players, max_order=max_order, random_state=random_state)
@@ -136,8 +135,8 @@ def setup_approximator_automatically(
 
 
 def setup_approximator(
-    approximator: str | Approximator,
-    index: Literal["SV", "SII", "k-SII", "STII", "FSII", "FBII"],
+    approximator: ValidApproximatorTypes | Approximator,
+    index: ValidApproximationIndices,
     max_order: int,
     n_players: int,
     random_state: int | None = None,
@@ -178,9 +177,10 @@ def setup_approximator(
                 f"Valid configurations are described in {APPROXIMATOR_CONFIGURATIONS}."
             )
             raise ValueError(msg)
+
     if not issubclass(approximator, Approximator):
         msg = (
-            f"Invalid approximator `{approximator}`. "
+            f"Invalid approximator class `{approximator}`. "
             f"Expected a subclass of `Approximator`, but got {type(approximator)}."
         )
         raise TypeError(msg)

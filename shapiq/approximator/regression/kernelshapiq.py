@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 from ._base import Regression
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     import numpy as np
 
 
-ValidKernelSHAPIQIndices = Literal["k-SII", "SII"]
+ValidKernelSHAPIQIndices = Literal["k-SII", "SII", "SV"]
 
 
 class KernelSHAPIQ(Regression):
@@ -43,7 +43,7 @@ class KernelSHAPIQ(Regression):
 
     """
 
-    valid_indices: ClassVar[set[ValidKernelSHAPIQIndices]] = set(get_args(ValidKernelSHAPIQIndices))
+    valid_indices: ValidKernelSHAPIQIndices = tuple(get_args(ValidKernelSHAPIQIndices))
     """The valid indices for the KernelSHAPIQ approximator."""
 
     def __init__(
@@ -114,7 +114,7 @@ class InconsistentKernelSHAPIQ(Regression):
 
     """
 
-    valid_indices: ClassVar[set[ValidKernelSHAPIQIndices]] = set(get_args(ValidKernelSHAPIQIndices))
+    valid_indices: ValidKernelSHAPIQIndices = tuple(get_args(ValidKernelSHAPIQIndices))
     """Valid indices for the InconsistentKernelSHAPIQ approximator."""
 
     def __init__(

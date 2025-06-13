@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import warnings
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 from scipy.special import bernoulli, binom
@@ -28,8 +28,7 @@ class Regression(Approximator):
     and then solved exactly. For the Shapley value this method is known as KernelSHAP.
     """
 
-    #: will be validated in parent Approximator class
-    valid_indices: ClassVar[set[ValidRegressionIndices]] = set(get_args(ValidRegressionIndices))
+    valid_indices: tuple[ValidRegressionIndices] = tuple(get_args(ValidRegressionIndices))
     """The valid indices for the regression approximator. Overrides the valid indices of the base
     class Approximator."""
 

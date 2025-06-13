@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, ClassVar, Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
@@ -60,7 +60,7 @@ class Sparse(Approximator):
 
     """
 
-    valid_indices: ClassVar[set[ValidSparseIndices]] = set(get_args(ValidSparseIndices))
+    valid_indices: ValidSparseIndices = tuple(get_args(ValidSparseIndices))
     """The valid indices for the SPEX approximator."""
 
     def __init__(

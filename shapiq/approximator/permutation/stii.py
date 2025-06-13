@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import scipy as sp
@@ -54,9 +54,15 @@ class PermutationSamplingSTII(Approximator):
 
     """
 
-    valid_indices: ClassVar[set[Literal["STII"]]] = {"STII"}
+    valid_indices: tuple[Literal["STII"]] = ("STII",)
 
-    def __init__(self, n: int, max_order: int, random_state: int | None = None) -> None:
+    def __init__(
+        self,
+        n: int,
+        max_order: int,
+        random_state: int | None = None,
+        **kwargs: Any,  # noqa: ARG002
+    ) -> None:
         """Initialize the Permutation Sampling approximator for STII.
 
         Args:
@@ -66,6 +72,8 @@ class PermutationSamplingSTII(Approximator):
 
             random_state: The random state to use for the permutation sampling. Defaults to
                 ``None``.
+
+            **kwargs: Additional keyword arguments (not used, only for compatibility).
         """
         super().__init__(
             n=n,

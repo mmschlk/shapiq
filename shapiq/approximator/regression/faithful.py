@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 from ._base import Regression
 
@@ -34,9 +34,7 @@ class RegressionFSII(Regression):
 
     """
 
-    valid_indices: ClassVar[set[ValidRegressionFSIIIndices]] = set(
-        get_args(ValidRegressionFSIIIndices)
-    )
+    valid_indices: ValidRegressionFSIIIndices = tuple(get_args(ValidRegressionFSIIIndices))
     """The valid indices for the RegressionFSII approximator."""
 
     def __init__(
@@ -95,9 +93,7 @@ class RegressionFBII(Regression):
 
     """
 
-    valid_indices: ClassVar[set[ValidRegressionFBIIIndices]] = set(
-        get_args(ValidRegressionFBIIIndices)
-    )
+    valid_indices: ValidRegressionFBIIIndices = tuple(get_args(ValidRegressionFBIIIndices))
     """The valid indices for the RegressionFBII approximator."""
 
     def __init__(
