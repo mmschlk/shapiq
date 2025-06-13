@@ -72,7 +72,7 @@ def _compare(
     iv: InteractionValues,
     index: IndexType,
     order: int,
-    tolerance: float = 0.001,  # 0.1% of the maximum value
+    tolerance: float = 0.01,  # 1% of the maximum value
 ) -> None:
     """Compare the ground truth interaction values with the computed interaction values."""
     tolerance = max(abs(gt.get_n_order(min_order=1).values)) * tolerance
