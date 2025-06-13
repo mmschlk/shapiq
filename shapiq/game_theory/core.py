@@ -161,9 +161,13 @@ def egalitarian_least_core(
 
     credit_assignment, subsidy = res.x[:-1], res.x[-1]
 
+    interactions = {
+        interaction: credit_assignment[idx] for interaction, idx in interaction_lookup.items()
+    }
+
     # Create InteractionValues
     egalitarian_least_core = InteractionValues(
-        values=credit_assignment,
+        values=interactions,
         index="ELC",
         max_order=1,
         min_order=1,

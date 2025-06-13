@@ -237,17 +237,16 @@ class SOUM(Game):
                 moebius_coefficients_dict[game.interaction] = self.linear_coefficients[i]
 
         # generate the lookup for the moebius values
-        moebius_coefficients_values = np.zeros(len(moebius_coefficients_dict))
-        moebius_coefficients_lookup = {}
-        for i, (key, val) in enumerate(moebius_coefficients_dict.items()):
-            moebius_coefficients_values[i] = val
-            moebius_coefficients_lookup[key] = i
+
+        moebius_coefficients_lookup = {
+            interaction: i for i, interaction in enumerate(moebius_coefficients_dict)
+        }
 
         # handle baseline value and set to 0 if no empty set is present
         baseline_value = moebius_coefficients_dict.get((), 0.0)
 
         return InteractionValues(
-            values=moebius_coefficients_values,
+            values=moebius_coefficients_dict,
             index="Moebius",
             max_order=self.n_players,
             min_order=0,
