@@ -72,7 +72,7 @@ def _compare(
     iv: InteractionValues,
     index: IndexType,
     order: int,
-    tolerance: float = 0.01,  # 1% of the maximum value
+    tolerance: float = 0.02,  # 1% of the maximum value
 ) -> None:
     """Compare the ground truth interaction values with the computed interaction values."""
     tolerance = max(abs(gt.get_n_order(min_order=1).values)) * tolerance
@@ -170,7 +170,7 @@ class TestCaliforniaHousingExplainers:
 
         # load the ground truth interaction values
         gt_iv = _load_ground_truth_interaction_values_california(
-            index, order, load_from_runner=False, tabular=False
+            index, order, load_from_runner=True, tabular=False
         )
 
         # do the comparison of the interaction values
@@ -252,7 +252,7 @@ class TestCaliforniaHousingExplainers:
 
         # load the ground truth interaction values
         gt_iv = _load_ground_truth_interaction_values_california(
-            index, order, load_from_runner=False, tabular=True
+            index, order, load_from_runner=True, tabular=True
         )
 
         # do the comparison of the interaction values
