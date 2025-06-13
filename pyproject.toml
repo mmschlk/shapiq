@@ -231,6 +231,7 @@ docs = [
     "sphinx-copybutton",
     "sphinx-autodoc-typehints",
     "sphinx_toolbox",
+    "sphinxcontrib-bibtex", # references based on bibtex
     "nbconvert",
     "nbsphinx",
     "commonmark",  # Markdown parser and renderer
