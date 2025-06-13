@@ -15,8 +15,10 @@ from .utils import get_predict_function_and_model_type
 if TYPE_CHECKING:
     from typing import Literal
 
-    from shapiq.approximator._base import Approximator
+    from shapiq.approximator.base import Approximator
     from shapiq.utils.custom_types import Model
+
+    from .custom_types import ExplainerIndices
 
 
 class TabPFNExplainer(TabularExplainer):
@@ -41,7 +43,7 @@ class TabPFNExplainer(TabularExplainer):
         data: np.ndarray,
         labels: np.ndarray,
         *,
-        index: Literal["SII", "k-SII", "STII", "FSII", "FBII", "SV"] = "k-SII",
+        index: ExplainerIndices = "k-SII",
         max_order: int = 2,
         x_test: np.ndarray | None = None,
         empty_prediction: float | None = None,

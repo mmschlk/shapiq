@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, Literal, get_args
 
-from ._base import MonteCarlo
-
-if TYPE_CHECKING:
-    from typing import Any
+from .base import MonteCarlo, ValidMonteCarloIndices
 
 
 class SVARMIQ(MonteCarlo):
@@ -28,7 +25,7 @@ class SVARMIQ(MonteCarlo):
         self,
         n: int,
         max_order: int = 2,
-        index: str = "k-SII",
+        index: ValidMonteCarloIndices = "k-SII",
         *,
         top_order: bool = False,
         pairing_trick: bool = False,
@@ -70,6 +67,9 @@ class SVARMIQ(MonteCarlo):
         )
 
 
+ValidIndicesSVARM = Literal["SV", "BV"]
+
+
 class SVARM(SVARMIQ):
     """The SVARM [Kol24]_ approximator for estimating the Shapley value (SV).
 
@@ -81,19 +81,26 @@ class SVARM(SVARMIQ):
 
     """
 
+    valid_indices: tuple[ValidIndicesSVARM] = tuple(get_args(ValidIndicesSVARM))
+    """The valid indices for the SVARM approximator."""
+
     def __init__(
         self,
         n: int,
+        index: ValidIndicesSVARM = "SV",
         *,
         random_state: int | None = None,
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
-        **kwargs: dict[str | Any] | None,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the SVARM approximator.
 
         Args:
             n: The number of players.
+
+            index: The interaction index to be used. Choose from ``['SV', 'BV']``. Defaults to
+                ``'SV'``.
 
             random_state: The random state of the estimator. Defaults to ``None``.
 
@@ -109,7 +116,7 @@ class SVARM(SVARMIQ):
         super().__init__(
             n,
             max_order=1,
-            index="SV",
+            index=index,
             top_order=False,
             random_state=random_state,
             pairing_trick=pairing_trick,

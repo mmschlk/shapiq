@@ -294,7 +294,7 @@ def transform_coalitions_to_array(
     return coalition_array
 
 
-def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int]]:
+def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int, ...]]:
     """Transforms a 2d one-hot matrix of coalitions into a list of tuples.
 
     Args:

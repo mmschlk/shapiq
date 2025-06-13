@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.approximator._base import Approximator
+    from shapiq.approximator.base import Approximator
 
 __all__ = ["plot_approximation_quality"]
 

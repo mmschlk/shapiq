@@ -1,6 +1,6 @@
 """Monte Carlo estimators to approximate all cardinal interaction indices."""
 
-from ._base import MonteCarlo
+from .base import MonteCarlo
 from .shapiq import SHAPIQ, UnbiasedKernelSHAP
 from .svarmiq import SVARM, SVARMIQ
 
