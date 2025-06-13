@@ -49,6 +49,7 @@ class TabPFNExplainer(TabularExplainer):
         approximator: Approximator
         | Literal["auto", "spex", "montecarlo", "svarm", "permutation", "regression"] = "auto",
         verbose: bool = False,
+        copy_model: bool = False,
     ) -> None:
         """Initialize the TabPFNExplainer.
 
@@ -101,6 +102,11 @@ class TabPFNExplainer(TabularExplainer):
             verbose: Whether to show a progress bar during the computation. Defaults to ``False``.
                 Note that verbosity can slow down the computation for large datasets.
 
+            copy_model: A flag to indicate whether the model should be copied before use. If set to
+                ``True``, a deep copy of the model is created. This is useful to ensure that the
+                original model is not modified during the explanation process. Defaults to
+                ``False``.
+
         """
         from shapiq.games.imputer.tabpfn_imputer import TabPFNImputer
 
@@ -133,6 +139,7 @@ class TabPFNExplainer(TabularExplainer):
             x_test=x_test,
             empty_prediction=empty_prediction,
             verbose=verbose,
+            copy_model=copy_model,
         )
 
         super().__init__(

@@ -6,6 +6,7 @@ paradigm of explaining the TabPFN model's predictions.
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -49,6 +50,7 @@ class TabPFNImputer(Imputer):
         empty_prediction: float | None = None,
         verbose: bool = False,
         predict_function: Callable[[ModelType, np.ndarray], np.ndarray] | None = None,
+        copy_model: bool = False,
     ) -> None:
         """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
 
@@ -77,6 +79,11 @@ class TabPFNImputer(Imputer):
                 accept the model and the data point as input and return the model's predictions. If
                 the model is instantiated via a ``shapiq.Explainer`` object, this function is
                 automatically set to the model's prediction function. Defaults to ``None``.
+
+            copy_model: A flag to indicate whether the model should be copied before use. If set to
+                ``True``, a deep copy of the model is created. This is useful to ensure that the
+                original model is not modified during the explanation process. Defaults to
+                ``False``.
         """
         self.x_train = x_train
         self.y_train = y_train
@@ -95,6 +102,8 @@ class TabPFNImputer(Imputer):
             msg = "The empty prediction must be given if no test data is provided"
             raise ValueError(msg)
 
+        if copy_model:
+            model = copy.deepcopy(model)
         super().__init__(
             model=model,
             data=x_test,
@@ -136,4 +145,6 @@ class TabPFNImputer(Imputer):
             self.model.fit(x_train_coal, self.y_train)
             pred = float(self.predict(x_explain_coal))
             output[i] = pred
+        # refit the model on the full training data to ensure it is in a consistent state
+        self.model.fit(self.x_train, self.y_train)
         return output
