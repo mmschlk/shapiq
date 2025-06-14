@@ -1,4 +1,4 @@
-"""This test module tests the core calculations"""
+"""This test module tests the core calculations."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from shapiq.utils import powerset
 
 
 def test_core_on_soum():
+    """Tests the core on a SOUM game."""
     for _ in range(20):
         n = np.random.randint(low=2, high=10)
         n_basis_games = np.random.randint(low=1, high=100)
@@ -45,6 +46,7 @@ def test_core_on_soum():
 
 
 def test_core_on_normalized_soum():
+    """Tests the core on a normalized SOUM game."""
     for _ in range(20):
         n = np.random.randint(low=2, high=10)
         n_basis_games = np.random.randint(low=1, high=100)
@@ -99,9 +101,7 @@ def test_core_political_game_empty_core():
                 (0, 1, 2): 100,
             }
 
-            values = np.array([coalition_values[tuple(np.where(x)[0])] for x in coalitions])
-
-            return values
+            return np.array([coalition_values[tuple(np.where(x)[0])] for x in coalitions])
 
     game_political = NonConvexGame()
     coalition_lookup = {}
@@ -131,6 +131,7 @@ def test_core_political_game_empty_core():
 
 
 def test_core_baseline_warning():
+    """Tests that a warning is raised when the baseline value is not 0."""
     game_values = np.array([10, 5, 20, 100])
 
     with pytest.warns(UserWarning):
@@ -142,14 +143,14 @@ def test_core_baseline_warning():
 
 
 def test_core_political_game_existing_core():
-    """Tests that the ELC is equal to the core with subsidy equal to 0, due to convex game
-    structure.
-    """
+    """Tests that the ELC is equal to the core with subsidy equal to 0, due to convex game structure."""
 
     class ConvexGame(shapiq.Game):
-        r"""Convex game, i.e. meaning that the v(S u {i}) - v(S) <= v(T u {i}) - v(T) for
-        S<=T<={1,..,n} \ {i}. The marginal contribution of a player i is always bigger if it joins
-        a bigger coalition.
+        """A 3-player political game with a convex structure.
+
+        This game is a convex game, i.e. meaning that the v(S u {i}) - v(S) <= v(T u {i}) - v(T) for
+        S<=T<={1,..,n} setminus {i}. The marginal contribution of a player i is always bigger if it
+        joins a bigger coalition.
         """
 
         def __init__(self) -> None:
@@ -167,9 +168,7 @@ def test_core_political_game_existing_core():
                 (0, 1, 2): 200,
             }
 
-            values = np.array([coalition_values[tuple(np.where(x)[0])] for x in coalitions])
-
-            return values
+            return np.array([coalition_values[tuple(np.where(x)[0])] for x in coalitions])
 
     game_political = ConvexGame()
     coalition_lookup = {}

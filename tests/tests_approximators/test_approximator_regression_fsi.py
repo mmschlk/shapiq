@@ -11,11 +11,9 @@ from shapiq.interaction_values import InteractionValues
 
 
 @pytest.mark.parametrize(
-    "n, max_order",
+    ("n", "max_order"),
     [
         (3, 1),
-        (3, 1),
-        (3, 2),
         (3, 2),
         (7, 2),  # used in subsequent tests
         (10, 3),
@@ -32,7 +30,7 @@ def test_initialization(n, max_order):
     assert approximator.index == "FSII"
 
 
-@pytest.mark.parametrize("n, max_order, budget", [(7, 2, 380), (7, 2, 380), (7, 2, 100)])
+@pytest.mark.parametrize(("n", "max_order", "budget"), [(7, 2, 380), (7, 2, 100)])
 def test_approximate(n, max_order, budget):
     """Tests the approximation of the RegressionFSII approximator."""
     interaction = (1, 2)

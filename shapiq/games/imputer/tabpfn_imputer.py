@@ -1,43 +1,32 @@
-"""This module contains the TabPFNImputer class, which incorporates the Remove-and-Contextualize
+"""TabPFNImputer module.
+
+This module contains the TabPFNImputer class, which incorporates the Remove-and-Contextualize
 paradigm of explaining the TabPFN model's predictions.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ...explainer.utils import ModelType
 from .base import Imputer
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.explainer.utils import ModelType
 
 
 class TabPFNImputer(Imputer):
     """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
 
-    The remove-and-contextualize paradigm is a strategy to explain the predictions of a TabPFN[2]_
+    The remove-and-contextualize paradigm is a strategy to explain the predictions of a TabPFN [2]_
     model which uses in-context learning for prediction. Instead of imputing missing features, the
     TabPFNImputer removes feature columns missing in a coalition from training data and re-"trains"
     re-contextualizes the model with the remaining features. The model is then used to predict the
     data point which is also missing the features. This pardigm is described in Rundel et al.
-    (2024)[1]_.
-
-    Args:
-        model: The model to be explained as a callable function expecting data points as input and
-            returning 1-dimensional predictions.
-
-        x_train: The training data to "train" the model on. Note that the model is not actually
-            trained but the correct train data with the correct features per coalition are put into
-            TabPFN's context.
-
-        y_train: The training labels to "train" the model on. Note that the model is not actually
-            trained but the correct train data and labels are put into TabPFN's context.
-
-        x_test: The test data to evaluate the model's average (empty) prediction on. If no test
-            data is provided, the empty prediction must be given. Defaults to ``None``.
-
-        empty_prediction: The model's average prediction on an empty data point (all features
-            missing). This can be computed by averaging the model's predictions on the test data.
+    (2024) [1]_.
 
     Attributes:
         x_train: The training data to contextualize the model on.
@@ -46,7 +35,7 @@ class TabPFNImputer(Imputer):
 
     References:
         .. [1] Rundel, D., Kobialka, J., von Crailsheim, C., Feurer, M., Nagler, T., Rügamer, D. (2024). Interpretable Machine Learning for TabPFN. In: Longo, L., Lapuschkin, S., Seifert, C. (eds) Explainable Artificial Intelligence. xAI 2024. Communications in Computer and Information Science, vol 2154. Springer, Cham. https://doi.org/10.1007/978-3-031-63797-1_23
-        .. [2] Hollmann, N., Müller, S., Purucker, L. et al. Accurate predictions on small data with a tabular foundation model. Nature 637, 319–326 (2025). https://doi.org/10.1038/s41586-024-08328-6
+        .. [2] Hollmann, N., Müller, S., Purucker, L. et al. Accurate predictions on small data with a tabular foundation model. Nature 637, 319-326 (2025). https://doi.org/10.1038/s41586-024-08328-6
 
     """
 
@@ -55,11 +44,40 @@ class TabPFNImputer(Imputer):
         model: ModelType,
         x_train: np.ndarray,
         y_train: np.ndarray,
+        *,
         x_test: np.ndarray | None = None,
         empty_prediction: float | None = None,
         verbose: bool = False,
         predict_function: Callable[[ModelType, np.ndarray], np.ndarray] | None = None,
-    ):
+    ) -> None:
+        """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
+
+        Args:
+            model: The model to be explained as a callable function expecting data points as input
+                and returning 1-dimensional predictions.
+
+            x_train: The training data to "train" the model on. Note that the model is not actually
+                trained but the correct train data with the correct features per coalition are put
+                into TabPFN's context.
+
+            y_train: The training labels to "train" the model on. Note that the model is not trained
+                but the correct train data and labels are put into TabPFN's context.
+
+            x_test: The test data to evaluate the model's average (empty) prediction on. If no test
+                data is provided, the empty prediction must be given. Defaults to ``None``.
+
+            empty_prediction: The model's average prediction on an empty data point (all features
+                missing). This can be computed by averaging the model's predictions on the test
+                data.
+
+            verbose: A flag to enable verbose output. Defaults to ``False``.
+
+            predict_function: A function to use for prediction. If the model is not instantiated via
+                a ``shapiq.Explainer`` object, this function must be provided. The function must
+                accept the model and the data point as input and return the model's predictions. If
+                the model is instantiated via a ``shapiq.Explainer`` object, this function is
+                automatically set to the model's prediction function. Defaults to ``None``.
+        """
         self.x_train = x_train
         self.y_train = y_train
 
@@ -71,7 +89,7 @@ class TabPFNImputer(Imputer):
                     f" predict_function={predict_function})."
                 )
                 raise ValueError(msg)
-            model._shapiq_predict_function = predict_function
+            model._shapiq_predict_function = predict_function  # noqa: SLF001
 
         if x_test is None and empty_prediction is None:
             msg = "The empty prediction must be given if no test data is provided"

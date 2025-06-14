@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
 from warnings import warn
 
-import numpy as np
-
 from shapiq.games.base import Game
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class ImageClassifier(Game):
@@ -34,17 +36,6 @@ class ImageClassifier(Game):
         Depending on the selected model, this game requires the `torch`, `torchvision`, and
             `transformers` packages to be installed.
 
-    Args:
-        model_name: The model used for the game. This can be either a callable that takes an image in
-            form of a numpy array or and returns the class probabilities, or a string that specifies
-            the pre-trained model to be used. The default models are 'vit_144_patches', 'vit_36_patches',
-            'vit_16_patches', 'vit_9_patches', and 'resnet_18'. Defaults to 'vit_16_patches'.
-        n_superpixel_resnet: The approximate number of superpixels for the ResNet model to use.
-            Defaults to 14. This is only used if the model is 'resnet_18'.
-        x_explain_path: The image to be explained. If not provided, a random image from the benchmark set
-            is selected. Defaults to None.
-        normalize: Whether to normalize / center the game values. Defaults to True.
-
     Raises:
         ValueError: If an invalid model name is provided and the values are not precomputed.
         ValueError: If the image to be explained is not provided and the values are not precomputed.
@@ -69,12 +60,34 @@ class ImageClassifier(Game):
         self,
         model_name: str = "vit_16_patches",
         n_superpixel_resnet: int = 14,
+        *,
         x_explain_path: str | None = None,
         normalize: bool = True,
         verbose: bool = False,
-        *args,  # noqa ARG002
-        **_kwargs,
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
+        """Initializes the Image Classifier game.
+
+        Args:
+            model_name: The model used for the game. This can be either a callable that takes an
+                image in form of a numpy array or and returns the class probabilities, or a string
+                that specifies the pre-trained model to be used. The default models are
+                ``'vit_144_patches'``, ``'vit_36_patches'``, ``'vit_16_patches'``,
+                ``'vit_9_patches'``, and ``'resnet_18'``. Defaults to ``'vit_16_patches'``.
+
+            n_superpixel_resnet: The approximate number of superpixels for the ResNet model to use.
+                Defaults to ``14.`` This is only used if the model is 'resnet_18'.
+
+            x_explain_path: The image to be explained. If not provided, a random image from the
+                benchmark set is selected. Defaults to ``None``.
+
+            normalize: Whether to normalize / center the game values. Defaults to ``True``.
+
+            verbose: Whether to print the validation score of the model if trained. Defaults to
+                ``True``.
+
+            kwargs: Additional keyword arguments (not used).
+        """
         if x_explain_path is None:
             msg = "The image to be explained must be provided."
             raise ValueError(msg)
@@ -142,8 +155,12 @@ class ImageClassifier(Game):
         )
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """The value function of the game returning the class probability of the coalition with
-            non-participating (removed players) masked on a superpixel or patches level.
+        """Returns the class probability of the coalition.
+
+        The value function is the class probability of the coalition given the image classifier
+        model. Non-participating players are removed from the image by setting the corresponding
+        superpixel or patch to the mean color of the image.
+
 
         Args:
             coalitions: The coalitions of the game as a boolean array of shape (n_coalitions,

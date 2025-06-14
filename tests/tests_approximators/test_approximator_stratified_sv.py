@@ -9,7 +9,7 @@ from shapiq.games.benchmark import DummyGame
 
 
 @pytest.mark.parametrize(
-    "n, budget",
+    ("n", "budget"),
     [(5, 100), (5, 1000)],
 )
 def test_approximate(n, budget):

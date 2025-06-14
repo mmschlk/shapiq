@@ -8,8 +8,8 @@ import warnings
 import numpy as np
 from scipy.optimize import LinearConstraint, minimize
 
-from ..interaction_values import InteractionValues
-from ..utils.sets import powerset
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import powerset
 
 __all__ = ["egalitarian_least_core"]
 
@@ -117,6 +117,8 @@ def egalitarian_least_core(
         ValueError: If the optimization did not complete successfully
 
     """
+    player_set = set(range(n_players))
+
     # Rearrange the game_values and base_line and 0
     tmp = game_values[coalition_lookup[()]]
     game_values[coalition_lookup[()]] = game_values[0]
@@ -153,9 +155,9 @@ def egalitarian_least_core(
     )
 
     # Build interaction_lookup for plotting functions
-    interaction_lookup = {}
-    for i, interaction in enumerate(powerset(set(range(n_players)), min_size=1, max_size=1)):
-        interaction_lookup[interaction] = i
+    interaction_lookup = {
+        interaction: i for i, interaction in enumerate(powerset(player_set, min_size=1, max_size=1))
+    }
 
     credit_assignment, subsidy = res.x[:-1], res.x[-1]
 

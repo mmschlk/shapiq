@@ -36,7 +36,7 @@ def test_init(dt_clf_model, background_clf_data):
 
 
 @pytest.mark.parametrize(
-    "index, expected",
+    ("index", "expected"),
     [
         (
             "SII",
@@ -137,6 +137,7 @@ def test_edge_case_params():
 
 
 def test_no_bug_with_one_feature_tree():
+    """Test that the TreeExplainer does not raise an error with a tree that has only one feature."""
     # create the dataset
     X = np.array(
         [
@@ -158,5 +159,4 @@ def test_no_bug_with_one_feature_tree():
     }
     tree = TreeModel(**tree)
     explainer = TreeExplainer(model=tree, index="SV", max_order=1)
-    shapley_values = explainer.explain(X[2])
-    print(shapley_values)
+    explainer.explain(X[2])
