@@ -14,7 +14,8 @@ import numpy as np
 import pandas as pd
 from skimage.color import lab2rgb, lch2lab
 
-from ..interaction_values import InteractionValues, aggregate_interaction_values
+from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
+
 from .utils import abbreviate_feature_names
 
 
@@ -35,8 +36,7 @@ def _lch2rgb(lch_ab: np.ndarray | list) -> np.ndarray:
         )
         raise ValueError(error_message)
     lab = lch2lab(lch_ab)
-    rgb_srgb = lab2rgb(lab)
-    return rgb_srgb
+    return lab2rgb(lab)
 
 
 def _get_red_blue_cmap() -> mcolors.LinearSegmentedColormap:
@@ -163,6 +163,7 @@ def _calculate_range(num_sub_features: int, i: int, margin: float) -> tuple[floa
 def beeswarm_plot(
     interaction_values_list: list[InteractionValues],
     data: pd.DataFrame | np.ndarray,
+    *,
     max_display: int | None = 10,
     feature_names: list[str] | None = None,
     abbreviate: bool = True,
@@ -194,7 +195,7 @@ def beeswarm_plot(
         raise ValueError(error_message)
     if not isinstance(data, pd.DataFrame) and not isinstance(data, np.ndarray):
         error_message = f"X must be a pandas DataFrame or a numpy array. Got: {type(data)}."
-        raise ValueError(error_message)
+        raise TypeError(error_message)
     if len(interaction_values_list) != len(data):
         error_message = "Length of shap_interaction_values must match number of rows in X."
         raise ValueError(error_message)
@@ -226,7 +227,7 @@ def beeswarm_plot(
     )  # to match the order in bar plots
 
     interaction_keys = list(global_values.interaction_lookup.keys())
-    all_global_interaction_vals = global_values.values
+    all_global_interaction_vals = global_values.values  # noqa: PD011 # since ruff thinks this is a dataframe
     if interaction_keys[0] == ():  # check for base value
         interaction_keys = interaction_keys[1:]
         all_global_interaction_vals = all_global_interaction_vals[1:]
@@ -240,10 +241,7 @@ def beeswarm_plot(
 
     interactions_to_plot = [interaction_keys[i] for i in feature_order]
 
-    if isinstance(data, pd.DataFrame):
-        x_numpy = data.to_numpy(dtype=float)
-    else:
-        x_numpy = data.astype(float)
+    x_numpy = data.to_numpy(dtype=float) if isinstance(data, pd.DataFrame) else data.astype(float)
 
     shap_values_dict = {}
 
@@ -351,6 +349,7 @@ def beeswarm_plot(
                 alpha=alpha * 0.5,
                 linewidth=0,
                 rasterized=n_samples > 500,
+                zorder=2,
             )
 
             # valid points
@@ -365,10 +364,9 @@ def beeswarm_plot(
                 alpha=alpha,
                 linewidth=0,
                 rasterized=n_samples > 500,
+                zorder=2,
             )
             y_level += 1
-
-    ax.axvline(x=0, color="#999999", linestyle="-", linewidth=1, zorder=-1)
 
     # add horizontal grid lines between interaction groups
     h_lines = list(set(h_lines))
@@ -383,8 +381,15 @@ def beeswarm_plot(
         )
 
     ax.xaxis.grid(
-        True, color=config_dict["color_lines"], linestyle="--", linewidth=0.5, alpha=0.8, zorder=-1
+        visible=True,
+        color=config_dict["color_lines"],
+        linestyle="--",
+        linewidth=0.5,
+        alpha=0.8,
+        zorder=-1,
     )
+
+    ax.axvline(x=0, color="#999999", linestyle="-", linewidth=1, zorder=1)
     ax.set_axisbelow(True)
 
     ax.set_xlabel("SHAP-IQ Interaction Value (impact on model output)", fontsize=12)
@@ -432,3 +437,4 @@ def beeswarm_plot(
     if not show:
         return ax
     plt.show()
+    return None
