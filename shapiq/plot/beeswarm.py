@@ -18,16 +18,18 @@ from shapiq.interaction_values import InteractionValues, aggregate_interaction_v
 
 from .utils import abbreviate_feature_names
 
+__all__ = ["beeswarm_plot"]
+
 
 def _lch2rgb(lch_ab: np.ndarray | list) -> np.ndarray:
     """Converts LCh color space to RGB (sRGB) color space.
 
     Args:
-        lch_ab (np.array | list): LCh color space values, where the last dimension contains
+        lch_ab: LCh color space values, where the last dimension contains
             [L, C, h] values. The hue (h) should be in radians.
 
     Returns:
-        np.ndarray: RGB color space values in sRGB format.
+        RGB color space values in sRGB format.
     """
     lch_ab = np.asanyarray(lch_ab)
     if lch_ab.shape[-1] != 3:
@@ -43,7 +45,7 @@ def _get_red_blue_cmap() -> mcolors.LinearSegmentedColormap:
     """Creates a red-blue colormap with a smooth transition from blue to red.
 
     Returns:
-        mcolors.LinearSegmentedColormap: A colormap object that transitions from blue to red.
+        A colormap object that transitions from blue to red.
     """
     blue_lch = [54.0, 70.0, 4.6588]
     l_mid = 40.0
@@ -80,10 +82,10 @@ def _get_config(row_height: float) -> dict:
     """Returns the configuration for the beeswarm plot.
 
     Args:
-        row_height (float): Height of each row in the plot.
+        row_height: Height of each row in the plot.
 
     Returns:
-        dict: Configuration dictionary.
+        Configuration dictionary.
     """
     config_dict = {
         "dot_size": 10,
@@ -105,11 +107,11 @@ def _beeswarm(interaction_values: np.ndarray, rng: np.random.Generator) -> np.nd
     """Creates vertical offsets for a beeswarm plot.
 
     Args:
-        interaction_values (np.ndarray): interaction values for a given feature.
-        rng (np.random.Generator, optional): Random number generator.
+        interaction_values: Interaction values for a given feature.
+        rng: Random number generator.
 
     Returns:
-        np.ndarray: Vertical offsets (ys) for each point.
+        Vertical offsets (ys) for each point.
     """
     num_interactions = len(interaction_values)
     nbins = 100
@@ -137,12 +139,12 @@ def _calculate_range(num_sub_features: int, i: int, margin: float) -> tuple[floa
     """Calculates the y-axis range for a given sub-feature index in a beeswarm plot.
 
     Args:
-        num_sub_features (int): Total number of sub-features in the interaction.
-        i (int): Index of the current sub-feature.
-        margin (float): Margin to apply to the y-axis range.
+        num_sub_features: Total number of sub-features in the interaction.
+        i: Index of the current sub-feature.
+        margin: Margin to apply to the y-axis range.
 
     Returns:
-        tuple: A tuple containing the minimum and maximum y-axis values for the sub-feature.
+        A tuple containing the minimum and maximum y-axis values for the sub-feature.
     """
     if num_sub_features > 1:
         if i == 0:
@@ -173,22 +175,30 @@ def beeswarm_plot(
     rng_seed: int | None = 42,
     show: bool = True,
 ) -> plt.Axes | None:
-    """Plots a beeswarm plot of SHAP-IQ interaction values.
+    """Plots a beeswarm plot of SHAP-IQ interaction values. Based on the SHAP beeswarm plot[1]_.
+
+    The beeswarm plot visualizes how the magnitude and direction of interaction effects are distributed across all samples in the data,
+    revealing dependencies between the feature's value and the strength of the interaction.
 
     Args:
-        interaction_values_list (list[InteractionValues]): List of SHAP-IQ interaction values.
-        data (pd.DataFrame | np.ndarray): The input data used to compute the interaction values.
-        max_display (int): Maximum number of interactions to display. Defaults to 10.
-        feature_names (list[str] | None): Names of the features. If None, default names will be used.
-        abbreviate (bool): Whether to abbreviate feature names. Defaults to True.
-        alpha (float): Transparency level of the points. Defaults to 0.8.
-        row_height (float): Height of each row in the plot. Defaults to 0.4.
-        ax (plt.Axes | None): Matplotlib Axes object to plot on. If None, a new figure and axes will be created.
-        rng_seed (int | None): Random seed for reproducibility. Defaults to 42.
-        show (bool): Whether to show the plot. Defaults to True.
+        interaction_values_list: A list containing InteractionValues objects.
+        data: The input data used to compute the interaction values.
+        max_display: Maximum number of interactions to display. Defaults to 10.
+        feature_names: Names of the features. If not given, feature indices will be used. Defaults to ``None``.
+        abbreviate: Whether to abbreviate feature names. Defaults to ``True``.
+        alpha: The transparency level for the plotted points, ranging from 0 (transparent) to 1
+            (opaque). Defaults to 0.8.
+        row_height: The height in inches allocated for each row on the plot. Defaults to 0.4.
+        ax: ``Matplotlib Axes`` object to plot on. If ``None``, a new figure and axes will be created.
+        rng_seed: Random seed for reproducibility. Defaults to 42.
+        show: Whether to show the plot. Defaults to ``True``. If ``False``, the function returns the axis of the plot.
 
     Returns:
-        plt.Axes | None: The Axes object if `show` is False, otherwise None.
+        If ``show`` is ``False``, the function returns the axis of the plot. Otherwise, it returns
+        ``None``.
+
+    References:
+        .. [1] SHAP is available at https://github.com/shap/shap
     """
     if not isinstance(interaction_values_list, list) or len(interaction_values_list) == 0:
         error_message = "shap_interaction_values must be a non-empty list."
@@ -202,8 +212,8 @@ def beeswarm_plot(
     if row_height < 0:
         error_message = "row_height must be a non-negative value."
         raise ValueError(error_message)
-    if alpha < 0:
-        error_message = "alpha must be a non-negative value."
+    if alpha < 0 or alpha > 1:
+        error_message = "alpha must be between 0 and 1."
         raise ValueError(error_message)
 
     n_samples = len(data)

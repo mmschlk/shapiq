@@ -275,5 +275,5 @@ def test_beeswarm_plot_errors(mock_interaction_data):
         beeswarm_plot(interaction_values_list, feature_data_np, row_height=-1, show=False)
 
     # invalid alpha
-    with pytest.raises(ValueError, match="alpha must be a non-negative value"):
+    with pytest.raises(ValueError, match="alpha must be between 0 and 1"):
         beeswarm_plot(interaction_values_list, feature_data_np, alpha=-0.1, show=False)
