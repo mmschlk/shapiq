@@ -59,5 +59,5 @@ Contents
    :maxdepth: 1
    :caption: BIBLIOGRAPHY
 
-   example
-   references_alternative
+   related_software
+   references

@@ -56,7 +56,7 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = (
-    "alpha"  # set to alpha to not confuse references the docs with the footcites in docstrings.
+    "unsrt"  # set to alpha to not confuse references the docs with the footcites in docstrings.
 )
 
 source_suffix = {
