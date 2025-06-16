@@ -1,6 +1,6 @@
 """Approximators to estimate the Shapley interaction values."""
 
-from ._base import Approximator
+from .base import Approximator
 from .marginals import OwenSamplingSV, StratifiedSamplingSV
 from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII

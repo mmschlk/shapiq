@@ -101,6 +101,17 @@ class Imputer(Game):
         """Returns the explanation point if it is set."""
         return self._x.copy() if self._x is not None else None
 
+    def set_random_state(self, random_state: int | None = None) -> None:
+        """Sets the random state for the imputer and the model.
+
+        Args:
+            random_state: The random state to set. Defaults to ``None``, which will set a not
+                deterministic random state.
+
+        """
+        self.random_state = random_state
+        self._rng = np.random.default_rng(random_state)
+
     def predict(self, x: np.ndarray) -> np.ndarray:
         """Provides a unified prediction interface.
 

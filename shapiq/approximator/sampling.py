@@ -327,6 +327,16 @@ class CoalitionSampler:
             pass
         return None
 
+    def set_random_state(self, random_state: int | None = None) -> None:
+        """Set the random state for the coalition sampler.
+
+        Args:
+            random_state: The random state to set. If ``None``, no random state is set. Defaults to
+                ``None``.
+
+        """
+        self._rng = np.random.default_rng(seed=random_state)
+
     def execute_border_trick(self, sampling_budget: int) -> int:
         """Execute the border trick for a sampling budget.
 
