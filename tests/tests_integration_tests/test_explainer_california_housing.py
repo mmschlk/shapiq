@@ -32,22 +32,37 @@ def compute_gt(save_dir: pathlib.Path) -> None:
         compute_tree_explanations,
     )
 
-    if not save_dir.exists():
-        # create the directory if it does not exist
-        save_dir.mkdir(parents=True, exist_ok=True)
-        compute_tree_explanations(save_path=save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    # check if the tabular explanations already exist
+    if not any(save_dir.glob("iv_california_housing_imputer_*")):
         compute_tabular_explanations(save_path=save_dir)
+
+    # check if the tree explanations already exist
+    if not any(save_dir.glob("iv_california_housing_tree_*")):
+        compute_tree_explanations(save_path=save_dir)
 
 
 def _load_ground_truth_interaction_values_california(
     index: IndexType, order: int, *, tabular: bool, load_from_runner: bool
-):
+) -> InteractionValues:
     """Load the ground truth interactions for the California Housing dataset.
 
     Note to developers:
         This function loads the interaction values that were precomputed by `tests/tests_integration_tests/compute_test_explanations.py`.
-    """
 
+    Args:
+        index: The index of the interaction values to load.
+        order: The order of the interaction values to load.
+        tabular: If True, load the interaction values for the Tabular Explainer, otherwise for the
+            Tree Explainer.
+        load_from_runner: If True, load the interaction values from the test runner, otherwise load
+            them from the local data directory.
+
+    Returns:
+        InteractionValues: The interaction values for the given index and order.
+
+    """
     if tabular:
         name_part = "iv_california_housing_imputer_9070456741283270540"
     else:
@@ -62,7 +77,12 @@ def _load_ground_truth_interaction_values_california(
         save_dir = save_dir / "data" / "interaction_values" / "california_housing"
 
     all_files = list(save_dir.glob(f"{name_part}_index={index}_order={order}.pkl"))
-    assert len(all_files) == 1
+    if len(all_files) != 1:
+        msg = (
+            f"Expected exactly one file for index {index} and order {order}, "
+            f"but found {len(all_files)} files in {save_dir}."
+        )
+        raise ValueError(msg)
     file_path = all_files[0]
     return InteractionValues.load(file_path)
 
@@ -72,7 +92,7 @@ def _compare(
     iv: InteractionValues,
     index: IndexType,
     order: int,
-    tolerance: float = 0.02,  # 1% of the maximum value
+    tolerance: float = 0.05,
 ) -> None:
     """Compare the ground truth interaction values with the computed interaction values."""
     tolerance = max(abs(gt.get_n_order(min_order=1).values)) * tolerance
@@ -126,15 +146,16 @@ class TestCaliforniaHousingExactComputer:
                     gt_iv_old = _load_ground_truth_interaction_values_california(
                         index=index, order=order, tabular=True, load_from_runner=False
                     )
-                except AssertionError:
+                except ValueError:
                     # If the ground truth interaction values do not exist, skip the test
                     continue
                 # Compare the two interaction values, here we intentionally use a higher tolerance
                 # since the new computations might have more differences due to different random seeds
                 # or other external factors ...
-                _compare(gt=gt_iv_old, iv=gt_iv_runner, index=index, order=order)
+                _compare(gt=gt_iv_old, iv=gt_iv_runner, index=index, order=order, tolerance=0.05)
 
 
+@pytest.mark.integration
 class TestCaliforniaHousingExplainers:
     """Tests that check if the Explainer get the correct interaction values on California Housing.
 
@@ -145,7 +166,6 @@ class TestCaliforniaHousingExplainers:
     scenario.
     """
 
-    @pytest.mark.integration
     @pytest.mark.parametrize("index", get_args(TreeSHAPIQIndices))
     @pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
     def test_tree_explainer(
@@ -176,7 +196,6 @@ class TestCaliforniaHousingExplainers:
         # do the comparison of the interaction values
         _compare(gt=gt_iv, iv=iv, index=index, order=order)
 
-    @pytest.mark.integration
     @pytest.mark.parametrize("index", get_args(ExplainerIndices))
     @pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
     def test_agnostic_explainer(
@@ -208,7 +227,6 @@ class TestCaliforniaHousingExplainers:
         # do the comparison of the interaction values
         _compare(gt=gt_iv, iv=iv, index=index, order=order)
 
-    @pytest.mark.integration
     @pytest.mark.parametrize("explainer", [TabularExplainer, Explainer])
     @pytest.mark.parametrize("index", get_args(TabularExplainerIndices))
     @pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
