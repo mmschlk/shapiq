@@ -271,7 +271,7 @@ def test_beeswarm_plot_errors(mock_interaction_data):
         )
 
     # invalid row height
-    with pytest.raises(ValueError, match="row_height must be a non-negative value"):
+    with pytest.raises(ValueError, match="row_height must be a positive value"):
         beeswarm_plot(interaction_values_list, feature_data_np, row_height=-1, show=False)
 
     # invalid alpha

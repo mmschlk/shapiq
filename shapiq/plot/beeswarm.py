@@ -204,15 +204,15 @@ def beeswarm_plot(
         error_message = "shap_interaction_values must be a non-empty list."
         raise ValueError(error_message)
     if not isinstance(data, pd.DataFrame) and not isinstance(data, np.ndarray):
-        error_message = f"X must be a pandas DataFrame or a numpy array. Got: {type(data)}."
+        error_message = f"data must be a pandas DataFrame or a numpy array. Got: {type(data)}."
         raise TypeError(error_message)
     if len(interaction_values_list) != len(data):
-        error_message = "Length of shap_interaction_values must match number of rows in X."
+        error_message = "Length of shap_interaction_values must match number of rows in data."
         raise ValueError(error_message)
-    if row_height < 0:
-        error_message = "row_height must be a non-negative value."
+    if row_height <= 0:
+        error_message = "row_height must be a positive value."
         raise ValueError(error_message)
-    if alpha < 0 or alpha > 1:
+    if alpha <= 0 or alpha > 1:
         error_message = "alpha must be between 0 and 1."
         raise ValueError(error_message)
 
