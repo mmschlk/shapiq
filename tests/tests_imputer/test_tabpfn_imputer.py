@@ -39,7 +39,7 @@ def test_tabpfn_imputer(tabpfn_classification_problem):
     out_1 = imputer(np.asarray([True, True, True]))  # 3 features should now been fitted
     out_2 = imputer(np.asarray([True, True, False]))  # 2 features should now been fitted
     out_3 = imputer(np.asarray([False, True, False]))  # 1 feature should now been fitted
-    assert out_1 != out_2 != out_3
+    assert out_1 != out_2 and out_2 != out_3 and out_1 != out_3
 
 
 @skip_if_no_tabpfn
