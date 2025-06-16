@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from shapiq.approximator._base import Approximator
+from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from shapiq.games.base import Game
 
 
 class PermutationSamplingSV(Approximator):
@@ -35,6 +37,8 @@ class PermutationSamplingSV(Approximator):
 
     """
 
+    valid_indices: tuple[Literal["SV"]] = ("SV",)
+
     def __init__(
         self,
         n: int,
@@ -57,15 +61,24 @@ class PermutationSamplingSV(Approximator):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
         batch_size: int | None = 5,
+        *args: Any,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
         Args:
             budget: The number of game evaluations for approximation
+
             game: The game function as a callable that takes a set of players and returns the value.
-            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``5``.
+
+            batch_size: The size of the batch. If ``None``, the batch size is set to ``1``.
+                Defaults to ``5``.
+
+            *args: Additional positional arguments (not used, only for compatibility).
+
+            **kwargs: Additional keyword arguments (not used, only for compatibility).
 
         Returns:
             The estimated interaction values.

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import scipy as sp
 
-from shapiq.approximator._base import Approximator
+from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 from shapiq.utils import get_explicit_subsets, powerset
 
@@ -54,7 +54,15 @@ class PermutationSamplingSTII(Approximator):
 
     """
 
-    def __init__(self, n: int, max_order: int, random_state: int | None = None) -> None:
+    valid_indices: tuple[Literal["STII"]] = ("STII",)
+
+    def __init__(
+        self,
+        n: int,
+        max_order: int,
+        random_state: int | None = None,
+        **kwargs: Any,  # noqa: ARG002
+    ) -> None:
         """Initialize the Permutation Sampling approximator for STII.
 
         Args:
@@ -64,6 +72,8 @@ class PermutationSamplingSTII(Approximator):
 
             random_state: The random state to use for the permutation sampling. Defaults to
                 ``None``.
+
+            **kwargs: Additional keyword arguments (not used, only for compatibility).
         """
         super().__init__(
             n=n,
