@@ -59,4 +59,5 @@ Contents
    :maxdepth: 1
    :caption: BIBLIOGRAPHY
 
+   related_software
    references

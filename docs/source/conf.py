@@ -47,12 +47,17 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
+    "sphinxcontrib.bibtex",
 ]
 
 nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = (
+    "unsrt"  # set to alpha to not confuse references the docs with the footcites in docstrings.
+)
 
 source_suffix = {
     ".rst": "restructuredtext",
