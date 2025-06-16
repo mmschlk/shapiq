@@ -4,7 +4,7 @@ This module contains the implementation of various game-theoretic concepts and a
 
 """
 
-from .aggregation import aggregate_base_interaction
+from .aggregation import aggregate_base_attributions, aggregate_base_interaction
 from .core import egalitarian_least_core
 from .exact import ExactComputer, get_bernoulli_weights
 from .indices import (
@@ -20,6 +20,7 @@ from .moebius_converter import MoebiusConverter
 __all__ = [
     "ExactComputer",
     "aggregate_base_interaction",
+    "aggregate_base_attributions",
     "get_bernoulli_weights",
     "ALL_AVAILABLE_CONCEPTS",
     "index_generalizes_sv",
