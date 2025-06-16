@@ -5,11 +5,11 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
-import numpy as np
-
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
+
+    import numpy as np
 
     from shapiq.explainer.base import Explainer
     from shapiq.games.base import Game
@@ -288,29 +288,3 @@ def print_class(obj: object) -> str:
     if isinstance(obj, type):
         return re.search("(?<=<class ').*(?='>)", str(obj))[0]
     return re.search("(?<=<class ').*(?='>)", str(type(obj)))[0]
-
-
-def set_random_state(random_state: int | None, object_with_rng: object) -> None:
-    """Sets the random state for all rng objects in the explainer.
-
-    Args:
-        random_state: The random state to re-initialize, Explainer, Imputer and Approximator with.
-            Defaults to ``None`` which does not change the random state.
-        object_with_rng: The object to set the random state for.
-    """
-    # TODO(mmshlk): write semantic test for this method
-    if random_state is not None:
-        if hasattr(object_with_rng, "_rng"):  # default attribute
-            object_with_rng._rng = np.random.default_rng(random_state)  # noqa: SLF001
-        # explainer can have an imputer
-        if hasattr(object_with_rng, "_imputer"):
-            object_with_rng._imputer._rng = np.random.default_rng(random_state)  # noqa: SLF001
-        # explainer can have an approximator
-        if hasattr(object_with_rng, "_approximator"):
-            object_with_rng._approximator._rng = np.random.default_rng(random_state)  # noqa: SLF001
-            # approximators inside an explainer can have a sampler
-            if hasattr(object_with_rng._approximator, "_sampler"):  # noqa: SLF001
-                object_with_rng._approximator._sampler._rng = np.random.default_rng(random_state)  # noqa: SLF001
-        # appoximators can have a sampler
-        if hasattr(object_with_rng, "_sampler"):
-            object_with_rng._sampler._rng = np.random.default_rng(random_state)  # noqa: SLF001
