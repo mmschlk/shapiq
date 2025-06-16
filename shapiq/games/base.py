@@ -419,6 +419,35 @@ class Game:
         self.coalition_lookup = coalitions_dict
         self.precompute_flag = True
 
+    def compute(
+        self, coalitions: np.ndarray | None = None
+    ) -> tuple[np.ndarray, dict[tuple[int, ...], int], float]:
+        """Compute the game values for all or a given set of coalitions.
+
+        Args:
+            coalitions: The coalitions to evaluate.
+
+        Returns:
+            A tuple containing:
+            - The computed game values in the same order of the coalitions.
+            - A lookup dictionary mapping from coalitions to the indices in the array.
+            - The normalization value used to center/normalize the game values.
+
+        Note:
+            This method does not change the state of the game and does not normalize the values.
+
+        Examples:
+            >>> from shapiq.games.benchmark import DummyGame
+            >>> game = DummyGame(4, interaction=(1, 2))
+            >>> game.compute(np.array([[0, 1, 0, 0], [0, 1, 1, 0]], dtype=bool))
+            (array([0.25, 1.5]), {(1): 0, (1, 2): 1.5}, 0.0)
+
+        """
+        coalitions: np.ndarray = self._check_coalitions(coalitions)
+        game_values = self.value_function(coalitions)
+
+        return game_values, self.coalition_lookup, self.normalization_value
+
     def save_values(self, path: Path | str) -> None:
         """Saves the game values to the given path.
 

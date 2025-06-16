@@ -232,6 +232,31 @@ def generate_interaction_lookup(
     }
 
 
+def generate_interaction_lookup_from_coalitions(
+    coalitions: np.ndarray,
+) -> dict[tuple[Any, ...], int]:
+    """Generates a lookup dictionary for interactions based on an array of coalitions.
+
+    Args:
+        coalitions: An array of player coalitions.
+
+    Returns:
+        A dictionary that maps interactions to their index in the values vector
+
+    Example:
+        >>> coalitions = np.array([
+        ...     [1, 0, 1],
+        ...     [0, 1, 1],
+        ...     [1, 1, 0],
+        ...     [0, 0, 1]
+        ... ])
+        >>> generate_interaction_lookup_from_coalitions(coalitions)
+        {(0, 2): 0, (1, 2): 1, (0, 1): 2, (2,): 3}
+
+    """
+    return {tuple(np.where(coalition)[0]): idx for idx, coalition in enumerate(coalitions)}
+
+
 def transform_coalitions_to_array(
     coalitions: Collection[tuple[int, ...]],
     n_players: int | None = None,
