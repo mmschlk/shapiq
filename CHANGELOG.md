@@ -21,6 +21,7 @@
 - suppress a ``RuntimeWarning`` in ``Regression`` approximators ``solve_regression()``method when the solver is not able to find good interim solutions for the regression problem.
 #### Bug Fixes
 - fixed a bug in the `shapiq.waterfall_plot` function that caused the plot to not display correctly resulting in cutoff y_ticks. Additionally, the file was renamed from `watefall.py` to `waterfall.py` to match the function name [#377](https://github.com/mmschlk/shapiq/pull/377)
+- fixes a bug with `TabPFNExplainer`, where the model was not able to be used for predictions after it was explained. This was due to the model being fitted on a subset of features, which caused inconsistencies in the model's predictions after explanation. The fix includes that after each call to the `TabPFNImputer.value_function`, the tabpfn model is fitted on the whole dataset (without omitting features). This means that the original model can be used for predictions after it has been explained. [#396](https://github.com/mmschlk/shapiq/issues/396).
 
 ### v1.2.3 (2025-03-24)
 - substantially improves the runtime of all `Regression` approximators by a) a faster pre-computation of the regression matrices and b) a faster computation of the weighted least squares regression [#340](https://github.com/mmschlk/shapiq/issues/340)
