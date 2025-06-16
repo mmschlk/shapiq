@@ -24,57 +24,47 @@ if TYPE_CHECKING:
 
     from shapiq.utils.custom_types import IndexType
 
+TABULAR_NAME_START = "iv_california_housing_imputer_9070456741283270540"
+TREE_NAME_START = "iv_california_housing_tree"
 
-def compute_gt(save_dir: pathlib.Path) -> None:
+
+@pytest.fixture(scope="module")
+def california_interaction_values() -> dict[str, InteractionValues]:
     """Computes the gt if it does not exist."""
     from .compute_test_explanations import (
         compute_tabular_explanations,
         compute_tree_explanations,
     )
 
-    save_dir.mkdir(parents=True, exist_ok=True)
-
-    # check if the tabular explanations already exist
-    if not any(save_dir.glob("iv_california_housing_imputer_*")):
-        compute_tabular_explanations(save_path=save_dir)
-
-    # check if the tree explanations already exist
-    if not any(save_dir.glob("iv_california_housing_tree_*")):
-        compute_tree_explanations(save_path=save_dir)
+    print("Computing interaction values for California Housing dataset...")  # noqa: T201
+    ivs_tabular = compute_tabular_explanations()
+    ivs_tree = compute_tree_explanations()
+    return {**ivs_tabular, **ivs_tree}
 
 
 def _load_ground_truth_interaction_values_california(
-    index: IndexType, order: int, *, tabular: bool, load_from_runner: bool
+    index: IndexType, order: int, *, tabular: bool
 ) -> InteractionValues:
-    """Load the ground truth interactions for the California Housing dataset.
+    """Load the ground truth interactions for the California Housing dataset from disk.
 
     Note to developers:
-        This function loads the interaction values that were precomputed by `tests/tests_integration_tests/compute_test_explanations.py`.
+        This function loads the interaction values that were precomputed by
+            `tests/tests_integration_tests/compute_test_explanations.py`.
 
     Args:
         index: The index of the interaction values to load.
         order: The order of the interaction values to load.
         tabular: If True, load the interaction values for the Tabular Explainer, otherwise for the
             Tree Explainer.
-        load_from_runner: If True, load the interaction values from the test runner, otherwise load
-            them from the local data directory.
 
     Returns:
         InteractionValues: The interaction values for the given index and order.
 
     """
-    if tabular:
-        name_part = "iv_california_housing_imputer_9070456741283270540"
-    else:
-        name_part = "iv_california_housing_tree"
+    name_part = TABULAR_NAME_START if tabular else TREE_NAME_START
 
-    if load_from_runner:
-        save_dir = pathlib.Path(__file__).parent
-        save_dir = save_dir / "data" / "interaction_values" / "california_housing"
-        compute_gt(save_dir=save_dir)
-    else:
-        save_dir = pathlib.Path(__file__).parent.parent
-        save_dir = save_dir / "data" / "interaction_values" / "california_housing"
+    save_dir = pathlib.Path(__file__).parent.parent
+    save_dir = save_dir / "data" / "interaction_values" / "california_housing"
 
     all_files = list(save_dir.glob(f"{name_part}_index={index}_order={order}.pkl"))
     if len(all_files) != 1:
@@ -126,33 +116,20 @@ def _compare(
 class TestCaliforniaHousingExactComputer:
     """Tests that checks that the ExactComputer yields correct interaction values on California Housing."""
 
-    def test_with_recompute(self):
+    @pytest.mark.parametrize("index", get_args(TabularExplainerIndices))
+    @pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
+    def test_with_recompute(self, california_interaction_values, index, order):
         """Computes the ground truth on the test runner and compares it to the old ground truth."""
 
-        indices = get_args(TabularExplainerIndices)
-        orders = [1, 2, 3, 4, 5, 6, 7]
+        _ = get_expected_index_or_skip(index, order)
 
-        for index in indices:
-            for order in orders:
-                # Load the ground truth interaction values from the test runner
-                try:
-                    gt_iv_runner = _load_ground_truth_interaction_values_california(
-                        index=index,
-                        order=order,
-                        tabular=True,
-                        load_from_runner=True,
-                    )
-                    # Load the old ground truth interaction values
-                    gt_iv_old = _load_ground_truth_interaction_values_california(
-                        index=index, order=order, tabular=True, load_from_runner=False
-                    )
-                except ValueError:
-                    # If the ground truth interaction values do not exist, skip the test
-                    continue
-                # Compare the two interaction values, here we intentionally use a higher tolerance
-                # since the new computations might have more differences due to different random seeds
-                # or other external factors ...
-                _compare(gt=gt_iv_old, iv=gt_iv_runner, index=index, order=order, tolerance=0.05)
+        name = f"{TABULAR_NAME_START}_index={index}_order={order}.pkl"
+        gt_iv_runner = california_interaction_values[name]
+        gt_iv_old = _load_ground_truth_interaction_values_california(
+            index=index, order=order, tabular=True
+        )
+
+        _compare(gt=gt_iv_old, iv=gt_iv_runner, index=index, order=order, tolerance=0.05)
 
 
 @pytest.mark.integration
@@ -174,6 +151,7 @@ class TestCaliforniaHousingExplainers:
         order: int,
         california_housing_train_test_explain: tuple[np.ndarray, ...],
         california_housing_rf_model: RandomForestRegressor,
+        california_interaction_values: dict[str, InteractionValues],
     ):
         """Test the TreeSHAPIQXAI game on the California Housing dataset."""
         expected_index = get_expected_index_or_skip(index, order)
@@ -189,9 +167,8 @@ class TestCaliforniaHousingExplainers:
         assert iv.index == expected_index
 
         # load the ground truth interaction values
-        gt_iv = _load_ground_truth_interaction_values_california(
-            index, order, load_from_runner=True, tabular=False
-        )
+        name = f"{TREE_NAME_START}_index={index}_order={order}.pkl"
+        gt_iv = california_interaction_values[name]
 
         # do the comparison of the interaction values
         _compare(gt=gt_iv, iv=iv, index=index, order=order)
@@ -204,6 +181,7 @@ class TestCaliforniaHousingExplainers:
         order: int,
         california_housing_train_test_explain: tuple[np.ndarray, ...],
         california_housing_imputer,
+        california_interaction_values: dict[str, InteractionValues],
     ) -> None:
         """Test AgnosticExplainer on the California Housing dataset."""
         # prepare the expected index based on the order and index
@@ -220,9 +198,8 @@ class TestCaliforniaHousingExplainers:
         assert iv.index == expected_index
 
         # load the ground truth interaction values
-        gt_iv = _load_ground_truth_interaction_values_california(
-            index, order, load_from_runner=True, tabular=True
-        )
+        name = f"{TABULAR_NAME_START}_index={index}_order={order}.pkl"
+        gt_iv = california_interaction_values[name]
 
         # do the comparison of the interaction values
         _compare(gt=gt_iv, iv=iv, index=index, order=order)
@@ -237,6 +214,7 @@ class TestCaliforniaHousingExplainers:
         order: int,
         california_housing_train_test_explain: tuple[np.ndarray, ...],
         california_housing_rf_model: RandomForestRegressor,
+        california_interaction_values: dict[str, InteractionValues],
     ) -> None:
         """Test the explainer on the California Housing dataset."""
         # prepare the expected index based on the order and index
@@ -269,9 +247,8 @@ class TestCaliforniaHousingExplainers:
         assert iv.index == expected_index
 
         # load the ground truth interaction values
-        gt_iv = _load_ground_truth_interaction_values_california(
-            index, order, load_from_runner=True, tabular=True
-        )
+        name = f"{TABULAR_NAME_START}_index={index}_order={order}.pkl"
+        gt_iv = california_interaction_values[name]
 
         # do the comparison of the interaction values
         _compare(gt=gt_iv, iv=iv, index=index, order=order)
