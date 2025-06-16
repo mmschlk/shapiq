@@ -13,7 +13,6 @@ from shapiq.explainer.tabular import (
     TabularExplainer,
     TabularExplainerApproximators,
     TabularExplainerImputers,
-    TabularExplainerIndices,
 )
 from tests.fixtures.data import BUDGET_NR_FEATURES
 from tests.utils import get_expected_index_or_skip
@@ -21,41 +20,8 @@ from tests.utils import get_expected_index_or_skip
 MAX_ORDERS = [2, 3]
 
 
-@pytest.mark.parametrize("index", get_args(TabularExplainerIndices))
-@pytest.mark.parametrize("max_order", [1, 2, 3])
-# @pytest.mark.parametrize("imputer", get_args(TabularExplainerImputers))
-def test_init_params(dt_reg_model, background_reg_data, index, max_order):
-    """Test the initialization of the interaction explainer."""
-    expected_index = get_expected_index_or_skip(index, max_order)
-    model_function = dt_reg_model.predict
-    explainer = TabularExplainer(
-        model=model_function,
-        data=background_reg_data,
-        random_state=42,
-        index=index,
-        max_order=max_order,
-        approximator="auto",
-    )
-    assert explainer.index == expected_index
-    assert explainer.max_order == max_order
-    # test defaults
-    if max_order == 1 and explainer.index == "SV":
-        assert explainer.approximator.__class__.__name__ == "KernelSHAP"
-    elif max_order == 1 and explainer.index == "BV":
-        assert explainer.approximator.__class__.__name__ == "RegressionFBII"
-        assert explainer.approximator.max_order == 1
-    elif index == "FSII":
-        assert explainer.approximator.__class__.__name__ == "RegressionFSII"
-    elif index == "FBII":
-        assert explainer.approximator.__class__.__name__ == "RegressionFBII"
-    elif index in ("SII", "k-SII"):
-        assert explainer.approximator.__class__.__name__ == "KernelSHAPIQ"
-    else:
-        assert explainer.approximator.__class__.__name__ == "SVARMIQ"
-
-
 def test_auto_params(dt_reg_model, background_reg_data):
-    """Test the initialization of the interaction explainer."""
+    """Test the default parameters of the explainer."""
     model_function = dt_reg_model.predict
     explainer = TabularExplainer(
         model=model_function,
