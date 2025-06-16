@@ -104,7 +104,8 @@ autodoc_default_options = {
     "exclude-members": "__weakref__",
 }
 autoclass_content = "both"
-autodoc_inherit_docstrings = False
+autodoc_inherit_docstrings = True
+autodoc_member_order = "groupwise"
 
 # -- Images ----------------------------------------------------------------------------------------
 StandaloneHTMLBuilder.supported_image_types = [

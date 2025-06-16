@@ -5,6 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from shapiq.games.imputer.marginal_imputer import MarginalImputer
+
 
 @pytest.fixture
 def cooking_game():
@@ -71,3 +73,38 @@ def paper_game():
             return np.array(output)
 
     return PaperGame()
+
+
+def get_california_housing_imputer() -> MarginalImputer:
+    """Return a California housing imputer."""
+    from .data import get_california_housing_train_test_explain
+    from .models import get_california_housing_random_forest
+
+    _, _, x_test, _, x_explain = get_california_housing_train_test_explain()
+    model = get_california_housing_random_forest()
+
+    imputer = MarginalImputer(
+        model=model.predict,
+        data=x_test,
+        x=x_explain,
+        random_state=42,
+        normalize=False,
+        sample_size=100,
+        joint_marginal_distribution=True,
+    )
+    imputer_hash = hash(
+        (
+            imputer.sample_size,
+            imputer.joint_marginal_distribution,
+            imputer.normalize,
+            imputer.random_state,
+        )
+    )
+    assert imputer_hash == 9070456741283270540
+    return imputer
+
+
+@pytest.fixture
+def california_housing_imputer():
+    """Return a California housing imputer fixture."""
+    return get_california_housing_imputer()
