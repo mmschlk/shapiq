@@ -1,9 +1,15 @@
 ## Changelog
 
-### Development
+### v1.3.0 (2025-06-17)
+
+#### Highlights
+- `shapiq.SPEX` (Sparse Exact) approximator for efficient computation of sparse interaction values for really large models and games. Paper: [SPEX: Scaling Feature Interaction Explanations for LLMs](https://arxiv.org/abs/2502.13870)
+- `shapiq.AgnosticExplainer` a generic explainer that works for any value function or `shapiq.Game` object, allowing for more flexibility in explainers.
+- prettier graph-based plots via `shapiq.si_graph_plot()` and `shapiq.network_plot()`, which now use the same backend for more flexibility and easier maintenance.
 
 #### New Features
 - adds the SPEX (Sparse Exact) module in `approximator.sparse` for efficient computation of sparse interaction values [#379](https://github.com/mmschlk/shapiq/pull/379)
+- adds `shapiq.AgnosticExplainer` which is a generic explainer that can be used for any value function or `shapiq.Game` object. This allows for more flexibility in the explainers. [#100](https://github.com/mmschlk/shapiq/issues/100), [#395](https://github.com/mmschlk/shapiq/pull/395)
 - changes `budget` to be a mandatory parameter given to the `TabularExplainer.explain()` method [#355](https://github.com/mmschlk/shapiq/pull/356)
 - changes logic of `InteractionValues.get_n_order()` function to be callable with **either** the `order: int` parameter and optional assignment of `min_order: int` and `max_order: int` parameters **or** with the min/max order parameters [#372](https://github.com/mmschlk/shapiq/pull/372)
 - renamed `min_percentage` parameter in the force plot to `contribution_threshold` to better reflect its purpose [#391](https://github.com/mmschlk/shapiq/pull/391)
@@ -20,6 +26,8 @@
 - removed multiple instances where ``shapiq`` tests if some approximators/explainers can be instantiated with certain indices or not in favor of using Literals in the ``__init__`` method of the approximator classes. This allows for better type hinting and IDE support, as well as cleaner code. [#391](https://github.com/mmschlk/shapiq/pull/391)
 - Added documentation for all public modules, classes, and functions in the code base to improve the documentation quality and make it easier to understand how to use the package. [#391](https://github.com/mmschlk/shapiq/pull/391)
 - suppress a ``RuntimeWarning`` in ``Regression`` approximators ``solve_regression()``method when the solver is not able to find good interim solutions for the regression problem.
+- refactors the tests into ``tests_unit/`` and ``tests_integration/`` to better separate unit tests from integration tests. [#395](https://github.com/mmschlk/shapiq/pull/395)
+- adds new integration tests in ``tests/tests_integration/test_explainer_california_housing`` which compares the different explainers against ground-truth interaction values computed by ``shapiq.ExactComputer`` and interaction values stored on [disk](https://github.com/mmschlk/shapiq/tree/main/tests/data/interaction_values/california_housing) as a form of regression test. This test should help finding bugs in the future when the approximators, explainers, or exact computation are changed. [#395](https://github.com/mmschlk/shapiq/pull/395)
 
 #### Bug Fixes
 - fixed a bug in the `shapiq.waterfall_plot` function that caused the plot to not display correctly resulting in cutoff y_ticks. Additionally, the file was renamed from `watefall.py` to `waterfall.py` to match the function name [#377](https://github.com/mmschlk/shapiq/pull/377)

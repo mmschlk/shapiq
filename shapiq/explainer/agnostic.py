@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from shapiq.games.base import Game
-from shapiq.games.imputer.base import Imputer
 
 from .base import Explainer
 from .configuration import setup_approximator
@@ -121,6 +120,8 @@ class AgnosticExplainer(Explainer):
         Returns:
             InteractionValues: The computed interaction values.
         """
+        from shapiq.games.imputer.base import Imputer
+
         if x is not None and isinstance(self.game, Imputer):
             self.game.fit(x=x)
             if random_state is not None:

@@ -13,7 +13,7 @@ import sys
 import pytest
 
 import shapiq
-from shapiq import approximator, datasets, explainer, games, plot, utils
+from shapiq import approximator, benchmark, datasets, explainer, game_theory, games, plot, utils
 
 
 @pytest.mark.parametrize(
@@ -26,6 +26,8 @@ from shapiq import approximator, datasets, explainer, games, plot, utils
         utils,
         plot,
         datasets,
+        game_theory,
+        benchmark,
     ],
 )
 def test_import_package(package):
@@ -43,17 +45,14 @@ def test_import_package(package):
         utils,
         plot,
         datasets,
+        game_theory,
+        benchmark,
     ],
 )
 def test_import_submodules(package):
     """Tests whether all submodules of the package can be imported."""
     for _, module_name, _ in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
         importlib.import_module(module_name)
-
-
-def test_approximator_imports():
-    """Tests whether all modules can be imported manually."""
-    assert True
 
 
 def test_benchmark_imports():
