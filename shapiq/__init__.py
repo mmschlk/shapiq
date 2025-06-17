@@ -43,7 +43,13 @@ from .benchmark import (
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 
 # explainer classes
-from .explainer import Explainer, TabPFNExplainer, TabularExplainer, TreeExplainer
+from .explainer import (
+    AgnosticExplainer,
+    Explainer,
+    TabPFNExplainer,
+    TabularExplainer,
+    TreeExplainer,
+)
 
 # exact computer classes
 from .game_theory.exact import ExactComputer
@@ -104,6 +110,7 @@ __all__ = [
     "TabularExplainer",
     "TreeExplainer",
     "TabPFNExplainer",
+    "AgnosticExplainer",
     # imputers
     "MarginalImputer",
     "BaselineImputer",
