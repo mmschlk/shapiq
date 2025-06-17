@@ -30,14 +30,6 @@ jobs:
       with:
         enable-cache: true
 
-    - name: Cache UV packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/uv
-        key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-        restore-keys: |
-          uv-${{ runner.os }}-${{ matrix.python-version }}-
-
     - name: Install dependencies
       run: uv sync --all-extras --dev
 

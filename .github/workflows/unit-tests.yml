@@ -1,6 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
+# This workflow will run the unit tests across multiple Python versions and operating systems.
 name: unit-tests
 
 on:
@@ -10,13 +8,21 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
+  unit_tests:
+    name: Run unit tests
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.13"]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.10"
+          - os: ubuntu-latest
+            python-version: "3.13"
+          - os: macos-latest
+            python-version: "3.11"
+          - os: windows-latest
+            python-version: "3.11"
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
@@ -27,9 +33,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
-        cache-dependency-glob: |
-            **/pyproject.toml
-            **/uv.lock
 
     - name: Install dependencies
       run: uv sync --all-extras --dev
