@@ -84,8 +84,9 @@ ml = [
     "transformers",
     "scikit-image",
     "joblib",
-    "tensorflow; python_version < '3.13'",
-    "tf-keras; python_version < '3.13'",
+    # tf only for python < 3.13 and not windows
+    "tensorflow; python_version < '3.13' and platform_system != 'Windows'",
+    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",
 ]
 
 [tool.pytest.ini_options]
