@@ -95,7 +95,7 @@ def _get_config(row_height: float) -> dict:
         "color_rectangle": "#eeeeee",
         "alpha_rectangle": 0.5,
     }
-    margin = max(-0.1875 * row_height + 0.3875, 0.15)  # 0.35 if row_height < 1 else 0.2
+    margin = max(-0.1875 * row_height + 0.3875, 0.15)
     margin_label = 0.5 - min(row_height / 3, 0.2)
     config_dict["margin_plot"] = margin
     config_dict["margin_label"] = margin_label
