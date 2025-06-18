@@ -32,6 +32,10 @@ jobs:
         run: |
           uv sync --all-extras
 
+      - name: Copy notebooks
+        run: |
+          uv run python scripts/copy_notebooks.py
+
       - name: Build documentation
         run: |
           uv run sphinx-build -b html docs/source docs/build/html
