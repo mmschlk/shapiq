@@ -1,0 +1,37 @@
+# This workflow will build the documentation as a test to ensure that it can be built successfully.
+name: build-docs
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        id: setup-uv-python
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Build documentation
+        run: |
+          uv run sphinx-build -b html docs/source docs/build/html
