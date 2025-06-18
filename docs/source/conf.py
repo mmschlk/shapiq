@@ -33,12 +33,12 @@ version = shapiq.__version__
 # -- General configuration -------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = [
+    "sphinx.ext.napoleon",
     "nbsphinx",
     "sphinx.ext.duration",
     "myst_parser",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
@@ -53,10 +53,10 @@ extensions = [
 nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = (
-    "unsrt"  # set to alpha to not confuse references the docs with the footcites in docstrings.
+    "alpha"  # set to alpha to not confuse references the docs with the footcites in docstrings.
 )
 
 source_suffix = {
