@@ -22,8 +22,6 @@ jobs:
             python-version: "3.11"
           - os: windows-latest
             python-version: "3.12"
-            # we use 3.12 on Windows for variety but also because tkinter and 3.11 seems to
-            # sometimes cause issues: https://github.com/actions/setup-python/issues/1102
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -35,6 +33,13 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
+
+    # we need to reinstall Python on Windows because of some problems with tkinter
+    # https://github.com/astral-sh/uv/issues/7036
+    - name: Reinstall Python
+      run: |
+        uv python install --reinstall
+        uv run python --version
 
     - name: Install dependencies
       run: uv sync --all-extras --dev
