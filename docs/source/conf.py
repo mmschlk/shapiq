@@ -33,12 +33,12 @@ version = shapiq.__version__
 # -- General configuration -------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = [
+    "sphinx.ext.napoleon",
     "nbsphinx",
     "sphinx.ext.duration",
     "myst_parser",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
@@ -48,7 +48,6 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
     "sphinxcontrib.bibtex",
-    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
 nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
