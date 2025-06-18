@@ -21,7 +21,9 @@ jobs:
           - os: macos-latest
             python-version: "3.11"
           - os: windows-latest
-            python-version: "3.11"
+            python-version: "3.12"
+            # we use 3.12 on Windows for variety but also because tkinter and 3.11 seems to
+            # sometimes cause issues: https://github.com/actions/setup-python/issues/1102
     runs-on: ${{ matrix.os }}
 
     steps:
