@@ -64,6 +64,7 @@ from .interaction_values import InteractionValues
 # plotting functions
 from .plot import (
     bar_plot,
+    beeswarm_plot,
     force_plot,
     network_plot,
     sentence_plot,
@@ -125,6 +126,7 @@ __all__ = [
     "waterfall_plot",
     "sentence_plot",
     "upset_plot",
+    "beeswarm_plot",
     # public utils
     "powerset",
     "get_explicit_subsets",
