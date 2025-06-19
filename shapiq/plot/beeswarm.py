@@ -12,7 +12,6 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from skimage.color import lab2rgb, lch2lab
 
 from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 
@@ -21,57 +20,33 @@ from .utils import abbreviate_feature_names
 __all__ = ["beeswarm_plot"]
 
 
-def _lch2rgb(lch_ab: np.ndarray | list) -> np.ndarray:
-    """Converts LCh color space to RGB (sRGB) color space.
-
-    Args:
-        lch_ab: LCh color space values, where the last dimension contains
-            [L, C, h] values. The hue (h) should be in radians.
-
-    Returns:
-        RGB color space values in sRGB format.
-    """
-    lch_ab = np.asanyarray(lch_ab)
-    if lch_ab.shape[-1] != 3:
-        error_message = (
-            f"Input array must have 3 channels in the last dimension. Got shape: {lch_ab.shape}"
-        )
-        raise ValueError(error_message)
-    lab = lch2lab(lch_ab)
-    return lab2rgb(lab)
-
-
 def _get_red_blue_cmap() -> mcolors.LinearSegmentedColormap:
     """Creates a red-blue colormap with a smooth transition from blue to red.
 
     Returns:
         A colormap object that transitions from blue to red.
     """
-    blue_lch = [54.0, 70.0, 4.6588]
-    l_mid = 40.0
-    red_lch = [54.0, 90.0, 0.35470565 + 2 * np.pi]
-    gray_lch = [55.0, 0.0, 0.0]
+    gray_rgb = np.array([0.51615537, 0.51615111, 0.5161729])
 
-    gray_rgb = _lch2rgb(gray_lch)
-    reds, greens, blues, alphas = [], [], [], []
-    nsteps = 100
-    l_vals = np.concatenate(
-        [np.linspace(blue_lch[0], l_mid, nsteps // 2), np.linspace(l_mid, red_lch[0], nsteps // 2)]
-    )
-    c_vals = np.linspace(blue_lch[1], red_lch[1], nsteps)
-    h_vals = np.linspace(blue_lch[2], red_lch[2], nsteps)
-
-    for i in range(nsteps):
-        pos = i / (nsteps - 1) if nsteps > 1 else 0.0
-        lch = np.array([l_vals[i], c_vals[i], h_vals[i]])
-        rgb = _lch2rgb(lch)
-        reds.append((pos, rgb[0], rgb[0]))
-        greens.append((pos, rgb[1], rgb[1]))
-        blues.append((pos, rgb[2], rgb[2]))
-        alphas.append((pos, 1.0, 1.0))
-
-    cdict = {"red": reds, "green": greens, "blue": blues, "alpha": alphas}
-    red_blue = mcolors.LinearSegmentedColormap("red_blue_v3", cdict)
+    cdict = {
+        "red": [
+            (0.0, 0.0, 0.0),
+            (0.494949494949495, 0.6035590338007161, 0.6035590338007161),
+            (1.0, 1.0, 1.0),
+        ],
+        "green": [
+            (0.0, 0.5433775692459107, 0.5433775692459107),
+            (0.494949494949495, 0.14541587318267168, 0.14541587318267168),
+            (1.0, 0.0, 0.0),
+        ],
+        "blue": [
+            (0.0, 0.983379062301401, 0.983379062301401),
+            (0.494949494949495, 0.6828490076357064, 0.6828490076357064),
+            (1.0, 0.31796406298163893, 0.31796406298163893),
+        ],
+        "alpha": [(0, 1.0, 1.0), (0.494949494949495, 1.0, 1.0), (1.0, 1.0, 1.0)],
+    }
+    red_blue = mcolors.LinearSegmentedColormap("red_blue", cdict)
     red_blue.set_bad(gray_rgb.tolist(), 1.0)
     red_blue.set_over(gray_rgb.tolist(), 1.0)
     red_blue.set_under(gray_rgb.tolist(), 1.0)
