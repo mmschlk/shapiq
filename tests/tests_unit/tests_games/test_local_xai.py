@@ -172,6 +172,7 @@ def test_sentiment_classifier(mask_strategy):
         input_text=input_text,
         normalize=True,
         mask_strategy=mask_strategy,
+        device="cpu",
     )
 
     assert game.n_players == n_players
@@ -200,6 +201,7 @@ def test_sentiment_classifier(mask_strategy):
             input_text=input_text,
             normalize=True,
             mask_strategy="undefined",
+            device="cpu",
         )
 
 
