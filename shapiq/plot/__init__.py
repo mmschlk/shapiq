@@ -1,6 +1,7 @@
 """Plotting functions for the shapiq package."""
 
 from .bar import bar_plot
+from .beeswarm import beeswarm_plot
 from .force import force_plot
 from .network import network_plot
 from .sentence import sentence_plot
@@ -19,6 +20,7 @@ __all__ = [
     "waterfall_plot",
     "sentence_plot",
     "upset_plot",
+    "beeswarm_plot",
     # utils
     "abbreviate_feature_names",
 ]
