@@ -160,7 +160,7 @@ exclude = [
     "E501", # line too long
     "ANN",  # type annotations
     "ARG",  # some functions are not used
-    "INP",  # inports can be different
+    "INP",  # imports can be different
     "N",  # type hints are excludes in tests
     "PTH",  # we can use os for now
     "S",  # in tests we can use some security issues for now
@@ -201,6 +201,10 @@ exclude = [
     "INP", # imports can be different here
     "I002",  # script code does not have to import required modules
     "PTH"  # in script code we use a lot of os, which is okay
+]
+"examples/*.py" = [
+    "E402", # imports can be different here
+    "T20",  # in example code print statements are okay
 ]
 
 [tool.ruff.lint.pydocstyle]
