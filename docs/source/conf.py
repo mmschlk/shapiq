@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
 sys.path.insert(0, os.path.abspath("../../shapiq"))  # noqa: PTH100
 sys.path.insert(0, os.path.abspath("../../examples"))  # noqa: PTH100
 
-
 import shapiq
 
 # -- Read the Docs ---------------------------------------------------------------------------------
@@ -33,12 +32,12 @@ version = shapiq.__version__
 # -- General configuration -------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = [
-    "sphinx.ext.napoleon",
-    "nbsphinx",
+    "nbsphinx",  # causes issues with sphinx-gallery (references, runtime and links dont work). Disable to use sphinx-gallery
     "sphinx.ext.duration",
     "myst_parser",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
+    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
@@ -47,17 +46,13 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
-    "sphinxcontrib.bibtex",
+    "sphinx_gallery.gen_gallery",
 ]
 
 nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
-bibtex_bibfiles = ["references.bib"]
-bibtex_default_style = (
-    "alpha"  # set to alpha to not confuse references the docs with the footcites in docstrings.
-)
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 source_suffix = {
     ".rst": "restructuredtext",
@@ -109,8 +104,7 @@ autodoc_default_options = {
     "exclude-members": "__weakref__",
 }
 autoclass_content = "both"
-autodoc_inherit_docstrings = True
-autodoc_member_order = "groupwise"
+autodoc_inherit_docstrings = False
 
 # -- Images ----------------------------------------------------------------------------------------
 StandaloneHTMLBuilder.supported_image_types = [
@@ -127,6 +121,18 @@ copybutton_prompt_is_regexp = True
 # -- Markdown in docstring -----------------------------------------------------------------------------
 # https://gist.github.com/dmwyatt/0f555c8f9c129c0ac6fed6fabe49078b#file-docstrings-py
 # based on https://stackoverflow.com/a/56428123/23972
+
+# -- Sphinx Gallery -------------------------------------------------------------------------------
+sphinx_gallery_conf = {
+    "examples_dirs": "../../examples",  # path to example scripts
+    "gallery_dirs": "auto_examples",  # path to where to save gallery examples
+    "remove_config_comments": True,
+    "write_computation_times": True,
+    "run_stale_examples": True,  # forces re-execution of outdated examples
+    "doc_module": "shapiq",  # module to document
+    "reference_url": {"shapiq": None},
+    "capture_repr": ("_repr_html_", "__repr__"),  # better html representation of objects
+}
 
 
 def docstring(_app, _what, _name, _obj, _options, lines) -> None:

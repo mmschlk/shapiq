@@ -51,6 +51,12 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: Auto Examples
+
+   auto_examples/index
+
+.. toctree::
+   :maxdepth: 2
    :caption: API REFERENCE
 
    api
@@ -59,5 +65,4 @@ Contents
    :maxdepth: 1
    :caption: BIBLIOGRAPHY
 
-   related_software
    references

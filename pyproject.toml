@@ -84,14 +84,16 @@ ml = [
     "transformers",
     "scikit-image",
     "joblib",
-    # tf only for python < 3.13 and not windows
-    "tensorflow; python_version < '3.13' and platform_system != 'Windows'",
-    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",
+    "tensorflow; python_version < '3.13'",
+    "tf-keras; python_version < '3.13'",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 minversion = "8.0"
+
+[tool.coverage.report]
+directory = "tests"
 
 [tool.ruff]
 line-length = 100
@@ -217,7 +219,6 @@ test = [
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
-    "pytest-randomly",
 ]
 lint = [
     "ruff>=0.11.2",
@@ -230,14 +231,10 @@ docs = [
     "sphinx-copybutton",
     "sphinx-autodoc-typehints",
     "sphinx_toolbox",
-    "sphinxcontrib-bibtex", # references based on bibtex
     "nbconvert",
     "nbsphinx",
     "commonmark",  # Markdown parser and renderer
-    # TODO(mmschlk): remove the pin in ipython when we drop python 3.10 support and pin to
-    # ipython>=9.0.0, since ipython==8.7.0 introduces a bug with parsing notebooks also discussed
-    # here: https://github.com/spatialaudio/nbsphinx/issues/24
-    "ipython<8.7.0",
+    "sphinx-gallery",
 ]
 dev = [
     "build>=1.2.2.post1",
