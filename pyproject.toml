@@ -204,7 +204,7 @@ exclude = [
 ]
 "examples/*.py" = [
     "E402", # imports can be different here
-    "T20",  # in example code print statements are okay
+    "T20",  # in example code print statements are allowed
 ]
 
 [tool.ruff.lint.pydocstyle]

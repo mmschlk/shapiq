@@ -15,9 +15,9 @@ Refer to the documentation of :class:`shapiq.explainer.Explainer` for more detai
 # shapiq example
 # ------------------------
 # This code block is an example of how to use shapiq to explain a model's predictions.
-from __future__ import annotations  # noqa: INP
+from __future__ import annotations
 
-import shapiq  # noqa: INP
+import shapiq
 
 # load data
 X, y = shapiq.load_california_housing(to_numpy=True)
@@ -31,7 +31,7 @@ explainer = shapiq.TabularExplainer(model=model, data=X, index="SV", max_order=1
 # explain the model's prediction for the first sample
 interaction_values = explainer.explain(X[0], budget=256)
 # analyse interaction values
-print(interaction_values)  # noqa: PT
+print(interaction_values)
 
 # %%
 # Second example of a shapiq explainer
@@ -47,4 +47,4 @@ explainer = shapiq.Explainer(
     max_order=2,  # specify any order you want
 )
 interaction_values = explainer.explain(X[0])
-print(interaction_values)  # noqa: PT
+print(interaction_values)
