@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .utils import compute_empty_prediction
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 @dataclass
@@ -52,22 +56,22 @@ class TreeModel:
 
     """
 
-    children_left: np.ndarray[int]
-    children_right: np.ndarray[int]
-    features: np.ndarray[int]
-    thresholds: np.ndarray[float]
-    values: np.ndarray[float]
-    node_sample_weight: np.ndarray[float]
-    empty_prediction: float | None = None
-    leaf_mask: np.ndarray[bool] | None = None
-    n_features_in_tree: int | None = None
-    max_feature_id: int | None = None
-    feature_ids: set | None = None
-    root_node_id: int | None = None
-    n_nodes: int | None = None
-    nodes: np.ndarray[int] | None = None
-    feature_map_original_internal: dict[int, int] | None = None
-    feature_map_internal_original: dict[int, int] | None = None
+    children_left: NDArray[np.int_]
+    children_right: NDArray[np.int_]
+    features: NDArray[np.int_]
+    thresholds: NDArray[np.floating]
+    values: NDArray[np.floating]
+    node_sample_weight: NDArray[np.floating]
+    empty_prediction: float = None  # type: ignore[assignment]
+    leaf_mask: NDArray[np.bool_] = None  # type: ignore[assignment]
+    n_features_in_tree: int = None  # type: ignore[assignment]
+    max_feature_id: int = None  # type: ignore[assignment]
+    feature_ids: set = None  # type: ignore[assignment]
+    root_node_id: int = None  # type: ignore[assignment]
+    n_nodes: int = None  # type: ignore[assignment]
+    nodes: NDArray[np.int_] = None  # type: ignore[assignment]
+    feature_map_original_internal: dict[int, int] = None  # type: ignore[assignment]
+    feature_map_internal_original: dict[int, int] = None  # type: ignore[assignment]
     original_output_type: str = "raw"  # not used at the moment
 
     def compute_empty_prediction(self) -> None:
@@ -187,7 +191,7 @@ class TreeModel:
             else:
                 node = self.children_right[node]
             is_leaf = self.leaf_mask[node]
-        return self.values[node]
+        return float(self.values[node])
 
 
 @dataclass
