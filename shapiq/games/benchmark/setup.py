@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from typing import TYPE_CHECKING
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -21,7 +22,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing
-from shapiq.utils import Model, shuffle_data
+from shapiq.utils import shuffle_data
+
+if TYPE_CHECKING:
+    from shapiq.typing import Model
 
 AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 

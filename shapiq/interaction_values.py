@@ -25,7 +25,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
 
-    import matplotlib.pyplot as plt
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 
 @dataclass
@@ -61,9 +62,9 @@ class InteractionValues:
     n_players: int
     min_order: int
     baseline_value: float
-    interaction_lookup: dict[tuple[int, ...], int] = None
+    interaction_lookup: dict[tuple[int, ...], int] = None  # type: ignore[assignment]
     estimated: bool = True
-    estimation_budget: int | None = None
+    estimation_budget: int = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         """Checks if the index is valid."""
@@ -756,9 +757,7 @@ class InteractionValues:
         """
         return aggregate_interaction_values([self, *others], aggregation)
 
-    def plot_network(
-        self, *, show: bool = True, **kwargs: Any
-    ) -> tuple[plt.Figure, plt.Axes] | None:
+    def plot_network(self, *, show: bool = True, **kwargs: Any) -> tuple[Figure, Axes] | None:
         """Visualize InteractionValues on a graph.
 
         Note:
@@ -788,9 +787,7 @@ class InteractionValues:
         )
         raise ValueError(msg)
 
-    def plot_si_graph(
-        self, *, show: bool = True, **kwargs: Any
-    ) -> tuple[plt.Figure, plt.Axes] | None:
+    def plot_si_graph(self, *, show: bool = True, **kwargs: Any) -> tuple[Figure, Axes] | None:
         """Visualize InteractionValues as a SI graph.
 
         For arguments, see shapiq.plots.si_graph_plot().
@@ -803,9 +800,7 @@ class InteractionValues:
 
         return si_graph_plot(self, show=show, **kwargs)
 
-    def plot_stacked_bar(
-        self, *, show: bool = True, **kwargs: Any
-    ) -> tuple[plt.Figure, plt.Axes] | None:
+    def plot_stacked_bar(self, *, show: bool = True, **kwargs: Any) -> tuple[Figure, Axes] | None:
         """Visualize InteractionValues on a graph.
 
         For arguments, see shapiq.plots.stacked_bar_plot().
@@ -825,7 +820,7 @@ class InteractionValues:
         show: bool = True,
         abbreviate: bool = True,
         contribution_threshold: float = 0.05,
-    ) -> plt.Figure | None:
+    ) -> Figure | None:
         """Visualize InteractionValues on a force plot.
 
         For arguments, see shapiq.plots.force_plot().
@@ -859,7 +854,7 @@ class InteractionValues:
         show: bool = True,
         abbreviate: bool = True,
         max_display: int = 10,
-    ) -> plt.Axes | None:
+    ) -> Axes | None:
         """Draws interaction values on a waterfall plot.
 
         Note:
@@ -888,7 +883,7 @@ class InteractionValues:
         *,
         show: bool = True,
         **kwargs: Any,
-    ) -> tuple[plt.Figure, plt.Axes] | None:
+    ) -> tuple[Figure, Axes] | None:
         """Plots the first order effects (attributions) of a sentence or paragraph.
 
         For arguments, see shapiq.plots.sentence_plot().
@@ -902,7 +897,7 @@ class InteractionValues:
 
         return sentence_plot(self, words, show=show, **kwargs)
 
-    def plot_upset(self, *, show: bool = True, **kwargs: Any) -> plt.Figure | None:
+    def plot_upset(self, *, show: bool = True, **kwargs: Any) -> Figure | None:
         """Plots the upset plot.
 
         For arguments, see shapiq.plot.upset_plot().
@@ -974,9 +969,9 @@ def aggregate_interaction_values(
     def _aggregate(vals: list[float], method: str) -> float:
         """Does the actual aggregation of the values."""
         if method == "mean":
-            return np.mean(vals)
+            return float(np.mean(vals))
         if method == "median":
-            return np.median(vals)
+            return float(np.median(vals))
         if method == "sum":
             return np.sum(vals)
         if method == "max":
@@ -1004,6 +999,7 @@ def aggregate_interaction_values(
     min_order = min([iv.min_order for iv in interaction_values])
     n_players = max([iv.n_players for iv in interaction_values])
     baseline_value = _aggregate([iv.baseline_value for iv in interaction_values], aggregation)
+    estimation_budget = interaction_values[0].estimation_budget
 
     return InteractionValues(
         values=new_values,
@@ -1013,7 +1009,7 @@ def aggregate_interaction_values(
         min_order=min_order,
         interaction_lookup=new_lookup,
         estimated=True,
-        estimation_budget=None,
+        estimation_budget=estimation_budget,
         baseline_value=baseline_value,
     )
 

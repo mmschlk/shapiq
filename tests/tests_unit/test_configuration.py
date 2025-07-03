@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import get_args
 
 from shapiq.game_theory.indices import ALL_AVAILABLE_CONCEPTS
-from shapiq.utils.custom_types import IndexType
+from shapiq.typing import IndexType
 
 
 def test_configuration():

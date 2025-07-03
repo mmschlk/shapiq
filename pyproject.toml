@@ -151,6 +151,9 @@ exclude = [
 # Exclude a variety of commonly ignored directories.
 # Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
 [tool.ruff.lint.per-file-ignores]
+"shapiq/typing.py" = [
+    "A005",  # we want to be similar to other libraries that also shadow typing
+]
 "tests/*.py" = [
     # "ALL",
     "S101", # we need asserts in tests
@@ -212,6 +215,11 @@ force-wrap-aliases = true
 no-lines-before = ["future"]
 required-imports = ["from __future__ import annotations"]
 
+[tool.pyright]
+include = ["shapiq"]
+exclude = ["tests", "docs", "benchmark", "scripts", "shapiq/plot"]
+pythonVersion = "3.10"
+
 [dependency-groups]
 test = [
     "pytest>=8.3.5",
@@ -222,6 +230,7 @@ test = [
 lint = [
     "ruff>=0.11.2",
     "pre-commit>=4.2.0",
+    "pyright>=1.1.402",
 ]
 docs = [
     "sphinx>=8.0.0",

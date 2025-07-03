@@ -1,6 +1,5 @@
 """Utility functions for the shapiq package."""
 
-from .custom_types import Model
 from .datasets import shuffle_data
 from .modules import check_import_module, safe_isinstance
 from .sets import (
@@ -16,8 +15,6 @@ from .sets import (
 )
 
 __all__ = [
-    # types
-    "Model",
     # sets
     "powerset",
     "pair_subset_sizes",

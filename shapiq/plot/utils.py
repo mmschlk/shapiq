@@ -45,7 +45,7 @@ def format_value(
     s = re.sub(r"\.?0+$", "", s)
     if s[0] == "-":
         s = "\u2212" + s[1:]
-    return s
+    return str(s)
 
 
 def format_labels(
