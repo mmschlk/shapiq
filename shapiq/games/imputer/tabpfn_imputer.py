@@ -15,7 +15,9 @@ from .base import Imputer
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.explainer.utils import ModelType
+    from tabpfn import TabPFNClassifier, TabPFNRegressor
+
+    from shapiq.typing import Model
 
 
 class TabPFNImputer(Imputer):
@@ -41,14 +43,14 @@ class TabPFNImputer(Imputer):
 
     def __init__(
         self,
-        model: ModelType,
+        model: TabPFNClassifier | TabPFNRegressor,
         x_train: np.ndarray,
         y_train: np.ndarray,
         *,
         x_test: np.ndarray | None = None,
         empty_prediction: float | None = None,
         verbose: bool = False,
-        predict_function: Callable[[ModelType, np.ndarray], np.ndarray] | None = None,
+        predict_function: Callable[[Model, np.ndarray], np.ndarray] | None = None,
     ) -> None:
         """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
 
@@ -77,6 +79,7 @@ class TabPFNImputer(Imputer):
                 accept the model and the data point as input and return the model's predictions. If
                 the model is instantiated via a ``shapiq.Explainer`` object, this function is
                 automatically set to the model's prediction function. Defaults to ``None``.
+
         """
         self.x_train = x_train
         self.y_train = y_train
@@ -136,4 +139,6 @@ class TabPFNImputer(Imputer):
             self.model.fit(x_train_coal, self.y_train)
             pred = float(self.predict(x_explain_coal))
             output[i] = pred
+        # refit the model on the full training data to ensure it is in a consistent state
+        self.model.fit(self.x_train, self.y_train)
         return output

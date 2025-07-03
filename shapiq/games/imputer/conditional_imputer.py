@@ -141,7 +141,7 @@ class ConditionalImputer(Imputer):
         self._coalition_sampler = coalition_sampler
         return self
 
-    def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Computes the value function for all coalitions.
 
         Args:

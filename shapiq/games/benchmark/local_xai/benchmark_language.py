@@ -51,15 +51,23 @@ class SentimentAnalysis(Game):
         *,
         mask_strategy: str = "mask",
         verbose: bool = False,
+        device: int | str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the Sentiment Classification Game.
 
         Args:
             input_text: The input text to analyze as a string.
+
             mask_strategy: The strategy to use for the tokens not in the coalition. Can be either
                 ``"remove"`` or ``"mask"``. Defaults to ``"mask"``.
+
             verbose: Whether to print additional information. Defaults to ``False``.
+
+            device: The device to use for the model. Can be an integer (GPU index) or a string
+                (e.g., "cuda:0" for the first GPU, "cpu" for CPU). Defaults to ``None``, which uses
+                huggingface's default device setting (usually CPU or GPU if available).
+
             **kwargs: Additional keyword arguments (not used).
         """
         # import the required modules locally (to avoid having to install them for all)
@@ -71,7 +79,9 @@ class SentimentAnalysis(Game):
         self.mask_strategy = mask_strategy
 
         # get the model
-        self._classifier = pipeline(model="lvwerra/distilbert-imdb", task="sentiment-analysis")
+        self._classifier = pipeline(
+            model="lvwerra/distilbert-imdb", task="sentiment-analysis", device=device
+        )
         self._tokenizer = self._classifier.tokenizer
         self._mask_toke_id = self._tokenizer.mask_token_id
         # for this model: {0: [PAD], 100: [UNK], 101: [CLS], 102: [SEP], 103: [MASK]}

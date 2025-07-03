@@ -27,12 +27,14 @@ NR_FEATURES_SMALL = 3
 NR_FEATURES_SMALL_INFORMATIVE = 2
 BUDGET_NR_FEATURES_SMALL = 2**NR_FEATURES_SMALL
 
+DATASETS_RANDOM_STATE = 42
+
 
 @pytest.fixture
 def if_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple dataset for the isolation forest model."""
     n_samples, n_outliers = 120, 40
-    rng = np.random.RandomState(0)
+    rng = np.random.RandomState(DATASETS_RANDOM_STATE)
     covariance = np.array([[0.5, -0.1], [0.7, 0.4]])
     cluster_1 = 0.4 * rng.randn(n_samples, 2) @ covariance + np.array([2, 2])  # general
     cluster_2 = 0.3 * rng.randn(n_samples, 2) + np.array([-2, -2])  # spherical
@@ -45,7 +47,9 @@ def if_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
 @pytest.fixture
 def background_reg_dataset() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple background dataset."""
-    X, y = make_regression(n_samples=100, n_features=NR_FEATURES, random_state=42)
+    X, y = make_regression(
+        n_samples=100, n_features=NR_FEATURES, random_state=DATASETS_RANDOM_STATE
+    )
     return copy.deepcopy(X), copy.deepcopy(y)
 
 
@@ -62,7 +66,7 @@ def background_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
     X, y = make_classification(
         n_samples=100,
         n_features=NR_FEATURES,
-        random_state=42,
+        random_state=DATASETS_RANDOM_STATE,
         n_classes=3,
         n_informative=NR_FEATURES_INFORMATIVE,
         n_repeated=0,
@@ -84,7 +88,7 @@ def background_clf_dataset_binary() -> tuple[np.ndarray, np.ndarray]:
     X, y = make_classification(
         n_samples=100,
         n_features=NR_FEATURES,
-        random_state=42,
+        random_state=DATASETS_RANDOM_STATE,
         n_classes=2,
         n_informative=NR_FEATURES_INFORMATIVE,
         n_repeated=0,
@@ -99,7 +103,7 @@ def background_clf_dataset_binary_small() -> tuple[np.ndarray, np.ndarray]:
     X, y = make_classification(
         n_samples=10,
         n_features=NR_FEATURES_SMALL,
-        random_state=42,
+        random_state=DATASETS_RANDOM_STATE,
         n_classes=2,
         n_informative=NR_FEATURES_SMALL_INFORMATIVE,
         n_repeated=0,
@@ -111,7 +115,9 @@ def background_clf_dataset_binary_small() -> tuple[np.ndarray, np.ndarray]:
 @pytest.fixture
 def background_reg_dataset_small() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple background dataset."""
-    X, y = make_regression(n_samples=10, n_features=NR_FEATURES_SMALL, random_state=42)
+    X, y = make_regression(
+        n_samples=10, n_features=NR_FEATURES_SMALL, random_state=DATASETS_RANDOM_STATE
+    )
     return copy.deepcopy(X), copy.deepcopy(y)
 
 
@@ -127,3 +133,62 @@ def image_and_path() -> tuple[Image.Image, str]:
     )
     image = Image.open(path_from_test_root)
     return copy.deepcopy(image), copy.deepcopy(path_from_test_root)
+
+
+_california_loaded_data: dict[str, np.ndarray | None] = {
+    "x_train": None,
+    "y_train": None,
+    "x_test": None,
+    "y_test": None,
+    "x_explain": None,
+}
+
+
+def get_california_housing_train_test_explain() -> tuple[
+    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+]:
+    """Load the California housing dataset and return a train and test split.
+
+    Returns:
+        tuple: A tuple containing the training data, training labels, test data, and test labels.
+    """
+    if all(_v is not None for _v in _california_loaded_data.values()):
+        return (
+            _california_loaded_data["x_train"],
+            _california_loaded_data["y_train"],
+            _california_loaded_data["x_test"],
+            _california_loaded_data["y_test"],
+            _california_loaded_data["x_explain"],
+        )
+
+    from sklearn.model_selection import train_test_split
+
+    from shapiq.datasets import load_california_housing
+
+    x_explain_id = 2  # index of the data point to explain (third data point of the test set)
+
+    x_data, y_data = load_california_housing(to_numpy=True)
+    x_train, x_test, y_train, y_test = train_test_split(
+        x_data, y_data, test_size=0.2, random_state=DATASETS_RANDOM_STATE
+    )
+    x_explain = x_test[x_explain_id].reshape(1, -1)
+    _california_loaded_data["x_train"] = copy.deepcopy(x_train)
+    _california_loaded_data["y_train"] = copy.deepcopy(y_train)
+    _california_loaded_data["x_test"] = copy.deepcopy(x_test)
+    _california_loaded_data["y_test"] = copy.deepcopy(y_test)
+    _california_loaded_data["x_explain"] = copy.deepcopy(x_explain)
+    return (
+        _california_loaded_data["x_train"],
+        _california_loaded_data["y_train"],
+        _california_loaded_data["x_test"],
+        _california_loaded_data["y_test"],
+        _california_loaded_data["x_explain"],
+    )
+
+
+@pytest.fixture
+def california_housing_train_test_explain() -> tuple[
+    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+]:
+    """Return the California housing dataset with a train and test split."""
+    return get_california_housing_train_test_explain()

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import copy
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 from sklearn.ensemble import (
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
 
     from shapiq.explainer.tree import TreeModel
     from shapiq.utils import Model
+
+RANDOM_SEED_MODELS = 42
 
 NR_FEATURES = 7  # Number of features for the tabular models
 
@@ -123,7 +126,7 @@ def xgb_reg_model(background_reg_dataset) -> Model:
     xgboost = pytest.importorskip("xgboost")
 
     X, y = background_reg_dataset
-    model = xgboost.XGBRegressor(random_state=42, n_estimators=3)
+    model = xgboost.XGBRegressor(random_state=RANDOM_SEED_MODELS, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -132,7 +135,7 @@ def xgb_reg_model(background_reg_dataset) -> Model:
 def rf_clf_binary_model(background_clf_dataset_binary) -> RandomForestClassifier:
     """Return a simple random forest model."""
     X, y = background_clf_dataset_binary
-    model = RandomForestClassifier(random_state=42, max_depth=3, n_estimators=3)
+    model = RandomForestClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -185,7 +188,7 @@ def tabpfn_classification_problem(
 
     data, labels = background_clf_dataset_binary_small
     data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
-    model = tabpfn.TabPFNClassifier()
+    model = tabpfn.TabPFNClassifier(n_estimators=1, fit_mode="low_memory")
     model.fit(data, labels)
     return model, data, labels, x_test
 
@@ -199,7 +202,7 @@ def tabpfn_regression_problem(
 
     data, labels = background_reg_dataset_small
     data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
-    model = tabpfn.TabPFNRegressor()
+    model = tabpfn.TabPFNRegressor(n_estimators=1, fit_mode="low_memory")
     model.fit(data, labels)
     return model, data, labels, x_test
 
@@ -208,7 +211,7 @@ def tabpfn_regression_problem(
 def dt_reg_model(background_reg_dataset) -> DecisionTreeRegressor:
     """Return a simple decision tree model."""
     X, y = background_reg_dataset
-    model = DecisionTreeRegressor(random_state=42, max_depth=3)
+    model = DecisionTreeRegressor(random_state=RANDOM_SEED_MODELS, max_depth=3)
     model.fit(X, y)
     return model
 
@@ -217,7 +220,7 @@ def dt_reg_model(background_reg_dataset) -> DecisionTreeRegressor:
 def dt_clf_model(background_clf_dataset) -> DecisionTreeClassifier:
     """Return a simple decision tree model."""
     X, y = background_clf_dataset
-    model = DecisionTreeClassifier(random_state=42, max_depth=3)
+    model = DecisionTreeClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3)
     model.fit(X, y)
     return model
 
@@ -226,7 +229,7 @@ def dt_clf_model(background_clf_dataset) -> DecisionTreeClassifier:
 def lr_clf_model(background_clf_dataset) -> LogisticRegression:
     """Return a simple logistic regression model."""
     X, y = background_clf_dataset
-    model = LogisticRegression(random_state=42, max_iter=200)
+    model = LogisticRegression(random_state=RANDOM_SEED_MODELS, max_iter=200)
     model.fit(X, y)
     return model
 
@@ -246,7 +249,7 @@ def lightgbm_reg_model(background_reg_dataset) -> Model:
     lightgbm = pytest.importorskip("lightgbm")
 
     X, y = background_reg_dataset
-    model = lightgbm.LGBMRegressor(random_state=42, n_estimators=3)
+    model = lightgbm.LGBMRegressor(random_state=RANDOM_SEED_MODELS, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -257,7 +260,7 @@ def lightgbm_clf_model(background_clf_dataset) -> Model:
     lightgbm = pytest.importorskip("lightgbm")
 
     X, y = background_clf_dataset
-    model = lightgbm.LGBMClassifier(random_state=42, n_estimators=3)
+    model = lightgbm.LGBMClassifier(random_state=RANDOM_SEED_MODELS, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -268,7 +271,7 @@ def dt_clf_model_tree_model(background_clf_dataset) -> TreeModel:
     from shapiq.explainer.tree.validation import validate_tree_model
 
     X, y = background_clf_dataset
-    model = DecisionTreeClassifier(random_state=42, max_depth=3)
+    model = DecisionTreeClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3)
     model.fit(X, y)
     return validate_tree_model(model)
 
@@ -277,7 +280,7 @@ def dt_clf_model_tree_model(background_clf_dataset) -> TreeModel:
 def rf_reg_model(background_reg_dataset) -> RandomForestRegressor:
     """Return a simple random forest model."""
     X, y = background_reg_dataset
-    model = RandomForestRegressor(random_state=42, max_depth=3, n_estimators=3)
+    model = RandomForestRegressor(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -286,7 +289,7 @@ def rf_reg_model(background_reg_dataset) -> RandomForestRegressor:
 def rf_clf_model(background_clf_dataset) -> RandomForestClassifier:
     """Return a simple (classification) random forest model."""
     X, y = background_clf_dataset
-    model = RandomForestClassifier(random_state=42, max_depth=3, n_estimators=3)
+    model = RandomForestClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -296,7 +299,7 @@ def rf_clf_model(background_clf_dataset) -> RandomForestClassifier:
 def if_clf_model(if_clf_dataset) -> IsolationForest:
     """Return a simple isolation forest model."""
     X, y = if_clf_dataset
-    model = IsolationForest(random_state=42, n_estimators=3)
+    model = IsolationForest(random_state=RANDOM_SEED_MODELS, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -306,7 +309,7 @@ def if_clf_model(if_clf_dataset) -> IsolationForest:
 def et_clf_model(background_clf_dataset) -> Model:
     """Return a simple (classification) extra trees model."""
     X, y = background_clf_dataset
-    model = ExtraTreesClassifier(random_state=42, max_depth=3, n_estimators=3)
+    model = ExtraTreesClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model
 
@@ -315,6 +318,31 @@ def et_clf_model(background_clf_dataset) -> Model:
 def et_reg_model(background_reg_dataset) -> Model:
     """Return a simple (regression) extra trees model."""
     X, y = background_reg_dataset
-    model = ExtraTreesRegressor(random_state=42, max_depth=3, n_estimators=3)
+    model = ExtraTreesRegressor(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
     model.fit(X, y)
     return model
+
+
+_CALIFORNIA_HOUSING_MODEL: dict[Literal["model"], RandomForestRegressor | None] = {"model": None}
+
+
+def get_california_housing_random_forest() -> RandomForestRegressor:
+    """Return a random forest model trained on the California housing dataset."""
+    # check if the model is already cached
+    model = _CALIFORNIA_HOUSING_MODEL["model"]
+    if isinstance(model, RandomForestRegressor):
+        return copy.deepcopy(model)
+    # fit and cache the model
+    from .data import get_california_housing_train_test_explain
+
+    x_train, y_train, _, _, _ = get_california_housing_train_test_explain()
+    model = RandomForestRegressor(random_state=RANDOM_SEED_MODELS, n_estimators=10, max_depth=10)
+    model.fit(x_train, y_train)
+    _CALIFORNIA_HOUSING_MODEL["model"] = copy.deepcopy(model)  # cache model for quick access later
+    return model
+
+
+@pytest.fixture
+def california_housing_rf_model() -> RandomForestRegressor:
+    """Return a random forest model trained on the California housing dataset."""
+    return get_california_housing_random_forest()

@@ -56,7 +56,7 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     "k-SII": {
         "name": "k-Shapley Interaction Index",
         "source": "https://proceedings.mlr.press/v206/bordt23a.html",
-        "generalizes": "SII",
+        "generalizes": "SV",
     },
     "STII": {
         "name": "Shapley-Taylor Interaction Index",
@@ -77,7 +77,7 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     "FBII": {
         "name": "Faithful Banzhaf Interaction Index",
         "source": "https://jmlr.org/papers/v24/22-0202.html",
-        "generalizes": "BII",
+        "generalizes": "BV",
     },
     # Probabilistic Values
     "SV": {
@@ -120,22 +120,40 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
 
 ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 
-AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII", "FBII"}
-AVAILABLE_INDICES_MONTE_CARLO = {"k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII"}
-AVAILABLE_INDICES_SPARSE = {"SII", "STII", "FSII", "SV", "BII", "FBII"}
 
-AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = {
-    "SII",
-    "BII",
-    "k-SII",
-    "STII",
-    "FSII",
-    "SV",
-    "BV",
-    "kADD-SHAP",
-    "CHII",
-    "FBII",
-}.union(AVAILABLE_INDICES_REGRESSION).union(AVAILABLE_INDICES_MONTE_CARLO)
+def is_index_valid(index: str, *, raise_error: bool = False) -> bool:
+    """Checks if the given index is a valid interaction index.
+
+    Args:
+        index: The interaction index.
+        raise_error: If ``True``, raises a ``ValueError`` if the index is invalid. If ``False``,
+            returns ``False`` for an invalid index without raising an error.
+
+    Returns:
+        ``True`` if the index is valid, ``False`` otherwise.
+
+    Raises:
+        ValueError: If the index is invalid and ``raise_error`` is ``True``.
+
+    Examples:
+        >>> is_index_valid("SII")
+        True
+        >>> is_index_valid("SV")
+        True
+        >>> is_index_valid("k-SII")
+        True
+        >>> is_index_valid("invalid-index")
+        False
+        >>> is_index_valid("invalid-index", raise_error=True)
+        Traceback (most recent call last):
+            ...
+
+    """
+    valid = index in ALL_AVAILABLE_INDICES
+    if not valid and raise_error:
+        message = f"Invalid index `{index}`. Valid indices are: {', '.join(ALL_AVAILABLE_INDICES)}."
+        raise ValueError(message)
+    return valid
 
 
 def index_generalizes_sv(index: str) -> bool:

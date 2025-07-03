@@ -2,22 +2,27 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from scipy.special import binom
 
 from shapiq.explainer.tree.base import EdgeTree
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
 
 def create_edge_tree(
-    children_left: np.ndarray[int],
-    children_right: np.ndarray[int],
-    features: np.ndarray[int],
-    node_sample_weight: np.ndarray[float],
-    values: np.ndarray[float],
+    children_left: NDArray[np.int_],
+    children_right: NDArray[np.int_],
+    features: NDArray[np.int_],
+    node_sample_weight: NDArray[np.floating],
+    values: NDArray[np.floating],
     n_nodes: int,
     n_features: int,
     max_interaction: int,
-    subset_updates_pos_store: dict[int, dict[int, np.ndarray[int]]],
+    subset_updates_pos_store: dict[int, dict[int, NDArray[np.int_]]],
 ) -> EdgeTree:
     """Extracts edge information recursively from the tree information.
 

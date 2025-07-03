@@ -33,12 +33,12 @@ version = shapiq.__version__
 # -- General configuration -------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = [
+    "sphinx.ext.napoleon",
     "nbsphinx",
     "sphinx.ext.duration",
     "myst_parser",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
@@ -47,12 +47,17 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
+    "sphinxcontrib.bibtex",
 ]
 
 nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = (
+    "alpha"  # set to alpha to not confuse references the docs with the footcites in docstrings.
+)
 
 source_suffix = {
     ".rst": "restructuredtext",
@@ -104,7 +109,8 @@ autodoc_default_options = {
     "exclude-members": "__weakref__",
 }
 autoclass_content = "both"
-autodoc_inherit_docstrings = False
+autodoc_inherit_docstrings = True
+autodoc_member_order = "groupwise"
 
 # -- Images ----------------------------------------------------------------------------------------
 StandaloneHTMLBuilder.supported_image_types = [
