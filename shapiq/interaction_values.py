@@ -1040,7 +1040,29 @@ class InteractionValues:
             pass
         with Path(path).open("rb") as file:
             # this is unsafe, but for the purpose of this library it is fine
-            return pickle.load(file)
+            iv = pickle.load(file)
+
+        # we need to check if the iv object is a new InteractionValues object or if it is an old one
+        if isinstance(iv, InteractionValues) and hasattr(iv, "interactions"):
+            return iv
+        # if it is an old InteractionValues object, we need to convert it to the new one
+        # convert old InteractionValues object to new one
+        try:
+            return InteractionValues(
+                values=iv.values,  # old InteractionValues did not have interactions yet
+                index=iv.index,
+                max_order=iv.max_order,
+                min_order=iv.min_order,
+                n_players=iv.n_players,
+                interaction_lookup=iv.interaction_lookup,  # old used interaction_lookup
+                estimated=iv.estimated,
+                estimation_budget=iv.estimation_budget,
+                baseline_value=iv.baseline_value,
+                target_index=iv.index,  # old InteractionValues did not have target_index yet
+            )
+        except AttributeError as error:
+            msg = "The loaded object is not an InteractionValues object."
+            raise TypeError(msg) from error
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> InteractionValues:
