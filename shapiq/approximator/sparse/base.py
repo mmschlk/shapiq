@@ -15,7 +15,7 @@ from sparse_transform.qsft.utils.query import get_bch_decoder
 
 from shapiq.approximator.base import Approximator
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -180,8 +180,13 @@ class Sparse(Approximator):
         # Filter the output as needed
         if self.top_order:
             result = self._filter_order(result)
-        output = InteractionValues(
-            values=result,
+
+        interactions = {
+            interaction: result[idx] for interaction, idx in self.interaction_lookup.items()
+        }
+
+        return InteractionValues(
+            values=interactions,
             index=self.approximation_index,
             min_order=self.min_order,
             max_order=self.max_order,
@@ -190,9 +195,8 @@ class Sparse(Approximator):
             estimated=True,
             estimation_budget=used_budget,
             baseline_value=self.interaction_lookup.get((), 0.0),
+            target_index=self.approximation_index,
         )
-        # finalize the interactions
-        return finalize_computed_interactions(output, target_index=self.index)
 
     def _filter_order(self, result: np.ndarray) -> np.ndarray:
         """Filters the interactions to keep only those of the maximum order.
@@ -230,7 +234,7 @@ class Sparse(Approximator):
             The function also updates the internal _interaction_lookup dictionary.
         """
         moebius_interactions = InteractionValues(
-            values=np.array([moebius_transform[key] for key in moebius_transform]),
+            values=moebius_transform,
             index="Moebius",
             min_order=self.min_order,
             max_order=self.max_order,

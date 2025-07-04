@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import random
 
-import numpy as np
 import pytest
 
 from shapiq import InteractionValues, powerset
@@ -26,21 +25,27 @@ def test_computation(index_gt, index_et, order_gt, order_et, warning_expected):
     """Test the computation of error metrics with different indices and orders."""
     n_players = 5
 
-    gt = [random.random() for _ in powerset(range(n_players), min_size=0, max_size=order_gt)]
+    gt = {
+        interaction: random.random()
+        for interaction in powerset(range(n_players), min_size=0, max_size=order_gt)
+    }
     gt = InteractionValues(
-        values=np.array(gt),
+        values=gt,
         index=index_gt,
         max_order=order_gt,
         min_order=0,
         n_players=n_players,
         baseline_value=0.0,
     )
-    et = [random.random() for _ in powerset(range(n_players), min_size=0, max_size=order_et)]
+    et = {
+        interaction: random.random()
+        for interaction in powerset(range(n_players), min_size=0, max_size=order_et)
+    }
     et = InteractionValues(
-        values=np.array(et),
+        values=et,
         index=index_et,
         max_order=order_et,
-        min_order=order_et,
+        min_order=0,
         n_players=n_players,
         baseline_value=0.0,
     )

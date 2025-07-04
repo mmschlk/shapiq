@@ -10,7 +10,7 @@ import numpy as np
 from scipy.special import bernoulli, binom
 
 from shapiq.approximator.base import Approximator
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
@@ -168,7 +168,7 @@ class Regression(Approximator):
 
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
-        interactions = InteractionValues(
+        return InteractionValues(
             values=shapley_interactions_values,
             index=self.approximation_index,
             interaction_lookup=self.interaction_lookup,
@@ -178,9 +178,8 @@ class Regression(Approximator):
             n_players=self.n,
             estimated=not budget >= 2**self.n,
             estimation_budget=budget,
+            target_index=self.index,
         )
-
-        return finalize_computed_interactions(interactions, target_index=self.index)
 
     def kernel_shap_iq_routine(
         self,

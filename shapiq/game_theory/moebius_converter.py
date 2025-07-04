@@ -166,17 +166,14 @@ class MoebiusConverter:
                 else:
                     base_interaction_dict[interaction] = moebius_val * val_distributed
 
-        base_interaction_values = np.zeros(len(base_interaction_dict))
-        base_interaction_lookup = {}
-
-        for i, interaction in enumerate(base_interaction_dict):
-            base_interaction_values[i] = base_interaction_dict[interaction]
-            base_interaction_lookup[interaction] = i
+        base_interaction_lookup = {
+            interaction: i for i, interaction in enumerate(base_interaction_dict)
+        }
 
         index = index_to_change_back
 
         return InteractionValues(
-            values=base_interaction_values,
+            values=base_interaction_dict,
             interaction_lookup=base_interaction_lookup,
             index=index,
             min_order=1,
@@ -241,15 +238,10 @@ class MoebiusConverter:
                     else:
                         stii_dict[interaction] = moebius_val * val_distributed
 
-        stii_values = np.zeros(len(stii_dict))
-        stii_lookup = {}
-
-        for i, interaction in enumerate(stii_dict):
-            stii_values[i] = stii_dict[interaction]
-            stii_lookup[interaction] = i
+        stii_lookup = {interaction: i for i, interaction in enumerate(stii_dict)}
 
         return InteractionValues(
-            values=stii_values,
+            values=stii_dict,
             interaction_lookup=stii_lookup,
             index="STII",
             min_order=0,
@@ -316,14 +308,10 @@ class MoebiusConverter:
                 else:
                     fii_dict[interaction] = moebius_val * val_distributed
 
-        fii_values = np.zeros(len(fii_dict))
-        fii_lookup = {}
-        for i, interaction in enumerate(fii_dict):
-            fii_values[i] = fii_dict[interaction]
-            fii_lookup[interaction] = i
+        fii_lookup = {interaction: i for i, interaction in enumerate(fii_dict)}
 
         return InteractionValues(
-            values=fii_values,
+            values=fii_dict,
             interaction_lookup=fii_lookup,
             index=index,
             min_order=0,

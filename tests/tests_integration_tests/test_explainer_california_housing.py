@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     import numpy as np
     from sklearn.ensemble import RandomForestRegressor
 
-    from shapiq.utils.custom_types import IndexType
+    from shapiq.typing import IndexType
 
 TABULAR_NAME_START = "iv_california_housing_imputer_9070456741283270540"
 TREE_NAME_START = "iv_california_housing_tree"

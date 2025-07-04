@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 
 from shapiq.approximator.base import Approximator
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -134,9 +134,9 @@ class OwenSamplingSV(Approximator):
             idx = self._interaction_lookup[(player,)]
             result_to_finalize[idx] = result[player]
 
-        interaction = InteractionValues(
-            n_players=self.n,
+        return InteractionValues(
             values=result_to_finalize,
+            n_players=self.n,
             index=self.approximation_index,
             interaction_lookup=self._interaction_lookup,
             baseline_value=empty_value,
@@ -144,10 +144,6 @@ class OwenSamplingSV(Approximator):
             max_order=self.max_order,
             estimated=True,
             estimation_budget=used_budget,
-        )
-
-        return finalize_computed_interactions(
-            interaction,
             target_index=self.index,
         )
 

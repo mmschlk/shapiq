@@ -11,7 +11,7 @@ import copy
 from typing import TYPE_CHECKING, Any
 
 from shapiq.explainer.base import Explainer
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 
 from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
@@ -129,12 +129,17 @@ class TreeExplainer(Explainer):
 
         if self._min_order == 0 and final_explanation.min_order == 1:
             final_explanation.min_order = 0
-            final_explanation = finalize_computed_interactions(
-                final_explanation,
-                target_index=self._index,
-            )
-        return finalize_computed_interactions(
-            final_explanation,
+
+        return InteractionValues(
+            values=final_explanation.interactions,
+            index=final_explanation.index,
+            min_order=final_explanation.min_order,
+            max_order=final_explanation.max_order,
+            n_players=final_explanation.n_players,
+            baseline_value=final_explanation.baseline_value,
+            estimated=final_explanation.estimated,
+            estimation_budget=final_explanation.estimation_budget,
+            interaction_lookup=final_explanation.interaction_lookup,
             target_index=self._index,
         )
 
