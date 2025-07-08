@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 
 from shapiq.games.imputer.marginal_imputer import MarginalImputer
 
+if TYPE_CHECKING:
+    from shapiq.games.base import Game
+
 
 @pytest.fixture
-def cooking_game():
+def cooking_game() -> Game:
     """Return the cooking game object."""
     from shapiq.games.base import Game
 
@@ -73,6 +78,13 @@ def paper_game():
             return np.array(output)
 
     return PaperGame()
+
+
+@pytest.fixture
+def cooking_game_pre_computed(cooking_game) -> Game:
+    game = cooking_game
+    game.precompute()
+    return game
 
 
 def get_california_housing_imputer() -> MarginalImputer:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping, Sequence
 from typing import Literal, TypeVar
 
 import numpy as np
@@ -54,3 +54,7 @@ IndexType = Literal[
     "EC",
 ]
 """A type representing the indices used throughout the package."""
+
+
+JSONPrimitive = str | int | float | bool | None
+JSONType = JSONPrimitive | Sequence["JSONType"] | Mapping[str, "JSONType"]

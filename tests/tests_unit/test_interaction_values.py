@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import contextlib
-import os
+import pathlib
 from copy import copy, deepcopy
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -14,6 +15,9 @@ from shapiq.utils import powerset
 from tests.fixtures.interaction_values import (
     get_mock_interaction_value,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.parametrize(
@@ -522,56 +526,6 @@ def test_from_dict():
     assert interaction_values_from_dict == interaction_values
 
 
-@pytest.mark.parametrize("as_pickle", [True, False])
-def test_save_and_load(as_pickle):
-    """Tests the save and load functions of the InteractionValues dataclass."""
-    # parameters
-    values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
-    n_players = 10
-    interaction_lookup = {(i,): i for i in range(len(values))}
-    original_length = len(values)
-
-    # create InteractionValues object
-    interaction_values = InteractionValues(
-        values=values,
-        index="SV",
-        n_players=n_players,
-        min_order=1,
-        max_order=1,
-        interaction_lookup=interaction_lookup,
-        baseline_value=0.0,
-    )
-
-    # save and load
-    path = "test_interaction_values"
-    if not as_pickle:
-        path += ".npz"
-    interaction_values.save(path, as_pickle=as_pickle)
-
-    # see if file exists
-    assert os.path.exists(path)
-
-    # test cls load
-    loaded_interaction_values = InteractionValues.load(path)
-    assert len(loaded_interaction_values.values) == original_length
-    assert np.all(loaded_interaction_values.values == values)
-    for i in range(n_players):
-        assert loaded_interaction_values[(i,)] == values[i]
-
-    # test function load
-    loaded_interaction_values = InteractionValues.load_interaction_values(path)
-    assert len(loaded_interaction_values.values) == original_length
-    assert np.all(loaded_interaction_values.values == values)
-    for i in range(n_players):
-        assert loaded_interaction_values[(i,)] == values[i]
-
-    # remove file
-    os.remove(path)
-
-    # test if file is removed
-    assert not os.path.exists(path)
-
-
 def test_plot():
     """Tests the plot methods in InteractionValues."""
     n = 5
@@ -923,3 +877,33 @@ def test_copy_behaviour():
         assert original.interaction_lookup[interaction] != copied.interaction_lookup[interaction]
         assert hash(original) != hash(copied)
         assert original != copied, "Objects should be different"
+
+
+class TestSavingInteractionValues:
+    """Tests the saving and loading of InteractionValues."""
+
+    @pytest.mark.parametrize("iv_str", ("iv_7_all", "iv_300_300_0_300"))
+    def test_save_and_load_json(self, iv_str: str, tmp_path: Path, request):
+        """Tests saving and loading of InteractionValues using a temp path."""
+        path = tmp_path / pathlib.Path(f"test_interaction_values_{iv_str}.json")
+        iv: InteractionValues = request.getfixturevalue(iv_str)
+
+        iv.save(path)
+        assert path.exists()
+        loaded_iv = InteractionValues.load(path)
+        assert loaded_iv == iv  # check if loaded InteractionValues is equal to original
+        loaded_iv_json = InteractionValues.from_json_file(path)
+        assert loaded_iv_json == iv
+
+    def test_deprecation_warning_in_save(self, iv_7_all: InteractionValues, tmp_path: Path):
+        """Tests that old methods work but also warn with deprecation."""
+        path = tmp_path / pathlib.Path("test_interaction_values")
+        with pytest.warns(DeprecationWarning):
+            iv_7_all.save(path, as_pickle=True)
+            iv = InteractionValues.load(path)
+            assert iv == iv_7_all
+
+        with pytest.warns(DeprecationWarning):
+            iv_7_all.save(path, as_npz=True)
+            iv = InteractionValues.load(path.with_suffix(".npz"))
+            assert iv == iv_7_all
