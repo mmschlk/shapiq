@@ -1,14 +1,18 @@
 """Metrics for evaluating the performance of interaction values."""
 
+from __future__ import annotations
+
 import copy
 import warnings
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.stats import kendalltau
 
-from ..interaction_values import InteractionValues
-from ..utils.sets import count_interactions, powerset
+from shapiq.utils.sets import count_interactions, powerset
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
 
 __all__ = ["get_all_metrics"]
 
@@ -21,20 +25,20 @@ def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
 
     Returns:
         The interaction values without the empty value.
+
     """
     try:
         _ = interaction.interaction_lookup[()]
         new_interaction = copy.deepcopy(interaction)
         empty_index = new_interaction.interaction_lookup[()]
         new_interaction.values[empty_index] = 0
-        return new_interaction
     except KeyError:
         return interaction
+    return new_interaction
 
 
 def compute_diff_metrics(ground_truth: InteractionValues, estimated: InteractionValues) -> dict:
-    """Computes metrics via the difference between the ground truth and estimated interaction
-    values.
+    """Compute metrics via the difference between the ground truth and estimated interaction values.
 
     Computes the following metrics:
         - Mean Squared Error (MSE)
@@ -48,10 +52,11 @@ def compute_diff_metrics(ground_truth: InteractionValues, estimated: Interaction
 
     Returns:
         The metrics between the ground truth and estimated interaction values.
+
     """
     try:
         difference = ground_truth - estimated
-    except ValueError as error:  # maybe indices don't want to match
+    except ValueError:  # maybe indices don't want to match
         if ground_truth.index != estimated.index:
             if {ground_truth.index, estimated.index} == {"SV", "kADD-SHAP"}:
                 sv_values = ground_truth if ground_truth.index == "SV" else estimated
@@ -69,26 +74,30 @@ def compute_diff_metrics(ground_truth: InteractionValues, estimated: Interaction
                     ground_truth_values.index = estimated.index
                 warnings.warn(
                     f"Indices do not match for {ground_truth.index} and {estimated.index}. Will "
-                    f"compare anyway but results need to be interpreted with care."
+                    f"compare anyway but results need to be interpreted with care.",
+                    stacklevel=2,
                 )
                 difference = ground_truth_values - estimated_values
         else:
-            raise error
+            raise
     diff_values = _remove_empty_value(difference).values
     n_values = count_interactions(
-        ground_truth.n_players, ground_truth.max_order, ground_truth.min_order
+        ground_truth.n_players,
+        ground_truth.max_order,
+        ground_truth.min_order,
     )
-    metrics = {
+    return {
         "MSE": np.sum(diff_values**2) / n_values,
         "MAE": np.sum(np.abs(diff_values)) / n_values,
         "SSE": np.sum(diff_values**2),
         "SAE": np.sum(np.abs(diff_values)),
     }
-    return metrics
 
 
 def compute_kendall_tau(
-    ground_truth: InteractionValues, estimated: InteractionValues, k: int = None
+    ground_truth: InteractionValues,
+    estimated: InteractionValues,
+    k: int | None = None,
 ) -> float:
     """Compute the Kendall Tau between two interaction values.
 
@@ -100,6 +109,7 @@ def compute_kendall_tau(
 
     Returns:
         The Kendall Tau between the ground truth and estimated interaction values.
+
     """
     # get the interactions as a sorted array
     gt_values, estimated_values = [], []
@@ -122,7 +132,9 @@ def compute_kendall_tau(
 
 
 def compute_precision_at_k(
-    ground_truth: InteractionValues, estimated: InteractionValues, k: int = 10
+    ground_truth: InteractionValues,
+    estimated: InteractionValues,
+    k: int = 10,
 ) -> float:
     """Compute the precision at k between two interaction values.
 
@@ -133,13 +145,13 @@ def compute_precision_at_k(
 
     Returns:
         The precision at k between the ground truth and estimated interaction values.
+
     """
     ground_truth_values = _remove_empty_value(ground_truth)
     estimated_values = _remove_empty_value(estimated)
     top_k, _ = ground_truth_values.get_top_k(k=k, as_interaction_values=False)
     top_k_estimated, _ = estimated_values.get_top_k(k=k, as_interaction_values=False)
-    precision_at_k = len(set(top_k.keys()).intersection(set(top_k_estimated.keys()))) / k
-    return precision_at_k
+    return len(set(top_k.keys()).intersection(set(top_k_estimated.keys()))) / k
 
 
 def compute_spearmans_correlation(
@@ -180,7 +192,7 @@ def compute_spearmans_correlation(
 def get_all_metrics(
     ground_truth: InteractionValues,
     estimated: InteractionValues,
-    order_indicator: Optional[str] = None,
+    order_indicator: str | None = None,
 ) -> dict:
     """Get all metrics for the interaction values.
 
@@ -191,6 +203,7 @@ def get_all_metrics(
 
     Returns:
         The metrics as a dictionary.
+
     """
     if order_indicator is None:
         order_indicator = ""
@@ -218,6 +231,3 @@ def get_all_metrics(
 
     metrics.update(metrics_diff)
     return metrics
-
-
-# Path: shapiq/benchmark/metrics.py

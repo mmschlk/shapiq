@@ -1,4 +1,8 @@
-"""This module contains the Sentiment Classification Game class, which is a subclass of the Game"""
+"""This module contains the Sentiment Classification Game class, which is a subclass of the Game."""
+
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 
@@ -15,26 +19,14 @@ class SentimentAnalysis(Game):
     sentiment) and 1 (strong positive sentiment).
 
     Note:
-        This benchmark game requires the `transformers` package to be installed. You can install it
-        via pip:
-        ```bash
-        pip install transformers
-        ```
-
-    Args:
-        input_text: The input text to be classified.
-        normalize: Whether to normalize the game. Defaults to True.
-        mask_strategy: The strategy to handle the tokens not in the coalition. Either 'remove' or
-            'mask'. Defaults to 'mask'. With 'remove', the tokens not in the coalition are removed
-            from the text. With 'mask', the tokens not in the coalition are replaced by the
-            mask_token_id.
+        This benchmark game requires the ``transformers`` package to be installed.
 
     Attributes:
-        n_players: The number of players in the game.
         original_input_text: The original input text (as given in the constructor).
         input_text: The input text after tokenization took place (may differ from the original).
         original_model_output: The sentiment of the original input text in the range [-1, 1].
         normalization_value: The score used for normalization.
+        mask_strategy: The strategy to use for the tokens not in the coalition.
 
     Properties:
         normalize: Whether the game is normalized.
@@ -54,19 +46,42 @@ class SentimentAnalysis(Game):
     """
 
     def __init__(
-        self, input_text: str, mask_strategy: str = "mask", verbose: bool = False, *args, **kwargs
-    ):
+        self,
+        input_text: str,
+        *,
+        mask_strategy: str = "mask",
+        verbose: bool = False,
+        device: int | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize the Sentiment Classification Game.
+
+        Args:
+            input_text: The input text to analyze as a string.
+
+            mask_strategy: The strategy to use for the tokens not in the coalition. Can be either
+                ``"remove"`` or ``"mask"``. Defaults to ``"mask"``.
+
+            verbose: Whether to print additional information. Defaults to ``False``.
+
+            device: The device to use for the model. Can be an integer (GPU index) or a string
+                (e.g., "cuda:0" for the first GPU, "cpu" for CPU). Defaults to ``None``, which uses
+                huggingface's default device setting (usually CPU or GPU if available).
+
+            **kwargs: Additional keyword arguments (not used).
+        """
         # import the required modules locally (to avoid having to install them for all)
         from transformers import pipeline
 
         if mask_strategy not in ["remove", "mask"]:
-            raise ValueError(
-                f"'mask_strategy' must be either 'remove' or 'mask' and not {mask_strategy}"
-            )
+            msg = f"'mask_strategy' must be either 'remove' or 'mask' and not {mask_strategy}"
+            raise ValueError(msg)
         self.mask_strategy = mask_strategy
 
         # get the model
-        self._classifier = pipeline(model="lvwerra/distilbert-imdb", task="sentiment-analysis")
+        self._classifier = pipeline(
+            model="lvwerra/distilbert-imdb", task="sentiment-analysis", device=device
+        )
         self._tokenizer = self._classifier.tokenizer
         self._mask_toke_id = self._tokenizer.mask_token_id
         # for this model: {0: [PAD], 100: [UNK], 101: [CLS], 102: [SEP], 103: [MASK]}
@@ -74,7 +89,7 @@ class SentimentAnalysis(Game):
         # get the text
         self.original_input_text: str = input_text
         self._tokenized_input = np.asarray(
-            self._tokenizer(self.original_input_text)["input_ids"][1:-1]
+            self._tokenizer(self.original_input_text)["input_ids"][1:-1],
         )
         self.input_text: str = str(self._tokenizer.decode(self._tokenized_input))
 
@@ -88,7 +103,10 @@ class SentimentAnalysis(Game):
 
         # setup game object
         super().__init__(
-            n_players, normalization_value=self._empty_output, verbose=verbose, *args, **kwargs
+            n_players,
+            normalization_value=self._empty_output,
+            verbose=verbose,
+            **kwargs,
         )
 
     def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
@@ -99,6 +117,7 @@ class SentimentAnalysis(Game):
 
         Returns:
             The sentiment of the coalition's text as a vector of length `n_coalitions`.
+
         """
         # get the texts of the coalitions
         texts = []
@@ -113,9 +132,7 @@ class SentimentAnalysis(Game):
             texts.append(coalition_text)
 
         # get the sentiment of the texts
-        sentiments = self._model_call(texts)
-
-        return sentiments
+        return self._model_call(texts)
 
     def _model_call(self, input_texts: list[str]) -> np.ndarray[float]:
         """Calls the sentiment classification model with a list of texts.
@@ -125,6 +142,7 @@ class SentimentAnalysis(Game):
 
         Returns:
             The sentiment of the input texts as a vector of length `n_coalitions`.
+
         """
         # get the sentiment of the input texts
         outputs = self._classifier(input_texts)
@@ -132,6 +150,4 @@ class SentimentAnalysis(Game):
             output["score"] * 1 if output["label"] == "POSITIVE" else output["score"] * -1
             for output in outputs
         ]
-        sentiments = np.array(outputs, dtype=float)
-
-        return sentiments
+        return np.array(outputs, dtype=float)

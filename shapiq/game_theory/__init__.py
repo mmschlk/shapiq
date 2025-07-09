@@ -1,7 +1,10 @@
-"""conversions of interaction values to different indices
+"""Game theory module of ``shapiq``.
+
+This module contains the implementation of various game-theoretic concepts and algorithms.
+
 """
 
-from .aggregation import aggregate_interaction_values
+from .aggregation import aggregate_base_interaction
 from .core import egalitarian_least_core
 from .exact import ExactComputer, get_bernoulli_weights
 from .indices import (
@@ -16,7 +19,7 @@ from .moebius_converter import MoebiusConverter
 
 __all__ = [
     "ExactComputer",
-    "aggregate_interaction_values",
+    "aggregate_base_interaction",
     "get_bernoulli_weights",
     "ALL_AVAILABLE_CONCEPTS",
     "index_generalizes_sv",
@@ -27,4 +30,3 @@ __all__ = [
     "egalitarian_least_core",
     "MoebiusConverter",
 ]
-# todo complete list

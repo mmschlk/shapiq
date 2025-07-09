@@ -17,18 +17,21 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.10"
-        cache: 'pip'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        python-version: "3.11"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+      with:
+          enable-cache: true
+
     - name: Install pre-commit
       run: |
-        pip install pre-commit
-        pre-commit install
+        uv sync --only-group lint
+        uv run pre-commit install
+
     - name: Run code-quality checks
-      run: SKIP=mypy pre-commit run --all-files
+      run: uv run pre-commit run --all-files

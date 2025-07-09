@@ -1,7 +1,11 @@
-"""This script evaluates and summarizes all benchmark results by iterating over all result
-dataframes and computing summary statistics such as 'percentage of approximator being the best' or
-ranking at highest budget. The results are then saved to a csv file."""
+"""Evaluate and summarize benchmark results.
 
+This script evaluates and summarizes all benchmark results by iterating over all result
+dataframes and computing summary statistics such as 'percentage of approximator being the best' or
+ranking at highest budget. The results are then saved to a csv file.
+"""
+
+import logging
 import os
 import sys
 import warnings
@@ -15,7 +19,7 @@ try:
 except ImportError:  # add shapiq to the path
     sys.path.insert(0, str(Path(__file__).parent.parent))
     os.makedirs("eval", exist_ok=True)
-    from shapiq.games.benchmark.plot import abbreviate_application_name, create_application_name
+    from shapiq.benchmark.plot import abbreviate_application_name, create_application_name
 
 EVAL_DIR = Path(__file__).parent / "eval"
 BENCHMARK_RESULTS_DIR = Path(__file__).parent / "results"
@@ -67,14 +71,11 @@ SI_APPROXIMATORS_ORDERING = {
 
 def sort_values(list_to_sort: list[str], ordering: dict[str, int]) -> list[str]:
     """Sort the application names according to the APPLICATION_ORDERING."""
-    sorted_list = []
-    for name in list_to_sort:
-        if name in ordering:
-            sorted_list.append(name)
+    sorted_list = [name for name in list_to_sort if name in ordering]
     sorted_list = sorted(sorted_list, key=lambda x: ordering[x])
     for name in list_to_sort:
         if name not in sorted_list:
-            warnings.warn(f"Item {name} not in {ordering}. Appending.")
+            warnings.warn(f"Item {name} not in {ordering}. Appending.", stacklevel=2)
             sorted_list.append(name)
     return sorted_list
 
@@ -91,7 +92,7 @@ def _get_best_approximator(df: pd.DataFrame) -> dict[str, list[tuple]]:
                     "approximator"
                 ].unique()
                 for approx in best_approx_per_budget:
-                    best_at_budget.append((approx, budget))
+                    best_at_budget.append((approx, budget))  # noqa: PERF401
         else:
             best_value = df.groupby("budget")[metric].min()
             best_at_budget = []
@@ -105,15 +106,13 @@ def _get_best_approximator(df: pd.DataFrame) -> dict[str, list[tuple]]:
     return best_approximators
 
 
-def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
+def create_eval_csv(n_evals: int | None = None) -> pd.DataFrame:
     """Create a summary csv file from all benchmark results."""
-
-    from shapiq.games.benchmark.run import load_benchmark_results
+    from shapiq.benchmark.run import load_benchmark_results
 
     # get all files in the benchmark results directory
     all_benchmark_results = list(os.listdir(BENCHMARK_RESULTS_DIR))
     all_benchmark_results = [result for result in all_benchmark_results if result.endswith(".json")]
-    print(f"Found {len(all_benchmark_results)} benchmark results.\n")
     # iterate over all benchmark results
     all_results: list[dict] = []
     for eval_i, benchmark_result in tqdm(
@@ -135,11 +134,10 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
         # get the game name
         if "SOUM" not in setup:
             application_name = create_application_name(setup)
+        elif "max_interaction_size=5" in setup:
+            application_name = "SOUM (low)"
         else:
-            if "max_interaction_size=5" in setup:
-                application_name = "SOUM (low)"
-            else:
-                application_name = "SOUM (high)"
+            application_name = "SOUM (high)"
         run_id = file_name
 
         # load the benchmark results
@@ -152,8 +150,8 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
         try:
             best_approximators: dict = _get_best_approximator(results_df)
         except Exception as e:
-            print(f"Error occurred: {e}. Continuing.")
-            print(f"Skipping: {file_name}")
+            message = f"Error occurred while getting the best approximator for {file_name}: {e}"
+            logging.exception(message)
             continue
         for metric, metric_values in best_approximators.items():
             for approximator, budget in metric_values:
@@ -171,19 +169,16 @@ def create_eval_csv(n_evals: int = None) -> pd.DataFrame:
                 }
                 all_results.append(results)
 
-        if n_evals is not None:
-            if eval_i >= n_evals:
-                break
+        if n_evals is not None and eval_i >= n_evals:
+            break
     # create a dataframe from the results
     results_df = pd.DataFrame(all_results)
     results_df.to_csv(EVAL_DIR / "benchmark_results_summary.csv", index=False)
-    print(f"Saved the summary to {EVAL_DIR / 'benchmark_results_summary.csv'}")
-    print(results_df.head())
 
     return results_df
 
 
-def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False) -> None:
+def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", *, save: bool = False) -> None:
     """Summarizes the benchmark results by plotting a collection of stacked bar plots.
 
     For each metric, this function plots a stacked bar plot showing the percentage of the best
@@ -207,16 +202,15 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
             - full_budget
         setting: The budget setting to use. Can be 'all', 'high', or 'low'.
         save: Whether to save the plot to a file.
+
     """
-    assert setting in [
-        "all",
-        "high",
-        "low",
-    ], "Budget setting must be 'all', 'high', or 'low'."
+    if setting not in ["all", "high", "low"]:
+        msg = "Budget setting must be 'all', 'high', or 'low'."
+        raise ValueError(msg)
 
     import matplotlib.pyplot as plt
 
-    from shapiq.games.benchmark.plot import STYLE_DICT  # maps approx names to colors and markers
+    from shapiq.benchmark.plot import STYLE_DICT  # maps approx names to colors and markers
 
     # get all unique applications and metrics and index
     all_applications = df["application_name"].unique()
@@ -226,9 +220,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
 
     index_approximators = {}
     for index in all_indices:
-        index_approximators[index] = list(
-            sorted(df[df["index"] == index]["best_approximator"].unique())
-        )
+        index_approximators[index] = sorted(df[df["index"] == index]["best_approximator"].unique())
 
     # iterate over all metrics
     for metric in all_metrics:
@@ -243,7 +235,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
                 high_budget_dfs.append(
                     metric_df[
                         (metric_df["run_id"] == run_id) & (metric_df["budget"] == max_budget)
-                    ].copy()
+                    ].copy(),
                 )
             metric_df = pd.concat(high_budget_dfs)
         fig, ax = plt.subplots()
@@ -260,7 +252,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
                     metric_df[
                         (metric_df["application_name"] == application)
                         & (metric_df["index"] == index)
-                    ]
+                    ],
                 )
                 approximators = index_approximators[index]
                 if index == "SV":
@@ -277,7 +269,7 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
                             (metric_df["application_name"] == application)
                             & (metric_df["best_approximator"] == approximator)
                             & (metric_df["index"] == index)
-                        ]
+                        ],
                     )
                     percent_best = count / n_values
                     height = percent_best * 100
@@ -317,7 +309,6 @@ def plot_stacked_bar(df: pd.DataFrame, setting: str = "high", save: bool = False
 
 
 if __name__ == "__main__":
-
     create_eval = False
     budget_setting = "high"  # can be 'all', 'high', 'low'
 
@@ -326,22 +317,16 @@ if __name__ == "__main__":
         eval_df = create_eval_csv(n_evals=None)
     else:
         eval_df = pd.read_csv(eval_path)
-        print(f"Loaded the summary from {eval_path}")
-        print(eval_df.head())
 
     # data frame has the following columns:
     # run_id, application_name, index, order, n_games, metric, best_approximator, budget, n_player, full_budget
 
     # print unique applications
-    print(eval_df["application_name"].unique())
 
     # for all metrics compute the percentage of the approximator being the best
     for _metric in eval_df["metric"].unique():
         _metric_df = eval_df[eval_df["metric"] == _metric]
         _best_approx = _metric_df["best_approximator"].value_counts(normalize=True)
-        print(f"Metric: {_metric}")
-        print(_best_approx)
-        print()
 
     # plot the results
     plot_stacked_bar(eval_df, setting=budget_setting, save=True)

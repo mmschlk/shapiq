@@ -1,6 +1,6 @@
 """This module contains the benchmark DatasetValuation games."""
 
-from typing import Optional, Union
+from __future__ import annotations
 
 from shapiq.games.benchmark.dataset_valuation.base import DatasetValuation
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
@@ -9,17 +9,8 @@ from shapiq.games.benchmark.setup import GameBenchmarkSetup
 class CaliforniaHousing(DatasetValuation):
     """The California Housing dataset as a DatasetValuation game.
 
-    Args:
-        n_players: The number of players in the game. Defaults to 10.
-        model_name: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
-            Defaults to 'decision_tree'.
-        player_sizes: The sizes of the players. If 'uniform', the players have equal sizes. If
-            'increasing', the players have increasing sizes. If 'random', the players have random
-            sizes. If a list of floats, the players have the given sizes. Defaults to 'increasing'.
-        random_state: The random state to use for shuffling the data. Defaults to 42.
-
     Note:
-        This game uses models from the `sklearn` library. Install the library to use this game.
+        This game uses models from the ``sklearn`` library. Install the library to use this game.
 
     Examples:
         >>> import numpy as np
@@ -40,6 +31,7 @@ class CaliforniaHousing(DatasetValuation):
         >>> game = Game(path_to_values="california_housing_values.npz")
         >>> game.n_players
         4
+
     """
 
     def __init__(
@@ -47,12 +39,32 @@ class CaliforniaHousing(DatasetValuation):
         *,
         n_players: int = 10,
         model_name: str = "decision_tree",
-        player_sizes: Optional[Union[list[float], str]] = "increasing",
-        random_state: Optional[int] = 42,
+        player_sizes: list[float] | str | None = "increasing",
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
+        """Initialize the California Housing DatasetValuation game.
 
+        Args:
+            n_players: The number of players in the game. Defaults to ``10``.
+
+            model_name: The model to use for the game. Must be ``'decision_tree'`` or
+                ``'random_forest'``. Defaults to ``'decision_tree'``.
+
+            player_sizes: The sizes of the players. If ``'uniform'``, the players have equal sizes.
+                If ``'increasing'``, the players have increasing sizes. If ``'random'``, the players
+                have random sizes. If a list of floats, the players have the given sizes. Defaults
+                to ``'increasing'``.
+
+            random_state: The random state to use for shuffling the data. Defaults to ``42``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print information of the game. Defaults to ``False``.
+        """
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,
@@ -80,17 +92,8 @@ class CaliforniaHousing(DatasetValuation):
 class BikeSharing(DatasetValuation):
     """The Bike Sharing dataset as a DatasetValuation game.
 
-    Args:
-        n_players: The number of players in the game. Defaults to 10.
-        model_name: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
-            Defaults to 'decision_tree'.
-        player_sizes: The sizes of the players. If 'uniform', the players have equal sizes. If
-            'increasing', the players have increasing sizes. If 'random', the players have random
-            sizes. If a list of floats, the players have the given sizes. Defaults to 'increasing'.
-        random_state: The random state to use for shuffling the data. Defaults to 42.
-
     Note:
-        This game uses models from the `sklearn` library. Install the library to use this game.
+        This game uses models from the ``sklearn`` library. Install the library to use this game.
 
     Examples:
         >>> import numpy as np
@@ -111,6 +114,7 @@ class BikeSharing(DatasetValuation):
         >>> game = Game(path_to_values="bike_sharing_values.npz")
         >>> game.n_players
         4
+
     """
 
     def __init__(
@@ -118,12 +122,32 @@ class BikeSharing(DatasetValuation):
         *,
         n_players: int = 10,
         model_name: str = "decision_tree",
-        player_sizes: Optional[Union[list[float], str]] = "increasing",
-        random_state: Optional[int] = 42,
+        player_sizes: list[float] | str | None = "increasing",
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
+        """Initialize the Bike Sharing DatasetValuation game.
 
+        Args:
+            n_players: The number of players in the game. Defaults to ``10``.
+
+            model_name: The model to use for the game. Must be ``'decision_tree'`` or
+                ``'random_forest'``. Defaults to ``'decision_tree'``.
+
+            player_sizes: The sizes of the players. If ``'uniform'``, the players have equal sizes.
+                If ``'increasing'``, the players have increasing sizes. If ``'random'``, the players
+                have random sizes. If a list of floats, the players have the given sizes. Defaults
+                to ``'increasing'``.
+
+            random_state: The random state to use for shuffling the data. Defaults to ``42``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print information of the game. Defaults to ``False``.
+        """
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
@@ -151,17 +175,8 @@ class BikeSharing(DatasetValuation):
 class AdultCensus(DatasetValuation):
     """The Adult Census dataset as a DatasetValuation game.
 
-    Args:
-        n_players: The number of players in the game. Defaults to 10.
-        model_name: The model to use for the game. Must be 'decision_tree' or 'random_forest'.
-            Defaults to 'decision_tree'.
-        player_sizes: The sizes of the players. If 'uniform', the players have equal sizes. If
-            'increasing', the players have increasing sizes. If 'random', the players have random
-            sizes. If a list of floats, the players have the given sizes. Defaults to 'increasing'.
-        random_state: The random state to use for shuffling the data. Defaults to 42.
-
     Note:
-        This game uses models from the `sklearn` library. Install the library to use this game.
+        This game uses models from the ``sklearn`` library. Install the library to use this game.
 
     Examples:
         >>> import numpy as np
@@ -182,6 +197,7 @@ class AdultCensus(DatasetValuation):
         >>> game = Game(path_to_values="adult_census_values.npz")
         >>> game.n_players
         4
+
     """
 
     def __init__(
@@ -189,12 +205,32 @@ class AdultCensus(DatasetValuation):
         *,
         n_players: int = 10,
         model_name: str = "decision_tree",
-        player_sizes: Optional[Union[list[float], str]] = "increasing",
-        random_state: Optional[int] = 42,
+        player_sizes: list[float] | str | None = "increasing",
+        random_state: int | None = 42,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
+        """Initialize the Adult Census DatasetValuation game.
 
+        Args:
+            n_players: The number of players in the game. Defaults to ``10``.
+
+            model_name: The model to use for the game. Must be ``'decision_tree'`` or
+                ``'random_forest'``. Defaults to ``'decision_tree'``.
+
+            player_sizes: The sizes of the players. If ``'uniform'``, the players have equal sizes.
+                If ``'increasing'``, the players have increasing sizes. If ``'random'``, the players
+                have random sizes. If a list of floats, the players have the given sizes. Defaults
+                to ``'increasing'``.
+
+            random_state: The random state to use for shuffling the data. Defaults to ``42``.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print information of the game. Defaults to ``False``.
+        """
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,

@@ -1,3 +1,0 @@
-include pyproject.toml
-include README.md
-include CHANGELOG.md

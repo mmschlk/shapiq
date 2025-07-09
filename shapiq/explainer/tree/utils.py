@@ -1,14 +1,22 @@
 """Utility functions for dealing with trees or tree structures."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-__all__ = ["get_conditional_sample_weights", "compute_empty_prediction"]
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+
+__all__ = ["compute_empty_prediction", "get_conditional_sample_weights"]
 
 
 def get_conditional_sample_weights(
-    sample_count: np.ndarray[int],
-    parent_array: np.ndarray[int],
-) -> np.ndarray[float]:
+    sample_count: NDArray[np.int_],
+    parent_array: NDArray[np.int_],
+) -> NDArray[np.floating]:
     """Get the conditional sample weights for a tree at each decision node.
 
     The conditional sample weights are the probabilities of going left or right at each decision
@@ -29,6 +37,7 @@ def get_conditional_sample_weights(
         >>> sample_count = np.asarray([100, 70, 50, 20, 30, 15, 15])
         >>> get_conditional_sample_weights(sample_count, parent_array)
         >>> [1., 0.7, 0.71428571, 0.28571429, 0.3, 0.5, 0.5]
+
     """
     conditional_sample_weights = np.zeros_like(sample_count, dtype=float)
     conditional_sample_weights[0] = 1
@@ -38,7 +47,8 @@ def get_conditional_sample_weights(
 
 
 def compute_empty_prediction(
-    leaf_values: np.ndarray[float], leaf_sample_weights: np.ndarray[float]
+    leaf_values: NDArray[np.floating],
+    leaf_sample_weights: NDArray[np.floating],
 ) -> float:
     """Compute the empty prediction of a tree model.
 
@@ -50,5 +60,6 @@ def compute_empty_prediction(
 
     Returns:
         The empty prediction of the tree model.
+
     """
-    return np.sum(leaf_values * leaf_sample_weights) / np.sum(leaf_sample_weights)
+    return float(np.sum(leaf_values * leaf_sample_weights) / np.sum(leaf_sample_weights))

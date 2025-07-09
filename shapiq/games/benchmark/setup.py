@@ -1,7 +1,9 @@
 """This module contains a setup for the tabular benchmark games."""
 
+from __future__ import annotations
+
 import copy
-from typing import Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -20,7 +22,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing
-from shapiq.utils import Model, shuffle_data
+from shapiq.utils import shuffle_data
+
+if TYPE_CHECKING:
+    from shapiq.typing import Model
 
 AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 
@@ -28,34 +33,17 @@ AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
 class GameBenchmarkSetup:
     """Class to load and prepare models and datasets for the benchmark games.
 
-    Note:
-        Depending on the models, this game requires the `scikit-learn` or `torch` packages to be
-        installed.
+    This class is used to load and prepare the models and datasets for the benchmark games. It can
+    be used with a variaty of datasets and models and is typically used to set up inside subclasses
+    the benchmark games. The class loads the dataset and the model, splits the dataset into a
+    training and test set, and prepares the model for training. The class also provides a number of
+    attributes to access the dataset and model information (e.g. number of features, feature
+    names, model name, etc.).
 
-    Args:
-        dataset_name: The dataset to load the models for. Available datasets are 'adult_census',
-            'bike_sharing', and 'california_housing'.
-        model_name: If specified, the name of the model to load. Defaults to `None`, which means that
-            no model will be loaded. Available models for the datasets are the following:
-            - 'adult_census': 'decision_tree', 'random_forest', 'gradient_boosting'
-            - 'bike_sharing': 'decision_tree', 'random_forest', 'gradient_boosting'
-            - 'california_housing': 'decision_tree', 'random_forest', 'gradient_boosting',
-                'neural_network'
-        loss_function: If specified, the loss function to use for the game (as a string). Defaults to
-            `None`, which means 'r2_score' for regression and 'accuracy_score' for classification.
-            Available loss functions are:
-            - 'mean_squared_error'
-            - 'mean_absolute_error'
-            - 'log_loss'
-            - 'r2_score'
-            - 'accuracy_score'
-            - 'roc_auc_score'
-            - 'f1_score'
-        verbose: Whether to print the predicted class and score. Defaults to True.
-        test_size: The size of the validation set. Defaults to 0.2.
-        random_state: The random state to use for all random operations. Defaults to 42.
-        random_forest_n_estimators: The number of estimators to use for the random forest model if
-            the model is a random forest. Defaults to 10.
+
+    Note:
+        Depending on the models, this game requires the ``scikit-learn`` or ``torch`` packages to be
+        installed.
 
     Attributes:
         dataset_name: The name of the dataset.
@@ -97,13 +85,50 @@ class GameBenchmarkSetup:
     def __init__(
         self,
         dataset_name: str,
-        model_name: Optional[str] = None,
-        loss_function: Optional[str] = None,
+        *,
+        model_name: str | None = None,
+        loss_function: str | None = None,
         verbose: bool = True,
         test_size: float = 0.2,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
         random_forest_n_estimators: int = 10,
     ) -> None:
+        """Initializes the GameBenchmarkSetup class.
+
+        Args:
+            dataset_name: The dataset to load the models for. Available datasets are
+                ``'adult_census'``,``'bike_sharing'``, and ``'california_housing'``.
+
+            model_name: If specified, the name of the model to load. Defaults to ``None``, which
+                means that no model will be loaded. Available models for the datasets are the
+                following:
+                - ``'adult_census'``: '``decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'bike_sharing'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'california_housing'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``, ``'neural_network'``
+
+            loss_function: If specified, the loss function to use for the game (as a string).
+                Defaults to ``None``, which means ``'r2_score'`` for regression and
+                ``'accuracy_score'`` for classification. Available loss functions are:
+                - ``'mean_squared_error'``
+                - ``'mean_absolute_error'``
+                - ``'log_loss'``
+                - ``'r2_score'``
+                - ``'accuracy_score'``
+                - ``'roc_auc_score'``
+                - ``'f1_score'``
+
+            verbose: Whether to print the predicted class and score. Defaults to True.
+
+            test_size: The size of the validation set. Defaults to 0.2.
+
+            random_state: The random state to use for all random operations. Defaults to ``42``.
+
+            random_forest_n_estimators: The number of estimators to use for the random forest model
+                if the model is a random forest. Defaults to ``10``.
+        """
         self.random_state = random_state
 
         # load the dataset
@@ -119,10 +144,11 @@ class GameBenchmarkSetup:
             x_data, y_data = load_california_housing()
             self.feature_names: list = list(x_data.columns)
         else:
-            raise ValueError(
+            msg = (
                 f"Invalid dataset name {dataset_name}. Available datasets are 'adult_census', "
                 "'bike_sharing', 'california_housing'."
             )
+            raise ValueError(msg)
 
         self.dataset_name: str = dataset_name
 
@@ -144,7 +170,7 @@ class GameBenchmarkSetup:
         self._random_forest_n_estimators = random_forest_n_estimators
 
         # to be set in the model initialization
-        self.model: Optional[Model] = None
+        self.model: Model | None = None
         self.fit_function = None
         self.score_function = None
         self.predict_function = None
@@ -177,7 +203,8 @@ class GameBenchmarkSetup:
 
         # check if the model is loaded
         if self.model is None and model_name is not None:
-            raise ValueError(f"Invalid model name {model_name} for the {dataset_name} dataset.")
+            msg = f"Invalid model name {model_name} for the {dataset_name} dataset."
+            raise ValueError(msg)
 
         # set up the functions
         if self.dataset_type == "classification" and model_name is not None:
@@ -212,48 +239,47 @@ class GameBenchmarkSetup:
         if verbose and model_name is not None:
             self.print_train_performance()
 
-    def print_train_performance(self):
+    def print_train_performance(self) -> None:
         """Prints the performance of the model on the test data."""
-        print(f"Trained model {self.model_name} for the {self.dataset_name} dataset.")
-        print(f"Score on training data: {self.score_function(self.x_test, self.y_test)}")
 
-    def init_decision_tree_classifier(self):
+    def init_decision_tree_classifier(self) -> None:
         """Initializes and trains a decision tree model for a classification dataset."""
         self.model = DecisionTreeClassifier(random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_random_forest_classifier(self):
+    def init_random_forest_classifier(self) -> None:
         """Initializes and trains a random forest model for a classification dataset."""
         self.model = RandomForestClassifier(
-            n_estimators=self._random_forest_n_estimators, random_state=self.random_state
+            n_estimators=self._random_forest_n_estimators,
+            random_state=self.random_state,
         )
         self.model.fit(self.x_train, self.y_train)
 
-    def init_gradient_boosting_classifier(self):
+    def init_gradient_boosting_classifier(self) -> None:
         """Initializes and trains a gradient boosting model for a classification dataset."""
         from xgboost import XGBClassifier
 
         self.model = XGBClassifier(random_state=self.random_state, n_jobs=1)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_decision_tree_regressor(self):
+    def init_decision_tree_regressor(self) -> None:
         """Initializes and trains a decision tree model for a regression dataset."""
         self.model = DecisionTreeRegressor(random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_random_forest_regressor(self):
+    def init_random_forest_regressor(self) -> None:
         """Initializes and trains a random forest model for a regression dataset."""
         self.model = RandomForestRegressor(n_estimators=10, random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_gradient_boosting_regressor(self):
+    def init_gradient_boosting_regressor(self) -> None:
         """Initializes and trains a gradient boosting model for a regression dataset."""
         from xgboost import XGBRegressor
 
         self.model = XGBRegressor(random_state=self.random_state, n_jobs=1)
         self.model.fit(self.x_train, self.y_train)
 
-    def init_california_neural_network(self):
+    def init_california_neural_network(self) -> None:
         """Initializes a neural network model for the California Housing dataset."""
         from ._setup._california_torch_setup import CaliforniaHousingTorchModel
 
@@ -272,7 +298,6 @@ class GameBenchmarkSetup:
 
 def _accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Returns the accuracy score of the model."""
-
     if y_true.ndim > 1:
         y_true = np.argmax(y_true, axis=1)
     if y_pred.ndim > 1:
@@ -281,7 +306,7 @@ def _accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return accuracy_score(y_true, y_pred)
 
 
-def get_x_explain(x: Optional[Union[np.ndarray, int]], x_set: np.ndarray) -> np.ndarray:
+def get_x_explain(x: np.ndarray | int | None, x_set: np.ndarray) -> np.ndarray:
     """Returns the data point to explain given the input.
 
     Args:
@@ -292,9 +317,12 @@ def get_x_explain(x: Optional[Union[np.ndarray, int]], x_set: np.ndarray) -> np.
 
     Returns:
         The data point to explain as a numpy array.
+
     """
     if x is None:
-        x = x_set[np.random.randint(0, x_set.shape[0])]
+        rng = np.random.default_rng()
+        idx = rng.choice(x_set.shape[0])
+        x = x_set[idx]
     if isinstance(x, int):
         x = x_set[x]
     return x

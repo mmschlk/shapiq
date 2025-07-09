@@ -1,11 +1,18 @@
 """This module contains the Stratified Sampling approximation method for the Shapley values."""
 
-from typing import Callable, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
-from .._base import Approximator
+from shapiq.approximator.base import Approximator
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.games.base import Game
 
 
 class StratifiedSamplingSV(Approximator):
@@ -14,41 +21,61 @@ class StratifiedSamplingSV(Approximator):
     The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random
     marginal contributions for each player and each coalition size. The marginal contributions are
     grouped into strata by size. The strata are aggregated for each player after sampling to obtain
-    the final estimate. For more information, see Maleki et al. (2013)[1]_.
-
-    Args:
-        n: The number of players.
-        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
+    the final estimate. For more information, see Maleki et al. (2013) [Mal13]_.
 
     See Also:
         - :class:`~shapiq.approximator.montecarlo.svarmiq.SVARM`: The SVARM approximator
         - :class:`~shapiq.approximator.montecarlo.svarmiq.SVARMIQ`: The SVARMIQ approximator
 
     References:
-        .. [1] Maleki, S., Tran-Thanh, L., Hines, G., Rahwan, T., and Rogers, A, (2013). Bounding the Estimation Error of Sampling-based Shapley Value Approximation With/Without Stratifying
+        .. [Mal13] Maleki, S., Tran-Thanh, L., Hines, G., Rahwan, T., and Rogers, A, (2013). Bounding the Estimation Error of Sampling-based Shapley Value Approximation With/Without Stratifying
+
     """
+
+    valid_indices: tuple[Literal["SV"]] = ("SV",)
 
     def __init__(
         self,
         n: int,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
+        """Initialize the Stratified Sampling SV approximator.
+
+        Args:
+            n: The number of players.
+
+            random_state: The random state to use for the permutation sampling. Defaults to
+            ``None``.
+
+            **kwargs: Additional arguments not used.
+
+        """
         super().__init__(n, max_order=1, index="SV", top_order=False, random_state=random_state)
         self.iteration_cost: int = 2
 
     def approximate(
-        self, budget: int, game: Callable[[np.ndarray], np.ndarray]
+        self,
+        budget: int,
+        game: Game | Callable[[np.ndarray], np.ndarray],
+        *args: Any,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.
 
         Args:
             budget: The number of game evaluations for approximation
+
             game: The game function as a callable that takes a set of players and returns the value.
+
+            *args: Additional positional arguments (not used).
+
+            **kwargs: Additional keyword arguments (not used).
 
         Returns:
             The estimated interaction values.
-        """
 
+        """
         used_budget = 0
 
         # get value of empty coalition and grand coalition
@@ -62,7 +89,7 @@ class StratifiedSamplingSV(Approximator):
         # main sampling loop
         while used_budget < budget:
             # iterate over coalition size to which a marginal contribution can be drawn
-            for size in range(0, self.n):
+            for size in range(self.n):
                 # iterate over players for whom a marginal contribution is to be drawn
                 for player in range(self.n):
                     # check if enough budget is available to sample a marginal contribution
@@ -88,7 +115,7 @@ class StratifiedSamplingSV(Approximator):
                             # draw a subset of the player set without player of size stratum
                             # uniformly at random
                             coalition_list = list(
-                                self._rng.choice(available_players, size, replace=False)
+                                self._rng.choice(available_players, size, replace=False),
                             )
                             coalition = np.zeros(self.n, dtype=bool)
                             coalition[coalition_list] = True
@@ -114,6 +141,16 @@ class StratifiedSamplingSV(Approximator):
             idx = self._interaction_lookup[(player,)]
             result_to_finalize[idx] = result[player]
 
-        return self._finalize_result(
-            result_to_finalize, baseline_value=empty_value, budget=used_budget, estimated=True
+        interactions = InteractionValues(
+            n_players=self.n,
+            values=result_to_finalize,
+            index=self.approximation_index,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=float(empty_value),
+            min_order=self.min_order,
+            max_order=self.max_order,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+
+        return finalize_computed_interactions(interactions, target_index=self.index)

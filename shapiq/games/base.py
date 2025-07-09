@@ -1,36 +1,27 @@
 """Base Game class for games and benchmarks."""
 
+from __future__ import annotations
+
 import os
 import pickle
 import warnings
-from abc import ABC
-from typing import Optional, Union
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from tqdm.auto import tqdm
 
-from ..interaction_values import InteractionValues
-from ..utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
+from shapiq.utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
+    from shapiq.utils.custom_types import CoalitionMatrix, GameValues
 
 
-class Game(ABC):
-    """Base class for games/benchmarks in the ``shapiq`` package.
+class Game:
+    """Base class for games/benchmarks/imputers in the ``shapiq`` package.
 
     This class implements some common methods and attributes that all games should have.
-
-    Args:
-        n_players: The number of players in the game.
-        normalize: Whether the game values should be normalized. Defaults to ``True``.
-        normalization_value: The value to normalize and center the game values with such that the
-            value for the empty coalition is zero. Defaults to ``None``.  If ``normalization`` is set
-            to ``False`` this value is not required. Otherwise, the value is needed to normalize and
-            center the game. If no value is provided, the game raises a warning.
-        path_to_values: The path to load the game values from. If the path is provided, the game
-            values are loaded from the given path. Defaults to ``None``.
-        verbose: Whether to show a progress bar for the evaluation. Defaults to ``False``. Note
-            that this only has an effect if the game is not precomputed and may slow down the
-            evaluation.
-        args, kwargs: Additional arguments are not used.
 
     Properties:
         n_values_stored: The number of values stored in the game.
@@ -39,7 +30,7 @@ class Game(ABC):
         game_name: The name of the game.
 
     Attributes:
-        precompute_flag: A flag to manually override the precomputed check. If set to ``True``, the
+        _precompute_flag: A flag to manually override the precomputed check. If set to ``True``, the
             game is considered precomputed and only uses the lookup.
         value_storage: The storage for the game values without normalization applied.
         coalition_lookup: A lookup dictionary mapping from coalitions to indices in the
@@ -52,7 +43,8 @@ class Game(ABC):
 
     Note:
         This class is a base class and all games should inherit from this class and implement the
-        `value_function` methods. Only use this class directly for dealing with precomputed games.
+            `value_function` methods. Usually, this Game class is only directly used when dealing
+            with precomputed / stored games.
 
     Examples:
         >>> from shapiq.games import Game
@@ -85,34 +77,76 @@ class Game(ABC):
         >>> new_game = DummyGame.load("game.pkl")
         >>> new_game.precomputed, new_game.n_values_stored
         True, 2
+
     """
+
+    n_players: int
+    """The number of players in the game."""
+
+    game_id: str
+    """A unique identifier for the game, based on its class name and hash."""
+
+    normalization_value: float
+    """The value which is used to normalize (center) the game values such that the value for the
+    empty coalition is zero. If this is zero, the game values are not normalized."""
+
+    value_storage: GameValues
+    """The storage for the game values without normalization applied."""
 
     def __init__(
         self,
-        n_players: Optional[int] = None,
+        n_players: int | None = None,
+        *,
         normalize: bool = True,
-        normalization_value: Optional[float] = None,
-        path_to_values: Optional[str] = None,
+        normalization_value: float | None = None,
+        path_to_values: Path | str | None = None,
         verbose: bool = False,
-        player_names: Optional[list[str]] = None,
-        *args,
-        **kwargs,
+        player_names: list[str] | None = None,
+        **kwargs: Any,  # noqa: ARG002
     ) -> None:
+        """Initialize the Game class.
+
+        Args:
+            n_players: The number of players in the game.
+
+            normalize: Whether the game values should be normalized / centered. Defaults to
+                ``True``. If ``True``, the game values are normalized such that the value for the
+                empty coalition is zero. If ``False``, the game values are not normalized and the
+                value for the empty coalition is not guaranteed to be zero. This is useful for
+                algorithms that require the game values to be centered.
+
+            normalization_value: The value to normalize and center the game values with such that the
+                value for the empty coalition is zero. Defaults to ``None``.  If ``normalization`` is set
+                to ``False`` this value is not required. Otherwise, the value is needed to normalize and
+                center the game. If no value is provided, the game raises a warning.
+
+            path_to_values: The path to load the game values from. If the path is provided, the game
+                values are loaded from the given path. Defaults to ``None``.
+
+            verbose: Whether to show a progress bar for the evaluation. Defaults to ``False``. Note
+                that this only has an effect if the game is not precomputed and may slow down the
+                evaluation.
+
+            player_names: An optional list of player names. If provided, the coalitions can be
+                provided as strings instead of integers.
+
+            kwargs: Additional keyword arguments (not used).
+
+        """
         # manual flag for choosing precomputed values even if not all values might be stored
-        self.precompute_flag: bool = False  # flag to manually override the precomputed check
+        self._precompute_flag: bool = False  # flag to manually override the precomputed check
 
         # define storage variables
-        self.value_storage: np.ndarray = np.zeros(0, dtype=float)
+        self.value_storage: GameValues = np.zeros(0, dtype=float)
         self.coalition_lookup: dict[tuple[int, ...], int] = {}
-        self.n_players: int = n_players  # if path_to_values is provided, this may be overwritten
+        self.n_players = n_players
 
         if n_players is None and path_to_values is None:
-            raise ValueError(
-                "The number of players has to be provided if game is not loaded from values."
-            )
+            msg = "The number of players has to be provided if game is not loaded from values."
+            raise ValueError(msg)
 
         # setup normalization of the game
-        self.normalization_value: float = 0.0
+        self.normalization_value = 0.0
         if normalize and path_to_values is None:
             self.normalization_value = normalization_value
             if normalization_value is None:
@@ -122,15 +156,16 @@ class Game(ABC):
                     RuntimeWarning(
                         "Normalization value is set to `None`. No normalization value was provided"
                         " at initialization. Make sure to set the normalization value before"
-                        " calling the game."
-                    )
+                        " calling the game.",
+                    ),
+                    stacklevel=2,
                 )
 
-        game_id: str = str(hash(self))[:8]
-        self.game_id = "_".join([self.get_game_name(), game_id])
+        game_id = str(hash(self))[:8]
+        self.game_id = f"{self.get_game_name()}_{game_id}"
         if path_to_values is not None:
             self.load_values(path_to_values, precomputed=True)
-            self.game_id = path_to_values.split(os.path.sep)[-1].split(".")[0]
+            self.game_id = str(path_to_values).split(os.path.sep)[-1].split(".")[0]
             # if game should not be normalized, reset normalization value to 0
             if not normalize and self.normalization_value != 0:
                 self.normalization_value = 0.0
@@ -156,7 +191,7 @@ class Game(ABC):
     @property
     def precomputed(self) -> bool:
         """Indication whether the game has been precomputed."""
-        return self.n_values_stored >= 2**self.n_players or self.precompute_flag
+        return self.n_values_stored >= 2**self.n_players or self._precompute_flag
 
     @property
     def normalize(self) -> bool:
@@ -170,14 +205,14 @@ class Game(ABC):
 
     def _check_coalitions(
         self,
-        coalitions: Union[
-            np.ndarray,
-            list[tuple[int, ...]],
-            list[tuple[str, ...]],
-            tuple[int, ...],
-            tuple[str, ...],
-        ],
-    ) -> np.ndarray:
+        coalitions: (
+            CoalitionMatrix
+            | list[tuple[int, ...]]
+            | list[tuple[str, ...]]
+            | tuple[int, ...]
+            | tuple[str, ...]
+        ),
+    ) -> CoalitionMatrix:
         """Validates the coalitions and convert them to one-hot encoding.
 
         Check if the coalitions are in the correct format and convert them to one-hot encoding.
@@ -186,6 +221,7 @@ class Game(ABC):
 
         Args:
             coalitions: The coalitions to convert to one-hot encoding.
+
         Returns:
             np.ndarray: The coalitions in the correct format
 
@@ -203,6 +239,7 @@ class Game(ABC):
             >>> coalitions = [1, 0, 0, 0]
             >>> coalitions = [(1, "Alice")]
             >>> coalitions = np.array([1, -1, 2])
+
         """
         error_message = (
             "List may only contain tuples of integers or strings. The tuples are not allowed to "
@@ -212,80 +249,88 @@ class Game(ABC):
         # check for array input and do validation
         if isinstance(coalitions, np.ndarray):
             if len(coalitions) == 0:  # check that coalition is contained in array
-                raise TypeError("The array of coalitions is empty.")
+                msg = "The array of coalitions is empty."
+                raise TypeError(msg)
             if coalitions.ndim == 1:  # check if single coalition is correctly given
                 if len(coalitions) < self.n_players or len(coalitions) > self.n_players:
-                    raise TypeError(
+                    msg = (
                         "The array of coalitions is not correctly formatted."
                         f"It should have a length of {self.n_players}"
                     )
+                    raise TypeError(msg)
                 coalitions = coalitions.reshape((1, self.n_players))
             if coalitions.shape[1] != self.n_players:  # check if players match
-                raise TypeError(
+                msg = (
                     f"Number of players in the coalitions ({coalitions.shape[1]}) does not match "
                     f"the number of players in the game ({self.n_players})."
                 )
-            # TODO maybe remove this, as it might increase runtime unnecessarily
+                raise TypeError(msg)
             # check that values of numpy array are either 0 or 1
             if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
-                raise TypeError("The values in the array of coalitions are not binary.")
+                msg = "The values in the array of coalitions are not binary."
+                raise TypeError(msg)
             return coalitions
         # try for list of tuples
         if isinstance(coalitions, tuple):
             coalitions = [coalitions]
         try:
             # convert list of tuples to one-hot encoding
-            coalitions = transform_coalitions_to_array(coalitions, self.n_players)
-            return coalitions
+            return transform_coalitions_to_array(coalitions, self.n_players)
         except (IndexError, TypeError):
             pass
         # assuming str input
         if self.player_name_lookup is None:
-            raise ValueError("Player names are not provided. Cannot convert string to integer.")
+            msg = "Player names are not provided. Cannot convert string to integer."
+            raise ValueError(msg)
         try:
             coalitions_from_str = []
             for coalition in coalitions:
                 coal_indices = sorted([self.player_name_lookup[player] for player in coalition])
                 coalitions_from_str.append(tuple(coal_indices))
-            coalitions = transform_coalitions_to_array(coalitions_from_str, self.n_players)
-            return coalitions
+            return transform_coalitions_to_array(coalitions_from_str, self.n_players)
         except Exception as error:
             raise TypeError(error_message) from error
 
     def __call__(
         self,
-        coalitions: Union[
-            np.ndarray,
-            list[tuple[int, ...]],
-            list[tuple[str, ...]],
-            tuple[int, ...],
-            tuple[str, ...],
-        ],
+        coalitions: (
+            CoalitionMatrix
+            | list[tuple[int, ...]]
+            | list[tuple[str, ...]]
+            | tuple[int, ...]
+            | tuple[str, ...]
+        ),
+        *,
         verbose: bool = False,
-    ) -> np.ndarray:
-        """Calls the game's value function with the given coalitions and returns the output of the
-        value function.
+    ) -> GameValues:
+        """Calls the game with the given coalitions.
+
+        Calls the game's value function with the given coalitions and returns the output of the
+        value function. The call also checks if the coalitions are in the correct format and
+        converts if necessary. If the game is precomputed, the values are looked up in internal
+        storage without calling the value function.
 
         Args:
-            coalitions: The coalitions to evaluate.
+            coalitions: The coalitions to evaluate as a one-hot matrix or a list of tuples.
+
             verbose: Whether to show a progress bar for the evaluation. Defaults to ``False``.
 
         Returns:
             The values of the coalitions.
+
         """
-        coalitions = self._check_coalitions(coalitions)  # validate and convert input coalitions
+        coalitions = self._check_coalitions(coalitions)
         verbose = verbose or self.verbose
         if not self.precomputed and not verbose:
             values = self.value_function(coalitions)
         elif not self.precomputed and verbose:
             values = np.zeros(coalitions.shape[0], dtype=float)
             for i, coalition in enumerate(
-                tqdm(coalitions, desc="Evaluating game", unit=" coalition")
+                tqdm(coalitions, desc="Evaluating game", unit=" coalition"),
             ):
-                coalition = coalition.reshape((1, self.n_players))
-                values[i] = self.value_function(coalition)[0]
+                values[i] = self.value_function(coalition.reshape((1, self.n_players)))[0]
         else:
-            values = self._lookup_coalitions(coalitions)  # lookup the values present in the storage
+            values = self._lookup_coalitions(coalitions)
         return values - self.normalization_value
 
     def _lookup_coalitions(self, coalitions: np.ndarray) -> np.ndarray:
@@ -297,15 +342,19 @@ class Game(ABC):
             try:
                 values[i] = self.value_storage[self.coalition_lookup[coalition_tuple]]
             except KeyError as error:
-                raise KeyError(
+                msg = (
                     f"The coalition {coalition_tuple} is not stored in the game. "
                     f"Are all values pre-computed?"
-                ) from error
+                )
+                raise KeyError(msg) from error
         return values
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """The value function of the game, which models the behavior of the game. The value function
-        is the core of the game and should be implemented in the inheriting class.
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
+        """Returns the value of the coalitions.
+
+        The value function of the game, which models the behavior of the game. The value function
+        is the core of the game and should be implemented in the inheriting class. A value function
+        should return the worth of a coalition of players.
 
         Args:
             coalitions: The coalitions to evaluate.
@@ -315,10 +364,12 @@ class Game(ABC):
 
         Note:
             This method has to be implemented in the inheriting class.
-        """
-        raise NotImplementedError("The value function has to be implemented in inherited classes.")
 
-    def precompute(self, coalitions: Optional[np.ndarray] = None) -> None:
+        """
+        msg = "The value function has to be implemented in inherited classes."
+        raise NotImplementedError(msg)
+
+    def precompute(self, coalitions: CoalitionMatrix | None = None) -> None:
         """Precompute the game values for all or a given set of coalitions.
 
         The pre-computation iterates over the powerset of all coalitions or a given set of
@@ -353,67 +404,102 @@ class Game(ABC):
             all coalitions is evaluated. If the number of players is greater than 16 and no
             coalitions are given, a warning is raised to inform the user about the potential
             slow computation.
+
         """
         # if more than 16 players and no coalitions are given, warn the user
         if self.n_players > 16 and coalitions is None:
             warnings.warn(
                 "The number of players is greater than 16. Precomputing all coalitions might "
                 "take a long time. Consider providing a subset of coalitions to precompute. "
-                "Note that 2 ** n_players coalitions will be evaluated for the pre-computation."
+                "Note that 2 ** n_players coalitions will be evaluated for the pre-computation.",
+                stacklevel=2,
             )
         if coalitions is None:
-            coalitions = list(powerset(range(self.n_players)))  # might be getting slow
-            coalitions_array = transform_coalitions_to_array(coalitions, self.n_players)
-            coalitions_dict = {coal: i for i, coal in enumerate(coalitions)}
+            all_coalitions = list(powerset(range(self.n_players)))  # might be getting slow
+            coalitions = transform_coalitions_to_array(all_coalitions, self.n_players)
+            coalitions_dict = {coal: i for i, coal in enumerate(all_coalitions)}
         else:
-            coalitions_array = coalitions
-            coalitions_tuple = transform_array_to_coalitions(coalitions=coalitions_array)
+            coalitions_tuple = transform_array_to_coalitions(coalitions=coalitions)
             coalitions_dict = {coal: i for i, coal in enumerate(coalitions_tuple)}
 
         # run the game for all coalitions (no normalization)
         norm_value, self.normalization_value = self.normalization_value, 0
-        game_values: np.ndarray = self(coalitions_array)  # call the game with the coalitions
+        game_values = self(coalitions)  # call the game with the coalitions
         self.normalization_value = norm_value
 
         # update the storage with the new coalitions and values
         self.value_storage = game_values.astype(float)
         self.coalition_lookup = coalitions_dict
-        self.precompute_flag = True
+        self._precompute_flag = True
 
-    def save_values(self, path: str) -> None:
+    def compute(
+        self, coalitions: CoalitionMatrix | None = None
+    ) -> tuple[np.ndarray, dict[tuple[int, ...], int], float]:
+        """Compute the game values for all or a given set of coalitions.
+
+        Args:
+            coalitions: The coalitions to evaluate.
+
+        Returns:
+            A tuple containing:
+            - The computed game values in the same order of the coalitions.
+            - A lookup dictionary mapping from coalitions to the indices in the array.
+            - The normalization value used to center/normalize the game values.
+
+        Note:
+            This method does not change the state of the game and does not normalize the values.
+
+        Examples:
+            >>> from shapiq.games.benchmark import DummyGame
+            >>> game = DummyGame(4, interaction=(1, 2))
+            >>> game.compute(np.array([[0, 1, 0, 0], [0, 1, 1, 0]], dtype=bool))
+            (array([0.25, 1.5]), {(1): 0, (1, 2): 1.5}, 0.0)
+
+        """
+        game_values = self.value_function(self._check_coalitions(coalitions))
+
+        return game_values, self.coalition_lookup, self.normalization_value
+
+    def save_values(self, path: Path | str) -> None:
         """Saves the game values to the given path.
 
         Args:
             path: The path to save the game.
+
         """
-        # check if path ends with .npz
+        # check if path is a Path object
+        if isinstance(path, Path):
+            path = str(path)
+
         if not path.endswith(".npz"):
             path += ".npz"
 
         if not self.precomputed:
             warnings.warn(
-                UserWarning("The game has not been precomputed yet. Saving the game may be slow.")
+                UserWarning("The game has not been precomputed yet. Saving the game may be slow."),
+                stacklevel=2,
             )
             self.precompute()
 
         # transform the values_storage to float16 for compression
-        self.value_storage.astype(np.float16)
+        values = self.value_storage.astype(np.float16)
 
         # cast the coalitions_in_storage to bool
         coalitions_in_storage = transform_coalitions_to_array(
-            coalitions=self.coalition_lookup, n_players=self.n_players
+            coalitions=self.coalition_lookup,
+            n_players=self.n_players,
         ).astype(bool)
 
         # save the data
         np.savez_compressed(
             path,
-            values=self.value_storage,
+            values=values,
             coalitions=coalitions_in_storage,
             n_players=self.n_players,
             normalization_value=self.normalization_value,
         )
 
-    def load_values(self, path: str, precomputed: bool = False) -> None:
+    def load_values(self, path: Path | str, *, precomputed: bool = False) -> None:
         """Loads the game values from the given path.
 
         Args:
@@ -421,7 +507,12 @@ class Game(ABC):
             precomputed: Whether the game should be set to precomputed after loading the values no
                 matter how many values are loaded. This can be useful if a game is loaded for a
                 subset of all coalitions and only this subset will be used. Defaults to ``False``.
+
         """
+        # check if path is a Path object
+        if isinstance(path, Path):
+            path = str(path)
+
         # check if path ends with .npz
         if not path.endswith(".npz"):
             path += ".npz"
@@ -429,36 +520,38 @@ class Game(ABC):
         data = np.load(path)
         n_players = data["n_players"]
         if self.n_players is not None and n_players != self.n_players:
-            raise ValueError(
+            msg = (
                 f"The number of players in the game ({self.n_players}) does not match the number "
                 f"of players in the saved game ({n_players})."
             )
+            raise ValueError(msg)
         self.n_players = int(n_players)
         self.value_storage = data["values"]
         coalition_lookup: list[tuple] = transform_array_to_coalitions(data["coalitions"])
         self.coalition_lookup = {coal: i for i, coal in enumerate(coalition_lookup)}
-        self.precompute_flag = precomputed
+        self._precompute_flag = precomputed
         self.normalization_value = float(data["normalization_value"])
 
-    def save(self, path: str) -> None:
+    def save(self, path: Path | str) -> None:
         """Saves and serializes the game object to the given path.
 
         Args:
             path: The path to save the game.
+
         """
-        with open(path, "wb") as f:
+        with Path(path).open("wb") as f:
             pickle.dump(self, f)
 
     @classmethod
-    def load(cls, path: str) -> "Game":
+    def load(cls, path: Path | str) -> Game:
         """Load the game from a given path.
 
         Args:
             path: The path to load the game from.
+
         """
-        with open(path, "rb") as f:
-            game = pickle.load(f)
-        return game
+        with Path(path).open("rb") as f:
+            return pickle.load(f)
 
     def __repr__(self) -> str:
         """Return a string representation of the game."""
@@ -480,15 +573,17 @@ class Game(ABC):
 
         Returns:
             InteractionValues: The exact interaction values.
+
         """
         from shapiq.game_theory.exact import ExactComputer
 
         # raise warning if the game is not precomputed and n_players > 16
-        if not self.precomputed and self.n_players > 16:
+        if not self.precomputed and self.n_players > 16:  # pragma: no cover
             warnings.warn(
                 "The game is not precomputed and the number of players is greater than 16. "
-                "Computing the exact interaction values via brute force may take a long time."
-            )
+                "Computing the exact interaction values via brute force may take a long time.",
+                stacklevel=2,
+            )  # pragma: no cover
 
         exact_computer = ExactComputer(self.n_players, game=self)
         return exact_computer(index=index, order=order)
@@ -525,7 +620,7 @@ class Game(ABC):
             self._grand_coalition_value_property = float(self(self.grand_coalition))
         return self._grand_coalition_value_property
 
-    def __getitem__(self, item: tuple[int, ...]):
+    def __getitem__(self, item: tuple[int, ...]) -> float:
         """Return the value of the given coalition. Only retrieves precomputed/store values.
 
         Args:
@@ -536,10 +631,10 @@ class Game(ABC):
 
         Raises:
             KeyError: If the coalition is not stored in the game.
+
         """
         try:
             return self.value_storage[self.coalition_lookup[tuple(sorted(item))]]
         except (KeyError, IndexError) as error:
-            raise KeyError(
-                f"The coalition {item} is not stored in the game. Is it precomputed?"
-            ) from error
+            msg = f"The coalition {item} is not stored in the game. Is it precomputed?"
+            raise KeyError(msg) from error

@@ -8,7 +8,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 if __name__ == "__main__":
-
     # example python run commands for the CaliforniaHousingLocalXAI game
     # nice -n 19 python run_benchmark_config.py --game CaliforniaHousingLocalXAI --config_id 4 --n_player_id 0 --n_games -1 --index SV --order 2 --n_jobs 60 --rerun_if_exists True
 

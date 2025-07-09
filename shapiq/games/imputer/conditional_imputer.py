@@ -1,13 +1,21 @@
 """Implementation of the conditional imputer."""
 
+from __future__ import annotations
+
 import warnings
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ...approximator.sampling import CoalitionSampler
-from ...utils.modules import check_import_module
+from shapiq.approximator.sampling import CoalitionSampler
+from shapiq.utils.modules import check_import_module
+
 from .base import Imputer
+
+if TYPE_CHECKING:
+    from typing import Literal
+
+    from shapiq.utils.custom_types import Model
 
 
 class ConditionalImputer(Imputer):
@@ -16,45 +24,68 @@ class ConditionalImputer(Imputer):
     The conditional imputer is used to impute the missing values of a data point by using the
     conditional distribution estimated with the background data.
 
-    Args:
-        model: The model to explain as a callable function expecting a data points as input and
-            returning the model's predictions.
-        data: The background data to use for the explainer as a two-dimensional array
-            with shape ``(n_samples, n_features)``.
-        x: The explanation point to use the imputer on.
-        sample_size: The number of samples to draw from the conditional background data for imputation.
-            Defaults to ``10``.
-        conditional_budget: The number of coallitions to sample per each point in ``data`` for training
-            the generative model. Defaults to ``16``.
-        conditional_threshold: A quantile threshold defining a neighbourhood of samples to draw
-            ``sample_size`` from. A value between ``0.0`` and ``1.0``. Defaults to ``0.05``.
-        normalize: A flag to normalize the game values. If ``True`` (default), then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to ``True``.
-        categorical_features: A list of indices of the categorical features in the background data.
-            Currently unused.
-        method: Defaults to ``'generative'``.
-        random_state: The random state to use for sampling. Defaults to ``None``.
-
     Attributes:
         empty_prediction: The model's prediction on an empty data point (all features missing).
+
     """
 
     def __init__(
         self,
-        model,
+        model: Model,
         data: np.ndarray,
-        x: Optional[np.ndarray] = None,
+        x: np.ndarray | None = None,
+        *,
         sample_size: int = 10,
         conditional_budget: int = 128,
         conditional_threshold: float = 0.05,
         normalize: bool = True,
-        categorical_features: Optional[list[int]] = None,
-        method="generative",
-        random_state: Optional[int] = None,
+        categorical_features: list[int] | None = None,
+        method: Literal["generative"] = "generative",
+        random_state: int | None = None,
     ) -> None:
-        super().__init__(model, data, x, sample_size, categorical_features, random_state)
+        """Initializes the conditional imputer.
+
+        Args:
+            model: The model to explain as a callable function expecting a data points as input and
+                returning the model's predictions.
+
+            data: The background data to use for the explainer as a two-dimensional array with shape
+                ``(n_samples, n_features)``.
+
+            x: The explanation point to use the imputer on.
+
+            sample_size: The number of samples to draw from the conditional background data for
+                imputation. Defaults to ``10``.
+
+            conditional_budget: The number of coallitions to sample per each point in ``data`` for
+                training the generative model. Defaults to ``16``.
+
+            conditional_threshold: A quantile threshold defining a neighbourhood of samples to draw
+                ``sample_size`` from. A value between ``0.0`` and ``1.0``. Defaults to ``0.05``.
+
+            normalize: A flag to normalize the game values. If ``True`` (default), then the game
+                values are normalized and centered to be zero for the empty set of features.
+                Defaults to ``True``.
+
+            categorical_features: A list of indices of the categorical features in the background
+                data. Currently unused.
+
+            method: The method to use for the conditional imputer. Currently only ``"generative"``
+                is implemented. Defaults to ``"generative"``.
+
+            random_state: The random state to use for sampling. Defaults to ``None``.
+        """
+        super().__init__(
+            model=model,
+            data=data,
+            x=x,
+            sample_size=sample_size,
+            categorical_features=categorical_features,
+            random_state=random_state,
+        )
         if method != "generative":
-            raise ValueError("Currently only a generative conditional imputer is implemented.")
+            msg = "Currently only a generative conditional imputer is implemented."
+            raise ValueError(msg)
         self.method = method
         self.conditional_budget = conditional_budget
         self.conditional_threshold = conditional_threshold
@@ -65,14 +96,16 @@ class ConditionalImputer(Imputer):
         if normalize:
             self.normalization_value = self.empty_prediction
 
-    def init_background(self, data: np.ndarray) -> "ConditionalImputer":
+    def init_background(self, data: np.ndarray) -> ConditionalImputer:
         """Initializes the conditional imputer.
+
         Args:
             data: The background data to use for the imputer. The shape of the array must
                 be (n_samples, n_features).
 
         Returns:
             The initialized imputer.
+
         """
         check_import_module("xgboost")
         import xgboost
@@ -81,7 +114,8 @@ class ConditionalImputer(Imputer):
         if self.conditional_budget > 2**n_features:
             warnings.warn(
                 "`conditional_budget` is higher than `2**n_features`; setting "
-                "`conditional_budget = 2**n_features`"
+                "`conditional_budget = 2**n_features`",
+                stacklevel=2,
             )
             self.conditional_budget = 2**n_features
         X_tiled = np.repeat(data, repeats=self.conditional_budget, axis=0)
@@ -95,9 +129,11 @@ class ConditionalImputer(Imputer):
             coalition_sampler.sample(self.conditional_budget)
             coalitions_matrix.append(coalition_sampler.coalitions_matrix)
         coalitions_matrix = np.concatenate(coalitions_matrix, axis=0)
-        # (data.shape[0] * self.conditional_budget, n_features)
         X_masked = X_tiled.copy()
-        X_masked[coalitions_matrix] = np.NaN
+        try:
+            X_masked[coalitions_matrix] = np.nan  # old numpy version
+        except AttributeError:  # interim solution since numpy changed
+            X_masked[coalitions_matrix] = np.nan  # new numpy version
         tree_embedder = xgboost.XGBRegressor(random_state=self.random_state)
         tree_embedder.fit(X_masked, X_tiled)
         self._data_embedded = tree_embedder.apply(data)
@@ -105,7 +141,7 @@ class ConditionalImputer(Imputer):
         self._coalition_sampler = coalition_sampler
         return self
 
-    def value_function(self, coalitions: np.ndarray[bool]) -> np.ndarray[float]:
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
         """Computes the value function for all coalitions.
 
         Args:
@@ -115,6 +151,7 @@ class ConditionalImputer(Imputer):
         Returns:
             The model's predictions on the imputed data points. The shape of the array is
                (n_subsets, n_outputs).
+
         """
         background_data = self._sample_background_data()
         n_coalitions = coalitions.shape[0]
@@ -135,6 +172,7 @@ class ConditionalImputer(Imputer):
         Returns:
             The sampled replacement values. The shape of the array is (sample_size, n_subsets,
                 n_features).
+
         """
         x_embedded = self._tree_embedder.apply(self._x)
         distances = hamming_distance(self._data_embedded, x_embedded)
@@ -151,17 +189,17 @@ class ConditionalImputer(Imputer):
 
         Returns:
             The empty prediction.
+
         """
-        # TODO: perhaps should be self.conditional_data instead of self.data
         empty_predictions = self.predict(self.data)
-        empty_prediction = float(np.mean(empty_predictions))
-        return empty_prediction
+        return float(np.mean(empty_predictions))
 
 
-def hamming_distance(X, x):
-    """Computes hamming distance between point x (1d) and points in X (2d).
-    https://en.wikipedia.org/wiki/Hamming_distance
+def hamming_distance(X: np.ndarray, x: np.ndarray) -> np.ndarray:
+    """Compute hamming distance between point x (1d) and points in X (2d).
+
+    References:
+        - https://en.wikipedia.org/wiki/Hamming_distance
     """
     x_tiled = np.tile(x, (X.shape[0], 1))
-    distances = np.sum(X != x_tiled, axis=1)
-    return distances
+    return np.sum(x_tiled != X, axis=1)

@@ -1,18 +1,21 @@
-"""Functions for converting scikit-learn decision trees to the format used by
-shapiq."""
+"""Functions for converting scikit-learn decision trees to the format used by shapiq."""
 
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ....utils import safe_isinstance
-from ....utils.types import Model
-from ..base import TreeModel
+from shapiq.explainer.tree.base import TreeModel
+from shapiq.utils import safe_isinstance
+
+if TYPE_CHECKING:
+    from shapiq.utils.custom_types import Model
 
 
 def convert_sklearn_forest(
     tree_model: Model,
-    class_label: Optional[int] = None,
+    class_label: int | None = None,
 ) -> list[TreeModel]:
     """Transforms a scikit-learn random forest to the format used by shapiq.
 
@@ -23,6 +26,7 @@ def convert_sklearn_forest(
 
     Returns:
         The converted random forest model.
+
     """
     scaling = 1.0 / len(tree_model.estimators_)
     return [
@@ -32,7 +36,9 @@ def convert_sklearn_forest(
 
 
 def convert_sklearn_tree(
-    tree_model: Model, class_label: Optional[int] = None, scaling: float = 1.0
+    tree_model: Model,
+    class_label: int | None = None,
+    scaling: float = 1.0,
 ) -> TreeModel:
     """Convert a scikit-learn decision tree to the format used by shapiq.
 
@@ -44,6 +50,7 @@ def convert_sklearn_tree(
 
     Returns:
         The converted decision tree model.
+
     """
     output_type = "raw"
     tree_values = tree_model.tree_.value.copy()
@@ -83,13 +90,12 @@ def average_path_length(isolation_forest: Model) -> float:
 
     Returns:
         The average path length of the isolation forest.
+
     """
     from sklearn.ensemble._iforest import _average_path_length
 
-    max_samples = isolation_forest._max_samples
-    # NOTE: _average_path_length func is equivalent to equation 1 in Isolation Forest paper Lui2008
-    average_path_length = _average_path_length([max_samples])
-    return average_path_length
+    max_samples = isolation_forest._max_samples  # noqa: SLF001
+    return _average_path_length([max_samples])
 
 
 def convert_sklearn_isolation_forest(
@@ -102,12 +108,17 @@ def convert_sklearn_isolation_forest(
 
     Returns:
         The converted isolation forest model.
+
     """
     scaling = 1.0 / len(tree_model.estimators_)
 
     return [
         convert_isolation_tree(tree, features, scaling=scaling)
-        for tree, features in zip(tree_model.estimators_, tree_model.estimators_features_)
+        for tree, features in zip(
+            tree_model.estimators_,
+            tree_model.estimators_features_,
+            strict=False,
+        )
     ]
 
 
@@ -125,10 +136,14 @@ def convert_isolation_tree(
 
     Returns:
         The converted decision tree model.
+
     """
     output_type = "raw"
     features_updated, values_updated = isotree_value_traversal(
-        tree_model.tree_, tree_features, normalize=False, scaling=1.0
+        tree_model.tree_,
+        tree_features,
+        normalize=False,
+        scaling=1.0,
     )
     values_updated = values_updated * scaling
     values_updated = values_updated.flatten()
@@ -148,6 +163,7 @@ def convert_isolation_tree(
 def isotree_value_traversal(
     tree: Model,
     tree_features: np.ndarray,
+    *,
     normalize: bool = False,
     scaling: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -161,6 +177,7 @@ def isotree_value_traversal(
 
     Returns:
         The updated features and values.
+
     """
     from sklearn.ensemble._iforest import _average_path_length
 
@@ -168,16 +185,15 @@ def isotree_value_traversal(
     corrected_values = tree.value.copy()
     if safe_isinstance(tree, "sklearn.tree._tree.Tree"):
 
-        def _recalculate_value(tree, i, level):
+        def _recalculate_value(tree: Model, i: int, level: int = 0) -> float:
             if tree.children_left[i] == -1 and tree.children_right[i] == -1:
                 value = level + _average_path_length(np.array([tree.n_node_samples[i]]))[0]
                 corrected_values[i, 0] = value
                 return value * tree.n_node_samples[i]
-            else:
-                value_left = _recalculate_value(tree, tree.children_left[i], level + 1)
-                value_right = _recalculate_value(tree, tree.children_right[i], level + 1)
-                corrected_values[i, 0] = (value_left + value_right) / tree.n_node_samples[i]
-                return value_left + value_right
+            value_left = _recalculate_value(tree, tree.children_left[i], level + 1)
+            value_right = _recalculate_value(tree, tree.children_right[i], level + 1)
+            corrected_values[i, 0] = (value_left + value_right) / tree.n_node_samples[i]
+            return value_left + value_right
 
         _recalculate_value(tree, 0, 0)
         if normalize:

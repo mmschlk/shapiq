@@ -1,12 +1,14 @@
 """This module contains utility functions for datasets and data."""
 
-from typing import Optional
+from __future__ import annotations
 
 import numpy as np
 
 
 def shuffle_data(
-    x_data: np.ndarray, y_data: np.ndarray, random_state: Optional[int] = None
+    x_data: np.ndarray,
+    y_data: np.ndarray,
+    random_state: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Shuffle the data.
 
@@ -17,6 +19,7 @@ def shuffle_data(
 
     Returns:
         The shuffled data.
+
     """
     rng = np.random.default_rng(random_state)
     indices = np.arange(len(x_data))

@@ -1,27 +1,27 @@
-# .readthedocs.yaml
-# Read the Docs configuration file
-# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
-
-# Required
 version: 2
 
-# Set the version of Python and other tools you might need
+# specify that we only build html
+formats: []
+
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.9"
+    python: "3.12"
   apt_packages:
     - pandoc
-
-# Build documentation in the docs/ directory with Sphinx
-sphinx:
-   configuration: docs/source/conf.py
-
-# If using Sphinx, optionally build your docs in additional formats such as PDF
-# formats:
-#    - pdf
-
-# Optionally declare the Python requirements required to build your docs
-python:
-  install:
-    - requirements: docs/requirements/requirements.txt
+  jobs:
+    # Use uv to speed up the build
+    # https://docs.readthedocs.io/en/stable/build-customization.html#install-dependencies-with-uv
+    pre_create_environment:
+      - asdf plugin add uv
+      - asdf install uv latest
+      - asdf global uv latest
+    create_environment:
+      - uv venv
+    install:
+      - uv sync --all-extras
+    post_install:
+      - uv run python scripts/copy_notebooks.py
+    build:
+      html:
+      - uv run sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html

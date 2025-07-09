@@ -1,5 +1,6 @@
-"""Summary of all interaction indices and game theoretic concepts available
-in ``shapiq``."""
+"""Summary of all interaction indices and game-theoretic concepts available in ``shapiq``."""
+
+from __future__ import annotations
 
 ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     # Base Interactions
@@ -55,7 +56,7 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     "k-SII": {
         "name": "k-Shapley Interaction Index",
         "source": "https://proceedings.mlr.press/v206/bordt23a.html",
-        "generalizes": "SII",
+        "generalizes": "SV",
     },
     "STII": {
         "name": "Shapley-Taylor Interaction Index",
@@ -76,7 +77,7 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     "FBII": {
         "name": "Faithful Banzhaf Interaction Index",
         "source": "https://jmlr.org/papers/v24/22-0202.html",
-        "generalizes": "BII",
+        "generalizes": "BV",
     },
     # Probabilistic Values
     "SV": {
@@ -86,7 +87,7 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     },
     "BV": {
         "name": "Banzhaf Value",
-        "source": "Banzhaf III, J. F. (1965). Weighted Voting Doesn’t Work: A Mathematical "
+        "source": "Banzhaf III, J. F. (1965). Weighted Voting Doesn`t Work: A Mathematical "
         "Analysis. Rutgers Law Review, 19, 317-343.",  # no doi
         "generalizes": None,
     },
@@ -119,25 +120,40 @@ ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
 
 ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 
-AVAILABLE_INDICES_REGRESSION = {"k-SII", "SII", "kADD-SHAP", "FSII"}
-AVAILABLE_INDICES_MONTE_CARLO = {"k-SII", "SII", "STII", "FSII", "SV", "CHII", "BII"}
 
-AVAILABLE_INDICES_FOR_APPROXIMATION: set[str] = (
-    {
-        "SII",
-        "BII",
-        "k-SII",
-        "STII",
-        "FSII",
-        "SV",
-        "BV",
-        "kADD-SHAP",
-        "CHII",
-        "FBII",
-    }
-    .union(AVAILABLE_INDICES_REGRESSION)
-    .union(AVAILABLE_INDICES_MONTE_CARLO)
-)
+def is_index_valid(index: str, *, raise_error: bool = False) -> bool:
+    """Checks if the given index is a valid interaction index.
+
+    Args:
+        index: The interaction index.
+        raise_error: If ``True``, raises a ``ValueError`` if the index is invalid. If ``False``,
+            returns ``False`` for an invalid index without raising an error.
+
+    Returns:
+        ``True`` if the index is valid, ``False`` otherwise.
+
+    Raises:
+        ValueError: If the index is invalid and ``raise_error`` is ``True``.
+
+    Examples:
+        >>> is_index_valid("SII")
+        True
+        >>> is_index_valid("SV")
+        True
+        >>> is_index_valid("k-SII")
+        True
+        >>> is_index_valid("invalid-index")
+        False
+        >>> is_index_valid("invalid-index", raise_error=True)
+        Traceback (most recent call last):
+            ...
+
+    """
+    valid = index in ALL_AVAILABLE_INDICES
+    if not valid and raise_error:
+        message = f"Invalid index `{index}`. Valid indices are: {', '.join(ALL_AVAILABLE_INDICES)}."
+        raise ValueError(message)
+    return valid
 
 
 def index_generalizes_sv(index: str) -> bool:
@@ -158,8 +174,11 @@ def index_generalizes_sv(index: str) -> bool:
         True
         >>> index_generalizes_sv("BV")
         False
+
     """
-    return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "SV"
+    if index in ALL_AVAILABLE_CONCEPTS:
+        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "SV"
+    return False
 
 
 def index_generalizes_bv(index: str) -> bool:
@@ -178,8 +197,11 @@ def index_generalizes_bv(index: str) -> bool:
         False
         >>> index_generalizes_bv("BV")
         False
+
     """
-    return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "BV"
+    if index in ALL_AVAILABLE_CONCEPTS:
+        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "BV"
+    return False
 
 
 def get_computation_index(index: str) -> str:
@@ -204,11 +226,12 @@ def get_computation_index(index: str) -> str:
         "SII"
         >>> get_computation_index("BV")
         "BII"
+
     """
     if "k-" in index:
         return index.split("-")[1]  # remove the k- prefix
     if index == "SV":  # for SV we return SII with max order 1
-        return "SII"  # TODO this may break with FSII and KernelSHAP
+        return "SII"
     if index == "BV":  # for SV we return SII with max order 1
         return "BII"
     return index
@@ -223,6 +246,7 @@ def get_index_from_computation_index(index: str, max_order: int) -> str:
 
     Returns:
         The original interaction index.
+
     """
     if max_order == 1:
         if index == "BII":
@@ -250,13 +274,16 @@ def is_index_aggregated(index: str) -> bool:
         False
         >>> is_index_aggregated("k-FSII")
         True
+
     """
     return "k-" in index
 
 
 def is_empty_value_the_baseline(index: str) -> bool:
-    """Checks if the empty value stored in the interaction values is the baseline value. This is
-    only not the case for the Shapley Interaction Index.
+    """Check if empty prediction is the baseline.
+
+    Checks if the empty value stored in the interaction values is the baseline value. This is only
+    not the case for the Shapley Interaction Index and Banzhaf values.
 
     Args:
         index: The interaction index.
@@ -271,5 +298,6 @@ def is_empty_value_the_baseline(index: str) -> bool:
         True
         >>> is_empty_value_the_baseline("k-SII")
         True
+
     """
-    return index != "SII"
+    return index not in ["SII", "FBII", "BII", "BV"]

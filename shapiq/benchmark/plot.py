@@ -1,23 +1,27 @@
 """This module contains the plotting utilities for the benchmark results."""
 
+from __future__ import annotations
+
 from collections import defaultdict
-from typing import Callable, Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from shapiq.approximator._base import Approximator
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.approximator.base import Approximator
 
 __all__ = ["plot_approximation_quality"]
 
 
-# TODO: add the plot colors and styles for different approximators as well
 STYLE_DICT: dict[str, dict[str, str]] = {
     # permutation sampling
     "PermutationSamplingSII": {"color": "#7d53de", "marker": "o"},
     "PermutationSamplingSTII": {"color": "#7d53de", "marker": "o"},
-    "PermutationSamplingSV": {"color": "darkgrey", "marker": "o"},
+    "PermutationSamplingSV": {"color": "#7d53de", "marker": "o"},
     # KernelSHAP-IQ
     "KernelSHAP": {"color": "#ff6f00", "marker": "o"},
     "KernelSHAPIQ": {"color": "#ff6f00", "marker": "o"},
@@ -26,37 +30,13 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "kADDSHAP": {"color": "#ffba08", "marker": "o"},
     # SVARM-based
     "SVARMIQ": {"color": "#00b4d8", "marker": "o"},
-    "SVARM": {"color": "grey", "marker": "o"},
+    "SVARM": {"color": "#00b4d8", "marker": "o"},
     # shapiq
     "SHAPIQ": {"color": "#ef27a6", "marker": "o"},
     "UnbiasedKernelSHAP": {"color": "#ef27a6", "marker": "o"},
     # misc SV
     "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
     "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
-    "1-Add.": {"color": "black", "marker": "o"},
-    "2-Add.": {"color": "#ffba08", "marker": "o"},
-    "1-Conj.": {"color": "#00b4d8", "marker": "o"},
-    "2-Conj.": {"color": "#7d53de", "marker": "o"},
-    "150-Stoch.": {"color": "#ff6f00", "marker": "o"},
-    "15-Stoch.": {"color": "#03045E", "marker": "o"},
-    "20-Stoch.": {"color": "#023E8A", "marker": "o"},
-    "50-Stoch.": {"color": "#0077B6", "marker": "o"},
-    "100-Stoch.": {"color": "#0096C7", "marker": "o"},
-    "250-Stoch.": {"color": "#00B4D8", "marker": "o"},
-    "500-Stoch.": {"color": "#48CAE4", "marker": "o"},
-    "1000-Stoch.": {"color": "#90e0ef", "marker": "o"},
-    "2000-Stoch.": {"color": "#ade8f4", "marker": "o"},
-    "16384-Stoch.": {"color": "#caf0f8", "marker": "o"},
-    "256-Stoch.": {"color": "#48CAE4", "marker": "o"},
-    "2.0%-Stoch.": {"color": "#03045E", "marker": "o"},
-    "5.0%-Stoch.": {"color": "#023E8A", "marker": "o"},
-    "7.5%-Stoch.": {"color": "#0077B6", "marker": "o"},
-    "10.0%-Stoch.": {"color": "#0096C7", "marker": "o"},
-    "15.0%-Stoch.": {"color": "#00B4D8", "marker": "o"},
-    "20.0%-Stoch.": {"color": "#48CAE4", "marker": "o"},
-    "50.0%-Stoch.": {"color": "#90e0ef", "marker": "o"},
-    "75.0%-Stoch.": {"color": "#ade8f4", "marker": "o"},
-    "100%-Stoch.": {"color": "#caf0f8", "marker": "o"},
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
@@ -67,12 +47,12 @@ LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
 
-LOG_SCALE_MAX = 1e-3
-LOG_SCALE_MIN = 1e-6
+LOG_SCALE_MAX = 1e2
+LOG_SCALE_MIN = 1e-7
 
 METRICS_LIMITS = {
-    "Precision@10": (0.8, 1),
-    "Precision@5": (0.8, 1),
+    "Precision@10": (0, 1),
+    "Precision@5": (0, 1),
     "KendallTau": (-1, 1),
     "KendallTau@5": (-1, 1),
     "KendallTau@10": (-1, 1),
@@ -81,7 +61,7 @@ METRICS_LIMITS = {
 METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
 
 
-def create_application_name(setup: str, abbrev: bool = False) -> str:
+def create_application_name(setup: str, *, abbrev: bool = False) -> str:
     """Create an application name from the setup string."""
     application_name = "".join(setup.split("_")[0:2])
     application_name = application_name.replace("Game", "")
@@ -93,24 +73,31 @@ def create_application_name(setup: str, abbrev: bool = False) -> str:
     application_name = application_name.replace("SentimentAnalysis", "LocalExplanation")
     application_name = application_name.replace("TreeSHAPIQXAI", "LocalExplanation")
     application_name = application_name.replace(
-        "RandomForestEnsembleSelection", "EnsembleSelection"
+        "RandomForestEnsembleSelection",
+        "EnsembleSelection",
     )
     if abbrev:
         application_name = abbreviate_application_name(application_name)
     return application_name
 
 
-def abbreviate_application_name(application_name: str, new_line: bool = False) -> str:
-    """Abbreviate the application name by taking the first three characters after each capital
+def abbreviate_application_name(application_name: str, *, new_line: bool = False) -> str:
+    """Abbreviate the application name.
+
+    Abbreviate the application name by taking the first three characters after each capital
     letter and adding a dot. The last character is not abbreviated.
 
     Args:
         application_name: The application name to abbreviate.
-        new_line: Whether to add a new line after each abbreviation. Defaults to `False`.
+        new_line: Whether to add a new line after each abbreviation. Defaults to ``False``.
+
+    Returns:
+        The abbreviated application name.
 
     Example:
         >>> abbreviate_application_name("LocalExplanation")
         "Loc. Exp."
+
     """
     abbreviations = []
     count_char = 0
@@ -154,6 +141,7 @@ def get_game_title_name(game_name: str) -> str:
         "Image Classifier Local XAI"
         >>> get_game_title_name("AdultCensusClusterExplanation")
         "Adult Census Cluster Explanation"
+
     """
     # split words by capital letters
     words = ""
@@ -167,7 +155,7 @@ def get_game_title_name(game_name: str) -> str:
     return words.strip()
 
 
-def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
+def agg_percentile(q: float) -> Callable[[np.ndarray], np.floating]:
     """Get the aggregation function for the given percentile.
 
     Args:
@@ -175,9 +163,10 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
     Returns:
         The aggregation function.
+
     """
 
-    def quantile(x) -> float:
+    def quantile(x: np.ndarray) -> np.floating:
         """Performs the aggregation function for the given percentile."""
         return np.percentile(x, q)
 
@@ -186,14 +175,14 @@ def agg_percentile(q: float) -> Callable[[np.ndarray], float]:
 
 
 def plot_approximation_quality(
-    data: Optional[pd.DataFrame] = None,
+    data: pd.DataFrame | None = None,
     *,
-    data_path: Optional[str] = None,
+    data_path: str | None = None,
     metric: str = "MSE",
-    orders: Optional[list[Union[int, str]]] = None,
-    approximators: Optional[list[str]] = None,
+    orders: list[int | str] | None = None,
+    approximators: list[str] | None = None,
     aggregation: str = "mean",
-    confidence_metric: Optional[str] = "sem",
+    confidence_metric: str | None = "sem",
     log_scale_y: bool = False,
     log_scale_min: float = LOG_SCALE_MIN,
     log_scale_max: float = LOG_SCALE_MAX,
@@ -224,9 +213,11 @@ def plot_approximation_quality(
 
     Returns:
         The figure and axes of the plot.
+
     """
     if data_path is None and data is None:
-        raise ValueError("Either data or data_path must be provided.")
+        msg = "Either data or data_path must be provided."
+        raise ValueError(msg)
 
     if data is None:
         data = pd.read_csv(data_path)
@@ -249,19 +240,17 @@ def plot_approximation_quality(
     bot_lim = bot_lim.split("e")[1]  # get the exponent
     bot_lim = int(bot_lim)  # get the top limit as the exponent + 1
     bot_lim = 10**bot_lim  # get the top limit in scientific notation
-    if log_scale_min < bot_lim:
-        log_scale_min = bot_lim
+    log_scale_min = max(log_scale_min, bot_lim)
 
     # make sure orders is a list
     if orders is None:
         orders = ["all"]
-    if isinstance(orders, int) or isinstance(orders, str):
+    if isinstance(orders, int | str):
         orders = [orders]
 
     # make sure approximators is a list
     if approximators is None:
         approximators = list(metric_data["approximator"].unique())
-        print("Approximators:", approximators)
 
     # set the confidence metrics
     confidence_metric_low, confidence_metric_high = confidence_metric, confidence_metric
@@ -283,7 +272,7 @@ def plot_approximation_quality(
             if log_scale_y:
                 # manually set all below log_scale_min to log_scale_min (to avoid log(0))
                 data_order[aggregation] = data_order[aggregation].apply(
-                    lambda x: log_scale_min if x < log_scale_min else x
+                    lambda x: max(x, log_scale_min),
                 )
 
             # get the plot colors and styles
@@ -321,7 +310,7 @@ def plot_approximation_quality(
 
     # add the legend
     if legend:
-        add_legend(ax, approximators, orders)
+        add_legend(ax, approximators, orders=orders)
 
     # set the y-axis limits
     if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE:
@@ -332,9 +321,11 @@ def plot_approximation_quality(
         ax.set_ylim(METRICS_LIMITS[metric])
 
     # add %model calls to the x-axis as a secondary axis
-    # _set_x_axis_ticks(
-    #    ax, n_players=int(data["n_players"].unique().max()), max_budget=approx_max_budget
-    # )
+    _set_x_axis_ticks(
+        ax,
+        n_players=int(data["n_players"].unique().max()),
+        max_budget=approx_max_budget,
+    )
 
     if remove_spines:
         ax.spines["top"].set_visible(False)
@@ -360,7 +351,7 @@ def _set_x_axis_ticks(ax: plt.Axes, n_players: int, max_budget: int) -> None:
         budgets_relative = budgets / (2**n_players)
 
     xtick_labels = []
-    for bdgt, bdgt_rel in zip(budgets, budgets_relative):
+    for bdgt, bdgt_rel in zip(budgets, budgets_relative, strict=False):
         bdgt_rel_str = f"{bdgt_rel:.0%}"
         if bdgt_rel <= 0.01 and bdgt_rel != 0:
             bdgt_rel_str = "<1%"
@@ -382,8 +373,7 @@ def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float, log_scale_max: flo
     top_lim = int(top_lim) + 1  # get the top limit as the exponent + 1
     top_lim = 10**top_lim  # get the top limit in scientific notation
 
-    if top_lim > log_scale_max:
-        top_lim = log_scale_max
+    top_lim = min(top_lim, log_scale_max)
 
     # set the y-axis limits
     ax.set_ylim(top=top_lim)
@@ -400,8 +390,8 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 
     Returns:
         The metric data.
-    """
 
+    """
     # get the metric columns for each order in the results
     metric_columns = [col for col in results_df.columns if metric in col]
 
@@ -419,8 +409,8 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
                         "median",
                         agg_percentile(95),
                         agg_percentile(5),
-                    ]
-                }
+                    ],
+                },
             )
             .reset_index()
         )
@@ -445,8 +435,9 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 
 def add_legend(
     axis: plt.Axes,
-    approximators: list[Union[str, Approximator]],
-    orders: Optional[list[Union[int, str]]] = None,
+    approximators: list[str | Approximator],
+    *,
+    orders: list[int | str] | None = None,
     legend_subtitle: bool = True,
     loc: str = "best",
 ) -> None:
@@ -459,6 +450,7 @@ def add_legend(
             Defaults to `None`.
         legend_subtitle: Whether to add a subtitle to the legend. Defaults to `True`.
         loc: The location of the legend. Defaults to "upper right".
+
     """
     if orders is None and approximators is None:
         return
@@ -475,7 +467,7 @@ def add_legend(
 
     # plot the order elements
     if orders is not None:
-        if isinstance(orders, int) or isinstance(orders, str):
+        if isinstance(orders, int | str):
             orders = [orders]
         if legend_subtitle:
             axis.plot([], [], label="$\\bf{Order}$", color="none")
@@ -502,10 +494,4 @@ def add_legend(
             color=STYLE_DICT[approximator]["color"],
             linewidth=LINE_THICKNESS,
         )
-
-    # handles, labels = axis.get_legend_handles_labels()
-    # axis.legend(handles, labels, loc=loc)
     axis.legend(loc=loc)
-
-
-# Path: shapiq/benchmark/plot.py

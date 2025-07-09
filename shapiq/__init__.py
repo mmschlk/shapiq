@@ -1,12 +1,15 @@
-"""shapiq is a library creating explanations for machine learning models based on
+"""shapiq: Shapley Interactions for Machine Learning.
+
+shapiq is a library creating explanations for machine learning models based on
 the well established Shapley value and its generalization to interaction.
 """
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 # approximator classes
 from .approximator import (
     SHAPIQ,
+    SPEX,
     SVARM,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
@@ -16,6 +19,7 @@ from .approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    RegressionFBII,
     RegressionFSII,
     StratifiedSamplingSV,
     UnbiasedKernelSHAP,
@@ -39,7 +43,13 @@ from .benchmark import (
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 
 # explainer classes
-from .explainer import Explainer, TabPFNExplainer, TabularExplainer, TreeExplainer
+from .explainer import (
+    AgnosticExplainer,
+    Explainer,
+    TabPFNExplainer,
+    TabularExplainer,
+    TreeExplainer,
+)
 
 # exact computer classes
 from .game_theory.exact import ExactComputer
@@ -54,6 +64,7 @@ from .interaction_values import InteractionValues
 # plotting functions
 from .plot import (
     bar_plot,
+    beeswarm_plot,
     force_plot,
     network_plot,
     sentence_plot,
@@ -86,6 +97,7 @@ __all__ = [
     "OwenSamplingSV",
     "KernelSHAP",
     "RegressionFSII",
+    "RegressionFBII",
     "KernelSHAPIQ",
     "InconsistentKernelSHAPIQ",
     "SHAPIQ",
@@ -93,11 +105,13 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
+    "SPEX",
     # explainers
     "Explainer",
     "TabularExplainer",
     "TreeExplainer",
     "TabPFNExplainer",
+    "AgnosticExplainer",
     # imputers
     "MarginalImputer",
     "BaselineImputer",
@@ -112,6 +126,7 @@ __all__ = [
     "waterfall_plot",
     "sentence_plot",
     "upset_plot",
+    "beeswarm_plot",
     # public utils
     "powerset",
     "get_explicit_subsets",

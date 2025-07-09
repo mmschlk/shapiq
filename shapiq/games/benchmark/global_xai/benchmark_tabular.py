@@ -1,6 +1,6 @@
 """This module contains tabular benchmark games for local explanation."""
 
-from typing import Optional
+from __future__ import annotations
 
 from shapiq.games.benchmark.global_xai.base import GlobalExplanation
 from shapiq.games.benchmark.setup import GameBenchmarkSetup
@@ -9,19 +9,7 @@ from shapiq.games.benchmark.setup import GameBenchmarkSetup
 class AdultCensus(GlobalExplanation):
     """The AdultCensus dataset as a global explanation game.
 
-    Args:
-        model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
-        loss_function: The loss function to use for the model. Defaults to 'accuracy_score'.
-            Available loss functions are described in the `BenchmarkSetup` class.
-        n_samples_eval: The number of samples to use for the evaluation of the value function.
-            Defaults to 10.
-        n_samples_empty: The number of samples to use for the empty subset estimation. Defaults to
-            200.
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`.
-        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
+    For more information, see :class:`~shapiq.games.benchmark.global_xai.base.GlobalExplanation`.
     """
 
     def __init__(
@@ -33,9 +21,32 @@ class AdultCensus(GlobalExplanation):
         n_samples_empty: int = 200,
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
+        """Initialize the AdultCensus global explanation game.
 
+        Args:
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
+
+            loss_function: The loss function to use for the model. Defaults to
+                ``'accuracy_score'``. Available loss functions are described in the
+                :class:`~shapiq.games.benchmark.setup.GameBenchmarkSetup` class.
+
+            n_samples_eval: The number of samples to use for the evaluation of the value function.
+                Defaults to ``10``.
+
+            n_samples_empty: The number of samples to use for the empty subset estimation. Defaults
+                to ``200``.
+
+            random_state: The random state to use for the imputer. Defaults to ``None``.
+
+            normalize: A flag to normalize the game values. If `True`, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print information of the game. Defaults to ``False``.
+        """
         setup = GameBenchmarkSetup(
             dataset_name="adult_census",
             model_name=model_name,
@@ -60,19 +71,7 @@ class AdultCensus(GlobalExplanation):
 class BikeSharing(GlobalExplanation):
     """The Bike Sharing regression dataset as a global explanation game.
 
-    Args:
-        model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
-        loss_function: The loss function to use for the model. Defaults to 'mean_absolute_error'.
-            Available loss functions are described in the `BenchmarkSetup` class.
-        n_samples_eval: The number of samples to use for the evaluation of the value function.
-            Defaults to 10.
-        n_samples_empty: The number of samples to use for the empty subset estimation. Defaults to
-            200.
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`.
-        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
-        random_state: The random state to use for the imputer. Defaults to 42.
+    For more information, see :class:`~shapiq.games.benchmark.global_xai.base.GlobalExplanation`.
     """
 
     def __init__(
@@ -84,9 +83,33 @@ class BikeSharing(GlobalExplanation):
         n_samples_empty: int = 200,
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
+        """Initialize the Bike Sharing global explanation game.
 
+        Args:
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
+
+            loss_function: The loss function to use for the model. Defaults to
+                ``'mean_absolute_error'``. Available loss functions are described in the
+                :class:`~shapiq.games.benchmark.setup.GameBenchmarkSetup` class.
+
+            n_samples_eval: The number of samples to use for the evaluation of the value function.
+                Defaults to ``10``.
+
+            n_samples_empty: The number of samples to use for the empty subset estimation. Defaults
+                to ``200``.
+
+            random_state: The random state to use for the imputer. Defaults to ``None``.
+
+            normalize: A flag to normalize the game values. If `True`, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print information of the game. Defaults to ``False``.
+
+        """
         setup = GameBenchmarkSetup(
             dataset_name="bike_sharing",
             model_name=model_name,
@@ -111,19 +134,7 @@ class BikeSharing(GlobalExplanation):
 class CaliforniaHousing(GlobalExplanation):
     """The California Housing regression dataset as a global explanation game.
 
-    Args:
-        model_name: The model to explain as a string. Defaults to 'decision_tree'. Available models
-            are 'decision_tree', 'random_forest', and 'gradient_boosting'.
-        loss_function: The loss function to use for the model. Defaults to 'mean_absolute_error'.
-            Available loss functions are described in the `BenchmarkSetup` class.
-        n_samples_eval: The number of samples to use for the evaluation of the value function.
-            Defaults to 10.
-        n_samples_empty: The number of samples to use for the empty subset estimation. Defaults to
-            200.
-        random_state: The random state to use for the imputer. Defaults to `None`.
-        normalize: A flag to normalize the game values. If `True`, then the game values are
-            normalized and centered to be zero for the empty set of features. Defaults to `True`.
-        verbose: A flag to print the validation score of the model if trained. Defaults to `True`.
+    For more information, see :class:`~shapiq.games.benchmark.global_xai.base.GlobalExplanation`.
     """
 
     def __init__(
@@ -135,9 +146,33 @@ class CaliforniaHousing(GlobalExplanation):
         n_samples_empty: int = 200,
         normalize: bool = True,
         verbose: bool = False,
-        random_state: Optional[int] = 42,
+        random_state: int | None = 42,
     ) -> None:
+        """Initialize the California Housing global explanation game.
 
+        Args:
+            model_name: The model to explain as a string. Defaults to ``'decision_tree'``. Available
+                models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
+
+            loss_function: The loss function to use for the model. Defaults to
+                ``'mean_absolute_error'``. Available loss functions are described in the
+                :class:`~shapiq.games.benchmark.setup.GameBenchmarkSetup` class.
+
+            n_samples_eval: The number of samples to use for the evaluation of the value function.
+                Defaults to ``10``.
+
+            n_samples_empty: The number of samples to use for the empty subset estimation. Defaults
+                to ``200``.
+
+            random_state: The random state to use for the imputer. Defaults to ``None``.
+
+            normalize: A flag to normalize the game values. If `True`, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
+            verbose: A flag to print information of the game. Defaults to ``False``.
+
+        """
         setup = GameBenchmarkSetup(
             dataset_name="california_housing",
             model_name=model_name,

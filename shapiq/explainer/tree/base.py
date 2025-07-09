@@ -1,11 +1,16 @@
 """The base class for tree model conversion."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .utils import compute_empty_prediction
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 @dataclass
@@ -48,28 +53,26 @@ class TreeModel:
             indices (as in the tree model) to the original feature indices (as in the model).
         original_output_type: The original output type of the tree model. The default value is
             ``"raw"``.
+
     """
 
-    children_left: np.ndarray[int]
-    children_right: np.ndarray[int]
-    features: np.ndarray[int]
-    thresholds: np.ndarray[float]
-    values: np.ndarray[float]
-    node_sample_weight: np.ndarray[float]
-    empty_prediction: Optional[float] = None
-    leaf_mask: Optional[np.ndarray[bool]] = None
-    n_features_in_tree: Optional[int] = None
-    max_feature_id: Optional[int] = None
-    feature_ids: Optional[set] = None
-    root_node_id: Optional[int] = None
-    n_nodes: Optional[int] = None
-    nodes: Optional[np.ndarray[int]] = None
-    feature_map_original_internal: Optional[dict[int, int]] = None
-    feature_map_internal_original: Optional[dict[int, int]] = None
+    children_left: NDArray[np.int_]
+    children_right: NDArray[np.int_]
+    features: NDArray[np.int_]
+    thresholds: NDArray[np.floating]
+    values: NDArray[np.floating]
+    node_sample_weight: NDArray[np.floating]
+    empty_prediction: float = None  # type: ignore[assignment]
+    leaf_mask: NDArray[np.bool_] = None  # type: ignore[assignment]
+    n_features_in_tree: int = None  # type: ignore[assignment]
+    max_feature_id: int = None  # type: ignore[assignment]
+    feature_ids: set = None  # type: ignore[assignment]
+    root_node_id: int = None  # type: ignore[assignment]
+    n_nodes: int = None  # type: ignore[assignment]
+    nodes: NDArray[np.int_] = None  # type: ignore[assignment]
+    feature_map_original_internal: dict[int, int] = None  # type: ignore[assignment]
+    feature_map_internal_original: dict[int, int] = None  # type: ignore[assignment]
     original_output_type: str = "raw"  # not used at the moment
-
-    def __getitem__(self, item) -> Any:
-        return getattr(self, item)
 
     def compute_empty_prediction(self) -> None:
         """Compute the empty prediction of the tree model.
@@ -78,10 +81,15 @@ class TreeModel:
         the leaf node values. The method modifies the tree model in place.
         """
         self.empty_prediction = compute_empty_prediction(
-            self.values[self.leaf_mask], self.node_sample_weight[self.leaf_mask]
+            self.values[self.leaf_mask],
+            self.node_sample_weight[self.leaf_mask],
         )
 
     def __post_init__(self) -> None:
+        """Clean-up after the initialization of the TreeModel dataclass.
+
+        The method sets up the tree model with the information provided in the constructor.
+        """
         # setup leaf mask
         if self.leaf_mask is None:
             self.leaf_mask = np.asarray(self.children_left == -1)
@@ -90,7 +98,6 @@ class TreeModel:
         self.features = self.features.astype(int)  # make features integer type
         # sanitize thresholds
         self.thresholds = np.where(self.leaf_mask, np.nan, self.thresholds)
-        # self.thresholds = np.round(self.thresholds, 4)  # round thresholds
         # setup empty prediction
         if self.empty_prediction is None:
             self.compute_empty_prediction()
@@ -123,7 +130,8 @@ class TreeModel:
         # flatten values if necessary
         if self.values.ndim > 1:
             if self.values.shape[1] != 1:
-                raise ValueError("Values array has more than one column.")
+                msg = "Values array has more than one column."
+                raise ValueError(msg)
             self.values = self.values.flatten()
         # set all values of non leaf nodes to zero
         self.values[~self.leaf_mask] = 0
@@ -151,7 +159,7 @@ class TreeModel:
         if self.n_features_in_tree < self.max_feature_id + 1:
             new_feature_ids = set(range(self.n_features_in_tree))
             mapping_old_new = {old_id: new_id for new_id, old_id in enumerate(self.feature_ids)}
-            mapping_new_old = {new_id: old_id for new_id, old_id in enumerate(self.feature_ids)}
+            mapping_new_old = dict(enumerate(self.feature_ids))
             new_features = np.zeros_like(self.features)
             for i, old_feature in enumerate(self.features):
                 new_value = -2 if old_feature == -2 else mapping_old_new[old_feature]
@@ -163,6 +171,28 @@ class TreeModel:
             self.n_features_in_tree = len(new_feature_ids)
             self.max_feature_id = self.n_features_in_tree - 1
 
+    def predict_one(self, x: np.ndarray) -> float:
+        """Predicts the output of a single instance.
+
+        Args:
+            x: The instance to predict as a 1-dimensional array.
+
+        Returns:
+            The prediction of the instance with the tree model.
+
+        """
+        node = self.root_node_id
+        is_leaf = self.leaf_mask[node]
+        while not is_leaf:
+            feature_id_internal = self.features[node]
+            feature_id_original = self.feature_map_internal_original[feature_id_internal]
+            if x[feature_id_original] <= self.thresholds[node]:
+                node = self.children_left[node]
+            else:
+                node = self.children_right[node]
+            is_leaf = self.leaf_mask[node]
+        return float(self.values[node])
+
 
 @dataclass
 class EdgeTree:
@@ -172,23 +202,21 @@ class EdgeTree:
     to access and manipulate for the TreeSHAP-IQ algorithm.
     """
 
-    parents: np.ndarray[int]
-    ancestors: np.ndarray[int]
-    ancestor_nodes: dict[int, np.ndarray[int]]
-    p_e_values: np.ndarray[float]
-    p_e_storages: np.ndarray[float]
-    split_weights: np.ndarray[float]
-    empty_predictions: np.ndarray[float]
-    edge_heights: np.ndarray[int]
+    parents: np.ndarray
+    ancestors: np.ndarray
+    ancestor_nodes: dict[int, np.ndarray]
+    p_e_values: np.ndarray
+    p_e_storages: np.ndarray
+    split_weights: np.ndarray
+    empty_predictions: np.ndarray
+    edge_heights: np.ndarray
     max_depth: int
-    last_feature_node_in_path: np.ndarray[int]
-    interaction_height_store: dict[int, np.ndarray[int]]
-    has_ancestors: Optional[np.ndarray[bool]] = None
-
-    def __getitem__(self, item) -> Any:
-        return getattr(self, item)
+    last_feature_node_in_path: np.ndarray
+    interaction_height_store: dict[int, np.ndarray]
+    has_ancestors: np.ndarray | None = None
 
     def __post_init__(self) -> None:
+        """Clean-up after the initialization of the EdgeTree dataclass."""
         # setup has ancestors
         if self.has_ancestors is None:
             self.has_ancestors = self.ancestors > -1

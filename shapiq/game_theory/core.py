@@ -1,30 +1,34 @@
 """Logic to solve for the egalitarian least-core."""
 
+from __future__ import annotations
+
 import copy
 import warnings
-from typing import Optional
 
 import numpy as np
 from scipy.optimize import LinearConstraint, minimize
 
-from ..interaction_values import InteractionValues
-from ..utils.sets import powerset
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import powerset
 
 __all__ = ["egalitarian_least_core"]
 
 
 def _setup_core_calculations(
-    n_players: int, game_values: np.ndarray
-) -> tuple[list[LinearConstraint], list[tuple[Optional[int], Optional[int]]]]:
+    n_players: int,
+    game_values: np.ndarray,
+) -> tuple[list[LinearConstraint], list[tuple[int | None, int | None]]]:
     """Setup core optimization matrices for scipy.linprog.
 
     Args:
         n_players: amount of players in the game
         game_values: the values of every coalition in the game. Assumes empty set in game_values[0] and grand_coalition
             game_values[-1]
+
     Returns:
         (constraints,bounds): returns the constraints and bounds induced by the stability and efficiency property
          for the underlying game.
+
     """
     n_coalitions = 2**n_players
 
@@ -36,7 +40,7 @@ def _setup_core_calculations(
 
     # Setup the binary matrix representing the linear inequalities for core  except for the grand coalition
     stability_matrix = np.ones(
-        (n_coalitions - 1, n_players + 1)
+        (n_coalitions - 1, n_players + 1),
     )  # $A_\{ub\}$. Optimization upper bound values.
     stability_matrix[:, :-1] = coalition_matrix[:-1]
     stability_matrix[0, -1] = 0
@@ -68,7 +72,9 @@ def _setup_core_calculations(
     credit_assignment_constraints = LinearConstraint(stability_matrix, ub=stability_values)
     # $A_\{eq\} @ (x,e) == $b_\{eq\}$
     efficiency_constraint = LinearConstraint(
-        efficiency_matrix, lb=efficiency_value, ub=efficiency_value
+        efficiency_matrix,
+        lb=efficiency_value,
+        ub=efficiency_value,
     )
 
     constraints = [credit_assignment_constraints, efficiency_constraint]
@@ -84,6 +90,7 @@ def _minimization_egal_least_core(credit_subsidy_vector: np.ndarray) -> float:
 
     Returns:
         A value representing the sum of both l2_norm of the credit_assignment and subsidy.
+
     """
     credit_assignment = credit_subsidy_vector[:-1]
     subsidy = credit_subsidy_vector[-1]
@@ -92,7 +99,9 @@ def _minimization_egal_least_core(credit_subsidy_vector: np.ndarray) -> float:
 
 
 def egalitarian_least_core(
-    n_players: int, game_values: np.ndarray, coalition_lookup: dict[tuple[int], int]
+    n_players: int,
+    game_values: np.ndarray,
+    coalition_lookup: dict[tuple[int], int],
 ) -> tuple[InteractionValues, float]:
     """Computes the egalitarian least-core for the underlying game represented through the parameters.
 
@@ -100,16 +109,19 @@ def egalitarian_least_core(
         n_players: amount of players in the game.
         game_values: the values of every coalition in the game.
         coalition_lookup: dictionary mapping a coalition to the corresponding value of game_values.
+
     Returns:
         Returns a tuple of egalitarian_least_core and subsidy value.
 
     Raises:
         ValueError: If the optimization did not complete successfully
+
     """
+    player_set = set(range(n_players))
 
     # Rearrange the game_values and base_line and 0
-    tmp = game_values[coalition_lookup[tuple()]]
-    game_values[coalition_lookup[tuple()]] = game_values[0]
+    tmp = game_values[coalition_lookup[()]]
+    game_values[coalition_lookup[()]] = game_values[0]
     game_values[0] = tmp
 
     # Rearrange the game_values to have grand_coalition at -1
@@ -125,7 +137,8 @@ def egalitarian_least_core(
         warnings.warn(
             "The egalitarian least core is only defined for normalized games."
             "Thus the resulting vector will undercut efficiency by the value of the empty set."
-            "To suppress warnings normalize the game to have baseline_value == 0."
+            "To suppress warnings normalize the game to have baseline_value == 0.",
+            stacklevel=2,
         )
 
     # Potentially normalize the game
@@ -142,9 +155,9 @@ def egalitarian_least_core(
     )
 
     # Build interaction_lookup for plotting functions
-    interaction_lookup = {}
-    for i, interaction in enumerate(powerset(set(range(n_players)), min_size=1, max_size=1)):
-        interaction_lookup[interaction] = i
+    interaction_lookup = {
+        interaction: i for i, interaction in enumerate(powerset(player_set, min_size=1, max_size=1))
+    }
 
     credit_assignment, subsidy = res.x[:-1], res.x[-1]
 

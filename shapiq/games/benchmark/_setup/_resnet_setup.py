@@ -5,14 +5,16 @@ Note to developers:
     (e.g. `torch`, `torchvision`, `PIL`, and `skimage`).
 """
 
+from __future__ import annotations
+
 import copy
 
 import numpy as np
 import torch
-import torch.nn.functional as F
-import torchvision.transforms as transforms
+import torch.nn.functional as F  # noqa: N812
 from PIL import Image
 from skimage.segmentation import slic
+from torchvision import transforms
 from torchvision.models import ResNet18_Weights, resnet18
 
 __all__ = ["ResNetModel"]
@@ -40,11 +42,13 @@ class ResNetModel:
         empty_value: The score of the background image.
         n_superpixels: The number of superpixels.
         superpixels: The superpixel mask found by SLICO.
+
     """
 
     def __init__(
         self,
         input_image: Image.Image,
+        *,
         n_superpixels: int = 14,
         verbose: bool = True,
         batch_size: int = 50,
@@ -73,7 +77,7 @@ class ResNetModel:
         self.class_id: int = int(class_id)
 
         if verbose:
-            print(f"Predicted class: {self.class_label} with score: {self.class_score}")
+            pass
 
         # get background tensor for gray image
         _background_image = np.zeros(self._image_shape, dtype=np.uint8)
@@ -81,7 +85,7 @@ class ResNetModel:
         self._background_image: Image.Image = Image.fromarray(_background_image)
         self._background_image_tensor: torch.Tensor = self._tensor_transform(self._background_image)
         self._background_input_tensor: torch.Tensor = self._preprocess(
-            self._background_image_tensor
+            self._background_image_tensor,
         )
 
         # evaluate the model on the background
@@ -90,7 +94,8 @@ class ResNetModel:
 
         # get superpixels
         self.n_superpixels, self.superpixels = self.get_superpixels(
-            image=np.array(input_image), n_segments=n_superpixels
+            image=np.array(input_image),
+            n_segments=n_superpixels,
         )
 
         # setup bool mask for all superpixels
@@ -103,8 +108,9 @@ class ResNetModel:
             self._superpixel_masks[i, :, :] = torch.tensor(mask, dtype=torch.bool)
 
     def __call__(self, coalitions: np.ndarray) -> np.ndarray[float]:
-        """Returns the class probability of the coalition of superpixels. Superpixels not in the
-        coalition are masked with a gray background.
+        """Returns the class probability of the coalition of superpixels.
+
+        Superpixels not in the coalition are masked with a gray background.
 
         Args:
             coalitions: A 2d matrix of coalition of players (i.e. super-patches) in shape
@@ -112,13 +118,12 @@ class ResNetModel:
 
         Returns:
             The class probability of the coalition.
+
         """
+        outputs = None
         for batch in range(0, len(coalitions), self.batch_size):
             output = self._call_batch(coalitions[batch : batch + self.batch_size])
-            if batch == 0:
-                outputs = output
-            else:
-                outputs = np.concatenate((outputs, output), axis=0)
+            outputs = output if batch == 0 else np.concatenate((outputs, output), axis=0)
         return outputs
 
     def _call_batch(self, coalitions: np.ndarray) -> np.ndarray[float]:
@@ -130,6 +135,7 @@ class ResNetModel:
 
         Returns:
             The class probability of the coalition.
+
         """
         # create tensor dataset for all coalition in coalitions and apply the masks
         masked_images = torch.stack((self._image_tensor,) * len(coalitions))
@@ -151,16 +157,18 @@ class ResNetModel:
 
         Returns:
             The class probability
+
         """
         with torch.no_grad():
             output = self.model(input_image)
-            output = F.softmax(output, dim=-1)
-            return output
+            return F.softmax(output, dim=-1)
 
     @staticmethod
     def get_superpixels(image: np.ndarray, n_segments: int = 14) -> tuple[int, np.ndarray]:
-        """Returns the number of superpixels and the superpixel mask by running SLIC and retrying
-        with randomized values if the number of superpixels does not match the desired number.
+        """Run SLIC and return the number of superpixels and the superpixel mask.
+
+        Runs SLIC and retrying with randomized values if the number of superpixels does not match
+        the desired number.
 
         Args:
             image: The image.
@@ -168,6 +176,7 @@ class ResNetModel:
 
         Returns:
             The number of superpixels and the superpixel mask.
+
         """
         # run slic for first time
         superpixels = slic(image, n_segments=n_segments, start_label=1, slic_zero=True)

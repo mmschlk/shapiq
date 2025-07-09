@@ -5,12 +5,18 @@ Note to developers:
     (e.g. `torch`, `transformers`, `PIL`).
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import torch
-import torch.nn.functional as F
-from PIL.Image import Image
+import torch.nn.functional as F  # noqa: N812
 from torch import nn
 from transformers import ViTFeatureExtractor, ViTForImageClassification
+
+if TYPE_CHECKING:
+    from PIL.Image import Image
 
 __all__ = ["ViTModel"]
 
@@ -32,12 +38,14 @@ class ViTModel:
 
     Raises:
         ValueError: If the number of patches is not 9 or 16.
+
     """
 
-    def __init__(self, n_patches: int, input_image: Image, verbose: bool = True) -> None:
+    def __init__(self, n_patches: int, input_image: Image, *, verbose: bool = True) -> None:
         # check input
-        if n_patches not in [9, 16]:
-            raise ValueError(f"The number of patches must be either 9 or 16 and not {n_patches}")
+        if n_patches not in MAPPING_PLAYER_MASK:
+            msg = f"The number of patches must be either 9 or 16 and not {n_patches}"
+            raise ValueError(msg)
 
         self.n_patches = n_patches
         self.class_id = None  # will be overwritten after we know the original class
@@ -73,7 +81,7 @@ class ViTModel:
         self.original_output = float(probit_output[0, self.class_id])
         self.original_class_name = str(model.config.id2label[self.class_id])
         if verbose:
-            print(f"Original class: {self.original_class_name} ({self.original_output:.4f})")
+            pass
 
         # call the model with no information to get empty prediction
         empty_output = self(np.zeros(self.n_patches, dtype=bool))
@@ -87,6 +95,7 @@ class ViTModel:
 
         Returns:
             The class probability of the coalition.
+
         """
         # make coalition into 2d
         if len(coalitions.shape) == 1:
@@ -100,7 +109,8 @@ class ViTModel:
             bool_masked_pos = self._transform_coalition_into_bool_mask(coalition, self.n_patches)
             with torch.no_grad():
                 embeddings = self._embedding_layer(
-                    **self._transformed_image, bool_masked_pos=bool_masked_pos
+                    **self._transformed_image,
+                    bool_masked_pos=bool_masked_pos,
                 )
                 encodings = self._encoder(embeddings)
                 norm_encodings = F.layer_norm(
@@ -122,8 +132,7 @@ class ViTModel:
 
     @staticmethod
     def _transform_coalition_into_bool_mask(coalition: np.ndarray, n_patches: int) -> torch.Tensor:
-        """Transforms a coalition of players (i.e. super-patches) into a boolean mask for the Vision
-        Transformer model.
+        """Transforms a coalition of players (i.e. super-patches) into a boolean mask.
 
         The Vision Transformer model uses a 1D boolean mask to mask out patches that are not part of
         for the prediction. The underlying model operates on 12x12 (i.e. 144) patches. To reduce the
@@ -136,25 +145,28 @@ class ViTModel:
 
         Returns:
             The boolean mask for the model in 1D with shape (144,).
+
         """
         bool_mask_2d = torch.ones((12, 12), dtype=torch.int)
+
+        # Calculate the size of each super-patch based on the grid size
+        patch_size = 12 // int(n_patches**0.5)
+
         for player, is_present in enumerate(coalition):
             if is_present:
-                if n_patches == 16:
-                    x, y = (
-                        MAPPING_PLAYER_MASK[16][player]["x"],
-                        MAPPING_PLAYER_MASK[16][player]["y"],
-                    )
-                    bool_mask_2d[y : y + 3, x : x + 3] = False
-                else:
-                    x, y = MAPPING_PLAYER_MASK[9][player]["x"], MAPPING_PLAYER_MASK[9][player]["y"]
-                    bool_mask_2d[y : y + 4, x : x + 4] = False
-        bool_mask_1d = bool_mask_2d.flatten()
-        return bool_mask_1d
+                x, y = (
+                    MAPPING_PLAYER_MASK[n_patches][player]["x"],
+                    MAPPING_PLAYER_MASK[n_patches][player]["y"],
+                )
+                bool_mask_2d[y : y + patch_size, x : x + patch_size] = 0
+
+        return bool_mask_2d.flatten()
 
 
 # constants for the boolean mask generation for the Vision Transformer model
 MAPPING_PLAYER_MASK = {
+    36: {player: {"x": (player % 6) * 2, "y": (player // 6) * 2} for player in range(36)},
+    144: {player: {"x": player % 12, "y": player // 12} for player in range(144)},
     16: {
         0: {"x": 0, "y": 0},
         1: {"x": 3, "y": 0},
@@ -958,8 +970,8 @@ NORM_WEIGHT = nn.Parameter(
             0.7513,
             0.9935,
             0.8690,
-        ]
-    )
+        ],
+    ),
 )
 
 NORM_BIAS = nn.Parameter(
@@ -1733,6 +1745,6 @@ NORM_BIAS = nn.Parameter(
             1.6395e-02,
             -8.8686e-02,
             5.7581e-02,
-        ]
-    )
+        ],
+    ),
 )

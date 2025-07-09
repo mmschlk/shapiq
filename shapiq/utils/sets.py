@@ -1,32 +1,43 @@
 """This module contains utility functions for dealing with sets, coalitions and game theory."""
 
+from __future__ import annotations
+
 import copy
-from collections.abc import Collection, Iterable
 from itertools import chain, combinations
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
 from scipy.special import binom
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
+
+    from .custom_types import CoalitionMatrix, CoalitionsLookup, CoalitionsTuples
+
+
 __all__ = [
-    "powerset",
-    "pair_subset_sizes",
-    "split_subsets_budget",
-    "get_explicit_subsets",
-    "generate_interaction_lookup",
-    "transform_coalitions_to_array",
-    "transform_array_to_coalitions",
     "count_interactions",
+    "generate_interaction_lookup",
+    "get_explicit_subsets",
+    "pair_subset_sizes",
+    "powerset",
+    "split_subsets_budget",
+    "transform_array_to_coalitions",
+    "transform_coalitions_to_array",
 ]
+
+T = TypeVar("T", int, str)
 
 
 def powerset(
-    iterable: Iterable[Any], min_size: int = 0, max_size: Optional[int] = None
-) -> Iterable[tuple]:
+    iterable: Iterable[T],
+    min_size: int = 0,
+    max_size: int | None = None,
+) -> Iterator[tuple[T, ...]]:
     """Return a powerset of an iterable as tuples with optional size limits.
 
     Args:
-        iterable: Iterable.
+        iterable: An iterable (e.g., list, set, etc.) from which to generate the powerset.
         min_size: Minimum size of the subsets. Defaults to 0 (start with the empty set).
         max_size: Maximum size of the subsets. Defaults to None (all possible sizes).
 
@@ -45,13 +56,14 @@ def powerset(
 
         >>> list(powerset(["A", "B", "C"], min_size=1, max_size=2))
         [('A',), ('B',), ('C',), ('A', 'B'), ('A', 'C'), ('B', 'C')]
+
     """
-    s = sorted(list(iterable))
+    s = sorted(iterable)
     max_size = len(s) if max_size is None else min(max_size, len(s))
     return chain.from_iterable(combinations(s, r) for r in range(max(min_size, 0), max_size + 1))
 
 
-def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], Optional[int]]:
+def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], int | None]:
     """Determines what subset sizes are paired together.
 
     Given an interaction order and the number of players, determines the paired subsets. Paired
@@ -74,6 +86,7 @@ def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], Option
 
         >>> pair_subset_sizes(order=2, n=5)
         ([(2, 3)], None)
+
     """
     subset_sizes = list(range(order, n - order + 1))
     n_paired_subsets = len(subset_sizes) // 2
@@ -85,7 +98,10 @@ def pair_subset_sizes(order: int, n: int) -> tuple[list[tuple[int, int]], Option
 
 
 def split_subsets_budget(
-    order: int, n: int, budget: int, sampling_weights: np.ndarray[float]
+    order: int,
+    n: int,
+    budget: int,
+    sampling_weights: np.ndarray,
 ) -> tuple[list, list, int]:
     """Determines which subset sizes can be computed explicitly and which sizes need to be sampled.
 
@@ -96,8 +112,8 @@ def split_subsets_budget(
         order: interaction order.
         n: number of players.
         budget: total allowed budget for the computation.
-        sampling_weights: weight vector of the sampling distribution in shape (n + 1,). The first and last element
-            constituting the empty and full subsets are not used.
+        sampling_weights: weight vector of the sampling distribution in shape (n + 1,). The first
+            and last element constituting the empty and full subsets are not used.
 
     Returns:
         complete subsets, incomplete subsets, remaining budget
@@ -111,6 +127,7 @@ def split_subsets_budget(
 
         >>> split_subsets_budget(order=1, n=6, budget=100, sampling_weights=np.zeros(shape=(6,)))
         ([], [1, 2, 3, 4, 5], 100)
+
     """
     # determine paired and unpaired subsets
     complete_subsets: list[int] = []
@@ -122,7 +139,10 @@ def split_subsets_budget(
     weight_vector[0], weight_vector[-1] = 0, 0  # zero out the empty and full subsets
     sum_weight_vector = np.sum(weight_vector)
     weight_vector = np.divide(
-        weight_vector, sum_weight_vector, out=weight_vector, where=sum_weight_vector != 0
+        weight_vector,
+        sum_weight_vector,
+        out=weight_vector,
+        where=sum_weight_vector != 0,
     )
 
     # check if the budget is sufficient to compute all paired subset sizes explicitly
@@ -135,7 +155,7 @@ def split_subsets_budget(
             incomplete_subsets.remove(subset_size_1)
             incomplete_subsets.remove(subset_size_2)
             weight_vector[subset_size_1], weight_vector[subset_size_2] = 0, 0  # zero used sizes
-            if not np.sum(weight_vector) == 0:
+            if np.sum(weight_vector) != 0:
                 weight_vector /= np.sum(weight_vector)  # re-normalize into probability vector
             budget -= subset_budget * 2
         else:  # if the budget is not sufficient, return the current state
@@ -152,7 +172,7 @@ def split_subsets_budget(
     return complete_subsets, incomplete_subsets, budget
 
 
-def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
+def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray:
     """Enumerates all subsets of the given sizes and returns a one-hot matrix.
 
     Args:
@@ -174,6 +194,7 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
                [0, 1, 1, 0],
                [0, 1, 0, 1],
                [0, 0, 1, 1]])
+
     """
     total_subsets = int(sum(binom(n, size) for size in subset_sizes))
     subset_matrix = np.zeros(shape=(total_subsets, n), dtype=bool)
@@ -186,8 +207,10 @@ def get_explicit_subsets(n: int, subset_sizes: list[int]) -> np.ndarray[bool]:
 
 
 def generate_interaction_lookup(
-    players: Union[Iterable[Any], int], min_order: int, max_order: Optional[int] = None
-) -> dict[tuple[Any], int]:
+    players: Iterable[T] | int,
+    min_order: int,
+    max_order: int | None = None,
+) -> dict[tuple[T, ...], int] | dict[tuple[int, ...], int]:
     """Generates a lookup dictionary for interactions.
 
     Args:
@@ -205,21 +228,48 @@ def generate_interaction_lookup(
         {(0, 1): 0, (0, 2): 1, (1, 2): 2}
         >>> generate_interaction_lookup(["A", "B", "C"], 1, 2)
         {('A',): 0, ('B',): 1, ('C',): 2, ('A', 'B'): 3, ('A', 'C'): 4, ('B', 'C'): 5}
+
     """
     if isinstance(players, int):
-        players = set(range(players))
-    else:
-        players = set(sorted(players))
-    interaction_lookup = {
+        return {
+            interaction: i
+            for i, interaction in enumerate(
+                powerset(range(players), min_size=min_order, max_size=max_order)
+            )
+        }
+    return {
         interaction: i
         for i, interaction in enumerate(powerset(players, min_size=min_order, max_size=max_order))
     }
-    return interaction_lookup
+
+
+def generate_interaction_lookup_from_coalitions(coalitions: CoalitionMatrix) -> CoalitionsLookup:
+    """Generates a lookup dictionary for interactions based on an array of coalitions.
+
+    Args:
+        coalitions: An array of player coalitions.
+
+    Returns:
+        A dictionary that maps interactions to their index in the values vector
+
+    Example:
+        >>> coalitions = np.array([
+        ...     [1, 0, 1],
+        ...     [0, 1, 1],
+        ...     [1, 1, 0],
+        ...     [0, 0, 1]
+        ... ])
+        >>> generate_interaction_lookup_from_coalitions(coalitions)
+        {(0, 2): 0, (1, 2): 1, (0, 1): 2, (2,): 3}
+
+    """
+    return {tuple(np.where(coalition)[0]): idx for idx, coalition in enumerate(coalitions)}
 
 
 def transform_coalitions_to_array(
-    coalitions: Collection[tuple[int, ...]], n_players: Optional[int] = None
-) -> np.ndarray:
+    coalitions: CoalitionsTuples,
+    n_players: int | None = None,
+) -> CoalitionMatrix:
     """Transforms a collection of coalitions to a binary array (one-hot encodings).
 
     Args:
@@ -241,6 +291,7 @@ def transform_coalitions_to_array(
         array([[ True,  True, False, False],
                [False,  True,  True, False],
                [ True, False,  True, False]])
+
     """
     n_coalitions = len(coalitions)
     if n_players is None:
@@ -252,7 +303,7 @@ def transform_coalitions_to_array(
     return coalition_array
 
 
-def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int]]:
+def transform_array_to_coalitions(coalitions: CoalitionMatrix) -> CoalitionsTuples:
     """Transforms a 2d one-hot matrix of coalitions into a list of tuples.
 
     Args:
@@ -269,11 +320,12 @@ def transform_array_to_coalitions(coalitions: np.ndarray) -> list[tuple[int]]:
         >>> coalitions = np.array([[False, False, False], [True, True, True]])
         >>> transform_array_to_coalitions(coalitions)
         [(), (0, 1, 2)]
+
     """
     return [tuple(np.where(coalition)[0]) for coalition in coalitions]
 
 
-def count_interactions(n: int, max_order: Optional[int] = None, min_order: int = 0) -> int:
+def count_interactions(n: int, max_order: int | None = None, min_order: int = 0) -> int:
     """Counts the number of interactions for a given number of players and maximum order.
 
     Args:
@@ -292,6 +344,7 @@ def count_interactions(n: int, max_order: Optional[int] = None, min_order: int =
         7
         >>> count_interactions(3, 2, 1)
         6
+
     """
     if max_order is None:
         max_order = n

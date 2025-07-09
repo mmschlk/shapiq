@@ -1,53 +1,82 @@
 """This module implements the Permutation Sampling approximator for the SII (and k-SII) index."""
 
-from typing import Callable, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 
-from ...interaction_values import InteractionValues
-from ...utils.sets import powerset
-from .._base import Approximator
+from shapiq.approximator.base import Approximator
+from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.utils.sets import powerset
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+ValidPermutationSIIIndices = Literal["SII", "k-SII"]
 
 
 class PermutationSamplingSII(Approximator):
     """Permutation Sampling approximator for the SII (and k-SII) index.
-
-    Args:
-        n: The number of players.
-        max_order: The interaction order of the approximation. Defaults to ``2``.
-        index: The interaction index to compute.
-        top_order: Whether to approximate only the top order interactions (``True``) or all orders up
-            to the specified order (``False``, default).
-        random_state: The random state to use for the permutation sampling. Defaults to ``None``.
 
     See Also:
         - :class:`~shapiq.approximator.permutation.stii.PermutationSamplingSTII`: The Permutation
             Sampling approximator for the STII index
         - :class:`~shapiq.approximator.permutation.sv.PermutationSamplingSV`: The Permutation
             Sampling approximator for the SV index
+
     """
+
+    #: override the valid indices for this approximator
+    valid_indices: tuple[ValidPermutationSIIIndices] = tuple(get_args(ValidPermutationSIIIndices))
+    """The valid indices for this permutation sampling approximator."""
 
     def __init__(
         self,
         n: int,
         max_order: int = 2,
-        index: str = "SII",
+        index: ValidPermutationSIIIndices = "k-SII",
+        *,
         top_order: bool = False,
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ) -> None:
+        """Initialize the Permutation Sampling approximator for SII (and k-SII).
+
+        Args:
+            n: The number of players.
+
+            max_order: The interaction order of the approximation. Defaults to ``2``.
+
+            index: The interaction index to compute. Must be either ``'SII'`` or ``'k-SII'``.
+
+            top_order: Whether to approximate only the top order interactions (``True``) or all
+                orders up to the specified order (``False``, default).
+
+            random_state: The random state to use for the permutation sampling. Defaults to
+                ``None``.
+
+        """
         if index not in ["SII", "k-SII"]:
-            raise ValueError(f"Invalid index {index}. Must be either 'SII' or 'k-SII'.")
+            msg = f"Invalid index {index}. Must be either 'SII' or 'k-SII'."
+            raise ValueError(msg)
         super().__init__(
-            n=n, max_order=max_order, index=index, top_order=top_order, random_state=random_state
+            n=n,
+            max_order=max_order,
+            index=index,
+            top_order=top_order,
+            random_state=random_state,
         )
         self.iteration_cost: int = self._compute_iteration_cost()
 
     def _compute_iteration_cost(self) -> int:
-        """Computes the cost of performing a single iteration of the permutation sampling given
+        """Compute the cost of a single iteration of the permutation sampling.
+
+        Computes the cost of performing a single iteration of the permutation sampling given
         the order, the number of players, and the SII index.
 
         Returns:
             int: The cost of a single iteration.
+
         """
         iteration_cost: int = 0
         min_order = 1 if not self.top_order else self.max_order
@@ -60,6 +89,7 @@ class PermutationSamplingSII(Approximator):
 
         Returns:
             np.ndarray: The order iterator.
+
         """
         min_order = 1 if not self.top_order else self.max_order
         return np.arange(min_order, self.max_order + 1)
@@ -68,7 +98,7 @@ class PermutationSamplingSII(Approximator):
         self,
         budget: int,
         game: Callable[[np.ndarray], np.ndarray],
-        batch_size: Optional[int] = 5,
+        batch_size: int | None = 5,
     ) -> InteractionValues:
         """Approximates the interaction values.
 
@@ -79,8 +109,8 @@ class PermutationSamplingSII(Approximator):
 
         Returns:
             InteractionValues: The estimated interaction values.
-        """
 
+        """
         batch_size = 1 if batch_size is None else batch_size
         used_budget = 0
 
@@ -92,7 +122,9 @@ class PermutationSamplingSII(Approximator):
 
         # compute the number of iterations and size of the last batch (can be smaller than original)
         n_iterations, last_batch_size = self._calc_iteration_count(
-            budget - used_budget, batch_size, self.iteration_cost
+            budget - used_budget,
+            batch_size,
+            self.iteration_cost,
         )
 
         # main permutation sampling loop
@@ -143,6 +175,16 @@ class PermutationSamplingSII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        return self._finalize_result(
-            result, baseline_value=empty_value, budget=used_budget, estimated=True
+        interactions = InteractionValues(
+            n_players=self.n,
+            values=result,
+            index=self.approximation_index,
+            interaction_lookup=self._interaction_lookup,
+            baseline_value=empty_value,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            estimated=True,
+            estimation_budget=used_budget,
         )
+
+        return finalize_computed_interactions(interactions, target_index=self.index)

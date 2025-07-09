@@ -1,7 +1,10 @@
+"""shapiq documentation build configuration file."""
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+from __future__ import annotations
 
 import os
 import sys
@@ -9,8 +12,10 @@ import sys
 import commonmark
 from sphinx.builders.html import StandaloneHTMLBuilder
 
-sys.path.insert(0, os.path.abspath("../.."))
-sys.path.insert(0, os.path.abspath("../../shapiq"))
+sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
+sys.path.insert(0, os.path.abspath("../../shapiq"))  # noqa: PTH100
+sys.path.insert(0, os.path.abspath("../../examples"))  # noqa: PTH100
+
 
 import shapiq
 
@@ -28,12 +33,12 @@ version = shapiq.__version__
 # -- General configuration -------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = [
+    "sphinx.ext.napoleon",
     "nbsphinx",
     "sphinx.ext.duration",
     "myst_parser",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
@@ -42,10 +47,17 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
+    "sphinxcontrib.bibtex",
 ]
 
+nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
+
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = (
+    "alpha"  # set to alpha to not confuse references the docs with the footcites in docstrings.
+)
 
 source_suffix = {
     ".rst": "restructuredtext",
@@ -83,7 +95,7 @@ html_sidebars = {
         "sidebar/navigation.html",
         "sidebar/ethical-ads.html",
         "sidebar/scroll-end.html",
-    ]
+    ],
 }
 
 # -- Autodoc ---------------------------------------------------------------------------------------
@@ -96,8 +108,9 @@ autodoc_default_options = {
     "undoc-members": True,
     "exclude-members": "__weakref__",
 }
-autoclass_content = "class"
-autodoc_inherit_docstrings = False
+autoclass_content = "both"
+autodoc_inherit_docstrings = True
+autodoc_member_order = "groupwise"
 
 # -- Images ----------------------------------------------------------------------------------------
 StandaloneHTMLBuilder.supported_image_types = [
@@ -116,7 +129,8 @@ copybutton_prompt_is_regexp = True
 # based on https://stackoverflow.com/a/56428123/23972
 
 
-def docstring(app, what, name, obj, options, lines):
+def docstring(_app, _what, _name, _obj, _options, lines) -> None:
+    """Convert Markdown in docstrings to reStructuredText."""
     if len(lines) > 1 and lines[0] == "@&ismd":
         md = "\n".join(lines[1:])
         ast = commonmark.Parser().parse(md)
@@ -125,5 +139,6 @@ def docstring(app, what, name, obj, options, lines):
         lines += rst.splitlines()
 
 
-def setup(app):
+def setup(app) -> None:
+    """Setup function for the Sphinx extension to convert Markdown in docstrings to reStructuredText."""
     app.connect("autodoc-process-docstring", docstring)

@@ -1,11 +1,10 @@
-"""This module compares the new benchmark games lookup speed with the old benchmark games lookup
-speed."""
+"""This module compares the new benchmark games lookup speed with the old benchmark games lookup speed."""
 
 import os
 import random
 import time
+import warnings
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -16,23 +15,37 @@ from shapiq.utils.sets import powerset, transform_coalitions_to_array
 
 
 class OldLookUpGame:
-    """Wrapper for the Machine Learning Game to use precomputed model outputs for faster runtime in
-    experimental settings."""
+    """Wrapper for the Machine Learning Game to use precomputed model outputs for faster runtime in experimental settings."""
 
     def __init__(
         self,
         data_folder: str,
         n: int,
-        data_id: Union[int, str] = None,
-        used_ids: set = None,
+        *,
+        data_id: int | str | None = None,
+        used_ids: set | None = None,
         set_zero: bool = True,
         log_output: bool = False,
         min_max_normalize: bool = False,
-        random_seed: int = None,
-    ):
+        random_seed: int | None = None,
+    ) -> None:
+        """Initialize the old lookup game.
+
+        Args:
+            data_folder: The folder containing the precomputed value function calls.
+                Defaults to "OldSentimentAnalysis(Game)".
+            n: The number of players in the game.
+            data_id: The ID of the data file to use. If ``None``, a random file is selected.
+            used_ids: A set of already used IDs to avoid using the same instance twice.
+            set_zero: Whether to set the empty coalition value to zero (v_0({}) = 0).
+            log_output: Whether to return the logarithm of the output values.
+            min_max_normalize: Whether to normalize the values to [0, 1].
+            random_seed: A seed for reproducibility. Defaults to ``None``.
+
+        """
         if random_seed is not None:
             random.seed(random_seed)
-            np.random.seed(random_seed)
+            np.random.seed(random_seed)  # noqa: NPY002
         self.n = n
         self.log_output = log_output
 
@@ -55,7 +68,7 @@ class OldLookUpGame:
                 files = os.listdir(instances_dir)
                 self.used_ids = set()
             # select random file with seed
-            data_id = random.choice(files)
+            data_id = random.choice(files)  # noqa: S311
             data_id = data_id.split(".")[0]
         self.data_id = str(data_id)
         self.game_name = "_".join(("LookUpGame", data_folder, str(n), self.data_id))
@@ -84,14 +97,16 @@ class OldLookUpGame:
         if set_zero:
             self.empty_value = self.set_call(set())
 
-    def set_call(self, S):
+    def set_call(self, S: set[int] | list[int] | np.ndarray[int] | tuple[int, ...]) -> float:
+        """Get the value of a coalition S."""
         S_id = "s_" + "_".join([str(player) for player in sorted(S)])
         output = self.storage[S_id] - self.empty_value
         if self.log_output:
             return float(np.log(output))
-        return output
+        return float(output)
 
-    def get_name(self):
+    def get_name(self) -> str:
+        """Get the name of the game instance."""
         return self.game_name
 
 
@@ -100,6 +115,7 @@ def time_both_games(n_sets: int) -> tuple[float, float]:
 
     Args:
         n_sets: The number of sets to test the games with.
+
     """
     n_players = 14
 
@@ -123,8 +139,12 @@ def time_both_games(n_sets: int) -> tuple[float, float]:
     ]
 
     # check that both have the same number of coalitions
-    assert len(test_coalitions_new) == n_sets * 2**n_players
-    assert len(test_coalitions_old) == n_sets * 2**n_players
+    if len(test_coalitions_new) != len(test_coalitions_old) != n_sets * 2**n_players:
+        warnings.warn(
+            f"Old game has {len(test_coalitions_old)} coalitions, but new game "
+            f"has {len(test_coalitions_new)}.",
+            stacklevel=2,
+        )
 
     # time the new game
     start = time.time()
@@ -141,7 +161,6 @@ def time_both_games(n_sets: int) -> tuple[float, float]:
 
 
 if __name__ == "__main__":
-
     N_SETS = [1, 2, 5, 10, 20]
     N_ITERATIONS = 10
 
@@ -163,10 +182,6 @@ if __name__ == "__main__":
 
         ax.errorbar(int(sets), new_time_mean, yerr=new_time_std, fmt="o", c="orange")
         ax.errorbar(int(sets), old_time_mean, yerr=old_time_std, fmt="o", c="blue")
-
-        print(f"New game took {new_time_mean:.6f} ± {new_time_std:.6f} seconds.")
-        print(f"Old game took {old_time_mean:.6f} ± {old_time_std:.6f} seconds.")
-        print(f"New game was {old_time_mean / new_time_mean:.2f} times faster than the old game.")
 
     ax.errorbar(0, 0, 0, fmt="o", c="orange", label="New game")
     ax.errorbar(0, 0, 0, fmt="o", c="blue", label="Old game")

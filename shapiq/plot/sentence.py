@@ -1,15 +1,21 @@
 """This module contains the sentence plot."""
 
-from collections.abc import Sequence
-from typing import Optional
+from __future__ import annotations
+
+import contextlib
+from typing import TYPE_CHECKING
 
 from matplotlib import pyplot as plt
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import FancyBboxPatch, PathPatch
 from matplotlib.textpath import TextPath
 
-from ..interaction_values import InteractionValues
 from ._config import BLUE, RED
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from shapiq.interaction_values import InteractionValues
 
 
 def _get_color_and_alpha(max_value: float, value: float) -> tuple[str, float]:
@@ -23,12 +29,13 @@ def _get_color_and_alpha(max_value: float, value: float) -> tuple[str, float]:
 def sentence_plot(
     interaction_values: InteractionValues,
     words: Sequence[str],
-    connected_words: Optional[Sequence[tuple[str, str]]] = None,
+    *,
+    connected_words: Sequence[tuple[str, str]] | None = None,
     chars_per_line: int = 35,
     font_family: str = "sans-serif",
     show: bool = False,
-    max_score: Optional[float] = None,
-) -> Optional[tuple[plt.Figure, plt.Axes]]:
+    max_score: float | None = None,
+) -> tuple[plt.Figure, plt.Axes] | None:
     """Plots the first order effects (attributions) of a sentence or paragraph.
 
     An example of the plot is shown below.
@@ -79,8 +86,8 @@ def sentence_plot(
     .. image:: /_static/sentence_plot_connected_example.png
         :width: 300
         :align: center
-    """
 
+    """
     # set all the size parameters
     fontsize = 20
     word_spacing = 15
@@ -104,15 +111,13 @@ def sentence_plot(
     max_x_pos = 0
     x_pos, y_pos = word_spacing, 0
     lines, chars_in_line = 0, 0
-    for i, (word, attribution) in enumerate(zip(words, attributions)):
-
+    for i, (_word, attribution) in enumerate(zip(words, attributions, strict=False)):
+        word = _word
         # check if the word is connected
         is_word_connected_first = False
         is_word_connected_second = (words[i - 1], word) in connected_words
-        try:
+        with contextlib.suppress(IndexError):
             is_word_connected_first = (word, words[i + 1]) in connected_words
-        except IndexError:
-            pass
 
         # check if the line is too long and needs to be wrapped
         chars_in_line += len(word)
@@ -191,3 +196,4 @@ def sentence_plot(
     if not show:
         return fig, ax
     plt.show()
+    return None

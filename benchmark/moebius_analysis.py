@@ -3,7 +3,6 @@
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -20,13 +19,13 @@ except ImportError:
 def plot_box_plot(
     interactions: list[InteractionValues],
     min_size: int = 0,
-    max_size: Optional[int] = None,
-    save_path: Optional[str] = None,
+    max_size: int | None = None,
+    save_path: str | None = None,
     title: str = "Box plot of the interaction values",
+    *,
     showfliers: bool = True,
 ) -> None:
     """Plot a box plot of the interaction values."""
-
     # get a dataframe of the interactions
     interactions_df = []
     for interaction_val in interactions:

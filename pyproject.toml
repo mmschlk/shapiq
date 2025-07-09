@@ -1,16 +1,259 @@
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.pytest.ini_options]
-testpaths = "tests"
+[project]
+name = "shapiq"
+dynamic = ["version", "readme"]
+description = "Shapley Interactions for Machine Learning"
+requires-python = ">=3.10"
+dependencies = [
+    # core
+    "numpy",
+    "scipy",
+    "pandas",
+    "scikit-learn",
+    "tqdm",
+    "requests",
+    "sparse-transform",
+    "galois",
+    # plotting
+    "matplotlib",
+    "networkx",
+    "colour",
+    "pillow",
+]
+authors = [
+    {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
+    {name = "Hubert Baniecki"},
+    {name = "Fabian Fumagalli"},
+]
+maintainers = [
+    {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
+]
+license = "MIT"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: Unix',
+    'Operating System :: MacOS',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+]
+keywords = [
+    "python",
+    "machine learning",
+    "interpretable machine learning",
+    "shap",
+    "xai",
+    "explainable ai",
+    "interaction",
+    "shapley interactions",
+    "shapley values",
+    "feature interaction",
+]
 
-[tool.black]
-line-length = 100
-target-version = ['py39', 'py310', 'py311']
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shapiq*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "shapiq.__version__"}
+readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
+
+[project.urls]
+documentation = "https://shapiq.readthedocs.io"
+source = "https://github.com/mmschlk/shapiq"
+tracker = "https://github.com/mmschlk/shapiq/issues"
+changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+ml = [
+    "tabpfn",
+    "torchvision",
+    "torch",
+    "xgboost",
+    "lightgbm",
+    "transformers",
+    "scikit-image",
+    "joblib",
+    # tf only for python < 3.13 and not windows
+    "tensorflow; python_version < '3.13' and platform_system != 'Windows'",
+    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+minversion = "8.0"
 
 [tool.ruff]
-lint.select = ["E", "F", "I", "UP"]  # https://beta.ruff.rs/docs/rules/
-lint.ignore = ["E501"]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
+src = ["tests", "shapiq", "docs"]
+
+
+[tool.ruff.lint]
+# we allow star arguments to be of type Any e.g. def func(*args: Any, **kwargs: Any) -> None: is ok
+flake8-annotations.allow-star-arg-any = true
+select = ["ALL"]
+ignore = [
+    "E501",  # Line too long
+    "N803",  # Variable X in function should be lowercase
+    "N806",  # Variable X in function should be lowercase
+    "S301",  # exclude pickle restriction, atm. games are unpickled this will need to be fixed # TODO: must be fixed in the future
+    "COM812",  # this is redundant with the formatter which anyways does this (must be excluded) in the future # TODO: add remove pickle calls and remove this exclusion
+    "FIX002",  # we use TODOs atm to track potential code improvements  # TODO: add this in the future
+    "PLR0913",  # Too many arguments are passed to function
+    "PLR0915", # Too many statements in function
+    "PLR0912",  # Too many branches in function
+    "PLR2004",  # Magic values in comparison ... this gets flaged with all checks for two-way interactions
+    "C901",  # Too complex functions
+    "PLR0911",  # too many return statements in function
+    "N802",  # Function name should be lowercase
+]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "docs/build",
+]
+
+# Exclude a variety of commonly ignored directories.
+# Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
+[tool.ruff.lint.per-file-ignores]
+"shapiq/typing.py" = [
+    "A005",  # we want to be similar to other libraries that also shadow typing
+]
+"tests/*.py" = [
+    # "ALL",
+    "S101", # we need asserts in tests
+    "D",    # test docstrings don't matter too much
+    "E501", # line too long
+    "ANN",  # type annotations
+    "ARG",  # some functions are not used
+    "INP",  # inports can be different
+    "N",  # type hints are excludes in tests
+    "PTH",  # we can use os for now
+    "S",  # in tests we can use some security issues for now
+    "PT", # we can use print statements in tests
+    "NPY",
+    "SLF",  # private members are okay in tests
+    "TRY",
+]
+"*.ipynb" = [
+    "E402",  # Module level import not at top of file (its .ipynb)
+    "T20",  # notebooks can have print statements
+    "I002",  # notebooks do not have to import required modules
+    "D",  # docstrings are not required in notebooks
+    "SLF001",  # private members are okay in notebooks
+    "ANN001",  # type annotations are not required in notebooks
+]
+"docs/source/*.py" = [
+    "A001",  # some conf.py variables shadow builtins which is okay here
+    "ANN001",  # some magic functions I don't want to annotate
+    "INP",  # docs can be an implicit package (does not need to be imported)
+    "I002",  # benchmark code does not have to import required modules
+]
+"benchmark/*.py" = [
+    "INP", # imports can be different here
+    "I002",  # benchmark code does not have to import required modules
+    "PTH"  # in benchmark code we use a lot of os, which is okay
+]
+"docs/copy_notebooks.py" = [
+    "PTH",  # the script uses os, which is not cirtical for shapiq so it's fine
+    "I002",  # benchmark code does not have to import required modules
+]
+"__init__.py" = [
+    "I002", # __init__.py does not have to import required modules
+    "RUF022",  # we can have unsorted imports in __init__.py
+    "FA",
+]
+"scripts/*.py" = [
+    "INP", # imports can be different here
+    "I002",  # script code does not have to import required modules
+    "PTH"  # in script code we use a lot of os, which is okay
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["shapiq"]
+extra-standard-library = ["typing_extensions"]
+combine-as-imports = true
+force-wrap-aliases = true
+no-lines-before = ["future"]
+required-imports = ["from __future__ import annotations"]
+
+[tool.pyright]
+include = ["shapiq"]
+exclude = ["tests", "docs", "benchmark", "scripts", "shapiq/plot"]
+pythonVersion = "3.10"
+
+[dependency-groups]
+test = [
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.6.1",
+    "pytest-randomly",
+]
+lint = [
+    "ruff>=0.11.2",
+    "pre-commit>=4.2.0",
+    "pyright>=1.1.402",
+]
+docs = [
+    "sphinx>=8.0.0",
+    "furo",
+    "myst-parser",
+    "sphinx-copybutton",
+    "sphinx-autodoc-typehints",
+    "sphinx_toolbox",
+    "sphinxcontrib-bibtex", # references based on bibtex
+    "nbconvert",
+    "nbsphinx",
+    "commonmark",  # Markdown parser and renderer
+    # TODO(mmschlk): remove the pin in ipython when we drop python 3.10 support and pin to
+    # ipython>=9.0.0, since ipython==8.7.0 introduces a bug with parsing notebooks also discussed
+    # here: https://github.com/spatialaudio/nbsphinx/issues/24
+    "ipython<8.7.0",
+]
+dev = [
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
+    "notebook>=7.3.3",
+    "ipywidgets",
+    {include-group = "test"},
+    {include-group = "lint"},
+    {include-group = "docs"},
+]

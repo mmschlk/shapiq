@@ -3,14 +3,16 @@
 Note:
     Code and implementation was taken and adapted from the [SHAP package](https://github.com/shap/shap)
     which is licensed under the [MIT license](https://github.com/shap/shap/blob/master/LICENSE).
+
 """
 
-from typing import Optional
+from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..interaction_values import InteractionValues, aggregate_interaction_values
+from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
+
 from ._config import BLUE, RED
 from .utils import abbreviate_feature_names, format_labels, format_value
 
@@ -20,8 +22,8 @@ __all__ = ["bar_plot"]
 def _bar(
     values: np.ndarray,
     feature_names: np.ndarray,
-    max_display: Optional[int] = 10,
-    ax: Optional[plt.Axes] = None,
+    max_display: int | None = 10,
+    ax: plt.Axes | None = None,
 ) -> plt.Axes:
     """Create a bar plot of a set of SHAP values.
 
@@ -40,6 +42,7 @@ def _bar(
 
     Returns:
         The axis of the plot.
+
     """
     # determine how many top features we will plot
     num_features = len(values[0])
@@ -56,7 +59,7 @@ def _bar(
         cut_feature_values = values[:, feature_order[max_display:]]
         sum_of_remaining = np.sum(cut_feature_values, axis=None)
         index_of_last = feature_order[max_display]
-        values = np.insert(values, index_of_last, sum_of_remaining, axis=1)
+        values[:, index_of_last] = sum_of_remaining
         max_display += 1  # include the sum of the remaining in the display
 
     # get the top features and their names
@@ -177,12 +180,14 @@ def _bar(
 
 def bar_plot(
     list_of_interaction_values: list[InteractionValues],
-    feature_names: Optional[np.ndarray] = None,
+    *,
+    feature_names: np.ndarray | None = None,
     show: bool = False,
     abbreviate: bool = True,
-    max_display: Optional[int] = 10,
+    max_display: int | None = 10,
     global_plot: bool = True,
-) -> Optional[plt.Axes]:
+    plot_base_value: bool = False,
+) -> plt.Axes | None:
     """Draws interaction values as a SHAP bar plot[1]_.
 
     The function draws the interaction values on a bar plot. The interaction values can be
@@ -193,7 +198,8 @@ def bar_plot(
         feature_names: The feature names used for plotting. If no feature names are provided, the
             feature indices are used instead. Defaults to ``None``.
         show: Whether ``matplotlib.pyplot.show()`` is called before returning. Default is ``True``.
-            Setting this to ``False`` allows the plot to be customized further after it has been created.
+            Setting this to ``False`` allows the plot to be customized further after it has been
+            created.
         abbreviate: Whether to abbreviate the feature names. Defaults to ``True``.
         max_display: The maximum number of features to display. Defaults to ``10``. If set to
             ``None``, all features are displayed.
@@ -201,6 +207,8 @@ def bar_plot(
             into a global explanation (``True``) or to plot them as separate bars (``False``).
             Defaults to ``True``. If only one InteractionValues object is provided, this parameter
             is ignored.
+        plot_base_value: Whether to include the base value in the plot or not. Defaults to
+            ``False``.
 
     Returns:
         If ``show`` is ``False``, the function returns the axis of the plot. Otherwise, it returns
@@ -208,6 +216,7 @@ def bar_plot(
 
     References:
         .. [1] SHAP is available at https://github.com/shap/shap
+
     """
     n_players = list_of_interaction_values[0].n_players
 
@@ -219,8 +228,10 @@ def bar_plot(
         feature_mapping = {i: "F" + str(i) for i in range(n_players)}
 
     # aggregate the interaction values if global_plot is True
-    if global_plot:
-        global_values = aggregate_interaction_values(list_of_interaction_values)
+    if global_plot and len(list_of_interaction_values) > 1:
+        # The aggregation of the global values will be done on the absolute values
+        list_of_interaction_values = [abs(iv) for iv in list_of_interaction_values]
+        global_values = aggregate_interaction_values(list_of_interaction_values, aggregation="mean")
         values = np.expand_dims(global_values.values, axis=0)
         interaction_list = global_values.interaction_lookup.keys()
     else:  # plot the interaction values separately  (also includes the case of a single object)
@@ -235,6 +246,11 @@ def bar_plot(
             for i, iv in enumerate(list_of_interaction_values):
                 values[i, j] = iv[interaction]
 
+    # Include the base value in the plot
+    if not plot_base_value:
+        values = values[:, 1:]
+        interaction_list = list(interaction_list)[1:]
+
     # format the labels
     labels = [format_labels(feature_mapping, interaction) for interaction in interaction_list]
 
@@ -242,3 +258,4 @@ def bar_plot(
     if not show:
         return ax
     plt.show()
+    return None

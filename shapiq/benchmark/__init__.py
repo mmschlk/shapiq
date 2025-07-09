@@ -27,5 +27,3 @@ __all__ = [
     # plotting benchmark results
     "plot_approximation_quality",
 ]
-
-# Path: shapiq/benchmark/__init__.py
