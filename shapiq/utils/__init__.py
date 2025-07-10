@@ -1,6 +1,7 @@
 """Utility functions for the shapiq package."""
 
 from .datasets import shuffle_data
+from .errors import raise_deprecation_warning
 from .modules import check_import_module, safe_isinstance
 from .sets import (
     count_interactions,
@@ -30,4 +31,6 @@ __all__ = [
     "check_import_module",
     # datasets
     "shuffle_data",
+    # errors
+    "raise_deprecation_warning",
 ]

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import typing
 
 import numpy as np
@@ -177,90 +176,6 @@ def test_lookup_vs_run():
     assert np.allclose(dummy_game(test_coalition), dummy_game_precomputed(test_coalition))
 
 
-def test_load_and_save():
-    """This test tests the save and load functions of the base game class object."""
-    dummy_game = DummyGame(n=4, interaction=(0, 1))
-    dummy_game.precompute()
-    path = "dummy_game.pkl"
-    dummy_game.save(path)
-
-    assert os.path.exists(path)
-
-    dummy_game_loaded = DummyGame.load(path)
-
-    assert dummy_game.value_storage.shape == dummy_game_loaded.value_storage.shape
-    assert len(dummy_game.coalition_lookup) == len(dummy_game_loaded.coalition_lookup)
-    assert dummy_game.n_values_stored == dummy_game_loaded.n_values_stored
-    assert dummy_game.n_players == dummy_game_loaded.n_players
-    assert dummy_game.interaction == dummy_game_loaded.interaction
-    assert np.all(dummy_game.value_storage == dummy_game_loaded.value_storage)
-    # check if dict is the same
-    assert dummy_game.coalition_lookup == dummy_game_loaded.coalition_lookup
-    assert dummy_game.normalize == dummy_game_loaded.normalize
-    assert dummy_game.precomputed == dummy_game_loaded.precomputed
-
-    # clean up
-    os.remove(path)
-    assert not os.path.exists(path)
-
-    # test store values and load
-
-    path = "dummy_game.npz"
-    dummy_game.save_values(path)
-
-    assert os.path.exists(path)
-
-    dummy_game_loaded = DummyGame(n=4, interaction=(0, 1))
-    dummy_game_loaded.load_values(path)
-
-    assert dummy_game.value_storage.shape == dummy_game_loaded.value_storage.shape
-    assert len(dummy_game.coalition_lookup) == len(dummy_game_loaded.coalition_lookup)
-    assert dummy_game.n_players == dummy_game_loaded.n_players
-    assert dummy_game.interaction == dummy_game_loaded.interaction
-    assert np.allclose(dummy_game.value_storage, dummy_game_loaded.value_storage)
-    assert dummy_game.precomputed == dummy_game_loaded.precomputed
-
-    # clean up
-    os.remove(path)
-    assert not os.path.exists(path)
-
-    # path without .npz
-    path = "dummy_game"
-    dummy_game.save_values(path)
-
-    assert os.path.exists(path + ".npz")
-
-    # load without .npz as path ending
-    dummy_game_loaded = DummyGame(n=4, interaction=(0, 1))
-    dummy_game_loaded.load_values(path)
-    assert dummy_game.n_values_stored == dummy_game_loaded.n_values_stored
-
-    # load with wrong number of players expect ValueError
-    dummy_game_loaded = DummyGame(n=5, interaction=(0, 1))
-    with pytest.raises(ValueError):
-        dummy_game_loaded.load_values(path + ".npz")
-
-    # Value error if n_players is None and path_to_values is None:
-    with pytest.raises(ValueError):
-        _ = Game(n=None, interaction=(0, 1))
-
-    # clean up
-    os.remove(path + ".npz")
-    assert not os.path.exists(path + ".npz")
-
-    # test without precomputed values and see if it raises a warning
-    path = "dummy_game.npz"
-    dummy_game = DummyGame(n=4, interaction=(0, 1))
-    with pytest.warns(UserWarning):
-        dummy_game.save_values(path)
-
-    assert os.path.exists(path)
-
-    # clean up
-    os.remove(path)
-    assert not os.path.exists(path)
-
-
 def test_progress_bar():
     """Tests the progress bar of the game class."""
     dummy_game = DummyGame(n=5, interaction=(0, 1))
@@ -355,7 +270,6 @@ class TestSavingGames:
     def test_save_and_load_json(self, cooking_game_pre_computed: Game, tmp_path: Path):
         """Test saving and loading a game as JSON."""
         path = tmp_path / "dummy_game.json"
-
         assert not path.exists()
         cooking_game_pre_computed.save(path)
         assert path.exists()

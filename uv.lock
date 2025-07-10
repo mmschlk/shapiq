@@ -3571,6 +3571,7 @@ dev = [
     { name = "nbconvert" },
     { name = "nbsphinx" },
     { name = "notebook" },
+    { name = "packaging" },
     { name = "pre-commit" },
     { name = "pyright" },
     { name = "pytest" },
@@ -3604,6 +3605,7 @@ lint = [
     { name = "ruff" },
 ]
 test = [
+    { name = "packaging" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-randomly" },
@@ -3648,6 +3650,7 @@ dev = [
     { name = "nbconvert" },
     { name = "nbsphinx" },
     { name = "notebook", specifier = ">=7.3.3" },
+    { name = "packaging", specifier = ">=24.2" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pyright", specifier = ">=1.1.402" },
     { name = "pytest", specifier = ">=8.3.5" },
@@ -3681,6 +3684,7 @@ lint = [
     { name = "ruff", specifier = ">=0.11.2" },
 ]
 test = [
+    { name = "packaging", specifier = ">=24.2" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-randomly" },

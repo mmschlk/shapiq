@@ -12,20 +12,9 @@ import numpy as np
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from pathlib import Path
-    from typing import Literal, TypedDict
+    from typing import Literal
 
-    from shapiq.typing import JSONType
-
-    class MetadataBlock(TypedDict, total=False):
-        """Metadata block for saving objects as json."""
-
-        object_name: str
-        data_type: Literal["interaction_values", "game"] | None
-        version: str
-        timestamp: str
-        created_from: str | None
-        description: str | None
-        parameters: JSONType
+    from shapiq.typing import JSONType, MetadataBlock
 
 
 def safe_tuple_to_str(t: tuple[int, ...]) -> str:

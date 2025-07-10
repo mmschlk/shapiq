@@ -6,16 +6,37 @@ import json
 import os
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import numpy as np
 from tqdm.auto import tqdm
 
-from shapiq.utils import powerset, transform_array_to_coalitions, transform_coalitions_to_array
+from shapiq.utils import (
+    powerset,
+    raise_deprecation_warning,
+    transform_array_to_coalitions,
+    transform_coalitions_to_array,
+)
 
 if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues
-    from shapiq.typing import CoalitionMatrix, GameValues, JSONType
+    from shapiq.typing import CoalitionMatrix, GameValues, JSONType, MetadataBlock
+
+    class GameJSONMetadata(TypedDict):
+        """Metadata for the game loaded from JSON."""
+
+        n_players: int
+        game_name: str
+        normalization_value: float
+        precompute_flag: bool
+        precomputed: bool
+        player_names: list[str] | None
+
+    class GameJSON(MetadataBlock, TypedDict):
+        """Types denoting the Fields loaded from JSON."""
+
+        metadata: GameJSONMetadata
+        data: dict[str, float]
 
 
 class Game:
@@ -141,6 +162,13 @@ class Game:
         self.coalition_lookup: dict[tuple[int, ...], int] = {}
         self.n_players = n_players
 
+        if path_to_values is not None:
+            msg = (
+                "Initializing a Game with `path_to_values` is deprecated and will be removed in a"
+                " future version. Use `Game.load` or `Game().load_values()` instead."
+            )
+            raise_deprecation_warning(message=msg, deprecated_in="1.3.1", removed_in="1.4.0")
+
         if n_players is None and path_to_values is None:
             msg = "The number of players has to be provided if game is not loaded from values."
             raise ValueError(msg)
@@ -246,22 +274,20 @@ class Game:
         save_json(data, path)
 
     @classmethod
-    def from_json_file(cls, path: Path | str) -> Game:
+    def from_json_file(cls, path: Path | str, *, normalize: bool = True) -> Game:
         """Loads the game from a JSON file.
 
         Args:
             path: Path to the JSON file.
+            normalize: Whether to normalize the game values. Defaults to ``True``.
 
         Returns:
             Game: The loaded game object.
         """
         from shapiq.utils.saving import dict_to_lookup_and_values
 
-        if not isinstance(path, Path):
-            path = Path(path)
-
-        with path.open("r") as file:
-            data = json.load(file)
+        with Path(path).open("r") as file:
+            data: GameJSON = json.load(file)
 
         metadata = data["metadata"]
         n_players = metadata["n_players"]
@@ -271,7 +297,7 @@ class Game:
         game = Game(
             n_players=n_players,
             normalization_value=normalization_value,
-            normalize=normalization_value != 0,
+            normalize=normalize,
             player_names=player_names,
         )
         game._precompute_flag = metadata["precompute_flag"]
@@ -408,7 +434,7 @@ class Game:
             values = self._lookup_coalitions(coalitions)
         return values - self.normalization_value
 
-    def _lookup_coalitions(self, coalitions: np.ndarray) -> np.ndarray:
+    def _lookup_coalitions(self, coalitions: CoalitionMatrix) -> GameValues:
         """Lookup the values of the coalitions in the storage."""
         values = np.zeros(coalitions.shape[0], dtype=float)
         for i, coalition in enumerate(coalitions):
@@ -585,10 +611,7 @@ class Game:
                 subset of all coalitions and only this subset will be used. Defaults to ``False``.
 
         """
-        # check if path is a Path object
-        if not isinstance(path, Path):
-            path = Path(path)
-
+        path = Path(path)
         if path.name.endswith(".npz"):
             self._load_npz_values(path)
         elif path.name.endswith(".json"):
@@ -599,14 +622,14 @@ class Game:
         self._precompute_flag = precomputed
 
     def _load_json_values(self, path: Path) -> None:
-        """Loads the game values from a JSON file."""
+        """Loads game values from a JSON file."""
         game = self.from_json_file(path)
-        self._validate_n_players_from_save(game.n_players)
+        self._validate_and_set_players_from_save(game.n_players)
         self.value_storage = game.value_storage
         self.coalition_lookup = game.coalition_lookup
         self.normalization_value = game.normalization_value
 
-    def _validate_n_players_from_save(self, n_players: int) -> None:
+    def _validate_and_set_players_from_save(self, n_players: int) -> None:
         """Validates and sets the number of players from the saved game."""
         if self.n_players is not None and n_players != self.n_players:
             msg = (
@@ -617,14 +640,15 @@ class Game:
         self.n_players = int(n_players)
 
     def _load_npz_values(self, path: Path) -> None:
+        """Load game values from a npz archive file."""
         data = np.load(path)
-        self._validate_n_players_from_save(data["n_players"])
+        self._validate_and_set_players_from_save(data["n_players"])
         self.value_storage = data["values"]
         coalition_lookup: list[tuple] = transform_array_to_coalitions(data["coalitions"])
         self.coalition_lookup = {coal: i for i, coal in enumerate(coalition_lookup)}
         self.normalization_value = float(data["normalization_value"])
 
-    def save(self, path: Path, **kwargs: dict[str, JSONType]) -> None:
+    def save(self, path: Path | str, **kwargs: dict[str, JSONType]) -> None:
         """Saves and serializes the game object to the given path.
 
         Args:
@@ -632,17 +656,18 @@ class Game:
             **kwargs: Additional keyword arguments to pass to :meth:`~Game.to_json_file`.
 
         """
-        self.to_json_file(path, **kwargs)
+        self.to_json_file(Path(path), **kwargs)
 
     @classmethod
-    def load(cls, path: Path | str) -> Game:
+    def load(cls, path: Path | str, *, normalize: bool = True) -> Game:
         """Load the game from a given path.
 
         Args:
             path: The path to load the game from.
+            normalize: Weather the game values should be normalized or not after loading.
 
         """
-        return cls.from_json_file(path)
+        return cls.from_json_file(path, normalize=normalize)
 
     def __repr__(self) -> str:
         """Return a string representation of the game."""
@@ -669,12 +694,12 @@ class Game:
         from shapiq.game_theory.exact import ExactComputer
 
         # raise warning if the game is not precomputed and n_players > 16
-        if not self.precomputed and self.n_players > 16:  # pragma: no cover
+        if not self.precomputed and self.n_players > 16:
             warnings.warn(
                 "The game is not precomputed and the number of players is greater than 16. "
                 "Computing the exact interaction values via brute force may take a long time.",
                 stacklevel=2,
-            )  # pragma: no cover
+            )
 
         exact_computer = ExactComputer(self.n_players, game=self)
         return exact_computer(index=index, order=order)
@@ -725,7 +750,7 @@ class Game:
 
         """
         try:
-            return self.value_storage[self.coalition_lookup[tuple(sorted(item))]]
+            return float(self.value_storage[self.coalition_lookup[tuple(sorted(item))]])
         except (KeyError, IndexError) as error:
             msg = f"The coalition {item} is not stored in the game. Is it precomputed?"
             raise KeyError(msg) from error

@@ -20,6 +20,7 @@ from .game_theory.indices import (
     is_empty_value_the_baseline,
     is_index_aggregated,
 )
+from .utils.errors import raise_deprecation_warning
 from .utils.sets import generate_interaction_lookup
 
 if TYPE_CHECKING:
@@ -32,7 +33,7 @@ if TYPE_CHECKING:
     from shapiq.typing import JSONType
 
 
-SAVE_JSON_DEPRECATION_WARNING = DeprecationWarning(
+SAVE_JSON_DEPRECATION_MSG = (
     "Saving InteractionValues not as a JSON file is deprecated. "
     "The parameters `as_pickle` and `as_npz` will be removed in the future. "
 )
@@ -662,7 +663,7 @@ class InteractionValues:
         """Selects a subset of players from the InteractionValues object.
 
         Args:
-            players (list[int]): List of players to select from the InteractionValues object.
+            players: List of players to select from the InteractionValues object.
 
         Returns:
             InteractionValues: Filtered InteractionValues object containing only values related to
@@ -727,11 +728,15 @@ class InteractionValues:
             with contextlib.suppress(FileNotFoundError):
                 Path(directory).mkdir(parents=True, exist_ok=True)
         if as_pickle:
-            warn(SAVE_JSON_DEPRECATION_WARNING, stacklevel=2)
+            raise_deprecation_warning(
+                message=SAVE_JSON_DEPRECATION_MSG, deprecated_in="1.3.1", removed_in="1.4.0"
+            )
             with Path(path).open("wb") as file:
                 pickle.dump(self, file)
         elif as_npz:
-            warn(SAVE_JSON_DEPRECATION_WARNING, stacklevel=2)
+            raise_deprecation_warning(
+                message=SAVE_JSON_DEPRECATION_MSG, deprecated_in="1.3.1", removed_in="1.4.0"
+            )
             # save object as npz file
             np.savez(
                 path,
@@ -748,21 +753,8 @@ class InteractionValues:
         else:
             self.to_json_file(path)
 
-    @staticmethod
-    def load_interaction_values(path: str) -> InteractionValues:
-        """Load an InteractionValues object from a file.
-
-        Args:
-            path: The path to load the InteractionValues object from.
-
-        Returns:
-            The loaded InteractionValues object.
-
-        """
-        return InteractionValues.load(path)
-
     @classmethod
-    def load(cls, path: Path) -> InteractionValues:
+    def load(cls, path: Path | str) -> InteractionValues:
         """Load an InteractionValues object from a file.
 
         Args:
@@ -776,6 +768,10 @@ class InteractionValues:
         # check if path ends with .json
         if path.name.endswith(".json"):
             return cls.from_json_file(path)
+
+        raise_deprecation_warning(
+            SAVE_JSON_DEPRECATION_MSG, deprecated_in="1.3.1", removed_in="1.4.0"
+        )
 
         # try loading as npz file
         try:

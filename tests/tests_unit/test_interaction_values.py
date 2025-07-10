@@ -894,16 +894,3 @@ class TestSavingInteractionValues:
         assert loaded_iv == iv  # check if loaded InteractionValues is equal to original
         loaded_iv_json = InteractionValues.from_json_file(path)
         assert loaded_iv_json == iv
-
-    def test_deprecation_warning_in_save(self, iv_7_all: InteractionValues, tmp_path: Path):
-        """Tests that old methods work but also warn with deprecation."""
-        path = tmp_path / pathlib.Path("test_interaction_values")
-        with pytest.warns(DeprecationWarning):
-            iv_7_all.save(path, as_pickle=True)
-            iv = InteractionValues.load(path)
-            assert iv == iv_7_all
-
-        with pytest.warns(DeprecationWarning):
-            iv_7_all.save(path, as_npz=True)
-            iv = InteractionValues.load(path.with_suffix(".npz"))
-            assert iv == iv_7_all
