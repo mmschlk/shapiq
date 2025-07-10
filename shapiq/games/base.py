@@ -242,7 +242,8 @@ class Game:
         """Saves the game as a JSON file.
 
         Args:
-            path: Path to the JSON file.
+            path: Path to the JSON file. If the path does not end with ``.json``, it will be
+                automatically appended.
             desc: A description of the game. Defaults to ``None``.
             created_from: An object from which the game was created. Defaults to ``None``.
             **kwargs: Additional keyword arguments to pass to the metadata block.
@@ -652,7 +653,8 @@ class Game:
         """Saves and serializes the game object to the given path.
 
         Args:
-            path: The path to save the game.
+            path: The path to save the game. If the path does not end with ``.json``, it will be
+                automatically appended.
             **kwargs: Additional keyword arguments to pass to :meth:`~Game.to_json_file`.
 
         """

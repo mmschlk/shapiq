@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 import pytest
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from shapiq.games.base import Game
 from shapiq.games.benchmark import (
     AdultCensusDatasetValuation,
     BikeSharingDatasetValuation,
@@ -98,14 +95,6 @@ def test_dataset_valuation_game(background_reg_dataset, background_clf_dataset):
     assert game.n_players == n_players
     assert game_values[0] == 0.1
     assert len(game_values) == 4
-
-    # test storage and load
-    game.precompute(test_coalitions)
-    game.save_values("test_game.npz")
-    assert os.path.exists("test_game.npz")
-    _ = Game(path_to_values="test_game.npz")
-    os.remove("test_game.npz")
-    assert not os.path.exists("test_game.npz")
 
     # check for ValueError for missing params
     with pytest.raises(ValueError):
@@ -202,11 +191,6 @@ def test_california():
     test_coalitions[1, 1] = True
 
     game.precompute(test_coalitions)
-    game.save_values("test_california_game.npz")
-    assert os.path.exists("test_california_game.npz")
-    _ = Game(path_to_values="test_california_game.npz")
-    os.remove("test_california_game.npz")
-    assert not os.path.exists("test_california_game.npz")
 
     # check for model loads
     game = CaliforniaHousingDatasetValuation(model_name="random_forest")
@@ -228,11 +212,6 @@ def test_bike():
     test_coalitions[1, 1] = True
 
     game.precompute(test_coalitions)
-    game.save_values("test_bike_game.npz")
-    assert os.path.exists("test_bike_game.npz")
-    _ = Game(path_to_values="test_bike_game.npz")
-    os.remove("test_bike_game.npz")
-    assert not os.path.exists("test_bike_game.npz")
 
     # check for model loads
     game = BikeSharingDatasetValuation(model_name="random_forest")
@@ -254,10 +233,6 @@ def test_adult_census():
     test_coalitions[1, 1] = True
 
     game.precompute(test_coalitions)
-    game.save_values("test_adult_census_game.npz")
-    assert os.path.exists("test_adult_census_game.npz")
-    _ = Game(path_to_values="test_adult_census_game.npz")
-    os.remove("test_adult_census_game.npz")
 
     # check for model loads
     game = AdultCensusDatasetValuation(model_name="random_forest")

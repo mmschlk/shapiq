@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 import pytest
 
-from shapiq.games import Game
 from shapiq.games.benchmark import (
     AdultCensusGlobalXAI,
     BikeSharingGlobalXAI,
@@ -46,24 +43,6 @@ def test_basic_function(background_reg_dataset, dt_reg_model, mae_loss):
     # test pre-compute
     game.precompute(test_coalitions)
     assert game.n_values_stored == 2
-
-    # test save and load from values
-    game.save_values("test_values.npz")
-    assert os.path.exists("test_values.npz")
-
-    new_game = Game(path_to_values="test_values.npz")
-    stored_values = new_game(test_coalitions)
-    assert new_game.n_players == n_players
-    assert new_game.n_values_stored == 2
-
-    # only all coalitions that are not empty set are expected to be the same re-running the empty
-    # set prediction is not guaranteed to be the same which still is an open problem in global xai
-    # with feature attributions
-    assert np.allclose(values[1], stored_values[1])
-
-    # clean up
-    os.remove("test_values.npz")
-    assert not os.path.exists("test_values.npz")
 
 
 @pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])

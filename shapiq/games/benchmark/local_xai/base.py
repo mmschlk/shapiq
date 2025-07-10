@@ -46,13 +46,9 @@ class LocalExplanation(Game):
         >>> value = game(coalition)
         >>> # precompute the game (if needed)
         >>> game.precompute()
-        >>> # save and load the game
-        >>> game.save("game.pkl")
-        >>> new_game = LocalExplanation.load("game.pkl")
         >>> # save and load the game values
-        >>> game.save_values("values.npz")
-        >>> from shapiq.games import Game
-        >>> new_game_from_values = Game(path_to_values="values.npz")
+        >>> game.save("game.json")
+        >>> new_game = Game.load("game.json")
 
     """
 
@@ -61,7 +57,7 @@ class LocalExplanation(Game):
         data: np.ndarray,
         model: Callable[[np.ndarray], np.ndarray],
         *,
-        x: np.ndarray | int = None,
+        x: np.ndarray | int | None = None,
         imputer: MarginalImputer | ConditionalImputer | str = "marginal",
         normalize: bool = True,
         random_state: int | None = 42,

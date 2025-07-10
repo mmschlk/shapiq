@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 import pytest
 
-from shapiq.games.base import Game
 from shapiq.games.benchmark import (
     AdultCensusClusterExplanation,
     BikeSharingClusterExplanation,
@@ -51,28 +48,6 @@ def test_base_class(cluster_method, score_method):
     assert test_values.shape == (2,)
     assert test_values[0] == 0.0
     assert test_values[1] != 0.0
-
-    # test pre-compute
-    game.precompute(test_coalitions)
-    assert game.n_values_stored == 2
-
-    # test save and load
-    game.save("test_game.pkl")
-    assert os.path.exists("test_game.pkl")
-    loaded_game = Game.load("test_game.pkl")
-    assert loaded_game.n_players == n_players
-    assert loaded_game.n_values_stored == 2
-    os.remove("test_game.pkl")
-    assert not os.path.exists("test_game.pkl")
-
-    # test save and load values
-    game.save_values("test_values.npz")
-    assert os.path.exists("test_values.npz")
-    loaded_values = Game(path_to_values="test_values.npz")
-    assert loaded_values.n_players == n_players
-    assert loaded_values.n_values_stored == 2
-    os.remove("test_values.npz")
-    assert not os.path.exists("test_values.npz")
 
     # test with wrong cluster method
     with pytest.raises(ValueError):

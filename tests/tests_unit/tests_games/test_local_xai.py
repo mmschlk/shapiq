@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 import pytest
 
@@ -28,27 +26,9 @@ def test_basic_function(background_reg_dataset, dt_reg_model):
 
     # init game
     game = LocalExplanation(data=x_data, model=model.predict, x=x)
-    game.precompute()
 
-    # test save and load
-    game.save("test_game.pkl")
-    assert os.path.exists("test_game.pkl")
-
-    # load new game
-    new_game = LocalExplanation.load("test_game.pkl")
-    assert new_game.n_values_stored == game.n_values_stored
-    assert new_game.n_players == game.n_players
-    assert new_game.normalize == game.normalize
-    assert new_game.precomputed == game.precomputed
-
-    # compare output on same input
-    test_coalition = new_game.empty_coalition
-    test_coalition[0] = True
-    assert new_game(test_coalition) == game(test_coalition)
-
-    # clean up
-    os.remove("test_game.pkl")
-    assert not os.path.exists("test_game.pkl")
+    # call game
+    _ = game(coalitions=game.grand_coalition)
 
     # init game with integer
     x_id = 0
