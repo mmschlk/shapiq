@@ -774,24 +774,18 @@ class InteractionValues:
         )
 
         # try loading as npz file
-        try:
-            data = np.load(path, allow_pickle=True)
-            return InteractionValues(
-                values=data["values"],
-                index=str(data["index"]),
-                max_order=int(data["max_order"]),
-                n_players=int(data["n_players"]),
-                min_order=int(data["min_order"]),
-                interaction_lookup=data["interaction_lookup"].item(),
-                estimated=bool(data["estimated"]),
-                estimation_budget=data["estimation_budget"].item(),
-                baseline_value=float(data["baseline_value"]),
-            )
-        except AttributeError:  # not a npz file
-            pass
-        with Path(path).open("rb") as file:
-            # this is unsafe, but for the purpose of this library it is fine
-            return pickle.load(file)
+        data = np.load(path, allow_pickle=True)
+        return InteractionValues(
+            values=data["values"],
+            index=str(data["index"]),
+            max_order=int(data["max_order"]),
+            n_players=int(data["n_players"]),
+            min_order=int(data["min_order"]),
+            interaction_lookup=data["interaction_lookup"].item(),
+            estimated=bool(data["estimated"]),
+            estimation_budget=data["estimation_budget"].item(),
+            baseline_value=float(data["baseline_value"]),
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> InteractionValues:
