@@ -40,7 +40,7 @@ def _compute_values(
     for index in value_indices:
         iv = exact_computer(index=index, order=1)
         iv = iv.get_n_order(order=1)
-        name = f"{save_name}_index={index}_order=1.pkl"
+        name = f"{save_name}_index={index}_order=1.json"
         if save_path is not None:
             iv.save(path=save_path / name)
         ivs[name] = iv
@@ -49,7 +49,7 @@ def _compute_values(
 
     # compute Moebius as well
     iv = exact_computer(index="Moebius", order=game.n_players)
-    name = f"{save_name}_index=Moebius_order={game.n_players}.pkl"
+    name = f"{save_name}_index=Moebius_order={game.n_players}.json"
     if save_path is not None:
         iv.save(path=save_path / name)
     ivs[name] = iv
@@ -64,7 +64,7 @@ def _compute_values(
         for order in orders:
             iv = exact_computer(index=index, order=order)
             iv = iv.get_n_order(min_order=1, max_order=order)
-            name = f"{save_name}_index={index}_order={order}.pkl"
+            name = f"{save_name}_index={index}_order={order}.json"
             if save_path is not None:
                 iv.save(path=save_path / name)
             ivs[name] = iv

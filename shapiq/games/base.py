@@ -575,8 +575,7 @@ class Game:
 
         """
         # make sure path is a Path object
-        if not isinstance(path, Path):
-            path = Path(path)
+        path = Path(path)
 
         if not self.precomputed:
             warnings.warn(

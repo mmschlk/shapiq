@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     import numpy as np
     from sklearn.ensemble import RandomForestRegressor
 
-    from shapiq.utils.custom_types import IndexType
+    from shapiq.typing import IndexType
 
 TABULAR_NAME_START = "iv_california_housing_imputer_9070456741283270540"
 TREE_NAME_START = "iv_california_housing_tree"
@@ -66,7 +66,7 @@ def _load_ground_truth_interaction_values_california(
     save_dir = pathlib.Path(__file__).parent.parent
     save_dir = save_dir / "data" / "interaction_values" / "california_housing"
 
-    all_files = list(save_dir.glob(f"{name_part}_index={index}_order={order}.pkl"))
+    all_files = list(save_dir.glob(f"{name_part}_index={index}_order={order}.json"))
     if len(all_files) != 1:
         msg = (
             f"Expected exactly one file for index {index} and order {order}, "
@@ -123,7 +123,7 @@ class TestCaliforniaHousingExactComputer:
 
         _ = get_expected_index_or_skip(index, order)
 
-        name = f"{TABULAR_NAME_START}_index={index}_order={order}.pkl"
+        name = f"{TABULAR_NAME_START}_index={index}_order={order}.json"
         gt_iv_runner = california_interaction_values[name]
         gt_iv_old = _load_ground_truth_interaction_values_california(
             index=index, order=order, tabular=True
@@ -167,7 +167,7 @@ class TestCaliforniaHousingExplainers:
         assert iv.index == expected_index
 
         # load the ground truth interaction values
-        name = f"{TREE_NAME_START}_index={index}_order={order}.pkl"
+        name = f"{TREE_NAME_START}_index={index}_order={order}.json"
         gt_iv = california_interaction_values[name]
 
         # do the comparison of the interaction values
@@ -198,7 +198,7 @@ class TestCaliforniaHousingExplainers:
         assert iv.index == expected_index
 
         # load the ground truth interaction values
-        name = f"{TABULAR_NAME_START}_index={index}_order={order}.pkl"
+        name = f"{TABULAR_NAME_START}_index={index}_order={order}.json"
         gt_iv = california_interaction_values[name]
 
         # do the comparison of the interaction values
@@ -247,7 +247,7 @@ class TestCaliforniaHousingExplainers:
         assert iv.index == expected_index
 
         # load the ground truth interaction values
-        name = f"{TABULAR_NAME_START}_index={index}_order={order}.pkl"
+        name = f"{TABULAR_NAME_START}_index={index}_order={order}.json"
         gt_iv = california_interaction_values[name]
 
         # do the comparison of the interaction values

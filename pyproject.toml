@@ -201,7 +201,10 @@ exclude = [
 "scripts/*.py" = [
     "INP", # imports can be different here
     "I002",  # script code does not have to import required modules
-    "PTH"  # in script code we use a lot of os, which is okay
+    "PTH",  # in script code we use a lot of os, which is okay
+    "T201",  # scripts can have print statements
+    "BLE001",  # scripts can have bare excepts
+    "TRY"
 ]
 
 [tool.ruff.lint.pydocstyle]
