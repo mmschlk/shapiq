@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import datetime
 import json
-from datetime import UTC, datetime
 from importlib.metadata import version
 from typing import TYPE_CHECKING
 
@@ -102,7 +102,7 @@ def make_file_metadata(
         "created_from": repr(created_from) if created_from else None,
         "description": desc,
         "parameters": parameters or {},
-        "timestamp": datetime.now(tz=UTC).isoformat() + "Z",
+        "timestamp": datetime.datetime.now(tz=datetime.timezone.utc).isoformat() + "Z",
     }
 
 
