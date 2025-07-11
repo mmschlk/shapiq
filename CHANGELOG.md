@@ -1,6 +1,6 @@
 # Changelog
 
-## Development Version (unreleased)
+## v1.3.1 (2025-07-11)
 
 ### New Features
 - adds the `shapiq.plot.beesvarm_plot()` function to shapiq. The beeswarm plot was extended to also support interactions of features. Beeswarm plots are useful in visualizing dependencies between feature values. The beeswarm plot was adapted from the SHAP library by sub-dividing the y-axis for each interaction term. [#399](https://github.com/mmschlk/shapiq/issues/399)
