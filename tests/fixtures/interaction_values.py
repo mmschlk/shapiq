@@ -190,6 +190,11 @@ _iv_300_300_0_300 = get_mock_interaction_value(
     max_order=300,
 )
 
+_iv_18_all = get_mock_interaction_value(
+    n_players=18,
+    n_interactions="all",
+)
+
 _iv_10_all = get_mock_interaction_value(
     n_players=10,
     n_interactions="all",
@@ -205,6 +210,12 @@ _iv_7_all = get_mock_interaction_value(
 def iv_300_300_0_300():
     """Return an InteractionValue (n_players=300, min_order=0, max_order=300, 300 interactions)."""
     return copy.deepcopy(_iv_300_300_0_300)
+
+
+@pytest.fixture
+def iv_18_all():
+    """Return an InteractionValue (n_players=18, min_order=0, max_order=18, 18 interactions)."""
+    return copy.deepcopy(_iv_18_all)
 
 
 @pytest.fixture

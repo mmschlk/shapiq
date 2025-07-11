@@ -107,7 +107,7 @@ ignore = [
     "E501",  # Line too long
     "N803",  # Variable X in function should be lowercase
     "N806",  # Variable X in function should be lowercase
-    "S301",  # exclude pickle restriction, atm. games are unpickled this will need to be fixed # TODO: must be fixed in the future
+    "S301",  # we will remove pickle in version 1.4.0 (https://github.com/mmschlk/shapiq/issues/413)
     "COM812",  # this is redundant with the formatter which anyways does this (must be excluded) in the future # TODO: add remove pickle calls and remove this exclusion
     "FIX002",  # we use TODOs atm to track potential code improvements  # TODO: add this in the future
     "PLR0913",  # Too many arguments are passed to function
@@ -201,7 +201,10 @@ exclude = [
 "scripts/*.py" = [
     "INP", # imports can be different here
     "I002",  # script code does not have to import required modules
-    "PTH"  # in script code we use a lot of os, which is okay
+    "PTH",  # in script code we use a lot of os, which is okay
+    "T201",  # scripts can have print statements
+    "BLE001",  # scripts can have bare excepts
+    "TRY"
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -226,6 +229,7 @@ test = [
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
     "pytest-randomly",
+    "packaging>=24.2",
 ]
 lint = [
     "ruff>=0.11.2",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import json
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +20,7 @@ from .game_theory.indices import (
     is_empty_value_the_baseline,
     is_index_aggregated,
 )
+from .utils.errors import raise_deprecation_warning
 from .utils.sets import generate_interaction_lookup
 
 if TYPE_CHECKING:
@@ -27,6 +29,14 @@ if TYPE_CHECKING:
 
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
+
+    from shapiq.typing import JSONType
+
+
+SAVE_JSON_DEPRECATION_MSG = (
+    "Saving InteractionValues not as a JSON file is deprecated. "
+    "The parameters `as_pickle` and `as_npz` will be removed in the future. "
+)
 
 
 @dataclass
@@ -108,6 +118,85 @@ class InteractionValues:
             interaction: float(self.values[self.interaction_lookup[interaction]])
             for interaction in self.interaction_lookup
         }
+
+    def to_json_file(
+        self,
+        path: Path,
+        *,
+        desc: str | None = None,
+        created_from: object | None = None,
+        **kwargs: JSONType,
+    ) -> None:
+        """Saves the InteractionValues object to a JSON file.
+
+        Args:
+            path: The path to the JSON file.
+            desc: A description of the InteractionValues object. Defaults to ``None``.
+            created_from: An object from which the InteractionValues object was created. Defaults to
+                ``None``.
+            **kwargs: Additional parameters to store in the metadata of the JSON file.
+        """
+        from shapiq.utils.saving import interactions_to_dict, make_file_metadata, save_json
+
+        file_metadata = make_file_metadata(
+            object_to_store=self,
+            data_type="interaction_values",
+            desc=desc,
+            created_from=created_from,
+            parameters=kwargs,
+        )
+        json_data = {
+            **file_metadata,
+            "metadata": {
+                "n_players": self.n_players,
+                "index": self.index,
+                "max_order": self.max_order,
+                "min_order": self.min_order,
+                "estimated": self.estimated,
+                "estimation_budget": self.estimation_budget,
+                "baseline_value": self.baseline_value,
+            },
+            "data": interactions_to_dict(interactions=self.dict_values),
+        }
+        save_json(json_data, path)
+
+    @classmethod
+    def from_json_file(cls, path: Path) -> InteractionValues:
+        """Loads an InteractionValues object from a JSON file.
+
+        Args:
+            path: The path to the JSON file. Note that the path must end with `'.json'`.
+
+        Returns:
+            The InteractionValues object loaded from the JSON file.
+
+        Raises:
+            ValueError: If the path does not end with `'.json'`.
+        """
+        from shapiq.utils.saving import dict_to_lookup_and_values
+
+        if not path.name.endswith(".json"):
+            msg = f"Path {path} does not end with .json. Cannot load InteractionValues."
+            raise ValueError(msg)
+
+        with path.open("r", encoding="utf-8") as file:
+            json_data = json.load(file)
+
+        metadata = json_data["metadata"]
+        interaction_dict = json_data["data"]
+        interaction_lookup, values = dict_to_lookup_and_values(interaction_dict)
+
+        return cls(
+            values=values,
+            index=metadata["index"],
+            max_order=metadata["max_order"],
+            n_players=metadata["n_players"],
+            min_order=metadata["min_order"],
+            interaction_lookup=interaction_lookup,
+            estimated=metadata["estimated"],
+            estimation_budget=metadata["estimation_budget"],
+            baseline_value=metadata["baseline_value"],
+        )
 
     def sparsify(self, threshold: float = 1e-3) -> None:
         """Manually sets values close to zero actually to zero (removing values).
@@ -295,7 +384,9 @@ class InteractionValues:
             or self.baseline_value != other.baseline_value
         ):
             return False
-        return np.allclose(self.values, other.values)
+        if not np.allclose(self.values, other.values):
+            return False
+        return self.interaction_lookup == other.interaction_lookup
 
     def __ne__(self, other: object) -> bool:
         """Checks if two InteractionValues objects are not equal.
@@ -572,7 +663,7 @@ class InteractionValues:
         """Selects a subset of players from the InteractionValues object.
 
         Args:
-            players (list[int]): List of players to select from the InteractionValues object.
+            players: List of players to select from the InteractionValues object.
 
         Returns:
             InteractionValues: Filtered InteractionValues object containing only values related to
@@ -617,14 +708,19 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
-    def save(self, path: str, *, as_pickle: bool = True) -> None:
+    def save(self, path: Path, *, as_pickle: bool = False, as_npz: bool = False) -> None:
         """Save the InteractionValues object to a file.
+
+        By default, the InteractionValues object is saved as a JSON file.
 
         Args:
             path: The path to save the InteractionValues object to.
-            as_pickle: Whether to save the InteractionValues object as a pickle file (``True``) or
-                as a ``npz`` file (``False``). Defaults to ``False``.
+            as_pickle: Whether to save the InteractionValues object as a pickle file (``True``).
+            as_npz: Whether to save the InteractionValues object as a ``npz`` file (``True``).
 
+        Raises:
+            DeprecationWarning: If `as_pickle` or `as_npz` is set to ``True``, a deprecation
+                warning is raised
         """
         # check if the directory exists
         directory = Path(path).parent
@@ -632,9 +728,15 @@ class InteractionValues:
             with contextlib.suppress(FileNotFoundError):
                 Path(directory).mkdir(parents=True, exist_ok=True)
         if as_pickle:
+            raise_deprecation_warning(
+                message=SAVE_JSON_DEPRECATION_MSG, deprecated_in="1.3.1", removed_in="1.4.0"
+            )
             with Path(path).open("wb") as file:
                 pickle.dump(self, file)
-        else:
+        elif as_npz:
+            raise_deprecation_warning(
+                message=SAVE_JSON_DEPRECATION_MSG, deprecated_in="1.3.1", removed_in="1.4.0"
+            )
             # save object as npz file
             np.savez(
                 path,
@@ -648,22 +750,11 @@ class InteractionValues:
                 estimation_budget=self.estimation_budget,
                 baseline_value=self.baseline_value,
             )
-
-    @staticmethod
-    def load_interaction_values(path: str) -> InteractionValues:
-        """Load an InteractionValues object from a file.
-
-        Args:
-            path: The path to load the InteractionValues object from.
-
-        Returns:
-            The loaded InteractionValues object.
-
-        """
-        return InteractionValues.load(path)
+        else:
+            self.to_json_file(path)
 
     @classmethod
-    def load(cls, path: str) -> InteractionValues:
+    def load(cls, path: Path | str) -> InteractionValues:
         """Load an InteractionValues object from a file.
 
         Args:
@@ -673,6 +764,15 @@ class InteractionValues:
             The loaded InteractionValues object.
 
         """
+        path = Path(path)
+        # check if path ends with .json
+        if path.name.endswith(".json"):
+            return cls.from_json_file(path)
+
+        raise_deprecation_warning(
+            SAVE_JSON_DEPRECATION_MSG, deprecated_in="1.3.1", removed_in="1.4.0"
+        )
+
         # try loading as npz file
         try:
             data = np.load(path, allow_pickle=True)
@@ -689,8 +789,8 @@ class InteractionValues:
             )
         except AttributeError:  # not a npz file
             pass
-        with Path(path).open("rb") as file:
-            # this is unsafe, but for the purpose of this library it is fine
+        with path.open("rb") as file:
+            # TODO(mmshlk): https://github.com/mmschlk/shapiq/issues/413
             return pickle.load(file)
 
     @classmethod

@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 import pytest
 from sklearn.tree import DecisionTreeRegressor
 
-from shapiq.games.base import Game
 from shapiq.games.benchmark import (
     AdultCensusFeatureSelection,
     BikeSharingFeatureSelection,
@@ -67,30 +64,6 @@ def test_basic_function(background_reg_dataset):
             y_test=y_data,
             fit_function=model.fit,
         )
-
-    # test save and load
-    game.save("test_game.pkl")
-    assert os.path.exists("test_game.pkl")
-
-    # load new game
-    new_game = FeatureSelection.load("test_game.pkl")
-    assert new_game.n_values_stored == game.n_values_stored
-    assert new_game.n_players == game.n_players
-    assert new_game.normalize == game.normalize
-    assert new_game.precomputed == game.precomputed
-
-    # clean up
-    os.remove("test_game.pkl")
-    assert not os.path.exists("test_game.pkl")
-
-    # test with path_to_values
-    game.save_values("test_values.npz")
-    new_game = Game(path_to_values="test_values.npz")
-    assert new_game.n_values_stored == game.n_values_stored
-
-    # clean up
-    os.remove("test_values.npz")
-    assert not os.path.exists("test_values.npz")
 
 
 @pytest.mark.parametrize("model_name", ["decision_tree", "random_forest", "gradient_boosting"])

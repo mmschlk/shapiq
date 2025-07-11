@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection
-from typing import Literal, TypeVar
+from collections.abc import Collection, Mapping, Sequence
+from typing import Literal, TypedDict, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -54,3 +54,19 @@ IndexType = Literal[
     "EC",
 ]
 """A type representing the indices used throughout the package."""
+
+
+JSONPrimitive = str | int | float | bool | None
+JSONType = JSONPrimitive | Sequence["JSONType"] | Mapping[str, "JSONType"]
+
+
+class MetadataBlock(TypedDict):
+    """Metadata block for saving objects as json."""
+
+    object_name: str
+    data_type: Literal["interaction_values", "game"] | None
+    version: str
+    timestamp: str
+    created_from: str | None
+    description: str | None
+    parameters: JSONType

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+import typing
 
 import numpy as np
 import pytest
@@ -10,6 +10,9 @@ import pytest
 from shapiq.games.base import Game
 from shapiq.games.benchmark import DummyGame  # used to test the base class
 from shapiq.utils.sets import powerset, transform_coalitions_to_array
+
+if typing.TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_call():
@@ -173,127 +176,6 @@ def test_lookup_vs_run():
     assert np.allclose(dummy_game(test_coalition), dummy_game_precomputed(test_coalition))
 
 
-def test_load_and_save():
-    """This test tests the save and load functions of the base game class object."""
-    dummy_game = DummyGame(n=4, interaction=(0, 1))
-    dummy_game.precompute()
-    path = "dummy_game.pkl"
-    dummy_game.save(path)
-
-    assert os.path.exists(path)
-
-    dummy_game_loaded = DummyGame.load(path)
-
-    assert dummy_game.value_storage.shape == dummy_game_loaded.value_storage.shape
-    assert len(dummy_game.coalition_lookup) == len(dummy_game_loaded.coalition_lookup)
-    assert dummy_game.n_values_stored == dummy_game_loaded.n_values_stored
-    assert dummy_game.n_players == dummy_game_loaded.n_players
-    assert dummy_game.interaction == dummy_game_loaded.interaction
-    assert np.all(dummy_game.value_storage == dummy_game_loaded.value_storage)
-    # check if dict is the same
-    assert dummy_game.coalition_lookup == dummy_game_loaded.coalition_lookup
-    assert dummy_game.normalize == dummy_game_loaded.normalize
-    assert dummy_game.precomputed == dummy_game_loaded.precomputed
-
-    # clean up
-    os.remove(path)
-    assert not os.path.exists(path)
-
-    # test store values and load
-
-    path = "dummy_game.npz"
-    dummy_game.save_values(path)
-
-    assert os.path.exists(path)
-
-    dummy_game_loaded = DummyGame(n=4, interaction=(0, 1))
-    dummy_game_loaded.load_values(path)
-
-    assert dummy_game.value_storage.shape == dummy_game_loaded.value_storage.shape
-    assert len(dummy_game.coalition_lookup) == len(dummy_game_loaded.coalition_lookup)
-    assert dummy_game.n_players == dummy_game_loaded.n_players
-    assert dummy_game.interaction == dummy_game_loaded.interaction
-    assert np.allclose(dummy_game.value_storage, dummy_game_loaded.value_storage)
-    assert dummy_game.precomputed == dummy_game_loaded.precomputed
-
-    # clean up
-    os.remove(path)
-    assert not os.path.exists(path)
-
-    # path without .npz
-    path = "dummy_game"
-    dummy_game.save_values(path)
-
-    assert os.path.exists(path + ".npz")
-
-    # load without .npz as path ending
-    dummy_game_loaded = DummyGame(n=4, interaction=(0, 1))
-    dummy_game_loaded.load_values(path)
-    assert dummy_game.n_values_stored == dummy_game_loaded.n_values_stored
-
-    # load with wrong number of players expect ValueError
-    dummy_game_loaded = DummyGame(n=5, interaction=(0, 1))
-    with pytest.raises(ValueError):
-        dummy_game_loaded.load_values(path + ".npz")
-
-    # Value error if n_players is None and path_to_values is None:
-    with pytest.raises(ValueError):
-        _ = Game(n=None, interaction=(0, 1))
-
-    # clean up
-    os.remove(path + ".npz")
-    assert not os.path.exists(path + ".npz")
-
-    # test without precomputed values and see if it raises a warning
-    path = "dummy_game.npz"
-    dummy_game = DummyGame(n=4, interaction=(0, 1))
-    with pytest.warns(UserWarning):
-        dummy_game.save_values(path)
-
-    assert os.path.exists(path)
-
-    # clean up
-    os.remove(path)
-    assert not os.path.exists(path)
-
-
-def test_save_and_load_with_normalization():
-    """Tests weather games can be saved and loaded with normalization values correctly."""
-    normalization_value = 0.25  # not zero
-    dummy_game_empty_output = 0.0
-
-    game = DummyGame(n=4, interaction=(0, 1))
-    assert not game.normalize  # first not normalized
-    game.normalization_value = normalization_value
-    assert game.normalization_value == normalization_value
-    assert game.normalize  # now normalized
-    assert not game.is_normalized  # the game is being normalized but the empty coalition is not 0
-
-    path = "dummy_game.npz"
-    game.save_values(path)
-
-    try:  # do the testings in a try except block to clean up the file
-        game_loaded = Game(path_to_values=path)
-        assert game_loaded.normalize  # should be normalized
-        assert game_loaded.normalization_value == normalization_value
-        empty_value = game_loaded(game_loaded.empty_coalition)
-        # the output should be the same as the original game with normalization (-0.25)
-        assert empty_value == dummy_game_empty_output - normalization_value
-
-        # load with normalization set to False
-        game_loaded = Game(path_to_values=path, normalize=False)
-        assert not game_loaded.normalize  # should not be normalized
-        assert game_loaded.normalization_value == 0.0
-        empty_value = game_loaded(game_loaded.empty_coalition)
-        # the output should be the same as the original game without normalization (0.0)
-        assert empty_value == dummy_game_empty_output
-    except Exception:
-        raise
-    finally:
-        os.remove(path)
-        assert not os.path.exists(path)
-
-
 def test_progress_bar():
     """Tests the progress bar of the game class."""
     dummy_game = DummyGame(n=5, interaction=(0, 1))
@@ -350,3 +232,83 @@ def test_compute():
     game_values = result[0]
     assert game(coalitions[0]) + normalization_value == pytest.approx(game_values[0])
     assert game(coalitions[1]) + normalization_value == pytest.approx(game_values[1])
+
+
+def check_game_equality(game1: Game, game2: Game):
+    """Check if two games are equal."""
+    assert game1.n_players == game2.n_players
+    assert game1.normalize == game2.normalize
+    assert game1.normalization_value == game2.normalization_value
+    assert game1.n_values_stored == game2.n_values_stored
+    assert np.array_equal(game1.value_storage, game2.value_storage)
+    assert game1.coalition_lookup == game2.coalition_lookup
+
+
+class TestSavingGames:
+    """Tests for saving and loading games."""
+
+    @pytest.mark.parametrize("suffix", [".json", ".npz"])
+    def test_init_from_saved_game(self, suffix, cooking_game_pre_computed: Game, tmp_path: Path):
+        """Test initializing a game from a saved file."""
+        path = tmp_path / "dummy_game"
+        path = path.with_suffix(suffix)
+        cooking_game_pre_computed.save_values(path)
+        loaded_game = Game(path_to_values=path)
+        check_game_equality(cooking_game_pre_computed, loaded_game)
+
+    @pytest.mark.parametrize("suffix", [".json", ".npz"])
+    def test_save_adds_suffix(self, cooking_game_pre_computed: Game, tmp_path: Path, suffix: str):
+        """Test that saving a game adds the correct suffix."""
+        path = tmp_path / "dummy_game"
+        cooking_game_pre_computed.save_values(path, as_npz=(suffix == ".npz"))
+        path_with_suffix = path.with_suffix(suffix)
+        assert path_with_suffix.exists()
+
+    def test_save_game_npz(self, cooking_game_pre_computed: Game, tmp_path: Path):
+        """Test initializing a game from a saved file."""
+        path = tmp_path / "dummy_game.npz"
+        cooking_game_pre_computed.save_values(path, as_npz=True)
+        loaded_game = Game(path_to_values=path)
+        check_game_equality(cooking_game_pre_computed, loaded_game)
+
+    def test_save_and_load_json(self, cooking_game_pre_computed: Game, tmp_path: Path):
+        """Test saving and loading a game as JSON."""
+        path = tmp_path / "dummy_game.json"
+        assert not path.exists()
+        cooking_game_pre_computed.save(path)
+        assert path.exists()
+        loaded_game = Game.load(path)
+        check_game_equality(cooking_game_pre_computed, loaded_game)
+
+    @pytest.mark.parametrize("suffix", [".json", ".npz"])
+    def test_save_and_load_with_normalization(self, suffix, tmp_path: Path):
+        """Tests weather games can be saved and loaded with normalization values correctly."""
+        normalization_value = 0.25  # not zero
+        dummy_game_empty_output = 0.0
+
+        game = DummyGame(n=4, interaction=(0, 1))
+        assert not game.normalize  # first not normalized
+        game.normalization_value = normalization_value
+        assert game.normalization_value == normalization_value
+        assert game.normalize  # now normalized
+        assert (
+            not game.is_normalized
+        )  # the game is being normalized but the empty coalition is not 0
+
+        path = tmp_path / f"dummy_game.{suffix}"
+        game.save_values(path)
+
+        game_loaded = Game(path_to_values=path)
+        assert game_loaded.normalize  # should be normalized
+        assert game_loaded.normalization_value == normalization_value
+        empty_value = game_loaded(game_loaded.empty_coalition)
+        # the output should be the same as the original game with normalization (-0.25)
+        assert empty_value == dummy_game_empty_output - normalization_value
+
+        # load with normalization set to False
+        game_loaded = Game(path_to_values=path, normalize=False)
+        assert not game_loaded.normalize  # should not be normalized
+        assert game_loaded.normalization_value == 0.0
+        empty_value = game_loaded(game_loaded.empty_coalition)
+        # the output should be the same as the original game without normalization (0.0)
+        assert empty_value == dummy_game_empty_output
