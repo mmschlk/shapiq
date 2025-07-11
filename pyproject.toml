@@ -107,6 +107,7 @@ ignore = [
     "E501",  # Line too long
     "N803",  # Variable X in function should be lowercase
     "N806",  # Variable X in function should be lowercase
+    "S301",  # we will remove pickle in version 1.4.0 (https://github.com/mmschlk/shapiq/issues/413)
     "COM812",  # this is redundant with the formatter which anyways does this (must be excluded) in the future # TODO: add remove pickle calls and remove this exclusion
     "FIX002",  # we use TODOs atm to track potential code improvements  # TODO: add this in the future
     "PLR0913",  # Too many arguments are passed to function
