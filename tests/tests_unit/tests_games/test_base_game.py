@@ -247,24 +247,28 @@ def check_game_equality(game1: Game, game2: Game):
 class TestSavingGames:
     """Tests for saving and loading games."""
 
-    def test_init_from_saved_game_npz(self, cooking_game_pre_computed: Game, tmp_path: Path):
+    @pytest.mark.parametrize("suffix", [".json", ".npz"])
+    def test_init_from_saved_game(self, suffix, cooking_game_pre_computed: Game, tmp_path: Path):
+        """Test initializing a game from a saved file."""
+        path = tmp_path / "dummy_game"
+        path = path.with_suffix(suffix)
+        cooking_game_pre_computed.save_values(path)
+        loaded_game = Game(path_to_values=path)
+        check_game_equality(cooking_game_pre_computed, loaded_game)
+
+    @pytest.mark.parametrize("suffix", [".json", ".npz"])
+    def test_save_adds_suffix(self, cooking_game_pre_computed: Game, tmp_path: Path, suffix: str):
+        """Test that saving a game adds the correct suffix."""
+        path = tmp_path / "dummy_game"
+        cooking_game_pre_computed.save_values(path, as_npz=(suffix == ".npz"))
+        path_with_suffix = path.with_suffix(suffix)
+        assert path_with_suffix.exists()
+
+    def test_save_game_npz(self, cooking_game_pre_computed: Game, tmp_path: Path):
         """Test initializing a game from a saved file."""
         path = tmp_path / "dummy_game.npz"
         cooking_game_pre_computed.save_values(path, as_npz=True)
-
-        loaded_game = Game(
-            path_to_values=path,
-        )
-        check_game_equality(cooking_game_pre_computed, loaded_game)
-
-    def test_init_from_saved_game_json(self, cooking_game_pre_computed: Game, tmp_path: Path):
-        """Test initializing a game from a saved file."""
-        path = tmp_path / "dummy_game.json"
-        cooking_game_pre_computed.save_values(path)
-
-        loaded_game = Game(
-            path_to_values=path,
-        )
+        loaded_game = Game(path_to_values=path)
         check_game_equality(cooking_game_pre_computed, loaded_game)
 
     def test_save_and_load_json(self, cooking_game_pre_computed: Game, tmp_path: Path):
@@ -275,22 +279,6 @@ class TestSavingGames:
         assert path.exists()
         loaded_game = Game.load(path)
         check_game_equality(cooking_game_pre_computed, loaded_game)
-
-    def test_add_suffix_to_path_json(self, cooking_game_pre_computed: Game, tmp_path: Path):
-        """Tests that saving a game with a missing suffix adds it correctly."""
-        path = tmp_path / "cooking_game_pre_computed"
-        assert not path.exists()
-        cooking_game_pre_computed.save(path)
-        path_with_suffix = path.with_suffix(".json")
-        assert path_with_suffix.exists()
-
-    def test_add_suffix_to_path_npz(self, cooking_game_pre_computed: Game, tmp_path: Path):
-        """Tests that saving a game with a missing suffix adds it correctly for npz files."""
-        path = tmp_path / "cooking_game_pre_computed"
-        assert not path.exists()
-        cooking_game_pre_computed.save_values(path, as_npz=True)
-        path_with_suffix = path.with_suffix(".npz")
-        assert path_with_suffix.exists()
 
     @pytest.mark.parametrize("suffix", [".json", ".npz"])
     def test_save_and_load_with_normalization(self, suffix, tmp_path: Path):
