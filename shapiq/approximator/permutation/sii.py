@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from shapiq.approximator.base import Approximator
+from shapiq.approximator._base import Approximator
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-ValidPermutationSIIIndices = Literal["SII", "k-SII"]
 
 
 class PermutationSamplingSII(Approximator):
@@ -27,15 +25,11 @@ class PermutationSamplingSII(Approximator):
 
     """
 
-    #: override the valid indices for this approximator
-    valid_indices: tuple[ValidPermutationSIIIndices] = tuple(get_args(ValidPermutationSIIIndices))
-    """The valid indices for this permutation sampling approximator."""
-
     def __init__(
         self,
         n: int,
         max_order: int = 2,
-        index: ValidPermutationSIIIndices = "k-SII",
+        index: str = "SII",
         *,
         top_order: bool = False,
         random_state: int | None = None,

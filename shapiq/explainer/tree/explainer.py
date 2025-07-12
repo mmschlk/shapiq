@@ -8,12 +8,13 @@ for tree ensembles.
 from __future__ import annotations
 
 import copy
+import warnings
 from typing import TYPE_CHECKING, Any
 
-from shapiq.explainer.base import Explainer
+from shapiq.explainer._base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
-from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
+from .treeshapiq import TreeSHAPIQ
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ class TreeExplainer(Explainer):
     classification models.
 
     References:
-        .. [Yu22] Peng Yu, Chao Xu, Albert Bifet, Jesse Read. (2022). Linear Tree Shap. In: Proceedings of 36th Conference on Neural Information Processing Systems. https://openreview.net/forum?id=OzbkiUo24g
+        .. [Yu22] Peng Yu, Chao Xu, Albert Bifet, Jesse Read Linear Tree Shap (2022). In: Proceedings of 36th Conference on Neural Information Processing Systems. https://openreview.net/forum?id=OzbkiUo24g
         .. [Mus24] Maximilian Muschalik, Fabian Fumagalli, Barbara Hammer, & Eyke Hüllermeier (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. In: Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
 
     """
@@ -53,7 +54,7 @@ class TreeExplainer(Explainer):
         *,
         max_order: int = 2,
         min_order: int = 0,
-        index: TreeSHAPIQIndices = "k-SII",
+        index: str = "k-SII",
         class_index: int | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
@@ -79,15 +80,24 @@ class TreeExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
 
         """
-        super().__init__(model, index=index, max_order=max_order)
+        super().__init__(model)
+
+        if index == "SV" and max_order > 1:
+            warnings.warn("For index='SV' the max_order is set to 1.", stacklevel=2)
+            max_order = 1
+        elif max_order == 1 and index != "SV":
+            warnings.warn("For max_order=1 the index is set to 'SV'.", stacklevel=2)
+            index = "SV"
+        self.index = index
 
         # validate and parse model
         validated_model = validate_tree_model(model, class_label=class_index)
-        self._trees: list[TreeModel] | TreeModel = copy.deepcopy(validated_model)
+        self._trees: list[TreeModel] = copy.deepcopy(validated_model)
         if not isinstance(self._trees, list):
             self._trees = [self._trees]
         self._n_trees = len(self._trees)
 
+        self._max_order: int = max_order
         self._min_order: int = min_order
         self._class_label: int | None = class_index
 
@@ -131,11 +141,11 @@ class TreeExplainer(Explainer):
             final_explanation.min_order = 0
             final_explanation = finalize_computed_interactions(
                 final_explanation,
-                target_index=self._index,
+                target_index=self.index,
             )
         return finalize_computed_interactions(
             final_explanation,
-            target_index=self._index,
+            target_index=self.index,
         )
 
     def _compute_baseline_value(self) -> float:

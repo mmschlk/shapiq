@@ -1,23 +1,15 @@
 ## Changelog
 
-### v1.3.0 (2025-06-17)
-
-#### Highlights
-- `shapiq.SPEX` (Sparse Exact) approximator for efficient computation of sparse interaction values for really large models and games. Paper: [SPEX: Scaling Feature Interaction Explanations for LLMs](https://arxiv.org/abs/2502.13870)
-- `shapiq.AgnosticExplainer` a generic explainer that works for any value function or `shapiq.Game` object, allowing for more flexibility in explainers.
-- prettier graph-based plots via `shapiq.si_graph_plot()` and `shapiq.network_plot()`, which now use the same backend for more flexibility and easier maintenance.
+### Development
 
 #### New Features
 - adds the SPEX (Sparse Exact) module in `approximator.sparse` for efficient computation of sparse interaction values [#379](https://github.com/mmschlk/shapiq/pull/379)
-- adds `shapiq.AgnosticExplainer` which is a generic explainer that can be used for any value function or `shapiq.Game` object. This allows for more flexibility in the explainers. [#100](https://github.com/mmschlk/shapiq/issues/100), [#395](https://github.com/mmschlk/shapiq/pull/395)
 - changes `budget` to be a mandatory parameter given to the `TabularExplainer.explain()` method [#355](https://github.com/mmschlk/shapiq/pull/356)
 - changes logic of `InteractionValues.get_n_order()` function to be callable with **either** the `order: int` parameter and optional assignment of `min_order: int` and `max_order: int` parameters **or** with the min/max order parameters [#372](https://github.com/mmschlk/shapiq/pull/372)
 - renamed `min_percentage` parameter in the force plot to `contribution_threshold` to better reflect its purpose [#391](https://github.com/mmschlk/shapiq/pull/391)
 - adds ``verbose`` parameter to the ``Explainer``'s ``explain_X()`` method to control weather a progress bar is shown or not which is defaulted to ``False``. [#391](https://github.com/mmschlk/shapiq/pull/391)
 - made `InteractionValues.get_n_order()` and `InteractionValues.get_n_order_values()` function more efficient by iterating over the stored interactions and not over the powerset of all potential interactions, which made the function not usable for higher player counts (models with many features, and results obtained from `TreeExplainer`). Note, this change does not really help `get_n_order_values()` as it still needs to create a numpy array of shape `n_players` times `order` [#372](https://github.com/mmschlk/shapiq/pull/372)
 - streamlined the ``network_plot()`` plot function to use the ``si_graph_plot()`` as its backend function. This allows for more flexibility in the plot function and makes it easier to use the same code for different purposes. In addition, the ``si_graph_plot`` was modified to make plotting more easy and allow for more flexibility with new parameters. [#349](https://github.com/mmschlk/shapiq/pull/349)
-- adds `Game.compute()` method to the `shapiq.Game` class to compute game values without changing the state of the game object. The compute method also introduces a `shapiq.utils.sets.generate_interaction_lookup_from_coalitions()` utility method which creates an interaction lookup dict from an array of coalitions. [#397](https://github.com/mmschlk/shapiq/pull/397)
-- streamlines the creation of network plots and graph plots which now uses the same backend. The network plot via `shapiq.network_plot()` or `InteractionValues.plot_network()` is now a special case of the `shapiq.si_graph_plot()` and `InteractionValues.plot_si_graph()`. This allows to create more beautiful plots and easier maintenance in the future. [#349](https://github.com/mmschlk/shapiq/pull/349)
 
 #### Testing, Code-Quality and Documentation
 - activates ``"ALL"`` rules in ``ruff-format`` configuration to enforce stricter code quality checks and addressed around 500 (not automatically solvable) issues in the code base. [#391](https://github.com/mmschlk/shapiq/pull/391)
@@ -26,13 +18,8 @@
 - removed multiple instances where ``shapiq`` tests if some approximators/explainers can be instantiated with certain indices or not in favor of using Literals in the ``__init__`` method of the approximator classes. This allows for better type hinting and IDE support, as well as cleaner code. [#391](https://github.com/mmschlk/shapiq/pull/391)
 - Added documentation for all public modules, classes, and functions in the code base to improve the documentation quality and make it easier to understand how to use the package. [#391](https://github.com/mmschlk/shapiq/pull/391)
 - suppress a ``RuntimeWarning`` in ``Regression`` approximators ``solve_regression()``method when the solver is not able to find good interim solutions for the regression problem.
-- refactors the tests into ``tests_unit/`` and ``tests_integration/`` to better separate unit tests from integration tests. [#395](https://github.com/mmschlk/shapiq/pull/395)
-- adds new integration tests in ``tests/tests_integration/test_explainer_california_housing`` which compares the different explainers against ground-truth interaction values computed by ``shapiq.ExactComputer`` and interaction values stored on [disk](https://github.com/mmschlk/shapiq/tree/main/tests/data/interaction_values/california_housing) as a form of regression test. This test should help finding bugs in the future when the approximators, explainers, or exact computation are changed. [#395](https://github.com/mmschlk/shapiq/pull/395)
-
 #### Bug Fixes
 - fixed a bug in the `shapiq.waterfall_plot` function that caused the plot to not display correctly resulting in cutoff y_ticks. Additionally, the file was renamed from `watefall.py` to `waterfall.py` to match the function name [#377](https://github.com/mmschlk/shapiq/pull/377)
-- fixes a bug with `TabPFNExplainer`, where the model was not able to be used for predictions after it was explained. This was due to the model being fitted on a subset of features, which caused inconsistencies in the model's predictions after explanation. The fix includes that after each call to the `TabPFNImputer.value_function`, the tabpfn model is fitted on the whole dataset (without omitting features). This means that the original model can be used for predictions after it has been explained. [#396](https://github.com/mmschlk/shapiq/issues/396).
-- fixed a bug in computing `BII` or `BV` indices with `shapiq.approximator.MonteCarlo` approximators (affecting `SHAP-IQ`, `SVARM` and `SVARM-IQ`). All orders of BII should now be computed correctly. [#395](https://github.com/mmschlk/shapiq/pull/395)
 
 ### v1.2.3 (2025-03-24)
 - substantially improves the runtime of all `Regression` approximators by a) a faster pre-computation of the regression matrices and b) a faster computation of the weighted least squares regression [#340](https://github.com/mmschlk/shapiq/issues/340)

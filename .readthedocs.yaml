@@ -21,7 +21,7 @@ build:
     install:
       - uv sync --all-extras
     post_install:
-      - uv run python scripts/copy_notebooks.py
+      - uv run python docs/copy_notebooks.py
     build:
       html:
       - uv run sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html

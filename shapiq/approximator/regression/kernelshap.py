@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
-from .base import Regression
+from ._base import Regression
 
 if TYPE_CHECKING:
     from typing import Any
@@ -48,8 +48,6 @@ class KernelSHAP(Regression):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
-
     def __init__(
         self,
         n: int,
@@ -78,7 +76,7 @@ class KernelSHAP(Regression):
         super().__init__(
             n,
             max_order=1,
-            index="SV",
+            index="SII",
             random_state=random_state,
             pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from .base import Sparse, ValidSparseIndices
+from ._base import Sparse
 
 
 class SPEX(Sparse):
@@ -22,7 +22,7 @@ class SPEX(Sparse):
         self,
         *,
         n: int,
-        index: ValidSparseIndices = "FBII",
+        index: Literal["SII", "k-SII", "FBII", "FSII", "STII", "SV"] = "FBII",
         max_order: int | None = None,
         top_order: bool = False,
         random_state: int | None = None,

@@ -7,9 +7,9 @@ KernelSHAP is a more specific variant of the ShapIQ interaction method.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
-from .base import MonteCarlo, ValidMonteCarloIndices
+from ._base import MonteCarlo
 
 
 class SHAPIQ(MonteCarlo):
@@ -45,7 +45,7 @@ class SHAPIQ(MonteCarlo):
         self,
         n: int,
         max_order: int = 2,
-        index: ValidMonteCarloIndices = "k-SII",
+        index: str = "k-SII",
         *,
         top_order: bool = False,
         sampling_weights: float | None = None,
@@ -60,8 +60,7 @@ class SHAPIQ(MonteCarlo):
 
             max_order: The interaction order of the approximation. Defaults to ``2``.
 
-            index: The interaction index to compute. Must be one of
-                ``['k-SII', 'SII', 'STII', 'FSII', 'FBII', 'SV', 'CHII', 'BII', 'BV']``.
+            index: The interaction index to compute. Must be one of ``['k-SII', 'SII', 'FSII']``.
                 Defaults to ``'k-SII'``.
 
             top_order: If ``True``, only the highest order interaction values are computed. Defaults
@@ -126,9 +125,6 @@ class UnbiasedKernelSHAP(SHAPIQ):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
-    """Valid indices for the UnbiasedKernelSHAP approximator."""
-
     def __init__(
         self,
         n: int,
@@ -152,7 +148,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
 
             random_state: The random state of the estimator. Defaults to ``None``.
 
-            **kwargs: Additional keyword arguments (not used, only for compatibility).
+            **kwargs: Additional keyword arguments (not used).
         """
         super().__init__(
             n,

@@ -70,12 +70,6 @@ class TreeSHAPIQXAI(Game):
         # get attributes for manual tree traversal and evaluation
         self._trees: list[TreeModel] = self._tree_explainer._trees  # noqa: SLF001
         self.x_explain = x
-        # transform x_explain into a 1-dimensional array if it is a 2-dimensional array
-        if x.ndim == 2 and x.shape[0] == 1:
-            self.x_explain = x.flatten()
-        elif x.ndim > 2:
-            msg = "x_explain must be a 1-dimensional or 2-dimensional array."
-            raise ValueError(msg)
 
         super().__init__(
             n_players=n_players,

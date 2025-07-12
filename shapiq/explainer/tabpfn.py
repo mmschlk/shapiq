@@ -15,24 +15,24 @@ from .utils import get_predict_function_and_model_type
 if TYPE_CHECKING:
     from typing import Literal
 
-    from shapiq.approximator.base import Approximator
+    from shapiq.approximator._base import Approximator
     from shapiq.utils.custom_types import Model
-
-    from .custom_types import ExplainerIndices
 
 
 class TabPFNExplainer(TabularExplainer):
     """The TabPFN explainer as the main interface for the shapiq package.
 
     The ``TabPFNExplainer`` class is the dedicated interface for the ``shapiq`` package and
-    TabPFN :footcite:t:`Hollmann.2025` models such as the ``TabPFNClassifier`` and
-    ``TabPFNRegressor``. The explainer does not rely on classical imputation methods and is
-    optimized for TabPFN's in-context learning approach. The explanation paradigm for TabPFN is
-    described in :footcite:t:`Rundel.2024`. In essence the explainer is a wrapper around the
-    :class:~`shapiq.explainer.tabular.TabularExplainer` class and uses the same API.
+    TabPFN [Hof25]_ models such as the ``TabPFNClassifier`` and ``TabPFNRegressor``. The explainer
+    does not rely on classical imputation methods and is optimized for TabPFN's in-context learning
+    approach. The explanation paradigm for TabPFN is described in Rundel et al. (2024) [Run24]_. In
+    essence the explainer is a wrapper around the ``TabularExplainer`` class and uses the same API.
+
 
     References:
-        .. footbibliography::
+        .. [Run24] Rundel, D., Kobialka, J., von Crailsheim, C., Feurer, M., Nagler, T., Rügamer, D. (2024). Interpretable Machine Learning for TabPFN. In: Longo, L., Lapuschkin, S., Seifert, C. (eds) Explainable Artificial Intelligence. xAI 2024. Communications in Computer and Information Science, vol 2154. Springer, Cham. https://doi.org/10.1007/978-3-031-63797-1_23
+        .. [Hol25] Hollmann, N., Müller, S., Purucker, L. et al. Accurate predictions on small data with a tabular foundation model. Nature 637, 319-326 (2025). https://doi.org/10.1038/s41586-024-08328-6
+
     """
 
     def __init__(
@@ -41,7 +41,7 @@ class TabPFNExplainer(TabularExplainer):
         data: np.ndarray,
         labels: np.ndarray,
         *,
-        index: ExplainerIndices = "k-SII",
+        index: Literal["SII", "k-SII", "STII", "FSII", "FBII", "SV"] = "k-SII",
         max_order: int = 2,
         x_test: np.ndarray | None = None,
         empty_prediction: float | None = None,

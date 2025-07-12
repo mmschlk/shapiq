@@ -11,8 +11,8 @@
 [![PePy](https://static.pepy.tech/badge/shapiq?style=flat-square)](https://pepy.tech/project/shapiq)
 
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://github.com/mmschlk/shapiq/issues)
-[![Last Commit](https://img.shields.io/github/last-commit/mmschlk/shapiq)](https://github.com/mmschlk/shapiq/commits/main)
+![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)
+![Last Commit](https://img.shields.io/github/last-commit/mmschlk/shapiq)
 
 > An interaction may speak more than a thousand main effects.
 
@@ -192,7 +192,7 @@ There is a lot of great resources available to get you started with Shapley valu
 If you use ``shapiq`` and enjoy it, please consider citing our [NeurIPS paper](https://arxiv.org/abs/2410.01649) or consider starring this repository.
 
 ```bibtex
-@inproceedings{Muschalik.2024b,
+@inproceedings{muschalik2024shapiq,
   title     = {shapiq: Shapley Interactions for Machine Learning},
   author    = {Maximilian Muschalik and Hubert Baniecki and Fabian Fumagalli and
                Patrick Kolpaczki and Barbara Hammer and Eyke H\"{u}llermeier},

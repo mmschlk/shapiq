@@ -15,7 +15,7 @@ from tqdm.auto import tqdm
 from shapiq.benchmark.metrics import get_all_metrics
 
 if TYPE_CHECKING:
-    from shapiq.approximator.base import Approximator
+    from shapiq.approximator._base import Approximator
     from shapiq.games.base import Game
     from shapiq.interaction_values import InteractionValues
 

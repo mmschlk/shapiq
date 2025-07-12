@@ -77,7 +77,6 @@ class TabPFNImputer(Imputer):
                 accept the model and the data point as input and return the model's predictions. If
                 the model is instantiated via a ``shapiq.Explainer`` object, this function is
                 automatically set to the model's prediction function. Defaults to ``None``.
-
         """
         self.x_train = x_train
         self.y_train = y_train
@@ -137,6 +136,4 @@ class TabPFNImputer(Imputer):
             self.model.fit(x_train_coal, self.y_train)
             pred = float(self.predict(x_explain_coal))
             output[i] = pred
-        # refit the model on the full training data to ensure it is in a consistent state
-        self.model.fit(self.x_train, self.y_train)
         return output

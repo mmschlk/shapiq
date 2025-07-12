@@ -2,29 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypeVar
+from typing import TypeVar
 
 # Model type for all machine learning models
 Model = TypeVar("Model")
-IndexType = Literal[
-    "SII",
-    "BII",
-    "CHII",
-    "Co-Moebius",
-    "SGV",
-    "BGV",
-    "CHGV",
-    "IGV",
-    "EGV",
-    "k-SII",
-    "STII",
-    "FSII",
-    "kADD-SHAP",
-    "FBII",
-    "SV",
-    "BV",
-    "JointSV",
-    "Moebius",
-    "ELC",
-    "EC",
-]

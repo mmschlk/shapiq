@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING
 
-from .base import Regression
+from ._base import Regression
 
 if TYPE_CHECKING:
-    from typing import Any
-
     import numpy as np
-
-
-ValidRegressionFSIIIndices = Literal["FSII", "SV"]
-ValidRegressionFBIIIndices = Literal["FBII", "SV"]
 
 
 class RegressionFSII(Regression):
@@ -34,9 +28,6 @@ class RegressionFSII(Regression):
 
     """
 
-    valid_indices: tuple[ValidRegressionFSIIIndices] = tuple(get_args(ValidRegressionFSIIIndices))
-    """The valid indices for the RegressionFSII approximator."""
-
     def __init__(
         self,
         n: int,
@@ -45,7 +36,6 @@ class RegressionFSII(Regression):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the RegressionFSII approximator.
 
@@ -62,8 +52,6 @@ class RegressionFSII(Regression):
                 a coalition of a certain size. Defaults to ``None``.
 
             random_state: The random state of the estimator. Defaults to ``None``.
-
-            **kwargs: Additional keyword arguments (not used, only for compatibility).
         """
         super().__init__(
             n,
@@ -93,9 +81,6 @@ class RegressionFBII(Regression):
 
     """
 
-    valid_indices: ValidRegressionFBIIIndices = tuple(get_args(ValidRegressionFBIIIndices))
-    """The valid indices for the RegressionFBII approximator."""
-
     def __init__(
         self,
         n: int,
@@ -104,7 +89,6 @@ class RegressionFBII(Regression):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-        **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the RegressionFBII approximator.
 
@@ -121,8 +105,6 @@ class RegressionFBII(Regression):
                 a coalition of a certain size. Defaults to ``None``.
 
             random_state: The random state of the estimator. Defaults to ``None``.
-
-            **kwargs: Additional keyword arguments (not used, only for compatibility).
         """
         super().__init__(
             n,

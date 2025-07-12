@@ -1,4 +1,6 @@
-# This workflow will run the unit tests across multiple Python versions and operating systems.
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
 name: unit-tests
 
 on:
@@ -8,21 +10,13 @@ on:
     branches: [ "main" ]
 
 jobs:
-  unit_tests:
-    name: Run unit tests
+  build:
+
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            python-version: "3.10"
-          - os: ubuntu-latest
-            python-version: "3.13"
-          - os: macos-latest
-            python-version: "3.11"
-          - os: windows-latest
-            python-version: "3.12"
-    runs-on: ${{ matrix.os }}
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v4
@@ -33,13 +27,9 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
-
-    # we need to reinstall Python on Windows because of some problems with tkinter
-    # https://github.com/astral-sh/uv/issues/7036
-    - name: Reinstall Python
-      run: |
-        uv python install --reinstall
-        uv run python --version
+        cache-dependency-glob: |
+            **/pyproject.toml
+            **/uv.lock
 
     - name: Install dependencies
       run: uv sync --all-extras --dev

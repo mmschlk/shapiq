@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Literal, cast, get_args
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any
 
     import numpy as np
 
-    from shapiq.explainer.base import Explainer
-    from shapiq.games.base import Game
     from shapiq.utils.custom_types import Model
 
 WARNING_NO_CLASS_INDEX = (
@@ -22,37 +19,26 @@ WARNING_NO_CLASS_INDEX = (
     "Disregard this warning for regression models."
 )
 
-ExplainerTypes = Literal["tabular", "tree", "tabpfn", "game"]
 
-
-def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
+def get_explainers() -> dict[str, Any]:
     """Return a dictionary of all available explainer classes.
 
     Returns:
         A dictionary of all available explainer classes.
 
     """
-    import shapiq.explainer.agnostic as ag
-    import shapiq.explainer.tabpfn as tp
-    import shapiq.explainer.tabular as tb
-    import shapiq.explainer.tree.explainer as tr
+    from shapiq.explainer.tabpfn import TabPFNExplainer
+    from shapiq.explainer.tabular import TabularExplainer
+    from shapiq.explainer.tree.explainer import TreeExplainer
 
-    return {
-        "tabular": tb.TabularExplainer,
-        "tree": tr.TreeExplainer,
-        "tabpfn": tp.TabPFNExplainer,
-        "game": ag.AgnosticExplainer,
-    }
+    return {"tabular": TabularExplainer, "tree": TreeExplainer, "tabpfn": TabPFNExplainer}
 
 
 def get_predict_function_and_model_type(
-    model: Model | Game | Callable[[np.ndarray], np.ndarray],
+    model: Model,
     model_class: str | None = None,
     class_index: int | None = None,
-) -> tuple[
-    Callable[[Model, np.ndarray], np.ndarray] | RuntimeError,
-    ExplainerTypes,
-]:
+) -> tuple[Callable[[Model, np.ndarray], np.ndarray], str]:
     """Get the predict function and model type for a given model.
 
     The prediction function is used in the explainer to predict the model's output for a given data
@@ -73,19 +59,13 @@ def get_predict_function_and_model_type(
         A tuple of the predict function and the model type.
 
     """
-    from shapiq.games.base import Game
-
-    from .tree import TreeModel
+    from . import tree
 
     if model_class is None:
         model_class = print_class(model)
 
     _model_type = "tabular"  # default
     _predict_function = None
-
-    if isinstance(model, Game) or model_class == "shapiq.games.base.Game":
-        _predict_function = RuntimeError("Games cannot be used for prediction.")
-        return _predict_function, "game"
 
     if callable(model):
         _predict_function = predict_callable
@@ -162,10 +142,10 @@ def get_predict_function_and_model_type(
     elif _predict_function is None and hasattr(model, "predict"):
         _predict_function = predict
     # extraction for tree models
-    elif isinstance(model, TreeModel):  # test scenario
+    elif isinstance(model, tree.TreeModel):  # test scenario
         _predict_function = model.compute_empty_prediction
         _model_type = "tree"
-    elif isinstance(model, list) and all(isinstance(m, TreeModel) for m in model):
+    elif isinstance(model, list) and all(isinstance(m, tree.TreeModel) for m in model):
         _predict_function = model[0].compute_empty_prediction
         _model_type = "tree"
     elif _predict_function is None:
@@ -201,13 +181,7 @@ def get_predict_function_and_model_type(
             return predictions[:, 0]
         return predictions[:, class_index]
 
-    # validate model type before returning
-    if _model_type not in list(get_args(ExplainerTypes)):
-        msg = f"Model type {_model_type} is not supported."
-        raise ValueError(msg)
-    _model_type_literal = cast(ExplainerTypes, _model_type)
-
-    return _predict_function_with_class_index, _model_type_literal
+    return _predict_function_with_class_index, _model_type
 
 
 def predict_callable(model: Model, data: np.ndarray) -> np.ndarray:
