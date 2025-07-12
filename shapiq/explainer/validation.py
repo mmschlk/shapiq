@@ -11,12 +11,29 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from shapiq.explainer.product_kernel.conversion import (
+    convert_binsvc,
+    convert_gp_binclf,
+    convert_gp_reg,
+    convert_svr,
+)
 from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv, is_index_valid
+from shapiq.utils.modules import safe_isinstance
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.typing import Model
+
     from .custom_types import ExplainerIndices
+    from .product_kernel.base import ProductKernelModel
+
+SUPPORTED_MODELS = {
+    "sklearn.svm.SVR",
+    "sklearn.svm.SVC",
+    "sklearn.gaussian_process.GaussianProcessRegressor",
+    "sklearn.gaussian_process.GaussianProcessClassifier",
+}
 
 
 def validate_data_predict_function(
@@ -135,3 +152,47 @@ def validate_max_order(index: ExplainerIndices, max_order: int) -> int:
         warnings.warn(msg, stacklevel=2)
         return 1
     return max_order
+
+
+# TODO(IsaH57): check if correct place to do this # noqa: TD003
+def validate_pk_model(
+    model: Model,
+    class_label: int | None = None,  # TODO(IsaH57): check if needed # noqa: TD003
+) -> ProductKernelModel:
+    """Validate the product kernel model.
+
+    Args:
+        model: The model to validate.
+        class_label: The class label to be used for validation. Defaults to None.
+
+    Returns:
+        The validated product kernel model.
+    """
+    class_label = (
+        class_label or 1
+    )  # default to 1 for classification models # TODO(IsaH57): check if needed # noqa: TD003
+    # product kernel model already in the correct format
+    if type(model).__name__ == "ProductKernelModel":
+        pk_model = model
+    elif safe_isinstance(model, "sklearn.svm.SVR"):
+        pk_model = convert_svr(model)
+    elif safe_isinstance(model, "sklearn.svm.SVC") and model.classes_.shape[0] == 2:
+        pk_model = convert_binsvc(model)
+    elif safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessRegressor"):
+        pk_model = convert_gp_reg(model)
+    elif (
+        safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessClassifier")
+        and model.classes_.shape[0] == 2
+    ):
+        pk_model = convert_gp_binclf(model)
+    # unsupported model types
+    elif safe_isinstance(model, "sklearn.svm.SVC") or (
+        safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessClassifier")
+        and model.classes_.shape[0] == 2
+    ):
+        msg = "Only binary classification supported"
+        raise TypeError(msg)
+    else:
+        msg = f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}"
+        raise TypeError(msg)
+    return pk_model
