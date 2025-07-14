@@ -21,7 +21,7 @@ from sklearn.metrics import (
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing
+from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing, load_forest_fires, load_real_estate, load_nhanesi, load_communities_and_crime, load_breast_cancer, load_wine_quality
 from shapiq.utils import shuffle_data
 
 if TYPE_CHECKING:
@@ -132,7 +132,6 @@ class GameBenchmarkSetup:
         self.random_state = random_state
 
         # load the dataset
-        self.dataset_type = "regression"
         if dataset_name == "adult_census":
             x_data, y_data = load_adult_census()
             self.feature_names: list = list(x_data.columns)
@@ -140,9 +139,35 @@ class GameBenchmarkSetup:
         elif dataset_name == "bike_sharing":
             x_data, y_data = load_bike_sharing()
             self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
         elif dataset_name == "california_housing":
             x_data, y_data = load_california_housing()
             self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "forest_fires":
+            x_data, y_data = load_forest_fires()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "wine_quality":
+            x_data, y_data = load_wine_quality()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "real_estate":
+            x_data, y_data = load_real_estate()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "communities_and_crime":
+            x_data, y_data = load_communities_and_crime()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "nhanesi":
+            x_data, y_data = load_nhanesi()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "breast_cancer":
+            x_data, y_data = load_breast_cancer(return_X_y=True, as_frame=True)
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
         else:
             msg = (
                 f"Invalid dataset name {dataset_name}. Available datasets are 'adult_census', "
@@ -177,29 +202,20 @@ class GameBenchmarkSetup:
         self.loss_function = None
 
         # load the model
-        if dataset_name == "adult_census":  # adult census dataset
+        if self.dataset_type == "classification":  # adult census dataset
             if model_name == "decision_tree":
                 self.init_decision_tree_classifier()
             if model_name == "random_forest":
                 self.init_random_forest_classifier()
             if model_name == "gradient_boosting":
                 self.init_gradient_boosting_classifier()
-        if dataset_name == "bike_sharing":  # bike sharing dataset
+        if self.dataset_type == "regression":  # bike sharing dataset
             if model_name == "decision_tree":
                 self.init_decision_tree_regressor()
             if model_name == "random_forest":
                 self.init_random_forest_regressor()
             if model_name == "gradient_boosting":
                 self.init_gradient_boosting_regressor()
-        if dataset_name == "california_housing":
-            if model_name == "decision_tree":
-                self.init_decision_tree_regressor()
-            if model_name == "random_forest":
-                self.init_random_forest_regressor()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_regressor()
-            if model_name == "neural_network":
-                self.init_california_neural_network()
 
         # check if the model is loaded
         if self.model is None and model_name is not None:
@@ -241,6 +257,8 @@ class GameBenchmarkSetup:
 
     def print_train_performance(self) -> None:
         """Prints the performance of the model on the test data."""
+        loss = self.loss_function(self.y_test, self.predict_function(self.x_test))
+        print(f"{self.loss_function.__name__}: {loss:.4f}")
 
     def init_decision_tree_classifier(self) -> None:
         """Initializes and trains a decision tree model for a classification dataset."""
@@ -269,7 +287,7 @@ class GameBenchmarkSetup:
 
     def init_random_forest_regressor(self) -> None:
         """Initializes and trains a random forest model for a regression dataset."""
-        self.model = RandomForestRegressor(n_estimators=10, random_state=self.random_state)
+        self.model = RandomForestRegressor(n_estimators=100, random_state=self.random_state)
         self.model.fit(self.x_train, self.y_train)
 
     def init_gradient_boosting_regressor(self) -> None:
@@ -278,6 +296,7 @@ class GameBenchmarkSetup:
 
         self.model = XGBRegressor(random_state=self.random_state, n_jobs=1)
         self.model.fit(self.x_train, self.y_train)
+
 
     def init_california_neural_network(self) -> None:
         """Initializes a neural network model for the California Housing dataset."""

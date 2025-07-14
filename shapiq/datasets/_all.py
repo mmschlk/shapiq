@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pandas as pd
+from sklearn.datasets import load_breast_cancer
 
 if TYPE_CHECKING:
     import numpy as np
@@ -216,3 +217,94 @@ def load_adult_census(
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
     return x_data, y_data
+
+
+
+def breast_cancer():
+    return load_breast_cancer(return_X_y=True, as_frame=True)
+
+
+def load_wine_quality():
+    url = "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
+    df_red = pd.read_csv(url, sep=';')
+    df_red['type'] = 'red'
+
+    url_white = "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-white.csv"
+    df_white = pd.read_csv(url_white, sep=';')
+    df_white['type'] = 'white'
+
+    # Combine red and white datasets
+    df = pd.concat([df_red, df_white], ignore_index=True)
+
+    y = df['quality'].astype(float)
+    X = df.drop(columns=['quality'])
+
+    # One-hot encode the wine type
+    X = pd.get_dummies(X, columns=['type'], drop_first=True)
+
+    return X, y
+
+
+def load_real_estate():
+    url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00477/Real%20estate%20valuation%20data%20set.xlsx"
+    df = pd.read_excel(url)
+
+    # Drop index column
+    df = df.drop(columns=["No"])
+
+    # Use the correct transaction date column
+    df["month"] = (df["X1 transaction date"] % 1 * 12).round().astype(int)
+    df["month"] = df["month"].replace({0: 1, 12: 1})  # Fix edge cases
+
+    # Drop original date, one-hot encode month
+    df = df.drop(columns=["X1 transaction date"])
+    df = pd.get_dummies(df, columns=["month"], drop_first=True)
+
+    y = df["Y house price of unit area"].astype(float)
+    X = df.drop(columns=["Y house price of unit area"])
+
+    return X, y
+
+
+def load_nhanesi():
+    """Load the NHANES dataset."""
+    import shap
+    # Load the NHANES dataset
+    X, y = shap.datasets.nhanesi()
+    # Convert y tp DataFrame
+    y = pd.DataFrame(y, columns=["target"])
+    return X, y
+
+def load_communities_and_crime():
+    """Load the Communities and Crime dataset."""
+    import shap
+    # Load the Communities and Crime dataset
+    X, y = shap.datasets.communitiesandcrime()
+    # Convert y to DataFrame
+    y = pd.DataFrame(y, columns=["target"])
+    return X, y
+
+
+def load_forest_fires():
+    url = "https://archive.ics.uci.edu/ml/machine-learning-databases/forest-fires/forestfires.csv"
+    df = pd.read_csv(url)
+
+    y = df["area"].astype(float)
+
+    # Drop 'day' and map month to season
+    df = df.drop(columns=["area", "day"])
+
+    season_map = {
+        'dec': 'winter', 'jan': 'winter', 'feb': 'winter',
+        'mar': 'spring', 'apr': 'spring', 'may': 'spring',
+        'jun': 'summer', 'jul': 'summer', 'aug': 'summer',
+        'sep': 'fall', 'oct': 'fall', 'nov': 'fall'
+    }
+
+    df["season"] = df["month"].map(season_map)
+    df = df.drop(columns=["month"])
+
+    # One-hot encode season
+    X = pd.get_dummies(df, columns=["season"], drop_first=True)
+
+    return X, y

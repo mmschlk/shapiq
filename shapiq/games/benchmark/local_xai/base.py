@@ -99,7 +99,17 @@ class LocalExplanation(Game):
         # init the imputer which serves as the workhorse of this Game
         self._imputer = imputer
         if isinstance(imputer, str):
-            if imputer == "marginal":
+            if imputer == "baseline":
+                baseline = np.mean(data, axis=0, keepdims=True)
+                # use the model as a baseline imputer
+                self._imputer = MarginalImputer(
+                    model=model,
+                    data=baseline,
+                    x=self.x,
+                    random_state=random_state,
+                    normalize=False,
+                )
+            elif imputer == "marginal":
                 self._imputer = MarginalImputer(
                     model=model,
                     data=data,
@@ -124,7 +134,7 @@ class LocalExplanation(Game):
                     normalize=False,
                 )
             else:
-                msg = f"Imputer {imputer} not available. Choose from {'marginal', 'conditional'}."
+                msg = f"Imputer {imputer} not available. Choose from {'baseline','marginal','conditional'}."
                 raise ValueError(msg)
 
         self.empty_prediction_value: float = self._imputer.empty_prediction

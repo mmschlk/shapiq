@@ -8,9 +8,12 @@ import numpy as np
 from scipy.special import bernoulli, binom
 from sklearn.linear_model import LassoLarsIC
 
-from shapiq.approximator._base import Approximator
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
+
+from shapiq.interaction_values import finalize_computed_interactions
+
+from shapiq.approximator.base import Approximator
 
 
 class ExplanationBasisGenerator:
@@ -196,9 +199,20 @@ class ShapleyGAX(Approximator):
 
         fsii_output_order = self._transform_fsii_to_shap(shapley_interactions_values)
 
-        return self._finalize_result(
-            result=fsii_output_order, baseline_value=baseline_value, budget=budget
+        # Transform the output to the interaction values
+        shapley_values = InteractionValues(
+            values=fsii_output_order,
+            index="SV",
+            interaction_lookup=self.interaction_lookup,
+            baseline_value=baseline_value,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            n_players=self.n,
+            estimated=not budget >= 2**self.n,
+            estimation_budget=budget,
         )
+
+        return finalize_computed_interactions(shapley_values, target_index=self.index)
 
     def regression_routine(
         self,

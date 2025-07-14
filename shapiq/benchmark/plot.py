@@ -37,6 +37,10 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     # misc SV
     "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
     "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
+    "ShapleyGAX-2ADD": {"color": "#ef27a6", "marker": "o"},
+    "ShapleyGAX-2ADD-Lev1": {"color": "#00b4d8", "marker": "o"},
+    "ShapleyGAX-2ADD-Leverage2": {"color": "#ffba08", "marker": "o"},
+    "LeverageSHAP": {"color": "#7DCE82", "marker": "o"},
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
@@ -47,7 +51,7 @@ LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
 
-LOG_SCALE_MAX = 1e2
+LOG_SCALE_MAX = 5
 LOG_SCALE_MIN = 1e-7
 
 METRICS_LIMITS = {
@@ -234,17 +238,10 @@ def plot_approximation_quality(
     except IndexError:
         y_lim_min_budget = sorted_budget[0]
     # get min metric_value for y_lim
-    min_value_y = data[data["budget"] == y_lim_min_budget][metric].min()
-    # round value down to next decimal
-    bot_lim = f"{min_value_y:.2e}"  # get the top limit in scientific notation
-    bot_lim = bot_lim.split("e")[1]  # get the exponent
-    bot_lim = int(bot_lim)  # get the top limit as the exponent + 1
-    bot_lim = 10**bot_lim  # get the top limit in scientific notation
-    log_scale_min = max(log_scale_min, bot_lim)
 
     # make sure orders is a list
-    if orders is None:
-        orders = ["all"]
+    #if orders is None:
+    #    orders = ["all"]
     if isinstance(orders, int | str):
         orders = [orders]
 
@@ -269,7 +266,7 @@ def plot_approximation_quality(
                 (metric_data["approximator"] == approximator) & (metric_data["order"] == order)
             ].copy()
 
-            if log_scale_y:
+            if log_scale_y and log_scale_min is not None:
                 # manually set all below log_scale_min to log_scale_min (to avoid log(0))
                 data_order[aggregation] = data_order[aggregation].apply(
                     lambda x: max(x, log_scale_min),
@@ -312,8 +309,16 @@ def plot_approximation_quality(
     if legend:
         add_legend(ax, approximators, orders=orders)
 
+    if log_scale_min is not None:
+        log_scale_min = max(log_scale_min,data_order[aggregation].min()/2)
+        ax.set_ylim(bottom=log_scale_min)
+    if log_scale_max is not None:
+        log_scale_max = min(log_scale_max, data_order[aggregation].max()*2)
+        ax.set_ylim(top=log_scale_max)
+    if log_scale_y:
+        ax.set_yscale("log")
     # set the y-axis limits
-    if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE:
+    if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE and log_scale_min is not None and log_scale_max is not None:
         _set_y_axis_log_scale(ax, log_scale_min, log_scale_max)
 
     # set the y-axis limits for specific metrics
@@ -332,7 +337,7 @@ def plot_approximation_quality(
         ax.spines["right"].set_visible(False)
 
     # resize the figure and remove padding
-    plt.tight_layout()
+    #plt.tight_layout()
 
     return fig, ax
 
@@ -393,7 +398,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
 
     """
     # get the metric columns for each order in the results
-    metric_columns = [col for col in results_df.columns if metric in col]
+    metric_columns = [col for col in results_df.columns if metric == col]
 
     metric_dfs = []
     for metric_col in metric_columns:
