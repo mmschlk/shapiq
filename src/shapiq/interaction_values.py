@@ -774,7 +774,7 @@ class InteractionValues:
         )
 
         # try loading as npz file
-        try:
+        if path.name.endswith(".npz"):
             data = np.load(path, allow_pickle=True)
             return InteractionValues(
                 values=data["values"],
@@ -787,11 +787,8 @@ class InteractionValues:
                 estimation_budget=data["estimation_budget"].item(),
                 baseline_value=float(data["baseline_value"]),
             )
-        except AttributeError:  # not a npz file
-            pass
-        with path.open("rb") as file:
-            # TODO(mmshlk): https://github.com/mmschlk/shapiq/issues/413
-            return pickle.load(file)
+        msg = f"Path {path} does not end with .json or .npz. Cannot load InteractionValues."
+        raise ValueError(msg)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> InteractionValues:
