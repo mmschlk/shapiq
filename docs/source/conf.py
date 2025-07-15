@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import sys
+from importlib.metadata import version
 from pathlib import Path
 
 import commonmark
@@ -18,7 +19,6 @@ sys.path.insert(0, str(root / "shapiq"))
 sys.path.insert(0, str(root / "examples"))
 sys.path.insert(0, str(root / "src"))  # get the shapiq package
 
-import shapiq  # noqa: E402
 
 # -- Read the Docs ---------------------------------------------------------------------------------
 master_doc = "index"
@@ -28,8 +28,8 @@ master_doc = "index"
 project = "shapiq"
 copyright = "2024, Muschalik et al."
 author = "Muschalik et al."
-release = shapiq.__version__
-version = shapiq.__version__
+release = version("shapiq")
+version = version("shapiq")
 
 # -- General configuration -------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
