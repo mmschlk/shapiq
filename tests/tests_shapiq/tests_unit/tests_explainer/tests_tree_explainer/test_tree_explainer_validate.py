@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from tests.conftest import TREE_MODEL_FIXTURES
 
 from shapiq import safe_isinstance
 from shapiq.explainer.tree.validation import SUPPORTED_MODELS, validate_tree_model
-from tests.conftest import TREE_MODEL_FIXTURES
 
 
 def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model, if_clf_model):

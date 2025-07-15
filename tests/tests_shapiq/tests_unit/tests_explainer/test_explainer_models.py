@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from tests.fixtures.data import BUDGET_NR_FEATURES
 
 from shapiq import InteractionValues
 from shapiq.explainer import Explainer, TabularExplainer, TreeExplainer
-from tests.fixtures.data import BUDGET_NR_FEATURES
 
 
 def test_torch_reg(torch_reg_model, background_reg_data):

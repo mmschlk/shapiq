@@ -5,10 +5,10 @@ from __future__ import annotations
 from copy import copy, deepcopy
 
 import pytest
+from tests.utils import get_concrete_class
 
 from shapiq.approximator import Approximator, KernelSHAP
 from shapiq.games.benchmark import DummyGame
-from tests.utils import get_concrete_class
 
 
 def test_approximator_init():

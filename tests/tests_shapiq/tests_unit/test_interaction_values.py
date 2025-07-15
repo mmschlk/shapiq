@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
-
-from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
-from shapiq.utils import powerset
 from tests.fixtures.interaction_values import (
     get_mock_interaction_value,
 )
+
+from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
+from shapiq.utils import powerset
 
 if TYPE_CHECKING:
     from pathlib import Path

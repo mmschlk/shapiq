@@ -91,13 +91,13 @@ ml = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 minversion = "8.0"
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-src = ["tests", "src/shapiq", "docs"]
-
+src = ["tests", "src", "docs"]
 
 [tool.ruff.lint]
 # we allow star arguments to be of type Any e.g. def func(*args: Any, **kwargs: Any) -> None: is ok

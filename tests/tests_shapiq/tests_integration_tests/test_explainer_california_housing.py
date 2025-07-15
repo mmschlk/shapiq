@@ -6,6 +6,7 @@ import pathlib
 from typing import TYPE_CHECKING, get_args
 
 import pytest
+from tests.utils import get_expected_index_or_skip
 
 from shapiq.explainer.agnostic import AgnosticExplainer
 from shapiq.explainer.base import Explainer
@@ -16,7 +17,6 @@ from shapiq.explainer.tabular import TabularExplainer, TabularExplainerIndices
 from shapiq.explainer.tree import TreeExplainer
 from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq.interaction_values import InteractionValues
-from tests.utils import get_expected_index_or_skip
 
 if TYPE_CHECKING:
     import numpy as np

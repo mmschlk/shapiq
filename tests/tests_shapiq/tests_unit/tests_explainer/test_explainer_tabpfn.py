@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import pytest
-
-from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
 from tests.fixtures.data import BUDGET_NR_FEATURES_SMALL
 from tests.markers import skip_if_no_tabpfn
+
+from shapiq import Explainer, InteractionValues, TabPFNExplainer, TabularExplainer
 
 
 @skip_if_no_tabpfn

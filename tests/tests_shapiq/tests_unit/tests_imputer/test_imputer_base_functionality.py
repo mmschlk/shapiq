@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from tests.utils import get_concrete_class
 
 from shapiq.games.imputer.base import Imputer
-from tests.utils import get_concrete_class
 
 
 def test_abstract_imputer():

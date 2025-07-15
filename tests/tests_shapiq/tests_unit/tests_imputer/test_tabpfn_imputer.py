@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from tests.markers import skip_if_no_tabpfn
 
 from shapiq import TabPFNImputer
 from shapiq.explainer.utils import get_predict_function_and_model_type
-from tests.markers import skip_if_no_tabpfn
 
 
 @skip_if_no_tabpfn

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from tests.conftest import TREE_MODEL_FIXTURES
 
 from shapiq import TreeExplainer
 from shapiq.explainer.tree.base import TreeModel
@@ -16,7 +17,6 @@ from shapiq.explainer.tree.conversion.sklearn import (
 from shapiq.explainer.tree.validation import SUPPORTED_MODELS
 from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.utils import safe_isinstance
-from tests.conftest import TREE_MODEL_FIXTURES
 
 
 def test_tree_model_init():

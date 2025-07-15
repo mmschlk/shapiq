@@ -11,13 +11,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, get_args
 
+from tests.fixtures.data import get_california_housing_train_test_explain
+from tests.fixtures.games import get_california_housing_imputer
+from tests.fixtures.models import get_california_housing_random_forest
+
 from shapiq.explainer.tabular import TabularExplainerIndices
 from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
-from tests.fixtures.data import get_california_housing_train_test_explain
-from tests.fixtures.games import get_california_housing_imputer
-from tests.fixtures.models import get_california_housing_random_forest
 
 if TYPE_CHECKING:
     from shapiq.explainer.custom_types import ExplainerIndices

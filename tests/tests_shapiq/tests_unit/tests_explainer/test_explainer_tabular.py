@@ -6,6 +6,8 @@ from typing import get_args
 
 import numpy as np
 import pytest
+from tests.fixtures.data import BUDGET_NR_FEATURES
+from tests.utils import get_expected_index_or_skip
 
 from shapiq import InteractionValues
 from shapiq.approximator import RegressionFSII
@@ -14,8 +16,6 @@ from shapiq.explainer.tabular import (
     TabularExplainerApproximators,
     TabularExplainerImputers,
 )
-from tests.fixtures.data import BUDGET_NR_FEATURES
-from tests.utils import get_expected_index_or_skip
 
 MAX_ORDERS = [2, 3]
 
