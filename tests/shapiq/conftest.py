@@ -23,14 +23,6 @@ ALL_MODEL_FIXTURES = (
 
 
 @pytest.fixture
-def mae_loss():
-    """Returns the mean absolute error loss function."""
-    from sklearn.metrics import mean_absolute_error
-
-    return mean_absolute_error
-
-
-@pytest.fixture
 def interaction_values_list():
     """Returns a list of three InteractionValues objects."""
     rng = np.random.RandomState(42)
