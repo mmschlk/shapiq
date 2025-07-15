@@ -12,7 +12,7 @@ from shapiq.games.base import Game
 
 if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 
 class TreeSHAPIQXAI(Game):

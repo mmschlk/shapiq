@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from shapiq.approximator.base import Approximator
     from shapiq.games.imputer.base import Imputer
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
 TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]

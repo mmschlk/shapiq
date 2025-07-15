@@ -110,7 +110,7 @@ class TabPFNImputer(Imputer):
         if empty_prediction is None:
             self.model.fit(x_train, y_train)  # contextualize the model on the training data
             predictions = self.predict(x_test)
-            empty_prediction = np.mean(predictions)
+            empty_prediction = float(np.mean(predictions))
         self.empty_prediction = empty_prediction
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:

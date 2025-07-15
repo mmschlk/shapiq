@@ -15,7 +15,7 @@ from .base import Imputer
 if TYPE_CHECKING:
     from typing import Literal
 
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 
 class ConditionalImputer(Imputer):

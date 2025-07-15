@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Literal
 from shapiq.explainer.tree.base import TreeModel
 
 if TYPE_CHECKING:
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 
 def convert_xgboost_booster(

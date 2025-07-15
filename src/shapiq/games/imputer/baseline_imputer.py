@@ -10,7 +10,7 @@ import numpy as np
 from .base import Imputer
 
 if TYPE_CHECKING:
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 
 class BaselineImputer(Imputer):

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
     from shapiq.approximator.base import Approximator
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
     from .custom_types import ExplainerIndices
 

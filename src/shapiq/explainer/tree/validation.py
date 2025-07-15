@@ -16,7 +16,7 @@ from .conversion.sklearn import (
 from .conversion.xgboost import convert_xgboost_booster
 
 if TYPE_CHECKING:
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 SUPPORTED_MODELS = {
     "sklearn.tree.DecisionTreeRegressor",

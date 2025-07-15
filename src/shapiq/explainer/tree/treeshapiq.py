@@ -17,7 +17,7 @@ from .conversion.edges import create_edge_tree
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
     from .base import EdgeTree, TreeModel
 

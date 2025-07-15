@@ -12,7 +12,7 @@ from scipy.special import binom
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from .custom_types import CoalitionMatrix, CoalitionsLookup, CoalitionsTuples
+    from shapiq.typing import CoalitionMatrix, CoalitionsLookup, CoalitionsTuples
 
 
 __all__ = [

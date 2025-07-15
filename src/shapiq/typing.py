@@ -70,3 +70,6 @@ class MetadataBlock(TypedDict):
     created_from: str | None
     description: str | None
     parameters: JSONType
+
+
+NumericArray = NDArray[np.number]

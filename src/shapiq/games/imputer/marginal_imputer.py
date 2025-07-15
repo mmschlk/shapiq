@@ -10,7 +10,7 @@ import numpy as np
 from .base import Imputer
 
 if TYPE_CHECKING:
-    from shapiq.utils import Model
+    from shapiq.typing import Model
 
 _too_large_sample_size_warning = (
     "The sample size is larger than the number of data points in the background set. "

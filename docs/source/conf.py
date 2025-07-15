@@ -6,18 +6,19 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 
 import commonmark
 from sphinx.builders.html import StandaloneHTMLBuilder
 
-sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
-sys.path.insert(0, os.path.abspath("../../shapiq"))  # noqa: PTH100
-sys.path.insert(0, os.path.abspath("../../examples"))  # noqa: PTH100
+root = Path(__file__).resolve().parents[2]  # ../../ from this file
+sys.path.insert(0, str(root))
+sys.path.insert(0, str(root / "shapiq"))
+sys.path.insert(0, str(root / "examples"))
+sys.path.insert(0, str(root / "src"))  # get the shapiq package
 
-
-import shapiq
+import shapiq  # noqa: E402
 
 # -- Read the Docs ---------------------------------------------------------------------------------
 master_doc = "index"

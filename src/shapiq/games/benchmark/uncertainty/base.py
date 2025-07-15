@@ -12,7 +12,7 @@ from shapiq.games.benchmark.setup import get_x_explain
 from shapiq.games.imputer import ConditionalImputer, MarginalImputer
 
 if TYPE_CHECKING:
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 
 class UncertaintyExplanation(Game):

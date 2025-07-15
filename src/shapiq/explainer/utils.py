@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from shapiq.explainer.base import Explainer
     from shapiq.games.base import Game
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 WARNING_NO_CLASS_INDEX = (
     "No class_index provided. "

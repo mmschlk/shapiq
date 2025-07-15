@@ -10,7 +10,7 @@ from shapiq.explainer.tree.base import TreeModel
 from shapiq.utils import safe_isinstance
 
 if TYPE_CHECKING:
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 
 def convert_sklearn_forest(

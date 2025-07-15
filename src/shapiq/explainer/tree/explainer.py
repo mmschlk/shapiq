@@ -19,7 +19,7 @@ from .validation import validate_tree_model
 if TYPE_CHECKING:
     import numpy as np
 
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
     from .base import TreeModel
 

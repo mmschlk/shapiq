@@ -17,7 +17,7 @@ from shapiq.games.base import Game
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 
 class EnsembleSelection(Game):
