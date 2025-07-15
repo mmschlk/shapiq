@@ -61,8 +61,8 @@ keywords = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["shapiq*"]
+where = ["src"]
+include = ["shapiq"]
 
 [tool.setuptools.dynamic]
 version = {attr = "shapiq.__version__"}
@@ -96,7 +96,7 @@ minversion = "8.0"
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-src = ["tests", "shapiq", "docs"]
+src = ["tests", "src/shapiq", "docs"]
 
 
 [tool.ruff.lint]
@@ -151,7 +151,7 @@ exclude = [
 # Exclude a variety of commonly ignored directories.
 # Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
 [tool.ruff.lint.per-file-ignores]
-"shapiq/typing.py" = [
+"src/shapiq/typing.py" = [
     "A005",  # we want to be similar to other libraries that also shadow typing
 ]
 "tests/*.py" = [
