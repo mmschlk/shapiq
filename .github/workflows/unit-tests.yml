@@ -27,6 +27,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # Fix: install OpenMP for XGBoost on macOS
+    - name: Install libomp on macOS
+      if: runner.os == 'macOS'
+      run: |
+        brew install libomp
+
     - name: Set up Python ${{ matrix.python-version }} and uv
       id: setup-uv-python
       uses: astral-sh/setup-uv@v6
