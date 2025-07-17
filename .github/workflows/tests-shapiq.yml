@@ -1,5 +1,5 @@
 # This workflow will run the unit tests across multiple Python versions.
-name: unit-tests
+name: tests-shapiq
 
 on:
   push:
