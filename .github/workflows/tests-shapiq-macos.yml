@@ -15,16 +15,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install libomp
-      run: |
-        brew install libomp
-        echo "export OMP_NUM_THREADS=1" >> $GITHUB_ENV
-
     - name: Set up Python and uv
       id: setup-uv-python
       uses: astral-sh/setup-uv@v6
       with:
-        python-version: "3.13"
+        python-version: "3.11"
+
+    - name: Reinstall Python
+      run: |
+        uv python install --reinstall
+        uv run python --version
 
     - name: Install dependencies
       run: uv sync --all-extras --dev
