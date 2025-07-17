@@ -1,0 +1,28 @@
+# This workflow will run the shapiq tests on macOS using the latest python version.
+name: tests-shapiq-macos
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  unit_tests:
+    name: Run unit tests
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python and uv
+      id: setup-uv-python
+      uses: astral-sh/setup-uv@v6
+      with:
+        python-version: "3.13"
+
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+
+    - name: Test with pytest
+      run: uv run pytest "tests/shapiq" -n logical
