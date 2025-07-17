@@ -24,7 +24,10 @@ jobs:
           activate-environment: true
 
       - name: Install package using uv
-        run: uv pip install .
+        run: uv pip install ".[games]"
 
-      - name: Test import
-        run: uv run python -c "import shapiq; shapiq.benchmark.print_benchmark_configurations(); print('✅ shapiq imported successfully')"
+      - name: Test import of shapiq
+        run: uv run python -c "import shapiq; print('✅ shapiq imported successfully')"
+
+      - name: Test import of shapiq_games
+        run: uv run python -c "import shapiq_games; print('✅ shapiq_games imported successfully')"

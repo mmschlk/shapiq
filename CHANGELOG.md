@@ -1,5 +1,19 @@
 # Changelog
 
+## Development
+
+### Seperation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark`
+- starts work on seperating the `shapiq` package into three packages:
+  - `shapiq`: the core package containing the approximators, explainers, computers, interaction values, and plots
+  - `shapiq_games`: a package containing the examples on how to create custom cooperative games using the `shapiq.Game` API.
+  - `shapiq-benchmark`: a package for conducting benchmarks of the approximators and explainers on different games and datasets.
+- we split the package into these three packages to make it easier to maintain and develop the package in the future. The core `shapiq` package will require the most maintenance and development care, so we want the project to be as focused as possible.
+- the `shapiq_games` package will live in the `shapiq` repository to be tightly coupled with changes in `shapiq`, yet it will be easier to install and use as a standalone package. The source code of the package will be contained in the installation of `shapiq` and will be available in the `shapiq_games` submodule. The dependencies are managed via extras (`uv pip install shapiq[games]` or `pip install shapiq_games`).
+- the `shapiq-benchmark` package will live in a separate repository and will be installed via `pip install shapiq-benchmark`. The package will be based ontop of `shapiq` and `shapiq_games` and will contain the benchmark games, datasets, and the benchmarking code. The package will be used to conduct benchmarks of the approximators and explainers on different games and datasets.
+
+### Removed Features
+- removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
+
 ## v1.3.1 (2025-07-11)
 
 ### New Features

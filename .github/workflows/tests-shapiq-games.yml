@@ -1,7 +1,5 @@
-# This workflow will install Python dependencies, run coverage tests with Python 3.11
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
-name: coverage
+# This workflow will run the tests for the shapiq_games sub-pacakge
+name: tests-shapiq-games.yml
 
 on:
   push:
@@ -33,10 +31,5 @@ jobs:
     - name: Install dependencies
       run: uv sync --all-extras --dev
 
-    - name: Measure coverage
-      run: uv run pytest "tests/shapiq" --cov=shapiq --cov-report=xml -n logical
-
-    - name: Coveralls
-      uses: coverallsapp/github-action@v2
-      with:
-        path-to-lcov: coverage.xml
+    - name: Run tests
+      run: uv run pytest "tests/shapiq_games" -n logical

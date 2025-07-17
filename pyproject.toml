@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shapiq"
-dynamic = ["version", "readme"]
+version = "1.3.1"
+dynamic = ["readme"]
 description = "Shapley Interactions for Machine Learning"
 requires-python = ">=3.10"
 dependencies = [
@@ -12,6 +13,7 @@ dependencies = [
     "numpy",
     "scipy",
     "pandas",
+    "joblib",
     "scikit-learn",
     "tqdm",
     "requests",
@@ -61,11 +63,10 @@ keywords = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["shapiq*"]
+where = ["src"]
+include = ["shapiq", "shapiq_games"]
 
 [tool.setuptools.dynamic]
-version = {attr = "shapiq.__version__"}
 readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
 
 [project.urls]
@@ -75,7 +76,7 @@ tracker = "https://github.com/mmschlk/shapiq/issues"
 changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-ml = [
+games = [
     "tabpfn",
     "torchvision",
     "torch",
@@ -83,21 +84,23 @@ ml = [
     "lightgbm",
     "transformers",
     "scikit-image",
-    "joblib",
     # tf only for python < 3.13 and not windows
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'",
     "tf-keras; python_version < '3.13' and platform_system != 'Windows'",
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = [
+  "tests/shapiq",
+  "tests/shapiq_games"
+]
+pythonpath = ["src"]
 minversion = "8.0"
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-src = ["tests", "shapiq", "docs"]
-
+src = ["tests", "src", "docs"]
 
 [tool.ruff.lint]
 # we allow star arguments to be of type Any e.g. def func(*args: Any, **kwargs: Any) -> None: is ok
@@ -107,7 +110,6 @@ ignore = [
     "E501",  # Line too long
     "N803",  # Variable X in function should be lowercase
     "N806",  # Variable X in function should be lowercase
-    "S301",  # we will remove pickle in version 1.4.0 (https://github.com/mmschlk/shapiq/issues/413)
     "COM812",  # this is redundant with the formatter which anyways does this (must be excluded) in the future # TODO: add remove pickle calls and remove this exclusion
     "FIX002",  # we use TODOs atm to track potential code improvements  # TODO: add this in the future
     "PLR0913",  # Too many arguments are passed to function
@@ -151,7 +153,7 @@ exclude = [
 # Exclude a variety of commonly ignored directories.
 # Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
 [tool.ruff.lint.per-file-ignores]
-"shapiq/typing.py" = [
+"src/shapiq/typing.py" = [
     "A005",  # we want to be similar to other libraries that also shadow typing
 ]
 "tests/*.py" = [
@@ -190,7 +192,6 @@ exclude = [
     "PTH"  # in benchmark code we use a lot of os, which is okay
 ]
 "docs/copy_notebooks.py" = [
-    "PTH",  # the script uses os, which is not cirtical for shapiq so it's fine
     "I002",  # benchmark code does not have to import required modules
 ]
 "__init__.py" = [
@@ -219,8 +220,8 @@ no-lines-before = ["future"]
 required-imports = ["from __future__ import annotations"]
 
 [tool.pyright]
-include = ["shapiq"]
-exclude = ["tests", "docs", "benchmark", "scripts", "shapiq/plot"]
+include = ["src/shapiq"]
+exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq/plot", "src/shapiq/benchmark", "src/shapiq/games/benchmark"]
 pythonVersion = "3.10"
 
 [dependency-groups]
@@ -228,7 +229,6 @@ test = [
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
-    "pytest-randomly",
     "packaging>=24.2",
 ]
 lint = [

@@ -1,1 +1,1 @@
-"""Test module for the shapiq package."""
+"""Tests for the Shapiq module."""

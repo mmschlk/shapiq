@@ -3530,10 +3530,12 @@ wheels = [
 
 [[package]]
 name = "shapiq"
+version = "1.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "colour" },
     { name = "galois" },
+    { name = "joblib" },
     { name = "matplotlib" },
     { name = "networkx" },
     { name = "numpy" },
@@ -3547,8 +3549,7 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-ml = [
-    { name = "joblib" },
+games = [
     { name = "lightgbm" },
     { name = "scikit-image" },
     { name = "tabpfn" },
@@ -3616,28 +3617,28 @@ test = [
 requires-dist = [
     { name = "colour" },
     { name = "galois" },
-    { name = "joblib", marker = "extra == 'ml'" },
-    { name = "lightgbm", marker = "extra == 'ml'" },
+    { name = "joblib" },
+    { name = "lightgbm", marker = "extra == 'games'" },
     { name = "matplotlib" },
     { name = "networkx" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pillow" },
     { name = "requests" },
-    { name = "scikit-image", marker = "extra == 'ml'" },
+    { name = "scikit-image", marker = "extra == 'games'" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "sparse-transform" },
-    { name = "tabpfn", marker = "extra == 'ml'" },
-    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32' and extra == 'ml'" },
-    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32' and extra == 'ml'" },
-    { name = "torch", marker = "extra == 'ml'" },
-    { name = "torchvision", marker = "extra == 'ml'" },
+    { name = "tabpfn", marker = "extra == 'games'" },
+    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32' and extra == 'games'" },
+    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32' and extra == 'games'" },
+    { name = "torch", marker = "extra == 'games'" },
+    { name = "torchvision", marker = "extra == 'games'" },
     { name = "tqdm" },
-    { name = "transformers", marker = "extra == 'ml'" },
-    { name = "xgboost", marker = "extra == 'ml'" },
+    { name = "transformers", marker = "extra == 'games'" },
+    { name = "xgboost", marker = "extra == 'games'" },
 ]
-provides-extras = ["ml"]
+provides-extras = ["games"]
 
 [package.metadata.requires-dev]
 dev = [
