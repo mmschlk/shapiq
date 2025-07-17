@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit_tests:
     name: Run unit tests
@@ -20,10 +24,6 @@ jobs:
       uses: astral-sh/setup-uv@v6
       with:
         python-version: "3.11"
-
-    - name: Install libomp
-      run: |
-        brew install libomp
 
     - name: Reinstall Python
       run: |
