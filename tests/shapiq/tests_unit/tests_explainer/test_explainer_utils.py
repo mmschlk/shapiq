@@ -138,20 +138,5 @@ def test_class_index():
         assert return_value[0] == i + 1
 
 
-@pytest.mark.skip("not possible to implement right now")
-def test_class_index_errors():
-    """Test the exceptions for the class index in get_predict_function_and_model_type."""
-
-    def _model(x: np.ndarray):
-        return np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
-
-    # out of bounds
-    with pytest.raises(TypeError):
-        _, _ = get_predict_function_and_model_type(_model, "non_sense_model", 4)
-    # out of bounds
-    with pytest.raises(TypeError):
-        _, _ = get_predict_function_and_model_type(_model, "non_sense_model", -5)
-
-
 def _valid_sig(param: inspect.Parameter):
     return param.annotation in (np.ndarray, inspect._empty, Any)
