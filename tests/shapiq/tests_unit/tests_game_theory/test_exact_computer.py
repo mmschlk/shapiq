@@ -8,7 +8,7 @@ import pytest
 from shapiq import powerset
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.game_theory.moebius_converter import MoebiusConverter
-from shapiq.games.benchmark.synthetic.soum import SOUM
+from shapiq_games.synthetic.soum import SOUM
 
 
 def test_exact_computer_on_soum():

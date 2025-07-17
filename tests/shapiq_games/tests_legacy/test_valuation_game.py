@@ -7,7 +7,7 @@ import pytest
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from shapiq.games.benchmark import (
+from shapiq_games.benchmark import (
     AdultCensusDatasetValuation,
     BikeSharingDatasetValuation,
     CaliforniaHousingDatasetValuation,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.games.imputer import MarginalImputer
+from shapiq.imputer import MarginalImputer
 
 
 def test_marginal_imputer_init():

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from shapiq.games.base import Game
-from shapiq.games.benchmark import (
+from shapiq.game import Game
+from shapiq.utils import powerset
+from shapiq_games.benchmark import (
     AdultCensusUnsupervisedData,
     BikeSharingUnsupervisedData,
     CaliforniaHousingUnsupervisedData,
     UnsupervisedData,
 )
-from shapiq.utils import powerset
 
 
 def test_base_class():

@@ -10,7 +10,7 @@ from shapiq.approximator import (
     PermutationSamplingSII,
 )
 from shapiq.game_theory.aggregation import aggregate_to_one_dimension
-from shapiq.games.benchmark import DummyGame
+from shapiq_games.synthetic import DummyGame
 
 
 @pytest.mark.parametrize(

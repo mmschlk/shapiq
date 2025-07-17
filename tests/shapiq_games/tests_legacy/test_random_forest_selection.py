@@ -12,8 +12,8 @@ from sklearn.metrics import (
     r2_score,
 )
 
-from shapiq.games import Game
-from shapiq.games.benchmark import (
+from shapiq.game import Game
+from shapiq_games.benchmark import (
     AdultCensusRandomForestEnsembleSelection,
     BikeSharingRandomForestEnsembleSelection,
     CaliforniaHousingRandomForestEnsembleSelection,

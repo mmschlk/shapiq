@@ -13,7 +13,7 @@ from .features import register_deprecated
 
 @register_deprecated(name="Game(path_to_values=...)", deprecated_in="1.3.1", removed_in="1.4.0")
 def deprecated_game_init_with_path(request: pytest.FixtureRequest) -> None:
-    from shapiq.games.base import Game
+    from shapiq.game import Game
 
     tmp_path = request.getfixturevalue("tmp_path")
     game = request.getfixturevalue("cooking_game_pre_computed")

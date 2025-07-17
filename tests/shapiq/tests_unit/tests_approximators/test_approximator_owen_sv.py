@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from shapiq.approximator.marginals import OwenSamplingSV
-from shapiq.games.benchmark import DummyGame
+from shapiq_games.synthetic import DummyGame
 
 
 @pytest.mark.parametrize(

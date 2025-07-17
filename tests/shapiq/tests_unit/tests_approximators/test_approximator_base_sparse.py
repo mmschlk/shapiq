@@ -6,8 +6,8 @@ import pytest
 
 from shapiq.approximator.sparse import Sparse
 from shapiq.game_theory.indices import ALL_AVAILABLE_CONCEPTS
-from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
+from shapiq_games.synthetic import DummyGame
 
 
 @pytest.mark.parametrize(
