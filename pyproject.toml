@@ -229,7 +229,7 @@ test = [
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
-    "pytest-randomly",
+    # "pytest-randomly",
     "packaging>=24.2",
 ]
 lint = [

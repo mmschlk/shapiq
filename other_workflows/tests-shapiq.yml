@@ -32,4 +32,4 @@ jobs:
       run: uv sync --all-extras --dev
 
     - name: Test with pytest
-      run: uv run pytest "tests/shapiq"
+      run: uv run pytest "tests/shapiq" -n logical
