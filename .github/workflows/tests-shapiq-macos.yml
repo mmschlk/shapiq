@@ -20,7 +20,10 @@ jobs:
       uses: astral-sh/setup-uv@v6
       with:
         python-version: "3.11"
-        version: 0.7.20
+
+    - name: Install libomp
+      run: |
+        brew install libomp
 
     - name: Reinstall Python
       run: |
