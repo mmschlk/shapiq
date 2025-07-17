@@ -42,6 +42,6 @@ def get_expected_index_or_skip(index: IndexType, order: int) -> IndexType:
 
     # skip tests for indices that are not possible
     if expected_index in ["BV", "SV"] and order > 1:
-        pytest.skip("Skipping test for BV and SV indices with order > 1.")
+        pytest.xfail("Indices BV and SV are not possible for order > 1")
 
     return expected_index
