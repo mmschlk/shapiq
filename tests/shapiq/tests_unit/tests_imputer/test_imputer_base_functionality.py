@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.games.imputer.base import Imputer
+from shapiq.imputer.base import Imputer
 from tests.shapiq.utils import get_concrete_class
 
 

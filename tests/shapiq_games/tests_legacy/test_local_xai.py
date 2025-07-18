@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.games.benchmark import (
+from shapiq_games.benchmark import (
     AdultCensusLocalXAI,
     BikeSharingLocalXAI,
     CaliforniaHousingLocalXAI,
@@ -13,8 +13,8 @@ from shapiq.games.benchmark import (
     LocalExplanation,
     SentimentAnalysisLocalXAI,
 )
-from shapiq.games.benchmark._setup._resnet_setup import ResNetModel
-from shapiq.games.benchmark._setup._vit_setup import ViTModel
+from shapiq_games.benchmark._setup._resnet_setup import ResNetModel
+from shapiq_games.benchmark._setup._vit_setup import ViTModel
 
 
 def test_basic_function(background_reg_dataset, dt_reg_model):

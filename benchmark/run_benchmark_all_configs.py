@@ -12,12 +12,12 @@ if __name__ == "__main__":
     # example python run command with nohup and nice
     # nohup nice -n 19 python run_benchmark_all_configs.py --n_jobs 100 > configs.log &
 
-    from shapiq.games.benchmark.benchmark_config import (
+    from benchmark.configuration import (
         BENCHMARK_CONFIGURATIONS,
         GAME_NAME_TO_CLASS_MAPPING,
         get_game_class_from_name,
     )
-    from shapiq.games.benchmark.run import run_benchmark_from_configuration
+    from benchmark.run import run_benchmark_from_configuration
 
     indices_order = [
         ("k-SII", 2),

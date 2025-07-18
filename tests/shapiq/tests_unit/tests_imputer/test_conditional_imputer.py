@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.games.imputer import ConditionalImputer
+from shapiq.imputer import ConditionalImputer
 
 
 def test_conditional_imputer_init():

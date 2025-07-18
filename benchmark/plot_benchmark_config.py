@@ -10,9 +10,8 @@ os.makedirs("plots", exist_ok=True)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-
-    from shapiq.games.benchmark.plot import get_game_title_name, plot_approximation_quality
-    from shapiq.games.benchmark.run import load_benchmark_results
+    from benchmark.plot import get_game_title_name, plot_approximation_quality
+    from benchmark.run import load_benchmark_results
 
     # run parameters
     save_fig = True

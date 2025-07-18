@@ -21,7 +21,7 @@ class SHAPIQ(MonteCarlo):
     a generalization of the Unbiased KernelSHAP method [Cov21]_ for any-order Shapley interactions.
 
     Examples:
-        >>> from shapiq.games.benchmark import DummyGame
+        >>> from shapiq_games.benchmark import DummyGame
         >>> from shapiq import SHAPIQ
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = SHAPIQ(game.n_players, max_order=2, index="k-SII")
@@ -100,7 +100,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
     KernelSHAP is a more specific variant of the SHAP-IQ approximation method (Theorem 4.5).
 
     Example:
-        >>> from shapiq.games.benchmark import DummyGame
+        >>> from shapiq_games.benchmark import DummyGame
         >>> from shapiq.approximator import UnbiasedKernelSHAP
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = UnbiasedKernelSHAP(n=5)

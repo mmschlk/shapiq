@@ -9,7 +9,7 @@ import pytest
 from shapiq import InteractionValues, MarginalImputer
 from shapiq.explainer.agnostic import AgnosticExplainer, AgnosticExplainerIndices
 from shapiq.explainer.base import Explainer
-from shapiq.games.benchmark.synthetic import DummyGame, RandomGame
+from shapiq_games.synthetic import DummyGame, RandomGame
 
 if TYPE_CHECKING:
     import numpy as np

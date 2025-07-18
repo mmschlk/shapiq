@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     import numpy as np
 
     from shapiq.explainer.base import Explainer
-    from shapiq.games.base import Game
+    from shapiq.game import Game
     from shapiq.typing import Model
 
 WARNING_NO_CLASS_INDEX = (
@@ -73,7 +73,7 @@ def get_predict_function_and_model_type(
         A tuple of the predict function and the model type.
 
     """
-    from shapiq.games.base import Game
+    from shapiq.game import Game
 
     from .tree import TreeModel
 

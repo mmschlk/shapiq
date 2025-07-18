@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Literal
 
 import pytest
 
-from shapiq.games.imputer import (
+from shapiq.imputer import (
     BaselineImputer,
     ConditionalImputer,
     MarginalImputer,

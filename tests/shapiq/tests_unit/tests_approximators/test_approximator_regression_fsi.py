@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 
 from shapiq.approximator.regression import RegressionFSII
-from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
+from shapiq_games.synthetic import DummyGame
 
 
 @pytest.mark.parametrize(

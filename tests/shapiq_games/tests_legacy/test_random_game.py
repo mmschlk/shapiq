@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.games.benchmark import RandomGame
+from shapiq_games.synthetic import RandomGame
 
 
 @pytest.mark.parametrize("n_players", [10, 100])

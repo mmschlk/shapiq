@@ -9,13 +9,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 if __name__ == "__main__":
-    from shapiq.games.benchmark.benchmark_config import (
+    from benchmark.configuration import (
         BENCHMARK_CONFIGURATIONS,
         BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS,
         GAME_NAME_TO_CLASS_MAPPING,
         get_game_class_from_name,
     )
-    from shapiq.games.benchmark.precompute import pre_compute_from_configuration
+    from benchmark.precompute import pre_compute_from_configuration
 
     # example python run commands for the SentimentAnalysisLocalXAI game
     # nohup nice -n 19 python pre_compute.py --game SentimentAnalysisLocalXAI --config_id 1 --n_player_id 0 --n_jobs 1 > SentimentAnalysisLocalXAI_1_1.log 2>&1 &

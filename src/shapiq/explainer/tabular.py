@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     import numpy as np
 
     from shapiq.approximator.base import Approximator
-    from shapiq.games.imputer.base import Imputer
+    from shapiq.imputer.base import Imputer
     from shapiq.typing import Model
 
 TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
@@ -106,7 +106,7 @@ class TabularExplainer(Explainer):
             **kwargs: Additional keyword-only arguments passed to the imputers implemented in
                 :mod:`~shapiq.games.imputer`.
         """
-        from shapiq.games.imputer import (
+        from shapiq.imputer import (
             BaselineImputer,
             ConditionalImputer,
             MarginalImputer,

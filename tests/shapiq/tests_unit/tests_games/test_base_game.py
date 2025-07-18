@@ -7,9 +7,9 @@ import typing
 import numpy as np
 import pytest
 
-from shapiq.games.base import Game
-from shapiq.games.benchmark import DummyGame  # used to test the base class
+from shapiq.game import Game
 from shapiq.utils.sets import powerset, transform_coalitions_to_array
+from shapiq_games.synthetic import DummyGame  # used to test the base class
 
 if typing.TYPE_CHECKING:
     from pathlib import Path

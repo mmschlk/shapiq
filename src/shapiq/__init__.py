@@ -4,7 +4,15 @@ shapiq is a library creating explanations for machine learning models based on
 the well established Shapley value and its generalization to interaction.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
 # approximator classes
+from ._deprecated_redirects import try_import_deprecated
 from .approximator import (
     SHAPIQ,
     SPEX,
@@ -23,19 +31,6 @@ from .approximator import (
     UnbiasedKernelSHAP,
     kADDSHAP,
 )
-from .benchmark import (
-    BENCHMARK_CONFIGURATIONS,
-    GAME_CLASS_TO_NAME_MAPPING,
-    GAME_NAME_TO_CLASS_MAPPING,
-    download_game_data,
-    load_benchmark_results,
-    load_game_data,
-    load_games_from_configuration,
-    plot_approximation_quality,
-    print_benchmark_configurations,
-    run_benchmark,
-    run_benchmark_from_configuration,
-)
 
 # dataset functions
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
@@ -49,12 +44,14 @@ from .explainer import (
     TreeExplainer,
 )
 
+# game classes
+from .game import Game
+
 # exact computer classes
 from .game_theory.exact import ExactComputer
 
-# game classes
 # imputer classes
-from .games import BaselineImputer, ConditionalImputer, Game, MarginalImputer, TabPFNImputer
+from .imputer import BaselineImputer, ConditionalImputer, MarginalImputer, TabPFNImputer
 
 # base classes
 from .interaction_values import InteractionValues
@@ -132,16 +129,9 @@ __all__ = [
     "load_bike_sharing",
     "load_adult_census",
     "load_california_housing",
-    # benchmark
-    "plot_approximation_quality",
-    "run_benchmark",
-    "run_benchmark_from_configuration",
-    "load_benchmark_results",
-    "print_benchmark_configurations",
-    "BENCHMARK_CONFIGURATIONS",
-    "GAME_CLASS_TO_NAME_MAPPING",
-    "GAME_NAME_TO_CLASS_MAPPING",
-    "load_games_from_configuration",
-    "download_game_data",
-    "load_game_data",
 ]
+
+
+def __getattr__(name: str) -> ModuleType | None:
+    """Redirect deprecated imports to the new module."""
+    return try_import_deprecated(name)

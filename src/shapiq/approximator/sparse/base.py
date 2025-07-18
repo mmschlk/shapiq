@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
 
-    from shapiq.games.base import Game
+    from shapiq.game import Game
 
 ValidSparseIndices = ValidMoebiusConverterIndices
 

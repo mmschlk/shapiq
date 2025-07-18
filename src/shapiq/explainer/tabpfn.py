@@ -102,7 +102,7 @@ class TabPFNExplainer(TabularExplainer):
                 Note that verbosity can slow down the computation for large datasets.
 
         """
-        from shapiq.games.imputer.tabpfn_imputer import TabPFNImputer
+        from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 
         _predict_function, _ = get_predict_function_and_model_type(model, class_index=class_index)
         model._shapiq_predict_function = _predict_function  # noqa: SLF001

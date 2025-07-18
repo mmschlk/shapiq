@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from shapiq.approximator import UnbiasedKernelSHAP
-from shapiq.games.benchmark import DummyGame
+from shapiq_games.synthetic import DummyGame
 
 
 def test_basic_functionality():

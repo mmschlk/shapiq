@@ -9,7 +9,7 @@ import pytest
 
 from shapiq import ExactComputer
 from shapiq.approximator import RegressionFBII
-from shapiq.games.benchmark import DummyGame
+from shapiq_games.synthetic import DummyGame
 
 
 @pytest.mark.parametrize(

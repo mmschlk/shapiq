@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from shapiq.approximator.montecarlo import SVARMIQ
-from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
+from shapiq_games.synthetic import DummyGame
 
 
 @pytest.mark.parametrize(

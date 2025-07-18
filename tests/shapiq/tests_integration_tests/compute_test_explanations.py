@@ -14,14 +14,14 @@ from typing import TYPE_CHECKING, get_args
 from shapiq.explainer.tabular import TabularExplainerIndices
 from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq.game_theory.exact import ExactComputer
-from shapiq.games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
+from shapiq_games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
 from tests.shapiq.fixtures.data import get_california_housing_train_test_explain
 from tests.shapiq.fixtures.games import get_california_housing_imputer
 from tests.shapiq.fixtures.models import get_california_housing_random_forest
 
 if TYPE_CHECKING:
     from shapiq.explainer.custom_types import ExplainerIndices
-    from shapiq.games.base import Game
+    from shapiq.game import Game
     from shapiq.interaction_values import InteractionValues
 
 

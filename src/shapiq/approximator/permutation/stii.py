@@ -26,7 +26,7 @@ class PermutationSamplingSTII(Approximator):
             Sampling approximator for the SV index
 
     Example:
-        >>> from shapiq.games.benchmark import DummyGame
+        >>> from shapiq_games.benchmark import DummyGame
         >>> from shapiq.approximator import PermutationSamplingSTII
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = PermutationSamplingSTII(n=5, max_order=2)
