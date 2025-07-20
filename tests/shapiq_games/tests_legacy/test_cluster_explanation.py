@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.games.benchmark import (
+from shapiq_games.benchmark import (
     AdultCensusClusterExplanation,
     BikeSharingClusterExplanation,
     CaliforniaHousingClusterExplanation,

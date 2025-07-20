@@ -7,16 +7,16 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from shapiq.games.imputer.marginal_imputer import MarginalImputer
+from shapiq.imputer.marginal_imputer import MarginalImputer
 
 if TYPE_CHECKING:
-    from shapiq.games.base import Game
+    from shapiq.game import Game
 
 
 @pytest.fixture
 def cooking_game() -> Game:
     """Return the cooking game object."""
-    from shapiq.games.base import Game
+    from shapiq.game import Game
 
     class CookingGame(Game):
         def __init__(self):
@@ -53,7 +53,7 @@ def paper_game():
     """Return a simple game object."""
     from scipy.special import binom
 
-    from shapiq.games.base import Game
+    from shapiq.game import Game
 
     class PaperGame(Game):
         """A simple game with 11 players.

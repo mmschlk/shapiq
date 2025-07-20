@@ -7,8 +7,8 @@ import pytest
 
 import shapiq
 from shapiq.game_theory.core import egalitarian_least_core
-from shapiq.games.benchmark.synthetic.soum import SOUM
 from shapiq.utils import powerset
+from shapiq_games.synthetic.soum import SOUM
 
 
 def test_core_on_soum():

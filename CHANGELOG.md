@@ -2,14 +2,15 @@
 
 ## Development
 
-### Seperation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark`
-- starts work on seperating the `shapiq` package into three packages:
-  - `shapiq`: the core package containing the approximators, explainers, computers, interaction values, and plots
-  - `shapiq_games`: a package containing the examples on how to create custom cooperative games using the `shapiq.Game` API.
-  - `shapiq-benchmark`: a package for conducting benchmarks of the approximators and explainers on different games and datasets.
-- we split the package into these three packages to make it easier to maintain and develop the package in the future. The core `shapiq` package will require the most maintenance and development care, so we want the project to be as focused as possible.
-- the `shapiq_games` package will live in the `shapiq` repository to be tightly coupled with changes in `shapiq`, yet it will be easier to install and use as a standalone package. The source code of the package will be contained in the installation of `shapiq` and will be available in the `shapiq_games` submodule. The dependencies are managed via extras (`uv pip install shapiq[games]` or `pip install shapiq_games`).
-- the `shapiq-benchmark` package will live in a separate repository and will be installed via `pip install shapiq-benchmark`. The package will be based ontop of `shapiq` and `shapiq_games` and will contain the benchmark games, datasets, and the benchmarking code. The package will be used to conduct benchmarks of the approximators and explainers on different games and datasets.
+### Separation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark`
+
+We have begun the process of modularizing the `shapiq` package by splitting it into three distinct packages: `shapiq`, `shapiq_games`, and `shapiq-benchmark`.
+
+- The `shapiq` package now serves as the core library. It contains the main functionality, including approximators, explainers, computation routines, interaction value logic, and plotting utilities.
+- The new `shapiq_games` package includes examples and utilities for defining custom cooperative games using the `shapiq.Game` API. Although it lives in the same repository as `shapiq`, it is designed to be installable and usable as a standalone package. Internally, its source code is available via the `shapiq_games` submodule. Dependencies for this package can be managed via extras (e.g., `uv pip install shapiq[games]`) or by installing `shapiq_games` directly.
+- The `shapiq-benchmark` package is hosted in a separate repository and is intended for conducting benchmarks. It builds on top of both `shapiq` and `shapiq_games`, and includes benchmarking utilities, datasets, and game configurations for evaluating the performance of different approximators and explainers. It can be installed via `pip install shapiq-benchmark`.
+
+This restructuring aims to improve maintainability and development scalability. The core `shapiq` package will continue to receive the majority of updates and enhancements, and keeping it streamlined ensures better focus and usability. Meanwhile, separating games and benchmarking functionality allows these components to evolve more independently while maintaining compatibility through clearly defined dependencies.
 
 ### Removed Features
 - removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)

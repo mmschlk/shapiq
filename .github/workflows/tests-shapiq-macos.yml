@@ -33,5 +33,7 @@ jobs:
     - name: Install dependencies
       run: uv sync --all-extras --dev
 
+      # we run macos tests in a single process (no use of xdist, because of issues with xgboost and
+      # lightgbm fitting slowly with libomp on macos in parallel)
     - name: Test with pytest
-      run: uv run pytest "tests/shapiq" -n logical
+      run: uv run pytest "tests/shapiq"

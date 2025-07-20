@@ -16,7 +16,7 @@ from shapiq.utils.sets import generate_interaction_lookup
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.games.base import Game
+    from shapiq.game import Game
     from shapiq.interaction_values import InteractionValues
 
 __all__ = [

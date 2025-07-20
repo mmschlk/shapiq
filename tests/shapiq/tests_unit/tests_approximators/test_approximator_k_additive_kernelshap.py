@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from shapiq.approximator import kADDSHAP
-from shapiq.games.benchmark import DummyGame
 from shapiq.interaction_values import InteractionValues
+from shapiq_games.synthetic import DummyGame
 
 
 @pytest.mark.parametrize("n", [3, 7, 10])

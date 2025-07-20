@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from shapiq.games.base import Game
-from shapiq.games.imputer import BaselineImputer, ConditionalImputer, MarginalImputer, TabPFNImputer
+from shapiq.game import Game
+from shapiq.imputer import BaselineImputer, ConditionalImputer, MarginalImputer, TabPFNImputer
 
 from .utils import get_x_explain
 

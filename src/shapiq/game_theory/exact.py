@@ -17,7 +17,7 @@ from .indices import ALL_AVAILABLE_CONCEPTS
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.games.base import Game
+    from shapiq.game import Game
 
 __all__ = ["ExactComputer", "get_bernoulli_weights"]
 

@@ -20,7 +20,7 @@ class KernelSHAP(Regression):
     coefficients of the regression problem.
 
     Example:
-        >>> from shapiq.games.benchmark import DummyGame
+        >>> from shapiq_games.benchmark import DummyGame
         >>> from shapiq.approximator import KernelSHAP
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = KernelSHAP(n=5)

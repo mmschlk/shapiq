@@ -12,7 +12,7 @@ from shapiq.interaction_values import InteractionValues, finalize_computed_inter
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.games.base import Game
+    from shapiq.game import Game
 
 
 class OwenSamplingSV(Approximator):
