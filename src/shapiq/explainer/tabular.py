@@ -8,7 +8,7 @@ from warnings import warn
 from overrides import overrides
 
 from shapiq.explainer.base import Explainer
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 
 from .configuration import setup_approximator
 from .custom_types import ExplainerIndices
@@ -198,9 +198,17 @@ class TabularExplainer(Explainer):
         # explain
         interaction_values = self.approximator(budget=budget, game=self.imputer)
         interaction_values.baseline_value = self.baseline_value
-        return finalize_computed_interactions(
-            interaction_values,
-            target_index=self._index,
+        return InteractionValues(
+            values=interaction_values.interactions,
+            interaction_lookup=interaction_values.interaction_lookup,
+            baseline_value=interaction_values.baseline_value,
+            min_order=interaction_values.min_order,
+            max_order=interaction_values.max_order,
+            n_players=interaction_values.n_players,
+            estimated=interaction_values.estimated,
+            estimation_budget=interaction_values.estimation_budget,
+            index=interaction_values.index,
+            target_index=self.index,
         )
 
     @property

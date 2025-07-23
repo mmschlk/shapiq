@@ -26,6 +26,66 @@ def _change_index(index: str) -> str:
     return f"k-{index}"
 
 
+def aggregate_base_attributions(
+    interactions: dict[tuple[int, ...], float],
+    index: str,
+    order: int,
+    min_order: int,
+    baseline_value: float,
+) -> tuple[dict[tuple[int, ...], float], str, int]:
+    """Aggregates the interactions into an efficient interactions.
+
+    An example aggregation would be the transformation from `SII` values to `k-SII` values.
+
+    Args:
+        interactions: The base interaction values to aggregate.
+        index: The index of the interaction values.
+        order: The order of the aggregation. For example, the order of the k-SII aggregation.
+        min_order: The minimum order of the base interactions. If the base interactions have a minimum
+            order greater than 1, a warning is raised.
+        baseline_value: The baseline value of the interaction values. For example, the baseline value
+            of the SII values must not be the same as the values of the empty set.
+
+    Returns:
+        A tuple containing:
+            - A dictionary mapping interactions to their values.
+            - The new index of the interaction values.
+            - The new minimum order of the interaction values (always 0 for this aggregation).
+
+    Raises:
+        ValueError: If the `order` is smaller than 0.
+    """
+    if min_order > 1:
+        warnings.warn(
+            UserWarning(
+                "The base interaction values have a minimum order greater than 1. Aggregation may "
+                "not be meaningful.",
+            ),
+            stacklevel=2,
+        )
+
+    bernoulli_numbers = sp.special.bernoulli(order)  # used for aggregation
+    transformed_interactions: dict[tuple, float] = {(): baseline_value}  # storage
+    # iterate over all interactions in base_interactions and project them onto all interactions T
+    # where 1 <= |T| <= order
+    for base_interaction, base_interaction_value in interactions.items():
+        for interaction in powerset(base_interaction, min_size=1, max_size=order):
+            scaling = float(bernoulli_numbers[len(base_interaction) - len(interaction)])
+            update_interaction = scaling * base_interaction_value
+            try:
+                transformed_interactions[interaction] += update_interaction
+            except KeyError:
+                transformed_interactions[interaction] = update_interaction
+
+    # update the index name after the aggregation (e.g., SII -> k-SII)
+    new_index = _change_index(index)
+    return (
+        transformed_interactions,
+        new_index,
+        0,
+    )  # always order 0 for this aggregation
+
+
 def aggregate_base_interaction(
     base_interactions: InteractionValues,
     order: int | None = None,
@@ -68,49 +128,21 @@ def aggregate_base_interaction(
         2
 
     """
-    # sanitize input parameters
     order = order or base_interactions.max_order
-
-    if base_interactions.min_order > 1:
-        warnings.warn(
-            UserWarning(
-                "The base interaction values have a minimum order greater than 1. Aggregation may "
-                "not be meaningful.",
-            ),
-            stacklevel=2,
-        )
-
-    bernoulli_numbers = sp.special.bernoulli(order)  # used for aggregation
-    baseline_value = base_interactions.baseline_value
-    transformed_dict: dict[tuple, float] = {(): baseline_value}  # storage
-    # iterate over all interactions in base_interactions and project them onto all interactions T
-    # where 1 <= |T| <= order
-    for base_interaction, pos in base_interactions.interaction_lookup.items():
-        base_interaction_value = float(base_interactions.values[pos])
-        for interaction in powerset(base_interaction, min_size=1, max_size=order):
-            scaling = float(bernoulli_numbers[len(base_interaction) - len(interaction)])
-            update_interaction = scaling * base_interaction_value
-            try:
-                transformed_dict[interaction] += update_interaction
-            except KeyError:
-                transformed_dict[interaction] = update_interaction
-
-    lookup: dict[tuple[int, ...], int] = {}  # maps interactions to their index in the values vector
-    aggregated_values = np.zeros(len(transformed_dict), dtype=float)
-    for pos, (interaction, interaction_value) in enumerate(transformed_dict.items()):
-        lookup[interaction] = pos
-        aggregated_values[pos] = interaction_value
-
-    # update the index name after the aggregation (e.g., SII -> k-SII)
-    new_index = _change_index(base_interactions.index)
+    transformed_interactions, new_index, new_min_order = aggregate_base_attributions(
+        interactions=base_interactions.interactions,
+        index=base_interactions.index,
+        order=order,
+        min_order=base_interactions.min_order,
+        baseline_value=base_interactions.baseline_value,
+    )
 
     return InteractionValues(
+        values=transformed_interactions,
         n_players=base_interactions.n_players,
-        values=aggregated_values,
         index=new_index,
-        interaction_lookup=lookup,
-        baseline_value=baseline_value,
-        min_order=0,  # always order 0 for this aggregation
+        baseline_value=base_interactions.baseline_value,
+        min_order=new_min_order,
         max_order=order,
         estimated=base_interactions.estimated,
         estimation_budget=base_interactions.estimation_budget,

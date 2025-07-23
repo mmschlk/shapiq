@@ -15,9 +15,9 @@ from shapiq.imputer import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from fixtures.tabular import TabularDataSet
     from sklearn.tree import DecisionTreeRegressor
 
+    from fixtures.tabular import TabularDataSet
     from shapiq.typing import NumericArray
 
 
