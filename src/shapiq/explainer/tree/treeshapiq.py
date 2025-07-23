@@ -10,7 +10,7 @@ import numpy as np
 import scipy as sp
 
 from shapiq.game_theory.indices import get_computation_index
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import generate_interaction_lookup, powerset
 
 from .conversion.edges import create_edge_tree
@@ -196,7 +196,7 @@ class TreeSHAPIQ:
                 # append the computed Shapley Interaction values to the result
                 interactions = np.append(interactions, self.shapley_interactions.copy())
 
-        shapley_interaction_values = InteractionValues(
+        return InteractionValues(
             values=interactions,
             index=self._base_index,
             min_order=self._min_order,
@@ -205,10 +205,6 @@ class TreeSHAPIQ:
             estimated=False,
             interaction_lookup=self._interactions_lookup_relevant,
             baseline_value=self.empty_prediction,
-        )
-
-        return finalize_computed_interactions(
-            shapley_interaction_values,
             target_index=self._index,
         )
 

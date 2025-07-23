@@ -870,11 +870,10 @@ def test_copy_behaviour():
         assert original == copied
 
         # Independence: changing one doesn't affect the other
-        copied.values[0] += 1.0
+        copied[0] += 1.0
         assert not np.array_equal(original.values, copied.values), "Values should be independent"
-        copied.interaction_lookup[interaction] = 999
-        assert original.interaction_lookup != copied.interaction_lookup, "Lookup should be different"  # fmt: skip
-        assert original.interaction_lookup[interaction] != copied.interaction_lookup[interaction]
+        copied.interactions[interaction] = 999
+        assert original.interactions != copied.interactions, "Interactions should be different"  # fmt: skip
         assert hash(original) != hash(copied)
         assert original != copied, "Objects should be different"
 

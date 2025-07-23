@@ -9,7 +9,7 @@ import numpy as np
 import scipy as sp
 
 from shapiq.approximator.base import Approximator
-from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from shapiq.interaction_values import InteractionValues
 from shapiq.utils import get_explicit_subsets, powerset
 
 if TYPE_CHECKING:
@@ -129,7 +129,7 @@ class PermutationSamplingSTII(Approximator):
                 stacklevel=2,
             )
 
-            interactions = InteractionValues(
+            return InteractionValues(
                 n_players=self.n,
                 values=result,
                 index=self.approximation_index,
@@ -139,9 +139,8 @@ class PermutationSamplingSTII(Approximator):
                 max_order=self.max_order,
                 estimated=True,
                 estimation_budget=used_budget,
+                target_index=self.index,
             )
-
-            return finalize_computed_interactions(interactions, target_index=self.index)
 
         empty_value = game(np.zeros(self.n, dtype=bool))[0]
         used_budget += 1
@@ -163,7 +162,7 @@ class PermutationSamplingSTII(Approximator):
                 stacklevel=2,
             )
 
-            interactions = InteractionValues(
+            return InteractionValues(
                 n_players=self.n,
                 values=result,
                 index=self.approximation_index,
@@ -173,9 +172,8 @@ class PermutationSamplingSTII(Approximator):
                 max_order=self.max_order,
                 estimated=True,
                 estimation_budget=used_budget,
+                target_index=self.index,
             )
-
-            return finalize_computed_interactions(interactions, target_index=self.index)
 
         # main permutation sampling loop
         for iteration in range(1, n_iterations + 1):
@@ -231,7 +229,7 @@ class PermutationSamplingSTII(Approximator):
         # compute mean of interactions
         result = np.divide(result, counts, out=result, where=counts != 0)
 
-        interactions = InteractionValues(
+        return InteractionValues(
             n_players=self.n,
             values=result,
             index=self.approximation_index,
@@ -241,8 +239,8 @@ class PermutationSamplingSTII(Approximator):
             max_order=self.max_order,
             estimated=True,
             estimation_budget=used_budget,
+            target_index=self.index,
         )
-        return finalize_computed_interactions(interactions, target_index=self.index)
 
     def _compute_iteration_cost(self) -> int:
         """Computes the cost of a single iteration of the permutation sampling.
