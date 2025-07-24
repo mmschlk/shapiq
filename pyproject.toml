@@ -64,7 +64,7 @@ keywords = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["shapiq", "shapiq_games"]
+include = ["shapiq*"]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
