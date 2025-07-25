@@ -29,7 +29,7 @@ def convert_svr(model: Model) -> ProductKernelModel:
         n=n,
         d=d,
         gamma=model._gamma,  # noqa: SLF001
-    )  # TODO (IsaH57): check is gamma is always needed # noqa: TD003
+    )  # TODO (IsaH57): check if gamma is always needed # noqa: TD003
 
 
 def convert_binsvc(model: Model) -> ProductKernelModel:
@@ -50,7 +50,7 @@ def convert_binsvc(model: Model) -> ProductKernelModel:
         n=n,
         d=d,
         gamma=model._gamma,  # noqa: SLF001
-    )  # TODO (IsaH57): check is gamma is always needed # noqa: TD003
+    )  # TODO (IsaH57): check if gamma is always needed # noqa: TD003
 
 
 def convert_gp_reg(model: Model) -> ProductKernelModel:
@@ -88,8 +88,9 @@ def convert_gp_binclf(
     """
     # binary classification has parameter X_train (other than classifier with >2 classes)
     X_train = model.base_estimator_.X_train_
-    # alpha correspods to y_train_ - pi_ (according to predict_proba() of _BinaryGaussianProcessClassifierLaplace
-    alpha = model.base_estimator_.y_train_ - model.base_estimator_.pi_
+    alpha = (
+        model.alpha_.flatten()
+    )  # Issue: model doesnt have alpha value #TODO(IsaH57): solve this # noqa: TD003
 
     n, d = X_train.shape
     return ProductKernelModel(

@@ -13,7 +13,6 @@ import numpy as np
 
 from shapiq.explainer.product_kernel.conversion import (
     convert_binsvc,
-    convert_gp_binclf,
     convert_gp_reg,
     convert_svr,
 )
@@ -184,13 +183,15 @@ def validate_pk_model(
         safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessClassifier")
         and model.classes_.shape[0] == 2
     ):
-        pk_model = convert_gp_binclf(model)
+        msg = "GaussianProcessClassifier misses attribute alpha."
+        raise TypeError(msg)
+        # pk_model = convert_gp_binclf(model) # noqa: ERA001
     # unsupported model types
     elif safe_isinstance(model, "sklearn.svm.SVC") or (
         safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessClassifier")
-        and model.classes_.shape[0] == 2
+        and model.classes_.shape[0] >= 2
     ):
-        msg = "Only binary classification supported"
+        msg = "Only binary SVM classification supported"
         raise TypeError(msg)
     else:
         msg = f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}"
