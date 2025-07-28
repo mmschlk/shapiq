@@ -111,8 +111,8 @@ class Game:
     """The value which is used to normalize (center) the game values such that the value for the
     empty coalition is zero. If this is zero, the game values are not normalized."""
 
-    value_storage: GameValues
-    """The storage for the game values without normalization applied."""
+    coalition_values: dict[tuple[int, ...], float]
+    """The mapping for coalitions to game values without normalization applied."""
 
     def __init__(
         self,
@@ -158,8 +158,7 @@ class Game:
         self._precompute_flag: bool = False  # flag to manually override the precomputed check
 
         # define storage variables
-        self.value_storage: GameValues = np.zeros(0, dtype=float)
-        self.coalition_lookup: dict[tuple[int, ...], int] = {}
+        self.coalition_values: dict[tuple[int, ...], float] = {}
         self.n_players = n_players
 
         if path_to_values is not None:
@@ -231,6 +230,16 @@ class Game:
         """Checks if the game is normalized/centered."""
         return self(self.empty_coalition) == 0
 
+    @property
+    def coalition_lookup(self) -> dict[tuple[int, ...], int]:
+        """A lookup dictionary mapping from coalitions to indices in the ``value_storage``."""
+        return {coal: i for i, coal in enumerate(self.coalition_values.keys())}
+
+    @property
+    def value_storage(self) -> GameValues:
+        """The storage for the game values without normalization applied."""
+        return np.array(list(self.coalition_values.values()), dtype=float)
+
     def to_json_file(
         self,
         path: Path,
@@ -249,7 +258,11 @@ class Game:
             **kwargs: Additional keyword arguments to pass to the metadata block.
 
         """
-        from shapiq.utils.saving import lookup_and_values_to_dict, make_file_metadata, save_json
+        from shapiq.utils.saving import (
+            make_file_metadata,
+            safe_tuple_to_str,
+            save_json,
+        )
 
         meta_data = make_file_metadata(
             object_to_store=self,
@@ -270,7 +283,10 @@ class Game:
                 if self.player_name_lookup
                 else None,
             },
-            "data": lookup_and_values_to_dict(self.coalition_lookup, self.value_storage),
+            "data": {
+                safe_tuple_to_str(coalition): float(value)
+                for coalition, value in self.coalition_values.items()
+            },
         }
         save_json(data, path)
 
@@ -285,7 +301,7 @@ class Game:
         Returns:
             Game: The loaded game object.
         """
-        from shapiq.utils.saving import dict_to_lookup_and_values
+        from shapiq.utils.saving import safe_str_to_tuple
 
         with Path(path).open("r") as file:
             data: GameJSON = json.load(file)
@@ -302,7 +318,9 @@ class Game:
             player_names=player_names,
         )
         game._precompute_flag = metadata["precompute_flag"]
-        game.coalition_lookup, game.value_storage = dict_to_lookup_and_values(data["data"])
+        game.coalition_values = {
+            safe_str_to_tuple(tup_str): float(value) for tup_str, value in data["data"].items()
+        }
         return game
 
     def _check_coalitions(
@@ -442,7 +460,7 @@ class Game:
             # convert one-hot vector to tuple
             coalition_tuple = tuple(np.where(coalition)[0])
             try:
-                values[i] = self.value_storage[self.coalition_lookup[coalition_tuple]]
+                values[i] = self.coalition_values[coalition_tuple]
             except KeyError as error:
                 msg = (
                     f"The coalition {coalition_tuple} is not stored in the game. "
@@ -530,8 +548,9 @@ class Game:
         self.normalization_value = norm_value
 
         # update the storage with the new coalitions and values
-        self.value_storage = game_values.astype(float)
-        self.coalition_lookup = coalitions_dict
+        self.coalition_values = {
+            tuple(sorted(coal)): game_values[idx] for coal, idx in coalitions_dict.items()
+        }
         self._precompute_flag = True
 
     def compute(
@@ -559,7 +578,6 @@ class Game:
 
         """
         game_values = self.value_function(self._check_coalitions(coalitions))
-
         return game_values, self.coalition_lookup, self.normalization_value
 
     def save_values(
@@ -625,8 +643,7 @@ class Game:
         """Loads game values from a JSON file."""
         game = self.from_json_file(path)
         self._validate_and_set_players_from_save(game.n_players)
-        self.value_storage = game.value_storage
-        self.coalition_lookup = game.coalition_lookup
+        self.coalition_values = game.coalition_values
         self.normalization_value = game.normalization_value
 
     def _validate_and_set_players_from_save(self, n_players: int) -> None:
@@ -643,9 +660,11 @@ class Game:
         """Load game values from a npz archive file."""
         data = np.load(path)
         self._validate_and_set_players_from_save(data["n_players"])
-        self.value_storage = data["values"]
         coalition_lookup: list[tuple] = transform_array_to_coalitions(data["coalitions"])
-        self.coalition_lookup = {coal: i for i, coal in enumerate(coalition_lookup)}
+        self.coalition_values = {
+            tuple(sorted(coal)): value
+            for coal, value in zip(coalition_lookup, data["values"], strict=False)
+        }
         self.normalization_value = float(data["normalization_value"])
 
     def save(self, path: Path | str, **kwargs: dict[str, JSONType]) -> None:
@@ -751,7 +770,7 @@ class Game:
 
         """
         try:
-            return float(self.value_storage[self.coalition_lookup[tuple(sorted(item))]])
+            return float(self.coalition_values[tuple(sorted(item))])
         except (KeyError, IndexError) as error:
             msg = f"The coalition {item} is not stored in the game. Is it precomputed?"
             raise KeyError(msg) from error
