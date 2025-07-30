@@ -111,7 +111,7 @@ class Game:
     """The value which is used to normalize (center) the game values such that the value for the
     empty coalition is zero. If this is zero, the game values are not normalized."""
 
-    coalition_values: dict[tuple[int, ...], float]
+    game_values: dict[tuple[int, ...], float]
     """The mapping for coalitions to game values without normalization applied."""
 
     def __init__(
@@ -158,7 +158,7 @@ class Game:
         self._precompute_flag: bool = False  # flag to manually override the precomputed check
 
         # define storage variables
-        self.coalition_values: dict[tuple[int, ...], float] = {}
+        self.game_values: dict[tuple[int, ...], float] = {}
         self.n_players = n_players
 
         if path_to_values is not None:
@@ -233,12 +233,12 @@ class Game:
     @property
     def coalition_lookup(self) -> dict[tuple[int, ...], int]:
         """A lookup dictionary mapping from coalitions to indices in the ``value_storage``."""
-        return {coal: i for i, coal in enumerate(self.coalition_values.keys())}
+        return {coal: i for i, coal in enumerate(self.game_values.keys())}
 
     @property
     def value_storage(self) -> GameValues:
         """The storage for the game values without normalization applied."""
-        return np.array(list(self.coalition_values.values()), dtype=float)
+        return np.array(list(self.game_values.values()), dtype=float)
 
     def to_json_file(
         self,
@@ -285,7 +285,7 @@ class Game:
             },
             "data": {
                 safe_tuple_to_str(coalition): float(value)
-                for coalition, value in self.coalition_values.items()
+                for coalition, value in self.game_values.items()
             },
         }
         save_json(data, path)
@@ -318,7 +318,7 @@ class Game:
             player_names=player_names,
         )
         game._precompute_flag = metadata["precompute_flag"]
-        game.coalition_values = {
+        game.game_values = {
             safe_str_to_tuple(tup_str): float(value) for tup_str, value in data["data"].items()
         }
         return game
@@ -460,7 +460,7 @@ class Game:
             # convert one-hot vector to tuple
             coalition_tuple = tuple(np.where(coalition)[0])
             try:
-                values[i] = self.coalition_values[coalition_tuple]
+                values[i] = self.game_values[coalition_tuple]
             except KeyError as error:
                 msg = (
                     f"The coalition {coalition_tuple} is not stored in the game. "
@@ -548,7 +548,7 @@ class Game:
         self.normalization_value = norm_value
 
         # update the storage with the new coalitions and values
-        self.coalition_values = {
+        self.game_values = {
             tuple(sorted(coal)): game_values[idx] for coal, idx in coalitions_dict.items()
         }
         self._precompute_flag = True
@@ -643,7 +643,7 @@ class Game:
         """Loads game values from a JSON file."""
         game = self.from_json_file(path)
         self._validate_and_set_players_from_save(game.n_players)
-        self.coalition_values = game.coalition_values
+        self.game_values = game.game_values
         self.normalization_value = game.normalization_value
 
     def _validate_and_set_players_from_save(self, n_players: int) -> None:
@@ -661,7 +661,7 @@ class Game:
         data = np.load(path)
         self._validate_and_set_players_from_save(data["n_players"])
         coalition_lookup: list[tuple] = transform_array_to_coalitions(data["coalitions"])
-        self.coalition_values = {
+        self.game_values = {
             tuple(sorted(coal)): value
             for coal, value in zip(coalition_lookup, data["values"], strict=False)
         }
@@ -770,7 +770,7 @@ class Game:
 
         """
         try:
-            return float(self.coalition_values[tuple(sorted(item))])
+            return float(self.game_values[tuple(sorted(item))])
         except (KeyError, IndexError) as error:
             msg = f"The coalition {item} is not stored in the game. Is it precomputed?"
             raise KeyError(msg) from error

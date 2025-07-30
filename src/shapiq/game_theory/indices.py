@@ -249,9 +249,9 @@ def get_index_from_computation_index(index: str, max_order: int) -> str:
 
     """
     if max_order == 1:
-        if index == "BII":
+        if index_generalizes_bv(index):
             return "BV"
-        if index in {"SII", "STII", "FSII"}:
+        if index_generalizes_sv(index):
             return "SV"
     return index
 
