@@ -1103,7 +1103,7 @@ class InteractionValues:
 
         """
         return {
-            "values": self.values,
+            "values": self.interactions,
             "index": self.index,
             "max_order": self.max_order,
             "n_players": self.n_players,
