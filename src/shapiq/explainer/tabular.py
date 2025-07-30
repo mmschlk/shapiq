@@ -8,7 +8,7 @@ from warnings import warn
 from overrides import overrides
 
 from shapiq.explainer.base import Explainer
-from shapiq.interaction_values import InteractionValues
+from shapiq.game_theory.indices import is_empty_value_the_baseline
 
 from .configuration import setup_approximator
 from .custom_types import ExplainerIndices
@@ -18,7 +18,9 @@ if TYPE_CHECKING:
 
     from shapiq.approximator.base import Approximator
     from shapiq.imputer.base import Imputer
+    from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
+
 
 TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
 TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
@@ -198,18 +200,10 @@ class TabularExplainer(Explainer):
         # explain
         interaction_values = self.approximator(budget=budget, game=self.imputer)
         interaction_values.baseline_value = self.baseline_value
-        return InteractionValues(
-            values=interaction_values.interactions,
-            interaction_lookup=interaction_values.interaction_lookup,
-            baseline_value=interaction_values.baseline_value,
-            min_order=interaction_values.min_order,
-            max_order=interaction_values.max_order,
-            n_players=interaction_values.n_players,
-            estimated=interaction_values.estimated,
-            estimation_budget=interaction_values.estimation_budget,
-            index=interaction_values.index,
-            target_index=self.index,
-        )
+        # Adjust the Baseline Value if the empty value is the baseline
+        if is_empty_value_the_baseline(interaction_values.index):
+            interaction_values[()] = interaction_values.baseline_value
+        return interaction_values
 
     @property
     def baseline_value(self) -> float:

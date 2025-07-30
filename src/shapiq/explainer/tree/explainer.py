@@ -11,7 +11,6 @@ import copy
 from typing import TYPE_CHECKING, Any
 
 from shapiq.explainer.base import Explainer
-from shapiq.interaction_values import InteractionValues
 
 from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
@@ -19,6 +18,7 @@ from .validation import validate_tree_model
 if TYPE_CHECKING:
     import numpy as np
 
+    from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
 
     from .base import TreeModel
@@ -129,19 +129,11 @@ class TreeExplainer(Explainer):
 
         if self._min_order == 0 and final_explanation.min_order == 1:
             final_explanation.min_order = 0
+            # Add the baseline value to the empty prediction
+            # might break for some edge cases
+            final_explanation.interactions[()] = float(final_explanation.baseline_value)
 
-        return InteractionValues(
-            values=final_explanation.interactions,
-            index=final_explanation.index,
-            min_order=final_explanation.min_order,
-            max_order=final_explanation.max_order,
-            n_players=final_explanation.n_players,
-            baseline_value=final_explanation.baseline_value,
-            estimated=final_explanation.estimated,
-            estimation_budget=final_explanation.estimation_budget,
-            interaction_lookup=final_explanation.interaction_lookup,
-            target_index=self._index,
-        )
+        return final_explanation
 
     def _compute_baseline_value(self) -> float:
         """Computes the baseline value for the explainer.

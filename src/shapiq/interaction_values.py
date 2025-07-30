@@ -14,10 +14,10 @@ import numpy as np
 
 from .game_theory.indices import (
     ALL_AVAILABLE_INDICES,
-    index_generalizes_bv,
-    index_generalizes_sv,
+    get_index_from_computation_index,
     is_empty_value_the_baseline,
     is_index_aggregated,
+    is_index_valid,
 )
 from .utils.errors import raise_deprecation_warning
 from .utils.sets import generate_interaction_lookup
@@ -64,6 +64,9 @@ class InteractionValues:
 
     """
 
+    interactions: dict[tuple[int, ...], float]
+    """The interactions as a dictionary mapping interactions to their values."""
+
     def __init__(
         self,
         values: np.ndarray | dict[tuple[int, ...], float],
@@ -75,7 +78,7 @@ class InteractionValues:
         interaction_lookup: dict[tuple[int, ...], int] | None = None,  # type: ignore[assignment]
         estimated: bool = True,
         estimation_budget: int | None = None,  # type: ignore[assignment]
-        baseline_value: float = 0.0,
+        baseline_value: float | np.number = 0.0,
         target_index: str | None = None,
     ) -> None:
         """Initialize the InteractionValues object.
@@ -97,271 +100,45 @@ class InteractionValues:
             target_index: The index to which the InteractionValues should be finalized. Defaults to None, which means that
             target_index = index
         """
+        if not isinstance(baseline_value, (int | float | np.number)):
+            msg = f"Baseline value must be provided as a number. Got {type(baseline_value)}."
+            raise TypeError(msg)
+        self.baseline_value = baseline_value
+        if not is_index_valid(index, raise_error=False):
+            warn(
+                f"Index `{index}` is not a valid interaction index. "
+                f"Valid indices are: {', '.join(ALL_AVAILABLE_INDICES)}.",
+                stacklevel=2,
+            )
+        index = get_index_from_computation_index(index, max_order)
+        if target_index is None:
+            target_index = index
+
+        interactions = _validate_and_return_interactions(
+            values=values,
+            interaction_lookup=interaction_lookup,
+            n_players=n_players,
+            min_order=min_order,
+            max_order=max_order,
+            baseline_value=baseline_value,
+        )
+
+        interactions, index, min_order, baseline_value = _update_interactions_for_index(
+            interactions=interactions,
+            index=index,
+            target_index=target_index,
+            min_order=min_order,
+            max_order=max_order,
+            baseline_value=baseline_value,
+        )
+
+        self.interactions = interactions
+        self.index = index
         self.max_order = max_order
         self.n_players = n_players
         self.min_order = min_order
         self.estimated = estimated
         self.estimation_budget = estimation_budget
-        self.baseline_value = self._validate_baseline_value(baseline_value)
-        self.index, self.target_index = self._index_preprocessing(index, target_index)
-
-        self.interactions, interaction_lookup = self._validate_attributions(
-            values, interaction_lookup
-        )
-        self.interactions = self._populate_interactions(self.interactions, interaction_lookup)
-
-        self.interactions = self._index_aggregation(self.interactions)
-
-        self.interactions = self._index_baseline_adjustment(self.interactions)
-
-    def _index_baseline_adjustment(
-        self, interactions: dict[tuple[int, ...], float]
-    ) -> dict[tuple[int, ...], float]:
-        """Adjust the baseline of interactions based on the target index.
-
-        Args:
-            interactions: The interactions as a dictionary mapping interactions to their values.
-
-        Returns:
-            dict[tuple[int, ...], float]: The adjusted interactions.
-
-        """
-        if () in interactions:
-            empty_value = interactions[()]
-            if empty_value != self.baseline_value and self.index != "SII":
-                if is_empty_value_the_baseline(self.index):
-                    # insert the empty value given in baseline into the values
-                    interactions[()] = self.baseline_value
-                else:  # manually set baseline to the empty value
-                    self.baseline_value = interactions[()]
-        elif self.min_order == 0:
-            # TODO(mmshlk): this might not be what we really want to do always: what if empty and baseline are different?
-            # https://github.com/mmschlk/shapiq/issues/385
-            interactions[()] = self.baseline_value
-        return interactions
-
-    def _index_aggregation(
-        self, interactions: dict[tuple[int, ...], float]
-    ) -> dict[tuple[int, ...], float]:
-        """Adjust the interactions based on the target index if it is aggregated.
-
-        Args:
-            interactions: The interactions as a dictionary mapping interactions to their values.
-
-        Returns:
-            dict[tuple[int, ...], float]: The adjusted interactions.
-
-        """
-        from .game_theory.aggregation import aggregate_base_attributions
-
-        if is_index_aggregated(self.target_index) and self.target_index != self.index:
-            interactions, self.index, self.min_order = aggregate_base_attributions(
-                interactions=interactions,
-                index=self.index,
-                order=self.max_order,
-                min_order=self.min_order,
-                baseline_value=self.baseline_value,
-            )
-        return interactions
-
-    def _validate_attributions(
-        self,
-        values: np.ndarray | dict[tuple[int, ...], float],
-        interaction_lookup: dict[tuple[int, ...], int],
-    ) -> tuple[np.ndarray | dict[tuple[int, ...], float], dict[tuple[int, ...], int] | None]:
-        """Validate the attributions provided to the InteractionValues object.
-
-        Args:
-            values: The interaction values as a numpy array.
-            interaction_lookup: The interaction lookup as a dictionary mapping interactions to their
-                index in the values vector.
-
-        Raises:
-            TypeError: If all three parameters are None or if both values and interaction_lookup are
-                provided but not interactions.
-
-        """
-        if values is None:
-            msg = "Values must be provided."
-            raise TypeError(msg)
-        if (
-            values is not None
-            and not isinstance(values, np.ndarray)
-            and not isinstance(values, dict)
-        ):
-            msg = f"Values must be a numpy array or dictionary. Got {type(values)}."
-            raise TypeError(msg)
-        if interaction_lookup is not None and not isinstance(interaction_lookup, dict):
-            msg = f"Interaction lookup must be a dictionary. Got {type(interaction_lookup)}."
-            raise TypeError(msg)
-        return values, interaction_lookup
-
-    def _populate_interactions(
-        self,
-        values: np.ndarray | dict[tuple[int, ...], float],
-        interaction_lookup: dict[tuple[int, ...], int] | None,
-    ) -> dict[tuple[int, ...], float]:
-        """Populate the attributions for the InteractionValues object.
-
-        Args:
-            values: The interaction values as a numpy array. If None, it will be generated from the
-                interaction_lookup.
-            interaction_lookup: The interaction lookup as a dictionary mapping interactions to their
-                index in the values vector. If None, it will be generated from the n_players, min_order,
-                and max_order parameters.
-
-        Returns:
-            dict[tuple[int, ...], float]: The populated interactions as a dictionary mapping interactions to their values.
-
-        Note:
-            If the interaction_lookup was provided by the user, the interactions dictionary will be populated accordingly.
-            Therefore we only need to return the interactions dictionary, as it inherently "contains" the interaction_lookup.
-        """
-        if isinstance(values, dict):
-            interactions = copy.deepcopy(values)
-        elif isinstance(values, np.ndarray):
-            interaction_lookup = self._populate_interaction_lookup(interaction_lookup)
-            interactions = {
-                interaction: values[index].item()
-                for interaction, index in interaction_lookup.items()
-            }
-        else:
-            msg = f"Values must be a numpy array or dictionary. Got {type(values)}."
-            raise TypeError(msg)
-
-        if self.min_order == 0 and () not in interactions:
-            interactions[()] = self.baseline_value
-
-        return interactions
-
-    def _populate_interaction_lookup(
-        self, interaction_lookup: dict[tuple[int, ...], int] | None
-    ) -> dict[tuple[int, ...], int]:
-        """Populate the interaction lookup if it is not already set.
-
-        Args:
-            interaction_lookup: The interaction lookup to populate. If it is None, it will be generated
-                from the n_players, min_order, and max_order parameters.
-
-        Returns:
-            dict[tuple[int, ...], int]: The populated interaction lookup.
-
-        Warnings:
-            UserWarning: If the interaction_lookup is None, a warning is raised to inform the user that
-            using a numpy array for values can be dangerous and that a dictionary should be used instead.
-        """
-        if interaction_lookup is None:
-            warn(
-                "The usage of a numpy array for values can be dangerous. To make sure that each value is associated to the correct coaltion, consider using a dictionary instead. Ofcourse setting the interaction_lookup would also be possible. ",
-                UserWarning,
-                stacklevel=2,
-            )
-            interaction_lookup = generate_interaction_lookup(
-                self.n_players,
-                self.min_order,
-                self.max_order,
-            )
-        return interaction_lookup
-
-    def _populate_values(self, interactions: dict[tuple[int, ...], float]) -> np.ndarray:
-        """Populate the values from the interactions.
-
-        Args:
-            interactions: The interactions as a dictionary mapping interactions to their index in the
-                values vector.
-
-        Returns:
-            np.ndarray: The populated values as a numpy array.
-
-        """
-        return np.array(list(interactions.values()))
-
-    def _index_preprocessing(self, index: str, target_index: str) -> tuple[str, str]:
-        """Preprocess the index to ensure it is valid and adjust it if necessary.
-
-        Args:
-            index: The index to preprocess.
-            target_index: The index to which the InteractionValues should be finalized.
-
-
-        Returns:
-            str: The preprocessed index.
-
-        """
-        index = self._validate_index(index)
-        index = self._adjust_index(index)
-        if target_index is not None:
-            return index, target_index
-        return index, index
-
-    def _validate_index(self, index: str) -> str:
-        """Validate the index and check if it is a valid index as defined in ALL_AVAILABLE_INDICES.
-
-        Args:
-            index: The index to validate.
-
-        Raises:
-            UserWarning: If the index is not a valid index as defined in ALL_AVAILABLE_INDICES.
-
-        TypeError: If the index is not a string.
-
-        Returns:
-            str: The validated index.
-
-        """
-        if not isinstance(index, str):
-            msg = f"Index must be a string. Got {type(index)}."
-            raise TypeError(msg)
-
-        return self._check_index_valid(index)
-
-    def _adjust_index(self, index: str) -> str:
-        """Adjust the index to be either "BV" or "SV" if max_order is 1.
-
-        Returns:
-            None: The index is set as an attribute of the InteractionValues object.
-        """
-        # set BV or SV if max_order is 1
-        if self.max_order == 1:
-            if index_generalizes_bv(index):
-                index = "BV"
-            if index_generalizes_sv(index):
-                index = "SV"
-        return index
-
-    def _validate_baseline_value(self, baseline_value: float) -> int | float:
-        """Validate the baseline value.
-
-        Raises:
-            TypeError: If the baseline value is not a number (int or float).
-
-        Returns:
-            int | float: The validated baseline value.
-        """
-        if not isinstance(baseline_value, int | float | np.number):
-            msg = f"Baseline value must be provided as a number. Got {type(baseline_value)}."
-            raise TypeError(msg)
-        return baseline_value
-
-    def _check_index_valid(self, index: str) -> str:
-        """Check if the index is valid.
-
-        Args:
-            index: The index to check.
-
-        Raises:
-            UserWarning: If the index is not a valid index as defined in ``ALL_AVAILABLE_INDICES``.
-
-        """
-        if index not in ALL_AVAILABLE_INDICES:
-            warn(
-                UserWarning(
-                    f"Index {index} is not a valid index as defined in {ALL_AVAILABLE_INDICES}. "
-                    "This might lead to unexpected behavior.",
-                ),
-                stacklevel=2,
-            )
-        return index
 
     @property
     def dict_values(self) -> dict[tuple[int, ...], float]:
@@ -408,7 +185,11 @@ class InteractionValues:
                 ``None``.
             **kwargs: Additional parameters to store in the metadata of the JSON file.
         """
-        from shapiq.utils.saving import interactions_to_dict, make_file_metadata, save_json
+        from shapiq.utils.saving import (
+            interactions_to_dict,
+            make_file_metadata,
+            save_json,
+        )
 
         file_metadata = make_file_metadata(
             object_to_store=self,
@@ -630,7 +411,7 @@ class InteractionValues:
                         break
             else:
                 item = tuple(sorted(item))
-                if self.interactions[item]:
+                if self.interactions[item] is not None:
                     # if the interaction is already present, update its value. Otherwise KeyError is raised
                     self.interactions[item] = value
         except Exception as e:
@@ -1011,13 +792,17 @@ class InteractionValues:
                 Path(directory).mkdir(parents=True, exist_ok=True)
         if as_pickle:
             raise_deprecation_warning(
-                message=SAVE_JSON_DEPRECATION_MSG, deprecated_in="1.3.1", removed_in="1.4.0"
+                message=SAVE_JSON_DEPRECATION_MSG,
+                deprecated_in="1.3.1",
+                removed_in="1.4.0",
             )
             with Path(path).open("wb") as file:
                 pickle.dump(self, file)
         elif as_npz:
             raise_deprecation_warning(
-                message=SAVE_JSON_DEPRECATION_MSG, deprecated_in="1.3.1", removed_in="1.4.0"
+                message=SAVE_JSON_DEPRECATION_MSG,
+                deprecated_in="1.3.1",
+                removed_in="1.4.0",
             )
             # save object as npz file
             np.savez(
@@ -1391,3 +1176,86 @@ def aggregate_interaction_values(
         estimation_budget=estimation_budget,
         baseline_value=baseline_value,
     )
+
+
+def _validate_and_return_interactions(
+    values: np.ndarray | dict[tuple[int, ...], float],
+    interaction_lookup: dict[tuple[int, ...], int] | None,
+    n_players: int,
+    min_order: int,
+    max_order: int,
+    baseline_value: float | np.number,
+) -> dict[tuple[int, ...], float]:
+    """Check the interactions for validity and consistency.
+
+    Args:
+        values (np.ndarray | dict[tuple[int, ...], float]): The interaction values.
+        interaction_lookup (dict[tuple[int, ...], int]): A mapping from interactions to their indices.
+        n_players (int): The number of players.
+        min_order (int): The minimum order of interactions.
+        max_order (int): The maximum order of interactions.
+        baseline_value (float | np.number): The baseline value to use for empty interactions.
+
+    Raises:
+        TypeError: If the values or interaction_lookup are not of the expected types.
+    """
+    interactions: dict[tuple[int, ...], float] = {}
+    if values is None:
+        msg = "Values must be provided."
+        raise TypeError(msg)
+    if interaction_lookup is None:
+        interaction_lookup = generate_interaction_lookup(
+            players=n_players,
+            min_order=min_order,
+            max_order=max_order,
+        )
+    if interaction_lookup is not None and not isinstance(interaction_lookup, dict):
+        msg = f"Interaction lookup must be a dictionary. Got {type(interaction_lookup)}."
+        raise TypeError(msg)
+
+    if isinstance(values, dict):
+        interactions = copy.deepcopy(values)
+    elif isinstance(values, np.ndarray):
+        interactions = {
+            interaction: values[index].item() for interaction, index in interaction_lookup.items()
+        }
+    else:
+        msg = f"Values must be a numpy array or dictionary. Got {type(values)}."
+        raise TypeError(msg)
+
+    if min_order == 0 and () not in interactions:
+        interactions[()] = float(baseline_value)
+    return interactions
+
+
+def _update_interactions_for_index(
+    interactions: dict[tuple[int, ...], float],
+    index: str,
+    target_index: str,
+    max_order: int,
+    min_order: int,
+    baseline_value: float | np.number,
+) -> tuple[dict[tuple[int, ...], float], str, int, float]:
+    from .game_theory.aggregation import aggregate_base_attributions
+
+    if is_index_aggregated(target_index) and target_index != index:
+        interactions, index, min_order = aggregate_base_attributions(
+            interactions=interactions,
+            index=index,
+            order=max_order,
+            min_order=min_order,
+            baseline_value=float(baseline_value),
+        )
+    if () in interactions:
+        empty_value = interactions[()]
+        if empty_value != baseline_value and index != "SII":
+            if is_empty_value_the_baseline(index):
+                # insert the empty value given in baseline into the values
+                interactions[()] = float(baseline_value)
+            else:  # manually set baseline to the empty value
+                baseline_value = interactions[()]
+    elif min_order == 0:
+        # TODO(mmshlk): this might not be what we really want to do always: what if empty and baseline are different?
+        # https://github.com/mmschlk/shapiq/issues/385
+        interactions[()] = float(baseline_value)
+    return interactions, index, min_order, float(baseline_value)
