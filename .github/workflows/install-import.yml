@@ -1,3 +1,5 @@
+# This workflow installs the shapiq package and tests if it can be imported successfully.
+# This test is intended to see if circular dependencies are handled correctly.
 name: Install & Import shapiq
 
 on:
@@ -20,8 +22,12 @@ jobs:
         with:
           python-version: "3.11"
           activate-environment: true
-      - name: Install package using uv
-        run: uv pip install .
 
-      - name: Test import
+      - name: Install package using uv
+        run: uv pip install ".[games]"
+
+      - name: Test import of shapiq
         run: uv run python -c "import shapiq; print('✅ shapiq imported successfully')"
+
+      - name: Test import of shapiq_games
+        run: uv run python -c "import shapiq_games; print('✅ shapiq_games imported successfully')"

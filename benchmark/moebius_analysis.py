@@ -59,12 +59,11 @@ def plot_box_plot(
 
 
 if __name__ == "__main__":
-    from shapiq.exact import ExactComputer
-    from shapiq.games.benchmark.benchmark_config import (
-        get_game_class_from_name,
-        load_games_from_configuration,
-    )
-    from shapiq.games.benchmark.plot import create_application_name
+    from benchmark.configuration import get_game_class_from_name
+    from benchmark.load import load_games_from_configuration
+    from benchmark.plot import create_application_name
+
+    from shapiq import ExactComputer
 
     plt.rcParams.update({"font.size": 12})
     plt.rcParams.update({"figure.figsize": (5, 5)})

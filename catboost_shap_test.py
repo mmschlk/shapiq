@@ -1,3 +1,5 @@
+"""Test script to reproduce some issues with CatBoost."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -8,10 +10,8 @@ from shapiq.explainer.tree import TreeExplainer
 
 # CLASSIFICATION
 # data example from the CatBoost documentation
-train_data_cl = np.random.randint(0, 100, size=(100, 10))
-
-train_labels_cl = np.random.randint(0, 3, size=(100))
-
+train_data_cl = np.random.randint(0, 100, size=(100, 10))  # noqa: NPY002
+train_labels_cl = np.random.randint(0, 3, size=(100))  # noqa: NPY002
 test_data_cl = catboost_pool = Pool(train_data_cl, train_labels_cl)
 
 model_cl = CatBoostClassifier(iterations=2, depth=2, learning_rate=1)
@@ -40,9 +40,9 @@ sv_shapiq_values_cl = sv_shapiq_cl.get_n_order_values(1)
 
 # REGRESSION
 # data example from the CatBoost documentation
-train_data_reg = np.random.randint(0, 100, size=(100, 10))
-train_labels_reg = np.random.randint(0, 1000, size=(100))
-test_data_reg = np.random.randint(0, 100, size=(50, 10))
+train_data_reg = np.random.randint(0, 100, size=(100, 10))  # noqa: NPY002
+train_labels_reg = np.random.randint(0, 1000, size=(100))  # noqa: NPY002
+test_data_reg = np.random.randint(0, 100, size=(50, 10))  # noqa: NPY002
 # initialize Pool
 train_pool_reg = Pool(train_data_reg, train_labels_reg, cat_features=[0, 2, 5])
 test_pool_reg = Pool(test_data_reg, cat_features=[0, 2, 5])

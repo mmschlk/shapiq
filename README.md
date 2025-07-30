@@ -3,7 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/shapiq.svg)](https://badge.fury.io/py/shapiq)
 [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 [![Coverage Status](https://coveralls.io/repos/github/mmschlk/shapiq/badge.svg?branch=main)](https://coveralls.io/github/mmschlk/shapiq?branch=main)
-[![Tests](https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/mmschlk/shapiq/actions/workflows/unit-tests.yml)
+[![Tests](https://github.com/mmschlk/shapiq/actions/workflows/tests-shapiq.yml/badge.svg)](https://github.com/mmschlk/shapiq/blob/main/.github/workflows/tests-shapiq.yml)
 [![Read the Docs](https://readthedocs.org/projects/shapiq/badge/?version=latest)](https://shapiq.readthedocs.io/en/latest/?badge=latest)
 
 [![PyPI Version](https://img.shields.io/pypi/pyversions/shapiq.svg)](https://pypi.org/project/shapiq)
@@ -11,8 +11,8 @@
 [![PePy](https://static.pepy.tech/badge/shapiq?style=flat-square)](https://pepy.tech/project/shapiq)
 
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)
-![Last Commit](https://img.shields.io/github/last-commit/mmschlk/shapiq)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://github.com/mmschlk/shapiq/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/mmschlk/shapiq)](https://github.com/mmschlk/shapiq/commits/main)
 
 > An interaction may speak more than a thousand main effects.
 
@@ -192,7 +192,7 @@ There is a lot of great resources available to get you started with Shapley valu
 If you use ``shapiq`` and enjoy it, please consider citing our [NeurIPS paper](https://arxiv.org/abs/2410.01649) or consider starring this repository.
 
 ```bibtex
-@inproceedings{muschalik2024shapiq,
+@inproceedings{Muschalik.2024b,
   title     = {shapiq: Shapley Interactions for Machine Learning},
   author    = {Maximilian Muschalik and Hubert Baniecki and Fabian Fumagalli and
                Patrick Kolpaczki and Barbara Hammer and Eyke H\"{u}llermeier},

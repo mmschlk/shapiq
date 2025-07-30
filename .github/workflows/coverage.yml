@@ -30,19 +30,11 @@ jobs:
       with:
         enable-cache: true
 
-    - name: Cache UV packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/uv
-        key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-        restore-keys: |
-          uv-${{ runner.os }}-${{ matrix.python-version }}-
-
     - name: Install dependencies
       run: uv sync --all-extras --dev
 
     - name: Measure coverage
-      run: uv run pytest --cov=shapiq --cov-report=xml -n logical
+      run: uv run pytest "tests/shapiq" --cov=shapiq --cov-report=xml -n logical
 
     - name: Coveralls
       uses: coverallsapp/github-action@v2
