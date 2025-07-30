@@ -495,24 +495,23 @@ def test_top_k():
 def test_from_dict():
     """Tests the from_dict method of the InteractionValues dataclass."""
     # parameters
-    values = np.array([1, 2, 3, 4, 5, 6, 8, 7, 9, 10])
     n_players = 10
-    interaction_lookup = {(i,): i for i in range(len(values))}
+    interactions = {(i,): float(i + 1) for i in range(n_players)}
+    interaction_lookup = {interaction: i for i, interaction in enumerate(interactions.keys())}
 
     # create InteractionValues object
     interaction_values = InteractionValues(
-        values=values,
+        values=interactions,
         index="SV",
         n_players=n_players,
         min_order=1,
         max_order=1,
-        interaction_lookup=interaction_lookup,
         baseline_value=0.0,
     )
 
     # create dict
     interaction_values_dict = interaction_values.to_dict()
-    assert np.equal(interaction_values_dict["values"], values).all()
+    assert interaction_values_dict["values"] == interactions
     assert interaction_values_dict["index"] == "SV"
     assert interaction_values_dict["n_players"] == n_players
     assert interaction_values_dict["min_order"] == 1
