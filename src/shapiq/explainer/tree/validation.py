@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from shapiq.utils.modules import safe_isinstance
 
 from .base import TreeModel
+from .conversion.catboost import convert_catboost
 from .conversion.lightgbm import convert_lightgbm_booster
 from .conversion.sklearn import (
     convert_sklearn_forest,
@@ -19,6 +20,8 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 SUPPORTED_MODELS = {
+    "catboost.CatBoostClassifier",
+    "catboost.CatBoostRegressor",
     "sklearn.tree.DecisionTreeRegressor",
     "sklearn.tree._classes.DecisionTreeRegressor",
     "sklearn.tree.DecisionTreeClassifier",
@@ -105,6 +108,10 @@ def validate_tree_model(
         "xgboost.sklearn.XGBClassifier",
     ):
         tree_model = convert_xgboost_booster(model, class_label=class_label)
+    elif safe_isinstance(model, "catboost.CatBoostRegressor") or safe_isinstance(
+        model, "catboost.CatBoostClassifier"
+    ):
+        tree_model = convert_catboost(model, class_label=class_label)
     # unsupported model
     else:
         msg = f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}"

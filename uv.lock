@@ -271,6 +271,39 @@ filecache = [
 ]
 
 [[package]]
+name = "catboost"
+version = "1.2.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "graphviz" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "plotly" },
+    { name = "scipy" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0c/ee/8f146ee0b5c6321d4699edd90a036fe68b2c5fad910fa2b369f14043c192/catboost-1.2.8.tar.gz", hash = "sha256:4a1d1aca5caecd919ec476f72c7abd98a704c24fda35506d4d7d71f77f07cb29", size = 58080776 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b0/3f/e2410e21fdd8a1c30eacd97a4203c0dad0ba35eb0d029bebd0dfc810e699/catboost-1.2.8-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:8409c8a2e547469070d73681aa615b5e0b0d78367203d201b2f2b25c33cdcbad", size = 27810638 },
+    { url = "https://files.pythonhosted.org/packages/39/22/53612f0c82a8c8ff60be1f734270dde3626bf2dd581d7ad753e2f3fadfc1/catboost-1.2.8-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:063020755d21de4f5434663a9b1d7cc1507c5b9254e2e8cd9cce9cd3b9ba4bbe", size = 98748971 },
+    { url = "https://files.pythonhosted.org/packages/1a/94/9c42fd69a7cfbcd3f599b2ce6bff0ca286779cd0f2068f94d51c0ff5dbd6/catboost-1.2.8-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:5ac7c03a619d8eb86d70ec5748c1c9f09d4085033e3a760bf2f7c2892513c8a8", size = 99162172 },
+    { url = "https://files.pythonhosted.org/packages/4c/71/a05501a74e043b2c3ea5264dce8f5d55f0c84c91900581c93a947f258d64/catboost-1.2.8-cp310-cp310-win_amd64.whl", hash = "sha256:b661840dc65e6ab4e62484dbf1556fed7736bb9196c6b5a3abb003cea39f0f91", size = 102466099 },
+    { url = "https://files.pythonhosted.org/packages/ae/48/f1d7b4b37f9e56ce6b2c0471465d6877fb475e0ac9cf1bc463517b2f4a82/catboost-1.2.8-cp311-cp311-macosx_11_0_universal2.whl", hash = "sha256:29526147f37aa356b94bd06513cf36ebcd5a83a9186cee25a8223b104c016b9b", size = 27824680 },
+    { url = "https://files.pythonhosted.org/packages/31/13/1d5f340f3b819b5c86d53a3677d98bfde879574e22e82957df212cf5c488/catboost-1.2.8-cp311-cp311-manylinux2014_aarch64.whl", hash = "sha256:af140777a4062aabb4aed6731aee0737c6137dcdd5f7354b5d3b11033c1586ae", size = 98755521 },
+    { url = "https://files.pythonhosted.org/packages/e2/47/abee19aae4b2a2a21e40e3c09db784099d189b3a0745e59c1d152700d90a/catboost-1.2.8-cp311-cp311-manylinux2014_x86_64.whl", hash = "sha256:810e00c9b570d449ebb2406183b9e1f8b8ce275b4eedeba750b24f088932264b", size = 99171305 },
+    { url = "https://files.pythonhosted.org/packages/0e/91/e60d80ce72e5fce94fa672908b1f7ffb881701027130b7d637bb6b6561a4/catboost-1.2.8-cp311-cp311-win_amd64.whl", hash = "sha256:8985dd217fe79161b05ed251c5f8a18130e2330d5c77559ac91b99b0cf781e6b", size = 102465509 },
+    { url = "https://files.pythonhosted.org/packages/14/88/ebc0a95d92b9090e6b17a55ceda950d3cbd1ee545286798e8355590501a6/catboost-1.2.8-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:29f93b4a89ef807e74c16882623c89f1fb781346e1f4fafb29b6949ab4603e14", size = 27843240 },
+    { url = "https://files.pythonhosted.org/packages/be/d1/06142eecc68405b1ded7691fedc6639c6ae35b1d1d9e322ed45f6ee1ded3/catboost-1.2.8-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:932542f8b416b43ee07f912a9a964635ccca7397da16b61475c76ae4ae96a1df", size = 98726147 },
+    { url = "https://files.pythonhosted.org/packages/ce/39/22643f61f2b6526f5fe5985b4e3ea1596fc5c8dbe635cd88e8ebbd2dfcb7/catboost-1.2.8-cp312-cp312-manylinux2014_x86_64.whl", hash = "sha256:35a70d32809a21d06dc0ba161bafdd0450ea71fe176a12ee85d7535883b22624", size = 99167436 },
+    { url = "https://files.pythonhosted.org/packages/bd/9e/feae59f6226f742fa3fa30ae126e0941f443d460e7c0fa9f79cdf3ee488f/catboost-1.2.8-cp312-cp312-win_amd64.whl", hash = "sha256:319086796084fee5e4254300dc81aad1ae0b201cb576a9e87e6c7d030483be7e", size = 102425363 },
+    { url = "https://files.pythonhosted.org/packages/f0/5a/077dd8f35de4f10c934da703bd186b2e85223372886d285edae8f42f75d1/catboost-1.2.8-cp313-cp313-macosx_11_0_universal2.whl", hash = "sha256:777987e1483824f93b9cb904860ef46dfb3cd184f879e47413bc7163b9514830", size = 27789594 },
+    { url = "https://files.pythonhosted.org/packages/6f/73/06959c42d797c3e207c352f6050180b2217c6709d261e5f4a3d77dcdd067/catboost-1.2.8-cp313-cp313-manylinux2014_aarch64.whl", hash = "sha256:a72681c50cbfe2fa4a6f85934bc707e0f7ff50a10a51801317418adf09d57cef", size = 98718946 },
+    { url = "https://files.pythonhosted.org/packages/0c/4b/d04e067df4401902cb2249df241bc1502bf90e990c6a3da5f82ba7de60fa/catboost-1.2.8-cp313-cp313-manylinux2014_x86_64.whl", hash = "sha256:8d2b58781c7ff2f974bde857da0d10d867366979193a4e7052746330a8b76b55", size = 99162049 },
+    { url = "https://files.pythonhosted.org/packages/0d/bc/35f50d1c6d898eb05d3ad3001b479cc6a837f6829a0ed68e6993e31da16e/catboost-1.2.8-cp313-cp313-win_amd64.whl", hash = "sha256:9c04ab1df71501d75cad80757f33d60bab2704b2450401d2c8cf3f3bcb6bd9f8", size = 102416981 },
+]
+
+[[package]]
 name = "certifi"
 version = "2025.1.31"
 source = { registry = "https://pypi.org/simple" }
@@ -889,6 +922,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/35/4a/0bd53b36ff0323d10d5f24ebd67af2de10a1117f5cf4d7add90df92756f1/google-pasta-0.2.0.tar.gz", hash = "sha256:c9f2c8dfc8f96d0d5808299920721be30c9eec37f2389f28904f454565c8a16e", size = 40430 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a3/de/c648ef6835192e6e2cc03f40b19eeda4382c49b5bafb43d88b931c4c74ac/google_pasta-0.2.0-py3-none-any.whl", hash = "sha256:b32482794a366b5366a32c92a9a9201b107821889935a02b3e51f6b432ea84ed", size = 57471 },
+]
+
+[[package]]
+name = "graphviz"
+version = "0.21"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/b3/3ac91e9be6b761a4b30d66ff165e54439dcd48b83f4e20d644867215f6ca/graphviz-0.21.tar.gz", hash = "sha256:20743e7183be82aaaa8ad6c93f8893c923bd6658a04c32ee115edb3c8a835f78", size = 200434 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/4c/e0ce1ef95d4000ebc1c11801f9b944fa5910ecc15b5e351865763d8657f8/graphviz-0.21-py3-none-any.whl", hash = "sha256:54f33de9f4f911d7e84e4191749cac8cc5653f815b06738c54db9a15ab8b1e42", size = 47300 },
 ]
 
 [[package]]
@@ -1978,6 +2020,15 @@ wheels = [
 ]
 
 [[package]]
+name = "narwhals"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e2/8f/51d14e402c4f9d281a2e153a6a805cad5460088027a999faf264b54e7641/narwhals-2.0.1.tar.gz", hash = "sha256:235e61ca807bc21110ca36a4d53888ecc22c42dcdf50a7c886e10dde3fd7f38c", size = 525541 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/26/43caf834e47c63883a5eddc02893b7fdbe6a0a4508ff6dc401907f3cc085/narwhals-2.0.1-py3-none-any.whl", hash = "sha256:837457e36a2ba1710c881fb69e1f79ce44fb81728c92ac378f70892a53af8ddb", size = 385436 },
+]
+
+[[package]]
 name = "natsort"
 version = "8.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2596,6 +2647,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b6/2d/7d512a3913d60623e7eb945c6d1b4f0bddf1d0b7ada5225274c87e5b53d1/platformdirs-4.3.7.tar.gz", hash = "sha256:eb437d586b6a0986388f0d6f74aa0cde27b48d0e3d66843640bfb6bdcdb6e351", size = 21291 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6d/45/59578566b3275b8fd9157885918fcd0c4d74162928a5310926887b856a51/platformdirs-4.3.7-py3-none-any.whl", hash = "sha256:a03875334331946f13c549dbd8f4bac7a13a50a895a0eb1e8c6a8ace80d40a94", size = 18499 },
+]
+
+[[package]]
+name = "plotly"
+version = "6.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "narwhals" },
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6e/5c/0efc297df362b88b74957a230af61cd6929f531f72f48063e8408702ffba/plotly-6.2.0.tar.gz", hash = "sha256:9dfa23c328000f16c928beb68927444c1ab9eae837d1fe648dbcda5360c7953d", size = 6801941 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ed/20/f2b7ac96a91cc5f70d81320adad24cc41bf52013508d649b1481db225780/plotly-6.2.0-py3-none-any.whl", hash = "sha256:32c444d4c940887219cb80738317040363deefdfee4f354498cc0b6dab8978bd", size = 9635469 },
 ]
 
 [[package]]
@@ -3541,8 +3605,6 @@ games = [
     { name = "lightgbm" },
     { name = "scikit-image" },
     { name = "tabpfn" },
-    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
-    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "torch" },
     { name = "torchvision" },
     { name = "transformers" },
@@ -3552,10 +3614,12 @@ games = [
 [package.dev-dependencies]
 dev = [
     { name = "build" },
+    { name = "catboost" },
     { name = "commonmark" },
     { name = "furo" },
     { name = "ipython" },
     { name = "ipywidgets" },
+    { name = "lightgbm" },
     { name = "myst-parser" },
     { name = "nbconvert" },
     { name = "nbsphinx" },
@@ -3572,7 +3636,14 @@ dev = [
     { name = "sphinx-copybutton" },
     { name = "sphinx-toolbox" },
     { name = "sphinxcontrib-bibtex" },
+    { name = "tabpfn" },
+    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
     { name = "twine" },
+    { name = "xgboost" },
 ]
 docs = [
     { name = "commonmark" },
@@ -3592,11 +3663,31 @@ lint = [
     { name = "pyright" },
     { name = "ruff" },
 ]
+ml = [
+    { name = "catboost" },
+    { name = "lightgbm" },
+    { name = "tabpfn" },
+    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
+    { name = "xgboost" },
+]
 test = [
+    { name = "catboost" },
+    { name = "lightgbm" },
     { name = "packaging" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
+    { name = "tabpfn" },
+    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
+    { name = "xgboost" },
 ]
 
 [package.metadata]
@@ -3616,8 +3707,6 @@ requires-dist = [
     { name = "scipy" },
     { name = "sparse-transform" },
     { name = "tabpfn", marker = "extra == 'games'" },
-    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32' and extra == 'games'" },
-    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32' and extra == 'games'" },
     { name = "torch", marker = "extra == 'games'" },
     { name = "torchvision", marker = "extra == 'games'" },
     { name = "tqdm" },
@@ -3629,10 +3718,12 @@ provides-extras = ["games"]
 [package.metadata.requires-dev]
 dev = [
     { name = "build", specifier = ">=1.2.2.post1" },
+    { name = "catboost" },
     { name = "commonmark" },
     { name = "furo" },
     { name = "ipython", specifier = "<8.7.0" },
     { name = "ipywidgets" },
+    { name = "lightgbm" },
     { name = "myst-parser" },
     { name = "nbconvert" },
     { name = "nbsphinx" },
@@ -3649,7 +3740,14 @@ dev = [
     { name = "sphinx-copybutton" },
     { name = "sphinx-toolbox" },
     { name = "sphinxcontrib-bibtex" },
+    { name = "tabpfn", specifier = ">=2.0.4" },
+    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
     { name = "twine", specifier = ">=6.1.0" },
+    { name = "xgboost" },
 ]
 docs = [
     { name = "commonmark" },
@@ -3669,11 +3767,31 @@ lint = [
     { name = "pyright", specifier = ">=1.1.402" },
     { name = "ruff", specifier = ">=0.11.2" },
 ]
+ml = [
+    { name = "catboost" },
+    { name = "lightgbm" },
+    { name = "tabpfn", specifier = ">=2.0.4" },
+    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
+    { name = "xgboost" },
+]
 test = [
+    { name = "catboost" },
+    { name = "lightgbm" },
     { name = "packaging", specifier = ">=24.2" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-xdist", specifier = ">=3.6.1" },
+    { name = "tabpfn", specifier = ">=2.0.4" },
+    { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
+    { name = "xgboost" },
 ]
 
 [[package]]

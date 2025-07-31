@@ -84,9 +84,6 @@ games = [
     "lightgbm",
     "transformers",
     "scikit-image",
-    # tf only for python < 3.13 and not windows
-    "tensorflow; python_version < '3.13' and platform_system != 'Windows'",
-    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",
 ]
 
 [tool.pytest.ini_options]
@@ -225,11 +222,23 @@ exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq/plot", "src/shap
 pythonVersion = "3.10"
 
 [dependency-groups]
+ml = [
+    "catboost",
+    "tabpfn>=2.0.4",
+    "torchvision",
+    "torch",
+    "xgboost",
+    "lightgbm",
+    "transformers",
+    "tensorflow; python_version < '3.13' and platform_system != 'Windows'",
+    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",
+]
 test = [
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
     "packaging>=24.2",
+    {include-group = "ml"},
 ]
 lint = [
     "ruff>=0.11.2",
