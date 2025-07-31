@@ -1200,9 +1200,6 @@ def _validate_and_return_interactions(
         TypeError: If the values or interaction_lookup are not of the expected types.
     """
     interactions: dict[tuple[int, ...], float] = {}
-    if values is None:
-        msg = "Values must be provided."
-        raise TypeError(msg)
     if interaction_lookup is None:
         interaction_lookup = generate_interaction_lookup(
             players=n_players,
@@ -1215,13 +1212,10 @@ def _validate_and_return_interactions(
 
     if isinstance(values, dict):
         interactions = copy.deepcopy(values)
-    elif isinstance(values, np.ndarray):
+    else:
         interactions = {
             interaction: values[index].item() for interaction, index in interaction_lookup.items()
         }
-    else:
-        msg = f"Values must be a numpy array or dictionary. Got {type(values)}."
-        raise TypeError(msg)
 
     if min_order == 0 and () not in interactions:
         interactions[()] = float(baseline_value)
