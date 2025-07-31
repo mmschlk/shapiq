@@ -10,7 +10,7 @@ from shapiq.explainer.tree.base import TreeModel
 from shapiq.utils import safe_isinstance
 
 if TYPE_CHECKING:
-    from shapiq.utils.custom_types import Model
+    from shapiq.typing import Model
 
 SUPPORTED_CATBOOST_MODELS = {"catboost.CatBoostClassifier", "catboost.CatBoostRegressor"}
 
@@ -47,7 +47,7 @@ def convert_catboost(
     import tempfile
     from pathlib import Path
 
-    with tempfile.TemporaryDirectory(delete=True) as tmp_dir:
+    with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_file = Path(tmp_dir) / "model.json"
         tree_model.save_model(tmp_file, format="json")
         with Path.open(tmp_file, encoding="utf-8") as fh:
@@ -67,15 +67,12 @@ def convert_catboost(
         leaf_values_json = loaded_cb_model["oblivious_trees"][tree_index]["leaf_values"]
         node_values = [0] * (len(leaf_values_json) - num_classes) + leaf_values_json
         node_values = np.array(node_values)
-
         total_nodes = int(len(node_values) / num_classes)
-
         node_values = node_values.reshape((-1, num_classes))  # reshape to match number of classes
 
         # get the children
         children_left = list(range(1, total_nodes, 2))
         children_left += [-1] * (total_nodes - len(children_left))
-
         children_right = list(range(2, total_nodes + 1, 2))
         children_right += [-1] * (total_nodes - len(children_right))
 
@@ -84,9 +81,8 @@ def convert_catboost(
         leaf_weights = [0] * (len(leaf_weights_json) - 1) + leaf_weights_json
         leaf_weights[0] = sum(leaf_weights_json)
         for index in range(len(leaf_weights_json) - 2, 0, -1):
-            leaf_weights[index] = (
-                leaf_weights[2 * index + 1] + leaf_weights[2 * index + 2]
-            )  # each node weight is the sum of its children
+            # each node weight is the sum of its children
+            leaf_weights[index] = leaf_weights[2 * index + 1] + leaf_weights[2 * index + 2]
 
         # split features and borders from leafs to the root
         split_features_index_json = []
