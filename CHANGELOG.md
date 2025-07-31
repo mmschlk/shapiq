@@ -15,6 +15,9 @@ This restructuring aims to improve maintainability and development scalability. 
 ### Removed Features
 - removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
 
+### Docs
+- added an example notebook for `InteractionValues`, highlighting *Initialisation*, *Modification*, *Visualization* and *Save and Loading*.
+
 ## v1.3.1 (2025-07-11)
 
 ### New Features
