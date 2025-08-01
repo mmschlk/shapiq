@@ -20,16 +20,23 @@ if TYPE_CHECKING:
 
 
 class UnanimityGame(Game):
-    """The Unanimity basis game.
+    r"""The Unanimity basis game.
 
     Unanimity games are basis games from cooperative game theory. They are based on a single
     interaction and return 1 if the coalition contains the interaction and 0 otherwise.
 
-    # TODO(mmshlk): add a reference and a formal description of the Unanimity game
-    # https://github.com/mmschlk/shapiq/issues/387
+    More formally the Unanimity game is defined based on an interaction :math:`T`, which is a tuple of player indices.
+    The cooperative game is defined as follows:
+    .. math::
+        :nowrap:
+
+        \begin{eqnarray}
+        v(S)    & = & 1 if T \\subseteq S \\
+                & = & 0 otherwise
+        \\end{eqnarray}
 
     Attributes:
-        interaction_binary: The interaction encoded in a binary vector of length ``n``.
+        interaction_binary: The interaction $T$ encoded in a binary vector of length ``n``.
         interaction: The interaction encoded as a tuple.
 
     Examples:
@@ -67,25 +74,37 @@ class UnanimityGame(Game):
 
 
 class SOUM(Game):
-    """The Sum of Unanimity Game (SOUM) game class.
+    r"""The Sum of Unanimity Game (SOUM) game class.
 
     A Sum of Unanimity Game (SOUM) constructs a game based on linear combinations of so-called
     unanimity games (:class:`~shapiq_games.benchmark.synthetic.soum.UnanimityGame`).
 
-    # TODO(mmshlk): extend description of the SOUM, add a reference and a formal description
-    # https://github.com/mmschlk/shapiq/issues/387
+    Based on a sequence of Unanimity games :math:`U_1, U_2, \\ldots, U_n` with linear coefficients :math:`c_1, c_2, \\ldots, c_n`
+    the SOUM is defined as follows:
+    .. math::
+        :nowrap:
+        \begin{eqnarray}
+        v(S) & = & \\sum_{i=1}^{n} c_i \\cdot v_{U_i}(S) \\
+        v_{U_i}(S) & = & \begin{cases}
+            1 & \text{if } T_i \\subseteq S \\
+            0 & \text{otherwise}
+        \\end{cases}
+        \\end{eqnarray}
+
+    where :math:`T_i` is the interaction of the :class:`~shapiq_games.benchmark.synthetic.soum.UnanimityGame` :math:`U_i`.
+    The linear coefficients :math:`c_i` are randomly sampled from the interval :math:`[-1, 1]`.
 
     Attributes:
         n_players: The number of players.
 
-        n_basis_games: The number of Unanimity gams
+        n_basis_games: The number of Unanimity games.
 
         unanimity_games: A dictionary containing instances of :class:`~shapiq_games.benchmark.synthetic.soum.UnanimityGame`.
 
         linear_coefficients: A numpy array with coefficients between -1 and 1 for the unanimity
             games.
 
-        min_interaction_size: The smallest interaction size
+        min_interaction_size: The smallest interaction size.
 
         max_interaction_size: The highest interaction size.
 
