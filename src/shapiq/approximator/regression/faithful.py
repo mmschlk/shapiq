@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 ValidRegressionFSIIIndices = Literal["FSII", "SV"]
-ValidRegressionFBIIIndices = Literal["FBII", "SV"]
+ValidRegressionFBIIIndices = Literal["FBII", "BV"]
 
 
 class RegressionFSII(Regression):
