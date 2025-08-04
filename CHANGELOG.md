@@ -12,14 +12,19 @@ We have begun the process of modularizing the `shapiq` package by splitting it i
 
 This restructuring aims to improve maintainability and development scalability. The core `shapiq` package will continue to receive the majority of updates and enhancements, and keeping it streamlined ensures better focus and usability. Meanwhile, separating games and benchmarking functionality allows these components to evolve more independently while maintaining compatibility through clearly defined dependencies.
 
-### Removed Features
-- removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
+### Maintenance and Development
+- refactored the `shapiq.Games` and `shapiq.InteractionValues` API by adding an interactions and game_values dictionary as the main data structure to store the interaction scores and game values. This allows for more efficient storage and retrieval of interaction values and game values, as well as easier manipulation of the data. [#419](https://github.com/mmschlk/shapiq/pull/419)
+- addition and subtraction of InteractionValues objects (via `shapiq.InteractionValues.__add__`) now also works for different indices, which will raise a warning and will return a new InteractionValues object with the index set of the first. [#422](https://github.com/mmschlk/shapiq/pull/422)
 
 ### Docs
-- added an example notebook for `InteractionValues`, highlighting *Initialisation*, *Modification*, *Visualization* and *Save and Loading*.
+- added an example notebook for `InteractionValues`, highlighting *Initialization*, *Modification*, *Visualization* and *Save and Loading*.
 
 ### Bugfixes
 - fixes a bug where RegressionFBII approximator was throwing an error when the index was `'BV'` or `'FBII'`.[#420](https://github.com/mmschlk/shapiq/pull/420)
+
+### Removed Features
+- removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
+
 
 ## v1.3.1 (2025-07-11)
 
