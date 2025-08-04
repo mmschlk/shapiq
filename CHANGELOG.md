@@ -18,6 +18,9 @@ This restructuring aims to improve maintainability and development scalability. 
 ### Docs
 - added an example notebook for `InteractionValues`, highlighting *Initialisation*, *Modification*, *Visualization* and *Save and Loading*.
 
+### Bugfixes
+- fixes a bug where RegressionFBII approximator was throwing an error when the index was `'BV'` or `'FBII'`.[#420](https://github.com/mmschlk/shapiq/pull/420)
+
 ## v1.3.1 (2025-07-11)
 
 ### New Features
