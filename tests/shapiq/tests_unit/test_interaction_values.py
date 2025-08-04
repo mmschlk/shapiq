@@ -191,8 +191,10 @@ def test_add():
         interaction_lookup=interaction_lookup,
         baseline_value=0.0,
     )
-    with pytest.raises(ValueError):
-        interaction_values_first + interaction_values_second
+    with pytest.warns(match="The indices of the InteractionValues objects are different:"):
+        result = interaction_values_first + interaction_values_second
+        assert result.index == interaction_values_first.index
+        assert result.index != interaction_values_second.index
 
     # test adding InteractionValues with different interactions
     n_players_second = n + 1
