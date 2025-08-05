@@ -164,7 +164,9 @@ class MoebiusConverter:
                 moebius_val_calc = moebius_val * val_distributed
                 if moebius_val_calc == 0:
                     continue
-                base_interaction_dict[interaction] = base_interaction_dict.get(interaction, 0) + moebius_val_calc
+                base_interaction_dict[interaction] = (
+                    base_interaction_dict.get(interaction, 0) + moebius_val_calc
+                )
 
         base_interaction_values = np.zeros(len(base_interaction_dict))
         base_interaction_lookup = {}

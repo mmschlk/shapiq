@@ -27,7 +27,7 @@ def test_soum_moebius_conversion():
             # Assert efficiency
             assert (np.sum(shapley_interactions.values) - predicted_value) ** 2 < 10e-7
             assert (shapley_interactions[()] - emptyset_prediction) ** 2 < 10e-7
-            for _k, v in moebius_converter._computed.items():
+            for v in moebius_converter._computed.values():
                 # check that no 0's are in the interaction lookup (except for the empty set, which is the first entry)
                 interaction_lookup = v.interaction_lookup
                 assert all(v != 0 for idx, v in enumerate(interaction_lookup.values()) if idx > 0)
