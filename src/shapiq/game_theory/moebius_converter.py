@@ -144,11 +144,9 @@ class MoebiusConverter:
             index = "SII"
         base_interaction_dict = {}
         # Pre-compute weights
-        # distribution_weights = np.zeros((self.n + 1, order + 1))
         distribution_weights = np.zeros((self.n + 1, order + 1))
         for moebius_size in range(1, self.n + 1):
             for interaction_size in range(1, min(order, moebius_size) + 1):
-                # import ipdb; ipdb.set_trace(context=20)  # noqa: T201
                 distribution_weights[moebius_size, interaction_size] = (
                     _get_moebius_distribution_weight(moebius_size, interaction_size, order, index)
                 )
