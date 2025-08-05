@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 from shapiq.explainer.base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
+from tests.fixtures.data import background_clf_data
 
 from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
@@ -55,6 +56,8 @@ class TreeExplainer(Explainer):
         min_order: int = 0,
         index: TreeSHAPIQIndices = "k-SII",
         class_index: int | None = None,
+        feature_perturbation: str = "tree_path_dependent",
+        background_data: np.ndarray = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the TreeExplainer.
@@ -91,9 +94,8 @@ class TreeExplainer(Explainer):
         self._min_order: int = min_order
         self._class_label: int | None = class_index
 
-        # setup explainers for all trees
         self._treeshapiq_explainers: list[TreeSHAPIQ] = [
-            TreeSHAPIQ(model=_tree, max_order=self._max_order, index=index) for _tree in self._trees
+            TreeSHAPIQ(model=_tree, max_order=self._max_order, index=index, feature_perturbation=feature_perturbation, background_data=background_data) for _tree in self._trees
         ]
         self.baseline_value = self._compute_baseline_value()
 

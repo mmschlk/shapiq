@@ -21,7 +21,7 @@ from sklearn.metrics import (
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing, load_forest_fires, load_real_estate, load_nhanesi, load_communities_and_crime, load_breast_cancer, load_wine_quality
+from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing, load_forest_fires, load_real_estate, load_nhanesi, load_communities_and_crime, load_breast_cancer, load_wine_quality, load_independentlinear60, load_corrgroups60
 from shapiq.utils import shuffle_data
 
 if TYPE_CHECKING:
@@ -168,6 +168,14 @@ class GameBenchmarkSetup:
             x_data, y_data = load_breast_cancer(return_X_y=True, as_frame=True)
             self.feature_names: list = list(x_data.columns)
             self.dataset_type = "classification"
+        elif dataset_name == "independentlinear60":
+            x_data, y_data = load_independentlinear60()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "corrgroups60":
+            x_data, y_data = load_corrgroups60()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
         else:
             msg = (
                 f"Invalid dataset name {dataset_name}. Available datasets are 'adult_census', "
@@ -216,6 +224,8 @@ class GameBenchmarkSetup:
                 self.init_random_forest_regressor()
             if model_name == "gradient_boosting":
                 self.init_gradient_boosting_regressor()
+            if model_name == "neural_network" and dataset_name == "california_housing":
+                self.init_california_neural_network()
 
         # check if the model is loaded
         if self.model is None and model_name is not None:
@@ -270,6 +280,7 @@ class GameBenchmarkSetup:
         self.model = RandomForestClassifier(
             n_estimators=self._random_forest_n_estimators,
             random_state=self.random_state,
+            max_depth=10,
         )
         self.model.fit(self.x_train, self.y_train)
 
@@ -287,7 +298,7 @@ class GameBenchmarkSetup:
 
     def init_random_forest_regressor(self) -> None:
         """Initializes and trains a random forest model for a regression dataset."""
-        self.model = RandomForestRegressor(n_estimators=100, random_state=self.random_state)
+        self.model = RandomForestRegressor(n_estimators=self._random_forest_n_estimators,random_state=self.random_state, max_depth=10)
         self.model.fit(self.x_train, self.y_train)
 
     def init_gradient_boosting_regressor(self) -> None:

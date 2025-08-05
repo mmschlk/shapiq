@@ -10,16 +10,18 @@ import numpy as np
 from shapiq.explainer.tree import TreeExplainer, TreeModel
 from shapiq.games.base import Game
 
+from shap import TreeExplainer as TreeExplainerSHAP
+
 if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues
     from shapiq.utils.custom_types import Model
 
 
-class TreeSHAPIQXAI(Game):
-    """A TreeSHAP-IQ explanation game for tree models.
+class TreeSHAPInterventionalXAI(Game):
+    """A interventional TreeSHAP explanation game for tree models.
 
-    The game is based on the TreeSHAP-IQ algorithm and is used to explain the predictions of tree
-    models. TreeSHAP-IQ is used to compute Shapley interaction values for tree models.
+    The game is based on the shap TreeSHAP algorithm using interventional perturbations and is used to explain the predictions of tree
+    models. TreeSHAP is used to compute Shapley values for tree models.
     """
 
     def __init__(
@@ -33,7 +35,7 @@ class TreeSHAPIQXAI(Game):
         feature_perturbation: str = "tree_path_dependent",
         background_data: np.ndarray | None = None,
     ) -> None:
-        """Initializes the TreeSHAP-IQ explanation game.
+        """Initializes the interventional TreeSHAP explanation game.
 
         Args:
             x: The feature vector to be explained. If ``None``, then the first data point is used.
@@ -58,21 +60,14 @@ class TreeSHAPIQXAI(Game):
         self.model = copy.deepcopy(tree_model)
         self.class_label = class_label
 
-        # set up explainer for model transformation (we don't need the explainer here for the gt)
-        self._tree_explainer = TreeExplainer(
+        # set up explainer for model transformation
+        self._tree_explainer = TreeExplainerSHAP(
             model=tree_model,
-            min_order=1,
-            max_order=1,
-            index="SII",
-            class_index=class_label,
             feature_perturbation=feature_perturbation,
-            background_data=background_data,
+            data=background_data,
         )
-        # compute ground truth values
-        self.empty_value = float(self._tree_explainer.baseline_value)
 
         # get attributes for manual tree traversal and evaluation
-        self._trees: list[TreeModel] = self._tree_explainer._trees  # noqa: SLF001
         self.x_explain = x
         # transform x_explain into a 1-dimensional array if it is a 2-dimensional array
         if x.ndim == 2 and x.shape[0] == 1:
@@ -81,6 +76,18 @@ class TreeSHAPIQXAI(Game):
             msg = "x_explain must be a 1-dimensional or 2-dimensional array."
             raise ValueError(msg)
 
+        # compute ground truth values
+        empty_value_allclasses = self._tree_explainer.expected_value
+        shapley_values_allclasses = self._tree_explainer.shap_values(self.x_explain)
+
+        if class_label is not None:
+            self.empty_value = empty_value_allclasses[class_label]
+            self.shapley_values = shapley_values_allclasses[:,class_label]
+        else:
+            self.empty_value = empty_value_allclasses
+            self.shapley_values = shapley_values_allclasses
+
+        # set up game
         super().__init__(
             n_players=n_players,
             normalize=normalize,
@@ -119,15 +126,30 @@ class TreeSHAPIQXAI(Game):
                 predictions.
 
         """
-        output = 0.0
-        for tree in self._trees:
-            tree_prediction = _get_tree_prediction(
-                node_id=tree.nodes[0],
-                tree=tree,
-                coalition=coalition,
-                x_explain=self.x_explain,
-            )
-            output += tree_prediction
+        # impute data
+        imputation_data = self._tree_explainer.data
+        x_explain = self.x_explain
+        if x_explain.ndim == 1:
+            # if x_explain is a 1-dimensional array, reshape it to 2D where the first dimensions is 1
+            x_explain = x_explain.reshape(1, -1)
+        n_imputations = imputation_data.shape[0]
+        n_explanations = x_explain.shape[0]
+        # Repeat data (block-wise)
+        data_repeated = np.repeat(imputation_data, n_explanations, axis=0)
+        # Tile x_explain n times (cycle-wise)
+        x_explain_tiled = np.tile(x_explain, (n_imputations, 1))
+
+        imputed_data = data_repeated.copy()
+        imputed_data[:, coalition] = x_explain_tiled[:, coalition]
+
+        # call mode
+        predictions = self._tree_explainer.model.predict(imputed_data)
+        if self.class_label is not None:
+            # if class_label is set, we only take the prediction for the class_label
+            predictions = predictions[:, self.class_label]
+        predictions = predictions.reshape(n_imputations, n_explanations)
+        output = np.mean(predictions, axis=0)
+
         return output
 
     def exact_values(self, index: str, order: int) -> InteractionValues:
@@ -141,53 +163,8 @@ class TreeSHAPIQXAI(Game):
             The exact interaction values for the game.
 
         """
-        tree_explainer = TreeExplainer(
-            model=self.model,
-            min_order=0,
-            max_order=order,
-            index=index,
-            class_index=self.class_label,
-        )
-        return tree_explainer.explain(x=self.x_explain)
-
-
-def _get_tree_prediction(
-    node_id: int,
-    tree: TreeModel,
-    coalition: np.ndarray,
-    x_explain: np.ndarray,
-) -> float:
-    """Traverses the tree and retrieves the prediction of the tree given subsets of features.
-
-    Args:
-        node_id: The current node in the tree model as an integer.
-        tree: The tree model to traverse and get the predictions for.
-        coalition: The binary coalition vector denoting what features are present (`True`) and
-            absent (`False`).
-        x_explain: The feature vector which is to be explained with numerical feature values.
-
-    Returns:
-         The tree prediction given partial feature information.
-
-    """
-    if tree.leaf_mask[node_id]:  # end of recursion (base case, return the leaf prediction)
-        return tree.values[node_id]
-    # not a leaf we have to go deeper
-    feature_id, threshold = tree.features[node_id], tree.thresholds[node_id]
-    is_present = bool(coalition[feature_id])
-    left_child, right_child = tree.children_left[node_id], tree.children_right[node_id]
-    if is_present:
-        next_node = left_child if x_explain[feature_id] <= threshold else right_child
-        tree_prediction = _get_tree_prediction(next_node, tree, coalition, x_explain)
-    else:  # feature is out of coalition we have to go both ways and average the predictions
-        prediction_left = _get_tree_prediction(left_child, tree, coalition, x_explain)
-        prediction_right = _get_tree_prediction(right_child, tree, coalition, x_explain)
-        # get weights (tree probabilities of going left or right)
-        left_weight = tree.node_sample_weight[left_child]
-        right_weight = tree.node_sample_weight[right_child]
-        sum_of_weights = left_weight + right_weight
-        # scale predictions
-        prediction_left *= left_weight / sum_of_weights
-        prediction_right *= right_weight / sum_of_weights
-        tree_prediction = prediction_left + prediction_right
-    return tree_prediction
+        if index == "SV" and order == 1:
+            return self.shapley_values
+        else:
+            msg = f"Exact values for index {index} and order {order} are not implemented."
+            raise NotImplementedError(msg)

@@ -117,6 +117,7 @@ class ShapleyGAX(Approximator):
         explanation_basis: dict = None,
         pairing_trick: bool = False,
         sampling_weights: Optional[np.ndarray] = None,
+        replacement: bool = True,
         random_state: Optional[int] = None,
     ):
         super().__init__(
@@ -127,6 +128,7 @@ class ShapleyGAX(Approximator):
             top_order=False,
             random_state=random_state,
             pairing_trick=pairing_trick,
+            replacement=replacement,
             sampling_weights=sampling_weights,
         )
 
@@ -199,11 +201,20 @@ class ShapleyGAX(Approximator):
 
         fsii_output_order = self._transform_fsii_to_shap(shapley_interactions_values)
 
+        shapley_values_numpy = np.zeros(self.n+1, dtype=float)
+        shapley_lookup = {}
+        new_pos = 0
+        for key, pos in self.interaction_lookup.items():
+            if len(key) <= 1:
+                shapley_values_numpy[new_pos] = fsii_output_order[pos]
+                shapley_lookup[key] = new_pos
+                new_pos += 1
+
         # Transform the output to the interaction values
         shapley_values = InteractionValues(
-            values=fsii_output_order,
+            values=shapley_values_numpy,
             index="SV",
-            interaction_lookup=self.interaction_lookup,
+            interaction_lookup=shapley_lookup,
             baseline_value=baseline_value,
             min_order=self.min_order,
             max_order=self.max_order,

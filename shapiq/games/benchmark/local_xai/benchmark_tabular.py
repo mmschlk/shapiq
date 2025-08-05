@@ -594,3 +594,85 @@ class WineQuality(LocalExplanation):
             normalize=normalize,
             verbose=verbose,
         )
+
+class IndependentLinear60(LocalExplanation):
+    """The IndependetLinear60 dataset as a LocalExplanation game.
+
+    Attributes:
+        setup: The :class:`~shapiq.games.benchmark.setup.GameBenchmarkSetup` object.
+    """
+
+    def __init__(
+        self,
+        *,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
+        """Initializes the IndependetLinear60 LocalExplanation game."""
+        self.setup = GameBenchmarkSetup(
+            dataset_name="independentlinear60",
+            model_name=model_name,
+            verbose=False,
+            random_state=random_state,
+        )
+
+        # get x_explain
+        x = get_x_explain(x, self.setup.x_test)
+
+        predict_function = self.setup.predict_function
+
+        # call the super constructor
+        super().__init__(
+            x=x,
+            data=self.setup.x_test,
+            model=predict_function,
+            imputer=imputer,
+            random_state=random_state,
+            normalize=normalize,
+            verbose=verbose,
+        )
+
+class Corrgroups60(LocalExplanation):
+    """The Corrgroups60 dataset as a LocalExplanation game.
+
+    Attributes:
+        setup: The :class:`~shapiq.games.benchmark.setup.GameBenchmarkSetup` object.
+    """
+
+    def __init__(
+        self,
+        *,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
+        """Initializes the Corrgroups60 LocalExplanation game."""
+        self.setup = GameBenchmarkSetup(
+            dataset_name="corrgroups60",
+            model_name=model_name,
+            verbose=False,
+            random_state=random_state,
+        )
+
+        # get x_explain
+        x = get_x_explain(x, self.setup.x_test)
+
+        predict_function = self.setup.predict_function
+
+        # call the super constructor
+        super().__init__(
+            x=x,
+            data=self.setup.x_test,
+            model=predict_function,
+            imputer=imputer,
+            random_state=random_state,
+            normalize=normalize,
+            verbose=verbose,
+        )

@@ -64,6 +64,7 @@ class Approximator(ABC):
         min_order: int = 0,
         pairing_trick: bool = False,
         sampling_weights: np.ndarray[float] | None = None,
+        replacement: bool = True,
         random_state: int | None = None,
         initialize_dict: bool = True,
     ) -> None:
@@ -137,6 +138,7 @@ class Approximator(ABC):
             n_players=self.n,
             sampling_weights=sampling_weights,
             pairing_trick=pairing_trick,
+            replacement=replacement,
             random_state=self._random_state,
         )
 

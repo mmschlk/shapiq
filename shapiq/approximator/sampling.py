@@ -89,6 +89,7 @@ class CoalitionSampler:
         sampling_weights: np.ndarray,
         *,
         pairing_trick: bool = False,
+        replacement: bool = True,
         random_state: int | None = None,
     ) -> None:
         """Initialize the coalition sampler.
@@ -102,10 +103,12 @@ class CoalitionSampler:
 
             pairing_trick: Samples each coalition jointly with its complement. Defaults to
                 ``False``.
+            flag_replacement: If ``True``, the sampling is done with replacement
 
             random_state: The random state to use for the sampling process. Defaults to ``None``.
         """
         self.pairing_trick: bool = pairing_trick
+        self.replacement: bool = replacement
 
         # set sampling weights
         if not (sampling_weights >= 0).all():  # Check non-negativity of sampling weights
@@ -397,14 +400,36 @@ class CoalitionSampler:
         if paired_coalition_size in self._coalitions_to_sample:
             paired_coalition_indices = list(set(range(self.n)) - set(coalition_tuple))
             paired_coalition_tuple = tuple(sorted(paired_coalition_indices))
-            self.coalitions_per_size[paired_coalition_size] += 1
-            # adjust coalitions counter using the paired coalition
-            try:  # if coalition is not new
-                self.sampled_coalitions_dict[paired_coalition_tuple] += 1
-            except KeyError:  # if coalition is new
-                self.sampled_coalitions_dict[paired_coalition_tuple] = 1
-                sampling_budget -= 1
+            sampling_budget -= self.add_coalition(paired_coalition_tuple)
         return sampling_budget
+
+
+    def add_coalition(self,coalition_tuple):
+        """Adds a sample to self.sampled_coalitions_dict based on replacement option
+
+        Returns the new sampling budget and a Boolean indicating whether the coalition was added.
+
+        """
+        # add coalition
+        if self.replacement:
+            # if sampling with replacement, we can sample the same coalition multiple times
+            self.coalitions_per_size[len(coalition_tuple)] += 1
+            try:  # if coalition is not new
+                self.sampled_coalitions_dict[coalition_tuple] += 1
+                sampling_budget_spent = 0
+            except KeyError:  # if coalition is new
+                self.sampled_coalitions_dict[coalition_tuple] = 1
+                sampling_budget_spent = 1
+        else:
+            # if sampling without replacement, we can only sample each coalition once
+            if coalition_tuple not in self.sampled_coalitions_dict:
+                self.sampled_coalitions_dict[coalition_tuple] = 1
+                self.coalitions_per_size[len(coalition_tuple)] += 1
+                sampling_budget_spent = 1
+            else:
+                sampling_budget_spent = 0 # Coalition already seen
+        return sampling_budget_spent
+
 
     def _reset_variables(self, sampling_budget: int) -> None:
         """Resets the variables of the sampler at each sampling call.
@@ -517,10 +542,7 @@ class CoalitionSampler:
 
         # sample coalitions
         if len(self._coalitions_to_sample) > 0:
-            iteration_counter = 0  # stores the number of samples drawn (duplicates included)
             while sampling_budget > 0:
-                iteration_counter += 1
-
                 # draw coalition
                 coalition_size = self._rng.choice(
                     self._coalitions_to_sample,
@@ -529,15 +551,8 @@ class CoalitionSampler:
                 )[0]
                 ids = self._rng.choice(self.n, size=coalition_size, replace=False)
                 coalition_tuple = tuple(sorted(ids))  # get coalition
-                self.coalitions_per_size[coalition_size] += 1
 
-                # add coalition
-                try:  # if coalition is not new
-                    self.sampled_coalitions_dict[coalition_tuple] += 1
-                except KeyError:  # if coalition is new
-                    self.sampled_coalitions_dict[coalition_tuple] = 1
-                    sampling_budget -= 1
-
+                sampling_budget -= self.add_coalition(coalition_tuple)
                 # execute pairing-trick by including the complement
                 if self.pairing_trick and sampling_budget > 0:
                     sampling_budget = self.execute_pairing_trick(sampling_budget, coalition_tuple)

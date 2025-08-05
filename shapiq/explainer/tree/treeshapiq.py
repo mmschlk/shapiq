@@ -25,6 +25,44 @@ if TYPE_CHECKING:
 TreeSHAPIQIndices = Literal["SV", "SII", "k-SII"]
 
 
+def compute_interventional_node_samples(tree, background_data):
+    """
+    Given a trained DecisionTreeClassifier and dataset X,
+    returns a dict where each node index maps to a tuple:
+    (left_ratio, right_ratio)
+    """
+    n_nodes = tree.n_nodes
+
+    left_children = tree.children_left
+    right_children = tree.children_right
+    features = tree.features
+    thresholds = tree.thresholds
+
+
+    # Compute node_sample_weights and return as a list
+    node_sample_counts = np.zeros(n_nodes)
+    node_sample_counts[0] = background_data.shape[0]  # root node gets all samples
+
+    for node in range(n_nodes):
+        # Skip leaf nodes
+        if left_children[node] == right_children[node]:
+            continue
+
+        feat = features[node]
+        thresh = thresholds[node]
+
+        # All samples' values at this node's split feature
+        feature_values = background_data[:, feat]
+
+        # Count how many samples go left and right at this node
+        left_count = np.sum(feature_values <= thresh)
+        right_count = background_data.shape[0] - left_count
+
+        node_sample_counts[left_children[node]] = left_count
+        node_sample_counts[right_children[node]] = right_count
+
+    return node_sample_counts
+
 class TreeSHAPIQ:
     """The TreeSHAP-IQ computation class.
 
@@ -56,6 +94,8 @@ class TreeSHAPIQ:
         max_order: int = 2,
         min_order: int = 1,
         index: TreeSHAPIQIndices = "k-SII",
+        feature_perturbation: str = "tree_path_dependent",
+        background_data: np.ndarray | None = None,
         verbose: bool = False,
     ) -> None:
         """Initializes the TreeSHAP-IQ explainer.
@@ -116,18 +156,55 @@ class TreeSHAPIQ:
         self._interaction_update_positions: dict[int, dict[int, np.ndarray[int]]] = {}  # lookup
         self._init_interaction_lookup_tables()
 
-        # get the edge representation of the tree
-        edge_tree = create_edge_tree(
-            children_left=self._tree.children_left,
-            children_right=self._tree.children_right,
-            features=self._tree.features,
-            node_sample_weight=self._tree.node_sample_weight,
-            values=self._tree.values,
-            max_interaction=self._max_order,
-            n_features=self._max_feature_id + 1,
-            n_nodes=self._n_nodes,
-            subset_updates_pos_store=self._interaction_update_positions,
-        )
+
+        # feature perturbation
+        self._feature_perturbation = feature_perturbation
+        if feature_perturbation == "interventional":
+            if background_data is None:
+                msg = (
+                    "You must provide a background dataset for interventional feature perturbation. "
+                    "Please provide a dataset as a numpy array."
+                )
+                raise ValueError(msg)
+            else:
+                self._background_data: np.ndarray = background_data
+
+
+        if feature_perturbation == "tree_path_dependent":
+            # get the edge representation of the tree
+            edge_tree = create_edge_tree(
+                children_left=self._tree.children_left,
+                children_right=self._tree.children_right,
+                features=self._tree.features,
+                node_sample_weight=self._tree.node_sample_weight,
+                values=self._tree.values,
+                max_interaction=self._max_order,
+                n_features=self._max_feature_id + 1,
+                n_nodes=self._n_nodes,
+                subset_updates_pos_store=self._interaction_update_positions,
+            )
+        elif feature_perturbation == "interventional":
+            # compute the node_sample_weights based on the background data
+            node_sample_counts = compute_interventional_node_samples(self._tree, self._background_data)
+
+            # get the edge representation of the tree
+            edge_tree = create_edge_tree(
+                children_left=self._tree.children_left,
+                children_right=self._tree.children_right,
+                features=self._tree.features,
+                node_sample_weight=node_sample_counts,
+                values=self._tree.values,
+                max_interaction=self._max_order,
+                n_features=self._max_feature_id + 1,
+                n_nodes=self._n_nodes,
+                subset_updates_pos_store=self._interaction_update_positions,
+            )
+        else:
+            msg = (
+                f"The feature perturbation method {feature_perturbation} is not yet implemented for "
+                "TreeSHAP-IQ or you did not provide a background dataset for interventional "
+            )
+            raise NotImplementedError(msg)
         self._edge_tree: EdgeTree = copy.deepcopy(edge_tree)
 
         # compute the empty prediction

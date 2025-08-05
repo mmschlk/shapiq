@@ -137,8 +137,11 @@ def create_edge_tree(
 
         # compute prod_weight with node samples
         n_sample = node_sample_weight[node_id]
-        n_parent = node_sample_weight[parents[node_id]]
-        weight = n_sample / n_parent
+        # n_total = node_sample_weights[parents[node_id]] # this does not work for interventional feature perturbation
+        n_total = node_sample_weight[children_left[parents[node_id]]] + node_sample_weight[children_right[parents[node_id]]]
+        if n_total == 0:
+            print("stop here")
+        weight = n_sample / n_total
         split_weights[node_id] = weight
         prod_weight *= weight
 

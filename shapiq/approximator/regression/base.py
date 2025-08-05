@@ -40,6 +40,7 @@ class Regression(Approximator):
         *,
         sii_consistent: bool = True,
         pairing_trick: bool = False,
+        replacement: bool = True,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
     ) -> None:
@@ -74,6 +75,7 @@ class Regression(Approximator):
             random_state=random_state,
             pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,
+            replacement=replacement,
         )
         self._bernoulli_numbers = bernoulli(self.n)  # used for SII
         # used for SII, if False, then Inconsistent KernelSHAP-IQ is used

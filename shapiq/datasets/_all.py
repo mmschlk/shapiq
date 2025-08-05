@@ -308,3 +308,22 @@ def load_forest_fires():
     X = pd.get_dummies(df, columns=["season"], drop_first=True)
 
     return X, y
+
+
+def load_independentlinear60():
+    """Load the Independent Linear 60 dataset."""
+    import shap
+    # Load the Independent Linear 60 dataset
+    X, y = shap.datasets.independentlinear60()
+    # Convert y to DataFrame
+    y = pd.DataFrame(y, columns=["target"])
+    return X, y
+
+def load_corrgroups60():
+    """Load the Correlated Linear 60 dataset."""
+    import shap
+    # Load the Correlated Linear 60 dataset
+    X, y = shap.datasets.corrgroups60()
+    # Convert y to DataFrame
+    y = pd.DataFrame(y, columns=["target"])
+    return X, y

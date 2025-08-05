@@ -45,8 +45,8 @@ STYLE_DICT: dict[str, dict[str, str]] = {
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
 LIGHT_GRAY = "#d3d3d3"
-LINE_STYLES_ORDER = {0: "solid", 1: "solid", 2: "solid", 3: "dashed", 4: "dashdot", "all": "solid"}
-LINE_MARKERS_ORDER = {0: "o", 1: "o", 2: "o", 3: "X", 4: "d", "all": "o"}
+LINE_STYLES_ORDER = {40: "solid", 39: "dashdot", 38: "solid", 37: "dashdot", 4: "dashdot", "all": "solid"}
+LINE_MARKERS_ORDER = {40: "o", 39: "o", 38: "X", 37: "X", 4: "d", "all": "o"}
 LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
@@ -240,8 +240,8 @@ def plot_approximation_quality(
     # get min metric_value for y_lim
 
     # make sure orders is a list
-    #if orders is None:
-    #    orders = ["all"]
+    if orders is None:
+        orders = np.unique(metric_data["id_config_approximator"])
     if isinstance(orders, int | str):
         orders = [orders]
 
@@ -258,45 +258,49 @@ def plot_approximation_quality(
     # create the plot
     fig, ax = plt.subplots()
     approx_max_budget = 0
+
+    ids_config_approximator = metric_data["id_config_approximator"].unique()
+
     for approximator in approximators:
-        for order in metric_data["order"].unique():
-            if orders is not None and order not in orders:
-                continue
-            data_order = metric_data[
-                (metric_data["approximator"] == approximator) & (metric_data["order"] == order)
-            ].copy()
+            data_approximator = metric_data[metric_data["approximator"] == approximator].copy()
+            for order in data_approximator["id_config_approximator"].unique():
+                if orders is not None and order not in orders:
+                    continue
+                data_order = data_approximator[
+                    (metric_data["id_config_approximator"] == order)
+                ].copy()
 
-            if log_scale_y and log_scale_min is not None:
-                # manually set all below log_scale_min to log_scale_min (to avoid log(0))
-                data_order[aggregation] = data_order[aggregation].apply(
-                    lambda x: max(x, log_scale_min),
-                )
+                if log_scale_y and log_scale_min is not None:
+                    # manually set all below log_scale_min to log_scale_min (to avoid log(0))
+                    data_order[aggregation] = data_order[aggregation].apply(
+                        lambda x: max(x, log_scale_min),
+                    )
 
-            # get the plot colors and styles
-            line_style, line_marker = LINE_STYLES_ORDER[order], LINE_MARKERS_ORDER[order]
-            color = STYLE_DICT[approximator]["color"]
+                # get the plot colors and styles
+                line_style, line_marker = LINE_STYLES_ORDER[order], LINE_MARKERS_ORDER[order]
+                color = STYLE_DICT[approximator]["color"]
 
-            # plot the mean values
-            ax.plot(
-                data_order["used_budget"],
-                data_order[aggregation],
-                color=color,
-                linestyle=line_style,
-                marker=line_marker,
-                linewidth=LINE_THICKNESS,
-                mec="white",
-                markersize=MARKER_SIZE,
-            )
-            # plot the error bars if the confidence metric is not None
-            if confidence_metric is not None:
-                ax.fill_between(
+                # plot the mean values
+                ax.plot(
                     data_order["used_budget"],
-                    data_order[aggregation] - data_order[confidence_metric_low],
-                    data_order[aggregation] + data_order[confidence_metric_high],
-                    alpha=0.1,
+                    data_order[aggregation],
                     color=color,
+                    linestyle=line_style,
+                    marker=line_marker,
+                    linewidth=LINE_THICKNESS,
+                    mec="white",
+                    markersize=MARKER_SIZE,
                 )
-            approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
+                # plot the error bars if the confidence metric is not None
+                if confidence_metric is not None:
+                    ax.fill_between(
+                        data_order["used_budget"],
+                        data_order[aggregation] - data_order[confidence_metric_low],
+                        data_order[aggregation] + data_order[confidence_metric_high],
+                        alpha=0.1,
+                        color=color,
+                    )
+                approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
 
     # add x/y labels
     ax.set_ylabel(metric)
@@ -403,7 +407,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
     metric_dfs = []
     for metric_col in metric_columns:
         data_order = (
-            results_df.groupby(["approximator", "used_budget", "iteration"])
+            results_df.groupby(["approximator", "used_budget", "iteration","id_config_approximator"])
             .agg(
                 {
                     metric_col: [
@@ -477,10 +481,18 @@ def add_legend(
         if legend_subtitle:
             axis.plot([], [], label="$\\bf{Order}$", color="none")
         for order in orders:
+            if order == 40:
+                desc = "WRepl"
+            if order == 39:
+                desc = "NoRepl"
+            if order == 38:
+                desc = "WRepl, Pairs"
+            if order == 37:
+                desc = "NoRepl, Pairs"
             axis.plot(
                 [],
                 [],
-                label=f"Order {order}",
+                label=f"{desc}",
                 color="black",
                 linestyle=LINE_STYLES_ORDER[order],
                 marker=LINE_MARKERS_ORDER[order],

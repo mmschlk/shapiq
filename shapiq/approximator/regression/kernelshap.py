@@ -55,6 +55,7 @@ class KernelSHAP(Regression):
         n: int,
         *,
         pairing_trick: bool = False,
+        replacement: bool = True,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
         **kwargs: Any,  # noqa: ARG002
@@ -82,4 +83,5 @@ class KernelSHAP(Regression):
             random_state=random_state,
             pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,
+            replacement=replacement,
         )
