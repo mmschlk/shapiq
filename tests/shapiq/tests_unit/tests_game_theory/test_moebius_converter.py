@@ -22,12 +22,15 @@ def test_soum_moebius_conversion():
 
         moebius_converter = MoebiusConverter(soum.moebius_coefficients)
 
-        shapley_interactions = {}
         for index in ["STII", "k-SII", "FSII"]:
-            shapley_interactions[index] = moebius_converter(index=index, order=order)
+            shapley_interactions = moebius_converter(index=index, order=order)
             # Assert efficiency
-            assert (np.sum(shapley_interactions[index].values) - predicted_value) ** 2 < 10e-7
-            assert (shapley_interactions[index][()] - emptyset_prediction) ** 2 < 10e-7
+            assert (np.sum(shapley_interactions.values) - predicted_value) ** 2 < 10e-7
+            assert (shapley_interactions[()] - emptyset_prediction) ** 2 < 10e-7
+            for _k, v in moebius_converter._computed.items():
+                # check that no 0's are in the interaction lookup (except for the empty set, which is the first entry)
+                interaction_lookup = v.interaction_lookup
+                assert all(v != 0 for idx, v in enumerate(interaction_lookup.values()) if idx > 0)
 
         # test direct call of Möbius converter
         for index in ["STII", "k-SII", "SII", "FSII"]:
