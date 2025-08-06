@@ -436,7 +436,7 @@ class InteractionValues:
             or self.max_order != other.max_order
             or self.min_order != other.min_order
             or self.n_players != other.n_players
-            or self.baseline_value != other.baseline_value
+            or not np.allclose(self.baseline_value, other.baseline_value)
         ):
             return False
         if not np.allclose(self.values, other.values):
