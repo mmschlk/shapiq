@@ -161,10 +161,12 @@ class MoebiusConverter:
             for interaction in powerset(moebius_set, min_size=0, max_size=order):
                 val_distributed = distribution_weights[moebius_size, len(interaction)]
                 # Check if Möbius value is distributed onto this interaction
-                if interaction in base_interaction_dict:
-                    base_interaction_dict[interaction] += moebius_val * val_distributed
-                else:
-                    base_interaction_dict[interaction] = moebius_val * val_distributed
+                moebius_val_calc = moebius_val * val_distributed
+                if moebius_val_calc == 0:
+                    continue
+                base_interaction_dict[interaction] = (
+                    base_interaction_dict.get(interaction, 0) + moebius_val_calc
+                )
 
         base_interaction_values = np.zeros(len(base_interaction_dict))
         base_interaction_lookup = {}
@@ -227,19 +229,19 @@ class MoebiusConverter:
             if moebius_size < order:
                 # For STII, interaction below size order are the Möbius coefficients
                 val_distributed = distribution_weights[moebius_size, moebius_size]
-                if moebius_set in stii_dict:
-                    stii_dict[moebius_set] += moebius_val * val_distributed
-                else:
-                    stii_dict[moebius_set] = moebius_val * val_distributed
+                moebius_val_calc = moebius_val * val_distributed
+                if moebius_val_calc == 0:
+                    continue
+                stii_dict[moebius_set] = stii_dict.get(moebius_set, 0) + moebius_val_calc
             else:
                 # higher-order Möbius sets (size > order) distribute to all top-order interactions
                 for interaction in powerset(moebius_set, min_size=order, max_size=order):
                     val_distributed = distribution_weights[moebius_size, len(interaction)]
                     # Check if Möbius value is distributed onto this interaction
-                    if interaction in stii_dict:
-                        stii_dict[interaction] += moebius_val * val_distributed
-                    else:
-                        stii_dict[interaction] = moebius_val * val_distributed
+                    moebius_val_calc = moebius_val * val_distributed
+                    if moebius_val_calc == 0:
+                        continue
+                    stii_dict[interaction] = stii_dict.get(interaction, 0) + moebius_val_calc
 
         stii_values = np.zeros(len(stii_dict))
         stii_lookup = {}
@@ -311,10 +313,10 @@ class MoebiusConverter:
             for interaction in powerset(moebius_set, min_size=1, max_size=order):
                 val_distributed = distribution_weights[moebius_size, len(interaction)]
                 # Check if Möbius value is distributed onto this interaction
-                if interaction in fii_dict:
-                    fii_dict[interaction] += moebius_val * val_distributed
-                else:
-                    fii_dict[interaction] = moebius_val * val_distributed
+                moebius_val_calc = moebius_val * val_distributed
+                if moebius_val_calc == 0:
+                    continue
+                fii_dict[interaction] = fii_dict.get(interaction, 0) + moebius_val_calc
 
         fii_values = np.zeros(len(fii_dict))
         fii_lookup = {}
