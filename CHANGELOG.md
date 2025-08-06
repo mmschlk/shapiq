@@ -1,5 +1,31 @@
 # Changelog
 
+## Development
+
+### Separation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark`
+
+We have begun the process of modularizing the `shapiq` package by splitting it into three distinct packages: `shapiq`, `shapiq_games`, and `shapiq-benchmark`.
+
+- The `shapiq` package now serves as the core library. It contains the main functionality, including approximators, explainers, computation routines, interaction value logic, and plotting utilities.
+- The new `shapiq_games` package includes examples and utilities for defining custom cooperative games using the `shapiq.Game` API. Although it lives in the same repository as `shapiq`, it is designed to be installable and usable as a standalone package. Internally, its source code is available via the `shapiq_games` submodule. Dependencies for this package can be managed via extras (e.g., `uv pip install shapiq[games]`) or by installing `shapiq_games` directly.
+- The `shapiq-benchmark` package is hosted in a separate repository and is intended for conducting benchmarks. It builds on top of both `shapiq` and `shapiq_games`, and includes benchmarking utilities, datasets, and game configurations for evaluating the performance of different approximators and explainers. It can be installed via `pip install shapiq-benchmark`.
+
+This restructuring aims to improve maintainability and development scalability. The core `shapiq` package will continue to receive the majority of updates and enhancements, and keeping it streamlined ensures better focus and usability. Meanwhile, separating games and benchmarking functionality allows these components to evolve more independently while maintaining compatibility through clearly defined dependencies.
+
+### Maintenance and Development
+- refactored the `shapiq.Games` and `shapiq.InteractionValues` API by adding an interactions and game_values dictionary as the main data structure to store the interaction scores and game values. This allows for more efficient storage and retrieval of interaction values and game values, as well as easier manipulation of the data. [#419](https://github.com/mmschlk/shapiq/pull/419)
+- addition and subtraction of InteractionValues objects (via `shapiq.InteractionValues.__add__`) now also works for different indices, which will raise a warning and will return a new InteractionValues object with the index set of the first. [#422](https://github.com/mmschlk/shapiq/pull/422)
+
+### Docs
+- added an example notebook for `InteractionValues`, highlighting *Initialization*, *Modification*, *Visualization* and *Save and Loading*.
+
+### Bugfixes
+- fixes a bug where RegressionFBII approximator was throwing an error when the index was `'BV'` or `'FBII'`.[#420](https://github.com/mmschlk/shapiq/pull/420)
+
+### Removed Features
+- removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
+
+
 ## v1.3.1 (2025-07-11)
 
 ### New Features

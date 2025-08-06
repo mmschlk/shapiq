@@ -6,18 +6,19 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 from __future__ import annotations
 
-import os
 import sys
+from importlib.metadata import version
+from pathlib import Path
 
 import commonmark
 from sphinx.builders.html import StandaloneHTMLBuilder
 
-sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
-sys.path.insert(0, os.path.abspath("../../shapiq"))  # noqa: PTH100
-sys.path.insert(0, os.path.abspath("../../examples"))  # noqa: PTH100
+root = Path(__file__).resolve().parents[2]  # ../../ from this file
+sys.path.insert(0, str(root))
+sys.path.insert(0, str(root / "shapiq"))
+sys.path.insert(0, str(root / "examples"))
+sys.path.insert(0, str(root / "src"))  # get the shapiq package
 
-
-import shapiq
 
 # -- Read the Docs ---------------------------------------------------------------------------------
 master_doc = "index"
@@ -27,8 +28,8 @@ master_doc = "index"
 project = "shapiq"
 copyright = "2024, Muschalik et al."
 author = "Muschalik et al."
-release = shapiq.__version__
-version = shapiq.__version__
+release = version("shapiq")
+version = version("shapiq")
 
 # -- General configuration -------------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
