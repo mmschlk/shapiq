@@ -73,7 +73,7 @@ def get_predict_function_and_model_type(
         A tuple of the predict function and the model type.
 
     """
-    from shapiq.game import Game
+    from src.shapiq.game import Game
 
     from .tree import TreeModel
 

@@ -7,9 +7,8 @@ import warnings
 
 import numpy as np
 from scipy.optimize import LinearConstraint, minimize
-
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import powerset
+from src.shapiq.interaction_values import InteractionValues
+from src.shapiq.utils.sets import powerset
 
 __all__ = ["egalitarian_least_core"]
 

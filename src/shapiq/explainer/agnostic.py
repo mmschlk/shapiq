@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from shapiq.game import Game
+from src.shapiq.game import Game
 
 from .base import Explainer
 from .configuration import setup_approximator
@@ -15,9 +15,8 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     import numpy as np
-
-    from shapiq.approximator.base import Approximator
-    from shapiq.interaction_values import InteractionValues
+    from src.shapiq.approximator.base import Approximator
+    from src.shapiq.interaction_values import InteractionValues
 
     from .tabular import TabularExplainerApproximators
 

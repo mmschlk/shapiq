@@ -5,14 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-
-from shapiq.approximator.base import Approximator
-from shapiq.interaction_values import InteractionValues
+from src.shapiq.approximator.base import Approximator
+from src.shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.game import Game
+    from src.shapiq.game import Game
 
 
 class StratifiedSamplingSV(Approximator):

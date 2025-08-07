@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from shapiq.typing import Model
+    from src.shapiq.typing import Model
 
 
 # TODO(IsaH57): remove get_X_train, get_alpha, get_gamma? # noqa: TD003

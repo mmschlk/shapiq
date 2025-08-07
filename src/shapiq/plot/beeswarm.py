@@ -12,8 +12,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
+from src.shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 
 from .utils import abbreviate_feature_names
 

@@ -10,16 +10,15 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Any
 
-from shapiq.explainer.base import Explainer
+from src.shapiq.explainer.base import Explainer
 
 from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
     import numpy as np
-
-    from shapiq.interaction_values import InteractionValues
-    from shapiq.typing import Model
+    from src.shapiq.interaction_values import InteractionValues
+    from src.shapiq.typing import Model
 
     from .base import TreeModel
 

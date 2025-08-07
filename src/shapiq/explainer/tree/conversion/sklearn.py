@@ -5,12 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-
-from shapiq.explainer.tree.base import TreeModel
-from shapiq.utils import safe_isinstance
+from src.shapiq.explainer.tree.base import TreeModel
+from src.shapiq.utils import safe_isinstance
 
 if TYPE_CHECKING:
-    from shapiq.typing import Model
+    from src.shapiq.typing import Model
 
 
 def convert_sklearn_forest(

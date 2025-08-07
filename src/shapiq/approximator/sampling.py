@@ -7,8 +7,7 @@ import warnings
 
 import numpy as np
 from scipy.special import binom
-
-from shapiq.utils.sets import powerset
+from src.shapiq.utils.sets import powerset
 
 
 class CoalitionSampler:

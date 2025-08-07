@@ -7,9 +7,8 @@ from typing import Any, Literal, get_args
 
 import numpy as np
 from scipy.special import binom
-
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import powerset
+from src.shapiq.interaction_values import InteractionValues
+from src.shapiq.utils.sets import powerset
 
 ValidMoebiusConverterIndices = Literal["k-SII", "STII", "FSII", "FBII", "SII", "SV", "BV"]
 

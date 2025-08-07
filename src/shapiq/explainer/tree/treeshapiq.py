@@ -8,16 +8,15 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import scipy as sp
-
-from shapiq.game_theory.indices import get_computation_index
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import generate_interaction_lookup, powerset
+from src.shapiq.game_theory.indices import get_computation_index
+from src.shapiq.interaction_values import InteractionValues
+from src.shapiq.utils.sets import generate_interaction_lookup, powerset
 
 from .conversion.edges import create_edge_tree
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
-    from shapiq.typing import Model
+    from src.shapiq.typing import Model
 
     from .base import EdgeTree, TreeModel
 

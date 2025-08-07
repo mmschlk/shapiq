@@ -8,16 +8,15 @@ from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 from scipy.special import binom
-
-from shapiq.approximator.sampling import CoalitionSampler
-from shapiq.game_theory.indices import get_computation_index
-from shapiq.utils.sets import generate_interaction_lookup
+from src.shapiq.approximator.sampling import CoalitionSampler
+from src.shapiq.game_theory.indices import get_computation_index
+from src.shapiq.utils.sets import generate_interaction_lookup
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.game import Game
-    from shapiq.interaction_values import InteractionValues
+    from src.shapiq.game import Game
+    from src.shapiq.interaction_values import InteractionValues
 
 __all__ = [
     "Approximator",

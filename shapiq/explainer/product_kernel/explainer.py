@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from shapiq.explainer.base import Explainer
-from shapiq.explainer.validation import validate_pk_model
+from src.shapiq.explainer.base import Explainer
+from src.shapiq.explainer.validation import validate_pk_model
 
 from .product_kernel import ProductKernelSHAPIQ, ProductKernelSHAPIQIndices
 
 if TYPE_CHECKING:
     import numpy as np
-
-    from shapiq.utils.custom_types import Model
+    from src.shapiq.utils.custom_types import Model
 
     from .base import ProductKernelModel
 

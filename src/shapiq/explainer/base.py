@@ -19,13 +19,12 @@ if TYPE_CHECKING:
     from typing import Any
 
     import numpy as np
-
-    from shapiq.approximator.base import Approximator
-    from shapiq.game import Game
-    from shapiq.game_theory import ExactComputer
-    from shapiq.imputer.base import Imputer
-    from shapiq.interaction_values import InteractionValues
-    from shapiq.typing import Model
+    from src.shapiq.approximator.base import Approximator
+    from src.shapiq.game import Game
+    from src.shapiq.game_theory import ExactComputer
+    from src.shapiq.imputer.base import Imputer
+    from src.shapiq.interaction_values import InteractionValues
+    from src.shapiq.typing import Model
 
     from .custom_types import ExplainerIndices
 

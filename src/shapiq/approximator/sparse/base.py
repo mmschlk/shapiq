@@ -12,16 +12,15 @@ from sparse_transform.qsft.signals.input_signal_subsampled import (
 )
 from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
 from sparse_transform.qsft.utils.query import get_bch_decoder
-
-from shapiq.approximator.base import Approximator
-from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
-from shapiq.interaction_values import InteractionValues
+from src.shapiq.approximator.base import Approximator
+from src.shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
+from src.shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
 
-    from shapiq.game import Game
+    from src.shapiq.game import Game
 
 ValidSparseIndices = ValidMoebiusConverterIndices
 

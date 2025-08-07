@@ -7,10 +7,9 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import scipy as sp
-
-from shapiq.approximator.base import Approximator
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import get_explicit_subsets, powerset
+from src.shapiq.approximator.base import Approximator
+from src.shapiq.interaction_values import InteractionValues
+from src.shapiq.utils import get_explicit_subsets, powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -26,8 +25,8 @@ class PermutationSamplingSTII(Approximator):
             Sampling approximator for the SV index
 
     Example:
-        >>> from shapiq_games.benchmark import DummyGame
-        >>> from shapiq.approximator import PermutationSamplingSTII
+        >>> from src.shapiq_games.benchmark import DummyGame
+        >>> from src.shapiq.approximator import PermutationSamplingSTII
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = PermutationSamplingSTII(n=5, max_order=2)
         >>> approximator.approximate(budget=200, game=game)

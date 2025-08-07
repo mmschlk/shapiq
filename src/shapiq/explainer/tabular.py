@@ -6,20 +6,18 @@ from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
 from overrides import overrides
-
-from shapiq.explainer.base import Explainer
-from shapiq.game_theory.indices import is_empty_value_the_baseline
+from src.shapiq.explainer.base import Explainer
+from src.shapiq.game_theory.indices import is_empty_value_the_baseline
 
 from .configuration import setup_approximator
 from .custom_types import ExplainerIndices
 
 if TYPE_CHECKING:
     import numpy as np
-
-    from shapiq.approximator.base import Approximator
-    from shapiq.imputer.base import Imputer
-    from shapiq.interaction_values import InteractionValues
-    from shapiq.typing import Model
+    from src.shapiq.approximator.base import Approximator
+    from src.shapiq.imputer.base import Imputer
+    from src.shapiq.interaction_values import InteractionValues
+    from src.shapiq.typing import Model
 
 
 TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]

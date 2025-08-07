@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from shapiq.explainer.product_kernel.base import ProductKernelModel
 
 if TYPE_CHECKING:
-    from shapiq.typing import Model
+    from src.shapiq.typing import Model
 
 
 # TODO(IsaH57): add basic one for SVM? SVR and SVC are same (yet) # noqa: TD003

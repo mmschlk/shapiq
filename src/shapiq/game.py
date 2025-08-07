@@ -9,18 +9,17 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import numpy as np
-from tqdm.auto import tqdm
-
-from shapiq.utils import (
+from src.shapiq.utils import (
     powerset,
     raise_deprecation_warning,
     transform_array_to_coalitions,
     transform_coalitions_to_array,
 )
+from tqdm.auto import tqdm
 
 if TYPE_CHECKING:
-    from shapiq.interaction_values import InteractionValues
-    from shapiq.typing import CoalitionMatrix, GameValues, JSONType, MetadataBlock
+    from src.shapiq.interaction_values import InteractionValues
+    from src.shapiq.typing import CoalitionMatrix, GameValues, JSONType, MetadataBlock
 
     class GameJSONMetadata(TypedDict):
         """Metadata for the game loaded from JSON."""

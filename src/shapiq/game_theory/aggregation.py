@@ -6,9 +6,8 @@ import warnings
 
 import numpy as np
 import scipy as sp
-
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils.sets import powerset
+from src.shapiq.interaction_values import InteractionValues
+from src.shapiq.utils.sets import powerset
 
 
 def _change_index(index: str) -> str:

@@ -8,16 +8,15 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.special import bernoulli, binom
-
-from shapiq.interaction_values import InteractionValues
-from shapiq.utils import powerset
+from src.shapiq.interaction_values import InteractionValues
+from src.shapiq.utils import powerset
 
 from .indices import ALL_AVAILABLE_CONCEPTS
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.game import Game
+    from src.shapiq.game import Game
 
 __all__ = ["ExactComputer", "get_bernoulli_weights"]
 

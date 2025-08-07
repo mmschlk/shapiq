@@ -10,22 +10,27 @@ import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
+from src.shapiq.game_theory.indices import (
+    index_generalizes_bv,
+    index_generalizes_sv,
+    is_index_valid,
+)
+from src.shapiq.utils.modules import safe_isinstance
 
 from shapiq.explainer.product_kernel.conversion import (
     convert_binsvc,
     convert_gp_reg,
     convert_svr,
 )
-from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv, is_index_valid
-from shapiq.utils.modules import safe_isinstance
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.typing import Model
+    from src.shapiq.typing import Model
+
+    from shapiq.explainer.product_kernel.base import ProductKernelModel
 
     from .custom_types import ExplainerIndices
-    from .product_kernel.base import ProductKernelModel
 
 SUPPORTED_MODELS = {
     "sklearn.svm.SVR",
