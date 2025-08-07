@@ -18,9 +18,8 @@ from src.shapiq.game_theory.indices import (
 from src.shapiq.utils.modules import safe_isinstance
 
 from shapiq.explainer.product_kernel.conversion import (
-    convert_binsvc,
     convert_gp_reg,
-    convert_svr,
+    convert_svm,
 )
 
 if TYPE_CHECKING:
@@ -36,7 +35,6 @@ SUPPORTED_MODELS = {
     "sklearn.svm.SVR",
     "sklearn.svm.SVC",
     "sklearn.gaussian_process.GaussianProcessRegressor",
-    "sklearn.gaussian_process.GaussianProcessClassifier",
 }
 
 
@@ -158,10 +156,10 @@ def validate_max_order(index: ExplainerIndices, max_order: int) -> int:
     return max_order
 
 
-# TODO(IsaH57): check if correct place to do this # noqa: TD003
+# TODO(IsaH57): check if correct place to do this (Issue #425)
 def validate_pk_model(
     model: Model,
-    class_label: int | None = None,  # TODO(IsaH57): check if needed # noqa: TD003
+    class_label: int | None = None,  # TODO(IsaH57): check if needed (Issue #425)
 ) -> ProductKernelModel:
     """Validate the product kernel model.
 
@@ -174,29 +172,23 @@ def validate_pk_model(
     """
     class_label = (
         class_label or 1
-    )  # default to 1 for classification models # TODO(IsaH57): check if needed # noqa: TD003
+    )  # default to 1 for classification models # TODO(IsaH57): check if needed (Issue #425)
     # product kernel model already in the correct format
     if type(model).__name__ == "ProductKernelModel":
         pk_model = model
-    elif safe_isinstance(model, "sklearn.svm.SVR"):
-        pk_model = convert_svr(model)
-    elif safe_isinstance(model, "sklearn.svm.SVC") and model.classes_.shape[0] == 2:
-        pk_model = convert_binsvc(model)
+    elif safe_isinstance(model, "sklearn.svm.SVR") or (
+        safe_isinstance(model, "sklearn.svm.SVC") and model.classes_.shape[0] == 2
+    ):
+        pk_model = convert_svm(model)
     elif safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessRegressor"):
         pk_model = convert_gp_reg(model)
-    elif (
-        safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessClassifier")
-        and model.classes_.shape[0] == 2
-    ):
-        msg = "GaussianProcessClassifier misses attribute alpha."
+    elif safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessClassifier"):
+        msg = "GaussianProcessClassifier currently not supported."
         raise TypeError(msg)
-        # pk_model = convert_gp_binclf(model) # noqa: ERA001
+        # pk_model = convert_gp_clf(model) # noqa: ERA001
     # unsupported model types
-    elif safe_isinstance(model, "sklearn.svm.SVC") or (
-        safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessClassifier")
-        and model.classes_.shape[0] >= 2
-    ):
-        msg = "Only binary SVM classification supported"
+    elif safe_isinstance(model, "sklearn.svm.SVC") and model.classes_.shape[0] >= 2:
+        msg = "Only binary SVM classification supported."
         raise TypeError(msg)
     else:
         msg = f"Unsupported model type.Supported models are: {SUPPORTED_MODELS}"

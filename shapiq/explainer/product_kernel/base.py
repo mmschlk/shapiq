@@ -36,4 +36,4 @@ class ProductKernelModel:
         self.X_train = X_train
         self.n = n
         self.d = d
-        self.gamma = gamma  # TODO(IsaH57): check if gamma is always needed. set flag for rbf kernel? create subclass for rbf kernel? # noqa: TD003
+        self.gamma = gamma  # TODO(IsaH57): check if gamma is just needed for rbf. set flag for rbf kernel? create subclass for rbf kernel? (Issue #425)

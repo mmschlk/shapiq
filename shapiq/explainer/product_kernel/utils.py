@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from src.shapiq.typing import Model
 
 
-# TODO(IsaH57): remove get_X_train, get_alpha, get_gamma? # noqa: TD003
+# TODO(IsaH57): check for all functions if needed here (Issue #425)
 def get_X_train(model: Model) -> np.ndarray:
     """Retrieve the training sample based on the model type.
 
@@ -64,7 +64,6 @@ def get_gamma(model: Model) -> float:
     raise ValueError(msg)
 
 
-# TODO(IsaH57): maybe move to product_kernel/base.py into ProductKernelModel? # noqa: TD003
 def precompute_mu(num_features: int) -> np.ndarray:
     """Precompute mu coefficients for computing Shapley values.
 

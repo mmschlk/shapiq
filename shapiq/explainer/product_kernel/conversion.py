@@ -10,33 +10,11 @@ if TYPE_CHECKING:
     from src.shapiq.typing import Model
 
 
-# TODO(IsaH57): add basic one for SVM? SVR and SVC are same (yet) # noqa: TD003
-def convert_svr(model: Model) -> ProductKernelModel:
-    """Converts a scikit-learn SVR model to the product kernel format used by shapiq.
+def convert_svm(model: Model) -> ProductKernelModel:
+    """Converts a scikit-learn SVM model to the product kernel format used by shapiq.
 
     Args:
-        model: The scikit-learn SVR model to convert.
-
-    Returns:
-        ProductKernelModel: The converted model in the product kernel format.
-
-    """
-    X_train = model.support_vectors_
-    n, d = X_train.shape  # TODO(IsaH57): rename n and d? (d=num_features) # noqa: TD003
-    return ProductKernelModel(
-        alpha=model.dual_coef_.flatten(),
-        X_train=X_train,
-        n=n,
-        d=d,
-        gamma=model._gamma,  # noqa: SLF001
-    )  # TODO (IsaH57): check if gamma is always needed # noqa: TD003
-
-
-def convert_binsvc(model: Model) -> ProductKernelModel:
-    """Converts a scikit-learn SVC model to the product kernel format used by shapiq.
-
-    Args:
-        model: The binary scikit-learn SVC model to convert.
+        model: The scikit-learn SVM model to convert. Can be either a binary support vector classifier (SVC) or a support vector regressor (SVR).
 
     Returns:
         ProductKernelModel: The converted model in the product kernel format.
@@ -50,7 +28,7 @@ def convert_binsvc(model: Model) -> ProductKernelModel:
         n=n,
         d=d,
         gamma=model._gamma,  # noqa: SLF001
-    )  # TODO (IsaH57): check if gamma is always needed # noqa: TD003
+    )  # TODO (IsaH57): check if gamma is always needed or just when rbf is used (Issue #425)
 
 
 def convert_gp_reg(model: Model) -> ProductKernelModel:
@@ -74,7 +52,7 @@ def convert_gp_reg(model: Model) -> ProductKernelModel:
     )
 
 
-def convert_gp_binclf(
+def convert_gp_clf(
     model: Model,
 ) -> ProductKernelModel:
     """Converts a binary scikit-learn Gaussian Process Classifier model to the product kernel format used by shapiq.
@@ -86,11 +64,15 @@ def convert_gp_binclf(
         ProductKernelModel: The converted model in the product kernel format.
 
     """
-    # binary classification has parameter X_train (other than classifier with >2 classes)
+    msg = "GaussianProcessClassifier currently not supported."
+    raise TypeError(msg)
+
+    # Implementation from the RKHS-ExactSHAP repository:
+    # binary classification has parameter X_train (other than classifier with >2 classes), so we can use this parameter from the base class
     X_train = model.base_estimator_.X_train_
     alpha = (
         model.alpha_.flatten()
-    )  # Issue: model doesnt have alpha value #TODO(IsaH57): solve this # noqa: TD003
+    )  # Issue: model doesnt have alpha value! #TODO(IsaH57): solve this # noqa: TD003
 
     n, d = X_train.shape
     return ProductKernelModel(

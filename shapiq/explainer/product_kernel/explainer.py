@@ -30,9 +30,9 @@ class ProductKernelExplainer(Explainer):
         self,
         model: dict | ProductKernelModel | list[ProductKernelModel] | Model,
         *,
-        max_order: int = 1,  # TODO(IsaH57): change to 2 # noqa: TD003
-        min_order: int = 0,
-        index: ProductKernelSHAPIQIndices = "SV",  # TODO(IsaH57): choose other default # noqa: TD003
+        max_order: int = 1,
+        min_order: int = 1,
+        index: ProductKernelSHAPIQIndices = "SV",
         class_index: int | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
@@ -48,9 +48,7 @@ class ProductKernelExplainer(Explainer):
 
             min_order: The minimum interaction order to be computed. Defaults to ``1``.
 
-            index: The type of interaction to be computed. It can be one of
-                ``["k-SII", "SII", "STII", "FSII", "BII", "SV"]``. All indices apart from ``"BII"``
-                will reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
+            index: The type of interaction to be computed. Currently, only ``"SV"`` is supported.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
@@ -59,6 +57,11 @@ class ProductKernelExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
 
         """
+        if index not in ProductKernelSHAPIQIndices:
+            supported_indices = ", ".join(f"'{idx}'" for idx in ProductKernelSHAPIQIndices.__args__)
+            msg = f"Invalid index '{index}'. Supported indices are: {supported_indices}."
+            raise ValueError(msg)
+
         super().__init__(model, index=index, max_order=max_order)
 
         self._min_order: int = min_order
@@ -73,14 +76,14 @@ class ProductKernelExplainer(Explainer):
             index=index,
         )
 
-        # TODO(IsaH57): add computation # noqa: TD003
+        # TODO(IsaH57): add computation of baseline (Issue #425)
         # self.baseline_value = self._compute_baseline_value() # noqa: ERA001
 
     def explain_function(
         self,
         x: np.ndarray,
         **kwargs: Any,  # noqa: ARG002
-    ) -> list[Any]:  # TODO(IsaH57): make return InteractionValues # noqa: TD003
+    ) -> list[Any]:
         """Compute Shapley values for all features of an instance.
 
         This function is explain() in PKeX RBFLocalExplainer().
@@ -92,13 +95,13 @@ class ProductKernelExplainer(Explainer):
         Returns:
            List of Shapley values, one for each feature.
         """
-        # We compute the kernel vectors for the instance x
+        # compute the kernel vectors for the instance x
         kernel_vectors = self.explainer.compute_kernel_vectors(self.model.X_train, x)
 
         shapley_values = []
         for j in range(self.model.d):
-            shapley_values.append(self.explainer.compute_shapley_value(kernel_vectors, j))  # noqa: PERF401 (used existing implementation)
-        # TODO(IsaH57): add finalize_computed_interactions() # noqa: TD003
+            shapley_values.append(self.explainer.compute_shapley_value(kernel_vectors, j))  # noqa: PERF401 (existing implementation from RKHS-ExactSHAP)
+        # TODO(IsaH57): add finalize_computed_interactions() (Issue #425)
         return shapley_values
 
     def _compute_baseline_value(self) -> float:

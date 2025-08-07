@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from sklearn.metrics.pairwise import rbf_kernel
-
-from shapiq.explainer.product_kernel.utils import precompute_mu
 
 if TYPE_CHECKING:
     from shapiq.explainer.product_kernel.base import ProductKernelModel
@@ -21,20 +20,26 @@ class ProductKernelSHAPIQ:
     This explainer computes the Shapley values for product kernel-based models.
     The functions are obtained from the PKeX-Shapley LocalExplainer. https://github.com/Majeed7/RKHS-ExactSHAP/blob/main/explainer/LocalExplainer.py#L3
 
+    Attributes:
+        model: The product kernel model to explain.
+        max_order: The maximum interaction order to be computed. Defaults to ``1``.
+        index: The type of interaction to be computed. Defaults to ``"SV"``.
+        d: The number of features in the model.
+
     """
 
     def __init__(
         self,
         model: dict | ProductKernelModel,
         *,
-        max_order: int = 1,  # TODO(IsaH57): change default to 2 # noqa: TD003
+        max_order: int = 1,
         index: ProductKernelSHAPIQIndices = "SV",
     ) -> None:
         """Initializes the ProductKernelSHAPIQ explainer.
 
         Args:
             model: A product kernel-based model to explain.
-            max_order: The maximum interaction order to be computed. Defaults to ``2``.
+            max_order: The maximum interaction order to be computed. Defaults to ``1``.
             index: The type of interaction to be computed. Defaults to ``"SV"``.
 
         Returns:
@@ -44,6 +49,21 @@ class ProductKernelSHAPIQ:
         self.max_order = max_order
         self.index = index
         self.d = model.d
+
+    def precompute_mu(self, num_features: int) -> np.ndarray:
+        """Precompute mu coefficients for computing Shapley values.
+
+        Args:
+            num_features: Number of features.
+
+        Returns:
+            List of precomputed mu coefficients.
+        """
+        unnormalized_factors = [
+            (math.factorial(q) * math.factorial(num_features - q - 1)) for q in range(num_features)
+        ]
+
+        return np.array(unnormalized_factors) / math.factorial(num_features)
 
     def compute_elementary_symmetric_polynomials_recursive(self, kernel_vectors: list) -> list:
         """Compute elementary symmetric polynomials.
@@ -118,7 +138,7 @@ class ProductKernelSHAPIQ:
         """
         shapley_values = []
         for j in range(self.model.d):
-            shapley_values.append(self._compute_shapley_value(kernel_vectors, j))  # noqa: PERF401 (using existing implementation)
+            shapley_values.append(self._compute_shapley_value(kernel_vectors, j))  # noqa: PERF401 (existing implementation from RKHS-ExactSHAP)
 
         return shapley_values
 
@@ -135,7 +155,7 @@ class ProductKernelSHAPIQ:
         alpha = self.model.alpha
         cZ_minus_j = [kernel_vectors[i] for i in range(self.model.d) if i != feature_index]
         e_polynomials = self.compute_elementary_symmetric_polynomials(cZ_minus_j)
-        mu_coefficients = precompute_mu(self.model.d)
+        mu_coefficients = self.precompute_mu(self.model.d)
 
         # Compute kernel vector for the chosen feature
         k_j = kernel_vectors[feature_index]
@@ -168,7 +188,7 @@ class ProductKernelSHAPIQ:
         for i in range(self.d):
             kernel_vec = rbf_kernel(
                 X[:, i].reshape(-1, 1), x[..., np.newaxis][i].reshape(1, -1), gamma=self.model.gamma
-            )  # TODO(isaH57): uses sklearn rbf_kernel. find own alternative?  # noqa: TD003
+            )  # TODO(isaH57): uses sklearn rbf_kernel. find own alternative?  (Issue #425)
             kernel_vectors.append(kernel_vec.squeeze())
 
         return kernel_vectors
