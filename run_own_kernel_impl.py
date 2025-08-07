@@ -30,7 +30,7 @@ svr_model = SVR(kernel="rbf", C=1.0, gamma="scale")
 svr_model.fit(X_train, y_train)
 
 # Initialize the explainer with this model
-svr_explainer = ProductKernelExplainer(svr_model, max_order=2, min_order=1, index="k-SII")
+svr_explainer = ProductKernelExplainer(svr_model)
 
 # Compute Shapley values
 svr_shapley_values = svr_explainer.explain(x)

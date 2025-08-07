@@ -14,14 +14,15 @@ if TYPE_CHECKING:
 ProductKernelSHAPIQIndices = Literal["SV"]
 
 
-class ProductKernelSHAPIQ:
-    """The Product Kernel SHAPIQ explainer for product kernel-based models.
+class ProductKernelComputer:
+    """The Product Kernel Computer for product kernel-based models.
 
-    This explainer computes the Shapley values for product kernel-based models.
+    This class computes the Shapley values for product kernel-based models.
     The functions are obtained from the PKeX-Shapley LocalExplainer. https://github.com/Majeed7/RKHS-ExactSHAP/blob/main/explainer/LocalExplainer.py#L3
 
     Attributes:
         model: The product kernel model to explain.
+        kernel_type: The type of kernel to be used. Defaults to ``"rbf"``.
         max_order: The maximum interaction order to be computed. Defaults to ``1``.
         index: The type of interaction to be computed. Defaults to ``"SV"``.
         d: The number of features in the model.
@@ -46,6 +47,7 @@ class ProductKernelSHAPIQ:
             None.
         """
         self.model = model
+        self.kernel_type = self.model.kernel_type  # TODO(IsaH57): see where this attribute is important to know. Currently only rbf used (Issue #425)
         self.max_order = max_order
         self.index = index
         self.d = model.d

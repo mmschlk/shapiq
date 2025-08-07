@@ -21,19 +21,27 @@ class ProductKernelModel:
     """
 
     def __init__(
-        self, alpha: np.ndarray, X_train: np.ndarray, n: int, d: int, gamma: float | None = None
+        self,
+        X_train: np.ndarray,
+        alpha: np.ndarray,
+        n: int,
+        d: int,
+        gamma: float | None = None,
+        kernel_type: str = "rbf",
     ) -> None:
         """Initializes the ProductKernelModel.
 
         Args:
-            alpha: The alpha parameter of the product kernel model.
             X_train: The training data used to fit the product kernel model.
+            alpha: The alpha parameter of the product kernel model.
             n: The number of samples in the training data.
             d: The number of features in the training data.
             gamma: The gamma parameter of the product kernel model. Defaults to 'None'
+            kernel_type: The type of the kernel model.
         """
-        self.alpha = alpha
         self.X_train = X_train
+        self.alpha = alpha
         self.n = n
         self.d = d
-        self.gamma = gamma  # TODO(IsaH57): check if gamma is just needed for rbf. set flag for rbf kernel? create subclass for rbf kernel? (Issue #425)
+        self.gamma = gamma  # TODO(IsaH57): check if gamma is just needed for rbf. (Issue #425)
+        self.kernel_type = kernel_type

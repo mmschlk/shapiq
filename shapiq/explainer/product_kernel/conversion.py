@@ -22,12 +22,20 @@ def convert_svm(model: Model) -> ProductKernelModel:
     """
     X_train = model.support_vectors_
     n, d = X_train.shape
+
+    if hasattr(model, "kernel"):
+        kernel_type = model.kernel
+    else:
+        msg = "Kernel type not found in the model. Ensure the model is a valid SVM or SVR."
+        raise ValueError(msg)
+
     return ProductKernelModel(
         alpha=model.dual_coef_.flatten(),
         X_train=X_train,
         n=n,
         d=d,
         gamma=model._gamma,  # noqa: SLF001
+        kernel_type=kernel_type,
     )  # TODO (IsaH57): check if gamma is always needed or just when rbf is used (Issue #425)
 
 
@@ -43,12 +51,20 @@ def convert_gp_reg(model: Model) -> ProductKernelModel:
     """
     X_train = model.X_train_
     n, d = X_train.shape
+
+    if hasattr(model, "kernel"):
+        kernel_type = model.kernel_.__class__.__name__.lower()  # Get the kernel type as a string
+    else:
+        msg = "Kernel type not found in the model. Ensure the model is a valid Gaussian Process Regressor."
+        raise ValueError(msg)
+
     return ProductKernelModel(
         alpha=model.alpha_.flatten(),
         X_train=X_train,
         n=n,
         d=d,
         gamma=(2 * (model.kernel_.length_scale**2)) ** -1,
+        kernel_type=kernel_type,
     )
 
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from src.shapiq.explainer.base import Explainer
 from src.shapiq.explainer.validation import validate_pk_model
 
-from .product_kernel import ProductKernelSHAPIQ, ProductKernelSHAPIQIndices
+from .product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
 
 if TYPE_CHECKING:
     import numpy as np
@@ -24,6 +24,13 @@ class ProductKernelExplainer(Explainer):
 
     References:
         -- [pkex-shapley] Majid Mohammadi and Siu Lun Chau, Krikamol Muandet. (2025). Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. https://arxiv.org/abs/2505.16516
+
+    Attributes:
+        model: The product kernel model to explain. Can be a dictionary, a ProductKernelModel, or a list of ProductKernelModels.
+        max_order: The maximum interaction order to be computed. Defaults to ``1``.
+        min_order: The minimum interaction order to be computed. Defaults to ``1``.
+        index: The type of interaction to be computed. Currently, only ``"SV"`` is supported.
+        class_index: The class index of the model to explain. Defaults to ``None``, which will set the class index to ``1`` per default for classification models and is ignored for regression models.
     """
 
     def __init__(
@@ -57,9 +64,9 @@ class ProductKernelExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
 
         """
-        if index not in ProductKernelSHAPIQIndices:
-            supported_indices = ", ".join(f"'{idx}'" for idx in ProductKernelSHAPIQIndices.__args__)
-            msg = f"Invalid index '{index}'. Supported indices are: {supported_indices}."
+        # TODO(IsaH57): do index checking somewhere else? (eg indices.py?) (Issue #425)
+        if index not in ProductKernelSHAPIQIndices.__args__:
+            msg = f"Invalid index '{index}'. Supported indices are: {', '.join([f"'{v}'" for v in ProductKernelSHAPIQIndices.__args__])}"
             raise ValueError(msg)
 
         super().__init__(model, index=index, max_order=max_order)
@@ -70,7 +77,7 @@ class ProductKernelExplainer(Explainer):
         # validate model
         self.model = validate_pk_model(model, class_label=class_index)
 
-        self.explainer = ProductKernelSHAPIQ(
+        self.explainer = ProductKernelComputer(
             model=self.model,
             max_order=max_order,
             index=index,
