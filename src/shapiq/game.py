@@ -159,7 +159,7 @@ class Game:
 
         # define storage variables
         self.game_values: dict[tuple[int, ...], float] = {}
-        self.n_players = n_players
+        self.n_players = n_players if n_players is not None else -1
 
         if path_to_values is not None:
             msg = (
@@ -168,14 +168,13 @@ class Game:
             )
             raise_deprecation_warning(message=msg, deprecated_in="1.3.1", removed_in="1.4.0")
 
-        if n_players is None and path_to_values is None:
+        if n_players == -1 and path_to_values is None:
             msg = "The number of players has to be provided if game is not loaded from values."
             raise ValueError(msg)
 
         # setup normalization of the game
         self.normalization_value = 0.0
         if normalize and path_to_values is None:
-            self.normalization_value = normalization_value
             if normalization_value is None:
                 # this is desired behavior, as in some cases normalization is set by the subclasses
                 # after init of the base Game class. For example, in the imputer classes.
@@ -187,6 +186,8 @@ class Game:
                     ),
                     stacklevel=2,
                 )
+            else:
+                self.normalization_value = normalization_value
 
         game_id = str(hash(self))[:8]
         self.game_id = f"{self.get_game_name()}_{game_id}"
@@ -205,7 +206,7 @@ class Game:
 
         # define player_names
         self.player_name_lookup: dict[str, int] = (
-            {name: i for i, name in enumerate(player_names)} if player_names is not None else None
+            {name: i for i, name in enumerate(player_names)} if player_names is not None else {}
         )
 
         self.verbose = verbose
@@ -391,8 +392,10 @@ class Game:
                 raise TypeError(msg)
             return coalitions
         # try for list of tuples
+
         if isinstance(coalitions, tuple):
             coalitions = [coalitions]
+
         try:
             # convert list of tuples to one-hot encoding
             return transform_coalitions_to_array(coalitions, self.n_players)
