@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
 
+    from shapiq.game_theory import ExactComputer
 
 TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
 TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
@@ -53,6 +54,7 @@ class TabularExplainer(Explainer):
         approximator: Literal["auto"] | TabularExplainerApproximators | Approximator = "auto",
         index: TabularExplainerIndices = "k-SII",
         max_order: int = 2,
+        exact: bool = False,
         random_state: int | None = None,
         verbose: bool = False,
         **kwargs: Any,
@@ -167,6 +169,10 @@ class TabularExplainer(Explainer):
             approximator, self._index, self._max_order, self._n_features, random_state
         )
 
+        if exact:
+            self.exact_computer = ExactComputer(self._n_features, self.imputer)
+
+
     @overrides
     def explain_function(
         self,
@@ -198,7 +204,10 @@ class TabularExplainer(Explainer):
         self.imputer.fit(x)
 
         # explain
-        interaction_values = self.approximator(budget=budget, game=self.imputer)
+        if self.exact:
+            interaction_values = self.exact_computer.shapley_interaction(self._index, self._max_order)
+        else:
+            interaction_values = self.approximator(budget=budget, game=self.imputer)
         interaction_values.baseline_value = self.baseline_value
         # Adjust the Baseline Value if the empty value is the baseline
         if is_empty_value_the_baseline(interaction_values.index):
