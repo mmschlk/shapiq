@@ -9,6 +9,7 @@ from overrides import overrides
 
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory.indices import is_empty_value_the_baseline
+from shapiq.game_theory import ExactComputer
 
 from .configuration import setup_approximator
 from .custom_types import ExplainerIndices
@@ -20,8 +21,6 @@ if TYPE_CHECKING:
     from shapiq.imputer.base import Imputer
     from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
-
-    from shapiq.game_theory import ExactComputer
 
 TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
 TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
@@ -169,6 +168,7 @@ class TabularExplainer(Explainer):
             approximator, self._index, self._max_order, self._n_features, random_state
         )
 
+        self.exact = exact
         if exact:
             self.exact_computer = ExactComputer(self._n_features, self.imputer)
 
