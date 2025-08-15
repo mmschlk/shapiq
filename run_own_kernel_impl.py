@@ -8,8 +8,7 @@ from sklearn.gaussian_process.kernels import RBF
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
-
-from shapiq.explainer.product_kernel.explainer import ProductKernelExplainer
+from src.shapiq.explainer.product_kernel import ProductKernelExplainer
 
 # Generate a synthetic regression dataset with 10 features
 X, y = make_regression(n_samples=200, n_features=10, random_state=42)

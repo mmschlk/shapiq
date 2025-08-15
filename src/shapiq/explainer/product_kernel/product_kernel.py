@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.metrics.pairwise import rbf_kernel
 
 if TYPE_CHECKING:
-    from shapiq.explainer.product_kernel.base import ProductKernelModel
+    from src.shapiq.explainer.product_kernel.base import ProductKernelModel
 
 ProductKernelSHAPIQIndices = Literal["SV"]
 
@@ -19,6 +19,9 @@ class ProductKernelComputer:
 
     This class computes the Shapley values for product kernel-based models.
     The functions are obtained from the PKeX-Shapley LocalExplainer. https://github.com/Majeed7/RKHS-ExactSHAP/blob/main/explainer/LocalExplainer.py#L3
+
+    References:
+        -- [pkex-shapley] Majid Mohammadi and Siu Lun Chau, Krikamol Muandet. (2025). Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. https://arxiv.org/abs/2505.16516
 
     Attributes:
         model: The product kernel model to explain.
@@ -47,13 +50,13 @@ class ProductKernelComputer:
             None.
         """
         self.model = model
-        self.kernel_type = self.model.kernel_type  # TODO(IsaH57): see where this attribute is important to know. Currently only rbf used (Issue #425)
+        self.kernel_type = self.model.kernel_type
         self.max_order = max_order
         self.index = index
         self.d = model.d
 
-    def precompute_mu(self, num_features: int) -> np.ndarray:
-        """Precompute mu coefficients for computing Shapley values.
+    def precompute_weights(self, num_features: int) -> np.ndarray:
+        """Precompute model weights (mu coefficients) for computing Shapley values.
 
         Args:
             num_features: Number of features.
@@ -140,7 +143,7 @@ class ProductKernelComputer:
         """
         shapley_values = []
         for j in range(self.model.d):
-            shapley_values.append(self._compute_shapley_value(kernel_vectors, j))  # noqa: PERF401 (existing implementation from RKHS-ExactSHAP)
+            shapley_values.append(self._compute_shapley_value(kernel_vectors, j))  # noqa: PERF401 (using existing implementation from RKHS-ExactSHAP)
 
         return shapley_values
 
@@ -157,7 +160,7 @@ class ProductKernelComputer:
         alpha = self.model.alpha
         cZ_minus_j = [kernel_vectors[i] for i in range(self.model.d) if i != feature_index]
         e_polynomials = self.compute_elementary_symmetric_polynomials(cZ_minus_j)
-        mu_coefficients = self.precompute_mu(self.model.d)
+        mu_coefficients = self.precompute_weights(self.model.d)
 
         # Compute kernel vector for the chosen feature
         k_j = kernel_vectors[feature_index]
@@ -170,9 +173,9 @@ class ProductKernelComputer:
                 result += mu_coefficients[q] * e_polynomials[q]
 
         shapley_value = alpha.dot((k_j - onevec) * result)
+
         return shapley_value.item()
 
-    # TODO(IsaH57): check if here correct. coming from RBFLocalExplainer # noqa: TD003
     def compute_kernel_vectors(self, X: np.ndarray, x: np.ndarray) -> list:
         """Compute kernel vectors for a given dataset X and instance x.
 
@@ -190,7 +193,7 @@ class ProductKernelComputer:
         for i in range(self.d):
             kernel_vec = rbf_kernel(
                 X[:, i].reshape(-1, 1), x[..., np.newaxis][i].reshape(1, -1), gamma=self.model.gamma
-            )  # TODO(isaH57): uses sklearn rbf_kernel. find own alternative?  (Issue #425)
+            )
             kernel_vectors.append(kernel_vec.squeeze())
 
         return kernel_vectors

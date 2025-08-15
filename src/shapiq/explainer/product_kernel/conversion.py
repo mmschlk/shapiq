@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from shapiq.explainer.product_kernel.base import ProductKernelModel
+from src.shapiq.explainer.product_kernel.base import ProductKernelModel
 
 if TYPE_CHECKING:
     from src.shapiq.typing import Model
@@ -25,8 +25,11 @@ def convert_svm(model: Model) -> ProductKernelModel:
 
     if hasattr(model, "kernel"):
         kernel_type = model.kernel
+        if kernel_type != "rbf":
+            msg = "Currently only RBF kernel is supported for SVM models."
+            raise ValueError(msg)
     else:
-        msg = "Kernel type not found in the model. Ensure the model is a valid SVM or SVR."
+        msg = "Kernel type not found in the model. Ensure the model is a valid SVC or SVR."
         raise ValueError(msg)
 
     return ProductKernelModel(
@@ -54,6 +57,9 @@ def convert_gp_reg(model: Model) -> ProductKernelModel:
 
     if hasattr(model, "kernel"):
         kernel_type = model.kernel_.__class__.__name__.lower()  # Get the kernel type as a string
+        if kernel_type != "rbf":
+            msg = "Currently only RBF kernel is supported for Gaussian Process Regression models."
+            raise ValueError(msg)
     else:
         msg = "Kernel type not found in the model. Ensure the model is a valid Gaussian Process Regressor."
         raise ValueError(msg)

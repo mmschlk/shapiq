@@ -43,5 +43,5 @@ class ProductKernelModel:
         self.alpha = alpha
         self.n = n
         self.d = d
-        self.gamma = gamma  # TODO(IsaH57): check if gamma is just needed for rbf. (Issue #425)
+        self.gamma = gamma
         self.kernel_type = kernel_type

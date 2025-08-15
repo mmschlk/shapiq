@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from shapiq.explainer.tree import TreeExplainer, TreeModel
-from shapiq.game import Game
+from src.shapiq.explainer.tree import TreeExplainer, TreeModel
+from src.shapiq.game import Game
 
 if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues

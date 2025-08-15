@@ -5,12 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from src.shapiq.explainer.base import Explainer
-from src.shapiq.explainer.validation import validate_pk_model
+from src.shapiq.explainer.product_kernel.validation import validate_pk_model
 
 from .product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
 
 if TYPE_CHECKING:
     import numpy as np
+
     from src.shapiq.utils.custom_types import Model
 
     from .base import ProductKernelModel
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 class ProductKernelExplainer(Explainer):
     """The ProductKernelExplainer class for product kernel-based models.
 
-    The ProductKernelExplainer can be used with a variety of product kernel-based models from the 'PKeX-Shapley' package. The explainer can handle both regression and
+    The ProductKernelExplainer can be used with a variety of product kernel-based models. The explainer can handle both regression and
     classification models.
 
     References:
@@ -28,17 +29,20 @@ class ProductKernelExplainer(Explainer):
     Attributes:
         model: The product kernel model to explain. Can be a dictionary, a ProductKernelModel, or a list of ProductKernelModels.
         max_order: The maximum interaction order to be computed. Defaults to ``1``.
-        min_order: The minimum interaction order to be computed. Defaults to ``1``.
+        min_order: The minimum interaction order to be computed. Defaults to ``0``.
         index: The type of interaction to be computed. Currently, only ``"SV"`` is supported.
         class_index: The class index of the model to explain. Defaults to ``None``, which will set the class index to ``1`` per default for classification models and is ignored for regression models.
     """
 
     def __init__(
         self,
-        model: dict | ProductKernelModel | list[ProductKernelModel] | Model,
+        model: dict
+        | ProductKernelModel
+        | list[ProductKernelModel]
+        | Model,  # TODO (IsaH57): check if list of models is neded (Issue #425)
         *,
         max_order: int = 1,
-        min_order: int = 1,
+        min_order: int = 0,
         index: ProductKernelSHAPIQIndices = "SV",
         class_index: int | None = None,
         **kwargs: Any,  # noqa: ARG002
@@ -48,12 +52,10 @@ class ProductKernelExplainer(Explainer):
         Args:
             model: A product kernel-based model to explain.
 
-            # TODO: support shapley interactions:
             max_order: The maximum interaction order to be computed. An interaction order of ``1``
-                corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
-                interaction values up to that order. Defaults to ``2``.
+                corresponds to the Shapley value. Defaults to ``1``.
 
-            min_order: The minimum interaction order to be computed. Defaults to ``1``.
+            min_order: The minimum interaction order to be computed. Defaults to ``0``.
 
             index: The type of interaction to be computed. Currently, only ``"SV"`` is supported.
 
@@ -64,9 +66,8 @@ class ProductKernelExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
 
         """
-        # TODO(IsaH57): do index checking somewhere else? (eg indices.py?) (Issue #425)
-        if index not in ProductKernelSHAPIQIndices.__args__:
-            msg = f"Invalid index '{index}'. Supported indices are: {', '.join([f"'{v}'" for v in ProductKernelSHAPIQIndices.__args__])}"
+        if max_order > 1:
+            msg = "ProductKernelExplainer currently only supports max_order=1."
             raise ValueError(msg)
 
         super().__init__(model, index=index, max_order=max_order)
@@ -107,14 +108,12 @@ class ProductKernelExplainer(Explainer):
 
         shapley_values = []
         for j in range(self.model.d):
-            shapley_values.append(self.explainer.compute_shapley_value(kernel_vectors, j))  # noqa: PERF401 (existing implementation from RKHS-ExactSHAP)
-        # TODO(IsaH57): add finalize_computed_interactions() (Issue #425)
-        return shapley_values
+            shapley_values.append(self.explainer.compute_shapley_value(kernel_vectors, j))  # noqa: PERF401 (using existing implementation from RKHS-ExactSHAP)
+
+        return shapley_values  # return interaction values object
 
     def _compute_baseline_value(self) -> float:
         """Computes the baseline value for the explainer.
-
-        The baseline value is the sum of the empty predictions of all trees in the ensemble.
 
         Returns:
             The baseline value for the explainer.
