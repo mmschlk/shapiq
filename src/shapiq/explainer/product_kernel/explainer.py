@@ -4,16 +4,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from src.shapiq import InteractionValues
-from src.shapiq.explainer.base import Explainer
-from src.shapiq.explainer.product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
-from src.shapiq.explainer.product_kernel.validation import validate_pk_model
-from src.shapiq.game_theory import get_computation_index
+from shapiq import InteractionValues
+from shapiq.explainer.base import Explainer
+from shapiq.game_theory import get_computation_index
+
+from .product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
+from .validation import validate_pk_model
 
 if TYPE_CHECKING:
     import numpy as np
 
-    from src.shapiq.utils.custom_types import Model
+    from shapiq.utils.custom_types import Model
 
     from .base import ProductKernelModel
 

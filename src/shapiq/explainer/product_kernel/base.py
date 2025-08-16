@@ -17,7 +17,7 @@ class ProductKernelModel:
          n: The number of samples in the training data.
          d: The number of features in the training data.
          gamma: The gamma parameter of the product kernel model.
-
+        intercept: The intercept term of the product kernel model. For Gaussian Processes this should be zero, but support vectors have often non-zero intercepts.
     """
 
     def __init__(
@@ -28,6 +28,7 @@ class ProductKernelModel:
         d: int,
         gamma: float | None = None,
         kernel_type: str = "rbf",
+        intercept: float = 0.0,
     ) -> None:
         """Initializes the ProductKernelModel.
 
@@ -38,6 +39,7 @@ class ProductKernelModel:
             d: The number of features in the training data.
             gamma: The gamma parameter of the product kernel model. Defaults to 'None'
             kernel_type: The type of the kernel model.
+            intercept: The intercept term used in the underlying decision function.
         """
         self.X_train = X_train
         self.alpha = alpha
@@ -45,3 +47,4 @@ class ProductKernelModel:
         self.d = d
         self.gamma = gamma
         self.kernel_type = kernel_type
+        self.intercept = intercept

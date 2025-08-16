@@ -39,6 +39,7 @@ def convert_svm(model: Model) -> ProductKernelModel:
         d=d,
         gamma=model._gamma,  # noqa: SLF001
         kernel_type=kernel_type,
+        intercept=model.intercept_[0],
     )  # TODO (IsaH57): check if gamma is always needed or just when rbf is used (Issue #425)
 
 
