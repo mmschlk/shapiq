@@ -666,7 +666,7 @@ class Game:
 
     def _validate_and_set_players_from_save(self, n_players: int) -> None:
         """Validates and sets the number of players from the saved game."""
-        if self.n_players is not None and n_players != self.n_players:
+        if self.n_players not in (-1, n_players):
             msg = (
                 f"The number of players in the game ({self.n_players}) does not match the number "
                 f"of players in the saved game ({n_players})."

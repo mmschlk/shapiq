@@ -20,6 +20,7 @@ from .game_theory.indices import (
     is_index_valid,
 )
 from .utils.errors import raise_deprecation_warning
+from .utils.saving import safe_str_to_tuple, safe_tuple_to_str
 from .utils.sets import generate_interaction_lookup
 
 if TYPE_CHECKING:
@@ -807,7 +808,9 @@ class InteractionValues:
                 removed_in="1.4.0",
             )
             # save object as npz file
-            interaction_keys = np.array(list(self.interaction_lookup.keys()))
+            interaction_keys = np.array(
+                list(map(safe_tuple_to_str, self.interaction_lookup.keys()))
+            )
             interaction_indices = np.array(list(self.interaction_lookup.values()))
             estimation_budget = self.estimation_budget if self.estimation_budget is not None else -1
 
@@ -853,7 +856,7 @@ class InteractionValues:
             try:
                 # try to load Pyright save format
                 interaction_lookup = {
-                    tuple(key): int(value)
+                    safe_str_to_tuple(key): int(value)
                     for key, value in zip(
                         data["interaction_lookup_keys"],
                         data["interaction_lookup_indices"],
