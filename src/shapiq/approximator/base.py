@@ -63,7 +63,7 @@ class Approximator(ABC):
         top_order: bool,
         min_order: int = 0,
         pairing_trick: bool = False,
-        sampling_weights: np.ndarray[float] | None = None,
+        sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
         initialize_dict: bool = True,
     ) -> None:
@@ -239,7 +239,7 @@ class Approximator(ABC):
                     weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
         return weight_vector / np.sum(weight_vector)
 
-    def _init_result(self, dtype: np.dtype | float = float) -> np.ndarray:
+    def _init_result(self, dtype: np.dtype | type[float] = float) -> np.ndarray:
         """Initializes the result array for the approximation.
 
         Initializes the result array. The result array is a 1D array of size n_interactions as
