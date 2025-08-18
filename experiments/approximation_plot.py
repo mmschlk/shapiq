@@ -6,7 +6,7 @@ if __name__ == "__main__":
     results_df = pd.read_csv("results_benchmark.csv")
     results_df = results_df.sort_values(by="n_players")
 
-    results_df = results_df[(results_df["approximator"] == "ShapleyGAX-2ADD") | (results_df["approximator"] == "KernelSHAP")] #| (results_df["approximator"] == "SPEX")]
+    results_df = results_df[(results_df["approximator"] == "ShapleyGAX-3ADD-Lev1") | (results_df["approximator"] == "ShapleyGAX-3ADD") | (results_df["approximator"] == "KernelSHAP") |  (results_df["approximator"] == "LeverageSHAP") |  (results_df["approximator"] == "PermutationSampling")]
 
     GAME_IDS = results_df["game_id"].unique()
     GAME_TYPES = results_df["game_type"].unique()

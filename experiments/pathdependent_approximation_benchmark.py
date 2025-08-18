@@ -39,7 +39,7 @@ if __name__ == "__main__":
         PAIRING = True
 
     PRINT_PERFORMANCE = False
-    RUN_GROUND_TRUTH = True
+    RUN_GROUND_TRUTH = False
     RUN_APPROXIMATION = True
 
     # run the benchmark for the games
@@ -62,10 +62,10 @@ if __name__ == "__main__":
         IndependentLinear60(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
         Corrgroups60(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         Corrgroups60(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
-        #NHANESI(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
-        #NHANESI(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
-        #CommunitiesAndCrime(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
-        #CommunitiesAndCrime(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
+        NHANESI(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
+        NHANESI(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
+        CommunitiesAndCrime(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
+        CommunitiesAndCrime(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
         #SentimentAnalysis(),
         #ImageClassifier()
     ]
@@ -89,7 +89,7 @@ if __name__ == "__main__":
                 print(f"Exact: {shap_ground_truth.values} saved to {save_path}")
 
 
-    APPROXIMATORS = ["PermutationSampling", "KernelSHAP", "LeverageSHAP", "ShapleyGAX-2ADD", "ShapleyGAX-2ADD-Lev1", "ShapleyGAX-2ADD-Lev2"]
+    APPROXIMATORS = ["ShapleyGAX-3ADD","ShapleyGAX-3ADD-Lev1","PermutationSampling", "KernelSHAP", "LeverageSHAP", "ShapleyGAX-2ADD", "ShapleyGAX-2ADD-Lev1"]
 
     MAX_BUDGET = 20000
     N_BUDGET_STEPS = 10
@@ -98,7 +98,10 @@ if __name__ == "__main__":
         game_id, id_explain = args
         tree_game = TREE_GAMES[id_explain]
         approximators = get_approximators(APPROXIMATORS, game.n_players, RANDOM_STATE, PAIRING, REPLACEMENT)
-        budget_range = np.linspace(min(500,2**game.n_players/10), min(2 ** game.n_players, MAX_BUDGET), N_BUDGET_STEPS).astype(int)
+        min_budget = min(50, 2 ** tree_game.n_players / 10)
+        max_budget = min(2 ** game.n_players, MAX_BUDGET)
+        budget_range = np.logspace(np.log10(min_budget),np.log10(max_budget), N_BUDGET_STEPS).astype(int)
+        #print(budget_range)
         for approximator in approximators:
             print("Computing approximations for", approximator.name, "on game", game_id, "explanation id", id_explain)
             for budget in budget_range:

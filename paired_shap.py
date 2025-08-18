@@ -1,10 +1,89 @@
 import numpy as np
 from shapiq.utils import powerset
+from scipy.special import binom
+import random
 
+def get_random_subsets_from_permutation(m,Q,kernel_weights):
+    A = np.zeros((m, len(Q)))
+    samples = []
+    weights = []
+    for idx in range(m // 2):
+        #weight = np.random.rand()
+        # weight = 1
+        if idx == 0:
+            random_S = []
+            random_size = 0
+        else:
+            random_size = k
+            random_S = random.shuffle(np.arange(n))
+            random_S = np.random.choice(n, random_size, replace=False)
+        weight = kernel_weights[random_size]
+        complement_S = [i for i in range(n) if i not in random_S]
+        print(random_S, complement_S, sep='\t')
+        samples.append(random_S)
+        samples.append(complement_S)
+        weights.append(weight ** 2)
+        weights.append(weight ** 2)
+        for q in Q:
+            if set(q).issubset(set(random_S)):
+                A[2 * idx, Q.index(q)] = weight
+            if set(q).issubset(set(complement_S)):
+                A[2 * idx + 1, Q.index(q)] = weight
+    return A, samples, weights
+
+def get_random_paired_subsets(m,Q,kernel_weights):
+    A = np.zeros((m, len(Q)))
+    samples = []
+    weights = []
+    for idx in range(m // 2):
+        #weight = np.random.rand()
+        # weight = 1
+        if idx == 0:
+            random_S = []
+            random_size = 0
+        else:
+            random_size = np.random.randint(1, n)
+            random_S = np.random.choice(n, random_size, replace=False)
+        weight = kernel_weights[random_size]
+        complement_S = [i for i in range(n) if i not in random_S]
+        print(random_S, complement_S, sep='\t')
+        samples.append(random_S)
+        samples.append(complement_S)
+        weights.append(weight ** 2)
+        weights.append(weight ** 2)
+        for q in Q:
+            if set(q).issubset(set(random_S)):
+                A[2 * idx, Q.index(q)] = weight
+            if set(q).issubset(set(complement_S)):
+                A[2 * idx + 1, Q.index(q)] = weight
+    return A, samples, weights
+
+def get_fully_enumerated_subsets(k,Q,kernel_weights):
+    m = 2*int(np.sum([binom(n,i) for i in range(k+1)]))
+    A = np.zeros((m, len(Q)))
+    samples = []
+    weights = []
+    idx = 0
+    for S in powerset(set(range(n)),max_size=k):
+        samples.append(list(S))
+        size= len(S)
+        weight = kernel_weights[size]
+        complement_S = [i for i in range(n) if i not in S]
+        samples.append(S)
+        samples.append(complement_S)
+        weights.append(weight ** 2)
+        weights.append(weight ** 2)
+        for q in Q:
+            if set(q).issubset(set(S)):
+                A[2 * idx, Q.index(q)] = weight
+            if set(q).issubset(set(complement_S)):
+                A[2 * idx + 1, Q.index(q)] = weight
+        idx += 1
+    return A, samples, weights, m
 
 if __name__ == "__main__":
     # all sets of size 1 and 2
-    n = 7
+    n = 10
     #Q = []
 
     MAX_ORDER = 3
@@ -13,33 +92,18 @@ if __name__ == "__main__":
         Q.append(S)
     print('Basis Q:', Q)
 
-    m = 20
+    kernel_weights = np.ones(n+1)*10e7
+    for i in range(1,n):
+        kernel_weights[i] = 1/np.sqrt(binom(n-2,i-1))
 
-    A = np.zeros((m, len(Q)))
+    m = 24
+    A, samples, weights = get_random_paired_subsets(m,Q,kernel_weights)
+    A, samples, weights, m = get_fully_enumerated_subsets(3,Q,kernel_weights)
 
-    samples = []
-    weights = []
+
 
     print('Sampled Subsets:')
-    for idx in range(m//2):
-        weight = np.random.rand()
-        #weight = 1
-        if idx == 0:
-            random_S = []
-        else:
-            random_size = np.random.randint(1, n)
-            random_S = np.random.choice(n, random_size, replace=False)
-        complement_S = [i for i in range(n) if i not in random_S]
-        print(random_S, complement_S, sep='\t')
-        samples.append(random_S)
-        samples.append(complement_S)
-        weights.append(weight**2)
-        weights.append(weight**2)
-        for q in Q:
-            if set(q).issubset(set(random_S)):
-                A[2*idx, Q.index(q)] = weight
-            if set(q).issubset(set(complement_S)):
-                A[2*idx+1, Q.index(q)] = weight
+
     #print('A')
     #print(A)
 

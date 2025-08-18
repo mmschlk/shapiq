@@ -21,13 +21,13 @@ class ExplanationBasisGenerator:
         self.N = N
         self.n = len(N)
 
-    def generate_kadd_explanation_basis(self, max_order):
+    def generate_kadd_explanation_basis(self, max_order,sizes_to_exclude=None):
         explanation_basis = {}
         pos = 0
         for S in powerset(self.N, max_size=max_order):
-            explanation_basis[S] = pos
-            pos += 1
-
+            if sizes_to_exclude is None or len(S) not in sizes_to_exclude:
+                explanation_basis[S] = pos
+                pos += 1
         return explanation_basis
 
     def generate_ksym_explanation_basis(self, max_order):
@@ -49,41 +49,42 @@ class ExplanationBasisGenerator:
             pos += 1
         return explanation_basis
 
-    def generate_stochastic_explanation_basis(self, n_explanation_terms, conjugate=False):
+    def generate_stochastic_explanation_basis(self, n_explanation_terms, sizes_to_exclude=None, conjugate=False):
         explanation_basis = {}
         S_size = 0
         S_pos = 0
         n_explanation_terms = min(n_explanation_terms, 2**self.n)
         while S_pos < n_explanation_terms:
-            n_interactions_size_s = binom(self.n, S_size)
-            if conjugate and S_size < self.n / 2:
-                n_interactions_size_s *= 2
-            if n_interactions_size_s <= n_explanation_terms - S_pos:
-                # If enough explanation terms remain, then compute all of this size
-                for S in powerset(self.N, min_size=S_size, max_size=S_size):
-                    explanation_basis[S] = S_pos
-                    S_pos += 1
-                    if conjugate and S_size < self.n / 2:
-                        S_complement = tuple(sorted(self.N - set(S)))
-                        explanation_basis[S_complement] = S_pos
-                        S_pos += 1
-            else:
-                # Otherwise sample randomly from permutations
-                pi = list(self.N)
-                random.shuffle(pi)
-                while S_pos < n_explanation_terms:
-                    if len(pi) < S_size:
-                        pi = list(self.N)
-                        random.shuffle(pi)
-                    S_candidate = tuple(sorted(pi[:S_size]))
-                    if S_candidate not in explanation_basis:
-                        explanation_basis[S_candidate] = S_pos
+            if sizes_to_exclude is None or S_size not in sizes_to_exclude:
+                n_interactions_size_s = binom(self.n, S_size)
+                if conjugate and S_size < self.n / 2:
+                    n_interactions_size_s *= 2
+                if n_interactions_size_s <= n_explanation_terms - S_pos:
+                    # If enough explanation terms remain, then compute all of this size
+                    for S in powerset(self.N, min_size=S_size, max_size=S_size):
+                        explanation_basis[S] = S_pos
                         S_pos += 1
                         if conjugate and S_size < self.n / 2:
-                            S_candidate_complement = tuple(sorted(self.N - set(S_candidate)))
-                            explanation_basis[S_candidate_complement] = S_pos
+                            S_complement = tuple(sorted(self.N - set(S)))
+                            explanation_basis[S_complement] = S_pos
                             S_pos += 1
-                    pi = pi[S_size:]
+                else:
+                    # Otherwise sample randomly from permutations
+                    pi = list(self.N)
+                    random.shuffle(pi)
+                    while S_pos < n_explanation_terms:
+                        if len(pi) < S_size:
+                            pi = list(self.N)
+                            random.shuffle(pi)
+                        S_candidate = tuple(sorted(pi[:S_size]))
+                        if S_candidate not in explanation_basis:
+                            explanation_basis[S_candidate] = S_pos
+                            S_pos += 1
+                            if conjugate and S_size < self.n / 2:
+                                S_candidate_complement = tuple(sorted(self.N - set(S_candidate)))
+                                explanation_basis[S_candidate_complement] = S_pos
+                                S_pos += 1
+                        pi = pi[S_size:]
             S_size += 1  # proceed with next size
         return explanation_basis
 
@@ -251,12 +252,11 @@ class ShapleyGAX(Approximator):
         coalitions_size = np.sum(coalitions_matrix, axis=1)
         sampling_adjustment_weights = sampling_adjustment_weights
 
-        empty_coalition_value = float(game_values[coalitions_size == 0][0])
-        regression_response = game_values - empty_coalition_value
+        empty_set_prediction = float(game_values[coalitions_size == 0][0])
+        regression_response = game_values - empty_set_prediction
 
-        n_interactions = len(self.interaction_lookup)
-
-        regression_matrix = np.zeros((np.shape(coalitions_matrix)[0], n_interactions))
+        n_regression_variables = len(self.interaction_lookup)
+        regression_matrix = np.zeros((np.shape(coalitions_matrix)[0], n_regression_variables))
 
         for coalition_pos, coalition in enumerate(coalitions_matrix):
             for interaction, interaction_pos in self.interaction_lookup.items():
@@ -268,21 +268,25 @@ class ShapleyGAX(Approximator):
 
         # Regression weights adjusted by sampling weights
         regression_weights = kernel_weights[coalitions_size] * sampling_adjustment_weights
-        shapley_interactions_values = self._solve_regression(
+        # Solve the regression problem
+        shapley_interactions_values = self._solve_regression_unconstrained(
             regression_matrix=regression_matrix,
             regression_response=regression_response,
             regression_weights=regression_weights,
         )
-
-        shapley_interactions_values[0] = empty_coalition_value
-
-        return shapley_interactions_values
+        #shapley_interactions_values = self._solve_regression(
+        #    regression_matrix=regression_matrix,
+        #    regression_response=regression_response,
+        #    regression_weights=regression_weights,
+        #)
+        shapley_interactions_values[0] = empty_set_prediction
+        return shapley_interactions_values.astype(dtype=float)
 
     @staticmethod
     def _solve_regression(
         regression_matrix: np.ndarray,
         regression_response: np.ndarray,
-        regression_weights: np.ndarray,
+        regression_weights: np.ndarray = None,
         l1: bool = False,
     ) -> np.ndarray[float]:
         """Solves the regression problem using the weighted least squares method. Returns all
@@ -297,9 +301,11 @@ class ShapleyGAX(Approximator):
         Returns:
             The solution to the regression problem.
         """
+        # initialize weights if not provided
+        if regression_weights is None:
+            regression_weights = np.ones(regression_matrix.shape[0])
         # regression weights adjusted by sampling weights
         weighted_regression_matrix = regression_weights[:, None] * regression_matrix
-
         if l1:
             regression_weights_sqrt_matrix = np.diag(np.sqrt(regression_weights))
             regression_lhs = np.dot(regression_weights_sqrt_matrix, regression_matrix)
@@ -336,6 +342,48 @@ class ShapleyGAX(Approximator):
                 )[0]
 
         return shapley_interactions_values.astype(dtype=float)
+
+    def _solve_regression_unconstrained(self,
+                                        regression_matrix: np.ndarray,
+                                        regression_response: np.ndarray,
+                                        regression_weights: np.ndarray,
+                                        ) -> np.ndarray[float]:
+        """Solves the regression problem using an unconstrained weighted least squares method by computing a projection matrix first. Assumes empty and full prediction correspond to the first two rows. Returns all
+        approximated interactions.
+
+        Args:
+            regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
+                Depends on the index.
+            regression_response: The response vector for each coalition.
+            regression_weights: The weights for the regression problem for each coalition.
+
+        Returns:
+            The solution to the regression problem.
+        """
+        # Retrieve empty and full set response
+        empty_set_prediction = regression_response[0]
+        full_set_prediction = regression_response[1]
+        assert(empty_set_prediction == 0)
+        # exclude the empty and full coalition
+        regression_matrix_truncated = regression_matrix[2:, 1:]
+        regression_response_truncated = regression_response[2:]
+        regression_weights_truncated = regression_weights[2:]
+        n_variables = np.shape(regression_matrix_truncated)[1]
+        sum_of_rows = np.sum(regression_matrix_truncated, axis=1)
+        response_modified = regression_response_truncated - sum_of_rows * full_set_prediction / n_variables
+        projection_matrix = np.identity(n_variables) - 1 / n_variables
+
+        # compute new regression matrices
+        regression_response_modified = projection_matrix @ regression_matrix_truncated.T @ np.diag(
+            regression_weights_truncated) @ response_modified
+        regression_matrix_modified = projection_matrix @ regression_matrix_truncated.T @ np.diag(
+            regression_weights_truncated) @ regression_matrix_truncated @ projection_matrix
+        # compute solution
+        regression_solution = np.linalg.lstsq(regression_matrix_modified, regression_response_modified, rcond=None)[0]
+        # create shapley interaction values, add empty coalition variable back
+        shapley_interactions_values = np.zeros(n_variables +1, dtype=float)
+        shapley_interactions_values[1:] = regression_solution + full_set_prediction / n_variables
+        return shapley_interactions_values
 
     def _transform_moebius_to_interactions(self, input_values, max_order):
         transformed_values = np.zeros_like(input_values)

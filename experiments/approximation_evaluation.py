@@ -6,7 +6,18 @@ from shapiq.benchmark.metrics import get_all_metrics
 import tqdm
 
 if __name__ == "__main__":
-    GAME_IDS = ["SentimentAnalysisLocalXAI","adult_census", "california_housing", "bike_sharing","forest_fires","nhanesi","real_estate","communities_and_crime","breast_cancer","independentlinear60","corrgroups60"]
+    GAME_IDS = ["SentimentAnalysisLocalXAI",
+                "adult_census",
+                "california_housing",
+                "bike_sharing",
+                "forest_fires",
+                "nhanesi",
+                "real_estate",
+                "communities_and_crime",
+                "breast_cancer",
+                "independentlinear60",
+                "corrgroups60"
+                ]
     MODELS = ["gradient_boosting", "random_forest","1"]
     RANDOM_STATE = 40
     ID_EXPLANATIONS = range(10) # ids of test instances to explain
@@ -17,7 +28,8 @@ if __name__ == "__main__":
         "PermutationSampling",
         "ShapleyGAX-2ADD",
         "ShapleyGAX-2ADD-Lev1",
-        "ShapleyGAX-2ADD-Leverage2"
+        "ShapleyGAX-3ADD",
+        "ShapleyGAX-3ADD-Lev1"
     ]
     GAME_TYPES = ["baseline","interventional","pathdependent"]
 
@@ -63,6 +75,7 @@ if __name__ == "__main__":
                             "id_config_approximator": id_config_approximator,
                         }
                         approximated_values = InteractionValues.load(file)
+                        assert(len(approximated_values.values)-1==ground_truth.n_players)
                         all_metrics = get_all_metrics(ground_truth, approximated_values)
                         result.update(all_metrics)
                         results.append(result)

@@ -37,8 +37,10 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     # misc SV
     "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
     "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
-    "ShapleyGAX-2ADD": {"color": "#ef27a6", "marker": "o"},
-    "ShapleyGAX-2ADD-Lev1": {"color": "#00b4d8", "marker": "o"},
+    "ShapleyGAX-2ADD": {"color": "#EF27A6", "marker": "o"},
+    "ShapleyGAX-3ADD": {"color": "#00B4D8", "marker": "o"},
+    "ShapleyGAX-3ADD-Lev1": {"color": "#1A86E8", "marker": "o"},
+    "ShapleyGAX-2ADD-Lev1": {"color": "#F455C0", "marker": "o"},
     "ShapleyGAX-2ADD-Leverage2": {"color": "#ffba08", "marker": "o"},
     "LeverageSHAP": {"color": "#7DCE82", "marker": "o"},
 }
