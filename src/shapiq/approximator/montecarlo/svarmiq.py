@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 from .base import MonteCarlo, ValidMonteCarloIndices
+
+if TYPE_CHECKING:
+    from shapiq.typing import FloatVector
 
 
 class SVARMIQ(MonteCarlo):
@@ -29,7 +32,7 @@ class SVARMIQ(MonteCarlo):
         *,
         top_order: bool = False,
         pairing_trick: bool = False,
-        sampling_weights: float | None = None,
+        sampling_weights: FloatVector | None = None,
         random_state: int | None = None,
     ) -> None:
         """Initialize the SVARMIQ approximator.
@@ -81,7 +84,7 @@ class SVARM(SVARMIQ):
 
     """
 
-    valid_indices: tuple[ValidIndicesSVARM] = tuple(get_args(ValidIndicesSVARM))
+    valid_indices: tuple[ValidIndicesSVARM, ...] = tuple(get_args(ValidIndicesSVARM))  # type: ignore[assignment]
     """The valid indices for the SVARM approximator."""
 
     def __init__(
@@ -91,7 +94,7 @@ class SVARM(SVARMIQ):
         *,
         random_state: int | None = None,
         pairing_trick: bool = False,
-        sampling_weights: float | None = None,
+        sampling_weights: FloatVector | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the SVARM approximator.

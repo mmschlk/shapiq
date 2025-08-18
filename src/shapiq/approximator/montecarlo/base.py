@@ -14,6 +14,7 @@ from shapiq.utils.sets import powerset
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.typing import FloatVector
 
 ValidMonteCarloIndices = Literal["k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII", "BV"]
 
@@ -28,7 +29,7 @@ class MonteCarlo(Approximator):
     `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
     """
 
-    valid_indices: tuple[ValidMonteCarloIndices] = tuple(get_args(ValidMonteCarloIndices))
+    valid_indices: tuple[ValidMonteCarloIndices, ...] = tuple(get_args(ValidMonteCarloIndices))  # type: ignore[assignment]
     """The valid indices for this approximator."""
 
     def __init__(
@@ -42,7 +43,7 @@ class MonteCarlo(Approximator):
         top_order: bool = False,
         random_state: int | None = None,
         pairing_trick: bool = False,
-        sampling_weights: np.ndarray = None,
+        sampling_weights: FloatVector | None = None,
     ) -> None:
         """Initialize the MonteCarlo approximator.
 

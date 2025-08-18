@@ -34,7 +34,7 @@ class OwenSamplingSV(Approximator):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
+    valid_indices: Literal["SV"] = ("SV",)  # type: ignore[assignment]
     """The valid indices for this approximator."""
 
     def __init__(

@@ -28,7 +28,9 @@ class PermutationSamplingSII(Approximator):
     """
 
     #: override the valid indices for this approximator
-    valid_indices: tuple[ValidPermutationSIIIndices] = tuple(get_args(ValidPermutationSIIIndices))
+    valid_indices: tuple[ValidPermutationSIIIndices, ...] = tuple(  # type: ignore[assignment]
+        get_args(ValidPermutationSIIIndices)
+    )
     """The valid indices for this permutation sampling approximator."""
 
     def __init__(

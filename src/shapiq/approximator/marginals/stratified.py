@@ -32,7 +32,7 @@ class StratifiedSamplingSV(Approximator):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
+    valid_indices: Literal["SV"] = ("SV",)  # type: ignore[assignment]
 
     def __init__(
         self,

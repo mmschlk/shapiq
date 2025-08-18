@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import numpy as np
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
@@ -60,7 +60,7 @@ class Sparse(Approximator):
 
     """
 
-    valid_indices: tuple[ValidSparseIndices] = tuple(get_args(ValidSparseIndices))
+    valid_indices: tuple[ValidSparseIndices, ...] = tuple(get_args(ValidSparseIndices))  # type: ignore[assignment]
     """The valid indices for the SPEX approximator."""
 
     def __init__(
@@ -240,7 +240,9 @@ class Sparse(Approximator):
             baseline_value=moebius_transform.get((), 0.0),
         )
         autoconverter = MoebiusConverter(moebius_coefficients=moebius_interactions)
-        converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
+        converted_interaction_values = autoconverter(
+            index=cast(ValidMoebiusConverterIndices, self.index), order=self.max_order
+        )
         self._interaction_lookup = converted_interaction_values.interaction_lookup
         return converted_interaction_values.values
 
