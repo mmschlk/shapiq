@@ -42,7 +42,7 @@ def get_approximators(APPROXIMATORS,n_players,RANDOM_STATE,PAIRING,REPLACEMENT):
     if "LeverageSHAP" in APPROXIMATORS:
         # LeverageSHAP
         #leverage_shap = KernelSHAP(n=n_players, random_state=RANDOM_STATE, sampling_weights=leverage_weights_1, pairing_trick=PAIRING, replacement=REPLACEMENT)
-        leverage_shap = ShapleyGAX(n_players, explanation_basis=kadd1, random_state=leverage_weights, sampling_weights=kernelshap_weights, pairing_trick=PAIRING, replacement=REPLACEMENT)
+        leverage_shap = ShapleyGAX(n_players, explanation_basis=kadd1, random_state=RANDOM_STATE, sampling_weights=leverage_weights_1, pairing_trick=PAIRING, replacement=REPLACEMENT)
         leverage_shap.name = "LeverageSHAP"
         approximators.append(leverage_shap)
     if "PermutationSampling" in APPROXIMATORS:
