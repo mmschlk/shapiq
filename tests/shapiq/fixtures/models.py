@@ -13,8 +13,11 @@ from sklearn.ensemble import (
     RandomForestClassifier,
     RandomForestRegressor,
 )
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 if TYPE_CHECKING:
@@ -54,6 +57,12 @@ TREE_MODEL_FIXTURES = [
     ("rf_clf_model", "sklearn.ensemble.RandomForestClassifier"),
     ("dt_clf_model", "sklearn.tree.DecisionTreeClassifier"),
     ("dt_reg_model", "sklearn.tree.DecisionTreeRegressor"),
+]
+
+PRODUCT_KERNEL_MODEL_FIXTURES = [
+    ("bin_svc_model", "sklearn.svm.SVC"),
+    ("svr_model", "sklearn.svm.SVR"),
+    ("gp_reg_model", "sklearn.gaussian_process.GaussianProcessRegressor"),
 ]
 
 
@@ -319,6 +328,34 @@ def et_reg_model(background_reg_dataset) -> Model:
     """Return a simple (regression) extra trees model."""
     X, y = background_reg_dataset
     model = ExtraTreesRegressor(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def bin_svc_model(background_clf_dataset_binary) -> Model:
+    """Return a simple binary SVC model."""
+    X, y = background_clf_dataset_binary
+    model = SVC(kernel="rbf", random_state=RANDOM_SEED_MODELS, probability=False)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def svr_model(background_reg_dataset) -> Model:
+    """Return a simple SVR model."""
+    X, y = background_reg_dataset
+    model = SVR(kernel="rbf", C=1.0, gamma="scale")
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def gp_reg_model(background_reg_dataset) -> GaussianProcessRegressor:
+    """Return a simple Gaussian Process Regressor model."""
+    X, y = background_reg_dataset
+    kernel = RBF(length_scale=1.0)
+    model = GaussianProcessRegressor(kernel=kernel, random_state=RANDOM_SEED_MODELS)
     model.fit(X, y)
     return model
 

@@ -101,8 +101,6 @@ class ProductKernelExplainer(Explainer):
     ) -> InteractionValues:
         """Compute Shapley values for all features of an instance.
 
-        This function is explain() in PKeX RBFLocalExplainer().
-
         Args:
            x: The instance (1D array) for which to compute Shapley values.
            **kwargs: Additional keyword arguments are ignored.
