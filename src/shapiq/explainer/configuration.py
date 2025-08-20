@@ -20,6 +20,7 @@ from shapiq import (
     kADDSHAP,
 )
 from shapiq.approximator.base import Approximator, ValidApproximationIndices
+from shapiq.approximator.regression.base import Regression
 from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
 
 ValidApproximatorTypes = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
@@ -111,8 +112,16 @@ def setup_approximator_automatically(
     Returns:
         The selected approximator.
     """
+    # TODO(advueu963): To remove ignore for the index we would need to ensure that we are only giving the correct indices to the model. This can be done by changing the type to be a ValidApproximatorIndex and then check in the initialisation whether they are supported. If not throw an error. # noqa: TD003
+
     if choose_spex(max_order=max_order, n_players=n_players):
-        return SPEX(n=n_players, max_order=max_order, index=index, random_state=random_state)
+        # Only pass index if it is a ValidSparseIndices
+        return SPEX(
+            n=n_players,
+            max_order=max_order,
+            index=index,  # pyright: ignore[reportArgumentType]
+            random_state=random_state,
+        )
     if index == "SV" or (max_order == 1 and (index == "SV" or index_generalizes_sv(index))):
         return KernelSHAP(n=n_players, random_state=random_state)
     if index == "BV" or (max_order == 1 and (index == "BV" or index_generalizes_bv(index))):
@@ -123,19 +132,22 @@ def setup_approximator_automatically(
         return RegressionFBII(n=n_players, max_order=max_order, random_state=random_state)
     if index in {"SII", "k-SII"}:
         return KernelSHAPIQ(
-            n=n_players, max_order=max_order, index=index, random_state=random_state
+            n=n_players,
+            max_order=max_order,
+            index=index,  # pyright: ignore[reportArgumentType]
+            random_state=random_state,
         )
     return SVARMIQ(
         n=n_players,
         max_order=max_order,
         top_order=False,
         random_state=random_state,
-        index=index,
+        index=index,  # pyright: ignore[reportArgumentType]
     )
 
 
 def setup_approximator(
-    approximator: ValidApproximatorTypes | Approximator,
+    approximator: ValidApproximatorTypes | Approximator | Literal["auto"],
     index: ValidApproximationIndices,
     max_order: int,
     n_players: int,
@@ -170,20 +182,35 @@ def setup_approximator(
     # if the approx is a string and not "auto", we get it from the configurations and set it up
     if isinstance(approximator, str):
         if approximator in APPROXIMATOR_CONFIGURATIONS:
-            approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
+            approximator_cls: type[Approximator] = APPROXIMATOR_CONFIGURATIONS[approximator][index]
         else:
             msg = (
                 f"Invalid approximator `{approximator}`. "
                 f"Valid configurations are described in {APPROXIMATOR_CONFIGURATIONS}."
             )
             raise ValueError(msg)
-
-    if not issubclass(approximator, Approximator):
+    elif not issubclass(type(approximator), Approximator):
         msg = (
             f"Invalid approximator class `{approximator}`. "
             f"Expected a subclass of `Approximator`, but got {type(approximator)}."
         )
         raise TypeError(msg)
+    else:
+        approximator_cls: type[Approximator] = approximator
 
     # initialize the approximator class with params
-    return approximator(n=n_players, max_order=max_order, random_state=random_state, index=index)
+    # TODO(advueue963): Again here the ignore can be removed if we somehow check whether the index is supported by the Approximator. Probably __init__?? # noqa: TD003
+    if issubclass(approximator_cls, Regression):
+        return approximator_cls(
+            n=n_players,
+            max_order=max_order,
+            random_state=random_state,
+            index=index,  # pyright: ignore[reportArgumentType]
+        )
+    return approximator_cls(
+        n=n_players,
+        max_order=max_order,
+        top_order=False,
+        random_state=random_state,
+        index=index,
+    )

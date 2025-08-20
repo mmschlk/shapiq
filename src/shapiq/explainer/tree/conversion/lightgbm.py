@@ -87,6 +87,6 @@ def _convert_lightgbm_tree_as_df(
         thresholds=tree_df["threshold"].values,
         values=values,
         node_sample_weight=tree_df["count"].values,
-        empty_prediction=None,  # compute empty prediction later
+        empty_prediction=None,  # pyright: ignore[reportArgumentType] compute empty prediction later
         original_output_type=output_type,  # not used
     )

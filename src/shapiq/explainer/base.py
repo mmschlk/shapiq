@@ -72,7 +72,7 @@ class Explainer:
             data: A background dataset to be used for imputation in
                 :class:`~shapiq.explainer.tabular.TabularExplainer` or
                 :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. This is a 2-dimensional
-                NumPy array with shape ``(n_samples, n_features)``. Can be ``None`` for the
+                NumPy array with shape ``(n_samples, n_features)``. Can be empty for the
                 :class:`~shapiq.explainer.tree.TreeExplainer`, which does not require background
                 data.
 
@@ -104,7 +104,8 @@ class Explainer:
             explainer_classes = get_explainers()
             if model_type in explainer_classes:
                 explainer_cls = explainer_classes[model_type]
-                self.__class__ = explainer_cls
+                # TODO(advueu963): Ignore would be removable if we would put the conversion into its own little function # noqa: TD003
+                self.__class__ = explainer_cls  # pyright: ignore[reportAttributeAccessIssue]
                 explainer_cls.__init__(
                     self,
                     model=model,
@@ -114,7 +115,7 @@ class Explainer:
                     max_order=max_order,
                     **kwargs,
                 )
-                return  # avoid continuing in base Explainer
+                return
             msg = f"Model '{model_class}' with type '{model_type}' is not supported by shapiq.Explainer."
             raise TypeError(msg)
 
@@ -128,7 +129,7 @@ class Explainer:
         self.model = model
         if data is not None:
             validate_data_predict_function(data, predict_function=self.predict, raise_error=False)
-        self._data: np.ndarray | None = data
+            self._data: np.ndarray = data
 
         # validate index and max_order and set them as attributes
         self._index, self._max_order = validate_index_and_max_order(index, max_order)
@@ -141,7 +142,7 @@ class Explainer:
     @property
     def index(self) -> ExplainerIndices:
         """The type of Shapley interaction index the explainer is using."""
-        return self._index
+        return self._index  # type: ignore[return-type]
 
     @property
     def max_order(self) -> int:
@@ -183,7 +184,9 @@ class Explainer:
             self.imputer.set_random_state(random_state=random_state)
 
     @abstractmethod
-    def explain_function(self, x: np.ndarray, *args: Any, **kwargs: Any) -> InteractionValues:
+    def explain_function(
+        self, x: np.ndarray | None, *args: Any, **kwargs: Any
+    ) -> InteractionValues:
         """Explain a single prediction in terms of interaction values.
 
         Args:
@@ -241,11 +244,13 @@ class Explainer:
             import joblib
 
             parallel = joblib.Parallel(n_jobs=n_jobs)
-            ivs = parallel(
-                joblib.delayed(self.explain)(X[i, :], **kwargs) for i in range(X.shape[0])
+            ivs: list[InteractionValues] = list(
+                parallel(  # type: ignore[assignment]
+                    joblib.delayed(self.explain)(X[i, :], **kwargs) for i in range(X.shape[0])
+                )
             )
         else:
-            ivs = []
+            ivs: list[InteractionValues] = []
             pbar = tqdm(total=X.shape[0], desc="Explaining") if verbose else None
             for i in range(X.shape[0]):
                 ivs.append(self.explain(X[i, :], **kwargs))
@@ -262,4 +267,6 @@ class Explainer:
         Returns:
             The model's prediction for the given data point as a vector.
         """
+        if isinstance(self._shapiq_predict_function, RuntimeError):
+            raise self._shapiq_predict_function
         return self._shapiq_predict_function(self.model, x)

@@ -194,7 +194,6 @@ class TreeModel:
         return float(self.values[node])
 
 
-@dataclass
 class EdgeTree:
     """A dataclass for storing the information of an edge representation of the tree.
 
@@ -213,10 +212,37 @@ class EdgeTree:
     max_depth: int
     last_feature_node_in_path: np.ndarray
     interaction_height_store: dict[int, np.ndarray]
-    has_ancestors: np.ndarray | None = None
+    has_ancestors: np.ndarray
 
-    def __post_init__(self) -> None:
-        """Clean-up after the initialization of the EdgeTree dataclass."""
-        # setup has ancestors
-        if self.has_ancestors is None:
+    def __init__(
+        self,
+        parents: np.ndarray,
+        ancestors: np.ndarray,
+        ancestor_nodes: dict[int, np.ndarray],
+        p_e_values: np.ndarray,
+        p_e_storages: np.ndarray,
+        split_weights: np.ndarray,
+        empty_predictions: np.ndarray,
+        edge_heights: np.ndarray,
+        max_depth: int,
+        last_feature_node_in_path: np.ndarray,
+        interaction_height_store: dict[int, np.ndarray],
+        *,
+        has_ancestors: np.ndarray | None = None,
+    ) -> None:
+        """Initializes the EdgeTree dataclass."""
+        self.parents = parents
+        self.ancestors = ancestors
+        self.ancestor_nodes = ancestor_nodes
+        self.p_e_values = p_e_values
+        self.p_e_storages = p_e_storages
+        self.split_weights = split_weights
+        self.empty_predictions = empty_predictions
+        self.edge_heights = edge_heights
+        self.max_depth = max_depth
+        self.last_feature_node_in_path = last_feature_node_in_path
+        self.interaction_height_store = interaction_height_store
+        if has_ancestors is None:
             self.has_ancestors = self.ancestors > -1
+        else:
+            self.has_ancestors = has_ancestors

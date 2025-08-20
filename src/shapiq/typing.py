@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping, Sequence
-from typing import Literal, TypedDict, TypeVar
+from typing import Any, Literal, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
@@ -34,7 +34,7 @@ GameValues = FloatVector
 """A 1D array representing the values of coalitions in a game. The array is of shape
 ``(n_coalitions,)``, where each entry corresponds to output of a game evaluation for a coalition."""
 
-Model = TypeVar("Model")
+Model = Any
 """A generic type denoting a machine learning model."""
 
 IndexType = Literal[

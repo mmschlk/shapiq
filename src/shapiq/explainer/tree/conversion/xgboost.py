@@ -112,6 +112,6 @@ def _convert_xgboost_tree_as_df(
         thresholds=tree_df["Split"].values,
         values=values,  # values in non-leaf nodes are not used
         node_sample_weight=tree_df["Cover"].values,
-        empty_prediction=None,
+        empty_prediction=None,  # pyright: ignore[reportArgumentType] compute empty prediction later
         original_output_type=output_type,
     )
