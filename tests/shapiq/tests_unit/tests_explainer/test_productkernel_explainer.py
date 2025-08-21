@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import pytest
-from src.shapiq.explainer.product_kernel import ProductKernelExplainer
-from src.shapiq.explainer.product_kernel.conversion import convert_gp_reg, convert_svm
-from src.shapiq.explainer.product_kernel.game import ProductKernelGame
-from src.shapiq.game_theory.exact import ExactComputer
+
+from shapiq.explainer.product_kernel import ProductKernelExplainer
+from shapiq.explainer.product_kernel.conversion import convert_gp_reg, convert_svm
+from shapiq.explainer.product_kernel.game import ProductKernelGame
+from shapiq.game_theory.exact import ExactComputer
 
 
 def test_bin_svc_product_kernel_explainer(bin_svc_model, background_clf_dataset_binary):

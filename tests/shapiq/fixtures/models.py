@@ -383,3 +383,13 @@ def get_california_housing_random_forest() -> RandomForestRegressor:
 def california_housing_rf_model() -> RandomForestRegressor:
     """Return a random forest model trained on the California housing dataset."""
     return get_california_housing_random_forest()
+
+
+def get_california_housing_svr() -> SVR:
+    """Return a SVR model trained on the California housing dataset."""
+    from .data import get_california_housing_train_test_explain
+
+    x_train, y_train, _, _, _ = get_california_housing_train_test_explain()
+    model = SVR(kernel="rbf", C=1.0, gamma="scale")
+    model.fit(x_train, y_train)
+    return model
