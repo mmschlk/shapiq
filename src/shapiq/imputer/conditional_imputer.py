@@ -6,15 +6,16 @@ import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
-from src.shapiq.approximator.sampling import CoalitionSampler
-from src.shapiq.utils.modules import check_import_module
+
+from shapiq.approximator.sampling import CoalitionSampler
+from shapiq.utils.modules import check_import_module
 
 from .base import Imputer
 
 if TYPE_CHECKING:
     from typing import Literal
 
-    from src.shapiq.typing import Model
+    from shapiq.typing import Model
 
 
 class ConditionalImputer(Imputer):

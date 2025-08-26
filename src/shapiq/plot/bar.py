@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import numpy as np
-from src.shapiq.interaction_values import InteractionValues, aggregate_interaction_values
+
+from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 
 from ._config import BLUE, RED
 from .utils import abbreviate_feature_names, format_labels, format_value

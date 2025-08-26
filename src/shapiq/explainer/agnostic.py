@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.shapiq.game import Game
+from shapiq.game import Game
 
 from .base import Explainer
 from .configuration import setup_approximator
@@ -15,8 +15,9 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     import numpy as np
-    from src.shapiq.approximator.base import Approximator
-    from src.shapiq.interaction_values import InteractionValues
+
+    from shapiq.approximator.base import Approximator
+    from shapiq.interaction_values import InteractionValues
 
     from .tabular import TabularExplainerApproximators
 
@@ -42,7 +43,7 @@ class AgnosticExplainer(Explainer):
         n_players: int | None = None,
         index: AgnosticExplainerIndices = "k-SII",
         max_order: int = 2,
-        approximator: Approximator | Literal["auto"] | TabularExplainerApproximators = "auto",
+        approximator: (Approximator | Literal["auto"] | TabularExplainerApproximators) = "auto",
         random_state: int | None = None,
     ) -> None:
         """Initialize the AgnosticExplainer.

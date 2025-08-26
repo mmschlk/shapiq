@@ -5,11 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, get_args
 
-from src.shapiq.explainer.product_kernel.conversion import convert_svm
-from src.shapiq.explainer.product_kernel.game import ProductKernelGame
-from src.shapiq.explainer.product_kernel.product_kernel import ProductKernelSHAPIQIndices
-from src.shapiq.game_theory.exact import ExactComputer
-
+from shapiq.explainer.product_kernel.conversion import convert_svm
+from shapiq.explainer.product_kernel.game import ProductKernelGame
+from shapiq.explainer.product_kernel.product_kernel import ProductKernelSHAPIQIndices
+from shapiq.game_theory.exact import ExactComputer
 from tests.shapiq.fixtures.data import get_california_housing_train_test_explain
 from tests.shapiq.fixtures.models import get_california_housing_svr
 
@@ -38,7 +37,6 @@ def _compute_values(
         if save_path is not None:
             iv.save(path=save_path / name)
         ivs[name] = iv
-        print(f"Interaction values for index {index} (order 1):")  # noqa: T201
         print(iv)  # noqa: T201
 
     # compute interaction values for all indices that are in the ValidProductKernelExplainerIndices
@@ -53,7 +51,6 @@ def _compute_values(
             if save_path is not None:
                 iv.save(path=save_path / name)
             ivs[name] = iv
-            print(f"Interaction values for index {index} (order {order}):")  # noqa: T201
             print(iv)  # noqa: T201
 
     return ivs

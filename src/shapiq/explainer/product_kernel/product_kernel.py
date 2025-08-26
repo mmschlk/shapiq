@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.metrics.pairwise import rbf_kernel
 
 if TYPE_CHECKING:
-    from src.shapiq.explainer.product_kernel.base import ProductKernelModel
+    from shapiq.explainer.product_kernel.base import ProductKernelModel
 
 ProductKernelSHAPIQIndices = Literal["SV"]
 
@@ -141,11 +141,7 @@ class ProductKernelComputer:
         Returns:
             List of Shapley values, one for each feature.
         """
-        shapley_values = []
-        for j in range(self.model.d):
-            shapley_values.append(self._compute_shapley_value(kernel_vectors, j))  # noqa: PERF401 (using existing implementation from RKHS-ExactSHAP)
-
-        return shapley_values
+        return [self._compute_shapley_value(kernel_vectors, j) for j in range(self.model.d)]
 
     def compute_shapley_value(self, kernel_vectors: list, feature_index: int) -> float:
         """Compute the Shapley value for a specific feature of an instance.
@@ -192,7 +188,9 @@ class ProductKernelComputer:
         # For each sample and each feature, compute k(x_i^j, x^j)
         for i in range(self.d):
             kernel_vec = rbf_kernel(
-                X[:, i].reshape(-1, 1), x[..., np.newaxis][i].reshape(1, -1), gamma=self.model.gamma
+                X[:, i].reshape(-1, 1),
+                x[..., np.newaxis][i].reshape(1, -1),
+                gamma=self.model.gamma,
             )
             kernel_vectors.append(kernel_vec.squeeze())
 

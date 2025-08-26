@@ -9,17 +9,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import numpy as np
-from src.shapiq.utils import (
+from tqdm.auto import tqdm
+
+from shapiq.utils import (
     powerset,
     raise_deprecation_warning,
     transform_array_to_coalitions,
     transform_coalitions_to_array,
 )
-from tqdm.auto import tqdm
 
 if TYPE_CHECKING:
-    from src.shapiq.interaction_values import InteractionValues
-    from src.shapiq.typing import CoalitionMatrix, GameValues, JSONType, MetadataBlock
+    from shapiq.interaction_values import InteractionValues
+    from shapiq.typing import CoalitionMatrix, GameValues, JSONType, MetadataBlock
 
     class GameJSONMetadata(TypedDict):
         """Metadata for the game loaded from JSON."""
@@ -278,9 +279,9 @@ class Game:
                 "normalization_value": self.normalization_value,
                 "precompute_flag": self._precompute_flag,
                 "precomputed": self.precomputed,
-                "player_names": list(self.player_name_lookup.keys())
-                if self.player_name_lookup
-                else None,
+                "player_names": (
+                    list(self.player_name_lookup.keys()) if self.player_name_lookup else None
+                ),
             },
             "data": {
                 safe_tuple_to_str(coalition): float(value)

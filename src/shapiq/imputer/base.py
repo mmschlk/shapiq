@@ -6,11 +6,12 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 import numpy as np
-from src.shapiq.explainer import utils
-from src.shapiq.game import Game
+
+from shapiq.explainer import utils
+from shapiq.game import Game
 
 if TYPE_CHECKING:
-    from src.shapiq.utils import Model
+    from shapiq.utils import Model
 
 
 class Imputer(Game):

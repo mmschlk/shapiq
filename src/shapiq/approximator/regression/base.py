@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 from scipy.special import bernoulli, binom
-from src.shapiq.approximator.base import Approximator
-from src.shapiq.interaction_values import InteractionValues
-from src.shapiq.utils.sets import powerset
+
+from shapiq.approximator.base import Approximator
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -106,7 +107,10 @@ class Regression(Approximator):
                 else:
                     weight_vector[coalition_size] = 1 / (
                         (self.n - 2 * interaction_size + 1)
-                        * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
+                        * binom(
+                            self.n - 2 * interaction_size,
+                            coalition_size - interaction_size,
+                        )
                     )
             return weight_vector
         msg = f"Index {self.index} not available for Regression Approximator."

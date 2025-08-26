@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-    from src.shapiq.explainer.base import Explainer
-    from src.shapiq.game import Game
-    from src.shapiq.typing import Model
+    from shapiq.explainer.base import Explainer
+    from shapiq.game import Game
+    from shapiq.typing import Model
 
 WARNING_NO_CLASS_INDEX = (
     "No class_index provided. "
@@ -32,11 +32,11 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
         A dictionary of all available explainer classes.
 
     """
-    import src.shapiq.explainer.agnostic as ag
-    import src.shapiq.explainer.product_kernel.explainer as pk
-    import src.shapiq.explainer.tabpfn as tp
-    import src.shapiq.explainer.tabular as tb
-    import src.shapiq.explainer.tree.explainer as tr
+    import shapiq.explainer.agnostic as ag
+    import shapiq.explainer.product_kernel.explainer as pk
+    import shapiq.explainer.tabpfn as tp
+    import shapiq.explainer.tabular as tb
+    import shapiq.explainer.tree.explainer as tr
 
     return {
         "tabular": tb.TabularExplainer,
@@ -75,7 +75,7 @@ def get_predict_function_and_model_type(
         A tuple of the predict function and the model type.
 
     """
-    from src.shapiq.game import Game
+    from shapiq.game import Game
 
     from .tree import TreeModel
 

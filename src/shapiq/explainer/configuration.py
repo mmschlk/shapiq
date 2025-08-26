@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from src.shapiq import (
+from shapiq import (
     SHAPIQ,
     SPEX,
     SVARM,
@@ -19,8 +19,8 @@ from src.shapiq import (
     UnbiasedKernelSHAP,
     kADDSHAP,
 )
-from src.shapiq.approximator.base import Approximator, ValidApproximationIndices
-from src.shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
+from shapiq.approximator.base import Approximator, ValidApproximationIndices
+from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
 
 ValidApproximatorTypes = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
 APPROXIMATOR_CONFIGURATIONS: dict[
