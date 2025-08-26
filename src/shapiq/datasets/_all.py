@@ -67,7 +67,7 @@ def load_california_housing(
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    return x_data, y_data
+    return x_data, y_data  # pyright: ignore[reportReturnType]
 
 
 def load_bike_sharing(
@@ -133,7 +133,10 @@ def load_bike_sharing(
     transformed_data: np.ndarray = cast(
         np.ndarray, column_transformer.fit_transform(dataset)
     )  # Transformations will always return a dense array
-    dataset = pd.DataFrame(transformed_data, columns=col_names)
+    dataset = pd.DataFrame(
+        transformed_data,
+        columns=col_names,  # pyright: ignore[reportArgumentType]
+    )
     dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)
@@ -208,7 +211,10 @@ def load_adult_census(
     transformed_data = cast(
         np.ndarray, column_transformer.fit_transform(dataset)
     )  # Transformations will always return a dense array
-    dataset = pd.DataFrame(transformed_data, columns=col_names)
+    dataset = pd.DataFrame(
+        transformed_data,
+        columns=col_names,  # pyright: ignore[reportArgumentType]
+    )
     dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)
@@ -219,4 +225,4 @@ def load_adult_census(
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    return x_data, y_data
+    return x_data, y_data  # pyright: ignore[reportReturnType]

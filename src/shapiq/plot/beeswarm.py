@@ -8,14 +8,24 @@ Note:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Literal
+
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.patches import Rectangle
 
 from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 
 from .utils import abbreviate_feature_names
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
 
 __all__ = ["beeswarm_plot"]
 
@@ -28,7 +38,7 @@ def _get_red_blue_cmap() -> mcolors.LinearSegmentedColormap:
     """
     gray_rgb = np.array([0.51615537, 0.51615111, 0.5161729])
 
-    cdict = {
+    cdict: dict[Literal["red", "green", "blue", "alpha"], Sequence[tuple[float, float, float]]] = {
         "red": [
             (0.0, 0.0, 0.0),
             (0.494949494949495, 0.6035590338007161, 0.6035590338007161),
@@ -146,10 +156,10 @@ def beeswarm_plot(
     abbreviate: bool = True,
     alpha: float = 0.8,
     row_height: float = 0.4,
-    ax: plt.Axes | None = None,
+    ax: Axes | None = None,
     rng_seed: int | None = 42,
     show: bool = True,
-) -> plt.Axes | None:
+) -> Axes | None:
     """Plots a beeswarm plot of SHAP-IQ interaction values. Based on the SHAP beeswarm plot[1]_.
 
     The beeswarm plot visualizes how the magnitude and direction of interaction effects are distributed across all samples in the data,
@@ -207,12 +217,12 @@ def beeswarm_plot(
     feature_mapping = dict(enumerate(feature_names))
 
     list_of_abs_interaction_values = [abs(iv) for iv in interaction_values_list]
-    global_values = aggregate_interaction_values(
+    global_values: InteractionValues = aggregate_interaction_values(
         list_of_abs_interaction_values, aggregation="mean"
     )  # to match the order in bar plots
 
     interaction_keys = list(global_values.interaction_lookup.keys())
-    all_global_interaction_vals = global_values.values  # noqa: PD011 # since ruff thinks this is a dataframe
+    all_global_interaction_vals = global_values.values  # noqa: PD011 since ruff thinks this is a dataframe
     if interaction_keys[0] == ():  # check for base value
         interaction_keys = interaction_keys[1:]
         all_global_interaction_vals = all_global_interaction_vals[1:]
@@ -248,7 +258,7 @@ def beeswarm_plot(
         fig = plt.gcf()
         fig.set_size_inches(fig_width, fig_height)
     else:
-        fig = ax.get_figure()
+        fig: Figure = ax.get_figure()  # pyright: ignore[reportAssignmentType]. Axes will always be a figure as Subfigure would not provide get_size_inches()
         row_height = (fig.get_size_inches()[1] - 1.5) / total_sub_features
     config_dict = _get_config(row_height)
 
@@ -388,7 +398,7 @@ def beeswarm_plot(
         bottom_y, height = y_coords
 
         x_left, x_right = xlims[0], xlims[1]
-        rect = plt.Rectangle(
+        rect = Rectangle(
             (x_left, bottom_y),
             x_right - x_left,
             height,
@@ -415,7 +425,7 @@ def beeswarm_plot(
     cb.set_label("Feature value", size=12, labelpad=0)
     cb.ax.tick_params(labelsize=11, length=0)
     cb.set_alpha(1)
-    cb.outline.set_visible(False)
+    cb.outline.set_visible(False)  # pyright: ignore[reportCallIssue]. TODO(advueu963): This seems to work but statically not safe
 
     plt.tight_layout(rect=(0, 0, 0.95, 1))
 
