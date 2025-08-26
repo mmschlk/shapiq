@@ -134,7 +134,7 @@ def aggregate_base_interaction(
         index=base_interactions.index,
         order=order,
         min_order=base_interactions.min_order,
-        baseline_value=base_interactions.baseline_value,
+        baseline_value=float(base_interactions.baseline_value),
     )
 
     return InteractionValues(
