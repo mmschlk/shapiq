@@ -32,7 +32,8 @@ class StratifiedSamplingSV(Approximator):
 
     """
 
-    valid_indices: Literal["SV"] = ("SV",)  # type: ignore[assignment]
+    # TODO(advueu963): This is a real problem along the shapiq package that we override variables also type based. # noqa: TD003
+    valid_indices: tuple[Literal["SV"], ...] = ("SV",)  # pyright: ignore[reportIncompatibleVariableOverride]
 
     def __init__(
         self,

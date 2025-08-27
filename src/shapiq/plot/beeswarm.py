@@ -222,7 +222,7 @@ def beeswarm_plot(
     )  # to match the order in bar plots
 
     interaction_keys = list(global_values.interaction_lookup.keys())
-    all_global_interaction_vals = global_values.values  # noqa: PD011 since ruff thinks this is a dataframe
+    all_global_interaction_vals = global_values.values  # noqa: PD011  # since ruff thinks this is a dataframe
     if interaction_keys[0] == ():  # check for base value
         interaction_keys = interaction_keys[1:]
         all_global_interaction_vals = all_global_interaction_vals[1:]

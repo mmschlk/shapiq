@@ -30,6 +30,6 @@ def test_network_plot():
     # TODO(advueu963): Check whether this test is still valid # noqa: TD003
     # # value error if neither first_order_values nor interaction_values are given
     # with pytest.raises(TypeError):
-    #     network_plot() #noqa: ERA001
+    #     network_plot() # noqa: ERA001
 
     assert True

@@ -423,7 +423,7 @@ class Game:
             for coalition in coalitions_str:
                 coal_indices = sorted([self.player_name_lookup[player] for player in coalition])
                 coalitions_from_str.append(tuple(coal_indices))
-                return transform_coalitions_to_array(coalitions_from_str, self.n_players)
+            return transform_coalitions_to_array(coalitions_from_str, self.n_players)
         except Exception as error:
             raise TypeError(error_message) from error
 
