@@ -2,6 +2,11 @@
 
 ## Development
 
+### Shapiq Statically Typechecked
+We have introduced static type checking to `shapiq` using [Pyright](https://github.com/microsoft/pyright), and integrated it into our `pre-commit` hooks.
+This ensures that type inconsistencies are caught early during development, improving code quality and maintainability.
+Developers will now benefit from immediate feedback on type errors, making the codebase more robust and reliable as it evolves.
+
 ### Separation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark`
 
 We have begun the process of modularizing the `shapiq` package by splitting it into three distinct packages: `shapiq`, `shapiq_games`, and `shapiq-benchmark`.
