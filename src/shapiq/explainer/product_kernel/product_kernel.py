@@ -197,3 +197,53 @@ class ProductKernelComputer:
             kernel_vectors.append(kernel_vec.squeeze())
 
         return kernel_vectors
+
+    # TODO (IsaH57): rename? (Issue #426)
+    def v_S(self, kernel_vectors: list[np.ndarray] | np.ndarray, S: list) -> float:
+        """Compute v(S): the inner product of alpha with the elementwise product of kernel_vectors columns in S.
+
+        Args:
+            kernel_vectors: list or np.ndarray of shape (d, n) or (n, d), kernel values for each feature and training point.
+            S: iterable of indices (features to include).
+
+        Returns:
+            Scalar value: alpha^T (elementwise product of columns in S).
+        """
+        # Ensure kernel_vectors is (n, d)
+        if isinstance(kernel_vectors, list):
+            kernel_vectors = np.array(kernel_vectors).T  # shape (n, d)
+        elif kernel_vectors.shape[0] != self.n:
+            kernel_vectors = kernel_vectors.T  # shape (n, d)
+
+        prod = np.ones(self.n) if len(S) == 0 else np.prod(kernel_vectors[:, list(S)], axis=1)
+
+        return np.dot(self.alpha, prod)
+
+    def brute_force_shapley(self, kernel_vectors: np.ndarray) -> np.ndarray:
+        """Brute-force computation of Shapley values for all features using the Mobius representation.
+
+        Args:
+            kernel_vectors: np.ndarray of shape (n, d), kernel values for each training point and feature.
+
+        Returns:
+            np.ndarray of Shapley values for all features (shape: d,).
+        """
+        import itertools
+
+        n, d = kernel_vectors.shape
+        shapley_values = np.zeros(d)
+
+        features = list(range(d))
+        # Iterate over all subsets S of features
+        for subset_size in range(1, d + 1):
+            for S in itertools.combinations(features, subset_size):
+                # Compute m(S)
+                prod_S = np.ones(n)
+                for idx in S:
+                    prod_S *= kernel_vectors[:, idx] - 1
+                m_S = np.dot(self.alpha, prod_S)
+                # Add contribution to all phi_i for i in S
+                for i in S:
+                    shapley_values[i] += (1.0 / subset_size) * m_S
+
+        return shapley_values

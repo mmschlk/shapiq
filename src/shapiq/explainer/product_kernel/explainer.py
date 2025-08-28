@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from shapiq import InteractionValues
-from shapiq.explainer.base import Explainer
-from shapiq.game_theory import get_computation_index
+from src.shapiq import InteractionValues
+from src.shapiq.explainer.base import Explainer
+from src.shapiq.game_theory import get_computation_index
 
 from .product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
 from .validation import validate_pk_model
@@ -41,7 +41,7 @@ class ProductKernelExplainer(Explainer):
         model: dict
         | ProductKernelModel
         | list[ProductKernelModel]
-        | Model,  # TODO (IsaH57): check if list of models is neded (Issue #425)
+        | Model,  # TODO (IsaH57): check if list of models is needed (Issue #425)
         *,
         min_order: int = 0,
         max_order: int = 1,
@@ -92,7 +92,7 @@ class ProductKernelExplainer(Explainer):
         )
 
         # TODO(IsaH57): add computation of baseline (Issue #425)
-        self.empty_prediction = 1.0  # None #self._compute_baseline_value()
+        self.empty_prediction = 1.0  # self._compute_baseline_value()
 
     def explain_function(
         self,
@@ -126,7 +126,7 @@ class ProductKernelExplainer(Explainer):
             estimated=False,
             # baseline_value = self.empty_prediction, # TODO (IsaH57): add computation of baseline (Issue #425)
             target_index=self._index,
-        )
+        )  # TODO (IsaH57): add interaction lookup? (Issue #425)
 
     def _compute_baseline_value(self) -> float:
         """Computes the baseline value for the explainer.

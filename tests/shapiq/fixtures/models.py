@@ -393,3 +393,9 @@ def get_california_housing_svr() -> SVR:
     model = SVR(kernel="rbf", C=1.0, gamma="scale")
     model.fit(x_train, y_train)
     return model
+
+
+@pytest.fixture
+def california_housing_svr_model() -> SVR:
+    """Return a SVR model trained on the California housing dataset."""
+    return get_california_housing_svr()
