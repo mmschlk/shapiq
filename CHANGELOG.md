@@ -2,6 +2,13 @@
 
 ## Development
 
+### Introducing ProductKernelExplainer
+
+The ProductKernelExplainer is a new model-specific explanation method for Product Kernel based machine learning model, such as  Gaussian Processes or Support Vector Machines.
+
+For further details refer to:  https://arxiv.org/abs/2505.16516
+
+
 ### Separation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark`
 
 We have begun the process of modularizing the `shapiq` package by splitting it into three distinct packages: `shapiq`, `shapiq_games`, and `shapiq-benchmark`.
