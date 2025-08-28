@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 from scipy.special import binom, factorial
-from src.shapiq.approximator.base import Approximator
-from src.shapiq.interaction_values import InteractionValues
-from src.shapiq.utils.sets import powerset
+
+from shapiq.approximator.base import Approximator
+from shapiq.interaction_values import InteractionValues
+from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable

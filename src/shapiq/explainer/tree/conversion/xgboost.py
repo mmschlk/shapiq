@@ -5,10 +5,10 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Literal
 
-from src.shapiq.explainer.tree.base import TreeModel
+from shapiq.explainer.tree.base import TreeModel
 
 if TYPE_CHECKING:
-    from src.shapiq.typing import Model
+    from shapiq.typing import Model
 
 
 def convert_xgboost_booster(

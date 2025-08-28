@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from src.shapiq.game_theory.indices import (
+from shapiq.game_theory.indices import (
     index_generalizes_bv,
     index_generalizes_sv,
     is_index_valid,

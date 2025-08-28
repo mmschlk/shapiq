@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.shapiq.utils.modules import safe_isinstance
+from shapiq.utils.modules import safe_isinstance
 
 from .conversion import convert_gp_reg, convert_svm
 
 if TYPE_CHECKING:
-    from src.shapiq.typing import Model
+    from shapiq.typing import Model
 
     from .base import ProductKernelModel
 

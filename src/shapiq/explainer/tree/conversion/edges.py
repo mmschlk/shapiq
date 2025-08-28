@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.special import binom
-from src.shapiq.explainer.tree.base import EdgeTree
+
+from shapiq.explainer.tree.base import EdgeTree
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

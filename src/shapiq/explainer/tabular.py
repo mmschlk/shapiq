@@ -6,18 +6,20 @@ from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
 from overrides import overrides
-from src.shapiq.explainer.base import Explainer
-from src.shapiq.game_theory.indices import is_empty_value_the_baseline
+
+from shapiq.explainer.base import Explainer
+from shapiq.game_theory.indices import is_empty_value_the_baseline
 
 from .configuration import setup_approximator
 from .custom_types import ExplainerIndices
 
 if TYPE_CHECKING:
     import numpy as np
-    from src.shapiq.approximator.base import Approximator
-    from src.shapiq.imputer.base import Imputer
-    from src.shapiq.interaction_values import InteractionValues
-    from src.shapiq.typing import Model
+
+    from shapiq.approximator.base import Approximator
+    from shapiq.imputer.base import Imputer
+    from shapiq.interaction_values import InteractionValues
+    from shapiq.typing import Model
 
 
 TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
@@ -48,7 +50,7 @@ class TabularExplainer(Explainer):
         *,
         class_index: int | None = None,
         imputer: Imputer | TabularExplainerImputers = "marginal",
-        approximator: Literal["auto"] | TabularExplainerApproximators | Approximator = "auto",
+        approximator: (Literal["auto"] | TabularExplainerApproximators | Approximator) = "auto",
         index: TabularExplainerIndices = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
@@ -148,7 +150,8 @@ class TabularExplainer(Explainer):
                 **kwargs,
             )
         elif isinstance(
-            imputer, MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer
+            imputer,
+            MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer,
         ):
             self.imputer = imputer
         else:

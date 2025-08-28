@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.shapiq.explainer.product_kernel.base import ProductKernelModel
+from shapiq.explainer.product_kernel.base import ProductKernelModel
 
 if TYPE_CHECKING:
-    from src.shapiq.typing import Model
+    from shapiq.typing import Model
 
 
 def convert_svm(model: Model) -> ProductKernelModel:
@@ -99,5 +99,9 @@ def convert_gp_clf(
 
     n, d = X_train.shape
     return ProductKernelModel(
-        alpha=alpha, X_train=X_train, n=n, d=d, gamma=(2 * (model.kernel_.length_scale**2)) ** -1
+        alpha=alpha,
+        X_train=X_train,
+        n=n,
+        d=d,
+        gamma=(2 * (model.kernel_.length_scale**2)) ** -1,
     )

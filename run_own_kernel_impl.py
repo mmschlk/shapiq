@@ -8,7 +8,8 @@ from sklearn.gaussian_process.kernels import RBF
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
-from src.shapiq.explainer.product_kernel import ProductKernelExplainer
+
+from shapiq.explainer.product_kernel import ProductKernelExplainer
 
 # Generate a synthetic regression dataset with 10 features
 X, y = make_regression(n_samples=200, n_features=10, random_state=42)
@@ -54,7 +55,12 @@ print(f"sum of GP Shapley Values is {sum(gp_reg_shapley_values)}")  # noqa: T201
 # ------------------------- Classification Example -------------------------
 # Generate a synthetic classification dataset (binary classification)
 X_clf, y_clf = make_classification(
-    n_samples=200, n_features=10, n_informative=5, n_redundant=2, n_classes=2, random_state=42
+    n_samples=200,
+    n_features=10,
+    n_informative=5,
+    n_redundant=2,
+    n_classes=2,
+    random_state=42,
 )  # <sup data-citation="6" className="inline select-none [&>a]:rounded-2xl [&>a]:border [&>a]:px-1.5 [&>a]:py-0.5 [&>a]:transition-colors shadow [&>a]:bg-ds-bg-subtle [&>a]:text-xs [&>svg]:w-4 [&>svg]:h-4 relative -top-[2px] citation-shimmer"><a href="https://machinelearningmastery.com/gaussian-processes-for-classification-with-python/">6</a></sup>
 
 # Split the data into training and testing sets
@@ -85,7 +91,6 @@ svc_shapley_values = svc_explainer.explain(x_clf)
 print("SVC Shapley Values (Classification):", svc_shapley_values)  # noqa: T201
 # You can also observe the predicted probability and the predicted class:
 print(f"sum of SVC Shapley Value {sum(svc_shapley_values)}")  # noqa: T201
-print("predicted decision function: ", svc_model.decision_function([x_clf])[0])  # noqa: T201
 print("intercept is: ", svc_model.intercept_)  # noqa: T201
 
 """

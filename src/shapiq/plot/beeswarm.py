@@ -12,7 +12,8 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from src.shapiq.interaction_values import InteractionValues, aggregate_interaction_values
+
+from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 
 from .utils import abbreviate_feature_names
 
@@ -211,7 +212,7 @@ def beeswarm_plot(
     )  # to match the order in bar plots
 
     interaction_keys = list(global_values.interaction_lookup.keys())
-    all_global_interaction_vals = global_values.values  # noqa: PD011 # since ruff thinks this is a dataframe
+    all_global_interaction_vals = global_values.to_numpy()  # since ruff thinks this is a dataframe
     if interaction_keys[0] == ():  # check for base value
         interaction_keys = interaction_keys[1:]
         all_global_interaction_vals = all_global_interaction_vals[1:]
