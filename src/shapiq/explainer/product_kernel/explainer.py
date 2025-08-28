@@ -83,16 +83,16 @@ class ProductKernelExplainer(Explainer):
         self._class_label: int | None = class_index
 
         # validate model
-        self.model = validate_pk_model(model, class_label=class_index)
+        self.converted_model = validate_pk_model(model, class_label=class_index)
 
         self.explainer = ProductKernelComputer(
-            model=self.model,
+            model=self.converted_model,
             max_order=max_order,
             index=index,
         )
 
         # TODO(IsaH57): add computation of baseline (Issue #425)
-        self.empty_prediction = 1.0  # self._compute_baseline_value()
+        self.empty_prediction = self._compute_baseline_value()
 
     def explain_function(
         self,
@@ -108,14 +108,14 @@ class ProductKernelExplainer(Explainer):
         Returns:
            The interaction values for the instance.
         """
-        n_players = self.model.d
+        n_players = self.converted_model.d
 
         # compute the kernel vectors for the instance x
-        kernel_vectors = self.explainer.compute_kernel_vectors(self.model.X_train, x)
+        kernel_vectors = self.explainer.compute_kernel_vectors(self.converted_model.X_train, x)
 
         shapley_values = {}
-        for j in range(self.model.d):
-            shapley_values.update({j: self.explainer.compute_shapley_value(kernel_vectors, j)})
+        for j in range(self.converted_model.d):
+            shapley_values.update({(j,): self.explainer.compute_shapley_value(kernel_vectors, j)})
 
         return InteractionValues(
             values=shapley_values,
@@ -124,9 +124,9 @@ class ProductKernelExplainer(Explainer):
             max_order=self.max_order,
             n_players=n_players,
             estimated=False,
-            # baseline_value = self.empty_prediction, # TODO (IsaH57): add computation of baseline (Issue #425)
+            baseline_value=self.empty_prediction,
             target_index=self._index,
-        )  # TODO (IsaH57): add interaction lookup? (Issue #425)
+        )
 
     def _compute_baseline_value(self) -> float:
         """Computes the baseline value for the explainer.
@@ -135,5 +135,4 @@ class ProductKernelExplainer(Explainer):
             The baseline value for the explainer.
 
         """
-        msg = "The method _compute_baseline_value is not yet implemented in the ProductKernelExplainer."
-        raise NotImplementedError(msg)
+        return self.converted_model.alpha.sum() + self.converted_model.intercept

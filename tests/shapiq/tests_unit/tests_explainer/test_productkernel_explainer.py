@@ -6,7 +6,9 @@ import pytest
 
 from shapiq.explainer.product_kernel import ProductKernelExplainer
 from shapiq.explainer.product_kernel.conversion import convert_gp_reg, convert_svm
-from shapiq.explainer.product_kernel.game import ProductKernelGame, ProductKernelGame_Author
+from shapiq.explainer.product_kernel.game import (
+    ProductKernelGame,
+)
 from shapiq.game_theory.exact import ExactComputer
 
 
@@ -18,17 +20,9 @@ def test_bin_svc_product_kernel_explainer(bin_svc_model, background_clf_dataset_
 
     x_explain, _ = background_clf_dataset_binary
     explanation = explainer.explain(x_explain[0])
-    prediction = bin_svc_model.predict(x_explain[0].reshape(1, -1))  # noqa:F841
+    prediction = bin_svc_model.decision_function(x_explain[0].reshape(1, -1))
 
-    assert type(explanation).__name__ == "InteractionValues"
-
-    # check init with class label
-    _ = ProductKernelExplainer(model=bin_svc_model, max_order=1, min_order=0, class_index=0)
-
-    assert True
-
-    # compare baseline value with empty prediction
-    # TODO(IsaH57): add (Issue #425)
+    assert explanation.values.sum() == pytest.approx(prediction.item())
 
 
 def test_svr_product_kernel_explainer(svr_model, background_reg_data):
@@ -39,12 +33,9 @@ def test_svr_product_kernel_explainer(svr_model, background_reg_data):
 
     x_explain = background_reg_data
     explanation = explainer.explain(x_explain[0])
-    prediction = svr_model.predict(x_explain[0].reshape(1, -1))  # noqa:F841
+    prediction = svr_model.predict(x_explain[0].reshape(1, -1))
 
-    assert type(explanation).__name__ == "InteractionValues"
-
-    # compare baseline value with empty prediction
-    # TODO(IsaH57): add (Issue #425)
+    assert explanation.values.sum() == pytest.approx(prediction.item())
 
 
 def test_gp_reg_product_kernel_explainer(gp_reg_model, background_reg_data):
@@ -55,12 +46,9 @@ def test_gp_reg_product_kernel_explainer(gp_reg_model, background_reg_data):
 
     x_explain = background_reg_data
     explanation = explainer.explain(x_explain[0])
-    prediction = gp_reg_model.predict(x_explain[0].reshape(1, -1))  # noqa:F841
+    prediction = gp_reg_model.predict(x_explain[0].reshape(1, -1))
 
-    assert type(explanation).__name__ == "InteractionValues"
-
-    # compare baseline value with empty prediction
-    # TODO(IsaH57): add (Issue #425)
+    assert explanation.values.sum() == pytest.approx(prediction)
 
 
 def test_svc_against_exact_computer(bin_svc_model, background_clf_dataset_binary):
@@ -107,35 +95,6 @@ def test_svr_against_exact_computer(svr_model, background_reg_data):
     model_prediction_scalar = model_prediction.item()
 
     assert model_prediction_scalar == pytest.approx(sum_values)
-
-
-def test_game_equal_to_author(gp_reg_model, background_reg_data):
-    """Test if the ProductKernelGame implementation is equal to the author's implementation."""
-
-    x_explain = background_reg_data
-
-    # Initialize both games
-    game_author = ProductKernelGame_Author(
-        model=convert_gp_reg(gp_reg_model),
-        n_players=gp_reg_model.n_features_in_,
-        explain_point=x_explain[0],
-        normalize=False,
-    )
-    game_new = ProductKernelGame(
-        model=convert_gp_reg(gp_reg_model),
-        n_players=gp_reg_model.n_features_in_,
-        explain_point=x_explain[0],
-        normalize=False,
-    )
-    from shapiq.utils import powerset, transform_coalitions_to_array
-
-    coalitions = list(powerset(range(gp_reg_model.n_features_in_)))
-    coalitions = transform_coalitions_to_array(coalitions, gp_reg_model.n_features_in_)
-
-    values_author = game_author.value_function(coalitions)
-    values_new = game_new.value_function(coalitions)
-
-    assert values_author == pytest.approx(values_new)
 
 
 def test_gp_reg_against_exact_computer(gp_reg_model, background_reg_data):
