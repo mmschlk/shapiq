@@ -61,7 +61,7 @@ def test_svc_against_exact_computer(bin_svc_model, background_clf_dataset_binary
         model=convert_svm(bin_svc_model),
         n_players=bin_svc_model.n_features_in_,
         explain_point=x_explain[0],
-        normalize=True,
+        normalize=False,
     )
     exact_computer = ExactComputer(game=svc_kernel_game, n_players=bin_svc_model.n_features_in_)
 
@@ -84,7 +84,7 @@ def test_svr_against_exact_computer(svr_model, background_reg_data):
         model=convert_svm(svr_model),
         n_players=svr_model.n_features_in_,
         explain_point=x_explain[0],
-        normalize=True,
+        normalize=False,
     )
     exact_computer = ExactComputer(game=svr_kernel_game, n_players=svr_model.n_features_in_)
 

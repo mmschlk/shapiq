@@ -69,15 +69,15 @@ def compute_product_kernel_explanations(
     game = ProductKernelGame(
         model=converted_model,
         n_players=x_explain.shape[1],
-        explain_point=x_explain[0],
-        normalize=True,
+        explain_point=x_explain.flatten(),
+        normalize=False,
     )
 
     # compute explanations
     return _compute_values(
         game=game,
         interaction_indices=list(get_args(ProductKernelSHAPIQIndices)),
-        save_name="iv_california_housing_pk",
+        save_name="iv_california_housing_product_kernel",
         save_path=save_path,
     )
 
