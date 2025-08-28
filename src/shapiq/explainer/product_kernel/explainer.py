@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from src.shapiq import InteractionValues
-from src.shapiq.explainer.base import Explainer
-from src.shapiq.game_theory import get_computation_index
+from shapiq import InteractionValues
+from shapiq.explainer.base import Explainer
+from shapiq.game_theory import get_computation_index
 
 from .product_kernel import ProductKernelComputer, ProductKernelSHAPIQIndices
 from .validation import validate_pk_model
@@ -91,7 +91,6 @@ class ProductKernelExplainer(Explainer):
             index=index,
         )
 
-        # TODO(IsaH57): add computation of baseline (Issue #425)
         self.empty_prediction = self._compute_baseline_value()
 
     def explain_function(

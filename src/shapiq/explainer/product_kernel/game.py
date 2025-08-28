@@ -54,7 +54,7 @@ class ProductKernelGame(Game):
         self.n, self.d = self.model.X_train.shape
         self._X_train = self.model.X_train
         # The empty value can generally be defined by: \sum_{i=1}^n \alpha_i K(x^i, x) - \beta, where x^i are training points / support vectors.
-        normalization_value: float = float(self.model.alpha.sum()) - model.intercept
+        normalization_value: float = float(self.model.alpha.sum()) + model.intercept
 
         super().__init__(n_players, normalization_value=normalization_value, normalize=normalize)
 
@@ -79,7 +79,7 @@ class ProductKernelGame(Game):
 
                 # The baseline value
                 if current_coalition.sum() == 0:
-                    res.append(alpha.sum() - self.model.intercept)
+                    res.append(float(self.model.alpha.sum()) + self.model.intercept)
                     continue
                 # Extract X_S and x_S
                 coalition_features = self.explain_point[current_coalition]
@@ -95,7 +95,7 @@ class ProductKernelGame(Game):
                 kernel_values = rbf_kernel(X=X_train, Y=coalition_features, gamma=self.model.gamma)
 
                 # Compute the decision value
-                res.append((alpha @ kernel_values).squeeze())
+                res.append((alpha @ kernel_values + self.model.intercept).squeeze())
         else:
             msg = f"Kernel type '{self.model.kernel_type}' not supported"
             raise NotImplementedError(msg)
