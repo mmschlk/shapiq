@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import copy
+
 import pytest
+from sklearn.gaussian_process import GaussianProcessClassifier
 
 from shapiq.explainer.product_kernel import ProductKernelExplainer
 from shapiq.explainer.product_kernel.conversion import convert_gp_reg, convert_svm
@@ -10,6 +13,23 @@ from shapiq.explainer.product_kernel.game import (
     ProductKernelGame,
 )
 from shapiq.game_theory.exact import ExactComputer
+
+
+def test_invalid_application(bin_svc_model, background_clf_dataset_binary):
+    """Test the product kernel explainer with an invalid application."""
+    with pytest.raises(ValueError):
+        _ = ProductKernelExplainer(model=bin_svc_model, max_order=2, index="SV")
+
+    non_rbf_svm = copy.deepcopy(bin_svc_model)
+    non_rbf_svm.kernel = "linear"
+
+    with pytest.raises(ValueError):
+        _ = ProductKernelExplainer(model=non_rbf_svm, max_order=1, index="SV")
+
+    gaussian_process_classifier = GaussianProcessClassifier()
+
+    with pytest.raises(TypeError):
+        _ = ProductKernelExplainer(model=gaussian_process_classifier, max_order=1, index="SV")
 
 
 def test_bin_svc_product_kernel_explainer(bin_svc_model, background_clf_dataset_binary):
