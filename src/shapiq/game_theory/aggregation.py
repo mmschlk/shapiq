@@ -72,10 +72,14 @@ def aggregate_base_attributions(
         for interaction in powerset(base_interaction, min_size=1, max_size=order):
             scaling = float(bernoulli_numbers[len(base_interaction) - len(interaction)])
             update_interaction = scaling * base_interaction_value
-            try:
-                transformed_interactions[interaction] += update_interaction
-            except KeyError:
-                transformed_interactions[interaction] = update_interaction
+            if update_interaction == 0:
+                continue
+            transformed_interactions[interaction] = (
+                transformed_interactions.get(interaction, 0) + update_interaction
+            )
+            # if the interactions sum to 0, we pop them from the dict
+            if transformed_interactions[interaction] == 0:
+                transformed_interactions.pop(interaction)
 
     # update the index name after the aggregation (e.g., SII -> k-SII)
     new_index = _change_index(index)
