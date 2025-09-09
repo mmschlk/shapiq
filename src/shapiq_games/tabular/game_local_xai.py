@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from shapiq.game import Game
-from shapiq.imputer import BaselineImputer, ConditionalImputer, MarginalImputer, TabPFNImputer
+from shapiq.imputer import BaselineImputer, GenerativeConditionalImputer, MarginalImputer, TabPFNImputer
 
 from .utils import get_x_explain
 
@@ -24,7 +24,7 @@ def get_imputer(
     x: NumericArray,
     *,
     random_state: int | None = 42,
-) -> BaselineImputer | MarginalImputer | ConditionalImputer:
+) -> BaselineImputer | MarginalImputer | GenerativeConditionalImputer:
     """Get the appropriate imputer based on the input."""
     match imputer:
         case "baseline":
@@ -44,10 +44,10 @@ def get_imputer(
                 normalize=False,
             )
         case "conditional":
-            # use only a random subset of the data for the conditional imputer
-            return ConditionalImputer(
+            # use only a random subset of the data for the GenerativeConditionalImputer
+            return GenerativeConditionalImputer(
                 model=model,
-                # give only first 2_000 samples to the conditional imputer
+                # give only first 2_000 samples to the GenerativeConditionalImputer
                 data=data,
                 x=x,
                 random_state=random_state,
@@ -70,7 +70,7 @@ class TabularLocalExplanation(Game):
 
     """
 
-    imputer: BaselineImputer | MarginalImputer | ConditionalImputer | TabPFNImputer
+    imputer: BaselineImputer | MarginalImputer | GenerativeConditionalImputer | TabPFNImputer
     """The Tabular Imputer used to turn a machine learning model into a cooperative game."""
 
     def __init__(
@@ -81,7 +81,7 @@ class TabularLocalExplanation(Game):
         x: np.ndarray | int | None = None,
         imputer: BaselineImputer
         | MarginalImputer
-        | ConditionalImputer
+        | GenerativeConditionalImputer
         | TabPFNImputer
         | Literal["baseline", "marginal", "conditional", "tabpfn"] = "marginal",
         normalize: bool = True,
