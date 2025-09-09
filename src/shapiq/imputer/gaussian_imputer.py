@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from shapiq import Game
 
 from .base import Imputer
-from .conditional_imputer import ConditionalImputer
 from .gaussian_imputer_exceptions import CategoricalFeatureError
 
 # We disallow columns with <= 2 unique values, since they are likely either:
@@ -22,7 +21,7 @@ from .gaussian_imputer_exceptions import CategoricalFeatureError
 MAX_UNIQUE_VALUES_FOR_CATEGORICAL = 2
 
 
-class GaussianImputer(ConditionalImputer):
+class GaussianImputer(Imputer):
     r"""Implements the Gaussian-based approach for imputation according to [Aas21]_.
 
     This approach assumes that the features of the background data form a multivariate Gaussian distribution.
