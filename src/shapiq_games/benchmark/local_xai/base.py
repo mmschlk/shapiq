@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from shapiq.game import Game
-from shapiq.imputer.conditional_imputer import GenerativeConditionalImputer
+from shapiq.imputerGenerativeConditionalImputer import GenerativeConditionalImputer
 from shapiq.imputer.marginal_imputer import MarginalImputer
 from shapiq_games.benchmark.setup import get_x_explain
 
