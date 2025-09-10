@@ -110,7 +110,7 @@ class TabularExplainer(Explainer):
         """
         from shapiq.imputer import (
             BaselineImputer,
-            ConditionalImputer,
+            GenerativeConditionalImputer,
             MarginalImputer,
             TabPFNImputer,
         )
@@ -136,7 +136,7 @@ class TabularExplainer(Explainer):
                 **kwargs,
             )
         elif imputer == "conditional":
-            self.imputer = ConditionalImputer(
+            self.imputer = GenerativeConditionalImputer(
                 self.predict,
                 self._data,
                 random_state=random_state,
@@ -150,7 +150,7 @@ class TabularExplainer(Explainer):
                 **kwargs,
             )
         elif isinstance(
-            imputer, MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer
+            imputer, MarginalImputer | GenerativeConditionalImputer | BaselineImputer | TabPFNImputer
         ):
             self.imputer = imputer
         else:

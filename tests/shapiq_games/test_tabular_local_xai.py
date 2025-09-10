@@ -8,7 +8,7 @@ import pytest
 
 from shapiq.imputer import (
     BaselineImputer,
-    ConditionalImputer,
+    GenerativeConditionalImputer,
     MarginalImputer,
 )
 
@@ -74,12 +74,12 @@ class TestGetImputer:
         data: NumericArray,
         x_explain: NumericArray,
     ) -> None:
-        """Test the conditional imputer."""
+        """Test the GenerativeConditionalImputer."""
         from shapiq_games.tabular.game_local_xai import get_imputer
 
         data = data[:200]
         imputer = get_imputer("conditional", model, data, x_explain)
-        assert isinstance(imputer, ConditionalImputer)
+        assert isinstance(imputer, GenerativeConditionalImputer)
 
 
 class TestTabularLocalExplanation:

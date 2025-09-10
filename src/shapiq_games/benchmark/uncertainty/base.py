@@ -8,7 +8,7 @@ import numpy as np
 from scipy.stats import entropy
 
 from shapiq.game import Game
-from shapiq.imputer import ConditionalImputer, MarginalImputer
+from shapiq.imputer import GenerativeConditionalImputer, MarginalImputer
 from shapiq_games.benchmark.setup import get_x_explain
 
 if TYPE_CHECKING:
@@ -100,7 +100,7 @@ class UncertaintyExplanation(Game):
                 normalize=False,
             )
         elif imputer == "conditional":
-            self._imputer = ConditionalImputer(
+            self._imputer = GenerativeConditionalImputer(
                 model=self._predict,
                 data=data[:1000],
                 x=self.x,

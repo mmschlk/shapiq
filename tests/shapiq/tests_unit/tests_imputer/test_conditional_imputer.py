@@ -1,15 +1,15 @@
-"""This test module contains all tests for the conditional imputer module of the shapiq package."""
+"""This test module contains all tests for the GenerativeConditionalImputer module of the shapiq package."""
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from shapiq.imputer import ConditionalImputer
+from shapiq.imputer import GenerativeConditionalImputer
 
 
 def test_conditional_imputer_init():
-    """Test the initialization of the conditional imputer."""
+    """Test the initialization of the GenerativeConditionalImputer."""
 
     def model(x: np.ndarray) -> np.ndarray:
         return np.sum(x, axis=1)
@@ -18,7 +18,7 @@ def test_conditional_imputer_init():
     data = rng.random((100, 3))
     x = rng.random((1, 3))
 
-    imputer = ConditionalImputer(
+    imputer = GenerativeConditionalImputer(
         model=model,
         data=data,
         x=x,
@@ -32,7 +32,7 @@ def test_conditional_imputer_init():
 
     # test raise warning with non generative method
     with pytest.raises(ValueError):
-        _ = ConditionalImputer(
+        _ = GenerativeConditionalImputer(
             model=model,
             data=data,
             x=x,
@@ -43,7 +43,7 @@ def test_conditional_imputer_init():
 
     # test with conditional sample size higher than 2**n_features
     with pytest.warns(UserWarning):
-        imputer = ConditionalImputer(
+        imputer = GenerativeConditionalImputer(
             model=model,
             data=data,
             x=x,
@@ -57,7 +57,7 @@ def test_conditional_imputer_init():
 
 
 def test_conditional_imputer_value_function():
-    """Test the value function of the conditional imputer."""
+    """Test the value function of the GenerativeConditionalImputer."""
 
     def model(x: np.ndarray) -> np.ndarray:
         return np.asarray([np.random.uniform(0, 1) for _ in range(x.shape[0])])
@@ -65,7 +65,7 @@ def test_conditional_imputer_value_function():
     data = np.random.rand(100, 3)
     x = np.random.rand(1, 3)
 
-    imputer = ConditionalImputer(
+    imputer = GenerativeConditionalImputer(
         model=model,
         data=data,
         x=x,
