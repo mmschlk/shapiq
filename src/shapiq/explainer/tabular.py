@@ -50,7 +50,7 @@ class TabularExplainer(Explainer):
         *,
         class_index: int | None = None,
         imputer: Imputer | TabularExplainerImputers = "marginal",
-        approximator: Literal["auto"] | TabularExplainerApproximators | Approximator = "auto",
+        approximator: (Literal["auto"] | TabularExplainerApproximators | Approximator) = "auto",
         index: TabularExplainerIndices = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
@@ -150,7 +150,8 @@ class TabularExplainer(Explainer):
                 **kwargs,
             )
         elif isinstance(
-            imputer, MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer
+            imputer,
+            MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer,
         ):
             self.imputer = imputer
         else:

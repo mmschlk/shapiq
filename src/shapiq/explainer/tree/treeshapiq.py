@@ -560,7 +560,12 @@ class TreeSHAPIQ:
                 ),
             )
             quotient_poly_down[0, :] = 1
-        return summary_poly_down, summary_poly_up, interaction_poly_down, quotient_poly_down
+        return (
+            summary_poly_down,
+            summary_poly_up,
+            interaction_poly_down,
+            quotient_poly_down,
+        )
 
     def _prepare_variables_for_order(self, interaction_order: int) -> None:
         """Retrieves the precomputed variables for a given interaction order.

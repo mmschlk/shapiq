@@ -43,7 +43,7 @@ class AgnosticExplainer(Explainer):
         n_players: int | None = None,
         index: AgnosticExplainerIndices = "k-SII",
         max_order: int = 2,
-        approximator: Approximator | Literal["auto"] | TabularExplainerApproximators = "auto",
+        approximator: (Approximator | Literal["auto"] | TabularExplainerApproximators) = "auto",
         random_state: int | None = None,
     ) -> None:
         """Initialize the AgnosticExplainer.

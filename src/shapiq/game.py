@@ -279,9 +279,9 @@ class Game:
                 "normalization_value": self.normalization_value,
                 "precompute_flag": self._precompute_flag,
                 "precomputed": self.precomputed,
-                "player_names": list(self.player_name_lookup.keys())
-                if self.player_name_lookup
-                else None,
+                "player_names": (
+                    list(self.player_name_lookup.keys()) if self.player_name_lookup else None
+                ),
             },
             "data": {
                 safe_tuple_to_str(coalition): float(value)
