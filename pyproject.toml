@@ -24,6 +24,7 @@ dependencies = [
     "networkx",
     "colour",
     "pillow",
+    "pyright>=1.1.402",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -221,8 +222,16 @@ required-imports = ["from __future__ import annotations"]
 
 [tool.pyright]
 include = ["src/shapiq"]
-exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq/plot", "src/shapiq/benchmark", "src/shapiq/games/benchmark"]
+exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq/plot", "src/shapiq_games"]
+venv = ".venv"
 pythonVersion = "3.10"
+
+defineConstant = { DEBUG = true }
+
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+
+pythonPlatform = "Linux"
 
 [dependency-groups]
 test = [

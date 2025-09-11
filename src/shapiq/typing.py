@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping, Sequence
-from typing import Literal, TypedDict, TypeVar
+from typing import Any, Literal, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
+
+FloatVector = NDArray[np.floating]
+
+IntVector = NDArray[np.integer]
+
+BoolVector = NDArray[np.bool_]
 
 CoalitionMatrix = NDArray[np.bool_ | np.int_]
 """A 2D one-hot encoded matrix representing coalitions. A 1 denotes a player is part of the
@@ -24,11 +30,11 @@ CoalitionsLookup = dict[CoalitionTuple, int]
 """A dictionary mapping coalitions (as tuples of player indices) to their corresponding index in
 an ordered collection of coalitions (e.g., a vector of game evaluations)."""
 
-GameValues = NDArray[np.floating]
+GameValues = FloatVector
 """A 1D array representing the values of coalitions in a game. The array is of shape
 ``(n_coalitions,)``, where each entry corresponds to output of a game evaluation for a coalition."""
 
-Model = TypeVar("Model")
+Model = Any
 """A generic type denoting a machine learning model."""
 
 IndexType = Literal[

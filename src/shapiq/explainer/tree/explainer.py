@@ -83,9 +83,7 @@ class TreeExplainer(Explainer):
 
         # validate and parse model
         validated_model = validate_tree_model(model, class_label=class_index)
-        self._trees: list[TreeModel] | TreeModel = copy.deepcopy(validated_model)
-        if not isinstance(self._trees, list):
-            self._trees = [self._trees]
+        self._trees: list[TreeModel] = copy.deepcopy(validated_model)
         self._n_trees = len(self._trees)
 
         self._min_order: int = min_order

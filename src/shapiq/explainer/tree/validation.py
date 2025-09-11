@@ -44,7 +44,7 @@ SUPPORTED_MODELS = {
 def validate_tree_model(
     model: Model,
     class_label: int | None = None,
-) -> TreeModel | list[TreeModel]:
+) -> list[TreeModel]:
     """Validate the model.
 
     Args:
@@ -53,8 +53,8 @@ def validate_tree_model(
 
     Returns:
         The validated model and the model function.
-
     """
+    tree_model = []
     # direct returns for base tree models and dict as model
     # tree model (is already in the correct format)
     if type(model).__name__ == "TreeModel":
@@ -113,8 +113,5 @@ def validate_tree_model(
     # if single tree model put it in a list
     if not isinstance(tree_model, list):
         tree_model = [tree_model]
-
-    if len(tree_model) == 1:
-        tree_model = tree_model[0]
 
     return tree_model

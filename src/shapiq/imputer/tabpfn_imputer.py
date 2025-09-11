@@ -92,12 +92,13 @@ class TabPFNImputer(Imputer):
                     f" predict_function={predict_function})."
                 )
                 raise ValueError(msg)
-            model._shapiq_predict_function = predict_function  # noqa: SLF001
+            model._shapiq_predict_function = predict_function  # pyright: ignore[reportAttributeAccessIssue] # noqa: SLF001
 
         if x_test is None and empty_prediction is None:
             msg = "The empty prediction must be given if no test data is provided"
             raise ValueError(msg)
-
+        if x_test is None:
+            x_test = np.empty((0, x_train.shape[1]))
         super().__init__(
             model=model,
             data=x_test,
@@ -108,7 +109,10 @@ class TabPFNImputer(Imputer):
         )
 
         if empty_prediction is None:
-            self.model.fit(x_train, y_train)  # contextualize the model on the training data
+            # TODO(advueu963): This pyright error can only be silenced if the self.model in Imputer can not be callable. Might want to consider different attributes for sklearn models,... to really get rid of this # noqa: TD003
+            self.model.fit(  # pyright: ignore[reportFunctionMemberAccess]
+                x_train, y_train
+            )  # contextualize the model on the training data
             predictions = self.predict(x_test)
             empty_prediction = float(np.mean(predictions))
         self.empty_prediction = empty_prediction
@@ -135,10 +139,19 @@ class TabPFNImputer(Imputer):
                 output[i] = self.empty_prediction
                 continue
             x_train_coal = self.x_train[:, coalition]
+            # TODO(advueu963): Have to talk over this...# noqa: TD003
+            if self.x is None:
+                msg = "The explanation point x is not set."
+                raise ValueError(msg)
+
             x_explain_coal = self.x[:, coalition]
-            self.model.fit(x_train_coal, self.y_train)
+            self.model.fit(  # pyright: ignore[reportFunctionMemberAccess]
+                x_train_coal, self.y_train
+            )
             pred = float(self.predict(x_explain_coal))
             output[i] = pred
         # refit the model on the full training data to ensure it is in a consistent state
-        self.model.fit(self.x_train, self.y_train)
+        self.model.fit(  # pyright: ignore[reportFunctionMemberAccess]
+            self.x_train, self.y_train
+        )
         return output

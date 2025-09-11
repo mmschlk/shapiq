@@ -127,7 +127,6 @@ def test_baseline_imputer_init():
         x=None,
         random_state=42,
     )
-    assert imputer._x is None
     imputer.fit(x)
     assert np.array_equal(imputer.x, x)
     assert imputer.n_features == 3

@@ -7,9 +7,12 @@ KernelSHAP is a more specific variant of the ShapIQ interaction method.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from .base import MonteCarlo, ValidMonteCarloIndices
+
+if TYPE_CHECKING:
+    from shapiq.typing import FloatVector
 
 
 class SHAPIQ(MonteCarlo):
@@ -48,7 +51,7 @@ class SHAPIQ(MonteCarlo):
         index: ValidMonteCarloIndices = "k-SII",
         *,
         top_order: bool = False,
-        sampling_weights: float | None = None,
+        sampling_weights: FloatVector | None = None,
         pairing_trick: bool = False,
         random_state: int | None = None,
         **kwargs: Any,  # noqa: ARG002
@@ -91,6 +94,9 @@ class SHAPIQ(MonteCarlo):
         )
 
 
+ValidUnbiasedKernelSHAPIndices = Literal["SV"]
+
+
 class UnbiasedKernelSHAP(SHAPIQ):
     """The Unbiased KernelSHAP approximator for estimating the Shapley value (SV).
 
@@ -126,7 +132,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
+    valid_indices: tuple[ValidUnbiasedKernelSHAPIndices, ...] = ("SV",)  # type: ignore[assignment]
     """Valid indices for the UnbiasedKernelSHAP approximator."""
 
     def __init__(
@@ -134,7 +140,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
         n: int,
         *,
         pairing_trick: bool = False,
-        sampling_weights: float | None = None,
+        sampling_weights: FloatVector | None = None,
         random_state: int | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:

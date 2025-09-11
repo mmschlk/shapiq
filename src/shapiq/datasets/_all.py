@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import cast
 
+import numpy as np
 import pandas as pd
-
-if TYPE_CHECKING:
-    import numpy as np
 
 GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
@@ -69,7 +67,7 @@ def load_california_housing(
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    return x_data, y_data
+    return x_data, y_data  # pyright: ignore[reportReturnType]
 
 
 def load_bike_sharing(
@@ -97,7 +95,7 @@ def load_bike_sharing(
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder, RobustScaler
 
-    dataset = _try_load("bike.csv")
+    dataset: pd.DataFrame = _try_load("bike.csv")
     class_label = "count"
 
     num_feature_names = [
@@ -132,7 +130,13 @@ def load_bike_sharing(
     )
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
-    dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
+    transformed_data: np.ndarray = cast(
+        np.ndarray, column_transformer.fit_transform(dataset)
+    )  # Transformations will always return a dense array
+    dataset = pd.DataFrame(
+        transformed_data,
+        columns=col_names,  # pyright: ignore[reportArgumentType]
+    )
     dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)
@@ -204,7 +208,13 @@ def load_adult_census(
     )
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
-    dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
+    transformed_data = cast(
+        np.ndarray, column_transformer.fit_transform(dataset)
+    )  # Transformations will always return a dense array
+    dataset = pd.DataFrame(
+        transformed_data,
+        columns=col_names,  # pyright: ignore[reportArgumentType]
+    )
     dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)
@@ -215,4 +225,4 @@ def load_adult_census(
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    return x_data, y_data
+    return x_data, y_data  # pyright: ignore[reportReturnType]

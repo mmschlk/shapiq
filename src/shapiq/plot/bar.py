@@ -8,6 +8,8 @@ Note:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -16,15 +18,19 @@ from shapiq.interaction_values import InteractionValues, aggregate_interaction_v
 from ._config import BLUE, RED
 from .utils import abbreviate_feature_names, format_labels, format_value
 
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
+
 __all__ = ["bar_plot"]
 
 
 def _bar(
     values: np.ndarray,
-    feature_names: np.ndarray,
+    feature_names: np.ndarray | list[str],
     max_display: int | None = 10,
-    ax: plt.Axes | None = None,
-) -> plt.Axes:
+    ax: Axes | None = None,
+) -> Axes:
     """Create a bar plot of a set of SHAP values.
 
     Note:
@@ -65,7 +71,7 @@ def _bar(
     # get the top features and their names
     feature_inds = feature_order[:max_display]
     y_pos = np.arange(len(feature_inds), 0, -1)
-    yticklabels = [feature_names[i] for i in feature_inds]
+    yticklabels: list[str] = [str(feature_names[i]) for i in feature_inds]
     if num_cut > 0:
         yticklabels[-1] = f"Sum of {int(num_cut)} other features"
 
@@ -181,13 +187,13 @@ def _bar(
 def bar_plot(
     list_of_interaction_values: list[InteractionValues],
     *,
-    feature_names: np.ndarray | None = None,
+    feature_names: np.ndarray | list[str] | None = None,
     show: bool = False,
     abbreviate: bool = True,
     max_display: int | None = 10,
     global_plot: bool = True,
     plot_base_value: bool = False,
-) -> plt.Axes | None:
+) -> Axes | None:
     """Draws interaction values as a SHAP bar plot[1]_.
 
     The function draws the interaction values on a bar plot. The interaction values can be

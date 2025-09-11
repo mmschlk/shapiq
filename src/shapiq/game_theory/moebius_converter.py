@@ -32,7 +32,9 @@ class MoebiusConverter:
 
     """
 
-    valid_indices: ValidMoebiusConverterIndices = tuple(get_args(ValidMoebiusConverterIndices))
+    valid_indices: tuple[ValidMoebiusConverterIndices] = tuple(
+        get_args(ValidMoebiusConverterIndices)
+    )
 
     def __init__(self, moebius_coefficients: InteractionValues) -> None:
         """Initialize the MoebiusConverter.

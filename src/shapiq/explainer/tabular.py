@@ -115,6 +115,7 @@ class TabularExplainer(Explainer):
             TabPFNImputer,
         )
 
+        # TODO(advueu963): Imputer and Approximator are not allowed None. Explainer allows them also to be None. Therefore it might be appropriate for an additional subclass of Explainer to distinguish between Explainers needing Imputer & Approximator and those which do not (TreeExplainer) # noqa: TD003
         super().__init__(model, data, class_index, index=index, max_order=max_order)
 
         # get class for self
@@ -152,7 +153,7 @@ class TabularExplainer(Explainer):
         elif isinstance(
             imputer, MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer
         ):
-            self.imputer = imputer
+            self.imputer: Imputer = imputer  # pyright: ignore[reportIncompatibleVariableOverride]
         else:
             msg = (
                 f"Invalid imputer {imputer}. "
@@ -163,8 +164,14 @@ class TabularExplainer(Explainer):
         self._n_features: int = self._data.shape[1]
         self.imputer.verbose = verbose  # set the verbose flag for the imputer
 
-        self.approximator = setup_approximator(
-            approximator, self._index, self._max_order, self._n_features, random_state
+        self.approximator: Approximator = (  # pyright: ignore[reportIncompatibleVariableOverride]
+            setup_approximator(
+                approximator,
+                self._index,  # pyright: ignore[reportArgumentType] TODO(advueu963): Think about adding a Conversion dictionary for index
+                self._max_order,
+                self._n_features,
+                random_state,
+            )
         )
 
     @overrides

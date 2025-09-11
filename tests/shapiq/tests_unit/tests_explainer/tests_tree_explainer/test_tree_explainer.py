@@ -10,22 +10,22 @@ import pytest
 from shapiq.explainer.tree import TreeExplainer, TreeModel
 
 
-def test_decision_tree_classifier(dt_clf_model, background_clf_data):
+def test_decision_tree_classifier(rf_clf_model, background_clf_data):
     """Test TreeExplainer with a simple decision tree classifier."""
-    explainer = TreeExplainer(model=dt_clf_model, max_order=2, min_order=1)
+    explainer = TreeExplainer(model=rf_clf_model, max_order=2, min_order=1)
 
     x_explain = background_clf_data[0]
     explanation = explainer.explain(x_explain)
-    prediction = dt_clf_model.predict_proba(x_explain.reshape(1, -1))[0]
+    prediction = rf_clf_model.predict_proba(x_explain.reshape(1, -1))[0]
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
     # check init with class label
-    _ = TreeExplainer(model=dt_clf_model, max_order=2, min_order=0, class_index=0)
+    _ = TreeExplainer(model=rf_clf_model, max_order=2, min_order=0, class_index=0)
 
     assert True
 
-    explainer = _ = TreeExplainer(model=dt_clf_model, max_order=1, min_order=0, class_index=1)
+    explainer = _ = TreeExplainer(model=rf_clf_model, max_order=1, min_order=0, class_index=1)
     explanation = explainer.explain(x_explain)
 
     # compare baseline_value with empty_predictions

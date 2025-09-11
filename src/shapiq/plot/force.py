@@ -10,18 +10,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import lines
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.font_manager import FontProperties
-from matplotlib.patches import PathPatch
+from matplotlib.patches import PathPatch, Polygon
 from matplotlib.path import Path
 
 from .utils import abbreviate_feature_names, format_labels
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
     from shapiq.interaction_values import InteractionValues
+
 
 __all__ = ["force_plot"]
 
@@ -84,7 +88,7 @@ def _create_bars(
                 [left_bound + separator_indent * 0.90, (width_bar / 2)],
             ]
 
-        line = plt.Polygon(
+        line = Polygon(
             points_rectangle,
             closed=True,
             fill=True,
@@ -100,15 +104,15 @@ def _create_bars(
             [separator_pos, width_bar],
         ]
 
-        line = plt.Polygon(points_separator, closed=None, fill=None, edgecolor=colors[1], lw=3)
+        line = Polygon(points_separator, closed=False, fill=None, edgecolor=colors[1], lw=3)
         separator_list += [line]
 
     return rectangle_list, separator_list
 
 
 def _add_labels(
-    fig: plt.Figure,
-    ax: plt.Axes,
+    fig: Figure,
+    ax: Axes,
     out_value: float,
     features: np.ndarray,
     feature_type: str,
@@ -116,7 +120,7 @@ def _add_labels(
     total_effect: float = 0,
     min_perc: float = 0.05,
     text_rotation: float = 0,
-) -> None:
+) -> tuple[Figure, Axes]:
     """Add labels to the plot.
 
     Args:
@@ -183,7 +187,7 @@ def _add_labels(
         # We need to draw the plot to be able to get the size of the
         # text box
         fig.canvas.draw()
-        box_size = text_out_val.get_bbox_patch().get_extents().transformed(ax.transData.inverted())
+        box_size = text_out_val.get_bbox_patch().get_extents().transformed(ax.transData.inverted())  # pyright: ignore[reportOptionalMemberAccess]
         if feature_type == "positive":
             box_end_ = box_size.get_points()[0][0]
         else:
@@ -210,7 +214,7 @@ def _add_labels(
         pre_val = float(feature[0])
 
     # Create line for labels
-    extent_shading = [out_value, box_end, 0, -0.31]
+    extent_shading = (out_value, box_end, 0, -0.31)
     path = [
         [out_value, 0],
         [pre_val, 0],
@@ -237,8 +241,7 @@ def _add_labels(
         colors = np.array([(255, 13, 87), (255, 255, 255)]) / 255.0
     else:
         colors = np.array([(30, 136, 229), (255, 255, 255)]) / 255.0
-
-    cm = mpl.colors.LinearSegmentedColormap.from_list("cm", colors)
+    cm = LinearSegmentedColormap.from_list("cm", colors)
 
     _, z2 = np.meshgrid(np.linspace(0, 10), np.linspace(-10, 10))
     im = plt.imshow(
@@ -258,7 +261,7 @@ def _add_labels(
     return fig, ax
 
 
-def _add_output_element(out_name: str, out_value: float, ax: plt.Axes) -> None:
+def _add_output_element(out_name: str, out_value: float, ax: Axes) -> None:
     """Add grew line indicating the output value to the plot.
 
     Args:
@@ -299,7 +302,7 @@ def _add_output_element(out_name: str, out_value: float, ax: plt.Axes) -> None:
     text_out_val.set_bbox({"facecolor": "white", "edgecolor": "white"})
 
 
-def _add_base_value(base_value: float, ax: plt.Axes) -> None:
+def _add_base_value(base_value: float, ax: Axes) -> None:
     """Add base value to the plot.
 
     Args:
@@ -326,7 +329,7 @@ def _add_base_value(base_value: float, ax: plt.Axes) -> None:
 
 
 def update_axis_limits(
-    ax: plt.Axes,
+    ax: Axes,
     total_pos: float,
     pos_features: np.ndarray,
     total_neg: float,
@@ -442,7 +445,7 @@ def _split_features(
 
 
 def _add_bars(
-    ax: plt.Axes,
+    ax: Axes,
     out_value: float,
     pos_features: np.ndarray,
     neg_features: np.ndarray,
@@ -531,7 +534,7 @@ def _draw_force_plot(
     figsize: tuple[int, int],
     min_perc: float = 0.05,
     draw_higher_lower: bool = True,
-) -> plt.Figure:
+) -> Figure:
     """Draw the force plot.
 
     Note:
@@ -572,7 +575,9 @@ def _draw_force_plot(
     fig, ax = plt.subplots(figsize=figsize)
 
     # compute axis limit
-    update_axis_limits(ax, total_pos, pos_features, total_neg, neg_features, base_value, out_value)
+    update_axis_limits(
+        ax, total_pos, pos_features, total_neg, neg_features, float(base_value), out_value
+    )
 
     # add the bars to the plot
     _add_bars(ax, out_value, pos_features, neg_features)
@@ -608,7 +613,7 @@ def _draw_force_plot(
         draw_higher_lower_element(out_value, offset_text)
 
     # add label for base value
-    _add_base_value(base_value, ax)
+    _add_base_value(float(base_value), ax)
 
     # add output label
     out_names = ""
@@ -623,13 +628,13 @@ def _draw_force_plot(
 def force_plot(
     interaction_values: InteractionValues,
     *,
-    feature_names: np.ndarray | None = None,
+    feature_names: np.ndarray | list[str] | None = None,
     abbreviate: bool = True,
     show: bool = False,
     figsize: tuple[int, int] = (15, 4),
     draw_higher_lower: bool = True,
     contribution_threshold: float = 0.05,
-) -> plt.Figure | None:
+) -> Figure | None:
     """Draws a force plot for the given interaction values.
 
     Args:

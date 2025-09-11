@@ -34,7 +34,9 @@ class RegressionFSII(Regression):
 
     """
 
-    valid_indices: tuple[ValidRegressionFSIIIndices] = tuple(get_args(ValidRegressionFSIIIndices))
+    valid_indices: tuple[ValidRegressionFSIIIndices, ...] = tuple(  # type: ignore[assignment]
+        get_args(ValidRegressionFSIIIndices)
+    )
     """The valid indices for the RegressionFSII approximator."""
 
     def __init__(
@@ -93,7 +95,9 @@ class RegressionFBII(Regression):
 
     """
 
-    valid_indices: ValidRegressionFBIIIndices = tuple(get_args(ValidRegressionFBIIIndices))
+    valid_indices: tuple[ValidRegressionFBIIIndices, ...] = tuple(  # type: ignore[assignment]
+        get_args(ValidRegressionFBIIIndices)
+    )
     """The valid indices for the RegressionFBII approximator."""
 
     def __init__(

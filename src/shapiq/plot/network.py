@@ -7,18 +7,22 @@ from typing import TYPE_CHECKING, Any
 import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
     from shapiq.interaction_values import InteractionValues
+
 
 __all__ = ["network_plot"]
 
 
 def network_plot(
-    interaction_values: InteractionValues | None = None,
+    interaction_values: InteractionValues,
     *,
     feature_names: list[Any] | dict[int, Any] | None = None,
     show: bool = False,
     **kwargs: Any,
-) -> tuple[plt.Figure, plt.Axes] | None:
+) -> tuple[Figure, Axes] | None:
     """Draws the interaction network plot[1]_.
 
     An interaction network is a graph where the nodes represent the features and the edges represent
@@ -57,14 +61,16 @@ def network_plot(
     """
     from . import si_graph_plot
 
-    fig, ax = si_graph_plot(
+    output = si_graph_plot(
         interaction_values=interaction_values,
         feature_names=feature_names,
-        show=False,
+        show=show,
         min_max_order=(1, 2),
         **kwargs,
     )
-    if not show:
+    # output is not None if show is False
+    if output:
+        fig, ax = output
         return fig, ax
     plt.show()
     return None

@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
     import numpy as np
 
+ValidRegressionKernelSHAIndices = Literal["SV"]
+
 
 class KernelSHAP(Regression):
     """The KernelSHAP regression approximator for estimating the Shapley values.
@@ -48,7 +50,7 @@ class KernelSHAP(Regression):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
+    valid_indices: tuple[ValidRegressionKernelSHAIndices, ...] = ("SV",)  # type: ignore[assignment]
 
     def __init__(
         self,

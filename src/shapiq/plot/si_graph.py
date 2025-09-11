@@ -16,6 +16,9 @@ from ._config import get_color
 from .utils import add_image_in_center
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+    from matplotlib.legend import Legend
     from PIL.Image import Image
 
     from shapiq.interaction_values import InteractionValues
@@ -53,8 +56,8 @@ def si_graph_plot(
     center_image: Image | np.ndarray | None = None,
     center_image_size: float = 0.4,
     feature_image_patches: dict[int, Image] | list[Image] | None = None,
-    feature_image_patches_size: float | dict[int, float] = 0.2,
-) -> tuple[plt.figure, plt.axis] | None:
+    feature_image_patches_size: float = 0.2,
+) -> tuple[Figure, Axes] | None:
     """Plots the interaction values as an explanation graph.
 
     An explanation graph is an undirected graph where the nodes represent players and the edges
@@ -156,12 +159,10 @@ def si_graph_plot(
     base_size = BASE_SIZE * node_size_scaling
 
     label_mapping = None
-    if feature_names is not None:
-        # assume it is a list, if it is not it should be a dict.
-        try:
-            label_mapping = {i: feature_names[i] for i in range(len(feature_names))}
-        except KeyError:
-            label_mapping = feature_names
+    if isinstance(feature_names, list):
+        label_mapping = {i: feature_names[i] for i in range(len(feature_names))}
+    else:
+        label_mapping = feature_names
 
     player_ids = {
         interaction[0]
@@ -207,7 +208,9 @@ def si_graph_plot(
 
     if n_interactions is not None:
         # get the top n interactions
-        interaction_values = interaction_values.get_top_k(n_interactions)
+        interaction_values = interaction_values.get_top_k_interactions(
+            n_interactions
+        )  # TODO(advueu963): Was get_top_k(n_interactions) which should be wrong. # noqa: TD003
 
     min_order, max_order = min_max_order
     min_order = max(1, min_order)
@@ -268,34 +271,41 @@ def si_graph_plot(
     # position first the original graph structure
     if isinstance(graph, nx.Graph | list):
         circular_layout = False
+
+    adjusted_pos: dict = {}
     if pos is None:
+        # TODO(advueu963): pos is statically just a Mapping. Forcing it to be dict is way stronger but necessary as far I see it # noqa: TD003
         if circular_layout:
-            pos = nx.circular_layout(original_graph)
+            adjusted_pos = nx.circular_layout(original_graph)  # pyright: ignore[reportAssignmentType]
         else:
-            pos = nx.spring_layout(original_graph, seed=random_seed, k=spring_k)
-            pos = nx.kamada_kawai_layout(original_graph, scale=1.0, pos=pos)
+            adjusted_pos = nx.spring_layout(original_graph, seed=random_seed, k=spring_k)  # pyright: ignore[reportAssignmentType]
+            adjusted_pos = nx.kamada_kawai_layout(original_graph, scale=1, pos=pos)  # pyright: ignore[reportAssignmentType]
     else:
         # pos is given, but we need to scale the positions potentially
         min_pos = np.min(list(pos.values()), axis=0)
         max_pos = np.max(list(pos.values()), axis=0)
-        pos = {node: (pos[node] - min_pos) / (max_pos - min_pos) for node in pos}
+        adjusted_pos = {node: (pos[node] - min_pos) / (max_pos - min_pos) for node in pos}
 
     # adjust pos such that the nodes are at least NORMAL_NODE_SIZE apart
     if adjust_node_pos:
-        pos = _adjust_position(pos, original_graph)
+        adjusted_pos = _adjust_position(adjusted_pos, original_graph)
 
     # create the plot
     fig, ax = plt.subplots(figsize=(7, 7))
     if plot_explanation:
         # position now again the hyper-edges onto the normal nodes weight param is weight
         pos_explain = nx.spring_layout(
-            explanation_graph, weight="weight", seed=random_seed, pos=pos, fixed=graph_nodes
+            explanation_graph,
+            weight="weight",
+            seed=random_seed,
+            pos=adjusted_pos,
+            fixed=graph_nodes,
         )
-        pos.update(pos_explain)
-        _draw_fancy_hyper_edges(ax, pos, explanation_graph, hyper_edges=explanation_edges)
+        adjusted_pos.update(pos_explain)
+        _draw_fancy_hyper_edges(ax, adjusted_pos, explanation_graph, hyper_edges=explanation_edges)
         _draw_explanation_nodes(
             ax,
-            pos,
+            adjusted_pos,
             explanation_graph,
             nodes=explanation_nodes,
             normal_node_size=normal_node_size,
@@ -303,14 +313,14 @@ def si_graph_plot(
 
     # add the original graph structure on top
     if plot_original_nodes or not plot_explanation:
-        _draw_graph_nodes(ax, pos, original_graph, normal_node_size=normal_node_size)
-    _draw_graph_edges(ax, pos, original_graph, normal_node_size=normal_node_size)
+        _draw_graph_nodes(ax, adjusted_pos, original_graph, normal_node_size=normal_node_size)
+    _draw_graph_edges(ax, adjusted_pos, original_graph, normal_node_size=normal_node_size)
 
     # add images
     if feature_image_patches is not None:
         _draw_feature_images(
             ax,
-            pos,
+            adjusted_pos,
             original_graph,
             feature_image_patches,
             feature_image_patches_size,
@@ -319,7 +329,7 @@ def si_graph_plot(
     if feature_image_patches is None or plot_original_nodes:
         _draw_graph_labels(
             ax,
-            pos,
+            adjusted_pos,
             original_graph,
             normal_node_size=normal_node_size,
             plot_white_nodes=plot_original_nodes,
@@ -350,7 +360,8 @@ def si_graph_plot(
     return None
 
 
-def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
+# TODO(advueu963): This function is not used at all. If not given an axis it will also crash. What is the meaning of this function # noqa: TD003
+def get_legend(axis: Axes) -> tuple[Legend, Legend]:
     """Gets the legend for the SI graph plot.
 
     Returns a tuple of legends, a legend for first order (nodes) and one for higher order (edges)
@@ -382,7 +393,7 @@ def get_legend(axis: plt.Axes | None = None) -> tuple[plt.legend, plt.legend]:
 
     font_size = plt.rcParams["legend.fontsize"]
 
-    legend1 = plt.legend(
+    legend1 = plt.gca().legend(
         plot_circles,
         labels,
         frameon=True,
@@ -423,7 +434,7 @@ def _normalize_value(
     value: float | np.ndarray,
     max_value: float,
     base_value: float,
-) -> float:
+) -> float | np.ndarray:
     """Scale a value between 0 and 1 based on the maximum value and a base value.
 
     Args:
@@ -442,7 +453,7 @@ def _normalize_value(
 
 
 def _draw_fancy_hyper_edges(
-    axis: plt.axis,
+    axis: Axes,
     pos: dict,
     graph: nx.Graph,
     hyper_edges: list[tuple],
@@ -474,9 +485,10 @@ def _draw_fancy_hyper_edges(
             is_hyper_edge = False
         else:  # a hyper-edge encodes its information in an artificial "center" node
             center_pos = pos[hyper_edge]
-            node_size = graph.nodes.get(hyper_edge)["size"]
-            color = graph.nodes.get(hyper_edge)["color"]
-            alpha = graph.nodes.get(hyper_edge)["alpha"]
+            # TODO(advueu963): Technically there is not guarantee it is not sure that the hyper_edge must exist # noqa: TD003
+            node_size = graph.nodes.get(hyper_edge)["size"]  # pyright: ignore[reportOptionalSubscript]
+            color = graph.nodes.get(hyper_edge)["color"]  # pyright: ignore[reportOptionalSubscript]
+            alpha = graph.nodes.get(hyper_edge)["alpha"]  # pyright: ignore[reportOptionalSubscript]
 
         alpha = min(1.0, max(0.0, alpha))
 
@@ -547,7 +559,7 @@ def _draw_fancy_hyper_edges(
 
 
 def _draw_graph_nodes(
-    ax: plt.axis,
+    ax: Axes,
     pos: dict,
     graph: nx.Graph,
     nodes: list | None = None,
@@ -577,7 +589,7 @@ def _draw_graph_nodes(
 
 
 def _draw_explanation_nodes(
-    ax: plt.axis,
+    ax: Axes,
     pos: dict,
     graph: nx.Graph,
     nodes: list | None = None,
@@ -599,11 +611,12 @@ def _draw_explanation_nodes(
         if nodes is not None and node not in nodes:
             continue
         position = pos[node]
-        color = graph.nodes.get(node)["color"]
-        explanation_size = graph.nodes.get(node)["size"]
+        # TODO(advueu963): Statically it seems to be not clear that we get an object which is subscriptable # noqa: TD003
+        color = graph.nodes.get(node)["color"]  # pyright: ignore[reportOptionalSubscript]
+        explanation_size = graph.nodes.get(node)["size"]  # pyright: ignore[reportOptionalSubscript]
         alpha = 1.0
         if ADJUST_NODE_ALPHA:
-            alpha = graph.nodes.get(node)["alpha"]
+            alpha = graph.nodes.get(node)["alpha"]  # pyright: ignore[reportOptionalSubscript]
 
         alpha = min(1.0, max(0.0, alpha))
 
@@ -618,7 +631,7 @@ def _draw_explanation_nodes(
 
 
 def _draw_graph_edges(
-    ax: plt.axis,
+    ax: Axes,
     pos: dict,
     graph: nx.Graph,
     edges: list[tuple] | None = None,
@@ -657,7 +670,7 @@ def _draw_graph_edges(
 
 
 def _draw_graph_labels(
-    ax: plt.axis,
+    ax: Axes,
     pos: dict,
     graph: nx.Graph,
     *,
@@ -686,7 +699,7 @@ def _draw_graph_labels(
     for node in graph.nodes:
         if nodes is not None and node not in nodes:
             continue
-        label = graph.nodes.get(node)["label"]
+        label = graph.nodes.get(node)["label"]  # pyright: ignore[reportOptionalSubscript]
         position = pos[node]
         if plot_white_nodes:
             offset = (0, 0)
@@ -709,10 +722,10 @@ def _draw_graph_labels(
 
 
 def _draw_feature_images(
-    ax: plt.axis,
+    ax: Axes,
     pos: dict,
     graph: nx.Graph,
-    feature_image_patches: dict[int, Image.Image],
+    feature_image_patches: dict[int, Image] | list[Image],
     patch_size: float,
 ) -> None:
     """Draws the feature images.
@@ -756,7 +769,7 @@ def _adjust_position(
     # get the minimum distance between two nodes
     min_distance = 1e10
     for u, v in graph.edges:
-        distance = np.linalg.norm(pos[u] - pos[v])
+        distance = np.linalg.norm(pos[u] - pos[v]).item()
         min_distance = min(min_distance, distance)
 
     # adjust the positions if the nodes are too close together

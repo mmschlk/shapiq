@@ -74,17 +74,16 @@ class AgnosticExplainer(Explainer):
                 is not specified.
 
         """
-        if not isinstance(game, Game) and n_players is None:
-            msg = (
-                f"The number of players must be specified with the `n_players` argument if no "
-                f"`shapiq.games.base.Game` instance is provided. Got {type(game)}."
-            )
-            raise ValueError(msg)
-
         if n_players is None:
+            if not isinstance(game, Game):
+                msg = (
+                    f"The number of players must be specified with the `n_players` argument if no "
+                    f"`shapiq.games.base.Game` instance is provided. Got {type(game)}."
+                )
+                raise ValueError(msg)
             n_players = game.n_players
 
-        super().__init__(model=game, data=None, class_index=None)
+        super().__init__(model=game, class_index=None)
 
         self.game = game
         self.approximator = setup_approximator(
@@ -127,5 +126,5 @@ class AgnosticExplainer(Explainer):
             if random_state is not None:
                 self.game.set_random_state(random_state=random_state)
         if random_state is not None:
-            self.approximator.set_random_state(random_state=random_state)
-        return self.approximator.approximate(game=self.game, budget=budget)
+            self.approximator.set_random_state(random_state=random_state)  # pyright: ignore[reportOptionalMemberAccess] TODO(advueu963): Explainer has approximator None as possibility. Removing this would also make this ignore obsolete
+        return self.approximator.approximate(game=self.game, budget=budget)  # pyright: ignore[reportOptionalMemberAccess] TODO(advueu963): Explainer has approximator None as possibility. Removing this would also make this ignore obsolete

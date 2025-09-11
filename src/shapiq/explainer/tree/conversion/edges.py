@@ -10,19 +10,19 @@ from scipy.special import binom
 from shapiq.explainer.tree.base import EdgeTree
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
+    from shapiq.typing import FloatVector, IntVector
 
 
 def create_edge_tree(
-    children_left: NDArray[np.int_],
-    children_right: NDArray[np.int_],
-    features: NDArray[np.int_],
-    node_sample_weight: NDArray[np.floating],
-    values: NDArray[np.floating],
+    children_left: IntVector,
+    children_right: IntVector,
+    features: IntVector,
+    node_sample_weight: FloatVector,
+    values: FloatVector,
     n_nodes: int,
     n_features: int,
     max_interaction: int,
-    subset_updates_pos_store: dict[int, dict[int, NDArray[np.int_]]],
+    subset_updates_pos_store: dict[int, dict[int, IntVector]],
 ) -> EdgeTree:
     """Extracts edge information recursively from the tree information.
 
@@ -77,7 +77,7 @@ def create_edge_tree(
         node_id: int = 0,
         depth: int = 0,
         prod_weight: float = 1.0,
-        seen_features: np.ndarray = None,
+        seen_features: np.ndarray | None = None,
     ) -> int:
         """Traverses the tree recursively and collects all relevant information.
 
@@ -96,7 +96,7 @@ def create_edge_tree(
         # if root node, initialize seen_features and p_e_storage
         if seen_features is None:
             # map feature_id to ancestor node_id
-            seen_features: np.ndarray = np.full(n_features, -1, dtype=int)
+            seen_features = np.full(n_features, -1, dtype=int)
 
         # update the maximum depth of the tree
         max_depth[0] = max(max_depth[0], depth)

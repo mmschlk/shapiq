@@ -77,7 +77,7 @@ def convert_sklearn_tree(
         thresholds=tree_model.tree_.threshold,
         values=tree_values,
         node_sample_weight=tree_model.tree_.weighted_n_node_samples,
-        empty_prediction=None,  # compute empty prediction later
+        empty_prediction=None,  # pyright: ignore[reportArgumentType] compute empty prediction later
         original_output_type=output_type,
     )
 
@@ -92,10 +92,12 @@ def average_path_length(isolation_forest: Model) -> float:
         The average path length of the isolation forest.
 
     """
-    from sklearn.ensemble._iforest import _average_path_length
+    from sklearn.ensemble._iforest import (
+        _average_path_length,  # pyright: ignore[reportAttributeAccessIssue]
+    )
 
     max_samples = isolation_forest._max_samples  # noqa: SLF001
-    return _average_path_length([max_samples])
+    return _average_path_length([max_samples]).item()
 
 
 def convert_sklearn_isolation_forest(
@@ -155,7 +157,7 @@ def convert_isolation_tree(
         thresholds=tree_model.tree_.threshold,
         values=values_updated,
         node_sample_weight=tree_model.tree_.weighted_n_node_samples,
-        empty_prediction=None,  # compute empty prediction later
+        empty_prediction=None,  # pyright: ignore[reportArgumentType] compute empty prediction later
         original_output_type=output_type,
     )
 
@@ -179,7 +181,9 @@ def isotree_value_traversal(
         The updated features and values.
 
     """
-    from sklearn.ensemble._iforest import _average_path_length
+    from sklearn.ensemble._iforest import (
+        _average_path_length,  # pyright: ignore[reportAttributeAccessIssue]
+    )
 
     features = tree.feature.copy()
     corrected_values = tree.value.copy()

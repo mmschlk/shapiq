@@ -11,7 +11,9 @@ from shapiq.explainer import utils
 from shapiq.game import Game
 
 if TYPE_CHECKING:
-    from shapiq.utils import Model
+    from collections.abc import Callable
+
+    from shapiq.typing import Model
 
 
 class Imputer(Game):
@@ -33,7 +35,7 @@ class Imputer(Game):
     @abstractmethod
     def __init__(
         self,
-        model: Model,
+        model: Model | Callable[..., object],
         data: np.ndarray,
         x: np.ndarray | None = None,
         *,
@@ -67,8 +69,9 @@ class Imputer(Game):
                 ``False``.
 
         """
-        if callable(model) and not hasattr(model, "_predict_function"):
-            self._predict_function = utils.predict_callable
+        if callable(model):
+            if not hasattr(model, "_predict_function"):
+                self._predict_function = utils.predict_callable
         # shapiq.Explainer adds a _shapiq_predict_function to the model to make it callable
         elif hasattr(model, "_shapiq_predict_function"):
             self._predict_function = model._shapiq_predict_function  # noqa: SLF001
@@ -88,7 +91,6 @@ class Imputer(Game):
         self._rng = np.random.default_rng(self.random_state)
 
         # fit x
-        self._x: np.ndarray | None = None  # will be overwritten @ fit
         if x is not None:
             self.fit(x)
 
@@ -99,7 +101,10 @@ class Imputer(Game):
     @property
     def x(self) -> np.ndarray | None:
         """Returns the explanation point if it is set."""
-        return self._x.copy() if self._x is not None else None
+        try:
+            return self._x.copy()
+        except AttributeError:
+            return None
 
     def set_random_state(self, random_state: int | None = None) -> None:
         """Sets the random state for the imputer and the model.

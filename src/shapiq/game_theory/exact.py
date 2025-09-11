@@ -108,18 +108,13 @@ class ExactComputer:
         self.game_fun = game
 
         # set object attributes
-        self._grand_coalition_tuple: tuple[int] = tuple(range(self.n))
+        self._grand_coalition_tuple: tuple[int, ...] = tuple(range(self.n))
         self._grand_coalition_set: set[int] = set(self._grand_coalition_tuple)
         self._big_M: float = 10e7
         self._n_interactions: np.ndarray = self.get_n_interactions(self.n)
         self._computed: dict[tuple[str, int], InteractionValues] = {}  # will store all computations
         self._elc_stability_subsidy: float = -1
         self._game_is_computed: bool = False
-
-        self._baseline_value: float | None = None
-        self._game_values: np.ndarray | None = None
-        self._coalition_lookup: dict[tuple[int], int] | None = None
-
         if evaluate_game:
             # evaluate the game on the powerset
             self._evaluate_game()
@@ -187,7 +182,7 @@ class ExactComputer:
             return copy.deepcopy(self._computed[(index, order)])
         if index in self.available_indices:
             computation_function = self._index_mapping[index]
-            computed_index: InteractionValues = computation_function(index=index, order=order)
+            computed_index: InteractionValues = computation_function(index, order)
 
             self._computed[(index, order)] = computed_index
             return copy.deepcopy(computed_index)
@@ -379,8 +374,8 @@ class ExactComputer:
 
     def _get_discrete_derivative(
         self,
-        interaction: set[int] | tuple[int],
-        coalition: set[int] | tuple[int],
+        interaction: set[int] | tuple[int, ...],
+        coalition: set[int] | tuple[int, ...],
     ) -> float:
         """Computes the discrete derivative of a coalition with respect to an interaction.
 
@@ -852,7 +847,7 @@ class ExactComputer:
             baseline_value=self.baseline_value,
         )
 
-    def shapley_generalized_value(self, order: int, index: str) -> InteractionValues:
+    def shapley_generalized_value(self, index: str, order: int) -> InteractionValues:
         """Computes Shapley Generalized Values.
 
         The underlying representation of Shapley Generalized Values (i.e. Generalized Values that

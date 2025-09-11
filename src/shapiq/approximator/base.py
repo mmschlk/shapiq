@@ -18,11 +18,11 @@ if TYPE_CHECKING:
 
     from shapiq.game import Game
     from shapiq.interaction_values import InteractionValues
+    from shapiq.typing import FloatVector
 
 __all__ = [
     "Approximator",
 ]
-
 
 ValidApproximationIndices = Literal[
     "SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII", "kADD-SHAP", "CHII"
@@ -50,7 +50,9 @@ class Approximator(ABC):
 
     """
 
-    valid_indices: tuple[ValidApproximationIndices] = tuple(get_args(ValidApproximationIndices))
+    valid_indices: tuple[ValidApproximationIndices, ...] = tuple(
+        get_args(ValidApproximationIndices)
+    )
     """The valid indices for the base approximator."""
 
     @abstractmethod
@@ -63,7 +65,7 @@ class Approximator(ABC):
         top_order: bool,
         min_order: int = 0,
         pairing_trick: bool = False,
-        sampling_weights: np.ndarray[float] | None = None,
+        sampling_weights: FloatVector | None = None,
         random_state: int | None = None,
         initialize_dict: bool = True,
     ) -> None:
@@ -127,7 +129,7 @@ class Approximator(ABC):
 
         # set up random state and random number generators
         self._random_state: int | None = random_state
-        self._rng: np.random.Generator | None = np.random.default_rng(seed=self._random_state)
+        self._rng: np.random.Generator = np.random.default_rng(seed=self._random_state)
 
         # set up a coalition sampler
         self._big_M: int = 100_000_000  # large number for sampling weights
@@ -239,7 +241,7 @@ class Approximator(ABC):
                     weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
         return weight_vector / np.sum(weight_vector)
 
-    def _init_result(self, dtype: np.dtype | float = float) -> np.ndarray:
+    def _init_result(self, dtype: np.dtype | type[float] = float) -> np.ndarray:
         """Initializes the result array for the approximation.
 
         Initializes the result array. The result array is a 1D array of size n_interactions as

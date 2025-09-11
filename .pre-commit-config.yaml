@@ -16,3 +16,9 @@ repos:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
       - id: ruff-format
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.404
+    hooks:
+    - id: pyright
+      args: [--verbose, --venvpath=.]

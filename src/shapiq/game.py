@@ -6,7 +6,7 @@ import json
 import os
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -20,7 +20,13 @@ from shapiq.utils import (
 
 if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues
-    from shapiq.typing import CoalitionMatrix, GameValues, JSONType, MetadataBlock
+    from shapiq.typing import (
+        CoalitionMatrix,
+        CoalitionsTuples,
+        GameValues,
+        JSONType,
+        MetadataBlock,
+    )
 
     class GameJSONMetadata(TypedDict):
         """Metadata for the game loaded from JSON."""
@@ -159,7 +165,7 @@ class Game:
 
         # define storage variables
         self.game_values: dict[tuple[int, ...], float] = {}
-        self.n_players = n_players
+        self.n_players = n_players if n_players is not None else -1
 
         if path_to_values is not None:
             msg = (
@@ -168,14 +174,13 @@ class Game:
             )
             raise_deprecation_warning(message=msg, deprecated_in="1.3.1", removed_in="1.4.0")
 
-        if n_players is None and path_to_values is None:
+        if n_players == -1 and path_to_values is None:
             msg = "The number of players has to be provided if game is not loaded from values."
             raise ValueError(msg)
 
         # setup normalization of the game
         self.normalization_value = 0.0
         if normalize and path_to_values is None:
-            self.normalization_value = normalization_value
             if normalization_value is None:
                 # this is desired behavior, as in some cases normalization is set by the subclasses
                 # after init of the base Game class. For example, in the imputer classes.
@@ -187,6 +192,8 @@ class Game:
                     ),
                     stacklevel=2,
                 )
+            else:
+                self.normalization_value = normalization_value
 
         game_id = str(hash(self))[:8]
         self.game_id = f"{self.get_game_name()}_{game_id}"
@@ -205,7 +212,7 @@ class Game:
 
         # define player_names
         self.player_name_lookup: dict[str, int] = (
-            {name: i for i, name in enumerate(player_names)} if player_names is not None else None
+            {name: i for i, name in enumerate(player_names)} if player_names is not None else {}
         )
 
         self.verbose = verbose
@@ -279,9 +286,9 @@ class Game:
                 "normalization_value": self.normalization_value,
                 "precompute_flag": self._precompute_flag,
                 "precomputed": self.precomputed,
-                "player_names": list(self.player_name_lookup.keys())
-                if self.player_name_lookup
-                else None,
+                "player_names": (
+                    list(self.player_name_lookup.keys()) if self.player_name_lookup else None
+                ),
             },
             "data": {
                 safe_tuple_to_str(coalition): float(value)
@@ -390,26 +397,37 @@ class Game:
                 msg = "The values in the array of coalitions are not binary."
                 raise TypeError(msg)
             return coalitions
+
         # try for list of tuples
         if isinstance(coalitions, tuple):
-            coalitions = [coalitions]
+            tuple_list: list[tuple[int, ...]] | list[tuple[str, ...]] = cast(
+                list[tuple[int, ...]] | list[tuple[str, ...]], [coalitions]
+            )
+        else:
+            tuple_list: list[tuple[int, ...]] | list[tuple[str, ...]] = coalitions
+
         try:
             # convert list of tuples to one-hot encoding
-            return transform_coalitions_to_array(coalitions, self.n_players)
+            coalitions_int = cast(list[tuple[int, ...]], tuple_list)
+            return transform_coalitions_to_array(coalitions_int, self.n_players)
         except (IndexError, TypeError):
             pass
+
         # assuming str input
-        if self.player_name_lookup is None:
+        if not self.player_name_lookup:
             msg = "Player names are not provided. Cannot convert string to integer."
             raise ValueError(msg)
         try:
+            coalitions_str = cast(list[tuple[str, ...]], tuple_list)
             coalitions_from_str = []
-            for coalition in coalitions:
+            for coalition in coalitions_str:
                 coal_indices = sorted([self.player_name_lookup[player] for player in coalition])
                 coalitions_from_str.append(tuple(coal_indices))
             return transform_coalitions_to_array(coalitions_from_str, self.n_players)
         except Exception as error:
             raise TypeError(error_message) from error
+
+        raise TypeError(error_message)
 
     def __call__(
         self,
@@ -617,7 +635,7 @@ class Game:
             )
         else:
             # store as JSON file
-            self.to_json_file(path, **kwargs)
+            self.to_json_file(path, **kwargs)  # type: ignore[arg-type]
 
     def load_values(self, path: Path | str, *, precomputed: bool = False) -> None:
         """Loads the game values from the given path.
@@ -648,7 +666,7 @@ class Game:
 
     def _validate_and_set_players_from_save(self, n_players: int) -> None:
         """Validates and sets the number of players from the saved game."""
-        if self.n_players is not None and n_players != self.n_players:
+        if self.n_players not in (-1, n_players):
             msg = (
                 f"The number of players in the game ({self.n_players}) does not match the number "
                 f"of players in the saved game ({n_players})."
@@ -660,7 +678,7 @@ class Game:
         """Load game values from a npz archive file."""
         data = np.load(path)
         self._validate_and_set_players_from_save(data["n_players"])
-        coalition_lookup: list[tuple] = transform_array_to_coalitions(data["coalitions"])
+        coalition_lookup: CoalitionsTuples = transform_array_to_coalitions(data["coalitions"])
         self.game_values = {
             tuple(sorted(coal)): value
             for coal, value in zip(coalition_lookup, data["values"], strict=False)
@@ -676,7 +694,7 @@ class Game:
             **kwargs: Additional keyword arguments to pass to :meth:`~Game.to_json_file`.
 
         """
-        self.to_json_file(Path(path), **kwargs)
+        self.to_json_file(Path(path), **kwargs)  # type: ignore[arg-type]
 
     @classmethod
     def load(cls, path: Path | str, *, normalize: bool = True) -> Game:

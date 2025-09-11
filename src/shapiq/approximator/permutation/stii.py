@@ -15,6 +15,8 @@ from shapiq.utils import get_explicit_subsets, powerset
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+ValidPermutationSTIIIndices = Literal["STII"]
+
 
 class PermutationSamplingSTII(Approximator):
     """Permutation Sampling approximator for the Shapley Taylor Index (STII).
@@ -54,7 +56,7 @@ class PermutationSamplingSTII(Approximator):
 
     """
 
-    valid_indices: tuple[Literal["STII"]] = ("STII",)
+    valid_indices: tuple[ValidPermutationSTIIIndices, ...] = ("STII",)  # type: ignore[assignment]
 
     def __init__(
         self,

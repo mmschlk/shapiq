@@ -43,7 +43,7 @@ class KernelSHAPIQ(Regression):
 
     """
 
-    valid_indices: tuple[ValidKernelSHAPIQIndices] = tuple(get_args(ValidKernelSHAPIQIndices))
+    valid_indices: tuple[ValidKernelSHAPIQIndices, ...] = tuple(get_args(ValidKernelSHAPIQIndices))  # type: ignore[assignment]
     """The valid indices for the KernelSHAPIQ approximator."""
 
     def __init__(
@@ -114,7 +114,7 @@ class InconsistentKernelSHAPIQ(Regression):
 
     """
 
-    valid_indices: ValidKernelSHAPIQIndices = tuple(get_args(ValidKernelSHAPIQIndices))
+    valid_indices: tuple[ValidKernelSHAPIQIndices, ...] = tuple(get_args(ValidKernelSHAPIQIndices))  # type: ignore[assignment]
     """Valid indices for the InconsistentKernelSHAPIQ approximator."""
 
     def __init__(
