@@ -17,8 +17,9 @@ if TYPE_CHECKING:
 
     from sklearn.tree import DecisionTreeRegressor
 
-    from fixtures.tabular import TabularDataSet
     from shapiq.typing import NumericArray
+
+    from .fixtures.tabular import TabularDataSet
 
 
 @pytest.fixture(scope="module")
