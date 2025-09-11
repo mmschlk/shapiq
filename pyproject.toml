@@ -259,7 +259,7 @@ docs = [
     # TODO(mmschlk): remove the pin in ipython when we drop python 3.10 support and pin to
     # ipython>=9.0.0, since ipython==8.7.0 introduces a bug with parsing notebooks also discussed
     # here: https://github.com/spatialaudio/nbsphinx/issues/24
-    "ipython<8.7.0",
+    "ipython<8.38.0",
 ]
 dev = [
     "build>=1.2.2.post1",

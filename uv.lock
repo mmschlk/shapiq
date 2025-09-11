@@ -3631,7 +3631,7 @@ dev = [
     { name = "build", specifier = ">=1.2.2.post1" },
     { name = "commonmark" },
     { name = "furo" },
-    { name = "ipython", specifier = "<8.7.0" },
+    { name = "ipython", specifier = "<8.38.0" },
     { name = "ipywidgets" },
     { name = "myst-parser" },
     { name = "nbconvert" },
@@ -3654,7 +3654,7 @@ dev = [
 docs = [
     { name = "commonmark" },
     { name = "furo" },
-    { name = "ipython", specifier = "<8.7.0" },
+    { name = "ipython", specifier = "<8.38.0" },
     { name = "myst-parser" },
     { name = "nbconvert" },
     { name = "nbsphinx" },

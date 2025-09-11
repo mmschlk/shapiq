@@ -439,7 +439,7 @@ class InteractionValues:
             or self.max_order != other.max_order
             or self.min_order != other.min_order
             or self.n_players != other.n_players
-            or self.baseline_value != other.baseline_value
+            or not np.allclose(self.baseline_value, other.baseline_value)
         ):
             return False
         if not np.allclose(self.values, other.values):
@@ -490,10 +490,10 @@ class InteractionValues:
         if isinstance(other, InteractionValues):
             if self.index != other.index:  # different indices
                 msg = (
-                    f"Cannot add InteractionValues with different indices {self.index} and "
-                    f"{other.index}."
+                    f"The indices of the InteractionValues objects are different: "
+                    f"{self.index} != {other.index}. Addition might not be meaningful."
                 )
-                raise ValueError(msg)
+                warn(msg, stacklevel=2)
             if (
                 self.interaction_lookup != other.interaction_lookup
                 or self.n_players != other.n_players
