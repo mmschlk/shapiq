@@ -119,14 +119,13 @@ class MarginalImputer(Imputer):
         """
         n_coalitions = coalitions.shape[0]
         replacement_data = self._sample_replacement_data(self.sample_size)
-        sample_size = replacement_data.shape[0]
-        outputs = np.zeros((sample_size, n_coalitions))
-        imputed_data = np.tile(np.copy(self._x), (n_coalitions, 1))
-        for j in range(sample_size):
-            for i in range(n_coalitions):
-                imputed_data[i, ~coalitions[i]] = replacement_data[j, ~coalitions[i]]
+        outputs = np.zeros((self.sample_size, n_coalitions))
+        imputed_data = np.tile(self._x, (n_coalitions, 1))
+        for i in range(self.sample_size):
+            replacements = np.tile(replacement_data[i], (n_coalitions, 1))
+            imputed_data[~coalitions] = replacements[~coalitions]
             predictions = self.predict(imputed_data)
-            outputs[j] = predictions
+            outputs[i] = predictions
         outputs = np.mean(outputs, axis=0)  # average over the samples
         # insert the better approximate empty prediction for the empty coalitions
         outputs[~np.any(coalitions, axis=1)] = self.empty_prediction
