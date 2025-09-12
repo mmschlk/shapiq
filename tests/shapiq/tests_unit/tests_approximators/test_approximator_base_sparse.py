@@ -18,9 +18,10 @@ from shapiq_games.synthetic import DummyGame
         (7, "FBII", None, False, "fourier", "Hard"),
         (7, "wrong_index", None, False, "fourier", "soft"),  # Should raise ValueError
         (7, "wrong_index", None, False, "fourier", "wrong_dec_type"),  # Should raise ValueError
-        (7, "FBII", None, False, "invalid_type", None),  # Should raise ValueError
         (7, "FBII", 6, False, "fourier", "soft"),
         (7, "FBII", 2, False, "fourier", "soft"),
+        (7, "FBII", 2, False, "fourier", "proxyspex"),
+        (7, "FBII", 2, False, "fourier", "Proxyspex"),
     ],
 )
 def test_initialization(n, index, max_order, top_order, transform_type, decoder_type):
@@ -49,9 +50,7 @@ def test_initialization(n, index, max_order, top_order, transform_type, decoder_
             )
         return
 
-    if decoder_type == "wrong_dec_type" or (
-        transform_type.lower() == "mobius" and decoder_type is not None
-    ):
+    if decoder_type == "wrong_dec_type" or transform_type.lower() == "mobius":
         with pytest.raises(ValueError):
             _ = Sparse(
                 n=n,
@@ -78,7 +77,7 @@ def test_initialization(n, index, max_order, top_order, transform_type, decoder_
     assert approximator.min_order == (max_order if top_order else 0)
     assert approximator.index == index
     assert approximator.transform_type == transform_type.lower()
-    if decoder_type is not None or transform_type.lower() == "fourier":
+    if decoder_type is not None and decoder_type.lower() != "proxyspex":
         channel_method = approximator.decoder_args["reconstruct_method_channel"]
         if channel_method is None or decoder_type.lower() == "soft":
             assert channel_method == "identity-siso"
