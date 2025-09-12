@@ -65,6 +65,7 @@ class Approximator(ABC):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray[float] | None = None,
         replacement: bool = True,
+        force_borders: bool = False,
         random_state: int | None = None,
         initialize_dict: bool = True,
     ) -> None:
@@ -139,6 +140,7 @@ class Approximator(ABC):
             sampling_weights=sampling_weights,
             pairing_trick=pairing_trick,
             replacement=replacement,
+            force_borders=force_borders,
             random_state=self._random_state,
         )
 

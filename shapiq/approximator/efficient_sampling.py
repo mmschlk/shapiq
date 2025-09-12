@@ -11,7 +11,7 @@ from scipy.special import binom
 from shapiq.utils.sets import powerset
 
 
-class CoalitionSampler:
+class ShapleySampler:
     """Coalition Sampler for handling coalition sampling in approximation methods.
 
     The coalition sampler to generate a collection of subsets as a basis for approximation
@@ -88,9 +88,8 @@ class CoalitionSampler:
         n_players: int,
         sampling_weights: np.ndarray,
         *,
-        pairing_trick: bool = False,
-        replacement: bool = True,
-        force_borders: bool = False,
+        pairing_trick: bool = True,
+        replacement: bool = False,
         random_state: int | None = None,
     ) -> None:
         """Initialize the coalition sampler.
@@ -110,7 +109,6 @@ class CoalitionSampler:
         """
         self.pairing_trick: bool = pairing_trick
         self.replacement: bool = replacement
-        self.force_borders: bool = force_borders
 
         # set sampling weights
         if not (sampling_weights >= 0).all():  # Check non-negativity of sampling weights
@@ -356,55 +354,28 @@ class CoalitionSampler:
             The sampling budget reduced by the number of coalitions in ``coalitions_to_compute``.
 
         """
-        if self.force_borders:
-            size = 1
-            n_coalitions = int(binom(self.n, size))
-            while sampling_budget >= 2 * n_coalitions:
-                coalitions_to_move = [
-                    self._coalitions_to_sample[0],
-                    self._coalitions_to_sample[-1],
-                ]
-                self._coalitions_to_compute.extend(
-                    [
-                        self._coalitions_to_sample.pop(self._coalitions_to_sample.index(move_this))
-                        for move_this in coalitions_to_move
-                    ],
-                )
-                sampling_budget -= 2 * n_coalitions
-                # set variables for new iteration
-                size += 1
-                n_coalitions = int(binom(self.n, size))
-
-            # cut and rescale sampling weights
-            self.adjusted_sampling_weights = self.adjusted_sampling_weights[
-                size - 1 : self.n - size
-            ] / np.sum(self.adjusted_sampling_weights[size - 1 : self.n - size])
-        else:
-            coalitions_per_size = np.array([binom(self.n, k) for k in range(self.n + 1)])
-            expected_number_of_coalitions = sampling_budget * self.adjusted_sampling_weights
-            sampling_exceeds_expectation = (
-                expected_number_of_coalitions >= coalitions_per_size[self._coalitions_to_sample]
+        size = 1
+        n_coalitions = int(binom(self.n, size))
+        while sampling_budget >= 2 * n_coalitions:
+            coalitions_to_move = [
+                self._coalitions_to_sample[0],
+                self._coalitions_to_sample[-1],
+            ]
+            self._coalitions_to_compute.extend(
+                [
+                    self._coalitions_to_sample.pop(self._coalitions_to_sample.index(move_this))
+                    for move_this in coalitions_to_move
+                ],
             )
-            while sampling_exceeds_expectation.any():
-                coalitions_to_move = [
-                    self._coalitions_to_sample[index]
-                    for index, include in enumerate(sampling_exceeds_expectation)
-                    if include
-                ]
-                self._coalitions_to_compute.extend(
-                    [
-                        self._coalitions_to_sample.pop(self._coalitions_to_sample.index(move_this))
-                        for move_this in coalitions_to_move
-                    ],
-                )
-                sampling_budget -= int(np.sum(coalitions_per_size[coalitions_to_move]))
-                self.adjusted_sampling_weights = self.adjusted_sampling_weights[
-                    ~sampling_exceeds_expectation
-                ] / np.sum(self.adjusted_sampling_weights[~sampling_exceeds_expectation])
-                expected_number_of_coalitions = sampling_budget * self.adjusted_sampling_weights
-                sampling_exceeds_expectation = (
-                    expected_number_of_coalitions >= coalitions_per_size[self._coalitions_to_sample]
-                )
+            sampling_budget -= 2 * n_coalitions
+            # set variables for new iteration
+            size += 1
+            n_coalitions = int(binom(self.n, size))
+
+        # cut and rescale sampling weights
+        self.adjusted_sampling_weights = self.adjusted_sampling_weights[
+            size - 1 : self.n - size
+        ] / np.sum(self.adjusted_sampling_weights[size - 1 : self.n - size])
         return sampling_budget
 
     def execute_pairing_trick(self, sampling_budget: int, coalition_tuple: tuple[int, ...]) -> int:
@@ -548,7 +519,6 @@ class CoalitionSampler:
         # Border-Trick: enumerate all coalitions, where the expected number of coalitions exceeds
         # the total number of coalitions of that size (i.e. binom(n_players, coalition_size))
         sampling_budget = self.execute_border_trick(sampling_budget)
-
         # Sort by size for esthetics
         self._coalitions_to_compute.sort(key=self._sort_coalitions)
 

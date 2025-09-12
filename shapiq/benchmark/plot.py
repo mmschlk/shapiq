@@ -39,16 +39,50 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
     "ShapleyGAX-2ADD": {"color": "#EF27A6", "marker": "o"},
     "ShapleyGAX-3ADD": {"color": "#00B4D8", "marker": "o"},
-    "ShapleyGAX-3ADD-Lev1": {"color": "#1A86E8", "marker": "o"},
-    "ShapleyGAX-2ADD-Lev1": {"color": "#F455C0", "marker": "o"},
+    "ShapleyGAX-3ADD-Lev1": {"color": "#0B3E73", "marker": "o"},
+    "ShapleyGAX-2ADD-Lev1": {"color": "#2F5B35", "marker": "o"},
     "ShapleyGAX-2ADD-Leverage2": {"color": "#ffba08", "marker": "o"},
-    "LeverageSHAP": {"color": "#7DCE82", "marker": "o"},
+    "ShapleyGAX-2ADD-10%": {"color": "#1A86E8", "marker": "o"},
+    "ShapleyGAX-2ADD-20%": {"color": "#7DCE82", "marker": "o"},
+    "ShapleyGAX-2ADD-50%": {"color": "black", "marker": "o"},
+    "ShapleyGAX-2ADD-P10%": {"color": "#7DCE82", "marker": "o"},
+    "ShapleyGAX-2ADD-P20%": {"color": "#57B46A", "marker": "o"},
+    "ShapleyGAX-2ADD-P50%": {"color": "#4B7B4E", "marker": "o"},
+    "ShapleyGAX-2ADD-P100%": {"color": "#2F5B35", "marker": "o"},
+    "ShapleyGAX-3ADDWO2-10%": {"color": "#1A86E8", "marker": "o"},
+    "ShapleyGAX-3ADDWO2-20%": {"color": "#7DCE82", "marker": "o"},
+    "ShapleyGAX-3ADDWO2-50%": {"color": "#4B7B4E", "marker": "o"},
+    "ShapleyGAX-3ADD-10%": {"color": "#7DCE82", "marker": "o"},
+    "ShapleyGAX-3ADD-20%": {"color": "#F455C0", "marker": "o"},
+    "ShapleyGAX-3ADD-50%": {"color": "#4B7B4E", "marker": "o"},
+    "ShapleyGAX-3ADD-P10%": {"color": "#1A86E8", "marker": "o"},
+    "ShapleyGAX-3ADD-P20%": {"color": "#4599ED", "marker": "o"},
+    "ShapleyGAX-3ADD-P50%": {"color": "#105AA3", "marker": "o"},
+    "ShapleyGAX-3ADD-P100%": {"color": "#0B3E73", "marker": "o"},
+    "ShapleyGAX-3ADDWO2-P10%": {"color": "#1A86E8", "marker": "o"},
+    "ShapleyGAX-3ADDWO2-P20%": {"color": "#4599ED", "marker": "o"},
+    "ShapleyGAX-3ADDWO2-P50%": {"color": "#105AA3", "marker": "o"},
+    "ShapleyGAX-3ADDWO2-P100%": {"color": "#0B3E73", "marker": "o"},
+    "ShapleyGAX-1SYM-Lev1": {"color": "#F455C0", "marker": "o"},
+    "ShapleyGAX-2SYM-Lev1": {"color": "#4B7B4E", "marker": "o"},
+    "ShapleyGAX-3ADD-WO2": {"color": "#EF27A6", "marker": "o"},
+    "ShapleyGAX-4ADD": {"color": "#EF27A6", "marker": "o"},
+    "ShapleyGAX-4ADD-Lev1": {"color": "#EF27A6", "marker": "o"},
+    "LeverageSHAP": {"color": "#ff6f00", "marker": "o"},
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
 LIGHT_GRAY = "#d3d3d3"
-LINE_STYLES_ORDER = {40: "solid", 39: "dashdot", 38: "solid", 37: "dashdot", 4: "dashdot", "all": "solid"}
-LINE_MARKERS_ORDER = {40: "o", 39: "o", 38: "X", 37: "X", 4: "d", "all": "o"}
+LINE_STYLES_ORDER = {
+    40: "solid",
+    39: "dashdot",
+    38: "solid",
+    37: "dashdot",
+    36: "solid",
+    4: "dashdot",
+    "all": "solid",
+}
+LINE_MARKERS_ORDER = {40: "o", 39: "o", 38: "X", 37: "X", 4: "d", "all": "o", 36: "o"}
 LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
@@ -233,14 +267,6 @@ def plot_approximation_quality(
     # get the metric data
     metric_data = get_metric_data(data, metric)
 
-    sorted_budget = list(data["budget"].sort_values(ascending=False).unique())
-
-    try:
-        y_lim_min_budget = sorted_budget[3] if sorted_budget[0] >= 2**17 else sorted_budget[2]
-    except IndexError:
-        y_lim_min_budget = sorted_budget[0]
-    # get min metric_value for y_lim
-
     # make sure orders is a list
     if orders is None:
         orders = np.unique(metric_data["id_config_approximator"])
@@ -261,48 +287,47 @@ def plot_approximation_quality(
     fig, ax = plt.subplots()
     approx_max_budget = 0
 
-    ids_config_approximator = metric_data["id_config_approximator"].unique()
-
     for approximator in approximators:
-            data_approximator = metric_data[metric_data["approximator"] == approximator].copy()
-            for order in data_approximator["id_config_approximator"].unique():
-                if orders is not None and order not in orders:
-                    continue
-                data_order = data_approximator[
-                    (metric_data["id_config_approximator"] == order)
-                ].copy()
+        data_approximator = metric_data[metric_data["approximator"] == approximator].copy()
+        for order in data_approximator["id_config_approximator"].unique():
+            if orders is not None and order not in orders:
+                continue
+            data_order = data_approximator[(metric_data["id_config_approximator"] == order)].copy()
 
-                if log_scale_y and log_scale_min is not None:
-                    # manually set all below log_scale_min to log_scale_min (to avoid log(0))
-                    data_order[aggregation] = data_order[aggregation].apply(
-                        lambda x: max(x, log_scale_min),
-                    )
-
-                # get the plot colors and styles
-                line_style, line_marker = LINE_STYLES_ORDER[order], LINE_MARKERS_ORDER[order]
-                color = STYLE_DICT[approximator]["color"]
-
-                # plot the mean values
-                ax.plot(
-                    data_order["used_budget"],
-                    data_order[aggregation],
-                    color=color,
-                    linestyle=line_style,
-                    marker=line_marker,
-                    linewidth=LINE_THICKNESS,
-                    mec="white",
-                    markersize=MARKER_SIZE,
+            if log_scale_y and log_scale_min is not None:
+                # manually set all below log_scale_min to log_scale_min (to avoid log(0))
+                data_order[aggregation] = data_order[aggregation].apply(
+                    lambda x: max(x, log_scale_min),
                 )
-                # plot the error bars if the confidence metric is not None
-                if confidence_metric is not None:
-                    ax.fill_between(
-                        data_order["used_budget"],
-                        data_order[aggregation] - data_order[confidence_metric_low],
-                        data_order[aggregation] + data_order[confidence_metric_high],
-                        alpha=0.1,
-                        color=color,
-                    )
-                approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
+
+            # get the plot colors and styles
+            line_style, line_marker = (
+                LINE_STYLES_ORDER[order],
+                LINE_MARKERS_ORDER[order],
+            )
+            color = STYLE_DICT[approximator]["color"]
+
+            # plot the mean values
+            ax.plot(
+                data_order["used_budget"],
+                data_order[aggregation],
+                color=color,
+                linestyle=line_style,
+                marker=line_marker,
+                linewidth=LINE_THICKNESS,
+                mec="white",
+                markersize=MARKER_SIZE,
+            )
+            # plot the error bars if the confidence metric is not None
+            if confidence_metric is not None:
+                ax.fill_between(
+                    data_order["used_budget"],
+                    data_order[aggregation] - data_order[confidence_metric_low],
+                    data_order[aggregation] + data_order[confidence_metric_high],
+                    alpha=0.1,
+                    color=color,
+                )
+            approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
 
     # add x/y labels
     ax.set_ylabel(metric)
@@ -316,15 +341,20 @@ def plot_approximation_quality(
         add_legend(ax, approximators, orders=orders)
 
     if log_scale_min is not None:
-        log_scale_min = max(log_scale_min,data_order[aggregation].min()/2)
+        log_scale_min = max(log_scale_min, data_order[aggregation].min() / 2)
         ax.set_ylim(bottom=log_scale_min)
     if log_scale_max is not None:
-        log_scale_max = min(log_scale_max, data_order[aggregation].max()*2)
+        log_scale_max = min(log_scale_max, data_order[aggregation].max() * 2)
         ax.set_ylim(top=log_scale_max)
     if log_scale_y:
         ax.set_yscale("log")
     # set the y-axis limits
-    if log_scale_y and metric not in METRICS_NOT_TO_LOG_SCALE and log_scale_min is not None and log_scale_max is not None:
+    if (
+        log_scale_y
+        and metric not in METRICS_NOT_TO_LOG_SCALE
+        and log_scale_min is not None
+        and log_scale_max is not None
+    ):
         _set_y_axis_log_scale(ax, log_scale_min, log_scale_max)
 
     # set the y-axis limits for specific metrics
@@ -343,7 +373,7 @@ def plot_approximation_quality(
         ax.spines["right"].set_visible(False)
 
     # resize the figure and remove padding
-    #plt.tight_layout()
+    # plt.tight_layout()
 
     return fig, ax
 
@@ -409,7 +439,9 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
     metric_dfs = []
     for metric_col in metric_columns:
         data_order = (
-            results_df.groupby(["approximator", "used_budget", "iteration","id_config_approximator"])
+            results_df.groupby(
+                ["approximator", "used_budget", "iteration", "id_config_approximator"]
+            )
             .agg(
                 {
                     metric_col: [
@@ -491,6 +523,8 @@ def add_legend(
                 desc = "WRepl, Pairs"
             if order == 37:
                 desc = "NoRepl, Pairs"
+            if order == 36:
+                desc = "NoRepl, Pairs, Borders"
             axis.plot(
                 [],
                 [],

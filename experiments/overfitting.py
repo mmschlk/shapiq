@@ -3,8 +3,11 @@ from __future__ import annotations
 import multiprocessing as mp
 
 import numpy as np
-from init_approximator import get_approximators
 
+from shapiq.approximator.regression.shapleygax import (
+    ExplanationBasisGenerator,
+    ShapleyGAX,
+)
 from shapiq.benchmark import load_games_from_configuration
 
 if __name__ == "__main__":
@@ -14,33 +17,22 @@ if __name__ == "__main__":
     )  # range(10,30) # ids of test instances to explain, can be used to compute new ids
     RANDOM_STATE = 40  # random state for the games
     # ID_CONFIG_APPROXIMATORS = 40  # PAIRING=False, REPLACEMENT=True
-    # ID_CONFIG_APPROXIMATORS = 39  # PAIRING_False, REPLACEMENT=False
+    ID_CONFIG_APPROXIMATORS = 39  # PAIRING_False, REPLACEMENT=False
     # ID_CONFIG_APPROXIMATORS = 38  # PAIRING=True, REPLACEMENT=True
-    ID_CONFIG_APPROXIMATORS = 39  # PAIRING=True, REPLACEMENT=False
-    # ID_CONFIG_APPROXIMATORS = (
-    #    36  # PAIRING=True, REPLACEMENT=False, FORCE_BORDERS = True
-    # )
+    # ID_CONFIG_APPROXIMATORS = 37  # PAIRING=True, REPLACEMENT=False
 
     if ID_CONFIG_APPROXIMATORS == 40:
         REPLACEMENT = True
         PAIRING = False
-        FORCE_BORDERS = False
     if ID_CONFIG_APPROXIMATORS == 39:
         REPLACEMENT = False
         PAIRING = False
-        FORCE_BORDERS = False
     if ID_CONFIG_APPROXIMATORS == 38:
         REPLACEMENT = True
         PAIRING = True
-        FORCE_BORDERS = False
     if ID_CONFIG_APPROXIMATORS == 37:
         REPLACEMENT = False
         PAIRING = True
-        FORCE_BORDERS = False
-    if ID_CONFIG_APPROXIMATORS == 36:
-        REPLACEMENT = False
-        PAIRING = True
-        FORCE_BORDERS = True
 
     RUN_GROUND_TRUTH = False
     RUN_APPROXIMATION = True
@@ -48,7 +40,7 @@ if __name__ == "__main__":
     GAME_IDENTIFIERS = [
         "SentimentIMDBDistilBERT14",
         "ResNet18w14Superpixel",
-        "ViT3by3Patches",
+        # "ViT3by3Patches",
         "ViT4by4Patches",
     ]  # , "ImageClassifierLocalXAI"]
     # game_identifier = "SOUM"
@@ -97,7 +89,7 @@ if __name__ == "__main__":
             for id_explain, game_instance in enumerate(game):
                 game_id = game_identifier + "_" + str(config_id)
                 save_path = (
-                    "ground_truth/exhaustive/"
+                    "ground_truth/overfitting/"
                     + game_id
                     + "_"
                     + str(RANDOM_STATE)
@@ -109,61 +101,53 @@ if __name__ == "__main__":
                 ground_truth.save(save_path)
                 print(f"Exact: {ground_truth} saved to {save_path}")
 
-    APPROXIMATORS = [
-        # "PermutationSampling",
-        # "KernelSHAP",
-        # "LeverageSHAP",
-        # "ShapleyGAX-2ADD",
-        # "ShapleyGAX-2ADD-Lev1",
-        # "ShapleyGAX-3ADD",
-        # "ShapleyGAX-3ADD-Lev1",
-        # "ShapleyGAX-3ADD-WO2",
-        # "ShapleyGAX-3ADDWO2-10%",
-        # "ShapleyGAX-3ADDWO2-20%",
-        # "ShapleyGAX-3ADDWO2-50%",
-        # "ShapleyGAX-4ADD",
-        # "ShapleyGAX-4ADD-Lev1",
-        # "ShapleyGAX-2ADD-10%",
-        # "ShapleyGAX-2ADD-20%",
-        # "ShapleyGAX-2ADD-50%",
-        # "ShapleyGAX-3ADD-10%",
-        # "ShapleyGAX-3ADD-20%",
-        # "ShapleyGAX-3ADD-50%",
-        # "ShapleyGAX-1SYM-Lev1",
-        # "ShapleyGAX-2SYM-Lev1",
-        # "ShapleyGAX-3ADDWO2-P10%",
-        "ShapleyGAX-3ADDWO2-P20%",
-        "ShapleyGAX-3ADDWO2-P50%",
-        "ShapleyGAX-3ADDWO2-P100%",
-        # "ShapleyGAX-2ADD-P10%",
-        # "ShapleyGAX-2ADD-P20%",
-        # "ShapleyGAX-2ADD-P50%",
-        # "ShapleyGAX-2ADD-P100%",
-        # "ShapleyGAX-3ADD-P10%",
-        # "ShapleyGAX-3ADD-P20%",
-        # "ShapleyGAX-3ADD-P50%",
-        # "ShapleyGAX-3ADD-P100%",
-    ]
-
-    MAX_BUDGET = 20000
-    N_BUDGET_STEPS = 10
+    MAX_BUDGET = 5000
 
     def explain_instance(args):
         game_id, id_explain, game_instance = args
-        approximators = get_approximators(
-            APPROXIMATORS,
-            game_instance.n_players,
-            RANDOM_STATE,
-            PAIRING,
-            REPLACEMENT,
-            FORCE_BORDERS,
-        )
-        # budget_range = np.linspace(min(500,2**game_instance.n_players/10), min(2 ** game_instance.n_players, MAX_BUDGET), N_BUDGET_STEPS).astype(int)
-        min_budget = min(50, 2**game_instance.n_players / 10)
-        max_budget = min(2**game_instance.n_players, MAX_BUDGET)
-        budget_range = np.logspace(
-            np.log10(min_budget), np.log10(max_budget), N_BUDGET_STEPS
-        ).astype(int)
+
+        # approximators = get_approximators(
+        #     APPROXIMATORS, game_instance.n_players, RANDOM_STATE, PAIRING, REPLACEMENT
+        # )
+        approximators = []
+        n_players = game_instance.n_players
+        explanation_basis = ExplanationBasisGenerator(N=set(range(n_players)))
+        # initialize the weights for KernelSHAP
+        kernelshap_weights = np.zeros(n_players + 1)
+        for size in range(1, n_players):
+            kernelshap_weights[size] = 1 / (size * (n_players - size))
+
+        # initialize the weights for LeverageSHAP
+        leverage_weights_1 = np.ones(n_players + 1)
+        k_exceed = False
+        for k in range(1, n_players + 1):
+            kadd = explanation_basis.generate_kadd_explanation_basis(max_order=k)
+            if k_exceed:
+                continue
+            if len(kadd) > MAX_BUDGET:
+                k_exceed = True
+            # ShapleyGAX with k-add explanation basis
+            shapley_gax_kadd = ShapleyGAX(
+                n=n_players,
+                explanation_basis=kadd,
+                random_state=RANDOM_STATE,
+                sampling_weights=kernelshap_weights,
+                pairing_trick=PAIRING,
+                replacement=REPLACEMENT,
+            )
+            shapley_gax_kadd.name = "ShapleyGAX-" + str(k) + "ADD"
+            approximators.append(shapley_gax_kadd)
+            shapley_gax_kadd_lev1 = ShapleyGAX(
+                n=n_players,
+                explanation_basis=kadd,
+                random_state=RANDOM_STATE,
+                sampling_weights=leverage_weights_1,
+                pairing_trick=PAIRING,
+                replacement=REPLACEMENT,
+            )
+            shapley_gax_kadd_lev1.name = "ShapleyGAX-" + str(k) + "ADD-Lev1"
+            approximators.append(shapley_gax_kadd_lev1)
+
         for approximator in approximators:
             print(
                 "Computing approximations for",
@@ -173,22 +157,21 @@ if __name__ == "__main__":
                 "explanation id",
                 id_explain,
             )
-            for budget in budget_range:
-                shap_approx = approximator.approximate(budget=budget, game=game_instance)
-                save_path = (
-                    "approximations/exhaustive/"
-                    + game_id
-                    + "_"
-                    + str(ID_CONFIG_APPROXIMATORS)
-                    + "_"
-                    + str(id_explain)
-                    + "_"
-                    + approximator.name
-                    + "_"
-                    + str(budget)
-                    + ".json"
-                )
-                shap_approx.save(save_path)
+            shap_approx = approximator.approximate(budget=MAX_BUDGET, game=game_instance)
+            save_path = (
+                "approximations/overfitting/"
+                + game_id
+                + "_"
+                + str(ID_CONFIG_APPROXIMATORS)
+                + "_"
+                + str(id_explain)
+                + "_"
+                + approximator.name
+                + "_"
+                + str(MAX_BUDGET)
+                + ".json"
+            )
+            shap_approx.save(save_path)
 
     if RUN_APPROXIMATION:
         N_JOBS = 5
