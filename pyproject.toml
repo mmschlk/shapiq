@@ -24,6 +24,7 @@ dependencies = [
     "networkx",
     "colour",
     "pillow",
+    "overrides>=7.7.0",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
