@@ -56,7 +56,7 @@ def generic_to_specific_explainer(
         max_order: The maximum interaction order to be computed.
         **kwargs: Additional keyword-only arguments passed to the specific explainer class.
     """
-    object.__class__ = explainer_cls
+    generic_explainer.__class__ = explainer_cls
     explainer_cls.__init__(
         generic_explainer,
         model=model,
