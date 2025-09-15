@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from shapiq.approximator.base import Approximator
 from shapiq.game import Game
 
 from .base import Explainer
@@ -16,7 +17,6 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-    from shapiq.approximator.base import Approximator
     from shapiq.interaction_values import InteractionValues
 
     from .tabular import TabularExplainerApproximators
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 AgnosticExplainerIndices = ExplainerIndices
 
 
-class AgnosticExplainer(Explainer):
+class AgnosticExplainer(Explainer[Approximator[AgnosticExplainerIndices], None, None]):
     """Agnostic Explainer for shapiq.
 
     This explainer is used to explain models that do not have a specific implementation in shapiq.
@@ -43,7 +43,9 @@ class AgnosticExplainer(Explainer):
         n_players: int | None = None,
         index: AgnosticExplainerIndices = "k-SII",
         max_order: int = 2,
-        approximator: Approximator | Literal["auto"] | TabularExplainerApproximators = "auto",
+        approximator: (
+            Approximator[AgnosticExplainerIndices] | Literal["auto"] | TabularExplainerApproximators
+        ) = "auto",
         random_state: int | None = None,
     ) -> None:
         """Initialize the AgnosticExplainer.
@@ -86,7 +88,7 @@ class AgnosticExplainer(Explainer):
         super().__init__(model=game, class_index=None)
 
         self.game = game
-        self.approximator = setup_approximator(
+        self.approximator: Approximator[AgnosticExplainerIndices] = setup_approximator(
             approximator=approximator,
             max_order=max_order,
             index=index,
@@ -126,5 +128,5 @@ class AgnosticExplainer(Explainer):
             if random_state is not None:
                 self.game.set_random_state(random_state=random_state)
         if random_state is not None:
-            self.approximator.set_random_state(random_state=random_state)  # pyright: ignore[reportOptionalMemberAccess] TODO(advueu963): Explainer has approximator None as possibility. Removing this would also make this ignore obsolete
-        return self.approximator.approximate(game=self.game, budget=budget)  # pyright: ignore[reportOptionalMemberAccess] TODO(advueu963): Explainer has approximator None as possibility. Removing this would also make this ignore obsolete
+            self.approximator.set_random_state(random_state=random_state)
+        return self.approximator.approximate(game=self.game, budget=budget)

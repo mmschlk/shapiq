@@ -112,14 +112,11 @@ def setup_approximator_automatically(
     Returns:
         The selected approximator.
     """
-    # TODO(advueu963): To remove ignore for the index we would need to ensure that we are only giving the correct indices to the model. This can be done by changing the type to be a ValidApproximatorIndex and then check in the initialisation whether they are supported. If not throw an error. # noqa: TD003
-
-    if choose_spex(max_order=max_order, n_players=n_players):
-        # Only pass index if it is a ValidSparseIndices
+    if choose_spex(max_order=max_order, n_players=n_players) and index in SPEX.valid_indices:
         return SPEX(
             n=n_players,
             max_order=max_order,
-            index=index,  # pyright: ignore[reportArgumentType]
+            index=index,
             random_state=random_state,
         )
     if index == "SV" or (max_order == 1 and (index == "SV" or index_generalizes_sv(index))):
@@ -130,20 +127,23 @@ def setup_approximator_automatically(
         return RegressionFSII(n=n_players, max_order=max_order, random_state=random_state)
     if index == "FBII":
         return RegressionFBII(n=n_players, max_order=max_order, random_state=random_state)
-    if index in {"SII", "k-SII"}:
+    if index in KernelSHAPIQ.valid_indices:
         return KernelSHAPIQ(
             n=n_players,
             max_order=max_order,
-            index=index,  # pyright: ignore[reportArgumentType]
+            index=index,
             random_state=random_state,
         )
-    return SVARMIQ(
-        n=n_players,
-        max_order=max_order,
-        top_order=False,
-        random_state=random_state,
-        index=index,  # pyright: ignore[reportArgumentType]
-    )
+    if index in SVARMIQ.valid_indices:
+        return SVARMIQ(
+            n=n_players,
+            max_order=max_order,
+            top_order=False,
+            random_state=random_state,
+            index=index,
+        )
+    msg = f"Could not set up approximator automatically for index {index}."
+    raise ValueError(msg)
 
 
 def setup_approximator(
@@ -199,13 +199,12 @@ def setup_approximator(
         approximator_cls: type[Approximator] = approximator
 
     # initialize the approximator class with params
-    # TODO(advueue963): Again here the ignore can be removed if we somehow check whether the index is supported by the Approximator. Probably __init__?? # noqa: TD003
     if issubclass(approximator_cls, Regression):
         return approximator_cls(
             n=n_players,
             max_order=max_order,
             random_state=random_state,
-            index=index,  # pyright: ignore[reportArgumentType]
+            index=index,
         )
     return approximator_cls(
         n=n_players,

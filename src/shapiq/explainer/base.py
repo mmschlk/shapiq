@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from tqdm.auto import tqdm
+
+from shapiq.approximator.base import Approximator
+from shapiq.game_theory import ExactComputer
+from shapiq.imputer.base import Imputer
 
 from .utils import (
     get_explainers,
@@ -20,17 +24,57 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-    from shapiq.approximator.base import Approximator
     from shapiq.game import Game
-    from shapiq.game_theory import ExactComputer
-    from shapiq.imputer.base import Imputer
     from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
 
     from .custom_types import ExplainerIndices
 
 
-class Explainer:
+def generic_to_specific_explainer(
+    generic_explainer: Explainer,
+    explainer_cls: type[Explainer],
+    model: Model | Game | Callable[[np.ndarray], np.ndarray],
+    data: np.ndarray | None = None,
+    class_index: int | None = None,
+    index: ExplainerIndices = "k-SII",
+    max_order: int = 2,
+    **kwargs: Any,
+) -> None:
+    """Transform the base Explainer instance into a specific explainer subclass.
+
+    This function modifies the class of the given object to the specified explainer class and
+    initializes it with the provided parameters.
+
+    Args:
+        generic_explainer: The base Explainer instance to be transformed.
+        explainer_cls: The specific explainer subclass to transform into.
+        model: The model object to be explained.
+        data: A background dataset to be used for imputation.
+        class_index: The class index of the model to explain.
+        index: The type of Shapley interaction index to use.
+        max_order: The maximum interaction order to be computed.
+        **kwargs: Additional keyword-only arguments passed to the specific explainer class.
+    """
+    object.__class__ = explainer_cls
+    explainer_cls.__init__(
+        generic_explainer,
+        model=model,
+        data=data,
+        class_index=class_index,
+        index=index,
+        max_order=max_order,
+        **kwargs,
+    )
+
+
+# Type variables for the generic Explainer class.
+TApprox = TypeVar("TApprox", Approximator, None)
+TImputer = TypeVar("TImputer", Imputer, None)
+TExact = TypeVar("TExact", ExactComputer, None)
+
+
+class Explainer(Generic[TApprox, TImputer, TExact]):
     """The main Explainer class for a simpler user interface.
 
     shapiq.Explainer is a simplified interface for the ``shapiq`` package. It detects between
@@ -40,17 +84,18 @@ class Explainer:
     different explainers, see the respective classes.
     """
 
-    approximator: Approximator | None
-    """The approximator which may be used for the explanation."""
+    approximator: TApprox
+    """The approximator which may be used for the explanation (or None in the base class)."""
 
-    exact_computer: ExactComputer | None
+    exact_computer: TExact
     """An exact computer which computes the :class:`~shapiq.interaction_values.InteractionValues`
-    exactly (without the need for approximations). Note that this only works for small number of
+    exactly (or None in the base class). Note that this only works for small number of
     features as the number of coalitions grows exponentially with the number of features.
     """
 
-    imputer: Imputer | None
-    """An imputer which is used to impute missing values in computing the interaction values."""
+    imputer: TImputer
+    """An imputer which is used to impute missing values in computing the interaction values
+    (or None in the base class)."""
 
     model: Model | Game | Callable[[np.ndarray], np.ndarray]
     """The model to be explained, either as a Model instance or a callable function."""
@@ -104,10 +149,9 @@ class Explainer:
             explainer_classes = get_explainers()
             if model_type in explainer_classes:
                 explainer_cls = explainer_classes[model_type]
-                # TODO(advueu963): Ignore would be removable if we would put the conversion into its own little function # noqa: TD003
-                self.__class__ = explainer_cls  # pyright: ignore[reportAttributeAccessIssue]
-                explainer_cls.__init__(
+                generic_to_specific_explainer(
                     self,
+                    explainer_cls,
                     model=model,
                     data=data,
                     class_index=class_index,
@@ -133,11 +177,6 @@ class Explainer:
 
         # validate index and max_order and set them as attributes
         self._index, self._max_order = validate_index_and_max_order(index, max_order)
-
-        # set the class attributes
-        self.approximator = None
-        self.exact_computer = None
-        self.imputer = None
 
     @property
     def index(self) -> ExplainerIndices:

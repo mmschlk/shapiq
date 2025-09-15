@@ -7,8 +7,10 @@ from warnings import warn
 
 from overrides import overrides
 
+from shapiq.approximator.base import Approximator
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory.indices import is_empty_value_the_baseline
+from shapiq.imputer.base import Imputer
 
 from .configuration import setup_approximator
 from .custom_types import ExplainerIndices
@@ -16,8 +18,6 @@ from .custom_types import ExplainerIndices
 if TYPE_CHECKING:
     import numpy as np
 
-    from shapiq.approximator.base import Approximator
-    from shapiq.imputer.base import Imputer
     from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
 
@@ -27,7 +27,7 @@ TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
 TabularExplainerIndices = ExplainerIndices
 
 
-class TabularExplainer(Explainer):
+class TabularExplainer(Explainer[Approximator[TabularExplainerIndices], Imputer, None]):
     """The tabular explainer as the main interface for the shapiq package.
 
     The ``TabularExplainer`` class is the main interface for the ``shapiq`` package and tabular
@@ -50,7 +50,9 @@ class TabularExplainer(Explainer):
         *,
         class_index: int | None = None,
         imputer: Imputer | TabularExplainerImputers = "marginal",
-        approximator: Literal["auto"] | TabularExplainerApproximators | Approximator = "auto",
+        approximator: Literal["auto"]
+        | TabularExplainerApproximators
+        | Approximator[TabularExplainerIndices] = "auto",
         index: TabularExplainerIndices = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
@@ -115,7 +117,6 @@ class TabularExplainer(Explainer):
             TabPFNImputer,
         )
 
-        # TODO(advueu963): Imputer and Approximator are not allowed None. Explainer allows them also to be None. Therefore it might be appropriate for an additional subclass of Explainer to distinguish between Explainers needing Imputer & Approximator and those which do not (TreeExplainer) # noqa: TD003
         super().__init__(model, data, class_index, index=index, max_order=max_order)
 
         # get class for self
@@ -153,7 +154,7 @@ class TabularExplainer(Explainer):
         elif isinstance(
             imputer, MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer
         ):
-            self.imputer: Imputer = imputer  # pyright: ignore[reportIncompatibleVariableOverride]
+            self.imputer: Imputer = imputer
         else:
             msg = (
                 f"Invalid imputer {imputer}. "
@@ -164,14 +165,12 @@ class TabularExplainer(Explainer):
         self._n_features: int = self._data.shape[1]
         self.imputer.verbose = verbose  # set the verbose flag for the imputer
 
-        self.approximator: Approximator = (  # pyright: ignore[reportIncompatibleVariableOverride]
-            setup_approximator(
-                approximator,
-                self._index,  # pyright: ignore[reportArgumentType] TODO(advueu963): Think about adding a Conversion dictionary for index
-                self._max_order,
-                self._n_features,
-                random_state,
-            )
+        self.approximator: Approximator[TabularExplainerIndices] = setup_approximator(
+            approximator,
+            self.index,
+            self._max_order,
+            self._n_features,
+            random_state,
         )
 
     @overrides
