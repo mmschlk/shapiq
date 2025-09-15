@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 ValidSparseIndices = ValidMoebiusConverterIndices
 
 
-class Sparse(Approximator):
+class Sparse(Approximator[ValidSparseIndices]):
     """Approximator interface using sparse transformation techniques.
 
     This class implements a sparse approximation method for computing various interaction indices

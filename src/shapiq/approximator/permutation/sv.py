@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 ValidPermutationSTIIIndices = Literal["SV"]
 
 
-class PermutationSamplingSV(Approximator):
+class PermutationSamplingSV(Approximator[ValidPermutationSTIIIndices]):
     """The Permutation Sampling algorithm for estimating the Shapley values.
 
     Permutation Sampling [1]_ (also known as ApproShapley) estimates the Shapley values by drawing
@@ -41,7 +41,7 @@ class PermutationSamplingSV(Approximator):
 
     """
 
-    valid_indices: tuple[ValidPermutationSTIIIndices, ...] = ("SV",)  # type: ignore[assignment]
+    valid_indices: tuple[ValidPermutationSTIIIndices, ...] = ("SV",)
 
     def __init__(
         self,

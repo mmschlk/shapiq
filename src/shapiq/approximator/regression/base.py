@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import warnings
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, get_args
 
 import numpy as np
 from scipy.special import bernoulli, binom
@@ -21,8 +21,10 @@ if TYPE_CHECKING:
 
 ValidRegressionIndices = Literal["SV", "SII", "k-SII", "FSII", "kADD-SHAP", "BV", "FBII"]
 
+TIndices = TypeVar("TIndices", bound=ValidRegressionIndices)
 
-class Regression(Approximator):
+
+class Regression(Approximator[TIndices]):
     """This class is the base class for all regression approximators.
 
     Regression approximators are based on a representation of the interaction index as a solution
@@ -30,7 +32,7 @@ class Regression(Approximator):
     and then solved exactly. For the Shapley value this method is known as KernelSHAP.
     """
 
-    valid_indices: tuple[ValidRegressionIndices, ...] = tuple(get_args(ValidRegressionIndices))  # type: ignore[assignment]
+    valid_indices: tuple[TIndices, ...] = tuple(get_args(ValidRegressionIndices))
     """The valid indices for the regression approximator. Overrides the valid indices of the base
     class Approximator."""
 
@@ -38,7 +40,7 @@ class Regression(Approximator):
         self,
         n: int,
         max_order: int,
-        index: ValidRegressionIndices,
+        index: TIndices,
         *,
         sii_consistent: bool = True,
         pairing_trick: bool = False,

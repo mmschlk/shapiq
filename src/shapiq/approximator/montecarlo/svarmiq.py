@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, get_args
 
 from .base import MonteCarlo, ValidMonteCarloIndices
 
 if TYPE_CHECKING:
     from shapiq.typing import FloatVector
 
+TIndices = TypeVar("TIndices", bound=ValidMonteCarloIndices)
+"""A type variable for the valid indices of the MonteCarlo approximator."""
 
-class SVARMIQ(MonteCarlo):
+
+class SVARMIQ(MonteCarlo[ValidMonteCarloIndices]):
     """The SVARM-IQ [Kol24a]_ approximator for Shapley interactions.
 
     SVARM-IQ utilizes MonteCarlo approximation with two stratification strategies. SVARM-IQ is a
@@ -59,7 +62,7 @@ class SVARMIQ(MonteCarlo):
         """
         super().__init__(
             n,
-            max_order,
+            max_order=max_order,
             index=index,
             top_order=top_order,
             stratify_coalition_size=True,
@@ -73,7 +76,7 @@ class SVARMIQ(MonteCarlo):
 ValidIndicesSVARM = Literal["SV", "BV"]
 
 
-class SVARM(SVARMIQ):
+class SVARM(MonteCarlo[ValidIndicesSVARM]):
     """The SVARM [Kol24]_ approximator for estimating the Shapley value (SV).
 
     SVARM is a MonteCarlo approximation algorithm that estimates the Shapley value. For details
@@ -84,7 +87,7 @@ class SVARM(SVARMIQ):
 
     """
 
-    valid_indices: tuple[ValidIndicesSVARM, ...] = tuple(get_args(ValidIndicesSVARM))  # type: ignore[assignment]
+    valid_indices: tuple[ValidIndicesSVARM, ...] = tuple(get_args(ValidIndicesSVARM))
     """The valid indices for the SVARM approximator."""
 
     def __init__(
@@ -121,7 +124,9 @@ class SVARM(SVARMIQ):
             max_order=1,
             index=index,
             top_order=False,
+            stratify_coalition_size=True,
+            stratify_intersection=True,
             random_state=random_state,
-            pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,
+            pairing_trick=pairing_trick,
         )

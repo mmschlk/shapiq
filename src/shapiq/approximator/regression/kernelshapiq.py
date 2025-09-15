@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 ValidKernelSHAPIQIndices = Literal["k-SII", "SII", "SV"]
 
 
-class KernelSHAPIQ(Regression):
+class KernelSHAPIQ(Regression[ValidKernelSHAPIQIndices]):
     """The KernelSHAP-IQ regression approximator.
 
     The KernelSHAP-IQ regression approximator for estimating the Shapley interaction index (SII)
@@ -86,7 +86,7 @@ class KernelSHAPIQ(Regression):
         )
 
 
-class InconsistentKernelSHAPIQ(Regression):
+class InconsistentKernelSHAPIQ(Regression[ValidKernelSHAPIQIndices]):
     """The Inconsistent KernelSHAP-IQ regression approximator.
 
     The Inconsistent KernelSHAP-IQ regression approximator for estimating the Shapley interaction

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 ValidRegressionKernelSHAIndices = Literal["SV"]
 
 
-class KernelSHAP(Regression):
+class KernelSHAP(Regression[ValidRegressionKernelSHAIndices]):
     """The KernelSHAP regression approximator for estimating the Shapley values.
 
     The KernelSHAP approximator is described in Lundberg and Lee (2017)[1]_. The method estimates

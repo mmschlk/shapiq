@@ -9,10 +9,10 @@ from .base import Regression
 if TYPE_CHECKING:
     import numpy as np
 
-ValidRegressionkADDSHAPndices = Literal["kADD-SHAP"]
+ValidRegressionkADDSHAPIndices = Literal["kADD-SHAP"]
 
 
-class kADDSHAP(Regression):  # noqa: N801
+class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
     """The kADD-SHAP regression approximator for estimating the kADD-SHAP values.
 
     Estimates the kADD-SHAP values using the kADD-SHAP regression algorithm. The Algorithm is
@@ -34,7 +34,7 @@ class kADDSHAP(Regression):  # noqa: N801
 
     """
 
-    valid_indices: tuple[ValidRegressionkADDSHAPndices, ...] = ("kADD-SHAP",)  # type: ignore[assignment]
+    valid_indices = ("kADD-SHAP",)
     """The valid indices for this approximator."""
 
     def __init__(

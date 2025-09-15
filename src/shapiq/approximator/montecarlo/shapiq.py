@@ -7,7 +7,7 @@ KernelSHAP is a more specific variant of the ShapIQ interaction method.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 from .base import MonteCarlo, ValidMonteCarloIndices
 
@@ -15,7 +15,11 @@ if TYPE_CHECKING:
     from shapiq.typing import FloatVector
 
 
-class SHAPIQ(MonteCarlo):
+TIndices = TypeVar("TIndices", bound=ValidMonteCarloIndices)
+"""A type variable for the valid indices of the MonteCarlo approximator."""
+
+
+class SHAPIQ(MonteCarlo[TIndices]):
     """SHAP-IQ approximator for estimating Shapley interactions.
 
     The SHAP-IQ estimator [Fum23]_ is a MonteCarlo approximation algorithm that estimates Shapley
@@ -48,7 +52,7 @@ class SHAPIQ(MonteCarlo):
         self,
         n: int,
         max_order: int = 2,
-        index: ValidMonteCarloIndices = "k-SII",
+        index: TIndices = "k-SII",
         *,
         top_order: bool = False,
         sampling_weights: FloatVector | None = None,
@@ -97,7 +101,7 @@ class SHAPIQ(MonteCarlo):
 ValidUnbiasedKernelSHAPIndices = Literal["SV"]
 
 
-class UnbiasedKernelSHAP(SHAPIQ):
+class UnbiasedKernelSHAP(SHAPIQ[ValidUnbiasedKernelSHAPIndices]):
     """The Unbiased KernelSHAP approximator for estimating the Shapley value (SV).
 
     The Unbiased KernelSHAP estimator [Cov21a]_ is a variant of the KernelSHAP estimator (though
@@ -132,7 +136,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
 
     """
 
-    valid_indices: tuple[ValidUnbiasedKernelSHAPIndices, ...] = ("SV",)  # type: ignore[assignment]
+    valid_indices: tuple[ValidUnbiasedKernelSHAPIndices, ...] = ("SV",)
     """Valid indices for the UnbiasedKernelSHAP approximator."""
 
     def __init__(

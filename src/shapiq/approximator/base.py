@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, get_args
 
 import numpy as np
 from scipy.special import binom
@@ -28,8 +28,10 @@ ValidApproximationIndices = Literal[
     "SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII", "kADD-SHAP", "CHII"
 ]
 
+TIndices = TypeVar("TIndices", bound=ValidApproximationIndices)
 
-class Approximator(ABC):
+
+class Approximator(ABC, Generic[TIndices]):
     """This class is the base class for all approximators.
 
     Approximators are used to estimate the interaction values of a model or any value function.
@@ -50,9 +52,7 @@ class Approximator(ABC):
 
     """
 
-    valid_indices: tuple[ValidApproximationIndices, ...] = tuple(
-        get_args(ValidApproximationIndices)
-    )
+    valid_indices: tuple[TIndices, ...] = tuple(get_args(ValidApproximationIndices))
     """The valid indices for the base approximator."""
 
     @abstractmethod
@@ -60,7 +60,7 @@ class Approximator(ABC):
         self,
         n: int,
         max_order: int,
-        index: ValidApproximationIndices,
+        index: TIndices,
         *,
         top_order: bool,
         min_order: int = 0,
@@ -104,7 +104,7 @@ class Approximator(ABC):
             raise ValueError(msg)
 
         # check if index can be approximated
-        self.index: str = index
+        self.index: TIndices = index
         self.approximation_index: str = get_computation_index(index)
 
         # get approximation parameters

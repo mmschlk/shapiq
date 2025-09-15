@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 ValidPermutationSTIIIndices = Literal["STII"]
 
 
-class PermutationSamplingSTII(Approximator):
+class PermutationSamplingSTII(Approximator[ValidPermutationSTIIIndices]):
     """Permutation Sampling approximator for the Shapley Taylor Index (STII).
 
     See Also:
@@ -56,7 +56,7 @@ class PermutationSamplingSTII(Approximator):
 
     """
 
-    valid_indices: tuple[ValidPermutationSTIIIndices, ...] = ("STII",)  # type: ignore[assignment]
+    valid_indices: tuple[ValidPermutationSTIIIndices, ...] = ("STII",)
 
     def __init__(
         self,

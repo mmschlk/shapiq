@@ -16,7 +16,7 @@ ValidRegressionFSIIIndices = Literal["FSII", "SV"]
 ValidRegressionFBIIIndices = Literal["FBII", "BV"]
 
 
-class RegressionFSII(Regression):
+class RegressionFSII(Regression[ValidRegressionFSIIIndices]):
     """Estimates the FSII values using KernelSHAP.
 
     The Faithful KernelSHAP regression is described in Tsai et al. (2023) [Tsa23]_. The method
@@ -77,7 +77,7 @@ class RegressionFSII(Regression):
         )
 
 
-class RegressionFBII(Regression):
+class RegressionFBII(Regression[ValidRegressionFBIIIndices]):
     """Estimates the FBII values using KernelSHAP.
 
     The Faithful KernelSHAP regression is described in Tsai et al. (2023) [Tsa23a]_. The method

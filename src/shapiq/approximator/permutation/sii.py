@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 ValidPermutationSIIIndices = Literal["SII", "k-SII"]
 
 
-class PermutationSamplingSII(Approximator):
+class PermutationSamplingSII(Approximator[ValidPermutationSIIIndices]):
     """Permutation Sampling approximator for the SII (and k-SII) index.
 
     See Also:
@@ -28,7 +28,7 @@ class PermutationSamplingSII(Approximator):
     """
 
     #: override the valid indices for this approximator
-    valid_indices: tuple[ValidPermutationSIIIndices, ...] = tuple(  # type: ignore[assignment]
+    valid_indices: tuple[ValidPermutationSIIIndices, ...] = tuple(
         get_args(ValidPermutationSIIIndices)
     )
     """The valid indices for this permutation sampling approximator."""
