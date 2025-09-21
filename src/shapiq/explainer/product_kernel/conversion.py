@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from shapiq.explainer.product_kernel.base import ProductKernelModel
 
 if TYPE_CHECKING:
-    from shapiq.typing import Model
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.svm import SVC, SVR
 
 
-def convert_svm(model: Model) -> ProductKernelModel:
+def convert_svm(model: SVC | SVR) -> ProductKernelModel:
     """Converts a scikit-learn SVM model to the product kernel format used by shapiq.
 
     Args:
@@ -24,7 +27,7 @@ def convert_svm(model: Model) -> ProductKernelModel:
     n, d = X_train.shape
 
     if hasattr(model, "kernel"):
-        kernel_type = model.kernel
+        kernel_type = model.kernel  # pyright: ignore[reportAttributeAccessIssue]
         if kernel_type != "rbf":
             msg = "Currently only RBF kernel is supported for SVM models."
             raise ValueError(msg)
@@ -37,13 +40,13 @@ def convert_svm(model: Model) -> ProductKernelModel:
         X_train=X_train,
         n=n,
         d=d,
-        gamma=model._gamma,  # noqa: SLF001
+        gamma=model._gamma,  # pyright: ignore[reportAttributeAccessIssue] # noqa: SLF001
         kernel_type=kernel_type,
         intercept=model.intercept_[0],
-    )  # TODO (IsaH57): check if gamma is always needed or just when rbf is used (Issue #425)
+    )
 
 
-def convert_gp_reg(model: Model) -> ProductKernelModel:
+def convert_gp_reg(model: GaussianProcessRegressor) -> ProductKernelModel:
     """Converts a scikit-learn Gaussian Process Regression model to the product kernel format used by shapiq.
 
     Args:
@@ -53,7 +56,7 @@ def convert_gp_reg(model: Model) -> ProductKernelModel:
         ProductKernelModel: The converted model in the product kernel format.
 
     """
-    X_train = model.X_train_
+    X_train = np.array(model.X_train_)
     n, d = X_train.shape
 
     if hasattr(model, "kernel"):
@@ -65,11 +68,19 @@ def convert_gp_reg(model: Model) -> ProductKernelModel:
         msg = "Kernel type not found in the model. Ensure the model is a valid Gaussian Process Regressor."
         raise ValueError(msg)
 
+    alphas = np.array(model.alpha_).flatten()
+    parameters = model.kernel_.get_params()
+    if "length_scale" in parameters:
+        length_scale = parameters["length_scale"]
+    else:
+        msg = "Length scale parameter not found in the kernel."
+        raise ValueError(msg)
+
     return ProductKernelModel(
-        alpha=model.alpha_.flatten(),
+        alpha=alphas,
         X_train=X_train,
         n=n,
         d=d,
-        gamma=(2 * (model.kernel_.length_scale**2)) ** -1,
+        gamma=(2 * (length_scale**2)) ** -1,
         kernel_type=kernel_type,
     )

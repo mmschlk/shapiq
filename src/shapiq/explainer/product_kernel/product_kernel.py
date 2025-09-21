@@ -34,7 +34,7 @@ class ProductKernelComputer:
 
     def __init__(
         self,
-        model: dict | ProductKernelModel,
+        model: ProductKernelModel,
         *,
         max_order: int = 1,
         index: ProductKernelSHAPIQIndices = "SV",
