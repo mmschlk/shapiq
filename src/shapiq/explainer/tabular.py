@@ -150,7 +150,8 @@ class TabularExplainer(Explainer):
                 **kwargs,
             )
         elif isinstance(
-            imputer, MarginalImputer | GenerativeConditionalImputer | BaselineImputer | TabPFNImputer
+            imputer,
+            MarginalImputer | GenerativeConditionalImputer | BaselineImputer | TabPFNImputer,
         ):
             self.imputer = imputer
         else:

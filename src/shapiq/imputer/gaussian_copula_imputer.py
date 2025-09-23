@@ -1,16 +1,18 @@
 """Implements the Gaussian copula-based approach for imputation."""
 
 from __future__ import annotations
-import numpy as np
-from scipy.stats import norm, rankdata
 
 from typing import TYPE_CHECKING, cast
 from typing_extensions import override
+
+import numpy as np
+from scipy.stats import norm, rankdata
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     import numpy.typing as npt
+
     from shapiq import Game
 
 from .gaussian_imputer import GaussianImputer
@@ -78,9 +80,7 @@ class GaussianCopulaImputer(GaussianImputer):
         empirical_cdf = np.clip(
             empirical_cdf, self.QUANTILE_CLIP_EPSILON, 1 - self.QUANTILE_CLIP_EPSILON
         )
-        transformed = cast("npt.NDArray[np.floating]", norm.ppf(empirical_cdf))
-
-        return transformed
+        return cast("npt.NDArray[np.floating]", norm.ppf(empirical_cdf))
 
     def _empirical_cdf(self, data: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Computes the empirical cumulative distribution function for each feature of the given training data matrix.
@@ -102,9 +102,7 @@ class GaussianCopulaImputer(GaussianImputer):
             raise ValueError(msg)
 
         ranks = rankdata(data, axis=0, method="average")
-        ecdf = ranks / data.shape[0]
-
-        return ecdf
+        return ranks / data.shape[0]
 
     def _transform_point_to_gaussian(
         self,
@@ -129,9 +127,7 @@ class GaussianCopulaImputer(GaussianImputer):
         x_empirical_cdf = np.clip(
             x_empirical_cdf, self.QUANTILE_CLIP_EPSILON, 1 - self.QUANTILE_CLIP_EPSILON
         )
-        x_transformed = cast("npt.NDArray[np.floating]", norm.ppf(x_empirical_cdf))
-
-        return x_transformed
+        return cast("npt.NDArray[np.floating]", norm.ppf(x_empirical_cdf))
 
     def _empirical_cdf_point(
         self, data: npt.NDArray[np.floating], x: npt.NDArray[np.floating]
@@ -147,9 +143,7 @@ class GaussianCopulaImputer(GaussianImputer):
         """
         n_samples = data.shape[0]
         ranks = cast("npt.NDArray[np.integer]", np.sum(data <= x, axis=0))
-        ecdf = ranks / n_samples
-
-        return ecdf
+        return ranks / n_samples
 
     def _transform_from_gaussian(
         self, data_gaussian: npt.NDArray[np.floating]

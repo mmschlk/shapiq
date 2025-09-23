@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from shapiq.game import Game
-from shapiq.imputer import BaselineImputer, GenerativeConditionalImputer, MarginalImputer, TabPFNImputer
+from shapiq.imputer import (
+    BaselineImputer,
+    GenerativeConditionalImputer,
+    MarginalImputer,
+    TabPFNImputer,
+)
 
 from .utils import get_x_explain
 

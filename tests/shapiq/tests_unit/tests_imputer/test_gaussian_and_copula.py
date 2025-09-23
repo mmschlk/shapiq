@@ -5,9 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.imputer import GaussianImputer, GaussianCopulaImputer
+from shapiq.imputer import GaussianCopulaImputer, GaussianImputer
 from shapiq.imputer.gaussian_imputer_exceptions import CategoricalFeatureError
-
 
 
 @pytest.mark.parametrize("model_class", [GaussianImputer, GaussianCopulaImputer])

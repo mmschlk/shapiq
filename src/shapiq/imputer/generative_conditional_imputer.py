@@ -96,7 +96,7 @@ class GenerativeConditionalImputer(Imputer):
         if normalize:
             self.normalization_value = self.empty_prediction
 
-    def init_background(self, data: np.ndarray) -> ConditionalImputer:
+    def init_background(self, data: np.ndarray) -> GenerativeConditionalImputer:
         """Initializes the GenerativeConditionalImputer.
 
         Args:

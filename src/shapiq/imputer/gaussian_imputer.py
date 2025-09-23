@@ -1,15 +1,18 @@
 """Implements the Gaussian-based approach for imputation."""
 
 from __future__ import annotations
-import numpy as np
-from numpy.random import default_rng
 
 from typing import TYPE_CHECKING, cast
 from typing_extensions import override
 
+import numpy as np
+from numpy.random import default_rng
+
 if TYPE_CHECKING:
     from collections.abc import Callable
+
     import numpy.typing as npt
+
     from shapiq import Game
 
 from .base import Imputer
@@ -228,9 +231,7 @@ class GaussianImputer(Imputer):
         predictions = np.zeros((n_coalitions, self.sample_size))
         for i in range(n_coalitions):
             predictions[i] = self.predict(samples[i])
-        coalition_values = cast("npt.NDArray[np.floating]", np.mean(predictions, axis=1))
-
-        return coalition_values
+        return cast("npt.NDArray[np.floating]", np.mean(predictions, axis=1))
 
     def _draw_samples(
         self, x: npt.NDArray[np.floating], coalitions: npt.NDArray[np.bool]
