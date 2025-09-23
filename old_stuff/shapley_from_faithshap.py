@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 
 from shapiq import kADDSHAP
 from shapiq.approximator import SVARM, KernelSHAP
-from shapiq.approximator.regression.shapleygax import ShapleyGAX
+from shapiq.approximator.regression.polyshap import ShapleyGAX
 
 # plot the results
 from shapiq.benchmark import (
@@ -14,7 +14,9 @@ from shapiq.utils import powerset
 
 if __name__ == "__main__":
     # read these values from the configuration file / or the printed benchmark configurations
-    game_identifier = "SentimentAnalysisLocalXAI"  # explains the sentiment of a sentence
+    game_identifier = (
+        "SentimentAnalysisLocalXAI"  # explains the sentiment of a sentence
+    )
     # game_identifier = "ImageClassifierLocalXAI"
     # game_identifier = "SOUM"
     config_id = 1
@@ -22,7 +24,10 @@ if __name__ == "__main__":
     n_games = 2
 
     games = load_games_from_configuration(
-        game_class=game_identifier, n_player_id=n_player_id, config_id=config_id, n_games=n_games
+        game_class=game_identifier,
+        n_player_id=n_player_id,
+        config_id=config_id,
+        n_games=n_games,
     )
 
     games = list(games)  # convert to list (the generator is consumed)

@@ -8,7 +8,7 @@ from scipy.special import binom
 
 if __name__ == "__main__":
     # Load the results from the CSV file
-    results_df = pd.read_csv("results_benchmark.csv")
+    results_df = pd.read_csv("../experiments/results_benchmark.csv")
     results_df = results_df.sort_values(by="n_players")
 
     results_df = results_df[results_df["approximator"].str.contains("Lev1")]
@@ -23,7 +23,9 @@ if __name__ == "__main__":
     def binom_sum(k, n):
         return int(sum(binom(n, i) for i in range(k + 1)))
 
-    results_overfitting["approximator_order"] = results_overfitting["approximator"].apply(extract_k)
+    results_overfitting["approximator_order"] = results_overfitting[
+        "approximator"
+    ].apply(extract_k)
     results_overfitting["approximator_variables"] = results_overfitting.apply(
         lambda row: binom_sum(row["approximator_order"], row["n_players"]), axis=1
     )
@@ -102,9 +104,9 @@ if __name__ == "__main__":
             plt.ylabel("MSE")
             plt.xlabel("Size of Explanation Basis")
             plt.title(game_id, config_id)
-            orders_for_budgets = plot_df.drop_duplicates("approximator_variables").set_index(
+            orders_for_budgets = plot_df.drop_duplicates(
                 "approximator_variables"
-            )["x_label"]
+            ).set_index("approximator_variables")["x_label"]
             plt.xticks(
                 ticks=orders_for_budgets.index,  # positions = budgets
                 labels=orders_for_budgets.values,  # labels = orders

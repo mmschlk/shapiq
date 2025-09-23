@@ -50,6 +50,7 @@ class SHAPIQ(MonteCarlo):
         top_order: bool = False,
         sampling_weights: float | None = None,
         pairing_trick: bool = False,
+        replacement: bool = True,
         random_state: int | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
@@ -87,6 +88,7 @@ class SHAPIQ(MonteCarlo):
             stratify_intersection=False,
             random_state=random_state,
             sampling_weights=sampling_weights,
+            replacement=replacement,
             pairing_trick=pairing_trick,
         )
 
@@ -135,6 +137,7 @@ class UnbiasedKernelSHAP(SHAPIQ):
         *,
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
+        replacement: bool = True,
         random_state: int | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
@@ -161,5 +164,6 @@ class UnbiasedKernelSHAP(SHAPIQ):
             top_order=False,
             random_state=random_state,
             pairing_trick=pairing_trick,
+            replacement=replacement,
             sampling_weights=sampling_weights,
         )

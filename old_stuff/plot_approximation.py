@@ -5,12 +5,11 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 
-DATA_DIR = "results"
+DATA_DIR = "../results"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
 if __name__ == "__main__":
-
     metric = "SpearmanCorrelation"
 
     # get data
@@ -41,7 +40,7 @@ if __name__ == "__main__":
     plt.xlabel("Budget")
     plt.ylabel(metric)
     plt.legend()
-    plt.title(file_name +  f" (n: {n_images})")
+    plt.title(file_name + f" (n: {n_images})")
     # plt.ylim(0, 0.03)
 
     plt.show()

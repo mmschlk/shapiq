@@ -4,7 +4,7 @@ import multiprocessing as mp
 
 import numpy as np
 
-from shapiq.approximator.regression.shapleygax import (
+from shapiq.approximator.regression.polyshap import (
     ExplanationBasisGenerator,
     ShapleyGAX,
 )
@@ -157,7 +157,9 @@ if __name__ == "__main__":
                 "explanation id",
                 id_explain,
             )
-            shap_approx = approximator.approximate(budget=MAX_BUDGET, game=game_instance)
+            shap_approx = approximator.approximate(
+                budget=MAX_BUDGET, game=game_instance
+            )
             save_path = (
                 "approximations/overfitting/"
                 + game_id

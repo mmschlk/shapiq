@@ -43,6 +43,7 @@ class PermutationSamplingSV(Approximator):
         self,
         n: int,
         random_state: int | None = None,
+        pairing_trick: bool = False,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the Permutation Sampling approximator for Shapley values.
@@ -55,14 +56,17 @@ class PermutationSamplingSV(Approximator):
 
             **kwargs: Additional keyword arguments (not used for compatibility)
         """
-        super().__init__(n=n, max_order=1, index="SV", top_order=False, random_state=random_state)
+        super().__init__(
+            n=n, max_order=1, index="SV", top_order=False, random_state=random_state
+        )
         self.iteration_cost: int = n - 1
+        self.pairing_trick = pairing_trick
 
     def approximate(
         self,
         budget: int,
         game: Game | Callable[[np.ndarray], np.ndarray],
-        batch_size: int | None = 5,
+        batch_size: int | None = 4,
         *args: Any,  # noqa: ARG002
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
@@ -88,6 +92,14 @@ class PermutationSamplingSV(Approximator):
         counts: np.ndarray[int] = self._init_result(dtype=int)
 
         batch_size = 1 if batch_size is None else batch_size
+
+        if self.pairing_trick:
+            # throw warning if batch_size is odd
+            if batch_size % 2 != 0:
+                print(
+                    "Warning: batch_size is odd, but pairing_trick is enabled. Increasing batch_size by 1."
+                )
+                batch_size += 1
 
         # store the values of the empty and full coalition
         # this saves 2 evaluations per permutation
@@ -126,11 +138,24 @@ class PermutationSamplingSV(Approximator):
         for iteration in range(1, n_iterations + 1):
             batch_size = batch_size if iteration != n_iterations else last_batch_size
 
-            # create batch_size many permutations: two-dimensional matrix of shape (batch_size, n)
-            # each row is a permutation
-            permutations = np.tile(np.arange(self.n), (batch_size, 1))
-            self._rng.permuted(permutations, axis=1, out=permutations)
-            n_permutations = batch_size
+            # if pairing_trick, extend with reversed versions
+            if self.pairing_trick:
+                # create batch_size many permutations: two-dimensional matrix of shape (batch_size, n)
+                # each row is a permutation
+                permutations = np.tile(np.arange(self.n), (batch_size // 2, 1))
+                self._rng.permuted(permutations, axis=1, out=permutations)
+                reversed_permutations = np.flip(permutations, axis=1)
+                permutations = np.concatenate(
+                    [permutations, reversed_permutations], axis=0
+                )
+                n_permutations = 2 * (batch_size // 2)
+            else:
+                # create batch_size many permutations: two-dimensional matrix of shape (batch_size, n)
+                # each row is a permutation
+                permutations = np.tile(np.arange(self.n), (batch_size, 1))
+                self._rng.permuted(permutations, axis=1, out=permutations)
+                n_permutations = batch_size
+
             n_coalitions = n_permutations * self.iteration_cost
 
             # generate all coalitions to evaluate from permutations
@@ -159,7 +184,9 @@ class PermutationSamplingSV(Approximator):
                 counts[permutation_idx] += 1
                 # update the players in the middle of the permutation
                 for i in range(1, self.n - 1):
-                    marginal_con = game_values[coalition_index + 1] - game_values[coalition_index]
+                    marginal_con = (
+                        game_values[coalition_index + 1] - game_values[coalition_index]
+                    )
                     permutation_idx = self._interaction_lookup[(permutation[i],)]
                     result[permutation_idx] += marginal_con
                     counts[permutation_idx] += 1

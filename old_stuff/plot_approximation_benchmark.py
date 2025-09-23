@@ -6,8 +6,10 @@ import os
 import re
 
 if __name__ == "__main__":
-    GAMES_IDENTIFIER = ["AdultCensusLocalXAI"] #["SentimentAnalysisLocalXAI","ImageClassifierLocalXAI","AdultCensusLocalXAI"]
-    DATA_DIR = "data"
+    GAMES_IDENTIFIER = [
+        "AdultCensusLocalXAI"
+    ]  # ["SentimentAnalysisLocalXAI","ImageClassifierLocalXAI","AdultCensusLocalXAI"]
+    DATA_DIR = "../data"
     METRICS_TO_PLOT = ["Precision@10", "MSE", "KendallTau"]
 
     for game_identifier in GAMES_IDENTIFIER:
@@ -35,8 +37,18 @@ if __name__ == "__main__":
             results = pd.read_json(save_path)
 
             for metric in METRICS_TO_PLOT:
-                fig, ax = plot_approximation_quality(results, metric=metric,log_scale_y=True)                # set title for the plot
+                fig, ax = plot_approximation_quality(
+                    results, metric=metric, log_scale_y=True
+                )  # set title for the plot
                 ax.set_title(f"{game_identifier} with configuration {n_player_id}")
                 plt.tight_layout()
-                fig.savefig("experiments/plots/" + game_identifier +  "_" + n_player_id + "_"+metric+".png")
+                fig.savefig(
+                    "experiments/plots/"
+                    + game_identifier
+                    + "_"
+                    + n_player_id
+                    + "_"
+                    + metric
+                    + ".png"
+                )
                 fig.show()

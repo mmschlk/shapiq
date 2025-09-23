@@ -12,7 +12,7 @@ def make_file_paths(file_name: str, budget: int, experiment: str) -> tuple[str, 
     """Returns the file paths for stored game values and potential interaction values."""
     file_name = file_name.split(".")[0]  # remove any file extension if present
     file_name = f"{file_name}_budget={budget}_seed={RANDOM_SEED}.npz"
-    experiment_dir = os.path.join("results", experiment)
+    experiment_dir = os.path.join("../results", experiment)
     game_values_dir = os.path.join(experiment_dir, "game_values")
     os.makedirs(game_values_dir, exist_ok=True)
     interaction_values_dir = os.path.join(experiment_dir, "interaction_values")
@@ -51,7 +51,9 @@ def pre_compute_model_values(
         warn(f"The budget is not 1_000_000 (default) but {budget}. ")
 
     # get the file paths
-    file_path_game, file_path_interaction = make_file_paths(image_name, budget, experiment)
+    file_path_game, file_path_interaction = make_file_paths(
+        image_name, budget, experiment
+    )
 
     # check if the values are already computed
     if os.path.exists(file_path_game) and os.path.exists(file_path_interaction):
@@ -64,7 +66,7 @@ def pre_compute_model_values(
     if experiment == "vit":
         from experiment_vision_transformer import VisionTransformerGame
 
-        image_path = os.path.join("images", image_name)
+        image_path = os.path.join("../images", image_name)
         game = VisionTransformerGame(x_explain_path=image_path, verbose=True, **kwargs)
     else:
         raise ValueError(f"Unknown experiment {experiment}")
@@ -78,7 +80,9 @@ def pre_compute_model_values(
     print(f"Values saved to {file_path_game}")
 
     # compute the Shapley values for the game
-    print(f"Computing Shapley values for {game.__class__.__name__} with budget {budget}")
+    print(
+        f"Computing Shapley values for {game.__class__.__name__} with budget {budget}"
+    )
 
     # initialize the approximator again
     loaded_game = load_game_from_file(image_name, budget, experiment)

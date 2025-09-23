@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from typing import TYPE_CHECKING
+from scipy.special import comb
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+import matplotlib.ticker as ticker
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -16,14 +18,31 @@ if TYPE_CHECKING:
 
 __all__ = ["plot_approximation_quality"]
 
+DATA_NAMES = {
+    "breast_cancer": "Breast Cancer (d=30)",
+    "communities_and_crime": "Communities and Crime (d=122)",
+    "corrgroups60": "Corrgroups60 (d=60)",
+    "forest_fires": "Forest Fires (d=12)",
+    "independentlinear60": "Independent Linear60 (d=60)",
+    "nhanesi": "NHANES-I (d=20)",
+    "real_estate": "Real Estate (d=5)",
+    "wine_quality": "Wine Quality (d=11)",
+    "adult_census": "Adult Census (d=14)",
+    "california_housing": "California Housing (d=8)",
+    "bike_sharing": "Bike Sharing (d=16)",
+    "ViT4by4Patches": "ViT (d=16)",
+    "ViT3b3Patches": "ViT (d=9)",
+    "ResNet18w14Superpixel": "ResNet18 (d=14)",
+    "SentimentIMDBDistilBERT14": "DistilBERT (d=14)",
+}
+
 
 STYLE_DICT: dict[str, dict[str, str]] = {
     # permutation sampling
+    "PermutationSamplingSV": {"color": "#7f7f7f", "marker": "o"},
     "PermutationSamplingSII": {"color": "#7d53de", "marker": "o"},
     "PermutationSamplingSTII": {"color": "#7d53de", "marker": "o"},
-    "PermutationSamplingSV": {"color": "#7d53de", "marker": "o"},
     # KernelSHAP-IQ
-    "KernelSHAP": {"color": "#ff6f00", "marker": "o"},
     "KernelSHAPIQ": {"color": "#ff6f00", "marker": "o"},
     # inconsistent KernelSHAP-IQ
     "InconsistentKernelSHAPIQ": {"color": "#ffba08", "marker": "o"},
@@ -37,47 +56,36 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     # misc SV
     "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
     "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
-    "ShapleyGAX-2ADD": {"color": "#EF27A6", "marker": "o"},
-    "ShapleyGAX-3ADD": {"color": "#00B4D8", "marker": "o"},
-    "ShapleyGAX-3ADD-Lev1": {"color": "#0B3E73", "marker": "o"},
-    "ShapleyGAX-2ADD-Lev1": {"color": "#2F5B35", "marker": "o"},
-    "ShapleyGAX-2ADD-Leverage2": {"color": "#ffba08", "marker": "o"},
-    "ShapleyGAX-2ADD-10%": {"color": "#1A86E8", "marker": "o"},
-    "ShapleyGAX-2ADD-20%": {"color": "#7DCE82", "marker": "o"},
-    "ShapleyGAX-2ADD-50%": {"color": "black", "marker": "o"},
-    "ShapleyGAX-2ADD-P10%": {"color": "#7DCE82", "marker": "o"},
-    "ShapleyGAX-2ADD-P20%": {"color": "#57B46A", "marker": "o"},
-    "ShapleyGAX-2ADD-P50%": {"color": "#4B7B4E", "marker": "o"},
-    "ShapleyGAX-2ADD-P100%": {"color": "#2F5B35", "marker": "o"},
-    "ShapleyGAX-3ADDWO2-10%": {"color": "#1A86E8", "marker": "o"},
-    "ShapleyGAX-3ADDWO2-20%": {"color": "#7DCE82", "marker": "o"},
-    "ShapleyGAX-3ADDWO2-50%": {"color": "#4B7B4E", "marker": "o"},
-    "ShapleyGAX-3ADD-10%": {"color": "#7DCE82", "marker": "o"},
-    "ShapleyGAX-3ADD-20%": {"color": "#F455C0", "marker": "o"},
-    "ShapleyGAX-3ADD-50%": {"color": "#4B7B4E", "marker": "o"},
-    "ShapleyGAX-3ADD-P10%": {"color": "#1A86E8", "marker": "o"},
-    "ShapleyGAX-3ADD-P20%": {"color": "#4599ED", "marker": "o"},
-    "ShapleyGAX-3ADD-P50%": {"color": "#105AA3", "marker": "o"},
-    "ShapleyGAX-3ADD-P100%": {"color": "#0B3E73", "marker": "o"},
-    "ShapleyGAX-3ADDWO2-P10%": {"color": "#1A86E8", "marker": "o"},
-    "ShapleyGAX-3ADDWO2-P20%": {"color": "#4599ED", "marker": "o"},
-    "ShapleyGAX-3ADDWO2-P50%": {"color": "#105AA3", "marker": "o"},
-    "ShapleyGAX-3ADDWO2-P100%": {"color": "#0B3E73", "marker": "o"},
-    "ShapleyGAX-1SYM-Lev1": {"color": "#F455C0", "marker": "o"},
-    "ShapleyGAX-2SYM-Lev1": {"color": "#4B7B4E", "marker": "o"},
-    "ShapleyGAX-3ADD-WO2": {"color": "#EF27A6", "marker": "o"},
-    "ShapleyGAX-4ADD": {"color": "#EF27A6", "marker": "o"},
-    "ShapleyGAX-4ADD-Lev1": {"color": "#EF27A6", "marker": "o"},
-    "LeverageSHAP": {"color": "#ff6f00", "marker": "o"},
+    # PolySHAP plots
+    "PermutationSampling": {"color": "#7f7f7f", "marker": "o"},
+    "MSR": {"color": "#666666", "marker": "o"},
+    "SVARM": {"color": "#999999", "marker": "o"},
+    "RegressionMSR": {"color": "#7f7f7f", "marker": "o"},
+    "KernelSHAP": {"color": "#d62728", "marker": "o"},
+    "LeverageSHAP": {"color": "#9467bd", "marker": "X"},
+    # PolySHAP-2ADD
+    "PolySHAP-2ADD-10%": {"color": "#deebf7", "marker": "o"},
+    "PolySHAP-2ADD-20%": {"color": "#9ecae1", "marker": "o"},
+    "PolySHAP-2ADD-50%": {"color": "#6baed6", "marker": "o"},
+    "PolySHAP-2ADD-75%": {"color": "#3182bd", "marker": "o"},
+    "PolySHAP-2ADD": {"color": "#08519c", "marker": "o"},
+    # PolySHAP-3ADD
+    "PolySHAP-3ADD-10%": {"color": "#fee6ce", "marker": "o"},
+    "PolySHAP-3ADD-20%": {"color": "#fdae6b", "marker": "o"},
+    "PolySHAP-3ADD-50%": {"color": "#fd8d3c", "marker": "o"},
+    "PolySHAP-3ADD-75%": {"color": "#e6550d", "marker": "o"},
+    "PolySHAP-3ADD": {"color": "#a63603", "marker": "o"},
+    # PolySHAP-4ADD
+    "PolySHAP-4ADD": {"color": "#17becf", "marker": "o"},
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
 LIGHT_GRAY = "#d3d3d3"
 LINE_STYLES_ORDER = {
     40: "solid",
-    39: "dashdot",
+    39: "dashed",
     38: "solid",
-    37: "dashdot",
+    37: "solid",
     36: "solid",
     4: "dashdot",
     "all": "solid",
@@ -87,12 +95,12 @@ LINE_THICKNESS = 2
 MARKER_SIZE = 7
 
 
-LOG_SCALE_MAX = 5
+LOG_SCALE_MAX = None
 LOG_SCALE_MIN = 1e-7
 
 METRICS_LIMITS = {
-    "Precision@10": (0, 1),
-    "Precision@5": (0, 1),
+    "Precision@10": (0.7, 1.02),
+    "Precision@5": (0.7, 1.02),
     "KendallTau": (-1, 1),
     "KendallTau@5": (-1, 1),
     "KendallTau@10": (-1, 1),
@@ -121,7 +129,9 @@ def create_application_name(setup: str, *, abbrev: bool = False) -> str:
     return application_name
 
 
-def abbreviate_application_name(application_name: str, *, new_line: bool = False) -> str:
+def abbreviate_application_name(
+    application_name: str, *, new_line: bool = False
+) -> str:
     """Abbreviate the application name.
 
     Abbreviate the application name by taking the first three characters after each capital
@@ -223,6 +233,7 @@ def plot_approximation_quality(
     approximators: list[str] | None = None,
     aggregation: str = "mean",
     confidence_metric: str | None = "sem",
+    log_scale_x: bool = False,
     log_scale_y: bool = False,
     log_scale_min: float = LOG_SCALE_MIN,
     log_scale_max: float = LOG_SCALE_MAX,
@@ -288,11 +299,15 @@ def plot_approximation_quality(
     approx_max_budget = 0
 
     for approximator in approximators:
-        data_approximator = metric_data[metric_data["approximator"] == approximator].copy()
+        data_approximator = metric_data[
+            metric_data["approximator"] == approximator
+        ].copy()
         for order in data_approximator["id_config_approximator"].unique():
             if orders is not None and order not in orders:
                 continue
-            data_order = data_approximator[(metric_data["id_config_approximator"] == order)].copy()
+            data_order = data_approximator[
+                (metric_data["id_config_approximator"] == order)
+            ].copy()
 
             if log_scale_y and log_scale_min is not None:
                 # manually set all below log_scale_min to log_scale_min (to avoid log(0))
@@ -327,11 +342,14 @@ def plot_approximation_quality(
                     alpha=0.1,
                     color=color,
                 )
-            approx_max_budget = max(approx_max_budget, int(data_order["used_budget"].max()))
+            approx_max_budget = max(
+                approx_max_budget, int(data_order["used_budget"].max())
+            )
 
     # add x/y labels
-    ax.set_ylabel(metric)
-    ax.set_xlabel(r"Model Evaluations (relative to $2^n$)")
+    ax.set_ylabel(metric + " $\pm$ SEM", fontsize=20)
+    ax.set_xlabel(r"Budget ($m$)", fontsize=20)
+    plt.yticks(fontsize=18)
 
     # add grid to x-axis
     ax.grid(axis="x", color=LIGHT_GRAY, linestyle="dashed")
@@ -368,6 +386,38 @@ def plot_approximation_quality(
         max_budget=approx_max_budget,
     )
 
+    # underdetermined_thresholds = {}
+    # threshold = 0
+    # threshold_colors = {1: "#9467bd", 2: "#08519c", 3: "#a63603", 4: "#17becf"}
+    # for i in range(1, 4):
+    #     threshold += comb(data["n_players"].unique().max(), i)
+    #     underdetermined_thresholds[i] = threshold
+    #     if threshold > plt.xlim()[0] and threshold < plt.xlim()[1]:
+    #         plt.axvline(
+    #             x=threshold,
+    #             color=threshold_colors[i],
+    #             linestyle="--",
+    #             linewidth=1.2,
+    #             alpha=0.6,
+    #         )
+    #         # Label slightly below the x-axis
+    #         plt.text(
+    #             threshold,
+    #             plt.ylim()[0]
+    #             + 0.00000005
+    #             * (5 - i) ** 3
+    #             * (plt.ylim()[1] - plt.ylim()[0]),  # just below axis
+    #             f"{i}-ADD",
+    #             color=threshold_colors[i],
+    #             ha="center",
+    #             va="top",
+    #             fontsize=9,
+    #             rotation=0,
+    #         )
+
+    if log_scale_x:
+        ax.set_xscale("log")
+
     if remove_spines:
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
@@ -380,16 +430,20 @@ def plot_approximation_quality(
 
 def _set_x_axis_ticks(ax: plt.Axes, n_players: int, max_budget: int) -> None:
     """Sets the x-axis ticks in 25% intervals."""
-    if n_players <= 16:  # only for small number of players set the ticks as 25% intervals
-        budgets_relative = np.arange(0, 1.25, 0.25)
-        budgets = budgets_relative * (2**n_players)
-    else:
-        budgets = ax.get_xticks()
-        # remove negative values
-        budgets = budgets[budgets >= 0]
-        # remove all values less than max_budget * 1.05
-        budgets = budgets[budgets <= max_budget * 1.05]
-        budgets_relative = budgets / (2**n_players)
+    # if (
+    #     n_players <= 16
+    # ):  # only for small number of players set the ticks as 25% intervals
+    #     budgets_relative = np.arange(0, 1.25, 0.25)
+    #     budgets = budgets_relative * (2**n_players)
+    # else:
+    # At most 3 ticks on the x-axis
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=7))
+    budgets = ax.get_xticks()
+    # remove negative values
+    budgets = budgets[budgets >= 0]
+    # remove all values less than max_budget * 1.05
+    budgets = budgets[budgets <= max_budget * 1.05]
+    budgets_relative = budgets / (2**n_players)
 
     xtick_labels = []
     for bdgt, bdgt_rel in zip(budgets, budgets_relative, strict=False):
@@ -402,10 +456,12 @@ def _set_x_axis_ticks(ax: plt.Axes, n_players: int, max_budget: int) -> None:
             xtick_labels.append(f"{int(bdgt)}\n({bdgt_rel_str})")
 
     ax.set_xticks(budgets)
-    ax.set_xticklabels(xtick_labels)
+    ax.set_xticklabels(xtick_labels, fontsize=18)
 
 
-def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float, log_scale_max: float) -> None:
+def _set_y_axis_log_scale(
+    ax: plt.Axes, log_scale_min: float, log_scale_max: float
+) -> None:
     """Sets the y-axis to a log scale and adjusts the limits."""
     # adjust the top limit to be one order of magnitude higher than the current top limit
     top_lim = ax.get_ylim()[1]
@@ -457,10 +513,13 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
             )
             .reset_index()
         )
-        data_order["order"] = "all" if "_" not in metric_col else int(metric_col.split("_")[0])
+        data_order["order"] = (
+            "all" if "_" not in metric_col else int(metric_col.split("_")[0])
+        )
         # rename the columns of grouped data
         new_columns = [
-            "_".join(col).strip() if col[1] != "" else col[0] for col in data_order.columns
+            "_".join(col).strip() if col[1] != "" else col[0]
+            for col in data_order.columns
         ]
         new_columns = [col.replace(f"{metric_col}_", "") for col in new_columns]
 
@@ -471,7 +530,9 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
     metric_df = pd.concat(metric_dfs)
 
     # compute the standard error
-    metric_df["sem"] = metric_df["std"] / metric_df["count"] ** 0.5  # compute standard error
+    metric_df["sem"] = (
+        metric_df["std"] / metric_df["count"] ** 0.5
+    )  # compute standard error
 
     return metric_df
 
@@ -513,18 +574,16 @@ def add_legend(
         if isinstance(orders, int | str):
             orders = [orders]
         if legend_subtitle:
-            axis.plot([], [], label="$\\bf{Order}$", color="none")
+            axis.plot([], [], label="$\\bf{Sampling}$", color="none")
         for order in orders:
             if order == 40:
                 desc = "WRepl"
             if order == 39:
-                desc = "NoRepl"
+                desc = "Standard"
             if order == 38:
-                desc = "WRepl, Pairs"
+                desc = "WRepl, Paired"
             if order == 37:
-                desc = "NoRepl, Pairs"
-            if order == 36:
-                desc = "NoRepl, Pairs, Borders"
+                desc = "Paired"
             axis.plot(
                 [],
                 [],
@@ -548,3 +607,23 @@ def add_legend(
             linewidth=LINE_THICKNESS,
         )
     axis.legend(loc=loc)
+
+
+def plot_pairing_vs_standard(plot_df):
+    # Pivot to wide form
+    pivot_mean = plot_df["mean"].unstack("approximator")
+    pivot_std = plot_df["sem"].unstack("approximator")
+
+    # Plot
+    plt.figure()
+
+    ax = pivot_mean.plot(kind="bar", yerr=pivot_std, capsize=4, figsize=(12, 6))
+
+    plt.ylabel("MSE ± SEM")
+    plt.title("MSE grouped by Game ID and Config, split by Approximator")
+    plt.xticks(rotation=45, ha="right")
+
+    ax.set_yscale("log")
+    plt.tight_layout()
+    plt.savefig(f"plots/pairing_overview.png")
+    # plt.show()

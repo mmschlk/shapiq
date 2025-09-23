@@ -15,7 +15,10 @@ from tqdm import tqdm
 
 import shapiq
 from experiment_utils import make_file_paths, pre_compute_model_values
-from shapiq.approximator.regression.shapleygax import ExplanationBasisGenerator, ShapleyGAX
+from shapiq.approximator.regression.polyshap import (
+    ExplanationBasisGenerator,
+    ShapleyGAX,
+)
 from shapiq.benchmark.metrics import get_all_metrics
 
 RANDOM_SEED = 42
@@ -56,7 +59,6 @@ class MaskedDataset(torch.utils.data.Dataset):
 
 
 class VisionTransformerGame(shapiq.Game):
-
     def __init__(self, x_explain_path: str, verbose: bool = True, class_id: int = None):
         from transformers import ViTForImageClassification, ViTImageProcessor
 
@@ -70,10 +72,16 @@ class VisionTransformerGame(shapiq.Game):
         print("Using device:", self.device)
 
         # get model
-        feature_extractor = ViTImageProcessor.from_pretrained("google/vit-base-patch32-384")
+        feature_extractor = ViTImageProcessor.from_pretrained(
+            "google/vit-base-patch32-384"
+        )
         model = ViTForImageClassification.from_pretrained("google/vit-base-patch32-384")
-        model = torch.compile(model, fullgraph=True)  # try removing fullgraph=True first
-        self.n_patches_per_row = model.vit.config.image_size // model.vit.config.patch_size
+        model = torch.compile(
+            model, fullgraph=True
+        )  # try removing fullgraph=True first
+        self.n_patches_per_row = (
+            model.vit.config.image_size // model.vit.config.patch_size
+        )
         self.n_patches = self.n_patches_per_row**2
         self.patch_size = model.vit.config.patch_size
 
@@ -94,8 +102,12 @@ class VisionTransformerGame(shapiq.Game):
         self._norm_shape = (768,)
 
         # run input image through the feature extractor
-        self.transformed_image = feature_extractor(images=self.input_image, return_tensors="pt")
-        self.transformed_image = {k: v.to(self.device) for k, v in self.transformed_image.items()}
+        self.transformed_image = feature_extractor(
+            images=self.input_image, return_tensors="pt"
+        )
+        self.transformed_image = {
+            k: v.to(self.device) for k, v in self.transformed_image.items()
+        }
         original_embeddings = self._embedding_layer(**self.transformed_image)
         original_embeddings.to(self.device)
         self.original_embeddings = original_embeddings
@@ -138,7 +150,9 @@ class VisionTransformerGame(shapiq.Game):
 
         super().__init__(n_players=self.n_patches, normalize=False)
 
-    def value_function(self, coalitions: np.ndarray, batch_size: int = 2_000) -> np.ndarray:
+    def value_function(
+        self, coalitions: np.ndarray, batch_size: int = 2_000
+    ) -> np.ndarray:
         """Runs the Model on a dataset of masked images and returns the logits."""
 
         if len(coalitions.shape) == 1:
@@ -149,7 +163,9 @@ class VisionTransformerGame(shapiq.Game):
             original_embedding=self.original_embeddings,
             background_embedding=self.background_embedding,
         )
-        data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
+        data_loader = torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, shuffle=False
+        )
 
         logits = []
         with torch.no_grad():
@@ -189,7 +205,7 @@ def validate_embeddings_are_positional():
     from transformers import ViTForImageClassification, ViTImageProcessor
 
     # get the images
-    test_image = os.path.join("images", "dog_example.jpg")
+    test_image = os.path.join("../images", "dog_example.jpg")
     test_image = Image.open(test_image)
     gray_image = Image.new("RGB", (384, 384), (128, 128, 128))
     random_image = np.array(np.random.randint(0, 255, (384, 384, 3)), dtype=np.uint8)
@@ -206,9 +222,9 @@ def validate_embeddings_are_positional():
     random_image = feature_extractor(images=random_image, return_tensors="pt")
 
     # replace the first patch of the original image with the first patch of the gray image
-    original_image["pixel_values"][0, :, 0:patch_size, 0:patch_size] = gray_image["pixel_values"][
-        0, :, 0:patch_size, 0:patch_size
-    ]
+    original_image["pixel_values"][0, :, 0:patch_size, 0:patch_size] = gray_image[
+        "pixel_values"
+    ][0, :, 0:patch_size, 0:patch_size]
 
     # compute the embeddings
     gray_embedding = model.vit.embeddings(**gray_image)
@@ -270,7 +286,7 @@ def approximate(
     print("Available images:", available_images)
 
     budgets_str = "_".join([str(b)[0:2] for b in budgets])
-    results_file_name = "".join(approx_to_use) + budgets_str +"_results_vit.csv"
+    results_file_name = "".join(approx_to_use) + budgets_str + "_results_vit.csv"
     print("Files will be saved to:", results_file_name)
 
     # select a subset of images
@@ -280,28 +296,37 @@ def approximate(
     results = []
     for i, image_name in enumerate(image_names, start=1):
         print(f"Processing image {i}/{len(image_names)}: {image_name}\n")
-        _, ground_truth_name = make_file_paths(image_name, budget=1_000_000, experiment="vit")
+        _, ground_truth_name = make_file_paths(
+            image_name, budget=1_000_000, experiment="vit"
+        )
         gt_sv = shapiq.InteractionValues.load_interaction_values(path=ground_truth_name)
         print("Ground Truth", gt_sv)
 
         # setup the game
         game = VisionTransformerGame(
-            x_explain_path=os.path.join("images", image_name),
+            x_explain_path=os.path.join("../images", image_name),
             verbose=True,
         )
 
         for budget in budgets:
-
             # approximate with kernel shap ---------------------------------------------------------
             if "KernelSHAP" in approx_to_use:
                 name = "KernelSHAP"
                 basis_gen = ExplanationBasisGenerator(N=set(range(game.n_players)))
                 explanation_basis = basis_gen.generate_kadd_explanation_basis(1)
                 approximator = ShapleyGAX(
-                    n=game.n_players, random_state=RANDOM_SEED, explanation_basis=explanation_basis
+                    n=game.n_players,
+                    random_state=RANDOM_SEED,
+                    explanation_basis=explanation_basis,
                 )
                 result = _run_approximation(
-                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                    approximator,
+                    game,
+                    gt_sv,
+                    budget,
+                    name,
+                    image_name,
+                    print_estimate=False,
                 )
                 results.append(copy.deepcopy(result))
 
@@ -313,10 +338,18 @@ def approximate(
                     400, conjugate=False
                 )
                 approximator = ShapleyGAX(
-                    n=game.n_players, random_state=RANDOM_SEED, explanation_basis=explanation_basis
+                    n=game.n_players,
+                    random_state=RANDOM_SEED,
+                    explanation_basis=explanation_basis,
                 )
                 result = _run_approximation(
-                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                    approximator,
+                    game,
+                    gt_sv,
+                    budget,
+                    name,
+                    image_name,
+                    print_estimate=False,
                 )
                 results.append(copy.deepcopy(result))
 
@@ -328,10 +361,18 @@ def approximate(
                     600, conjugate=False
                 )
                 approximator = ShapleyGAX(
-                    n=game.n_players, random_state=RANDOM_SEED, explanation_basis=explanation_basis
+                    n=game.n_players,
+                    random_state=RANDOM_SEED,
+                    explanation_basis=explanation_basis,
                 )
                 result = _run_approximation(
-                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                    approximator,
+                    game,
+                    gt_sv,
+                    budget,
+                    name,
+                    image_name,
+                    print_estimate=False,
                 )
                 results.append(copy.deepcopy(result))
 
@@ -340,10 +381,18 @@ def approximate(
                 basis_gen = ExplanationBasisGenerator(N=set(range(game.n_players)))
                 explanation_basis = basis_gen.generate_kadd_explanation_basis(2)
                 approximator = ShapleyGAX(
-                    n=game.n_players, random_state=RANDOM_SEED, explanation_basis=explanation_basis
+                    n=game.n_players,
+                    random_state=RANDOM_SEED,
+                    explanation_basis=explanation_basis,
                 )
                 result = _run_approximation(
-                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                    approximator,
+                    game,
+                    gt_sv,
+                    budget,
+                    name,
+                    image_name,
+                    print_estimate=False,
                 )
                 results.append(copy.deepcopy(result))
 
@@ -354,7 +403,13 @@ def approximate(
                     n=game.n_players, random_state=RANDOM_SEED
                 )
                 result = _run_approximation(
-                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                    approximator,
+                    game,
+                    gt_sv,
+                    budget,
+                    name,
+                    image_name,
+                    print_estimate=False,
                 )
                 results.append(copy.deepcopy(result))
 
@@ -363,7 +418,13 @@ def approximate(
                 name = "SVARM"
                 approximator = shapiq.SVARM(n=game.n_players, random_state=RANDOM_SEED)
                 result = _run_approximation(
-                    approximator, game, gt_sv, budget, name, image_name, print_estimate=False
+                    approximator,
+                    game,
+                    gt_sv,
+                    budget,
+                    name,
+                    image_name,
+                    print_estimate=False,
                 )
                 results.append(copy.deepcopy(result))
 
@@ -376,12 +437,13 @@ def approximate(
 
 
 if __name__ == "__main__":
-
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # set to 0 or 1 for selecting the GPU
     print("CUDA device:", os.environ["CUDA_VISIBLE_DEVICES"])
 
     validate_embeddings = False  # set to True to run the validation test
-    pre_compute_ground_truth = False  # set to True to pre-compute the ground truth values
+    pre_compute_ground_truth = (
+        False  # set to True to pre-compute the ground truth values
+    )
     approximate_values = True
 
     if validate_embeddings:

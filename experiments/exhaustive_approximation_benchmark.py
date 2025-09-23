@@ -14,33 +14,22 @@ if __name__ == "__main__":
     )  # range(10,30) # ids of test instances to explain, can be used to compute new ids
     RANDOM_STATE = 40  # random state for the games
     # ID_CONFIG_APPROXIMATORS = 40  # PAIRING=False, REPLACEMENT=True
-    # ID_CONFIG_APPROXIMATORS = 39  # PAIRING_False, REPLACEMENT=False
+    # ID_CONFIG_APPROXIMATORS = 39  # PAIRING=False, REPLACEMENT=False
     # ID_CONFIG_APPROXIMATORS = 38  # PAIRING=True, REPLACEMENT=True
-    ID_CONFIG_APPROXIMATORS = 39  # PAIRING=True, REPLACEMENT=False
-    # ID_CONFIG_APPROXIMATORS = (
-    #    36  # PAIRING=True, REPLACEMENT=False, FORCE_BORDERS = True
-    # )
+    ID_CONFIG_APPROXIMATORS = 37  # PAIRING=True, REPLACEMENT=False
 
     if ID_CONFIG_APPROXIMATORS == 40:
         REPLACEMENT = True
         PAIRING = False
-        FORCE_BORDERS = False
     if ID_CONFIG_APPROXIMATORS == 39:
         REPLACEMENT = False
         PAIRING = False
-        FORCE_BORDERS = False
     if ID_CONFIG_APPROXIMATORS == 38:
         REPLACEMENT = True
         PAIRING = True
-        FORCE_BORDERS = False
     if ID_CONFIG_APPROXIMATORS == 37:
         REPLACEMENT = False
         PAIRING = True
-        FORCE_BORDERS = False
-    if ID_CONFIG_APPROXIMATORS == 36:
-        REPLACEMENT = False
-        PAIRING = True
-        FORCE_BORDERS = True
 
     RUN_GROUND_TRUTH = False
     RUN_APPROXIMATION = True
@@ -110,39 +99,23 @@ if __name__ == "__main__":
                 print(f"Exact: {ground_truth} saved to {save_path}")
 
     APPROXIMATORS = [
+        "MSR",
+        "SVARM",
+        # "RegressionMSR",
         # "PermutationSampling",
         # "KernelSHAP",
         # "LeverageSHAP",
-        # "ShapleyGAX-2ADD",
-        # "ShapleyGAX-2ADD-Lev1",
-        # "ShapleyGAX-3ADD",
-        # "ShapleyGAX-3ADD-Lev1",
-        # "ShapleyGAX-3ADD-WO2",
-        # "ShapleyGAX-3ADDWO2-10%",
-        # "ShapleyGAX-3ADDWO2-20%",
-        # "ShapleyGAX-3ADDWO2-50%",
-        # "ShapleyGAX-4ADD",
-        # "ShapleyGAX-4ADD-Lev1",
-        # "ShapleyGAX-2ADD-10%",
-        # "ShapleyGAX-2ADD-20%",
-        # "ShapleyGAX-2ADD-50%",
-        # "ShapleyGAX-3ADD-10%",
-        # "ShapleyGAX-3ADD-20%",
-        # "ShapleyGAX-3ADD-50%",
-        # "ShapleyGAX-1SYM-Lev1",
-        # "ShapleyGAX-2SYM-Lev1",
-        # "ShapleyGAX-3ADDWO2-P10%",
-        "ShapleyGAX-3ADDWO2-P20%",
-        "ShapleyGAX-3ADDWO2-P50%",
-        "ShapleyGAX-3ADDWO2-P100%",
-        # "ShapleyGAX-2ADD-P10%",
-        # "ShapleyGAX-2ADD-P20%",
-        # "ShapleyGAX-2ADD-P50%",
-        # "ShapleyGAX-2ADD-P100%",
-        # "ShapleyGAX-3ADD-P10%",
-        # "ShapleyGAX-3ADD-P20%",
-        # "ShapleyGAX-3ADD-P50%",
-        # "ShapleyGAX-3ADD-P100%",
+        # "PolySHAP-2ADD",
+        # "PolySHAP-3ADD",
+        # "PolySHAP-4ADD",
+        # "PolySHAP-2ADD-10%",
+        # "PolySHAP-2ADD-20%",
+        # "PolySHAP-2ADD-50%",
+        # "PolySHAP-2ADD-75%",
+        # "PolySHAP-3ADD-10%",
+        # "PolySHAP-3ADD-20%",
+        # "PolySHAP-3ADD-50%",
+        # "PolySHAP-3ADD-75%",
     ]
 
     MAX_BUDGET = 20000
@@ -150,21 +123,19 @@ if __name__ == "__main__":
 
     def explain_instance(args):
         game_id, id_explain, game_instance = args
-        approximators = get_approximators(
+        approximator_list = get_approximators(
             APPROXIMATORS,
             game_instance.n_players,
             RANDOM_STATE,
             PAIRING,
             REPLACEMENT,
-            FORCE_BORDERS,
         )
-        # budget_range = np.linspace(min(500,2**game_instance.n_players/10), min(2 ** game_instance.n_players, MAX_BUDGET), N_BUDGET_STEPS).astype(int)
-        min_budget = min(50, 2**game_instance.n_players / 10)
+        min_budget = game_instance.n_players + 1
         max_budget = min(2**game_instance.n_players, MAX_BUDGET)
         budget_range = np.logspace(
             np.log10(min_budget), np.log10(max_budget), N_BUDGET_STEPS
         ).astype(int)
-        for approximator in approximators:
+        for approximator in approximator_list:
             print(
                 "Computing approximations for",
                 approximator.name,
@@ -174,7 +145,9 @@ if __name__ == "__main__":
                 id_explain,
             )
             for budget in budget_range:
-                shap_approx = approximator.approximate(budget=budget, game=game_instance)
+                shap_approx = approximator.approximate(
+                    budget=budget, game=game_instance
+                )
                 save_path = (
                     "approximations/exhaustive/"
                     + game_id

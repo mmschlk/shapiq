@@ -30,6 +30,7 @@ class SVARMIQ(MonteCarlo):
         top_order: bool = False,
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
+        replacement: bool = True,
         random_state: int | None = None,
     ) -> None:
         """Initialize the SVARMIQ approximator.
@@ -64,6 +65,7 @@ class SVARMIQ(MonteCarlo):
             random_state=random_state,
             sampling_weights=sampling_weights,
             pairing_trick=pairing_trick,
+            replacement=replacement,
         )
 
 
@@ -92,6 +94,7 @@ class SVARM(SVARMIQ):
         random_state: int | None = None,
         pairing_trick: bool = False,
         sampling_weights: float | None = None,
+        replacement: bool = True,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initialize the SVARM approximator.
@@ -121,4 +124,5 @@ class SVARM(SVARMIQ):
             random_state=random_state,
             pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,
+            replacement=replacement,
         )

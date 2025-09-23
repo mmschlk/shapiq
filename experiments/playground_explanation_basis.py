@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from scipy.special import binom
 
-from shapiq.approximator.regression.shapleygax import ExplanationBasisGenerator
+from shapiq.approximator.regression.polyshap import ExplanationBasisGenerator
 
 if __name__ == "__main__":
     # Example usage of ExplanationBasisGenerator

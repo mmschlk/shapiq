@@ -9,7 +9,7 @@ from PIL import Image
 import shapiq
 from shapiq.plot._config import BLUE, RED
 
-PLOT_DIR = os.path.join("results", "examples", "plots")
+PLOT_DIR = os.path.join("../results", "examples", "plots")
 
 
 def value_to_color(value: float) -> tuple[float, float, float]:
@@ -87,17 +87,16 @@ def plot_heatmap(img: Image.Image, sv: shapiq.InteractionValues) -> None:
 
 
 if __name__ == "__main__":
-
     os.makedirs(PLOT_DIR, exist_ok=True)
 
-    image_path = os.path.join("images", "dog_example.jpg")
+    image_path = os.path.join("../images", "dog_example.jpg")
     image = Image.open(image_path)
 
     # Load the Shapley values
     # sv_name = "dog_example_budget=1000000_seed=42.npz"
 
     sv_name = "dog_example_plectrum_budget=1000000_seed=42.npz"
-    sv_path = os.path.join("results", "examples", "interaction_values", sv_name)
+    sv_path = os.path.join("../results", "examples", "interaction_values", sv_name)
     shapley_values = shapiq.InteractionValues.load(path=sv_path)
 
     # Plot the heatmap

@@ -7,7 +7,10 @@ from time import time
 import numpy as np
 import pandas as pd
 
-from shapiq.approximator.regression.shapleygax import ExplanationBasisGenerator, ShapleyGAX
+from shapiq.approximator.regression.polyshap import (
+    ExplanationBasisGenerator,
+    ShapleyGAX,
+)
 
 
 def dummy_game(coalitions):
@@ -15,10 +18,9 @@ def dummy_game(coalitions):
 
 
 if __name__ == "__main__":
-
     budgets = [5_000, 10_000, 15_000, 20_000]
-    n_players = [16] #[20, 50, 100, 150]
-    n_orders = [2] #[1, 2]
+    n_players = [16]  # [20, 50, 100, 150]
+    n_orders = [2]  # [1, 2]
 
     params_cross_product = itertools.product(n_players, n_orders, budgets)
 
@@ -27,13 +29,17 @@ if __name__ == "__main__":
         # generate explanation basis
         start = time()
         explanation_basis = ExplanationBasisGenerator(N=list(range(n)))
-        explanation_basis = explanation_basis.generate_kadd_explanation_basis(max_order=order)
+        explanation_basis = explanation_basis.generate_kadd_explanation_basis(
+            max_order=order
+        )
         end = time()
         basis_time = end - start
 
         # init approximator
         start = time()
-        approximator = ShapleyGAX(n=n, random_state=42, explanation_basis=explanation_basis)
+        approximator = ShapleyGAX(
+            n=n, random_state=42, explanation_basis=explanation_basis
+        )
         end = time()
         init_time = end - start
 

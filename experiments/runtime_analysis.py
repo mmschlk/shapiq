@@ -18,6 +18,8 @@ from shapiq.games.benchmark.local_xai.benchmark_tabular import (
 )
 from shapiq.games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
 
+import pandas as pd
+
 if __name__ == "__main__":
     # This script runs tree path dependent TreeSHAP-IQ for ground truth values
     ID_EXPLANATIONS = range(
@@ -28,7 +30,7 @@ if __name__ == "__main__":
     # ID_CONFIG_APPROXIMATORS = 39, PAIRING_False, REPLACEMENT=False
     # ID_CONFIG_APPROXIMATORS = 38, PAIRING=True, REPLACEMENT=True
     # ID_CONFIG_APPROXIMATORS = 37, PAIRING=True, REPLACEMENT=False
-    ID_CONFIG_APPROXIMATORS = 39  # used for different approximator configurations
+    ID_CONFIG_APPROXIMATORS = 37  # used for different approximator configurations
     if ID_CONFIG_APPROXIMATORS == 40:
         REPLACEMENT = True
         PAIRING = False
@@ -51,18 +53,15 @@ if __name__ == "__main__":
         CaliforniaHousing(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
-        WineQuality(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        BikeSharing(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        ForestFires(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        AdultCensus(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        # # BikeSharing(
+        # #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        # # ),
+        # # ForestFires(
+        # #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        # # ),
+        # # AdultCensus(
+        # #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        # # ),
         RealEstate(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
@@ -72,53 +71,23 @@ if __name__ == "__main__":
         IndependentLinear60(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
-        Corrgroups60(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        NHANESI(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        CommunitiesAndCrime(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        # Corrgroups60(
+        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        # ),
+        # NHANESI(
+        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        # ),
+        # CommunitiesAndCrime(
+        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        # ),
     ]
 
-    if PRINT_PERFORMANCE:
-        for game in GAMES:
-            print(game.setup.dataset_name, game.setup.model_name, game.n_players)
-            game.setup.print_train_performance()
-
-    if RUN_GROUND_TRUTH:
-        # Compute the ground truth values for the games
-        for game in GAMES:
-            game_id = game.setup.dataset_name + "_" + game.setup.model_name
-            print(game.setup.dataset_name, game.setup.model_name)
-            for id_explain in ID_EXPLANATIONS:
-                x_explain = game.setup.x_test[id_explain, :]
-                tree_game = TreeSHAPIQXAI(x_explain, game.setup.model, verbose=False)
-                save_path = (
-                    "ground_truth/pathdependent/"
-                    + game_id
-                    + "_"
-                    + str(RANDOM_STATE)
-                    + "_"
-                    + str(id_explain)
-                    + "_exact_values.json"
-                )
-                shap_ground_truth = tree_game.exact_values(index="SV", order=1)
-                shap_ground_truth.save(save_path)
-                print(f"Exact: {shap_ground_truth.values} saved to {save_path}")
-
     APPROXIMATORS = [
-        "MSR",
-        "SVARM",
-        # "RegressionMSR",
-        # "PermutationSampling",
         # "KernelSHAP",
-        # "LeverageSHAP",
-        # "PolySHAP-2ADD",
-        # "PolySHAP-3ADD",
-        # "PolySHAP-4ADD",
+        "LeverageSHAP",
+        "PolySHAP-2ADD",
+        "PolySHAP-3ADD",
+        "PolySHAP-4ADD",
         # "PolySHAP-2ADD-10%",
         # "PolySHAP-2ADD-20%",
         # "PolySHAP-2ADD-50%",
@@ -133,7 +102,7 @@ if __name__ == "__main__":
     N_BUDGET_STEPS = 10
 
     def explain_instance(args):
-        game_id, id_explain = args
+        game_id, id_explain, runtime_df = args
         tree_game = TREE_GAMES[id_explain]
         approximators = get_approximators(
             APPROXIMATORS, game.n_players, RANDOM_STATE, PAIRING, REPLACEMENT
@@ -145,14 +114,6 @@ if __name__ == "__main__":
         ).astype(int)
         # print(budget_range)
         for approximator in approximators:
-            print(
-                "Computing approximations for",
-                approximator.name,
-                "on game",
-                game_id,
-                "explanation id",
-                id_explain,
-            )
             if tree_game.n_players > 30 and approximator.name in [
                 "PolySHAP-3ADD",
                 "PolySHAP-3ADD-10%",
@@ -165,31 +126,36 @@ if __name__ == "__main__":
                 "PolySHAP-4ADD",
             ]:
                 continue
+            print(
+                "Computing approximations for",
+                approximator.name,
+                "on game",
+                game_id,
+                "explanation id",
+                id_explain,
+            )
             for budget in budget_range:
                 try:
                     shap_approx = approximator.approximate(
                         budget=budget, game=tree_game
                     )
-                    save_path = (
-                        "approximations/pathdependent/"
-                        + game_id
-                        + "_"
-                        + str(ID_CONFIG_APPROXIMATORS)
-                        + "_"
-                        + str(id_explain)
-                        + "_"
-                        + approximator.name
-                        + "_"
-                        + str(budget)
-                        + ".json"
-                    )
-                    shap_approx.save(save_path)
                 except:
                     print("Couldn't compute")
                     continue
+                df = pd.DataFrame([approximator.runtime_last_approximate_run])
+                df["game_id"] = game_id
+                df["id_explain"] = id_explain
+                df["approximator"] = approximator.name
+                df["budget"] = budget
+                df["n_players"] = tree_game.n_players
+                df["id_config_approximator"] = ID_CONFIG_APPROXIMATORS
+                runtime_df = pd.concat([runtime_df, df])
+                runtime_df.to_csv(f"runtime_analysis.csv")
+        return runtime_df
 
     if RUN_APPROXIMATION:
-        N_JOBS = 5
+        N_JOBS = 1
+        runtime_df = pd.DataFrame()
         for game in GAMES:
             game_id = game.setup.dataset_name + "_" + game.setup.model_name
             TREE_GAMES = []
@@ -197,13 +163,9 @@ if __name__ == "__main__":
                 x_explain = game.setup.x_test[id_explain, :]
                 tree_game = TreeSHAPIQXAI(x_explain, game.setup.model, verbose=False)
                 TREE_GAMES.append(tree_game)
+                runtime_df = explain_instance((game_id, id_explain, runtime_df))
             print(
                 "Tree games initialized for",
                 game.setup.dataset_name,
                 game.setup.model_name,
             )
-            args_list = [(game_id, id_explain) for id_explain in ID_EXPLANATIONS]
-            for id_explain in ID_EXPLANATIONS:
-                explain_instance((game_id, id_explain))
-            # with mp.Pool() as pool:
-            #     pool.map(explain_instance, args_list)

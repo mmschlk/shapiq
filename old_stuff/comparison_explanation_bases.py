@@ -1,7 +1,10 @@
 import matplotlib.pyplot as plt
 
 from shapiq.approximator import SVARM, PermutationSamplingSV
-from shapiq.approximator.regression.shapleygax import ExplanationBasisGenerator, ShapleyGAX
+from shapiq.approximator.regression.polyshap import (
+    ExplanationBasisGenerator,
+    ShapleyGAX,
+)
 
 # plot the results
 from shapiq.benchmark import (
@@ -20,7 +23,10 @@ if __name__ == "__main__":
     n_games = 10
 
     games = load_games_from_configuration(
-        game_class=game_identifier, n_player_id=n_player_id, config_id=config_id, n_games=n_games
+        game_class=game_identifier,
+        n_player_id=n_player_id,
+        config_id=config_id,
+        n_games=n_games,
     )
 
     games = list(games)  # convert to list (the generator is consumed)

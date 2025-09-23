@@ -65,7 +65,9 @@ if __name__ == "__main__":
                         print(f"Error loading ground truth for {game_type}/{game_id}")
                         continue
                     # File pattern with wildcard for budget
-                    file_pattern = f"approximations/{game_type}/{game_id}_*_{id_explain}_*.json"
+                    file_pattern = (
+                        f"approximations/{game_type}/{game_id}_*_{id_explain}_*.json"
+                    )
                     # Get matching file paths
                     file_paths = glob.glob(file_pattern)
                     for file in file_paths:
@@ -80,14 +82,20 @@ if __name__ == "__main__":
                             "id_explain": id_explain,
                             "n_players": ground_truth.n_players,
                             "budget": budget,
-                            "budget_relative": round(budget / (2**ground_truth.n_players), 6),
+                            "budget_relative": round(
+                                budget / (2**ground_truth.n_players), 6
+                            ),
                             "approximator": approximator,
                             "used_budget": budget,
                             "iteration": 1,
                             "id_config_approximator": id_config_approximator,
                         }
                         approximated_values = InteractionValues.load(file)
-                        assert len(approximated_values.values) - 1 == ground_truth.n_players
+                        print(approximator)
+                        assert (
+                            len(approximated_values.values) - 1
+                            == ground_truth.n_players
+                        )
                         all_metrics = get_all_metrics(ground_truth, approximated_values)
                         result.update(all_metrics)
                         results.append(result)

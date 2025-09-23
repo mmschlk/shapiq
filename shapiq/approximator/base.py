@@ -50,7 +50,9 @@ class Approximator(ABC):
 
     """
 
-    valid_indices: tuple[ValidApproximationIndices] = tuple(get_args(ValidApproximationIndices))
+    valid_indices: tuple[ValidApproximationIndices] = tuple(
+        get_args(ValidApproximationIndices)
+    )
     """The valid indices for the base approximator."""
 
     @abstractmethod
@@ -65,7 +67,6 @@ class Approximator(ABC):
         pairing_trick: bool = False,
         sampling_weights: np.ndarray[float] | None = None,
         replacement: bool = True,
-        force_borders: bool = False,
         random_state: int | None = None,
         initialize_dict: bool = True,
     ) -> None:
@@ -129,7 +130,9 @@ class Approximator(ABC):
 
         # set up random state and random number generators
         self._random_state: int | None = random_state
-        self._rng: np.random.Generator | None = np.random.default_rng(seed=self._random_state)
+        self._rng: np.random.Generator | None = np.random.default_rng(
+            seed=self._random_state
+        )
 
         # set up a coalition sampler
         self._big_M: int = 100_000_000  # large number for sampling weights
@@ -140,7 +143,6 @@ class Approximator(ABC):
             sampling_weights=sampling_weights,
             pairing_trick=pairing_trick,
             replacement=replacement,
-            force_borders=force_borders,
             random_state=self._random_state,
         )
 
@@ -221,7 +223,9 @@ class Approximator(ABC):
         if self.index in ["FBII"]:
             try:
                 for coalition_size in range(self.n + 1):
-                    weight_vector[coalition_size] = binom(self.n, coalition_size) / 2**self.n
+                    weight_vector[coalition_size] = (
+                        binom(self.n, coalition_size) / 2**self.n
+                    )
             except OverflowError:
                 for coalition_size in range(self.n + 1):
                     weight_vector[coalition_size] = (
@@ -235,12 +239,16 @@ class Approximator(ABC):
                 )
         else:
             for coalition_size in range(self.n + 1):
-                if (coalition_size < self.max_order) or (coalition_size > self.n - self.max_order):
+                if (coalition_size < self.max_order) or (
+                    coalition_size > self.n - self.max_order
+                ):
                     # prioritize these subsets
                     weight_vector[coalition_size] = self._big_M
                 else:
                     # KernelSHAP sampling weights
-                    weight_vector[coalition_size] = 1 / (coalition_size * (self.n - coalition_size))
+                    weight_vector[coalition_size] = 1 / (
+                        coalition_size * (self.n - coalition_size)
+                    )
         return weight_vector / np.sum(weight_vector)
 
     def _init_result(self, dtype: np.dtype | float = float) -> np.ndarray:
@@ -269,7 +277,9 @@ class Approximator(ABC):
         return range(self.min_order, self.max_order + 1)
 
     @staticmethod
-    def _calc_iteration_count(budget: int, batch_size: int, iteration_cost: int) -> tuple[int, int]:
+    def _calc_iteration_count(
+        budget: int, batch_size: int, iteration_cost: int
+    ) -> tuple[int, int]:
         """Calculate the number of iterations and the size of the last batch.
 
         Computes the number of iterations and the size of the last batch given the batch size and
@@ -327,7 +337,9 @@ class Approximator(ABC):
 
     def __hash__(self) -> int:
         """Returns the hash of the Approximator object."""
-        return hash((self.n, self.max_order, self.index, self.top_order, self._random_state))
+        return hash(
+            (self.n, self.max_order, self.index, self.top_order, self._random_state)
+        )
 
     @property
     def approximator_id(self) -> int:
