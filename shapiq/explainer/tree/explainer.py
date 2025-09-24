@@ -94,7 +94,14 @@ class TreeExplainer(Explainer):
         self._class_label: int | None = class_index
 
         self._treeshapiq_explainers: list[TreeSHAPIQ] = [
-            TreeSHAPIQ(model=_tree, max_order=self._max_order, index=index, feature_perturbation=feature_perturbation, background_data=background_data) for _tree in self._trees
+            TreeSHAPIQ(
+                model=_tree,
+                max_order=self._max_order,
+                index=index,
+                feature_perturbation=feature_perturbation,
+                background_data=background_data,
+            )
+            for _tree in self._trees
         ]
         self.baseline_value = self._compute_baseline_value()
 
