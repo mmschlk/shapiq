@@ -96,6 +96,7 @@ if __name__ == "__main__":
                             "id_config_approximator": id_config_approximator,
                         }
                         approximated_values = InteractionValues.load(file)
+                        print(game_id, approximator)
                         assert (
                             len(approximated_values.values) - 1
                             == ground_truth.n_players

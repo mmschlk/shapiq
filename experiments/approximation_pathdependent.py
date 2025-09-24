@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # ID_CONFIG_APPROXIMATORS = 39, PAIRING_False, REPLACEMENT=False
     # ID_CONFIG_APPROXIMATORS = 38, PAIRING=True, REPLACEMENT=True
     # ID_CONFIG_APPROXIMATORS = 37, PAIRING=True, REPLACEMENT=False
-    ID_CONFIG_APPROXIMATORS = 39  # used for different approximator configurations
+    ID_CONFIG_APPROXIMATORS = 37  # used for different approximator configurations
     if ID_CONFIG_APPROXIMATORS == 40:
         REPLACEMENT = True
         PAIRING = False
