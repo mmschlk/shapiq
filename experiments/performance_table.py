@@ -87,13 +87,13 @@ def binomial_budget(n_players, k):
 def threshold_budget(n_players):
     if n_players <= 20:
         q = binomial_budget(n_players, 4)
-        result = binomial_budget(n_players, 4) * 1.5
+        result = binomial_budget(n_players, 4) * 1
     if n_players > 20 and n_players < 40:
         q = binomial_budget(n_players, 3)
-        result = binomial_budget(n_players, 3) * 1.5
+        result = binomial_budget(n_players, 3) * 1
     if n_players >= 40:
         q = binomial_budget(n_players, 2)
-        result = binomial_budget(n_players, 2) * 1.5
+        result = binomial_budget(n_players, 2) * 1
     return int(result)
 
 

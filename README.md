@@ -100,3 +100,10 @@ pip install -r requirements.txt
 
 - **`plot_runtime_analysis.py`**  
   - Creates runtime plots and stores them in `/experiments/plots/runtime_analysis`
+
+
+### 4. Performance Table
+- **`performance_table.py`**  
+  - Generates a LaTeX table summarizing the performance of all methods across datasets.  
+  - Outputs the table to `performance_table.csv` for easy inclusion in LaTeX documents.  
+  - The table includes metrics Mean, Q1, Q2, and Q3 for MSE for each method and dataset combination.
