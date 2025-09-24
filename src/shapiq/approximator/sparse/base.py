@@ -139,7 +139,7 @@ class Sparse(Approximator):
         if self.decoder_type == "proxyspex":
             self.decoder_args = {
                 "max_depth": [3, max_order],
-                "max_iter": [500, 1000, 5000],
+                "max_iter": [500],
                 "learning_rate": [0.01, 0.1],
             }
             self._uniform_sampler = CoalitionSampler(
@@ -197,13 +197,13 @@ class Sparse(Approximator):
 
             # Train a proxy model with GridSearchCV to find best hyperparameters
             base_model = HistGradientBoostingRegressor(
-                random_state=0, categorical_features=[True] * self.n
+                random_state=0, categorical_features=[True] * self.n, max_bins=32
             )
             grid_search = GridSearchCV(
                 estimator=base_model,
                 param_grid=self.decoder_args,
                 scoring="r2",
-                cv=5,
+                cv=3,
                 verbose=0,
                 n_jobs=-1,
             )
