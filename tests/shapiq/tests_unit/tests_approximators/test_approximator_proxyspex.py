@@ -31,6 +31,7 @@ def test_initialization_defaults():
     [
         (7, "STII", 2, False),
         (7, "FBII", 3, True),
+        (7, "Moebius", 3, True),
         (20, "FSII", None, False),
     ],
 )

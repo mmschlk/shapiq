@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import collections.abc
 import copy
 import math
 from collections import defaultdict
 from typing import TYPE_CHECKING, Literal, get_args
 
-import lightgbm as lgb
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import GridSearchCV
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
@@ -27,6 +28,8 @@ from shapiq.interaction_values import InteractionValues
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
+
+    from sklearn.ensemble._hist_gradient_boosting.predictor import TreePredictor
 
     from shapiq.game import Game
 
@@ -118,6 +121,7 @@ class Sparse(Approximator):
             raise ValueError(msg)
         self.transform_type = transform_type.lower()
         self.degree_parameter = degree_parameter
+        max_order = n if max_order is None else max_order
         self.decoder_type = "proxyspex" if decoder_type is None else decoder_type.lower()
         if self.decoder_type not in ["soft", "hard", "proxyspex"]:
             msg = "decoder_type must be 'soft', 'hard', or 'proxyspex'"
@@ -134,8 +138,8 @@ class Sparse(Approximator):
         }
         if self.decoder_type == "proxyspex":
             self.decoder_args = {
-                "max_depth": [3, self.max_order],
-                "n_estimators": [500, 1000, 5000],
+                "max_depth": [3, max_order],
+                "max_iter": [500, 1000, 5000],
                 "learning_rate": [0.01, 0.1],
             }
             self._uniform_sampler = CoalitionSampler(
@@ -159,7 +163,7 @@ class Sparse(Approximator):
             }
         super().__init__(
             n=n,
-            max_order=n if max_order is None else max_order,
+            max_order=max_order,
             index=index,
             top_order=top_order,
             random_state=random_state,
@@ -192,7 +196,9 @@ class Sparse(Approximator):
             )
 
             # Train a proxy model with GridSearchCV to find best hyperparameters
-            base_model = lgb.LGBMRegressor(verbose=-1, n_jobs=1, random_state=0)
+            base_model = HistGradientBoostingRegressor(
+                random_state=0, categorical_features=[True] * self.n
+            )
             grid_search = GridSearchCV(
                 estimator=base_model,
                 param_grid=self.decoder_args,
@@ -206,7 +212,7 @@ class Sparse(Approximator):
             # Extract and refine Fourier coefficients from the best model
             best_model = grid_search.best_estimator_
             initial_transform = self._refine(
-                self._lgboost_to_fourier(best_model),
+                self._histgb_to_fourier(best_model, best_model._baseline_prediction.item()),  # noqa: SLF001
                 self._uniform_sampler.coalitions_matrix,
                 train_y,
             )
@@ -354,46 +360,52 @@ class Sparse(Approximator):
         self.decoder_args["b"] = b
         return used_budget
 
-    def _lgboost_to_fourier(self, model: lgb.LGBMRegressor) -> dict[tuple[int, ...], float]:
-        """Extracts the aggregated Fourier coefficients from an LGBoost model.
+    def _histgb_to_fourier(
+        self, model: HistGradientBoostingRegressor, baseline: float
+    ) -> dict[tuple[int, ...], float]:
+        """Extracts the aggregated Fourier coefficients from a HistGradientBoostingRegressor model.
 
-        This method iterates through all the trees in a trained LightGBM booster model,
+        This method iterates through all the trees in a trained scikit-learn booster model,
         extracts the Fourier coefficients from each individual tree using the
-        `_lgboost_tree_to_fourier` helper method, and aggregates them by summing the
-        coefficients for the same interactions across all trees (by linearity of Fourier).
+        `_histgb_tree_to_fourier` helper method, and aggregates them.
 
         Args:
-            model: The trained `lgb.LGBMRegressor` model.
+            model: The trained `HistGradientBoostingRegressor` model.
+            baseline: The baseline prediction value of the model.
 
         Returns:
-            A dictionary mapping interaction tuples (e.g., (0, 2)) to their aggregated
-            Fourier coefficient values. Only non-zero coefficients are included.
+            A dictionary mapping interaction tuples to their aggregated Fourier coefficient values.
         """
         aggregated_coeffs = defaultdict(float)
-        model_dump = model.booster_.dump_model()
 
-        for tree_info in model_dump["tree_info"]:
-            tree_coeffs = self._lgboost_tree_to_fourier(tree_info)
+        # Scikit-learn's trees are stored in an internal `_predictors` attribute.
+        all_tree_predictors = (
+            [p for sublist in model._predictors for p in sublist]  # noqa: SLF001
+            if model._predictors and isinstance(model._predictors[0], collections.abc.Sequence)  # noqa: SLF001
+            else model._predictors  # noqa: SLF001
+        )
+        for tree_predictor in all_tree_predictors:
+            tree_coeffs = self._histgb_tree_to_fourier(tree_predictor)
             for interaction, value in tree_coeffs.items():
                 aggregated_coeffs[interaction] += value
+        aggregated_coeffs[()] += baseline
+
         return {k: v for k, v in aggregated_coeffs.items() if v != 0.0}
 
-    def _lgboost_tree_to_fourier(self, tree_info: dict[str, Any]) -> dict[tuple[int, ...], float]:
-        """Recursively extracts the Fourier coefficients from a single LGBoost tree.
+    def _histgb_tree_to_fourier(
+        self, tree_predictor: TreePredictor
+    ) -> dict[tuple[int, ...], float]:
+        """Recursively extracts the Fourier coefficients from a single scikit-learn tree.
 
-        This method traverses a single decision tree from a LightGBM model and computes its
-        exact Fourier transform. It uses a recursive, depth-first approach. For a leaf node,
-        the only non-zero coefficient is for the empty set (the baseline). For a split node,
-        the coefficients are calculated by combining the coefficients from its left and right
-        children.
+        This method traverses a single decision tree from a HistGradientBoostingRegressor model
+        and computes its exact Fourier transform. It uses a recursive, depth-first approach
+        adapted to scikit-learn's internal tree representation (a flattened NumPy array).
 
         Args:
-            tree_info: A dictionary representing the structure of a single tree, as obtained
-                from the `lgb.Booster.dump_model()` method.
+            tree_predictor: An internal `TreePredictor` object from the trained model.
 
         Returns:
-            A dictionary mapping interaction tuples to their Fourier coefficient values for the
-            given tree.
+            A dictionary mapping interaction tuples to their Fourier coefficients for the given tree.
         """
 
         def _combine_coeffs(
@@ -401,29 +413,52 @@ class Sparse(Approximator):
             right_coeffs: dict[tuple[int, ...], float],
             feature_idx: int,
         ) -> dict[tuple[int, ...], float]:
-            """Combines Fourier coefficients from the left and right children of a split node."""
-            combined_coeffs = {}
-            all_interactions = set(left_coeffs.keys()) | set(right_coeffs.keys())
+            # Combines Fourier coefficients from the left and right children of a split node.
+            combined = {}
 
-            for interaction in all_interactions:
+            base_interactions = set(left_coeffs.keys()) | set(right_coeffs.keys())
+            for interaction in base_interactions:
+                # This check is technically not needed if the logic is right, but is good for safety
+                if feature_idx in interaction:
+                    continue
+
                 left_val = left_coeffs.get(interaction, 0.0)
                 right_val = right_coeffs.get(interaction, 0.0)
-                combined_coeffs[interaction] = (left_val + right_val) / 2
 
+                # Formula for interactions NOT containing the split feature
+                combined[interaction] = (left_val + right_val) / 2
+
+                # Formula for interactions that DO contain the split feature
                 new_interaction = tuple(sorted(set(interaction) | {feature_idx}))
-                combined_coeffs[new_interaction] = (left_val - right_val) / 2
-            return combined_coeffs
+                combined[new_interaction] = (left_val - right_val) / 2
 
-        def _dfs_traverse(node: dict[str, Any]) -> dict[tuple[int, ...], float]:
-            """Performs a depth-first traversal of the tree to compute coefficients."""
-            if "leaf_value" in node:
-                return {(): node["leaf_value"]}
-            left_coeffs = _dfs_traverse(node["left_child"])
-            right_coeffs = _dfs_traverse(node["right_child"])
-            feature_idx = node["split_feature"]
+            return combined
+
+        def _dfs_traverse(nodes: np.ndarray, node_idx: int) -> dict[tuple[int, ...], float]:
+            # Performs a depth-first traversal of the tree array to compute coefficients.
+
+            # Define column indices for clarity. This mapping corresponds to the structure
+            # of the TreePredictor's `nodes` array in your scikit-learn version.
+            VALUE_IDX = 0
+            FEATURE_IDX = 2
+            LEFT_CHILD_IDX = 5
+            RIGHT_CHILD_IDX = 6
+            LEAF_IDX = 9
+
+            current_node = nodes[node_idx]
+
+            if current_node[LEAF_IDX]:
+                # The leaf value is at index 0.
+                return {(): current_node[VALUE_IDX]}
+            # Recursive step: process left and right children using indices
+            left_coeffs = _dfs_traverse(nodes, int(current_node[LEFT_CHILD_IDX]))
+            right_coeffs = _dfs_traverse(nodes, int(current_node[RIGHT_CHILD_IDX]))
+            feature_idx = int(current_node[FEATURE_IDX])
+
+            # The _combine_coeffs helper function doesn't need to change.
             return _combine_coeffs(left_coeffs, right_coeffs, feature_idx)
 
-        return _dfs_traverse(tree_info["tree_structure"])
+        return _dfs_traverse(tree_predictor.nodes, 0)
 
     def _refine(
         self,

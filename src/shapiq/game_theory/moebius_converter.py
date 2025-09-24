@@ -11,7 +11,9 @@ from scipy.special import binom
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-ValidMoebiusConverterIndices = Literal["k-SII", "STII", "FSII", "FBII", "SII", "SV", "BV"]
+ValidMoebiusConverterIndices = Literal[
+    "k-SII", "STII", "FSII", "FBII", "SII", "SV", "BV", "Moebius"
+]
 
 
 class MoebiusConverter:
@@ -119,6 +121,8 @@ class MoebiusConverter:
                 return self._fii_routine(index="FBII", order=order)
             case "FSII":
                 return self._fii_routine(index="FSII", order=order)
+            case "Moebius":
+                return self.moebius_coefficients
             case _:
                 msg = (
                     f"Invalid index. Index `{index}` is not supported. "
