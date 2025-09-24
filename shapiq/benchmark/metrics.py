@@ -14,6 +14,8 @@ from shapiq.utils.sets import count_interactions, powerset
 if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues
 
+from scipy.stats import spearmanr
+
 __all__ = ["get_all_metrics"]
 
 
@@ -178,21 +180,23 @@ def compute_spearmans_correlation(
     gt_values, estimated_values = [], []
     for interaction in powerset(
         range(ground_truth.n_players),
-        min_size=ground_truth.min_order,
+        min_size=1,
         max_size=ground_truth.max_order,
     ):
         gt_values.append(ground_truth[interaction])
         estimated_values.append(estimated[interaction])
-    # array conversion
-    gt_values, estimated_values = np.array(gt_values), np.array(estimated_values)
-    # sort the values
-    gt_indices, estimated_indices = np.argsort(gt_values), np.argsort(estimated_values)
-    if k is not None:
-        gt_indices, estimated_indices = gt_indices[:k], estimated_indices[:k]
-    # compute the Spearman's correlation
-    correlation = np.corrcoef(gt_indices, estimated_indices)[0, 1]
-    correlation = float(correlation)
-    return correlation
+
+    spearman_corr, pval = spearmanr(gt_values, estimated_values)
+    # # array conversion
+    # gt_values, estimated_values = np.array(gt_values), np.array(estimated_values)
+    # # sort the values
+    # gt_indices, estimated_indices = np.argsort(gt_values), np.argsort(estimated_values)
+    # if k is not None:
+    #     gt_indices, estimated_indices = gt_indices[:k], estimated_indices[:k]
+    # # compute the Spearman's correlation
+    # correlation = np.corrcoef(gt_indices, estimated_indices)[0, 1]
+    # correlation = float(correlation)
+    return spearman_corr
 
 
 def get_all_metrics(

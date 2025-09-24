@@ -121,9 +121,9 @@ if __name__ == "__main__":
 
     # Plot approximation quality for standard
     plot_df = results_df[
-        (results_df["approximator"] == "MSR")
-        | (results_df["approximator"] == "SVARM")
-        # (results_df["approximator"] == "RegressionMSR")
+        # (results_df["approximator"] == "MSR")
+        # | (results_df["approximator"] == "SVARM")
+        (results_df["approximator"] == "RegressionMSR")
         | (results_df["approximator"] == "PermutationSampling")
         # | (results_df["approximator"] == "KernelSHAP")
         | (results_df["approximator"] == "LeverageSHAP")

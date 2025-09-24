@@ -1,4 +1,5 @@
 from shapiq.approximator.regressionMSR import RegressionMSR
+from shapiq import ExactComputer
 
 if __name__ == "__main__":
     import numpy as np
@@ -7,7 +8,7 @@ if __name__ == "__main__":
 
     n_players = 9
     random_state = 42
-    budget = 10
+    budget = 15
 
     # Initialize the SOUM game
     game = SOUM(n=n_players, n_basis_games=20, random_state=random_state)
@@ -16,10 +17,10 @@ if __name__ == "__main__":
 
     regressionmsr_estimates = approx.approximate(budget=budget, game=game)
 
+    exact_computer = ExactComputer(n_players, game)
+    ground_truth = exact_computer(index="SV", order=1)
     print("Approximation:")
     print(regressionmsr_estimates.values)
-
-    ground_truth = game.exact_values(index="SV", order=1)
 
     # compare mse between approx and ground-truth
     mse = (

@@ -9,7 +9,12 @@ from shapiq.benchmark.plot import (
     MARKER_SIZE,
 )
 
-from approximation_plot import TITLE_FONT_SIZE, APPROXIMATOR_RENAMING
+from plot_approximation import (
+    TITLE_FONT_SIZE,
+    APPROXIMATOR_RENAMING,
+    parse_approximator,
+    compute_value,
+)
 
 DATA_NAMES = {
     "breast_cancer": "Cancer ($d=30$)",
@@ -120,6 +125,20 @@ def plot_runtime(group_sorted, plot_legend=False):
 if __name__ == "__main__":
     # This script plots the runtime analysis results from the CSV file
     df = pd.read_csv("runtime_analysis.csv")
+    df_baseline = pd.read_csv("runtime_analysis_baselines.csv")
+
+    df = pd.concat([df, df_baseline], ignore_index=True)
+
+    df = df[
+        df["game_id"].isin(
+            [
+                "california_housing_random_forest",
+                "breast_cancer_random_forest",
+                "real_estate_random_forest",
+                "independentlinear60_random_forest",
+            ]
+        )
+    ]
 
     # aggregate runtimes by mean for each game_id, approximator
     runtime_results = (
@@ -170,6 +189,7 @@ if __name__ == "__main__":
     # approximators to show
     approximators_to_plot = [
         # "KernelSHAP",
+        "RegressionMSR",
         "LeverageSHAP",
         "PolySHAP-2ADD",
         "PolySHAP-3ADD",
@@ -200,6 +220,17 @@ if __name__ == "__main__":
     # Save the legend separately
     fig.savefig(f"plots/legend_runtime.pdf", bbox_inches="tight")
     # fig_legend.show()
+
+    # filter based on budget threshold
+    runtime_results[["p", "q"]] = runtime_results["approximator"].apply(
+        lambda x: pd.Series(parse_approximator(x))
+    )
+    runtime_results["minimum_budget_to_plot"] = runtime_results.apply(
+        compute_value, axis=1
+    )
+    runtime_results = runtime_results[
+        runtime_results["budget"] >= runtime_results["minimum_budget_to_plot"]
+    ]
 
     for game_id, group in runtime_results.groupby("game_id"):
         # sort by budget

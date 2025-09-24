@@ -8,6 +8,14 @@ from shapiq import InteractionValues
 from shapiq.benchmark.metrics import get_all_metrics
 
 if __name__ == "__main__":
+    """
+    This script loads the approximated Shapley values for all approximators, adds metadata information,
+    and computes various metrics. The results are stored in results_benchmark.csv.
+
+    IMPORTANT: Make sure to run the scripts experiments/approximation_baseline.py and/or
+    experiments/approximation_pathdependent.py beforehand to generate the approximations and
+    ground-truth values.
+    """
     GAME_IDS = [
         "ResNet18w14Superpixel",
         "SentimentIMDBDistilBERT14",
@@ -24,15 +32,12 @@ if __name__ == "__main__":
         "independentlinear60",
         "corrgroups60",
     ]
-    MODELS = ["gradient_boosting", "random_forest", "1"]
+    MODELS = ["random_forest", "1"]
     RANDOM_STATE = 40
     ID_EXPLANATIONS = range(10)  # ids of test instances to explain
     GAME_TYPES = [
         "exhaustive",
-        "baseline",
-        "interventional",
         "pathdependent",
-        "overfitting",
     ]
 
     approximation_metrics = pd.DataFrame()
@@ -91,11 +96,11 @@ if __name__ == "__main__":
                             "id_config_approximator": id_config_approximator,
                         }
                         approximated_values = InteractionValues.load(file)
-                        print(approximator)
                         assert (
                             len(approximated_values.values) - 1
                             == ground_truth.n_players
                         )
+                        # compute metrics
                         all_metrics = get_all_metrics(ground_truth, approximated_values)
                         result.update(all_metrics)
                         results.append(result)

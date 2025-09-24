@@ -57,26 +57,38 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
     "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
     # PolySHAP plots
-    "PermutationSampling": {"color": "#7f7f7f", "marker": "o"},
+    "PermutationSampling": {"color": "#bdbdbd", "marker": "o"},
     "MSR": {"color": "#666666", "marker": "o"},
-    "SVARM": {"color": "#999999", "marker": "o"},
-    "RegressionMSR": {"color": "#7f7f7f", "marker": "o"},
+    "SVARM": {"color": "#707070", "marker": "o"},
+    "RegressionMSR": {"color": "#636363", "marker": "o"},
     "KernelSHAP": {"color": "#d62728", "marker": "o"},
-    "LeverageSHAP": {"color": "#9467bd", "marker": "X"},
+    "LeverageSHAP": {"color": "#009688", "marker": "o"},
+    # "LeverageSHAP": {"color": "#9467bd", "marker": "X"},
     # PolySHAP-2ADD
-    "PolySHAP-2ADD-10%": {"color": "#deebf7", "marker": "o"},
-    "PolySHAP-2ADD-20%": {"color": "#9ecae1", "marker": "o"},
-    "PolySHAP-2ADD-50%": {"color": "#6baed6", "marker": "o"},
-    "PolySHAP-2ADD-75%": {"color": "#3182bd", "marker": "o"},
-    "PolySHAP-2ADD": {"color": "#08519c", "marker": "o"},
-    # PolySHAP-3ADD
-    "PolySHAP-3ADD-10%": {"color": "#fee6ce", "marker": "o"},
-    "PolySHAP-3ADD-20%": {"color": "#fdae6b", "marker": "o"},
-    "PolySHAP-3ADD-50%": {"color": "#fd8d3c", "marker": "o"},
-    "PolySHAP-3ADD-75%": {"color": "#e6550d", "marker": "o"},
-    "PolySHAP-3ADD": {"color": "#a63603", "marker": "o"},
-    # PolySHAP-4ADD
-    "PolySHAP-4ADD": {"color": "#17becf", "marker": "o"},
+    # "PolySHAP-2ADD-10%": {"color": "#deebf7", "marker": "o"},
+    # "PolySHAP-2ADD-20%": {"color": "#9ecae1", "marker": "o"},
+    # "PolySHAP-2ADD-50%": {"color": "#6baed6", "marker": "o"},
+    # "PolySHAP-2ADD-75%": {"color": "#3182bd", "marker": "o"},
+    # "PolySHAP-2ADD": {"color": "#08519c", "marker": "o"},
+    # # PolySHAP-3ADD
+    # "PolySHAP-3ADD-10%": {"color": "#fee6ce", "marker": "o"},
+    # "PolySHAP-3ADD-20%": {"color": "#fdae6b", "marker": "o"},
+    # "PolySHAP-3ADD-50%": {"color": "#fd8d3c", "marker": "o"},
+    # "PolySHAP-3ADD-75%": {"color": "#e6550d", "marker": "o"},
+    # "PolySHAP-3ADD": {"color": "#a63603", "marker": "o"},
+    # # PolySHAP-4ADD
+    # "PolySHAP-4ADD": {"color": "#17becf", "marker": "o"},
+    # new color scheme
+    # "PolySHAP-2ADD-50%": {"color": "#FFD699", "marker": "o"},
+    # "PolySHAP-2ADD": {"color": "#FFB74D", "marker": "o"},
+    # "PolySHAP-3ADD-50%": {"color": "#FF9800", "marker": "o"},
+    # "PolySHAP-3ADD": {"color": "#E67C00", "marker": "o"},
+    # "PolySHAP-4ADD": {"color": "#B35900", "marker": "o"},
+    "PolySHAP-2ADD-50%": {"color": "#FFE0B2", "marker": "o"},
+    "PolySHAP-2ADD": {"color": "#FFB74D", "marker": "o"},
+    "PolySHAP-3ADD-50%": {"color": "#FF5722", "marker": "o"},
+    "PolySHAP-3ADD": {"color": "#E64A19", "marker": "o"},
+    "PolySHAP-4ADD": {"color": "#BF360C", "marker": "o"},
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
@@ -105,6 +117,7 @@ METRICS_LIMITS = {
     "KendallTau@5": (-1, 1),
     "KendallTau@10": (-1, 1),
     "KendallTau@50": (-1, 1),
+    "SpearmanCorrelation": (0.7, 1.02),
 }
 METRICS_NOT_TO_LOG_SCALE = list(METRICS_LIMITS.keys())
 

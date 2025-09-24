@@ -85,21 +85,7 @@ if __name__ == "__main__":
         # ),
     ]
 
-    APPROXIMATORS = [
-        # "KernelSHAP",
-        "LeverageSHAP",
-        "PolySHAP-2ADD",
-        "PolySHAP-3ADD",
-        "PolySHAP-4ADD",
-        # "PolySHAP-2ADD-10%",
-        # "PolySHAP-2ADD-20%",
-        # "PolySHAP-2ADD-50%",
-        # "PolySHAP-2ADD-75%",
-        # "PolySHAP-3ADD-10%",
-        # "PolySHAP-3ADD-20%",
-        # "PolySHAP-3ADD-50%",
-        # "PolySHAP-3ADD-75%",
-    ]
+    APPROXIMATORS = ["RegressionMSR"]
 
     MAX_BUDGET = 20000
     N_BUDGET_STEPS = 10
@@ -153,7 +139,7 @@ if __name__ == "__main__":
                 df["n_players"] = tree_game.n_players
                 df["id_config_approximator"] = ID_CONFIG_APPROXIMATORS
                 runtime_df = pd.concat([runtime_df, df])
-                runtime_df.to_csv(f"runtime_analysis.csv")
+                runtime_df.to_csv(f"runtime_analysis_baselines.csv")
         return runtime_df
 
     if RUN_APPROXIMATION:

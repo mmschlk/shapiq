@@ -19,7 +19,12 @@ from shapiq.games.benchmark.local_xai.benchmark_tabular import (
 from shapiq.games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
 
 if __name__ == "__main__":
-    # This script runs tree path dependent TreeSHAP-IQ for ground truth values
+    """
+    This script runs selected approximation algorithms on explanation games that use path-dependent
+    feature perturbation. A random forest was trained and the ground truth values are computed via
+    TreeSHAP. Approximations are stored in /approximations/pathdependent/ and ground truth values in
+    /ground_truth/pathdependent/.
+    """
     ID_EXPLANATIONS = range(
         10
     )  # range(10,30) # ids of test instances to explain, can be used to compute new ids
@@ -49,9 +54,6 @@ if __name__ == "__main__":
     # run the benchmark for the games
     GAMES = [
         CaliforniaHousing(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        WineQuality(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
         BikeSharing(
@@ -110,22 +112,22 @@ if __name__ == "__main__":
                 print(f"Exact: {shap_ground_truth.values} saved to {save_path}")
 
     APPROXIMATORS = [
-        "MSR",
-        "SVARM",
-        # "RegressionMSR",
-        # "PermutationSampling",
+        # "MSR",
+        # "SVARM",
+        "RegressionMSR",
+        "PermutationSampling",
         # "KernelSHAP",
-        # "LeverageSHAP",
-        # "PolySHAP-2ADD",
-        # "PolySHAP-3ADD",
-        # "PolySHAP-4ADD",
+        "LeverageSHAP",
+        "PolySHAP-2ADD",
+        "PolySHAP-3ADD",
+        "PolySHAP-4ADD",
         # "PolySHAP-2ADD-10%",
         # "PolySHAP-2ADD-20%",
-        # "PolySHAP-2ADD-50%",
+        "PolySHAP-2ADD-50%",
         # "PolySHAP-2ADD-75%",
         # "PolySHAP-3ADD-10%",
         # "PolySHAP-3ADD-20%",
-        # "PolySHAP-3ADD-50%",
+        "PolySHAP-3ADD-50%",
         # "PolySHAP-3ADD-75%",
     ]
 
@@ -205,5 +207,6 @@ if __name__ == "__main__":
             args_list = [(game_id, id_explain) for id_explain in ID_EXPLANATIONS]
             for id_explain in ID_EXPLANATIONS:
                 explain_instance((game_id, id_explain))
+            # use instead for parallelization, does not work well with RegressionMSR
             # with mp.Pool() as pool:
             #     pool.map(explain_instance, args_list)

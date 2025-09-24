@@ -2,7 +2,7 @@ from typing import Callable
 
 from shapiq.approximator.base import Approximator
 import numpy as np
-
+import time
 from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.games.base import Game
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
@@ -13,7 +13,18 @@ from xgboost import XGBRegressor
 from scipy.special import binom
 
 from shapiq.approximator.montecarlo.base import MonteCarlo
-from shapiq.explainer import TreeExplainer
+import shap
+
+from shapiq import UnbiasedKernelSHAP
+
+
+class residualGame(Game):
+    def __init__(self, n_players, game_values) -> None:
+        super().__init__(n_players=n_players, normalize=False)
+        self.game_values = game_values
+
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+        return self.game_values
 
 
 class RegressionMSR(Approximator):
@@ -65,21 +76,40 @@ class RegressionMSR(Approximator):
             random_state=self._random_state,
         )
 
+        self.residual_estimator = UnbiasedKernelSHAP(
+            n=n,
+            pairing_trick=pairing_trick,
+            replacement=replacement,
+            random_state=random_state,
+        )
+
+        # init runtime dictionary of type float
+        self.runtime_last_approximate_run: dict[str, float] = {}
+
     def shapley_weight(self, coalition_size: int):
         return 1 / ((self.n) * binom(self.n - 1, coalition_size))
 
     def approximate(
         self, budget: int, game: Game | Callable[[np.ndarray], np.ndarray]
     ) -> InteractionValues:
+        approximate_start_time = time.time()
         # sample with current budget
         self._sampler.sample(budget)
         coalitions_matrix = (
             self._sampler.coalitions_matrix
         )  # binary matrix of coalitionshttps://xgboost.readthedocs.io/en/stable/parameter.html
+        sampling_end_time = time.time()
+        self.runtime_last_approximate_run["sampling"] = (
+            sampling_end_time - approximate_start_time
+        )
 
         # query the game for the current batch of coalitions
         game_values = game(coalitions_matrix)
 
+        game_evaluation_end_time = time.time()
+        self.runtime_last_approximate_run["evaluations"] = (
+            game_evaluation_end_time - sampling_end_time
+        )
         # fit XGBoost regression model to the game values using coalition_matrix as input
 
         # Initialize the regressor
@@ -94,56 +124,53 @@ class RegressionMSR(Approximator):
         # Fit the model
         model.fit(coalitions_matrix, game_values)
         # compute Shapley values of XGBoost
-        explainer = TreeExplainer(
-            model, index="SV", max_order=1, feature_perturbation="tree_path_dependent"
+        explainer = shap.TreeExplainer(
+            model, feature_perturbation="interventional", data=np.zeros((1, self.n))
         )
-        tree_shapley_values = explainer.explain(np.ones(self.n))
+        treeshap_result = explainer.shap_values(np.ones(self.n))
+
+        tree_shapley_values = np.zeros(self.n + 1)
+        tree_shapley_values[0] = explainer.expected_value
+        tree_shapley_values[1:] = treeshap_result
+
+        shapley_tree = InteractionValues(
+            tree_shapley_values,
+            index=self.approximation_index,
+            n_players=self.n,
+            interaction_lookup=self.interaction_lookup,
+            min_order=self.min_order,
+            max_order=self.max_order,
+            baseline_value=tree_shapley_values[0],
+            estimated=not budget >= 2**self.n,
+            estimation_budget=budget,
+        )
 
         # Predict on test set
         predicted_values = model.predict(coalitions_matrix)
         # compute the residual game values
         residual_values = game_values - predicted_values
 
-        # estimate the Shapley values of the residual game values using MSR (SHAPIQ order 1)
-        shapley_values_residual = np.zeros(self.n + 1)
-
-        shapley_weights = np.zeros((self.n + 1, 2))
-        for coalition_size in range(self.n + 1):
-            for intersection_size in range(2):
-                shapley_weights[
-                    coalition_size, intersection_size
-                ] = self.shapley_weight(coalition_size - intersection_size)
-
-        for i in range(self.n):
-            # get sampling parameters
-            coalitions_size = self._sampler.coalitions_size
-            set_i_binary = np.zeros(self.n, dtype=int)
-            set_i_binary[i] = 1
-            intersections_size = np.sum(coalitions_matrix * set_i_binary, axis=1)
-
-            weights = shapley_weights[coalitions_size, intersections_size]
-
-            shapley_values_residual[self.interaction_lookup[(i,)]] = np.sum(
-                weights * residual_values * self._sampler.sampling_adjustment_weights
-            )
-
-        baseline_value = float(game_values[self._sampler.empty_coalition_index])
-        shapley_values_residual[self.interaction_lookup[()]] = baseline_value
-
-        shapley_residuals = InteractionValues(
-            shapley_values_residual,
-            index=self.approximation_index,
-            n_players=self.n,
-            interaction_lookup=self.interaction_lookup,
-            min_order=self.min_order,
-            max_order=self.max_order,
-            baseline_value=baseline_value,
-            estimated=not budget >= 2**self.n,
-            estimation_budget=budget,
+        residual_game = residualGame(n_players=self.n, game_values=residual_values)
+        shapley_residuals = self.residual_estimator.approximate(
+            budget=budget, game=residual_game
         )
 
-        shapley_value_estimates = tree_shapley_values + shapley_residuals
+        shapley_value_estimates = shapley_tree + shapley_residuals
 
-        return finalize_computed_interactions(
+        regression_end_time = time.time()
+        self.runtime_last_approximate_run["regression"] = (
+            regression_end_time - game_evaluation_end_time
+        )
+
+        result = finalize_computed_interactions(
             shapley_value_estimates, target_index=self.index
         )
+
+        shapiq_post_processing_end_time = time.time()
+        self.runtime_last_approximate_run["shapiq_post_processing"] = (
+            shapiq_post_processing_end_time - regression_end_time
+        )
+        self.runtime_last_approximate_run["total"] = (
+            shapiq_post_processing_end_time - approximate_start_time
+        )
+        return result

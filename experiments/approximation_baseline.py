@@ -8,15 +8,17 @@ from init_approximator import get_approximators
 from shapiq.benchmark import load_games_from_configuration
 
 if __name__ == "__main__":
-    # this code runs interventional treeshap from the shap package for ground truth and uses the TreeSHAPInterventionalXAI class
-    ID_EXPLANATIONS = range(
-        10
-    )  # range(10,30) # ids of test instances to explain, can be used to compute new ids
+    """
+    This script runs selected approximation algorithms on explanation games that use baseline
+    imputatation, which were pre-computed in the shapiq library. The ground truth values
+    are computed using exhaustive evaluation. Approximations are stored in
+    /approximations/exhaustive/ and ground truth values in /ground_truth/exhaustive/.
+    """
     RANDOM_STATE = 40  # random state for the games
     # ID_CONFIG_APPROXIMATORS = 40  # PAIRING=False, REPLACEMENT=True
     # ID_CONFIG_APPROXIMATORS = 39  # PAIRING=False, REPLACEMENT=False
     # ID_CONFIG_APPROXIMATORS = 38  # PAIRING=True, REPLACEMENT=True
-    ID_CONFIG_APPROXIMATORS = 37  # PAIRING=True, REPLACEMENT=False
+    ID_CONFIG_APPROXIMATORS = 39  # PAIRING=True, REPLACEMENT=False
 
     if ID_CONFIG_APPROXIMATORS == 40:
         REPLACEMENT = True
@@ -99,22 +101,22 @@ if __name__ == "__main__":
                 print(f"Exact: {ground_truth} saved to {save_path}")
 
     APPROXIMATORS = [
-        "MSR",
-        "SVARM",
-        # "RegressionMSR",
-        # "PermutationSampling",
+        # "MSR",
+        # "SVARM",
+        "RegressionMSR",
+        "PermutationSampling",
         # "KernelSHAP",
-        # "LeverageSHAP",
-        # "PolySHAP-2ADD",
-        # "PolySHAP-3ADD",
-        # "PolySHAP-4ADD",
+        "LeverageSHAP",
+        "PolySHAP-2ADD",
+        "PolySHAP-3ADD",
+        "PolySHAP-4ADD",
         # "PolySHAP-2ADD-10%",
         # "PolySHAP-2ADD-20%",
-        # "PolySHAP-2ADD-50%",
+        "PolySHAP-2ADD-50%",
         # "PolySHAP-2ADD-75%",
         # "PolySHAP-3ADD-10%",
         # "PolySHAP-3ADD-20%",
-        # "PolySHAP-3ADD-50%",
+        "PolySHAP-3ADD-50%",
         # "PolySHAP-3ADD-75%",
     ]
 
@@ -168,9 +170,12 @@ if __name__ == "__main__":
         # Compute the ground truth values for the games
         for game_identifier, game in GAMES.items():
             game_id = game_identifier + "_" + str(config_id)
-            args_list = [
-                (game_id, id_explain, game_instance)
-                for id_explain, game_instance in enumerate(game)
-            ]
-            with mp.Pool() as pool:
-                pool.map(explain_instance, args_list)
+            for id_explain, game_instance in enumerate(game):
+                explain_instance((game_id, id_explain, game_instance))
+            # args_list = [
+            #     (game_id, id_explain, game_instance)
+            #     for id_explain, game_instance in enumerate(game)
+            # ]
+            # use for parallelization, does not work well with RegressionMSR
+            # with mp.Pool() as pool:
+            #     pool.map(explain_instance, args_list)
