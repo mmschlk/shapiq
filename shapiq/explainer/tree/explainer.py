@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any
 
 from shapiq.explainer.base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
-from tests.fixtures.data import background_clf_data
 
 from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
 from .validation import validate_tree_model
