@@ -10,11 +10,9 @@ from numpy.random import default_rng
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
     import numpy.typing as npt
 
-    from shapiq import Game
-
+from shapiq.game import Game
 from .base import Imputer
 from .gaussian_imputer_exceptions import CategoricalFeatureError
 

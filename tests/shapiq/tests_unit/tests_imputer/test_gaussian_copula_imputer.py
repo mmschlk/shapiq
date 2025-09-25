@@ -7,6 +7,7 @@ categorical feature detection, transformation methods, and imputation logic.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from scipy.stats import norm
 
 from shapiq.imputer import GaussianCopulaImputer
@@ -27,6 +28,28 @@ def test_empirical_cdf(dummy_model) -> None:
     empirical_cdf = imputer._empirical_cdf(feature_values.reshape(-1, 1)).flatten()
 
     assert np.allclose(empirical_cdf, expected_empirical_cdf)
+
+
+def test_empirical_cdf_1_dimensional(dummy_model) -> None:
+    """Tests that the empirical CDF is calculated correctly for a single column."""
+    feature_values = np.array([-5, 10, 0, 3, 4])
+
+    dummy_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    imputer = GaussianCopulaImputer(model=dummy_model, data=dummy_data)
+
+    with pytest.raises(ValueError, match="Expected a 2D array"):
+        imputer._empirical_cdf(feature_values)
+
+
+def test_empirical_cdf_2_dimensional(dummy_model) -> None:
+    """Tests that the empirical CDF is calculated correctly for a single column."""
+    feature_values = np.array([[[1, 2, 3], [4, 5, 6]],[[7, 8, 9], [10, 11, 12]]])
+
+    dummy_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    imputer = GaussianCopulaImputer(model=dummy_model, data=dummy_data)
+
+    with pytest.raises(ValueError, match="Expected a 2D array"):
+        imputer._empirical_cdf(feature_values)
 
 
 def test_transform_to_gaussian(dummy_model) -> None:

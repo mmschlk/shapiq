@@ -10,11 +10,9 @@ from scipy.stats import norm, rankdata
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
     import numpy.typing as npt
 
-    from shapiq import Game
-
+from shapiq.game import Game
 from .gaussian_imputer import GaussianImputer
 
 
@@ -98,7 +96,7 @@ class GaussianCopulaImputer(GaussianImputer):
             msg = "Expected a 2D array but got a 1D array. To compute the empirical CDF for a single feature, use array.reshape(-1, 1)"
             raise ValueError(msg)
         if data.ndim > expected_dimensionality:
-            msg = f"Expected a {expected_dimensionality}-dimensional array but got a {data.ndim}-dimensional array instead."
+            msg = f"Expected a 2D array but got a {data.ndim}-dimensional array instead."
             raise ValueError(msg)
 
         ranks = rankdata(data, axis=0, method="average")
