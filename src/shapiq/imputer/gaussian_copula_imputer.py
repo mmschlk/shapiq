@@ -10,9 +10,11 @@ from scipy.stats import norm, rankdata
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
     import numpy.typing as npt
 
-from shapiq.game import Game
+    from shapiq.game import Game
+
 from .gaussian_imputer import GaussianImputer
 
 

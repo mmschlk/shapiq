@@ -43,7 +43,7 @@ def test_empirical_cdf_1_dimensional(dummy_model) -> None:
 
 def test_empirical_cdf_2_dimensional(dummy_model) -> None:
     """Tests that the empirical CDF is calculated correctly for a single column."""
-    feature_values = np.array([[[1, 2, 3], [4, 5, 6]],[[7, 8, 9], [10, 11, 12]]])
+    feature_values = np.array([[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]])
 
     dummy_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     imputer = GaussianCopulaImputer(model=dummy_model, data=dummy_data)
