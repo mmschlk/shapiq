@@ -31,7 +31,7 @@ def test_empirical_cdf(dummy_model) -> None:
 
 
 def test_empirical_cdf_1_dimensional(dummy_model) -> None:
-    """Tests that the empirical CDF is calculated correctly for a single column."""
+    """Tests that the empirical CDF is raising error on one dimensional input."""
     feature_values = np.array([-5, 10, 0, 3, 4])
 
     dummy_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
@@ -42,7 +42,7 @@ def test_empirical_cdf_1_dimensional(dummy_model) -> None:
 
 
 def test_empirical_cdf_2_dimensional(dummy_model) -> None:
-    """Tests that the empirical CDF is calculated correctly for a single column."""
+    """Tests that the empirical CDF is raising error on three dimensional input.."""
     feature_values = np.array([[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]])
 
     dummy_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
@@ -105,6 +105,24 @@ def test_transform_point_to_gaussian(dummy_model) -> None:
 
     assert x_transformed.shape == x_test.shape
     assert np.allclose(x_transformed, expected_x_transformed, atol=1e-2)
+
+
+def test_incorrect_transform_point_to_gaussian(dummy_model) -> None:
+    """Tests Error reaction to feature number and explanation point (x) missmatch."""
+    data = np.array(
+        [
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ]
+    )
+    imputer = GaussianCopulaImputer(model=dummy_model, data=data)
+
+    x_test = np.array([8, 2])
+    with pytest.raises(
+        ValueError, match="Background data has 3 features but point to transform has 2 features"
+    ):
+        imputer._transform_point_to_gaussian(data, x_test)
 
 
 def test_identity_transform(dummy_model) -> None:
