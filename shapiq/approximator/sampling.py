@@ -661,6 +661,7 @@ class CoalitionSampler:
 
 # Helpers for fast sampler
 import math
+import itertools
 
 def symmetric_round_even(x):
     # Function written by ChatGPT
@@ -683,31 +684,45 @@ def symmetric_round_even(x):
         out[n//2] += 1; rem -= 1
     return out
 
-def ith_combination(pool, size, index):
-    # Function written by ChatGPT
+from typing import Sequence, Tuple, TypeVar
+
+T = TypeVar("T")
+
+def ith_combination(pool: Sequence[T], size: int, index: int) -> Tuple[T, ...]:
     """
-    Compute the index-th combination (0-based) in lexicographic order
-    without generating all previous combinations.
+    Return the `index`-th k-combination of `pool` (0-based), in lexicographic
+    order w.r.t. `pool`'s current order. Single pass, no while-loop.
     """
     n = len(pool)
-    combination = []
-    elements_left = n
     k = size
-    start = 0
-    
-    for i in range(size):
-        # Find the largest value for the first element in the combination
-        # that allows completing the remaining k-1 elements
-        for j in range(start, elements_left):
-            count = math.comb(elements_left - j - 1, k - 1)
-            if index < count:
-                combination.append(pool[j])
-                k -= 1
-                start = j + 1
-                break
-            index -= count
-    
-    return tuple(combination)
+
+    if not (0 <= k <= n):
+        raise ValueError("size must be between 0 and len(pool)")
+    total = math.comb(n, k)
+    if not (0 <= index < total):
+        raise IndexError(f"index must be in [0, {total-1}] for C({n},{k})")
+
+    combo = []
+    for i in range(n):
+        if k == 0:
+            break
+
+        # If we must take all remaining items
+        if n - i == k:
+            combo.extend(pool[i:i+k])
+            k = 0
+            break
+
+        # Combinations that start by taking pool[i]
+        c = math.comb(n - i - 1, k - 1)
+
+        if index < c:
+            combo.append(pool[i])
+            k -= 1
+        else:
+            index -= c
+
+    return tuple(combo)
 
 def combination_generator(gen, n, s, num_samples):
     """
@@ -727,7 +742,7 @@ def combination_generator(gen, n, s, num_samples):
 class CoalitionSamplerFast:
     '''
     Based on the sampling procedure by Musco and Witter (2025): https://arxiv.org/abs/2410.01917
-    Code based on their implementation: https://github.com/rtealwitter/leverageshap/blob/7f4aa7c3417d02e5e71f3b86c28072cb2e560d30/leverageshap/estimators/regression.py
+    Code based on their implementation, with a few tweaks: https://github.com/rtealwitter/leverageshap/blob/7f4aa7c3417d02e5e71f3b86c28072cb2e560d30/leverageshap/estimators/regression.py
     '''
     def __init__(
         self,
@@ -831,7 +846,11 @@ class CoalitionSamplerFast:
 
         # Sample coalitions
         for idx, size in enumerate(sizes):
-            if self.pairing_trick and size == self.n_players // 2 and self.n_players % 2 == 0:
+            if samples_per_size[idx] == math.comb(self.n_players, size):
+                combo_gen = itertools.combinations(range(self.n_players), size)
+                for indices in combo_gen:
+                    self.add_one_sample(list(indices))
+            elif self.pairing_trick and size == self.n_players // 2 and self.n_players % 2 == 0:
                 combo_gen = combination_generator(
                     self.rng, self.n_players - 1, size - 1, samples_per_size[idx] // 2
                 )
@@ -850,4 +869,4 @@ class CoalitionSamplerFast:
                         )
 
         coalition_sizes = np.sum(self.coalitions_matrix, axis=1)
-        self.adjusted_sampling_weights = sampling_probs[coalition_sizes]
+        self.sampling_adjustment_weights = 1 / sampling_probs[coalition_sizes]
