@@ -23,7 +23,7 @@ This restructuring aims to improve maintainability and development scalability. 
 - fixes a bug where RegressionFBII approximator was throwing an error when the index was `'BV'` or `'FBII'`.[#420](https://github.com/mmschlk/shapiq/pull/420)
 
 ### New Features
-- adds the ProxySPEX (Proxy Sparse Explanation) module in `approximator.sparse` for even more efficient computation of sparse interaction values [#TBD](https://github.com/mmschlk/shapiq/pull/TBD)
+- adds the ProxySPEX (Proxy Sparse Explanation) module in `approximator.sparse` for even more efficient computation of sparse interaction values [#442](https://github.com/mmschlk/shapiq/pull/442)
 
 ### Removed Features
 - removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
