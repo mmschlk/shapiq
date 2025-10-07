@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import collections.abc
 import copy
 import math
 from collections import defaultdict
@@ -10,7 +9,6 @@ from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import GridSearchCV
 from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
@@ -28,8 +26,6 @@ from shapiq.interaction_values import InteractionValues
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
-
-    from sklearn.ensemble._hist_gradient_boosting.predictor import TreePredictor
 
     from shapiq.game import Game
 
@@ -126,6 +122,16 @@ class Sparse(Approximator):
         if self.decoder_type not in ["soft", "hard", "proxyspex"]:
             msg = "decoder_type must be 'soft', 'hard', or 'proxyspex'"
             raise ValueError(msg)
+        if self.decoder_type == "proxyspex":
+            try:
+                import lightgbm as lgb  # noqa: F401
+            except ImportError as err:
+                msg = (
+                    "The 'lightgbm' package is required when decoder_type is 'proxyspex' "
+                    "but it is not installed. Please see the installation instructions at "
+                    "https://github.com/microsoft/LightGBM/tree/master/python-package"
+                )
+                raise ImportError(msg) from err
         # The sampling parameters for the Fourier transform
         self.query_args = {
             "query_method": "complex",
@@ -138,14 +144,14 @@ class Sparse(Approximator):
         }
         if self.decoder_type == "proxyspex":
             self.decoder_args = {
-                "max_depth": [3, max_order],
-                "max_iter": [500],
+                "max_depth": [3, 5],
+                "max_iter": [500, 1000],
                 "learning_rate": [0.01, 0.1],
             }
             self._uniform_sampler = CoalitionSampler(
                 n_players=n,
-                sampling_weights=np.array([math.comb(n, i) for i in range(n + 1)]),
-                pairing_trick=False,
+                sampling_weights=np.array([math.comb(n, i) for i in range(n + 1)], dtype=float),
+                pairing_trick=True,
                 random_state=random_state,
             )
         else:
@@ -187,36 +193,40 @@ class Sparse(Approximator):
             The approximated Shapley interaction values.
         """
         if self.decoder_type == "proxyspex":
-            # Take a budget amount of uniform samples
+            import lightgbm as lgb
+
             used_budget = budget
+
+            # Take the budget amount of uniform samples
             self._uniform_sampler.sample(budget)
-            train_y = game(self._uniform_sampler.coalitions_matrix)
+
             train_X = pd.DataFrame(
                 self._uniform_sampler.coalitions_matrix, columns=[f"f{i}" for i in range(self.n)]
             )
+            train_y = game(self._uniform_sampler.coalitions_matrix)
 
-            # Train a proxy model with GridSearchCV to find best hyperparameters
-            base_model = HistGradientBoostingRegressor(
-                random_state=0, categorical_features=[True] * self.n, max_bins=32
-            )
+            base_model = lgb.LGBMRegressor(verbose=-1, n_jobs=1, random_state=self.random_state)
+
+            # Set up GridSearchCV with cross-validation
             grid_search = GridSearchCV(
                 estimator=base_model,
                 param_grid=self.decoder_args,
                 scoring="r2",
-                cv=3,
+                cv=5,
                 verbose=0,
-                n_jobs=-1,
+                n_jobs=1,
             )
+
+            # Fit the model on the training data
             grid_search.fit(train_X, train_y)
 
-            # Extract and refine Fourier coefficients from the best model
             best_model = grid_search.best_estimator_
+
             initial_transform = self._refine(
-                self._histgb_to_fourier(best_model, best_model._baseline_prediction.item()),  # noqa: SLF001
+                self._lgboost_to_fourier(best_model.booster_.dump_model()),
                 self._uniform_sampler.coalitions_matrix,
                 train_y,
             )
-
         else:
             # Find the max value of b that fits within the given sample budget and get the used budget
             used_budget = self._set_transform_budget(budget)
@@ -360,52 +370,50 @@ class Sparse(Approximator):
         self.decoder_args["b"] = b
         return used_budget
 
-    def _histgb_to_fourier(
-        self, model: HistGradientBoostingRegressor, baseline: float
-    ) -> dict[tuple[int, ...], float]:
-        """Extracts the aggregated Fourier coefficients from a HistGradientBoostingRegressor model.
+    def _lgboost_to_fourier(self, model_dict: dict[str, Any]) -> dict[tuple[int, ...], float]:
+        """Extracts the aggregated Fourier coefficients from an LGBoost model dictionary.
 
-        This method iterates through all the trees in a trained scikit-learn booster model,
-        extracts the Fourier coefficients from each individual tree using the
-        `_histgb_tree_to_fourier` helper method, and aggregates them.
+        This method iterates over all trees in the LightGBM ensemble, computes the
+        Fourier coefficients for each individual tree using the `_lgboost_tree_to_fourier`
+        helper method, and then sums these coefficients to get the final Fourier
+        representation of the complete model.
 
         Args:
-            model: The trained `HistGradientBoostingRegressor` model.
-            baseline: The baseline prediction value of the model.
+        model_dict: A dictionary representing the trained LGBoost model, as
+            produced by `model.booster_.dump_model()`.
 
         Returns:
-            A dictionary mapping interaction tuples to their aggregated Fourier coefficient values.
+            A dictionary that maps interaction tuples (representing Fourier frequencies)
+            to their aggregated Fourier coefficients.
         """
         aggregated_coeffs = defaultdict(float)
 
-        # Scikit-learn's trees are stored in an internal `_predictors` attribute.
-        all_tree_predictors = (
-            [p for sublist in model._predictors for p in sublist]  # noqa: SLF001
-            if model._predictors and isinstance(model._predictors[0], collections.abc.Sequence)  # noqa: SLF001
-            else model._predictors  # noqa: SLF001
-        )
-        for tree_predictor in all_tree_predictors:
-            tree_coeffs = self._histgb_tree_to_fourier(tree_predictor)
+        for tree_info in model_dict["tree_info"]:
+            tree_coeffs = self._lgboost_tree_to_fourier(tree_info)
             for interaction, value in tree_coeffs.items():
                 aggregated_coeffs[interaction] += value
-        aggregated_coeffs[()] += baseline
 
+        # Convert defaultdict to a standard dict, removing zero-valued coefficients
         return {k: v for k, v in aggregated_coeffs.items() if v != 0.0}
 
-    def _histgb_tree_to_fourier(
-        self, tree_predictor: TreePredictor
-    ) -> dict[tuple[int, ...], float]:
-        """Recursively extracts the Fourier coefficients from a single scikit-learn tree.
+    def _lgboost_tree_to_fourier(self, tree_info: dict[str, Any]) -> dict[tuple[int, ...], float]:
+        """Recursively strips the Fourier coefficients from a single LGBoost tree.
 
-        This method traverses a single decision tree from a HistGradientBoostingRegressor model
-        and computes its exact Fourier transform. It uses a recursive, depth-first approach
-        adapted to scikit-learn's internal tree representation (a flattened NumPy array).
+        This method traverses a tree's structure, as provided by LightGBM's `dump_model`
+        method, and computes the Fourier representation of the piecewise-constant
+        function that the tree defines. The logic is adapted from the work by Gorji et al. (2024).
 
         Args:
-            tree_predictor: An internal `TreePredictor` object from the trained model.
+            tree_info: A dictionary representing a single decision tree from an LGBM model.
 
         Returns:
-            A dictionary mapping interaction tuples to their Fourier coefficients for the given tree.
+            A dictionary mapping interaction tuples to their corresponding coefficients for
+            the single tree.
+
+        References:
+            Gorji, Ali, Andisheh Amrollahi, and Andreas Krause.
+            "SHAP values via sparse Fourier representation"
+            arXiv preprint arXiv:2410.06300 (2024).
         """
 
         def _combine_coeffs(
@@ -413,52 +421,32 @@ class Sparse(Approximator):
             right_coeffs: dict[tuple[int, ...], float],
             feature_idx: int,
         ) -> dict[tuple[int, ...], float]:
-            # Combines Fourier coefficients from the left and right children of a split node.
-            combined = {}
+            """Combines Fourier coefficients from the left and right children of a split node."""
+            combined_coeffs = {}
+            all_interactions = set(left_coeffs.keys()) | set(right_coeffs.keys())
 
-            base_interactions = set(left_coeffs.keys()) | set(right_coeffs.keys())
-            for interaction in base_interactions:
-                # This check is technically not needed if the logic is right, but is good for safety
-                if feature_idx in interaction:
-                    continue
-
+            for interaction in all_interactions:
                 left_val = left_coeffs.get(interaction, 0.0)
                 right_val = right_coeffs.get(interaction, 0.0)
+                combined_coeffs[interaction] = (left_val + right_val) / 2
 
-                # Formula for interactions NOT containing the split feature
-                combined[interaction] = (left_val + right_val) / 2
-
-                # Formula for interactions that DO contain the split feature
                 new_interaction = tuple(sorted(set(interaction) | {feature_idx}))
-                combined[new_interaction] = (left_val - right_val) / 2
+                combined_coeffs[new_interaction] = (left_val - right_val) / 2
+            return combined_coeffs
 
-            return combined
-
-        def _dfs_traverse(nodes: np.ndarray, node_idx: int) -> dict[tuple[int, ...], float]:
-            # Performs a depth-first traversal of the tree array to compute coefficients.
-
-            # Define column indices for clarity. This mapping corresponds to the structure
-            # of the TreePredictor's `nodes` array in your scikit-learn version.
-            VALUE_IDX = 0
-            FEATURE_IDX = 2
-            LEFT_CHILD_IDX = 5
-            RIGHT_CHILD_IDX = 6
-            LEAF_IDX = 9
-
-            current_node = nodes[node_idx]
-
-            if current_node[LEAF_IDX]:
-                # The leaf value is at index 0.
-                return {(): current_node[VALUE_IDX]}
-            # Recursive step: process left and right children using indices
-            left_coeffs = _dfs_traverse(nodes, int(current_node[LEFT_CHILD_IDX]))
-            right_coeffs = _dfs_traverse(nodes, int(current_node[RIGHT_CHILD_IDX]))
-            feature_idx = int(current_node[FEATURE_IDX])
-
-            # The _combine_coeffs helper function doesn't need to change.
+        def _dfs_traverse(node: dict[str, Any]) -> dict[tuple[int, ...], float]:
+            """Performs a depth-first traversal of the tree to compute coefficients."""
+            # Base case: if the node is a leaf, its function is a constant.
+            if "leaf_value" in node:
+                # The only non-zero coefficient is for the empty interaction (the bias term).
+                return {(): node["leaf_value"]}
+            # Recursive step: if the node is a split node.
+            left_coeffs = _dfs_traverse(node["left_child"])
+            right_coeffs = _dfs_traverse(node["right_child"])
+            feature_idx = node["split_feature"]
             return _combine_coeffs(left_coeffs, right_coeffs, feature_idx)
 
-        return _dfs_traverse(tree_predictor.nodes, 0)
+        return _dfs_traverse(tree_info["tree_structure"])
 
     def _refine(
         self,

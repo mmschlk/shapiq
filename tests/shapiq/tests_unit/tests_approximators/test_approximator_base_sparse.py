@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from shapiq.approximator.sparse import Sparse
 from shapiq.game_theory.indices import ALL_AVAILABLE_CONCEPTS
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
+from tests.shapiq.markers import skip_if_no_lightgbm
 
 
 @pytest.mark.parametrize(
@@ -152,7 +155,7 @@ def test_initialization(n, index, max_order, top_order, transform_type, decoder_
         ),  # Should spread 3rd order interaction across 1st
     ],
 )
-def test_approximate(
+def test_approximate_with_spex(
     n, index, max_order, budget, transform_type, decoder_type, top_order, interaction
 ):
     """Tests the approximation of the Sparse approximator with various configurations."""
@@ -218,3 +221,44 @@ def test_approximate(
                 assert estimates[interaction_key] == pytest.approx(1 / n, rel=0.01)
     recovered_interactions = recovered_interactions - zero_interactions
     assert recovered_interactions == expected_interactions
+
+
+@skip_if_no_lightgbm
+@pytest.mark.external_libraries
+def test_approximate_with_proxyspex():
+    """Tests the approximate method with the proxyspex decoder."""
+    n = 10
+    budget = 100
+    interaction = (2, 4)
+    game = DummyGame(n, interaction)
+
+    approximator = Sparse(n=n, index="FBII", max_order=2, decoder_type="proxyspex", random_state=42)
+    estimates = approximator.approximate(budget, game)
+
+    # The goal is to ensure the code path runs and gives a sane result.
+    assert isinstance(estimates, InteractionValues)
+    assert estimates.estimated
+    assert estimates.estimation_budget == budget
+
+    # The main interaction should be found and have a significant value
+    assert interaction in estimates.interaction_lookup
+    assert estimates[interaction] == pytest.approx(1.0, abs=0.5)
+
+
+def test_sparse_init_succeeds_lightgbm(monkeypatch):
+    """
+    Tests that the base Sparse class initializes successfully without lightgbm
+    if a non-proxyspex decoder is used and fails if proxyspex is used.
+    """
+    # Temporarily pretend lightgbm is not installed
+    monkeypatch.setitem(sys.modules, "lightgbm", None)
+
+    # This action should succeed without raising any errors because the decoder
+    # is "soft" and does not require lightgbm.
+    try:
+        Sparse(n=10, index="SII", decoder_type="soft")
+    except ImportError:
+        pytest.fail("Sparse raised an ImportError even when lightgbm was not required.")
+
+    with pytest.raises(ImportError, match="The 'lightgbm' package is required"):
+        Sparse(n=10, index="SII", decoder_type="proxyspex")

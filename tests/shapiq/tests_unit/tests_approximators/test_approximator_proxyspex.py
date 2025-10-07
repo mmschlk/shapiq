@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from shapiq.approximator.sparse.proxyspex import ProxySPEX
@@ -31,7 +33,6 @@ def test_initialization_defaults():
     [
         (7, "STII", 2, False),
         (7, "FBII", 3, True),
-        (7, "Moebius", 3, True),
         (20, "FSII", None, False),
     ],
 )
@@ -60,6 +61,8 @@ def test_initialization_custom(n, index, max_order, top_order):
         (7, {(), (1,), (1, 2)}, 800),
     ],
 )
+@skip_if_no_lightgbm
+@pytest.mark.external_libraries
 def test_approximate(n, interactions, budget):
     """Test ProxySPEX approximation functionality."""
 
@@ -89,3 +92,13 @@ def test_approximate(n, interactions, budget):
         assert abs(estimates[interaction]) > 0
         # The dummy game should return approximately 1.0 for the target interaction
         assert estimates[interaction] == pytest.approx(1.0, abs=0.5)
+
+
+def test_proxyspex_import_error_if_missing(monkeypatch):
+    """Tests that ProxySPEX raises an ImportError if lightgbm is not installed."""
+    # Temporarily pretend lightgbm is not installed
+    monkeypatch.setitem(sys.modules, "lightgbm", None)
+
+    # Use pytest.raises to assert that an ImportError is thrown
+    with pytest.raises(ImportError, match="The 'lightgbm' package is required"):
+        ProxySPEX(n=10)

@@ -43,6 +43,15 @@ class ProxySPEX(Sparse):
 
 
         """
+        try:
+            import lightgbm as lgb  # noqa: F401
+        except ImportError as err:
+            msg = (
+                "The 'lightgbm' package is required when decoder_type is 'proxyspex' "
+                "but it is not installed. Please see the installation instructions at "
+                "https://github.com/microsoft/LightGBM/tree/master/python-package"
+            )
+            raise ImportError(msg) from err
         super().__init__(
             n=n,
             max_order=max_order,
