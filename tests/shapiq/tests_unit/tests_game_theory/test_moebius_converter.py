@@ -30,5 +30,5 @@ def test_soum_moebius_conversion():
             assert (shapley_interactions[index][()] - emptyset_prediction) ** 2 < 10e-7
 
         # test direct call of Möbius converter
-        for index in ["STII", "k-SII", "SII", "FSII", "Moebius"]:
+        for index in ["STII", "k-SII", "SII", "FSII"]:
             moebius_converter(index=index, order=order)

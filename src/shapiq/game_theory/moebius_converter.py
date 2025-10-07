@@ -11,15 +11,7 @@ from scipy.special import binom
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils.sets import powerset
 
-ValidMoebiusConverterIndices = Literal[
-    "k-SII",
-    "STII",
-    "FSII",
-    "FBII",
-    "SII",
-    "SV",
-    "BV",
-]
+ValidMoebiusConverterIndices = Literal["k-SII", "STII", "FSII", "FBII", "SII", "SV", "BV"]
 
 
 class MoebiusConverter:

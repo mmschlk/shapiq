@@ -166,11 +166,11 @@ For large-scale use-cases you can also check out the [👓``ProxySPEX``](https:/
 # load your data and model with large number of features
 data, model, n_features = ...
 
-# use the SPEX approximator directly
+# use the ProxySPEX approximator directly
 approximator = shapiq.ProxySPEX(n=n_features, index="FBII", max_order=2)
 fbii_scores = approximator.approximate(budget=2000, game=model.predict)
 
-# or use SPEX with an explainer
+# or use ProxySPEX with an explainer
 explainer = shapiq.Explainer(
     model=model,
     data=data,

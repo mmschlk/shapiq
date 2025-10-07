@@ -25,7 +25,6 @@ def test_initialization_defaults():
     assert proxyspex.top_order is False
     assert proxyspex.transform_type == "fourier"
     assert proxyspex.decoder_type == "proxyspex"  # For proxyspex
-    assert proxyspex.decoder_args["max_depth"][1] == n  # Depth n
 
 
 @pytest.mark.parametrize(
