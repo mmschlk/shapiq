@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
-from overrides import overrides
-
 from shapiq.approximator.base import Approximator
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory.indices import is_empty_value_the_baseline
@@ -173,7 +171,6 @@ class TabularExplainer(Explainer[Approximator[TabularExplainerIndices], Imputer,
             random_state,
         )
 
-    @overrides
     def explain_function(
         self,
         x: np.ndarray,
