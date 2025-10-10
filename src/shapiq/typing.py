@@ -9,12 +9,16 @@ import numpy as np
 from numpy.typing import NDArray
 
 FloatVector = NDArray[np.floating]
+"""A 1D array of floating point numbers, typically used to represent game values or"""
 
 IntVector = NDArray[np.integer]
+"""A 1D array of integers, typically used to represent player indices or counts."""
 
 BoolVector = NDArray[np.bool_]
+"""A 1D array of boolean values, typically used to represent the presence or absence of players in
+a coalition."""
 
-CoalitionMatrix = NDArray[np.bool_ | np.int_]
+CoalitionMatrix = NDArray[np.bool_]
 """A 2D one-hot encoded matrix representing coalitions. A 1 denotes a player is part of the
 coalition, and a 0 denotes they are not. The array is of shape ``(n_coalitions, n_players)``,
 """
@@ -23,7 +27,7 @@ CoalitionTuple = tuple[int, ...]
 """A tuple representing a coalition of players. Each integer is a player index, and the tuple is
 sorted in ascending order."""
 
-CoalitionsTuples = Collection[tuple[int, ...]]
+CoalitionsTuples = Collection[CoalitionTuple]
 """A list of coalitions, where each coalition is represented as a tuple of player indices."""
 
 CoalitionsLookup = dict[CoalitionTuple, int]
