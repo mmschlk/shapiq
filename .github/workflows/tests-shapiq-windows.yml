@@ -29,7 +29,7 @@ jobs:
         uv run python --version
 
     - name: Install Tkinter
-      run: uv run python -m pip install tk
+      run: uv pip install tk
       
     - name: Install dependencies
       run: uv sync --all-extras --dev
