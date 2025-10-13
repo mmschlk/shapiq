@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping, Sequence
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, Protocol, TypedDict, runtime_checkable
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 FloatVector = NDArray[np.floating]
 """A 1D array of floating point numbers, typically used to represent game values or"""
@@ -40,6 +40,15 @@ GameValues = FloatVector
 
 Model = Any
 """A generic type denoting a machine learning model."""
+
+
+@runtime_checkable
+class SklearnLikeModel(Protocol):
+    """A protocol representing a scikit-learn-like model."""
+
+    def fit(self, X: ArrayLike, y: ArrayLike) -> Any: ...
+    def predict(self, X: ArrayLike) -> np.ndarray: ...
+
 
 IndexType = Literal[
     "SII",

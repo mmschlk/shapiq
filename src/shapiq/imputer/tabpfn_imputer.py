@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from shapiq.typing import SklearnLikeModel
+
 from .base import Imputer
 
 if TYPE_CHECKING:
@@ -17,10 +19,8 @@ if TYPE_CHECKING:
 
     from tabpfn import TabPFNClassifier, TabPFNRegressor
 
-    from shapiq.typing import Model
 
-
-class TabPFNImputer(Imputer):
+class TabPFNImputer(Imputer[SklearnLikeModel]):
     """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
 
     The remove-and-contextualize paradigm is a strategy to explain the predictions of a TabPFN [2]_
@@ -50,7 +50,8 @@ class TabPFNImputer(Imputer):
         x_test: np.ndarray | None = None,
         empty_prediction: float | None = None,
         verbose: bool = False,
-        predict_function: Callable[[Model, np.ndarray], np.ndarray] | None = None,
+        predict_function: Callable[[TabPFNClassifier | TabPFNRegressor, np.ndarray], np.ndarray]
+        | None = None,
     ) -> None:
         """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
 
@@ -109,10 +110,7 @@ class TabPFNImputer(Imputer):
         )
 
         if empty_prediction is None:
-            # TODO(advueu963): This pyright error can only be silenced if the self.model in Imputer can not be callable. Might want to consider different attributes for sklearn models,... to really get rid of this # noqa: TD003
-            self.model.fit(  # pyright: ignore[reportFunctionMemberAccess]
-                x_train, y_train
-            )  # contextualize the model on the training data
+            self.model.fit(x_train, y_train)  # contextualize the model on the training data
             predictions = self.predict(x_test)
             empty_prediction = float(np.mean(predictions))
         self.empty_prediction = empty_prediction
@@ -139,19 +137,10 @@ class TabPFNImputer(Imputer):
                 output[i] = self.empty_prediction
                 continue
             x_train_coal = self.x_train[:, coalition]
-            # TODO(advueu963): Have to talk over this...# noqa: TD003
-            if self.x is None:
-                msg = "The explanation point x is not set."
-                raise ValueError(msg)
-
             x_explain_coal = self.x[:, coalition]
-            self.model.fit(  # pyright: ignore[reportFunctionMemberAccess]
-                x_train_coal, self.y_train
-            )
+            self.model.fit(x_train_coal, self.y_train)
             pred = float(self.predict(x_explain_coal))
             output[i] = pred
         # refit the model on the full training data to ensure it is in a consistent state
-        self.model.fit(  # pyright: ignore[reportFunctionMemberAccess]
-            self.x_train, self.y_train
-        )
+        self.model.fit(self.x_train, self.y_train)
         return output

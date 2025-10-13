@@ -3,20 +3,17 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING
+from typing import Generic, TypeVar
 
 import numpy as np
 
 from shapiq.explainer import utils
 from shapiq.game import Game
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from shapiq.typing import Model
+TModel = TypeVar("TModel")
 
 
-class Imputer(Game):
+class Imputer(Game, Generic[TModel]):
     """Base class for Imputers.
 
     Attributes:
@@ -32,10 +29,13 @@ class Imputer(Game):
 
     """
 
+    model: TModel
+    """The model to impute missing values for."""
+
     @abstractmethod
     def __init__(
         self,
-        model: Model | Callable[..., object],
+        model: TModel,
         data: np.ndarray,
         x: np.ndarray | None = None,
         *,
@@ -74,7 +74,7 @@ class Imputer(Game):
                 self._predict_function = utils.predict_callable
         # shapiq.Explainer adds a _shapiq_predict_function to the model to make it callable
         elif hasattr(model, "_shapiq_predict_function"):
-            self._predict_function = model._shapiq_predict_function  # noqa: SLF001
+            self._predict_function = model._shapiq_predict_function  # noqa: SLF001  # pyright: ignore [reportAttributeAccessIssue]
         else:
             msg = "The model must be callable or have a predict function."
             raise ValueError(msg)
@@ -91,6 +91,7 @@ class Imputer(Game):
         self._rng = np.random.default_rng(self.random_state)
 
         # fit x
+        self._x: np.ndarray | None = None
         if x is not None:
             self.fit(x)
 
@@ -99,12 +100,12 @@ class Imputer(Game):
         super().__init__(n_players=self.n_features, normalize=False, verbose=verbose)
 
     @property
-    def x(self) -> np.ndarray | None:
+    def x(self) -> np.ndarray:
         """Returns the explanation point if it is set."""
-        try:
-            return self._x.copy()
-        except AttributeError:
-            return None
+        if self._x is None:
+            msg = "The imputer has not yet been fitted yet."
+            raise AttributeError(msg)
+        return self._x.copy()
 
     def set_random_state(self, random_state: int | None = None) -> None:
         """Sets the random state for the imputer and the model.

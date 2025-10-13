@@ -44,7 +44,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
 def load_california_housing(
     *,
     to_numpy: bool = False,
-) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
+) -> tuple[pd.DataFrame, pd.Series | pd.DataFrame] | tuple[np.ndarray, np.ndarray]:
     """Load the California housing dataset.
 
     Args:
@@ -67,12 +67,12 @@ def load_california_housing(
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    return x_data, y_data  # pyright: ignore[reportReturnType]
+    return x_data, y_data
 
 
 def load_bike_sharing(
     *, to_numpy: bool = False
-) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
+) -> tuple[pd.DataFrame, pd.Series | pd.DataFrame] | tuple[np.ndarray, np.ndarray]:
     """Load the bike-sharing dataset from openml and preprocess it.
 
     Note:
@@ -135,7 +135,7 @@ def load_bike_sharing(
     )  # Transformations will always return a dense array
     dataset = pd.DataFrame(
         transformed_data,
-        columns=col_names,  # pyright: ignore[reportArgumentType]
+        columns=np.asarray(col_names),
     )
     dataset = dataset.dropna()
 
@@ -149,7 +149,7 @@ def load_bike_sharing(
 
 def load_adult_census(
     *, to_numpy: bool = False
-) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
+) -> tuple[pd.DataFrame, pd.Series | pd.DataFrame] | tuple[np.ndarray, np.ndarray]:
     """Load the adult census dataset from the UCI Machine Learning Repository.
 
     Original source: https://archive.ics.uci.edu/ml/datasets/adult
@@ -213,7 +213,7 @@ def load_adult_census(
     )  # Transformations will always return a dense array
     dataset = pd.DataFrame(
         transformed_data,
-        columns=col_names,  # pyright: ignore[reportArgumentType]
+        columns=np.asarray(col_names),
     )
     dataset = dataset.dropna()
 
@@ -225,4 +225,4 @@ def load_adult_census(
 
     if to_numpy:
         return x_data.to_numpy(), y_data.to_numpy()
-    return x_data, y_data  # pyright: ignore[reportReturnType]
+    return x_data, y_data

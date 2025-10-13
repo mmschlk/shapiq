@@ -156,6 +156,8 @@ exclude = [
 [tool.ruff.lint.per-file-ignores]
 "src/shapiq/typing.py" = [
     "A005",  # we want to be similar to other libraries that also shadow typing
+    "D102",  # we don't need docstrings for protocol stubs
+    "ANN401",  # any return type is okay in typing.py for protocol subts
 ]
 "tests/*.py" = [
     # "ALL",
