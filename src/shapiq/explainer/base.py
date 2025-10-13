@@ -80,6 +80,9 @@ class Explainer:
     model: Model | Game | Callable[[np.ndarray], np.ndarray]
     """The model to be explained, either as a Model instance or a callable function."""
 
+    _index: ExplainerIndices
+    _max_order: int
+
     def __init__(
         self,
         model: Model | Game | Callable[[np.ndarray], np.ndarray],
@@ -190,7 +193,7 @@ class Explainer:
     @property
     def index(self) -> ExplainerIndices:
         """The type of Shapley interaction index the explainer is using."""
-        return self._index  # type: ignore[return-type]
+        return self._index
 
     @property
     def max_order(self) -> int:
