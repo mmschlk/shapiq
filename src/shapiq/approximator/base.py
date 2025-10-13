@@ -62,7 +62,7 @@ class Approximator(ABC, Generic[TIndices]):
         max_order: int,
         index: TIndices,
         *,
-        top_order: bool,
+        top_order: bool = False,
         min_order: int = 0,
         pairing_trick: bool = False,
         sampling_weights: FloatVector | None = None,

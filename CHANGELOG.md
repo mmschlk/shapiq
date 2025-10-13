@@ -2,7 +2,7 @@
 
 ## Development
 
-### Shapiq Statically Typechecked
+### Shapiq Statically Typechecked [#430](https://github.com/mmschlk/shapiq/pull/430)
 We have introduced static type checking to `shapiq` using [Pyright](https://github.com/microsoft/pyright), and integrated it into our `pre-commit` hooks.
 This ensures that type inconsistencies are caught early during development, improving code quality and maintainability.
 Developers will now benefit from immediate feedback on type errors, making the codebase more robust and reliable as it evolves.
@@ -29,7 +29,7 @@ This restructuring aims to improve maintainability and development scalability. 
 
 ### Removed Features
 - removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
-
+- removes `coalition_lookup` and `value_storage` properties from `shapiq.Game` since the seperated view on game values and coalitions they belong to is now outdated. Use the `shapiq.Game.game_values` dictionary instead. [#430](https://github.com/mmschlk/shapiq/pull/430)
 
 ## v1.3.1 (2025-07-11)
 

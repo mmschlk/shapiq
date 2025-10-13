@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any
 
 from tqdm.auto import tqdm
-
-from shapiq.approximator.base import Approximator
-from shapiq.game_theory import ExactComputer
-from shapiq.imputer.base import Imputer
 
 from .utils import (
     get_explainers,
@@ -24,7 +20,10 @@ if TYPE_CHECKING:
 
     import numpy as np
 
+    from shapiq.approximator.base import Approximator
     from shapiq.game import Game
+    from shapiq.game_theory import ExactComputer
+    from shapiq.imputer.base import Imputer
     from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
 
@@ -68,13 +67,7 @@ def generic_to_specific_explainer(
     )
 
 
-# Type variables for the generic Explainer class.
-TApprox = TypeVar("TApprox", Approximator, None)
-TImputer = TypeVar("TImputer", Imputer, None)
-TExact = TypeVar("TExact", ExactComputer, None)
-
-
-class Explainer(Generic[TApprox, TImputer, TExact]):
+class Explainer:
     """The main Explainer class for a simpler user interface.
 
     shapiq.Explainer is a simplified interface for the ``shapiq`` package. It detects between
@@ -83,19 +76,6 @@ class Explainer(Generic[TApprox, TImputer, TExact]):
     and :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. For a detailed description of the
     different explainers, see the respective classes.
     """
-
-    approximator: TApprox
-    """The approximator which may be used for the explanation (or None in the base class)."""
-
-    exact_computer: TExact
-    """An exact computer which computes the :class:`~shapiq.interaction_values.InteractionValues`
-    exactly (or None in the base class). Note that this only works for small number of
-    features as the number of coalitions grows exponentially with the number of features.
-    """
-
-    imputer: TImputer
-    """An imputer which is used to impute missing values in computing the interaction values
-    (or None in the base class)."""
 
     model: Model | Game | Callable[[np.ndarray], np.ndarray]
     """The model to be explained, either as a Model instance or a callable function."""
@@ -177,6 +157,35 @@ class Explainer(Generic[TApprox, TImputer, TExact]):
 
         # validate index and max_order and set them as attributes
         self._index, self._max_order = validate_index_and_max_order(index, max_order)
+
+        # initialize private attributes
+        self._imputer: Imputer | None = None
+        self._approximator: Approximator | None = None
+        self._exact_computer: ExactComputer | None = None
+
+    @property
+    def imputer(self) -> Imputer:
+        """The imputer used by the explainer (or None in the base class)."""
+        if self._imputer is None:
+            msg = "The explainer does not have an imputer. Use a specific explainer class."
+            raise NotImplementedError(msg)
+        return self._imputer
+
+    @property
+    def exact_computer(self) -> ExactComputer:
+        """The exact computer used by the explainer (or None in the base class)."""
+        if self._exact_computer is None:
+            msg = "The explainer does not have an exact computer. Use a specific explainer class."
+            raise NotImplementedError(msg)
+        return self._exact_computer
+
+    @property
+    def approximator(self) -> Approximator:
+        """The approximator used by the explainer (or None in the base class)."""
+        if self._approximator is None:
+            msg = "The explainer does not have an approximator. Use a specific explainer class."
+            raise NotImplementedError(msg)
+        return self._approximator
 
     @property
     def index(self) -> ExplainerIndices:

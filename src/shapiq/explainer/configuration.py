@@ -169,18 +169,15 @@ def setup_approximator(
     # we simply return the approximator if it is already an instance of Approximator
     if isinstance(approximator, Approximator):
         return approximator
-
-    # if the approximator is "auto", we set it up automatically
-    if approximator == "auto":
+    if approximator == "auto":  # if the approximator is "auto", we set it up automatically
         return setup_approximator_automatically(
             index=index,
             max_order=max_order,
             n_players=n_players,
             random_state=random_state,
         )
-
-    # if the approx is a string and not "auto", we get it from the configurations and set it up
     if isinstance(approximator, str):
+        # if the approx is a string and not "auto", we get it from the configurations and set it up
         if approximator in APPROXIMATOR_CONFIGURATIONS:
             approximator_cls: type[Approximator] = APPROXIMATOR_CONFIGURATIONS[approximator][index]
         else:
@@ -189,14 +186,9 @@ def setup_approximator(
                 f"Valid configurations are described in {APPROXIMATOR_CONFIGURATIONS}."
             )
             raise ValueError(msg)
-    elif not issubclass(type(approximator), Approximator):
-        msg = (
-            f"Invalid approximator class `{approximator}`. "
-            f"Expected a subclass of `Approximator`, but got {type(approximator)}."
-        )
-        raise TypeError(msg)
     else:
-        approximator_cls: type[Approximator] = approximator
+        msg = f"Invalid approximator `{approximator}`. "
+        raise TypeError(msg)
 
     # initialize the approximator class with params
     if issubclass(approximator_cls, Regression):
@@ -209,7 +201,6 @@ def setup_approximator(
     return approximator_cls(
         n=n_players,
         max_order=max_order,
-        top_order=False,
         random_state=random_state,
         index=index,
     )

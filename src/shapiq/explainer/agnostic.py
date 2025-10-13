@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from shapiq.approximator.base import Approximator
 from shapiq.game import Game
 
 from .base import Explainer
@@ -17,15 +16,15 @@ if TYPE_CHECKING:
 
     import numpy as np
 
+    from shapiq.approximator.base import Approximator
     from shapiq.interaction_values import InteractionValues
 
     from .tabular import TabularExplainerApproximators
 
-
 AgnosticExplainerIndices = ExplainerIndices
 
 
-class AgnosticExplainer(Explainer[Approximator[AgnosticExplainerIndices], None, None]):
+class AgnosticExplainer(Explainer):
     """Agnostic Explainer for shapiq.
 
     This explainer is used to explain models that do not have a specific implementation in shapiq.
@@ -88,7 +87,7 @@ class AgnosticExplainer(Explainer[Approximator[AgnosticExplainerIndices], None, 
         super().__init__(model=game, class_index=None)
 
         self.game = game
-        self.approximator: Approximator[AgnosticExplainerIndices] = setup_approximator(
+        self._approximator = setup_approximator(
             approximator=approximator,
             max_order=max_order,
             index=index,

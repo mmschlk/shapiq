@@ -30,8 +30,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
 
-    from shapiq.typing import JSONType
-
+    from shapiq.typing import InteractionScores, JSONType
 
 SAVE_JSON_DEPRECATION_MSG = (
     "Saving InteractionValues not as a JSON file is deprecated. "
@@ -65,12 +64,12 @@ class InteractionValues:
 
     """
 
-    interactions: dict[tuple[int, ...], float]
+    interactions: InteractionScores
     """The interactions as a dictionary mapping interactions to their values."""
 
     def __init__(
         self,
-        values: np.ndarray | dict[tuple[int, ...], float],
+        values: np.ndarray | InteractionScores,
         *,
         index: str,
         max_order: int,
@@ -1251,13 +1250,13 @@ def _validate_and_return_interactions(
 
 
 def _update_interactions_for_index(
-    interactions: dict[tuple[int, ...], float],
+    interactions: InteractionScores,
     index: str,
     target_index: str,
     max_order: int,
     min_order: int,
     baseline_value: float | np.number,
-) -> tuple[dict[tuple[int, ...], float], str, int, float]:
+) -> tuple[InteractionScores, str, int, float]:
     from .game_theory.aggregation import aggregate_base_attributions
 
     if is_index_aggregated(target_index) and target_index != index:

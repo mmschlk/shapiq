@@ -71,7 +71,7 @@ def _setup_core_calculations(
     # $A_\{ub\}$ @ (x,e) <= $b_\{ub\}$
     credit_assignment_constraints = LinearConstraint(
         stability_matrix,
-        ub=stability_values,  # pyright: ignore[reportArgumentType]. Pyright thinks ub can only be a single number
+        ub=stability_values,  # pyright: ignore[reportArgumentType]. scipy not typed correctly: ub
     )
     # $A_\{eq\} @ (x,e) == $b_\{eq\}$
     efficiency_constraint = LinearConstraint(

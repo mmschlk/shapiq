@@ -5,10 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
-from shapiq.approximator.base import Approximator
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory.indices import is_empty_value_the_baseline
-from shapiq.imputer.base import Imputer
 
 from .configuration import setup_approximator
 from .custom_types import ExplainerIndices
@@ -16,6 +14,8 @@ from .custom_types import ExplainerIndices
 if TYPE_CHECKING:
     import numpy as np
 
+    from shapiq.approximator.base import Approximator
+    from shapiq.imputer.base import Imputer
     from shapiq.interaction_values import InteractionValues
     from shapiq.typing import Model
 
@@ -25,7 +25,7 @@ TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
 TabularExplainerIndices = ExplainerIndices
 
 
-class TabularExplainer(Explainer[Approximator[TabularExplainerIndices], Imputer, None]):
+class TabularExplainer(Explainer):
     """The tabular explainer as the main interface for the shapiq package.
 
     The ``TabularExplainer`` class is the main interface for the ``shapiq`` package and tabular
@@ -129,21 +129,21 @@ class TabularExplainer(Explainer[Approximator[TabularExplainerIndices], Imputer,
             )
 
         if imputer == "marginal":
-            self.imputer = MarginalImputer(
+            self._imputer = MarginalImputer(
                 self.predict,
                 self._data,
                 random_state=random_state,
                 **kwargs,
             )
         elif imputer == "conditional":
-            self.imputer = ConditionalImputer(
+            self._imputer = ConditionalImputer(
                 self.predict,
                 self._data,
                 random_state=random_state,
                 **kwargs,
             )
         elif imputer == "baseline":
-            self.imputer = BaselineImputer(
+            self._imputer = BaselineImputer(
                 self.predict,
                 self._data,
                 random_state=random_state,
@@ -152,7 +152,7 @@ class TabularExplainer(Explainer[Approximator[TabularExplainerIndices], Imputer,
         elif isinstance(
             imputer, MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer
         ):
-            self.imputer: Imputer = imputer
+            self._imputer = imputer
         else:
             msg = (
                 f"Invalid imputer {imputer}. "
@@ -163,7 +163,7 @@ class TabularExplainer(Explainer[Approximator[TabularExplainerIndices], Imputer,
         self._n_features: int = self._data.shape[1]
         self.imputer.verbose = verbose  # set the verbose flag for the imputer
 
-        self.approximator: Approximator[TabularExplainerIndices] = setup_approximator(
+        self._approximator = setup_approximator(
             approximator,
             self.index,
             self._max_order,

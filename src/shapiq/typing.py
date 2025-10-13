@@ -20,8 +20,7 @@ a coalition."""
 
 CoalitionMatrix = NDArray[np.bool_]
 """A 2D one-hot encoded matrix representing coalitions. A 1 denotes a player is part of the
-coalition, and a 0 denotes they are not. The array is of shape ``(n_coalitions, n_players)``,
-"""
+coalition, and a 0 denotes they are not. The array is of shape ``(n_coalitions, n_players)``."""
 
 CoalitionTuple = tuple[int, ...]
 """A tuple representing a coalition of players. Each integer is a player index, and the tuple is
@@ -30,9 +29,17 @@ sorted in ascending order."""
 CoalitionsTuples = Collection[CoalitionTuple]
 """A list of coalitions, where each coalition is represented as a tuple of player indices."""
 
-CoalitionsLookup = dict[CoalitionTuple, int]
-"""A dictionary mapping coalitions (as tuples of player indices) to their corresponding index in
-an ordered collection of coalitions (e.g., a vector of game evaluations)."""
+InteractionTuple = tuple[int, ...]
+"""A tuple representing an interaction of players. Each integer is a player index, and the tuple
+is sorted in ascending order."""
+
+InteractionScores = dict[InteractionTuple, float]
+"""A dictionary mapping interactions (as tuples of player indices) to their corresponding
+interaction score."""
+
+GameScores = dict[CoalitionTuple, float]
+"""A dictionary mapping coalitions (as tuples of player indices) to their corresponding game
+value."""
 
 GameValues = FloatVector
 """A 1D array representing the values of coalitions in a game. The array is of shape

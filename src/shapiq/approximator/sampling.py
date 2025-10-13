@@ -12,7 +12,7 @@ from scipy.special import binom
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
-    from shapiq.typing import BoolVector, CoalitionsLookup, FloatVector, IntVector
+    from shapiq.typing import BoolVector, CoalitionTuple, FloatVector, IntVector
 
 
 class CoalitionSampler:
@@ -157,7 +157,7 @@ class CoalitionSampler:
         self._coalitions_to_sample: list[int] = []  # coalitions to sample
 
         # initialize variables to be computed and stored
-        self.sampled_coalitions_dict: CoalitionsLookup = {}  # coal -> count
+        self.sampled_coalitions_dict: dict[CoalitionTuple, int] = {}
         self.coalitions_per_size: IntVector = np.array([], dtype=int)
 
         # variables accessible through properties

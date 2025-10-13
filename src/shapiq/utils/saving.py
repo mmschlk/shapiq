@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Literal
 
-    from shapiq.typing import JSONType, MetadataBlock
+    from shapiq.typing import InteractionScores, JSONType, MetadataBlock
 
 
 def safe_tuple_to_str(t: tuple[int, ...]) -> str:
@@ -41,7 +41,7 @@ def interactions_to_dict(
 
 def dict_to_interactions(
     interaction_dict: dict[str, float],
-) -> dict[tuple[int, ...], float]:
+) -> InteractionScores:
     """Converts a dictionary of interaction values back to a mapping of tuples to float values."""
     return {safe_str_to_tuple(tup_str): value for tup_str, value in interaction_dict.items()}
 

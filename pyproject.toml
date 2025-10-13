@@ -224,7 +224,7 @@ required-imports = ["from __future__ import annotations"]
 
 [tool.pyright]
 include = ["src/shapiq"]
-exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq/plot", "src/shapiq_games"]
+exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
 venv = ".venv"
 pythonVersion = "3.10"
 

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from .base import TreeModel
 
 
-class TreeExplainer(Explainer[None, None, None]):
+class TreeExplainer(Explainer):
     """The TreeExplainer class for tree-based models.
 
     The explainer for tree-based models using the

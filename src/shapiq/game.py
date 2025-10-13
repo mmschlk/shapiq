@@ -19,10 +19,13 @@ from shapiq.utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from shapiq.interaction_values import InteractionValues
     from shapiq.typing import (
         CoalitionMatrix,
-        CoalitionsTuples,
+        CoalitionTuple,
+        GameScores,
         GameValues,
         JSONType,
         MetadataBlock,
@@ -117,7 +120,7 @@ class Game:
     """The value which is used to normalize (center) the game values such that the value for the
     empty coalition is zero. If this is zero, the game values are not normalized."""
 
-    game_values: dict[tuple[int, ...], float]
+    game_values: GameScores
     """The mapping for coalitions to game values without normalization applied."""
 
     def __init__(
@@ -164,7 +167,7 @@ class Game:
         self._precompute_flag: bool = False  # flag to manually override the precomputed check
 
         # define storage variables
-        self.game_values: dict[tuple[int, ...], float] = {}
+        self.game_values = {}
         self.n_players = n_players if n_players is not None else -1
 
         if path_to_values is not None:
@@ -220,7 +223,7 @@ class Game:
     @property
     def n_values_stored(self) -> int:
         """The number of values stored in the game."""
-        return len(self.coalition_lookup)
+        return len(self.game_values)
 
     @property
     def precomputed(self) -> bool:
@@ -236,16 +239,6 @@ class Game:
     def is_normalized(self) -> bool:
         """Checks if the game is normalized/centered."""
         return self(self.empty_coalition) == 0
-
-    @property
-    def coalition_lookup(self) -> dict[tuple[int, ...], int]:
-        """A lookup dictionary mapping from coalitions to indices in the ``value_storage``."""
-        return {coal: i for i, coal in enumerate(self.game_values.keys())}
-
-    @property
-    def value_storage(self) -> GameValues:
-        """The storage for the game values without normalization applied."""
-        return np.array(list(self.game_values.values()), dtype=float)
 
     def to_json_file(
         self,
@@ -410,7 +403,7 @@ class Game:
             # convert list of tuples to one-hot encoding
             coalitions_int = cast(list[tuple[int, ...]], tuple_list)
             return transform_coalitions_to_array(coalitions_int, self.n_players)
-        except (IndexError, TypeError):
+        except (IndexError, TypeError):  # the transform failed because of wrong input type
             pass
 
         # assuming str input
@@ -426,8 +419,6 @@ class Game:
             return transform_coalitions_to_array(coalitions_from_str, self.n_players)
         except Exception as error:
             raise TypeError(error_message) from error
-
-        raise TypeError(error_message)
 
     def __call__(
         self,
@@ -567,7 +558,7 @@ class Game:
 
         # update the storage with the new coalitions and values
         self.game_values = {
-            tuple(sorted(coal)): game_values[idx] for coal, idx in coalitions_dict.items()
+            tuple(sorted(coal)): float(game_values[idx]) for coal, idx in coalitions_dict.items()
         }
         self._precompute_flag = True
 
@@ -596,7 +587,8 @@ class Game:
 
         """
         game_values = self.value_function(self._check_coalitions(coalitions))
-        return game_values, self.coalition_lookup, self.normalization_value
+        coalition_values = {coal: i for i, coal in enumerate(self.game_values.keys())}
+        return game_values, coalition_values, self.normalization_value
 
     def save_values(
         self, path: Path | str, *, as_npz: bool = False, **kwargs: dict[str, JSONType]
@@ -623,12 +615,12 @@ class Game:
         if as_npz or path.name.endswith(".npz"):
             path = path.with_suffix(".npz") if not path.name.endswith(".npz") else path  # add .npz
             coalitions_in_storage = transform_coalitions_to_array(
-                coalitions=self.coalition_lookup,
+                coalitions={coal: i for i, coal in enumerate(self.game_values.keys())},
                 n_players=self.n_players,
             ).astype(bool)
             np.savez_compressed(
                 path,
-                values=self.value_storage,
+                values=np.array(list(self.game_values.values()), dtype=float),
                 coalitions=coalitions_in_storage,
                 n_players=self.n_players,
                 normalization_value=self.normalization_value,
@@ -678,9 +670,11 @@ class Game:
         """Load game values from a npz archive file."""
         data = np.load(path)
         self._validate_and_set_players_from_save(data["n_players"])
-        coalition_lookup: CoalitionsTuples = transform_array_to_coalitions(data["coalitions"])
+        coalition_lookup: Collection[CoalitionTuple] = transform_array_to_coalitions(
+            data["coalitions"]
+        )
         self.game_values = {
-            tuple(sorted(coal)): value
+            tuple(sorted(coal)): float(value)
             for coal, value in zip(coalition_lookup, data["values"], strict=False)
         }
         self.normalization_value = float(data["normalization_value"])

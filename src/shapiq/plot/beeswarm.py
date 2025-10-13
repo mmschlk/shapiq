@@ -221,11 +221,9 @@ def beeswarm_plot(
         list_of_abs_interaction_values, aggregation="mean"
     )  # to match the order in bar plots
 
-    interaction_keys = list(global_values.interaction_lookup.keys())
-    all_global_interaction_vals = global_values.values  # noqa: PD011  # since ruff thinks this is a dataframe
-    if interaction_keys[0] == ():  # check for base value
-        interaction_keys = interaction_keys[1:]
-        all_global_interaction_vals = all_global_interaction_vals[1:]
+    interaction_keys, all_global_interaction_vals = zip(
+        *[(k, v) for k, v in global_values.interactions.items() if len(k) != 0], strict=False
+    )
 
     # Sort interactions by aggregated importance
     feature_order = np.argsort(all_global_interaction_vals)[::-1]
