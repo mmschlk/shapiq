@@ -10,14 +10,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.transforms import ScaledTranslation
 
 from ._config import BLUE, RED
 from .utils import abbreviate_feature_names, format_labels, format_value
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
     from shapiq.interaction_values import InteractionValues
 
 __all__ = ["waterfall_plot"]
@@ -26,11 +28,11 @@ __all__ = ["waterfall_plot"]
 def _draw_waterfall_plot(
     values: np.ndarray,
     base_values: float,
-    feature_names: list[str],
+    feature_names: np.ndarray | list[str],
     *,
     max_display: int = 10,
     show: bool = False,
-) -> plt.Axes | None:
+) -> Axes | None:
     """The waterfall plot from the SHAP package.
 
     Note:
@@ -98,7 +100,7 @@ def _draw_waterfall_plot(
                 linewidth=0.5,
                 zorder=-1,
             )
-        yticklabels[rng[i]] = feature_names[order[i]]
+        yticklabels[rng[i]] = str(feature_names[order[i]])
 
     # add a last grouped feature to represent the impact of all the features we didn't show
     if num_features < len(values):
@@ -150,7 +152,7 @@ def _draw_waterfall_plot(
     bbox_to_xscale = xlen / width
     hl_scaled = bbox_to_xscale * head_length
     dpi = fig.dpi
-    renderer = fig.canvas.get_renderer()
+    renderer = fig.canvas.get_renderer()  # pyright: ignore[reportAttributeAccessIssue]
 
     # draw the positive arrows
     for i in range(len(pos_inds)):
@@ -321,12 +323,10 @@ def _draw_waterfall_plot(
     )
     tick_labels = ax3.xaxis.get_majorticklabels()
     tick_labels[0].set_transform(
-        tick_labels[0].get_transform()
-        + mpl.transforms.ScaledTranslation(-10 / 72.0, 0, fig.dpi_scale_trans),
+        tick_labels[0].get_transform() + ScaledTranslation(-10 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_transform(
-        tick_labels[1].get_transform()
-        + mpl.transforms.ScaledTranslation(12 / 72.0, 0, fig.dpi_scale_trans),
+        tick_labels[1].get_transform() + ScaledTranslation(12 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_color("#999999")
     ax3.spines["right"].set_visible(False)
@@ -336,12 +336,11 @@ def _draw_waterfall_plot(
     # adjust the position of the E[f(X)] = x.xx label
     tick_labels = ax2.xaxis.get_majorticklabels()
     tick_labels[0].set_transform(
-        tick_labels[0].get_transform()
-        + mpl.transforms.ScaledTranslation(-20 / 72.0, 0, fig.dpi_scale_trans),
+        tick_labels[0].get_transform() + ScaledTranslation(-20 / 72.0, 0, fig.dpi_scale_trans),
     )
     tick_labels[1].set_transform(
         tick_labels[1].get_transform()
-        + mpl.transforms.ScaledTranslation(22 / 72.0, -1 / 72.0, fig.dpi_scale_trans),
+        + ScaledTranslation(22 / 72.0, -1 / 72.0, fig.dpi_scale_trans),
     )
 
     tick_labels[1].set_color("#999999")
@@ -361,11 +360,11 @@ def _draw_waterfall_plot(
 def waterfall_plot(
     interaction_values: InteractionValues,
     *,
-    feature_names: np.ndarray[str] | None = None,
+    feature_names: np.ndarray | list[str] | None = None,
     show: bool = False,
     max_display: int = 10,
     abbreviate: bool = True,
-) -> plt.Axes | None:
+) -> Axes | None:
     """Draws a waterfall plot with the interaction values.
 
     The waterfall plot shows the individual contributions of the features to the interaction values.
@@ -403,7 +402,7 @@ def waterfall_plot(
 
     return _draw_waterfall_plot(
         values,
-        interaction_values.baseline_value,
+        float(interaction_values.baseline_value),
         feature_names,
         max_display=max_display,
         show=show,

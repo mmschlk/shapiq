@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from tqdm.auto import tqdm
 
@@ -30,6 +30,43 @@ if TYPE_CHECKING:
     from .custom_types import ExplainerIndices
 
 
+def generic_to_specific_explainer(
+    generic_explainer: Explainer,
+    explainer_cls: type[Explainer],
+    model: Model | Game | Callable[[np.ndarray], np.ndarray],
+    data: np.ndarray | None = None,
+    class_index: int | None = None,
+    index: ExplainerIndices = "k-SII",
+    max_order: int = 2,
+    **kwargs: Any,
+) -> None:
+    """Transform the base Explainer instance into a specific explainer subclass.
+
+    This function modifies the class of the given object to the specified explainer class and
+    initializes it with the provided parameters.
+
+    Args:
+        generic_explainer: The base Explainer instance to be transformed.
+        explainer_cls: The specific explainer subclass to transform into.
+        model: The model object to be explained.
+        data: A background dataset to be used for imputation.
+        class_index: The class index of the model to explain.
+        index: The type of Shapley interaction index to use.
+        max_order: The maximum interaction order to be computed.
+        **kwargs: Additional keyword-only arguments passed to the specific explainer class.
+    """
+    generic_explainer.__class__ = explainer_cls
+    explainer_cls.__init__(
+        generic_explainer,
+        model=model,
+        data=data,
+        class_index=class_index,
+        index=index,
+        max_order=max_order,
+        **kwargs,
+    )
+
+
 class Explainer:
     """The main Explainer class for a simpler user interface.
 
@@ -40,20 +77,11 @@ class Explainer:
     different explainers, see the respective classes.
     """
 
-    approximator: Approximator | None
-    """The approximator which may be used for the explanation."""
-
-    exact_computer: ExactComputer | None
-    """An exact computer which computes the :class:`~shapiq.interaction_values.InteractionValues`
-    exactly (without the need for approximations). Note that this only works for small number of
-    features as the number of coalitions grows exponentially with the number of features.
-    """
-
-    imputer: Imputer | None
-    """An imputer which is used to impute missing values in computing the interaction values."""
-
     model: Model | Game | Callable[[np.ndarray], np.ndarray]
     """The model to be explained, either as a Model instance or a callable function."""
+
+    _index: ExplainerIndices
+    _max_order: int
 
     def __init__(
         self,
@@ -72,7 +100,7 @@ class Explainer:
             data: A background dataset to be used for imputation in
                 :class:`~shapiq.explainer.tabular.TabularExplainer` or
                 :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. This is a 2-dimensional
-                NumPy array with shape ``(n_samples, n_features)``. Can be ``None`` for the
+                NumPy array with shape ``(n_samples, n_features)``. Can be empty for the
                 :class:`~shapiq.explainer.tree.TreeExplainer`, which does not require background
                 data.
 
@@ -104,9 +132,9 @@ class Explainer:
             explainer_classes = get_explainers()
             if model_type in explainer_classes:
                 explainer_cls = explainer_classes[model_type]
-                self.__class__ = explainer_cls
-                explainer_cls.__init__(
+                generic_to_specific_explainer(
                     self,
+                    explainer_cls,
                     model=model,
                     data=data,
                     class_index=class_index,
@@ -114,7 +142,7 @@ class Explainer:
                     max_order=max_order,
                     **kwargs,
                 )
-                return  # avoid continuing in base Explainer
+                return
             msg = f"Model '{model_class}' with type '{model_type}' is not supported by shapiq.Explainer."
             raise TypeError(msg)
 
@@ -128,15 +156,39 @@ class Explainer:
         self.model = model
         if data is not None:
             validate_data_predict_function(data, predict_function=self.predict, raise_error=False)
-        self._data: np.ndarray | None = data
+            self._data: np.ndarray = data
 
         # validate index and max_order and set them as attributes
         self._index, self._max_order = validate_index_and_max_order(index, max_order)
 
-        # set the class attributes
-        self.approximator = None
-        self.exact_computer = None
-        self.imputer = None
+        # initialize private attributes
+        self._imputer: Imputer | None = None
+        self._approximator: Approximator | None = None
+        self._exact_computer: ExactComputer | None = None
+
+    @property
+    def imputer(self) -> Imputer:
+        """The imputer used by the explainer (or None in the base class)."""
+        if self._imputer is None:
+            msg = "The explainer does not have an imputer. Use a specific explainer class."
+            raise NotImplementedError(msg)
+        return self._imputer
+
+    @property
+    def exact_computer(self) -> ExactComputer:
+        """The exact computer used by the explainer (or None in the base class)."""
+        if self._exact_computer is None:
+            msg = "The explainer does not have an exact computer. Use a specific explainer class."
+            raise NotImplementedError(msg)
+        return self._exact_computer
+
+    @property
+    def approximator(self) -> Approximator:
+        """The approximator used by the explainer (or None in the base class)."""
+        if self._approximator is None:
+            msg = "The explainer does not have an approximator. Use a specific explainer class."
+            raise NotImplementedError(msg)
+        return self._approximator
 
     @property
     def index(self) -> ExplainerIndices:
@@ -183,7 +235,9 @@ class Explainer:
             self.imputer.set_random_state(random_state=random_state)
 
     @abstractmethod
-    def explain_function(self, x: np.ndarray, *args: Any, **kwargs: Any) -> InteractionValues:
+    def explain_function(
+        self, x: np.ndarray | None, *args: Any, **kwargs: Any
+    ) -> InteractionValues:
         """Explain a single prediction in terms of interaction values.
 
         Args:
@@ -241,11 +295,13 @@ class Explainer:
             import joblib
 
             parallel = joblib.Parallel(n_jobs=n_jobs)
-            ivs = parallel(
-                joblib.delayed(self.explain)(X[i, :], **kwargs) for i in range(X.shape[0])
+            ivs: list[InteractionValues] = list(
+                parallel(  # type: ignore[assignment]
+                    joblib.delayed(self.explain)(X[i, :], **kwargs) for i in range(X.shape[0])
+                )
             )
         else:
-            ivs = []
+            ivs: list[InteractionValues] = []
             pbar = tqdm(total=X.shape[0], desc="Explaining") if verbose else None
             for i in range(X.shape[0]):
                 ivs.append(self.explain(X[i, :], **kwargs))
@@ -262,4 +318,6 @@ class Explainer:
         Returns:
             The model's prediction for the given data point as a vector.
         """
+        if isinstance(self._shapiq_predict_function, RuntimeError):
+            raise self._shapiq_predict_function
         return self._shapiq_predict_function(self.model, x)

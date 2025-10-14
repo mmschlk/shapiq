@@ -23,6 +23,7 @@ dependencies = [
     "networkx",
     "colour",
     "pillow",
+    "pyright>=1.1.402",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -157,6 +158,8 @@ exclude = [
 [tool.ruff.lint.per-file-ignores]
 "src/shapiq/typing.py" = [
     "A005",  # we want to be similar to other libraries that also shadow typing
+    "D102",  # we don't need docstrings for protocol stubs
+    "ANN401",  # any return type is okay in typing.py for protocol subts
 ]
 "tests/*.py" = [
     # "ALL",
@@ -223,8 +226,16 @@ required-imports = ["from __future__ import annotations"]
 
 [tool.pyright]
 include = ["src/shapiq"]
-exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq/plot", "src/shapiq/benchmark", "src/shapiq/games/benchmark"]
+exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
+venv = ".venv"
 pythonVersion = "3.10"
+
+defineConstant = { DEBUG = true }
+
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+
+pythonPlatform = "Linux"
 
 [dependency-groups]
 test = [

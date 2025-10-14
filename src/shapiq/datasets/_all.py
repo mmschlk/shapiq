@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import cast
 
+import numpy as np
 import pandas as pd
-
-if TYPE_CHECKING:
-    import numpy as np
 
 GITHUB_DATA_URL = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/"
 
@@ -46,7 +44,7 @@ def _try_load(csv_file_name: str) -> pd.DataFrame:
 def load_california_housing(
     *,
     to_numpy: bool = False,
-) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
+) -> tuple[pd.DataFrame, pd.Series | pd.DataFrame] | tuple[np.ndarray, np.ndarray]:
     """Load the California housing dataset.
 
     Args:
@@ -74,7 +72,7 @@ def load_california_housing(
 
 def load_bike_sharing(
     *, to_numpy: bool = False
-) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
+) -> tuple[pd.DataFrame, pd.Series | pd.DataFrame] | tuple[np.ndarray, np.ndarray]:
     """Load the bike-sharing dataset from openml and preprocess it.
 
     Note:
@@ -97,7 +95,7 @@ def load_bike_sharing(
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder, RobustScaler
 
-    dataset = _try_load("bike.csv")
+    dataset: pd.DataFrame = _try_load("bike.csv")
     class_label = "count"
 
     num_feature_names = [
@@ -132,7 +130,13 @@ def load_bike_sharing(
     )
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
-    dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
+    transformed_data: np.ndarray = cast(
+        np.ndarray, column_transformer.fit_transform(dataset)
+    )  # Transformations will always return a dense array
+    dataset = pd.DataFrame(
+        transformed_data,
+        columns=np.asarray(col_names),
+    )
     dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)
@@ -145,7 +149,7 @@ def load_bike_sharing(
 
 def load_adult_census(
     *, to_numpy: bool = False
-) -> tuple[pd.DataFrame, pd.Series] | tuple[np.ndarray, np.ndarray]:
+) -> tuple[pd.DataFrame, pd.Series | pd.DataFrame] | tuple[np.ndarray, np.ndarray]:
     """Load the adult census dataset from the UCI Machine Learning Repository.
 
     Original source: https://archive.ics.uci.edu/ml/datasets/adult
@@ -204,7 +208,13 @@ def load_adult_census(
     )
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
-    dataset = pd.DataFrame(column_transformer.fit_transform(dataset), columns=col_names)
+    transformed_data = cast(
+        np.ndarray, column_transformer.fit_transform(dataset)
+    )  # Transformations will always return a dense array
+    dataset = pd.DataFrame(
+        transformed_data,
+        columns=np.asarray(col_names),
+    )
     dataset = dataset.dropna()
 
     y_data = dataset.pop(class_label)

@@ -17,7 +17,7 @@ __all__ = ["egalitarian_least_core"]
 def _setup_core_calculations(
     n_players: int,
     game_values: np.ndarray,
-) -> tuple[list[LinearConstraint], list[tuple[int | None, int | None]]]:
+) -> tuple[list[LinearConstraint], list[tuple[int, None] | tuple[None, None]]]:
     """Setup core optimization matrices for scipy.linprog.
 
     Args:
@@ -59,7 +59,7 @@ def _setup_core_calculations(
     efficiency_matrix[0, -1] = 0
 
     # Efficiency value
-    efficiency_value = np.array([grand_coaltion_value])  # $b_\{eq\}$.
+    efficiency_value = float(grand_coaltion_value)  # $b_\{eq\}$.
 
     # Bounds for the values of credit_assignments
     bounds_players = [(None, None) for _ in range(n_players)]
@@ -69,7 +69,10 @@ def _setup_core_calculations(
 
     # Convert the Constraints to the form for egalitarian least-core optimization
     # $A_\{ub\}$ @ (x,e) <= $b_\{ub\}$
-    credit_assignment_constraints = LinearConstraint(stability_matrix, ub=stability_values)
+    credit_assignment_constraints = LinearConstraint(
+        stability_matrix,
+        ub=stability_values,  # pyright: ignore[reportArgumentType]. scipy not typed correctly: ub
+    )
     # $A_\{eq\} @ (x,e) == $b_\{eq\}$
     efficiency_constraint = LinearConstraint(
         efficiency_matrix,
@@ -101,7 +104,7 @@ def _minimization_egal_least_core(credit_subsidy_vector: np.ndarray) -> float:
 def egalitarian_least_core(
     n_players: int,
     game_values: np.ndarray,
-    coalition_lookup: dict[tuple[int], int],
+    coalition_lookup: dict[tuple[int, ...], int],
 ) -> tuple[InteractionValues, float]:
     """Computes the egalitarian least-core for the underlying game represented through the parameters.
 

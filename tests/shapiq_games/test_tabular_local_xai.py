@@ -15,10 +15,11 @@ from shapiq.imputer import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from fixtures.tabular import TabularDataSet
     from sklearn.tree import DecisionTreeRegressor
 
     from shapiq.typing import NumericArray
+
+    from .fixtures.tabular import TabularDataSet
 
 
 @pytest.fixture(scope="module")

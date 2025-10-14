@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import warnings
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, get_args
 
 import numpy as np
 from scipy.special import bernoulli, binom
@@ -16,11 +16,15 @@ from shapiq.utils.sets import powerset
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.typing import CoalitionMatrix, FloatVector
+
 
 ValidRegressionIndices = Literal["SV", "SII", "k-SII", "FSII", "kADD-SHAP", "BV", "FBII"]
 
+TIndices = TypeVar("TIndices", bound=ValidRegressionIndices)
 
-class Regression(Approximator):
+
+class Regression(Approximator[TIndices]):
     """This class is the base class for all regression approximators.
 
     Regression approximators are based on a representation of the interaction index as a solution
@@ -28,7 +32,7 @@ class Regression(Approximator):
     and then solved exactly. For the Shapley value this method is known as KernelSHAP.
     """
 
-    valid_indices: tuple[ValidRegressionIndices] = tuple(get_args(ValidRegressionIndices))
+    valid_indices: tuple[TIndices, ...] = tuple(get_args(ValidRegressionIndices))
     """The valid indices for the regression approximator. Overrides the valid indices of the base
     class Approximator."""
 
@@ -36,11 +40,11 @@ class Regression(Approximator):
         self,
         n: int,
         max_order: int,
-        index: ValidRegressionIndices,
+        index: TIndices,
         *,
         sii_consistent: bool = True,
         pairing_trick: bool = False,
-        sampling_weights: np.ndarray | None = None,
+        sampling_weights: FloatVector | None = None,
         random_state: int | None = None,
     ) -> None:
         """Initialize the Regression approximator.
@@ -79,7 +83,7 @@ class Regression(Approximator):
         # used for SII, if False, then Inconsistent KernelSHAP-IQ is used
         self._sii_consistent = sii_consistent
 
-    def _init_kernel_weights(self, interaction_size: int) -> np.ndarray:
+    def _init_kernel_weights(self, interaction_size: int) -> FloatVector:
         """Initializes the kernel weights for the regression in KernelSHAP-IQ.
 
         The kernel weights are of size n + 1 and indexed by the size of the coalition. The kernel
@@ -183,9 +187,9 @@ class Regression(Approximator):
 
     def kernel_shap_iq_routine(
         self,
-        kernel_weights_dict: dict,
-        game_values: np.ndarray,
-    ) -> np.ndarray:
+        kernel_weights_dict: dict[int, FloatVector],
+        game_values: FloatVector,
+    ) -> FloatVector:
         """The main regression routine for the KernelSHAP-IQ approximator.
 
         This method solves for each interaction_size up to self.max_order separate regression
@@ -283,10 +287,10 @@ class Regression(Approximator):
 
     def regression_routine(
         self,
-        kernel_weights: np.ndarray,
-        game_values: np.ndarray,
+        kernel_weights: FloatVector,
+        game_values: FloatVector,
         index_approximation: str,
-    ) -> np.ndarray[float]:
+    ) -> FloatVector:
         """The main regression routine for the regression approximators.
 
         Solves a weighted least-square problem based on the representation of the target index.
@@ -452,7 +456,7 @@ class Regression(Approximator):
         return weight
 
     def _get_ground_truth_sii_weights(
-        self, coalitions: np.ndarray, interaction_size: int
+        self, coalitions: CoalitionMatrix, interaction_size: int
     ) -> np.ndarray:
         """Returns the ground truth SII weights for the coalitions per interaction.
 
@@ -533,10 +537,10 @@ class Regression(Approximator):
 
 
 def _get_regression_matrices(
-    kernel_weights: np.ndarray,
-    regression_coefficient_weight: np.ndarray,
-    sampling_adjustment_weights: np.ndarray,
-    coalitions_matrix: np.ndarray,
+    kernel_weights: FloatVector,
+    regression_coefficient_weight: FloatVector,
+    sampling_adjustment_weights: FloatVector,
+    coalitions_matrix: CoalitionMatrix,
     max_order: int,
     n: int,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -583,7 +587,7 @@ def _get_regression_matrices(
     return regression_matrix, regression_weights
 
 
-def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: np.ndarray) -> np.ndarray:
+def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: FloatVector) -> np.ndarray:
     """Solves the Shapley regression problem.
 
     Solves the regression problem using the weighted least squares method. Returns all approximated

@@ -106,7 +106,7 @@ class BaselineImputer(Imputer):
 
         """
         n_coalitions = coalitions.shape[0]
-        data = np.tile(np.copy(self._x), (n_coalitions, 1))
+        data = np.tile(np.copy(self.x), (n_coalitions, 1))
         for i in range(n_coalitions):
             data[i, ~coalitions[i]] = self.baseline_values[0, ~coalitions[i]]
         return self.predict(data)

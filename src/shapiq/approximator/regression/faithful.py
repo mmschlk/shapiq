@@ -16,7 +16,7 @@ ValidRegressionFSIIIndices = Literal["FSII", "SV"]
 ValidRegressionFBIIIndices = Literal["FBII", "BV"]
 
 
-class RegressionFSII(Regression):
+class RegressionFSII(Regression[ValidRegressionFSIIIndices]):
     """Estimates the FSII values using KernelSHAP.
 
     The Faithful KernelSHAP regression is described in Tsai et al. (2023) [Tsa23]_. The method
@@ -34,7 +34,9 @@ class RegressionFSII(Regression):
 
     """
 
-    valid_indices: tuple[ValidRegressionFSIIIndices] = tuple(get_args(ValidRegressionFSIIIndices))
+    valid_indices: tuple[ValidRegressionFSIIIndices, ...] = tuple(  # type: ignore[assignment]
+        get_args(ValidRegressionFSIIIndices)
+    )
     """The valid indices for the RegressionFSII approximator."""
 
     def __init__(
@@ -75,7 +77,7 @@ class RegressionFSII(Regression):
         )
 
 
-class RegressionFBII(Regression):
+class RegressionFBII(Regression[ValidRegressionFBIIIndices]):
     """Estimates the FBII values using KernelSHAP.
 
     The Faithful KernelSHAP regression is described in Tsai et al. (2023) [Tsa23a]_. The method
@@ -93,7 +95,9 @@ class RegressionFBII(Regression):
 
     """
 
-    valid_indices: ValidRegressionFBIIIndices = tuple(get_args(ValidRegressionFBIIIndices))
+    valid_indices: tuple[ValidRegressionFBIIIndices, ...] = tuple(  # type: ignore[assignment]
+        get_args(ValidRegressionFBIIIndices)
+    )
     """The valid indices for the RegressionFBII approximator."""
 
     def __init__(

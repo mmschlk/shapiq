@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal, TypeVar, get_args
 
 import numpy as np
 from scipy.special import binom, factorial
@@ -14,11 +14,14 @@ from shapiq.utils.sets import powerset
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.typing import FloatVector
 
 ValidMonteCarloIndices = Literal["k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII", "BV"]
 
+TIndices = TypeVar("TIndices", bound=ValidMonteCarloIndices)
 
-class MonteCarlo(Approximator):
+
+class MonteCarlo(Approximator[TIndices]):
     """This class is the base class for all MonteCarlo approximators, e.g. SHAP-IQ and SVARM-IQ.
 
     MonteCarlo approximators are based on a representation of the interaction index as a weighted
@@ -28,21 +31,21 @@ class MonteCarlo(Approximator):
     `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
     """
 
-    valid_indices: tuple[ValidMonteCarloIndices] = tuple(get_args(ValidMonteCarloIndices))
+    valid_indices: tuple[TIndices, ...] = tuple(get_args(ValidMonteCarloIndices))
     """The valid indices for this approximator."""
 
     def __init__(
         self,
         n: int,
         max_order: int,
-        index: Literal["k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII", "BV"] = "k-SII",
+        index: TIndices = "k-SII",
         *,
         stratify_coalition_size: bool = True,
         stratify_intersection: bool = True,
         top_order: bool = False,
         random_state: int | None = None,
         pairing_trick: bool = False,
-        sampling_weights: np.ndarray = None,
+        sampling_weights: FloatVector | None = None,
     ) -> None:
         """Initialize the MonteCarlo approximator.
 
