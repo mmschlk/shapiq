@@ -27,4 +27,4 @@ jobs:
         run: uv pip install .
 
       - name: Test import
-        run: uv run python -c "import shapiq; shapiq.benchmark.print_benchmark_configurations(); print('✅ shapiq imported successfully')"
+        run: uv run python -c "from shapiq import *; import shapiq; shapiq.benchmark.print_benchmark_configurations(); print('✅ shapiq imported successfully')"

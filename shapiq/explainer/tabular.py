@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
-from overrides import overrides
-
 from shapiq.explainer.base import Explainer
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 
@@ -165,7 +163,6 @@ class TabularExplainer(Explainer):
             approximator, self._index, self._max_order, self._n_features, random_state
         )
 
-    @overrides
     def explain_function(
         self,
         x: np.ndarray,
