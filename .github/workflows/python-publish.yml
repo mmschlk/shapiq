@@ -14,13 +14,17 @@ on:
 
 permissions:
   contents: read
-  id-token: write   # needed for Trusted Publishing; remove if using API token
+  id-token: write   # needed for Trusted Publishing
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    if: github.repository == 'mmschlk/shapiq'
     environment: pypi
+    # Only run from the canonical repo and for final tags like v1.2.3 (no pre-release hyphens)
+    if: >
+      github.repository == 'mmschlk/shapiq' &&
+      startsWith(github.event.release.tag_name, 'v') &&
+      !contains(github.event.release.tag_name, '-')
 
     steps:
     - uses: actions/checkout@v5
@@ -33,13 +37,19 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Install build backend
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
 
-    - name: Build sdist & wheel
-      run: python -m build
+    - name: Build with uv
+      run: uv build
+
+    - name: Upload dist artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: shapiq-${{ github.event.release.tag_name }}-dist
+        path: dist/*
 
     - name: Publish to PyPI (Trusted Publishing)
       uses: pypa/gh-action-pypi-publish@v1.13.0
+      with:
+        attestations: true

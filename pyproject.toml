@@ -1,11 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=64", "wheel", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "shapiq"
-version = "1.3.1"
-dynamic = ["readme"]
+dynamic = ["readme", "version"]
 description = "Shapley Interactions for Machine Learning"
 requires-python = ">=3.10"
 dependencies = [
@@ -61,6 +60,9 @@ keywords = [
     "shapley values",
     "feature interaction",
 ]
+
+[tool.setuptools_scm]
+write_to = "src/shapiq/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["src"]
