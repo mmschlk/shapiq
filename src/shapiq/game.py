@@ -163,13 +163,6 @@ class Game:
             kwargs: Additional keyword arguments (not used).
 
         """
-        # manual flag for choosing precomputed values even if not all values might be stored
-        self._precompute_flag: bool = False  # flag to manually override the precomputed check
-
-        # define storage variables
-        self.game_values = {}
-        self.n_players = n_players if n_players is not None else -1
-
         if path_to_values is not None:
             msg = (
                 "Initializing a Game with `path_to_values` is deprecated and will be removed in a"
@@ -177,10 +170,17 @@ class Game:
             )
             raise_deprecation_warning(message=msg, deprecated_in="1.3.1", removed_in="1.4.0")
 
-        if n_players == -1 and path_to_values is None:
+        if n_players is None and path_to_values is None:
             msg = "The number of players has to be provided if game is not loaded from values."
             raise ValueError(msg)
 
+        # manual flag for choosing precomputed values even if not all values might be stored
+        self._precompute_flag: bool = False  # flag to manually override the precomputed check
+
+        # define storage variables
+        self.game_values = {}
+        # TODO(mmschlk): Remove None Assignment below and drop the pyright ignore when we remove path_to_values # noqa: TD003
+        self.n_players = n_players  # type: ignore[assignment]
         # setup normalization of the game
         self.normalization_value = 0.0
         if normalize and path_to_values is None:
@@ -658,7 +658,7 @@ class Game:
 
     def _validate_and_set_players_from_save(self, n_players: int) -> None:
         """Validates and sets the number of players from the saved game."""
-        if self.n_players not in (-1, n_players):
+        if self.n_players is not None and n_players != self.n_players:
             msg = (
                 f"The number of players in the game ({self.n_players}) does not match the number "
                 f"of players in the saved game ({n_players})."
