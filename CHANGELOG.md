@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.2 (2025-10-14)
+
+### Hotfix
+Removes `overrides` import in tabular explainer, which is not part of the package dependencies resulting in an ImportError when importing `shapiq`. [#436](https://github.com/mmschlk/shapiq/issues/436)
+
 ## v1.3.1 (2025-07-11)
 
 ### New Features

@@ -4,7 +4,7 @@ shapiq is a library creating explanations for machine learning models based on
 the well established Shapley value and its generalization to interaction.
 """
 
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 # approximator classes
 from .approximator import (
