@@ -161,17 +161,16 @@ class CoalitionSampler:
         self.coalitions_per_size: IntVector = np.array([], dtype=int)
 
         # variables accessible through properties
-        self._sampled_coalitions_matrix: BoolVector = np.array([], dtype=bool)  # coalitions
-        self._sampled_coalitions_counter: IntVector = np.array([], dtype=int)  # coalitions counter
-        self._sampled_coalitions_size_prob: FloatVector = np.array(
-            [], dtype=float
-        )  # coalitions size probability
-        self._sampled_coalitions_in_size_prob: FloatVector = np.array(
-            [], dtype=float
-        )  # coalitions in size probability
-        self._is_coalition_size_sampled: BoolVector = np.array(
-            [], dtype=bool
-        )  # coalition size sampled
+        # coalitions
+        self._sampled_coalitions_matrix: BoolVector = np.array([], dtype=bool)
+        # coalitions counter
+        self._sampled_coalitions_counter: IntVector = np.array([], dtype=int)
+        # coalitions size probability
+        self._sampled_coalitions_size_prob: FloatVector = np.array([], dtype=float)
+        # coalitions in size probability
+        self._sampled_coalitions_in_size_prob: FloatVector = np.array([], dtype=float)
+        # coalition size sampled
+        self._is_coalition_size_sampled: BoolVector = np.array([], dtype=bool)
 
     @property
     def n_coalitions(self) -> int:
