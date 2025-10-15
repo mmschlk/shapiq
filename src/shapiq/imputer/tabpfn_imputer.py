@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from shapiq.typing import SklearnLikeModel
+
 from .base import Imputer
 
 if TYPE_CHECKING:
@@ -17,10 +19,8 @@ if TYPE_CHECKING:
 
     from tabpfn import TabPFNClassifier, TabPFNRegressor
 
-    from shapiq.typing import Model
 
-
-class TabPFNImputer(Imputer):
+class TabPFNImputer(Imputer[SklearnLikeModel]):
     """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
 
     The remove-and-contextualize paradigm is a strategy to explain the predictions of a TabPFN [2]_
@@ -50,7 +50,8 @@ class TabPFNImputer(Imputer):
         x_test: np.ndarray | None = None,
         empty_prediction: float | None = None,
         verbose: bool = False,
-        predict_function: Callable[[Model, np.ndarray], np.ndarray] | None = None,
+        predict_function: Callable[[TabPFNClassifier | TabPFNRegressor, np.ndarray], np.ndarray]
+        | None = None,
     ) -> None:
         """An Imputer for TabPFN using the Remove-and-Contextualize paradigm.
 
@@ -92,12 +93,13 @@ class TabPFNImputer(Imputer):
                     f" predict_function={predict_function})."
                 )
                 raise ValueError(msg)
-            model._shapiq_predict_function = predict_function  # noqa: SLF001
+            model._shapiq_predict_function = predict_function  # pyright: ignore[reportAttributeAccessIssue] # noqa: SLF001
 
         if x_test is None and empty_prediction is None:
             msg = "The empty prediction must be given if no test data is provided"
             raise ValueError(msg)
-
+        if x_test is None:
+            x_test = np.empty((0, x_train.shape[1]))
         super().__init__(
             model=model,
             data=x_test,

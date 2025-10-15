@@ -20,6 +20,7 @@ from shapiq import (
     kADDSHAP,
 )
 from shapiq.approximator.base import Approximator, ValidApproximationIndices
+from shapiq.approximator.regression.base import Regression
 from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
 
 ValidApproximatorTypes = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
@@ -111,8 +112,13 @@ def setup_approximator_automatically(
     Returns:
         The selected approximator.
     """
-    if choose_spex(max_order=max_order, n_players=n_players):
-        return SPEX(n=n_players, max_order=max_order, index=index, random_state=random_state)
+    if choose_spex(max_order=max_order, n_players=n_players) and index in SPEX.valid_indices:
+        return SPEX(
+            n=n_players,
+            max_order=max_order,
+            index=index,
+            random_state=random_state,
+        )
     if index == "SV" or (max_order == 1 and (index == "SV" or index_generalizes_sv(index))):
         return KernelSHAP(n=n_players, random_state=random_state)
     if index == "BV" or (max_order == 1 and (index == "BV" or index_generalizes_bv(index))):
@@ -121,21 +127,27 @@ def setup_approximator_automatically(
         return RegressionFSII(n=n_players, max_order=max_order, random_state=random_state)
     if index == "FBII":
         return RegressionFBII(n=n_players, max_order=max_order, random_state=random_state)
-    if index in {"SII", "k-SII"}:
+    if index in KernelSHAPIQ.valid_indices:
         return KernelSHAPIQ(
-            n=n_players, max_order=max_order, index=index, random_state=random_state
+            n=n_players,
+            max_order=max_order,
+            index=index,
+            random_state=random_state,
         )
-    return SVARMIQ(
-        n=n_players,
-        max_order=max_order,
-        top_order=False,
-        random_state=random_state,
-        index=index,
-    )
+    if index in SVARMIQ.valid_indices:
+        return SVARMIQ(
+            n=n_players,
+            max_order=max_order,
+            top_order=False,
+            random_state=random_state,
+            index=index,
+        )
+    msg = f"Could not set up approximator automatically for index {index}."
+    raise ValueError(msg)
 
 
 def setup_approximator(
-    approximator: ValidApproximatorTypes | Approximator,
+    approximator: ValidApproximatorTypes | Approximator | Literal["auto"],
     index: ValidApproximationIndices,
     max_order: int,
     n_players: int,
@@ -157,33 +169,38 @@ def setup_approximator(
     # we simply return the approximator if it is already an instance of Approximator
     if isinstance(approximator, Approximator):
         return approximator
-
-    # if the approximator is "auto", we set it up automatically
-    if approximator == "auto":
+    if approximator == "auto":  # if the approximator is "auto", we set it up automatically
         return setup_approximator_automatically(
             index=index,
             max_order=max_order,
             n_players=n_players,
             random_state=random_state,
         )
-
-    # if the approx is a string and not "auto", we get it from the configurations and set it up
     if isinstance(approximator, str):
+        # if the approx is a string and not "auto", we get it from the configurations and set it up
         if approximator in APPROXIMATOR_CONFIGURATIONS:
-            approximator = APPROXIMATOR_CONFIGURATIONS[approximator][index]
+            approximator_cls: type[Approximator] = APPROXIMATOR_CONFIGURATIONS[approximator][index]
         else:
             msg = (
                 f"Invalid approximator `{approximator}`. "
                 f"Valid configurations are described in {APPROXIMATOR_CONFIGURATIONS}."
             )
             raise ValueError(msg)
-
-    if not issubclass(approximator, Approximator):
-        msg = (
-            f"Invalid approximator class `{approximator}`. "
-            f"Expected a subclass of `Approximator`, but got {type(approximator)}."
-        )
+    else:
+        msg = f"Invalid approximator `{approximator}`. "
         raise TypeError(msg)
 
     # initialize the approximator class with params
-    return approximator(n=n_players, max_order=max_order, random_state=random_state, index=index)
+    if issubclass(approximator_cls, Regression):
+        return approximator_cls(
+            n=n_players,
+            max_order=max_order,
+            random_state=random_state,
+            index=index,
+        )
+    return approximator_cls(
+        n=n_players,
+        max_order=max_order,
+        random_state=random_state,
+        index=index,
+    )

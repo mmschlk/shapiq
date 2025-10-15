@@ -121,7 +121,7 @@ class MarginalImputer(Imputer):
         replacement_data = self._sample_replacement_data(self.sample_size)
         sample_size = replacement_data.shape[0]
         outputs = np.zeros((sample_size, n_coalitions))
-        imputed_data = np.tile(np.copy(self._x), (n_coalitions, 1))
+        imputed_data = np.tile(np.copy(self.x), (n_coalitions, 1))
         for j in range(sample_size):
             for i in range(n_coalitions):
                 imputed_data[i, ~coalitions[i]] = replacement_data[j, ~coalitions[i]]

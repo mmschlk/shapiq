@@ -17,7 +17,7 @@ from .conversion.edges import create_edge_tree
 from .validation import validate_tree_model
 
 if TYPE_CHECKING:
-    from shapiq.typing import Model
+    from shapiq.typing import FloatVector, IntVector, Model
 
     from .base import EdgeTree, TreeModel
 
@@ -98,7 +98,7 @@ class TreeSHAPIQ:
         # validate and parse model
         validated_model = validate_tree_model(model)  # the parsed and validated model
         # TODO(mmshlk): add support for other sample weights https://github.com/mmschlk/shapiq/issues/99
-        self._tree: TreeModel = copy.deepcopy(validated_model)
+        self._tree: TreeModel = copy.deepcopy(validated_model)[0]
         self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes
@@ -113,7 +113,7 @@ class TreeSHAPIQ:
             self._max_order,
         )
         self._interactions_lookup: dict[int, dict[tuple, int]] = {}  # lookup for interactions
-        self._interaction_update_positions: dict[int, dict[int, np.ndarray[int]]] = {}  # lookup
+        self._interaction_update_positions: dict[int, dict[int, IntVector]] = {}  # lookup
         self._init_interaction_lookup_tables()
 
         # get the edge representation of the tree
@@ -234,10 +234,10 @@ class TreeSHAPIQ:
         order: int = 1,
         node_id: int = 0,
         *,
-        summary_poly_down: np.ndarray[float] = None,
-        summary_poly_up: np.ndarray[float] = None,
-        interaction_poly_down: np.ndarray[float] = None,
-        quotient_poly_down: np.ndarray[float] = None,
+        summary_poly_down: FloatVector | None = None,
+        summary_poly_up: FloatVector | None = None,
+        interaction_poly_down: FloatVector | None = None,
+        quotient_poly_down: FloatVector | None = None,
         depth: int = 0,
     ) -> None:
         """Computes the Shapley Interaction values for a given instance x and interaction order.
@@ -424,7 +424,7 @@ class TreeSHAPIQ:
                         index_quotient = self._n_features_in_tree - order
                     else:  # for SII and k-SII
                         D_power = self.D_powers[ancestor_heights - current_height]
-                        index_quotient = ancestor_heights - order
+                        index_quotient = (ancestor_heights - order)
                     update = np.dot(
                         interaction_poly_down[depth - 1, interactions_with_ancestor_to_update],
                         self.Ns_id[self.n_interpolation_size, : self.n_interpolation_size],
@@ -449,7 +449,7 @@ class TreeSHAPIQ:
         D_power: np.ndarray,
         quotient_poly: np.ndarray,
         Ns: np.ndarray,
-        degree: int,
+        degree: int | IntVector,
     ) -> np.ndarray:
         """Similar to _psi but with ancestors."""
         d = degree + 1
@@ -463,7 +463,7 @@ class TreeSHAPIQ:
         quotient_poly: np.ndarray,
         Ns: np.ndarray,
         degree: int,
-    ) -> np.ndarray[float]:
+    ) -> FloatVector:
         """Computes the psi function for the TreeSHAP-IQ algorithm.
 
         It scales the interaction polynomials with the summary polynomial and the quotient
@@ -510,11 +510,11 @@ class TreeSHAPIQ:
     def _get_polynomials(
         self,
         order: int,
-        summary_poly_down: np.ndarray[float] | None = None,
-        summary_poly_up: np.ndarray[float] | None = None,
-        interaction_poly_down: np.ndarray[float] | None = None,
-        quotient_poly_down: np.ndarray[float] | None = None,
-    ) -> tuple[np.ndarray[float], np.ndarray[float], np.ndarray[float], np.ndarray[float]]:
+        summary_poly_down: FloatVector | None = None,
+        summary_poly_up: FloatVector | None = None,
+        interaction_poly_down: FloatVector | None = None,
+        quotient_poly_down: FloatVector | None = None,
+    ) -> tuple[FloatVector, FloatVector, FloatVector, FloatVector]:
         """Retrieves the polynomials for a given interaction order.
 
         This function initializes the polynomials for the first call of the recursive explanation
@@ -606,7 +606,7 @@ class TreeSHAPIQ:
         n_features: int,
         interaction_order: int,
         order_interactions_lookup: dict[tuple, int],
-    ) -> tuple[dict[int, list[tuple]], dict[int, np.ndarray[int]]]:
+    ) -> tuple[dict[int, list[tuple]], dict[int, IntVector]]:
         """Precomputes the subsets of interactions that include a given feature.
 
         Args:
@@ -754,7 +754,7 @@ class TreeSHAPIQ:
         return Ns_id
 
     @staticmethod
-    def _cache(interpolated_poly: np.ndarray[float]) -> np.ndarray[float]:
+    def _cache(interpolated_poly: FloatVector) -> FloatVector:
         """Caches the powers of the interpolated polynomial.
 
         Args:

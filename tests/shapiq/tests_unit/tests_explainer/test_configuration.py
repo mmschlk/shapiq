@@ -140,7 +140,7 @@ class TestErrorCases:
         class InvalidApproximator:
             pass
 
-        with pytest.raises(TypeError, match="Expected a subclass of `Approximator`"):
+        with pytest.raises(TypeError, match="Invalid approximator "):
             setup_approximator(
                 approximator=InvalidApproximator, index="SV", max_order=1, n_players=10
             )

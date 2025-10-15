@@ -17,16 +17,10 @@ jobs:
 
     - name: Set up Python and uv
       id: setup-uv-python
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
         python-version: "3.12"
 
-    # we need to reinstall Python on Windows because of some problems with tkinter
-    # https://github.com/astral-sh/uv/issues/7036
-    - name: Reinstall Python
-      run: |
-        uv python install --reinstall
-        uv run python --version
 
     - name: Install dependencies
       run: uv sync --all-extras --dev

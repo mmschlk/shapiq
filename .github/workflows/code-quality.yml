@@ -24,14 +24,14 @@ jobs:
         python-version: "3.11"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
           enable-cache: true
 
     - name: Install pre-commit
       run: |
-        uv sync --only-group lint
+        uv sync --all-extras
         uv run pre-commit install
 
     - name: Run code-quality checks
-      run: uv run pre-commit run --all-files
+      run: uv run pre-commit run --all-files --show-diff-on-failure

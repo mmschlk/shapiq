@@ -15,6 +15,9 @@ from ._config import BLUE, RED
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
     from shapiq.interaction_values import InteractionValues
 
 
@@ -35,7 +38,7 @@ def sentence_plot(
     font_family: str = "sans-serif",
     show: bool = False,
     max_score: float | None = None,
-) -> tuple[plt.Figure, plt.Axes] | None:
+) -> tuple[Figure, Axes] | None:
     """Plots the first order effects (attributions) of a sentence or paragraph.
 
     An example of the plot is shown below.
@@ -101,9 +104,10 @@ def sentence_plot(
     attributions = [interaction_values[(i,)] for i in range(len(words))]
 
     # get the maximum score
-    max_abs_attribution = max_score
     if max_score is None:
         max_abs_attribution = max([abs(value) for value in attributions])
+    else:
+        max_abs_attribution = max_score
 
     # create plot
     fig, ax = plt.subplots()

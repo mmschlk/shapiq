@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from shapiq.game import Game
     from shapiq.typing import Model
 
+
 WARNING_NO_CLASS_INDEX = (
     "No class_index provided. "
     "Explaining the 2nd '1' class for classification models. "
@@ -52,7 +53,7 @@ def get_predict_function_and_model_type(
     model_class: str | None = None,
     class_index: int | None = None,
 ) -> tuple[
-    Callable[[Model, np.ndarray], np.ndarray] | RuntimeError,
+    Callable[..., np.ndarray] | RuntimeError,
     ExplainerTypes,
 ]:
     """Get the predict function and model type for a given model.
@@ -83,7 +84,7 @@ def get_predict_function_and_model_type(
         model_class = print_class(model)
 
     _model_type = "tabular"  # default
-    _predict_function = None
+    _predict_function: Any = None
 
     if isinstance(model, Game) or model_class == "shapiq.games.base.Game":
         _predict_function = RuntimeError("Games cannot be used for prediction.")
@@ -203,7 +204,7 @@ def get_predict_function_and_model_type(
             The model's prediction for the given data point as a vector.
 
         """
-        predictions = _predict_function(model, data)
+        predictions = _predict_function(model, data)  # pyright: ignore[reportCallIssue] TODO: We here assume that the predict_function takes at least tow arguements. Yet we also define it as None and () -> Float
         if predictions.ndim == 1:
             return predictions
         if predictions.shape[1] == 1:
@@ -253,7 +254,7 @@ def predict_torch(model: Model, data: np.ndarray) -> np.ndarray:
     return model(torch.from_numpy(data).float()).detach().numpy()
 
 
-def print_classes_nicely(obj: list[Any] | dict[str, Any]) -> list[str] | None:
+def print_classes_nicely(obj: list[Any] | dict[ExplainerTypes, Any]) -> list[str]:
     """Converts a collection of classes into *user-readable* class names.
 
     I/O examples:
@@ -274,7 +275,7 @@ def print_classes_nicely(obj: list[Any] | dict[str, Any]) -> list[str] | None:
         return [".".join([print_class(v).split(".")[i] for i in (0, -1)]) for _, v in obj.items()]
     if isinstance(obj, list):
         return [".".join([print_class(v).split(".")[i] for i in (0, -1)]) for v in obj]
-    return None
+    return []
 
 
 def print_class(obj: object) -> str:
@@ -293,7 +294,17 @@ def print_class(obj: object) -> str:
     Returns:
         The user-readable class name.
 
+    Raises:
+        ValueError: If the class name cannot be determined.
     """
+    msg = f"Could not determine class name for object: {obj}"
+    # TODO(advueu963): Might even want to just ignore it here # noqa: TD003
     if isinstance(obj, type):
-        return re.search("(?<=<class ').*(?='>)", str(obj))[0]
-    return re.search("(?<=<class ').*(?='>)", str(type(obj)))[0]
+        search = re.search("(?<=<class ').*(?='>)", str(obj))
+        if not search:
+            raise ValueError(msg)
+        return search[0]
+    search = re.search("(?<=<class ').*(?='>)", str(type(obj)))
+    if not search:
+        raise ValueError(msg)
+    return search[0]

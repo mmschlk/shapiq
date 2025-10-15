@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 
     from .tabular import TabularExplainerApproximators
 
-
 AgnosticExplainerIndices = ExplainerIndices
 
 
@@ -43,7 +42,9 @@ class AgnosticExplainer(Explainer):
         n_players: int | None = None,
         index: AgnosticExplainerIndices = "k-SII",
         max_order: int = 2,
-        approximator: (Approximator | Literal["auto"] | TabularExplainerApproximators) = "auto",
+        approximator: (
+            Approximator[AgnosticExplainerIndices] | Literal["auto"] | TabularExplainerApproximators
+        ) = "auto",
         random_state: int | None = None,
     ) -> None:
         """Initialize the AgnosticExplainer.
@@ -74,20 +75,19 @@ class AgnosticExplainer(Explainer):
                 is not specified.
 
         """
-        if not isinstance(game, Game) and n_players is None:
-            msg = (
-                f"The number of players must be specified with the `n_players` argument if no "
-                f"`shapiq.games.base.Game` instance is provided. Got {type(game)}."
-            )
-            raise ValueError(msg)
-
         if n_players is None:
+            if not isinstance(game, Game):
+                msg = (
+                    f"The number of players must be specified with the `n_players` argument if no "
+                    f"`shapiq.games.base.Game` instance is provided. Got {type(game)}."
+                )
+                raise ValueError(msg)
             n_players = game.n_players
 
-        super().__init__(model=game, data=None, class_index=None)
+        super().__init__(model=game, class_index=None)
 
         self.game = game
-        self.approximator = setup_approximator(
+        self._approximator = setup_approximator(
             approximator=approximator,
             max_order=max_order,
             index=index,

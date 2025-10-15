@@ -10,10 +10,9 @@ import numpy as np
 from scipy.special import binom
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Collection, Iterable, Iterator
 
-    from shapiq.typing import CoalitionMatrix, CoalitionsLookup, CoalitionsTuples
-
+    from shapiq.typing import CoalitionMatrix, CoalitionTuple
 
 __all__ = [
     "count_interactions",
@@ -243,7 +242,9 @@ def generate_interaction_lookup(
     }
 
 
-def generate_interaction_lookup_from_coalitions(coalitions: CoalitionMatrix) -> CoalitionsLookup:
+def generate_interaction_lookup_from_coalitions(
+    coalitions: CoalitionMatrix,
+) -> dict[tuple[int, ...], int]:
     """Generates a lookup dictionary for interactions based on an array of coalitions.
 
     Args:
@@ -267,7 +268,7 @@ def generate_interaction_lookup_from_coalitions(coalitions: CoalitionMatrix) -> 
 
 
 def transform_coalitions_to_array(
-    coalitions: CoalitionsTuples,
+    coalitions: Collection[CoalitionTuple],
     n_players: int | None = None,
 ) -> CoalitionMatrix:
     """Transforms a collection of coalitions to a binary array (one-hot encodings).
@@ -303,7 +304,7 @@ def transform_coalitions_to_array(
     return coalition_array
 
 
-def transform_array_to_coalitions(coalitions: CoalitionMatrix) -> CoalitionsTuples:
+def transform_array_to_coalitions(coalitions: CoalitionMatrix) -> Collection[CoalitionTuple]:
     """Transforms a 2d one-hot matrix of coalitions into a list of tuples.
 
     Args:

@@ -16,6 +16,9 @@ __all__ = ["stacked_bar_plot"]
 
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
     from shapiq.interaction_values import InteractionValues
 
 
@@ -28,7 +31,7 @@ def stacked_bar_plot(
     xlabel: str | None = None,
     ylabel: str | None = None,
     show: bool = False,
-) -> tuple[plt.Figure, plt.Axes] | None:
+) -> tuple[Figure, Axes] | None:
     """The stacked bar plot interaction scores.
 
     This stacked bar plot can be used to visualize the amount of interaction between the features
