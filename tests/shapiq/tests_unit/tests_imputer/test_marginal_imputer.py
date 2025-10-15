@@ -27,7 +27,7 @@ def test_marginal_imputer_init():
     assert imputer.random_state == 42
     assert imputer.n_features == 3
 
-    # test with x
+    # test with x and normalize
     x = np.random.rand(1, 3)
     imputer = MarginalImputer(
         model=model,
@@ -74,6 +74,19 @@ def test_marginal_imputer_value_function():
 
     imputed_values = imputer(np.array([[True, False, True], [False, True, False]]))
     assert len(imputed_values) == 2
+
+    # test with normalization
+    imputer = MarginalImputer(
+        model=model,
+        data=data,
+        x=np.ones((1, 3)),
+        sample_size=8,
+        random_state=42,
+        normalize=True,
+    )
+    imputed_out = imputer(np.array([[False, False, False], [False, True, False]]))
+    assert imputed_out[0] == 0.0
+    assert imputed_out[1] != 0.0
 
 
 def test_joint_marginal_distribution():
