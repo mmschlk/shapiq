@@ -733,7 +733,7 @@ class Game:
                 stacklevel=2,
             )
 
-        exact_computer = ExactComputer(self.n_players, game=self)
+        exact_computer = ExactComputer(game=self, n_players=self.n_players)
         return exact_computer(index=index, order=order)
 
     @property

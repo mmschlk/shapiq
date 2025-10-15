@@ -10,7 +10,7 @@ from shapiq import ExactComputer, InteractionValues, force_plot
 
 def test_force_cooking_game(cooking_game):
     """Test the force plot function with concrete values from the cooking game."""
-    exact_computer = ExactComputer(n_players=cooking_game.n_players, game=cooking_game)
+    exact_computer = ExactComputer(game=cooking_game, n_players=cooking_game.n_players)
     interaction_values = exact_computer(index="k-SII", order=2)
     feature_names = list(cooking_game.player_name_lookup.keys())
     force_plot(

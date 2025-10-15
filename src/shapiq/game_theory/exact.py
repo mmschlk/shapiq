@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from scipy.special import bernoulli, binom
 
+from shapiq.game import Game
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
@@ -16,8 +17,6 @@ from .indices import ALL_AVAILABLE_CONCEPTS
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from shapiq.game import Game
 
 __all__ = ["ExactComputer", "get_bernoulli_weights"]
 
@@ -87,11 +86,10 @@ class ExactComputer:
 
     """
 
-    # TODO(mmshlk): if we init with a Game object, we do not need to provide the n_players. Hence, we could make the n_players optional issue: https://github.com/mmschlk/shapiq/issues/388
     def __init__(
         self,
-        n_players: int,
         game: Game | Callable[[np.ndarray], np.ndarray],
+        n_players: int | None = None,
         *,
         evaluate_game: bool = False,
     ) -> None:
@@ -103,6 +101,14 @@ class ExactComputer:
                 and returns a numpy array of shape ``(n_coalitions,)`` containing the game values.
             evaluate_game: whether to compute the values at init (if True) or first call (False)
         """
+        # clean inputs
+        if n_players is None:
+            if isinstance(game, Game):
+                n_players = game.n_players
+            else:
+                msg = "n_players must be specified if game is not a Game object."
+                raise ValueError(msg)
+
         # set parameter attributes
         self.n: int = n_players
         self.game_fun = game
