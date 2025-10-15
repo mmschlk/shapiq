@@ -76,10 +76,10 @@ class ProductKernelExplainer(Explainer):
 
         super().__init__(model, index=index, max_order=max_order)
 
-        self._min_order: int = min_order
-        self._max_order: int = max_order
+        self._min_order = min_order
+        self._max_order = max_order
 
-        self._index: ProductKernelSHAPIQIndices = index
+        self._index = index
         self._base_index: str = get_computation_index(self._index)
 
         # validate model

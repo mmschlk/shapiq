@@ -36,11 +36,11 @@ def convert_svm(model: SVC | SVR) -> ProductKernelModel:
         raise ValueError(msg)
 
     return ProductKernelModel(
-        alpha=model.dual_coef_.flatten(),
+        alpha=model.dual_coef_.flatten(),  # pyright: ignore[reportAttributeAccessIssue]
         X_train=X_train,
         n=n,
         d=d,
-        gamma=model._gamma,  # pyright: ignore[reportAttributeAccessIssue] # noqa: SLF001
+        gamma=model._gamma,  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue] # noqa: SLF001
         kernel_type=kernel_type,
         intercept=model.intercept_[0],
     )
@@ -69,7 +69,9 @@ def convert_gp_reg(model: GaussianProcessRegressor) -> ProductKernelModel:
         raise ValueError(msg)
 
     alphas = np.array(model.alpha_).flatten()
-    parameters = model.kernel_.get_params()
+    parameters = (
+        model.kernel_.get_params()  # pyright: ignore[reportAttributeAccessIssue]
+    )
     if "length_scale" in parameters:
         length_scale = parameters["length_scale"]
     else:
