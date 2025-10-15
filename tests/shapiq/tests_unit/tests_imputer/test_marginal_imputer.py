@@ -35,7 +35,7 @@ def test_marginal_imputer_init():
         x=x,
         random_state=42,
     )
-    assert np.array_equal(imputer._x, x)
+    assert np.array_equal(imputer.x, x)
     assert imputer.n_features == 3
     assert imputer.random_state == 42
 
