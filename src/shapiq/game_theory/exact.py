@@ -996,7 +996,7 @@ class ExactComputer:
             case "SV":
                 probabilistic_value = self.base_interaction(index="SII", order=order)
             case _:
-                msg = f"Index {index} not supported"
+                msg = f"Index {index} not supported."
                 raise ValueError(msg)
         # Change emptyset to baseline value, due to the definitions of players
         probabilistic_value.baseline_value = self.baseline_value

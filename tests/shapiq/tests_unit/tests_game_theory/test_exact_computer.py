@@ -490,3 +490,39 @@ def test_generalized_null_player(index, order):
     assert interaction_values[(0, 4)] < 10e-7
     assert interaction_values[(0,)] < 10e-7
     assert interaction_values[(4,)] < 10e-7
+
+
+class TestWrongIndices:
+    """A class to test that wrong indices raise errors."""
+
+    exact_computer = ExactComputer(game=SOUM(5, n_basis_games=10))
+    wrong_index = "WRONG_INDEX"
+    error_msg = f"Index {wrong_index} not supported."
+
+    def test_call(self):
+        """Tests that calling with a wrong index raises an error."""
+        with pytest.raises(ValueError, match="Index or value not supported."):
+            self.exact_computer(self.wrong_index, 2)  # type: ignore[reportArgumentType]
+
+    def test_fii(self):
+        """Tests that calling the FII function with a wrong index raises an error."""
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer.compute_fii(self.wrong_index, 2)  # type: ignore[reportArgumentType]
+
+    def test_shapley_interactions(self):
+        """Tests that calling the shapley_interactions function with a wrong index raises an error."""
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer.shapley_interactions(self.wrong_index, 2)  # type: ignore[reportArgumentType]
+
+    def test_probabilistic_value(self):
+        """Tests that calling the probabilistic_value function with a wrong index raises an error."""
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer.probabilistic_value(self.wrong_index)  # type: ignore[reportArgumentType]
+
+    def test_private_weight_functions(self):
+        """Tests that calling private weight functions with a wrong index raises an error."""
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer._base_weights(2, 2, self.wrong_index)  # type: ignore[reportArgumentType]
+
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer._get_fii_weights(self.wrong_index)  # type: ignore[reportArgumentType]
