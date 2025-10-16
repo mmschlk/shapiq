@@ -36,7 +36,7 @@ def test_exact_computer_on_soum():
         shapley_interactions_exact = {}
         for index in ("k-SII",):
             shapley_interactions_gt[index] = moebius_converter(index=index, order=order)
-            shapley_interactions_exact[index] = exact_computer.shapley_interaction(
+            shapley_interactions_exact[index] = exact_computer.shapley_interactions(
                 index=index,
                 order=order,
             )
@@ -58,7 +58,7 @@ def test_exact_computer_on_soum():
         assert (np.sum(shapley_generalized_values.values) - predicted_value) ** 2 < 10e-7
 
         index = "kADD-SHAP"
-        shapley_interactions_exact[index] = exact_computer.shapley_interaction(
+        shapley_interactions_exact[index] = exact_computer.shapley_interactions(
             index=index,
             order=order,
         )
@@ -93,7 +93,7 @@ def test_exact_no_n_players():
     n = 5
     soum = SOUM(n, n_basis_games=10)
     exact_computer = ExactComputer(game=soum)
-    assert exact_computer.n == n
+    assert exact_computer.n_players == n
 
 
 def test_exact_no_n_players_error():
@@ -220,7 +220,6 @@ def original_game():
     return _game_fun
 
 
-# (fails for [CHII-2] bc empty set is nan)
 @pytest.mark.parametrize(
     ("index", "order"),
     [
@@ -287,6 +286,7 @@ def test_warning_cii():
         ("BII", 2),
         ("CHII", 2),
         ("Co-Moebius", 2),
+        ("Moebius", 2),
         ("SGV", 2),
         ("BGV", 2),
         ("CHGV", 2),
