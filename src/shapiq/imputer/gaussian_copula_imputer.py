@@ -151,23 +151,39 @@ class GaussianCopulaImputer(GaussianImputer):
         """Transform Gaussian samples back to original feature space.
 
         Args:
-            data_gaussian: Transformed samples in Gaussian space as an array of ``(n_samples, n_features)``.
+            data_gaussian: Transformed samples in Gaussian space as an array of ``(n_coalitions, n_samples, n_features)`` or ``(n_samples, n_features)``.
+            If a 2D array is provided, it is assumed that it corresponds to one coalition.
 
         Returns:
-            Samples in original feature spaces as an array of ``(n_samples, n_features)``.
+            Samples in original feature spaces as an array of ``(n_coalitions, n_samples, n_features)`` or ``(n_samples, n_features)``.
+            The shape corresponds to the input shape.
         """
-        n_features = data_gaussian.shape[1]
-        n_samples = self.data.shape[0]
+        input_2d = False
+        if data_gaussian.ndim != 3:
+            # We assume that the input corresponds to one coalition
+            data_gaussian = data_gaussian[np.newaxis, :, :]
+            input_2d = True
+        n_features = data_gaussian.shape[2]
+        n_samples = data_gaussian.shape[1]
 
-        quantiles = norm.cdf(data_gaussian)
+        quantiles = norm.cdf(data_gaussian)  # shape (n_coalitions, n_samples, n_features)
         ranks = quantiles * n_samples
 
         x_original = np.zeros_like(data_gaussian)
         rank_indices = np.arange(1, n_samples + 1)
+
         for col in range(n_features):
             # The back-transformed ranks are not necessarily integers, so we interpolate linearly between the closest original datapoints
-            x_original[:, col] = np.interp(ranks[:, col], rank_indices, self._data_sorted[:, col])
+            _data_sorted = self._data_sorted[:, col]  # Better to access it once outside the loop
+            x_original[:, :, col] = np.apply_along_axis(
+                lambda r, _data_sorted=_data_sorted: np.interp(r, rank_indices, _data_sorted),
+                0,
+                ranks[:, :, col],
+            )
 
+        if input_2d:
+            # Return to original shape
+            return x_original[0]
         return x_original
 
     def _draw_samples(
@@ -189,10 +205,4 @@ class GaussianCopulaImputer(GaussianImputer):
 
         samples_gaussian = self._sample_monte_carlo(x_transformed, coalitions)
 
-        samples_backtransformed = np.zeros_like(samples_gaussian)
-        for coal_idx in range(coalitions.shape[0]):
-            samples_backtransformed[coal_idx] = self._transform_from_gaussian(
-                samples_gaussian[coal_idx]
-            )
-
-        return samples_backtransformed
+        return self._transform_from_gaussian(samples_gaussian)

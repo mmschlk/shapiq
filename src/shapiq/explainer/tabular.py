@@ -48,9 +48,9 @@ class TabularExplainer(Explainer):
         *,
         class_index: int | None = None,
         imputer: Imputer | TabularExplainerImputers = "marginal",
-        approximator: Literal["auto"]
-        | TabularExplainerApproximators
-        | Approximator[TabularExplainerIndices] = "auto",
+        approximator: (
+            Literal["auto"] | TabularExplainerApproximators | Approximator[TabularExplainerIndices]
+        ) = "auto",
         index: TabularExplainerIndices = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
@@ -153,7 +153,6 @@ class TabularExplainer(Explainer):
             imputer,
             MarginalImputer | GenerativeConditionalImputer | BaselineImputer | TabPFNImputer,
         ):
-            self._imputer = imputer
             self._imputer = imputer
         else:
             msg = (
