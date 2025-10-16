@@ -88,6 +88,26 @@ def test_exact_computer_on_soum():
         assert (np.sum(probabilistic_values["SV"].values) - predicted_value) ** 2 < 10e-7
 
 
+def test_exact_no_n_players():
+    """Tests that you can create an ExactComputer without specifying n_players with a Game."""
+    n = 5
+    soum = SOUM(n, n_basis_games=10)
+    exact_computer = ExactComputer(game=soum)
+    assert exact_computer.n == n
+
+
+def test_exact_no_n_players_error():
+    """Tests that an error is raised if n_players is not specified and no game is provided."""
+
+    def _callable_function(x):
+        return np.sum(x, axis=1)
+
+    with pytest.raises(
+        ValueError, match="n_players must be specified if game is not a Game object."
+    ):
+        ExactComputer(game=_callable_function)
+
+
 @pytest.mark.parametrize(
     ("index", "order"),
     [("ELC", 1)],
