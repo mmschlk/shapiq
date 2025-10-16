@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
-from overrides import overrides
-
 from shapiq.explainer.base import Explainer
 from shapiq.game_theory.indices import is_empty_value_the_baseline
 
@@ -50,7 +48,9 @@ class TabularExplainer(Explainer):
         *,
         class_index: int | None = None,
         imputer: Imputer | TabularExplainerImputers = "marginal",
-        approximator: Literal["auto"] | TabularExplainerApproximators | Approximator = "auto",
+        approximator: Literal["auto"]
+        | TabularExplainerApproximators
+        | Approximator[TabularExplainerIndices] = "auto",
         index: TabularExplainerIndices = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
@@ -129,21 +129,21 @@ class TabularExplainer(Explainer):
             )
 
         if imputer == "marginal":
-            self.imputer = MarginalImputer(
+            self._imputer = MarginalImputer(
                 self.predict,
                 self._data,
                 random_state=random_state,
                 **kwargs,
             )
         elif imputer == "conditional":
-            self.imputer = GenerativeConditionalImputer(
+            self._imputer = GenerativeConditionalImputer(
                 self.predict,
                 self._data,
                 random_state=random_state,
                 **kwargs,
             )
         elif imputer == "baseline":
-            self.imputer = BaselineImputer(
+            self._imputer = BaselineImputer(
                 self.predict,
                 self._data,
                 random_state=random_state,
@@ -153,7 +153,7 @@ class TabularExplainer(Explainer):
             imputer,
             MarginalImputer | GenerativeConditionalImputer | BaselineImputer | TabPFNImputer,
         ):
-            self.imputer = imputer
+            self._imputer = imputer
         else:
             msg = (
                 f"Invalid imputer {imputer}. "
@@ -164,11 +164,14 @@ class TabularExplainer(Explainer):
         self._n_features: int = self._data.shape[1]
         self.imputer.verbose = verbose  # set the verbose flag for the imputer
 
-        self.approximator = setup_approximator(
-            approximator, self._index, self._max_order, self._n_features, random_state
+        self._approximator = setup_approximator(
+            approximator,
+            self.index,
+            self._max_order,
+            self._n_features,
+            random_state,
         )
 
-    @overrides
     def explain_function(
         self,
         x: np.ndarray,
