@@ -20,6 +20,7 @@ This restructuring aims to improve maintainability and development scalability. 
 ### Maintenance and Development
 - refactored the `shapiq.Games` and `shapiq.InteractionValues` API by adding an interactions and game_values dictionary as the main data structure to store the interaction scores and game values. This allows for more efficient storage and retrieval of interaction values and game values, as well as easier manipulation of the data. [#419](https://github.com/mmschlk/shapiq/pull/419)
 - addition and subtraction of InteractionValues objects (via `shapiq.InteractionValues.__add__`) now also works for different indices, which will raise a warning and will return a new InteractionValues object with the index set of the first. [#422](https://github.com/mmschlk/shapiq/pull/422)
+- refactors the `shapiq.ExactComputer` to allow for initialization without passing n_players when a `shapiq.Game` object is passed [#388](https://github.com/mmschlk/shapiq/issues/388). Also introduces a tighter type hinting for the `index` parameter using `Literal` types. [#450](https://github.com/mmschlk/shapiq/pull/450)
 
 ### Docs
 - added an example notebook for `InteractionValues`, highlighting *Initialization*, *Modification*, *Visualization* and *Save and Loading*.
