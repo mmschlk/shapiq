@@ -156,7 +156,7 @@ class GenerativeConditionalImputer(Imputer):
         background_data = self._sample_background_data()
         n_coalitions = coalitions.shape[0]
         n_samples = background_data.shape[0]
-        x_tiled = np.tile(self._x, (n_coalitions * n_samples, 1))
+        x_tiled = np.tile(self.x, (n_coalitions * n_samples, 1))
         background_data_tiled = np.tile(background_data, (n_coalitions, 1))
         coalitions_tiled = np.repeat(coalitions, n_samples, axis=0)
         x_tiled[~coalitions_tiled] = background_data_tiled[~coalitions_tiled]

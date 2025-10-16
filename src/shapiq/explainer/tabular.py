@@ -154,6 +154,7 @@ class TabularExplainer(Explainer):
             MarginalImputer | GenerativeConditionalImputer | BaselineImputer | TabPFNImputer,
         ):
             self._imputer = imputer
+            self._imputer = imputer
         else:
             msg = (
                 f"Invalid imputer {imputer}. "

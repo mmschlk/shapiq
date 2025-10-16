@@ -14,9 +14,12 @@ if TYPE_CHECKING:
 
     from shapiq.game import Game
 
+ValidStratifiedSamplingSVIndices = Literal["SV"]
+"""The valid indices for the Stratified Sampling SV approximator."""
 
-class StratifiedSamplingSV(Approximator):
-    """The Stratifield Sampling algorithm for estimating the Shapley values.
+
+class StratifiedSamplingSV(Approximator[ValidStratifiedSamplingSVIndices]):
+    """The Stratified Sampling algorithm for estimating the Shapley values.
 
     The Stratified Sampling algorithm estimates the Shapley values (SV) by sampling random
     marginal contributions for each player and each coalition size. The marginal contributions are
@@ -32,7 +35,7 @@ class StratifiedSamplingSV(Approximator):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
+    valid_indices: tuple[ValidStratifiedSamplingSVIndices, ...] = ("SV",)
 
     def __init__(
         self,

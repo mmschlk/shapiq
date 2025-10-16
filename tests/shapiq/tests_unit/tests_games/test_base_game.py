@@ -103,15 +103,13 @@ def test_precompute():
     dummy_game = DummyGame(n=n_players, interaction=(0, 1))
 
     assert dummy_game.n_values_stored == 0
-    assert len(dummy_game.value_storage) == 0  # no precomputed values
-    assert len(dummy_game.coalition_lookup) == 0  # empty base attribute
+    assert len(dummy_game.game_values) == 0  # no precomputed values
     assert dummy_game.n_players == n_players  # base attribute
 
     dummy_game.precompute()
 
-    assert len(dummy_game.value_storage) != 0  # precomputed values
-    assert len(dummy_game.coalition_lookup) != 0  # precomputed coalitions
-    assert dummy_game.value_storage.shape[0] == 2**n_players  # precomputed values
+    assert len(dummy_game.game_values) != 0  # precomputed values
+    assert len(dummy_game.game_values) == 2**n_players  # precomputed values
     assert dummy_game.n_values_stored == 2**n_players  # precomputed coalitions
     assert dummy_game.precomputed  # precomputed flag
 
@@ -240,8 +238,7 @@ def check_game_equality(game1: Game, game2: Game):
     assert game1.normalize == game2.normalize
     assert game1.normalization_value == game2.normalization_value
     assert game1.n_values_stored == game2.n_values_stored
-    assert np.array_equal(game1.value_storage, game2.value_storage)
-    assert game1.coalition_lookup == game2.coalition_lookup
+    assert game1.game_values == game2.game_values
 
 
 class TestSavingGames:

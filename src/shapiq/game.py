@@ -6,7 +6,7 @@ import json
 import os
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -19,8 +19,17 @@ from shapiq.utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from shapiq.interaction_values import InteractionValues
-    from shapiq.typing import CoalitionMatrix, GameValues, JSONType, MetadataBlock
+    from shapiq.typing import (
+        CoalitionMatrix,
+        CoalitionTuple,
+        GameScores,
+        GameValues,
+        JSONType,
+        MetadataBlock,
+    )
 
     class GameJSONMetadata(TypedDict):
         """Metadata for the game loaded from JSON."""
@@ -111,7 +120,7 @@ class Game:
     """The value which is used to normalize (center) the game values such that the value for the
     empty coalition is zero. If this is zero, the game values are not normalized."""
 
-    game_values: dict[tuple[int, ...], float]
+    game_values: GameScores
     """The mapping for coalitions to game values without normalization applied."""
 
     def __init__(
@@ -154,13 +163,6 @@ class Game:
             kwargs: Additional keyword arguments (not used).
 
         """
-        # manual flag for choosing precomputed values even if not all values might be stored
-        self._precompute_flag: bool = False  # flag to manually override the precomputed check
-
-        # define storage variables
-        self.game_values: dict[tuple[int, ...], float] = {}
-        self.n_players = n_players
-
         if path_to_values is not None:
             msg = (
                 "Initializing a Game with `path_to_values` is deprecated and will be removed in a"
@@ -172,10 +174,16 @@ class Game:
             msg = "The number of players has to be provided if game is not loaded from values."
             raise ValueError(msg)
 
+        # manual flag for choosing precomputed values even if not all values might be stored
+        self._precompute_flag: bool = False  # flag to manually override the precomputed check
+
+        # define storage variables
+        self.game_values = {}
+        # TODO(mmschlk): Remove None Assignment below and drop the pyright ignore when we remove path_to_values # noqa: TD003
+        self.n_players = n_players  # type: ignore[assignment]
         # setup normalization of the game
         self.normalization_value = 0.0
         if normalize and path_to_values is None:
-            self.normalization_value = normalization_value
             if normalization_value is None:
                 # this is desired behavior, as in some cases normalization is set by the subclasses
                 # after init of the base Game class. For example, in the imputer classes.
@@ -187,6 +195,8 @@ class Game:
                     ),
                     stacklevel=2,
                 )
+            else:
+                self.normalization_value = normalization_value
 
         game_id = str(hash(self))[:8]
         self.game_id = f"{self.get_game_name()}_{game_id}"
@@ -205,7 +215,7 @@ class Game:
 
         # define player_names
         self.player_name_lookup: dict[str, int] = (
-            {name: i for i, name in enumerate(player_names)} if player_names is not None else None
+            {name: i for i, name in enumerate(player_names)} if player_names is not None else {}
         )
 
         self.verbose = verbose
@@ -213,7 +223,7 @@ class Game:
     @property
     def n_values_stored(self) -> int:
         """The number of values stored in the game."""
-        return len(self.coalition_lookup)
+        return len(self.game_values)
 
     @property
     def precomputed(self) -> bool:
@@ -229,16 +239,6 @@ class Game:
     def is_normalized(self) -> bool:
         """Checks if the game is normalized/centered."""
         return self(self.empty_coalition) == 0
-
-    @property
-    def coalition_lookup(self) -> dict[tuple[int, ...], int]:
-        """A lookup dictionary mapping from coalitions to indices in the ``value_storage``."""
-        return {coal: i for i, coal in enumerate(self.game_values.keys())}
-
-    @property
-    def value_storage(self) -> GameValues:
-        """The storage for the game values without normalization applied."""
-        return np.array(list(self.game_values.values()), dtype=float)
 
     def to_json_file(
         self,
@@ -279,9 +279,9 @@ class Game:
                 "normalization_value": self.normalization_value,
                 "precompute_flag": self._precompute_flag,
                 "precomputed": self.precomputed,
-                "player_names": list(self.player_name_lookup.keys())
-                if self.player_name_lookup
-                else None,
+                "player_names": (
+                    list(self.player_name_lookup.keys()) if self.player_name_lookup else None
+                ),
             },
             "data": {
                 safe_tuple_to_str(coalition): float(value)
@@ -390,21 +390,30 @@ class Game:
                 msg = "The values in the array of coalitions are not binary."
                 raise TypeError(msg)
             return coalitions
+
         # try for list of tuples
         if isinstance(coalitions, tuple):
-            coalitions = [coalitions]
+            tuple_list: list[tuple[int, ...]] | list[tuple[str, ...]] = cast(
+                list[tuple[int, ...]] | list[tuple[str, ...]], [coalitions]
+            )
+        else:
+            tuple_list: list[tuple[int, ...]] | list[tuple[str, ...]] = coalitions
+
         try:
             # convert list of tuples to one-hot encoding
-            return transform_coalitions_to_array(coalitions, self.n_players)
-        except (IndexError, TypeError):
+            coalitions_int = cast(list[tuple[int, ...]], tuple_list)
+            return transform_coalitions_to_array(coalitions_int, self.n_players)
+        except (IndexError, TypeError):  # the transform failed because of wrong input type
             pass
+
         # assuming str input
-        if self.player_name_lookup is None:
+        if not self.player_name_lookup:
             msg = "Player names are not provided. Cannot convert string to integer."
             raise ValueError(msg)
         try:
+            coalitions_str = cast(list[tuple[str, ...]], tuple_list)
             coalitions_from_str = []
-            for coalition in coalitions:
+            for coalition in coalitions_str:
                 coal_indices = sorted([self.player_name_lookup[player] for player in coalition])
                 coalitions_from_str.append(tuple(coal_indices))
             return transform_coalitions_to_array(coalitions_from_str, self.n_players)
@@ -549,7 +558,7 @@ class Game:
 
         # update the storage with the new coalitions and values
         self.game_values = {
-            tuple(sorted(coal)): game_values[idx] for coal, idx in coalitions_dict.items()
+            tuple(sorted(coal)): float(game_values[idx]) for coal, idx in coalitions_dict.items()
         }
         self._precompute_flag = True
 
@@ -578,7 +587,8 @@ class Game:
 
         """
         game_values = self.value_function(self._check_coalitions(coalitions))
-        return game_values, self.coalition_lookup, self.normalization_value
+        coalition_values = {coal: i for i, coal in enumerate(self.game_values.keys())}
+        return game_values, coalition_values, self.normalization_value
 
     def save_values(
         self, path: Path | str, *, as_npz: bool = False, **kwargs: dict[str, JSONType]
@@ -605,19 +615,19 @@ class Game:
         if as_npz or path.name.endswith(".npz"):
             path = path.with_suffix(".npz") if not path.name.endswith(".npz") else path  # add .npz
             coalitions_in_storage = transform_coalitions_to_array(
-                coalitions=self.coalition_lookup,
+                coalitions={coal: i for i, coal in enumerate(self.game_values.keys())},
                 n_players=self.n_players,
             ).astype(bool)
             np.savez_compressed(
                 path,
-                values=self.value_storage,
+                values=np.array(list(self.game_values.values()), dtype=float),
                 coalitions=coalitions_in_storage,
                 n_players=self.n_players,
                 normalization_value=self.normalization_value,
             )
         else:
             # store as JSON file
-            self.to_json_file(path, **kwargs)
+            self.to_json_file(path, **kwargs)  # type: ignore[arg-type]
 
     def load_values(self, path: Path | str, *, precomputed: bool = False) -> None:
         """Loads the game values from the given path.
@@ -660,9 +670,11 @@ class Game:
         """Load game values from a npz archive file."""
         data = np.load(path)
         self._validate_and_set_players_from_save(data["n_players"])
-        coalition_lookup: list[tuple] = transform_array_to_coalitions(data["coalitions"])
+        coalition_lookup: Collection[CoalitionTuple] = transform_array_to_coalitions(
+            data["coalitions"]
+        )
         self.game_values = {
-            tuple(sorted(coal)): value
+            tuple(sorted(coal)): float(value)
             for coal, value in zip(coalition_lookup, data["values"], strict=False)
         }
         self.normalization_value = float(data["normalization_value"])
@@ -676,7 +688,7 @@ class Game:
             **kwargs: Additional keyword arguments to pass to :meth:`~Game.to_json_file`.
 
         """
-        self.to_json_file(Path(path), **kwargs)
+        self.to_json_file(Path(path), **kwargs)  # type: ignore[arg-type]
 
     @classmethod
     def load(cls, path: Path | str, *, normalize: bool = True) -> Game:
