@@ -1,40 +1,21 @@
-from shapiq.games.benchmark.local_xai import AdultCensus, CaliforniaHousing, BikeSharing
-from shapiq.games.benchmark.local_xai.benchmark_tabular import (
-    ForestFires,
-    RealEstate,
-    BreastCancer,
-    NHANESI,
-    WineQuality,
-    CommunitiesAndCrime,
-    IndependentLinear60,
-    Corrgroups60,
-)
-
-from shapiq.games.benchmark.treeshap_interventional_xai import TreeSHAPInterventionalXAI
-
-from shapiq import InteractionValues
-from shapiq.explainer.tree import TreeSHAPIQ
-
-from shapiq import TreeExplainer, InteractionValues
-import numpy as np
-
-from shapiq import ExactComputer
-
-from shapiq import KernelSHAP, PermutationSamplingSV, SPEX
-from shapiq.approximator.regression.polyshap import (
-    PolySHAP,
-    ExplanationFrontierGenerator,
-)
-
-from shapiq.utils.empirical_leverage_scores import get_leverage_scores
-
-from scipy.special import binom
+from __future__ import annotations
 
 import multiprocessing as mp
-import tqdm
 
+import numpy as np
 from init_approximator import get_approximators
 
+from shapiq import InteractionValues
+from shapiq.games.benchmark.local_xai import AdultCensus, BikeSharing, CaliforniaHousing
+from shapiq.games.benchmark.local_xai.benchmark_tabular import (
+    NHANESI,
+    BreastCancer,
+    CommunitiesAndCrime,
+    Corrgroups60,
+    IndependentLinear60,
+    WineQuality,
+)
+from shapiq.games.benchmark.treeshap_interventional_xai import TreeSHAPInterventionalXAI
 
 if __name__ == "__main__":
     # this code runs interventional treeshap from the shap package for ground truth and uses the TreeSHAPInterventionalXAI class
@@ -62,7 +43,7 @@ if __name__ == "__main__":
         PAIRING = True
 
     PRINT_PERFORMANCE = False
-    RUN_GROUND_TRUTH = False
+    RUN_GROUND_TRUTH = True
     RUN_APPROXIMATION = True
 
     # run the benchmark for the games
@@ -75,13 +56,9 @@ if __name__ == "__main__":
         #     imputer="baseline",
         #     random_state=RANDOM_STATE,
         # ),
-        WineQuality(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        WineQuality(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         # WineQuality(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
-        BikeSharing(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        BikeSharing(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         # BikeSharing(
         #     model_name="gradient_boosting",
         #     imputer="baseline",
@@ -89,9 +66,7 @@ if __name__ == "__main__":
         # ),
         # ForestFires(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         # ForestFires(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
-        AdultCensus(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        AdultCensus(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         # AdultCensus(
         #     model_name="gradient_boosting",
         #     imputer="baseline",
@@ -99,9 +74,7 @@ if __name__ == "__main__":
         # ),
         # RealEstate(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         # RealEstate(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
-        BreastCancer(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        BreastCancer(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         # BreastCancer(
         #     model_name="gradient_boosting",
         #     imputer="baseline",
@@ -115,17 +88,13 @@ if __name__ == "__main__":
         #     imputer="baseline",
         #     random_state=RANDOM_STATE,
         # ),
-        Corrgroups60(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        Corrgroups60(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         # Corrgroups60(
         #     model_name="gradient_boosting",
         #     imputer="baseline",
         #     random_state=RANDOM_STATE,
         # ),
-        NHANESI(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        NHANESI(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         # NHANESI(model_name="gradient_boosting", imputer="baseline", random_state=RANDOM_STATE),
         CommunitiesAndCrime(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
@@ -205,17 +174,17 @@ if __name__ == "__main__":
         "PermutationSampling",
         "KernelSHAP",
         "LeverageSHAP",
-        "PolySHAP-2ADD",
-        "PolySHAP-3ADD",
-        "PolySHAP-4ADD",
-        "PolySHAP-2ADD-10%",
-        "PolySHAP-2ADD-20%",
-        "PolySHAP-2ADD-50%",
-        "PolySHAP-2ADD-75%",
-        "PolySHAP-3ADD-10%",
-        "PolySHAP-3ADD-20%",
-        "PolySHAP-3ADD-50%",
-        "PolySHAP-3ADD-75%",
+        # "PolySHAP-2ADD",
+        # "PolySHAP-3ADD",
+        # "PolySHAP-4ADD",
+        # "PolySHAP-2ADD-10%",
+        # "PolySHAP-2ADD-20%",
+        # "PolySHAP-2ADD-50%",
+        # "PolySHAP-2ADD-75%",
+        # "PolySHAP-3ADD-10%",
+        # "PolySHAP-3ADD-20%",
+        # "PolySHAP-3ADD-50%",
+        # "PolySHAP-3ADD-75%",
     ]
 
     MAX_BUDGET = 20000

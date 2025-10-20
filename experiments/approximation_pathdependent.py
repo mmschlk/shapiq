@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import multiprocessing as mp
-
 import numpy as np
 from init_approximator import get_approximators
 
@@ -14,7 +12,6 @@ from shapiq.games.benchmark.local_xai.benchmark_tabular import (
     ForestFires,
     IndependentLinear60,
     RealEstate,
-    WineQuality,
 )
 from shapiq.games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
 
@@ -56,30 +53,16 @@ if __name__ == "__main__":
         CaliforniaHousing(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
-        BikeSharing(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        ForestFires(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        AdultCensus(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        RealEstate(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        BreastCancer(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        BikeSharing(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
+        ForestFires(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
+        AdultCensus(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
+        RealEstate(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
+        BreastCancer(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         IndependentLinear60(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
-        Corrgroups60(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        NHANESI(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
+        Corrgroups60(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
+        NHANESI(model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE),
         CommunitiesAndCrime(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
@@ -114,21 +97,25 @@ if __name__ == "__main__":
     APPROXIMATORS = [
         # "MSR",
         # "SVARM",
-        "RegressionMSR",
-        "PermutationSampling",
-        # "KernelSHAP",
-        "LeverageSHAP",
-        "PolySHAP-2ADD",
-        "PolySHAP-3ADD",
-        "PolySHAP-4ADD",
-        # "PolySHAP-2ADD-10%",
-        # "PolySHAP-2ADD-20%",
-        "PolySHAP-2ADD-50%",
-        # "PolySHAP-2ADD-75%",
-        # "PolySHAP-3ADD-10%",
-        # "PolySHAP-3ADD-20%",
-        "PolySHAP-3ADD-50%",
-        # "PolySHAP-3ADD-75%",
+        # "RegressionMSR",
+        # "RegressionMSR-Shapley",
+        # "RegressionMSR-NoAdjustment",
+        # "RegressionMSR-ShapleyNoAdjustment",
+        "RegressionMSRwithKernelSHAP",
+        # "PermutationSampling",
+        # # "KernelSHAP",
+        # "LeverageSHAP",
+        # "PolySHAP-2ADD",
+        # "PolySHAP-3ADD",
+        # "PolySHAP-4ADD",
+        # # "PolySHAP-2ADD-10%",
+        # # "PolySHAP-2ADD-20%",
+        # "PolySHAP-2ADD-50%",
+        # # "PolySHAP-2ADD-75%",
+        # # "PolySHAP-3ADD-10%",
+        # # "PolySHAP-3ADD-20%",
+        # "PolySHAP-3ADD-50%",
+        # # "PolySHAP-3ADD-75%",
     ]
 
     MAX_BUDGET = 20000
@@ -169,9 +156,7 @@ if __name__ == "__main__":
                 continue
             for budget in budget_range:
                 try:
-                    shap_approx = approximator.approximate(
-                        budget=budget, game=tree_game
-                    )
+                    shap_approx = approximator.approximate(budget=budget, game=tree_game)
                     save_path = (
                         "approximations/pathdependent/"
                         + game_id

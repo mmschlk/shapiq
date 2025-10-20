@@ -3,13 +3,12 @@ from __future__ import annotations
 import numpy as np
 from scipy.special import binom, comb
 
-from shapiq import PermutationSamplingSV, UnbiasedKernelSHAP, SVARM
-from shapiq.approximator.regressionMSR import RegressionMSR
+from shapiq import SVARM, PermutationSamplingSV, UnbiasedKernelSHAP
 from shapiq.approximator.regression.polyshap import (
     ExplanationFrontierGenerator,
     PolySHAP,
 )
-from shapiq.utils.empirical_leverage_scores import get_leverage_scores
+from shapiq.approximator.regressionMSR import RegressionMSR
 
 
 def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEMENT):
@@ -164,9 +163,7 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
         polyshap_2add_75.name = "PolySHAP-2ADD-75%"
         approximator_list.append(polyshap_2add_75)
     if "PolySHAP-3ADD-10%" in APPROXIMATORS:
-        n_coefficients = (
-            1 + n_players + comb(n_players, 2) + int(0.1 * comb(n_players, 3))
-        )
+        n_coefficients = 1 + n_players + comb(n_players, 2) + int(0.1 * comb(n_players, 3))
         explanation_frontier = frontier_generator.generate_partial(
             n_explanation_terms=n_coefficients
         )
@@ -182,9 +179,7 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
         polyshap_3add_10.name = "PolySHAP-3ADD-10%"
         approximator_list.append(polyshap_3add_10)
     if "PolySHAP-3ADD-20%" in APPROXIMATORS:
-        n_coefficients = (
-            1 + n_players + comb(n_players, 2) + int(0.2 * comb(n_players, 3))
-        )
+        n_coefficients = 1 + n_players + comb(n_players, 2) + int(0.2 * comb(n_players, 3))
         explanation_frontier = frontier_generator.generate_partial(
             n_explanation_terms=n_coefficients
         )
@@ -200,9 +195,7 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
         polyshap_3add_20.name = "PolySHAP-3ADD-20%"
         approximator_list.append(polyshap_3add_20)
     if "PolySHAP-3ADD-50%" in APPROXIMATORS:
-        n_coefficients = (
-            1 + n_players + comb(n_players, 2) + int(0.5 * comb(n_players, 3))
-        )
+        n_coefficients = 1 + n_players + comb(n_players, 2) + int(0.5 * comb(n_players, 3))
         explanation_frontier = frontier_generator.generate_partial(
             n_explanation_terms=n_coefficients
         )
@@ -218,9 +211,7 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
         polyshap_3add_50.name = "PolySHAP-3ADD-50%"
         approximator_list.append(polyshap_3add_50)
     if "PolySHAP-3ADD-75%" in APPROXIMATORS:
-        n_coefficients = (
-            1 + n_players + comb(n_players, 2) + int(0.75 * comb(n_players, 3))
-        )
+        n_coefficients = 1 + n_players + comb(n_players, 2) + int(0.75 * comb(n_players, 3))
         explanation_frontier = frontier_generator.generate_partial(
             n_explanation_terms=n_coefficients
         )
@@ -269,11 +260,72 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
         # RegressionMSR
         regression_msr = RegressionMSR(
             n=n_players,
+            sampling_weights=sampling_weights_leverage_1,
             pairing_trick=PAIRING,
             replacement=REPLACEMENT,
             random_state=RANDOM_STATE,
         )
         regression_msr.name = "RegressionMSR"
         approximator_list.append(regression_msr)
-
+    if "RegressionMSR-Shapley" in APPROXIMATORS:
+        # RegressionMSR
+        regression_msr_shapley = RegressionMSR(
+            n=n_players,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+            random_state=RANDOM_STATE,
+            shapley_weighted_inputs=True,
+        )
+        regression_msr_shapley.name = "RegressionMSR-Shapley"
+        approximator_list.append(regression_msr_shapley)
+    if "RegressionMSR-ShapleyNoAdjustment" in APPROXIMATORS:
+        # RegressionMSR
+        regression_msr_shapleynoadjustment = RegressionMSR(
+            n=n_players,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+            random_state=RANDOM_STATE,
+            shapley_weighted_inputs=True,
+            regression_adjustment=False,
+        )
+        regression_msr_shapleynoadjustment.name = "RegressionMSR-ShapleyNoAdjustment"
+        approximator_list.append(regression_msr_shapleynoadjustment)
+    if "RegressionMSR-NoAdjustment" in APPROXIMATORS:
+        # RegressionMSR
+        regression_msr_noadjustment = RegressionMSR(
+            n=n_players,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+            random_state=RANDOM_STATE,
+            shapley_weighted_inputs=False,
+            regression_adjustment=False,
+        )
+        regression_msr_noadjustment.name = "RegressionMSR-NoAdjustment"
+        approximator_list.append(regression_msr_noadjustment)
+    if "RegressionMSRwithKernelSHAP" in APPROXIMATORS:
+        explanation_frontier = frontier_generator.generate_kadd(max_order=1)
+        leverage_shap = PolySHAP(
+            n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        # RegressionMSR
+        regression_msr_leverage = RegressionMSR(
+            n=n_players,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+            sampling_weights=sampling_weights_leverage_1,
+            random_state=RANDOM_STATE,
+            shapley_weighted_inputs=False,
+            regression_adjustment=True,
+            residual_estimator=leverage_shap,
+        )
+        regression_msr_leverage.name = "RegressionMSRwithKernelSHAP"
+        approximator_list.append(regression_msr_leverage)
     return approximator_list

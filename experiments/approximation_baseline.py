@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import multiprocessing as mp
-
 import numpy as np
 from init_approximator import get_approximators
 
@@ -104,20 +102,24 @@ if __name__ == "__main__":
         # "MSR",
         # "SVARM",
         "RegressionMSR",
-        "PermutationSampling",
-        # "KernelSHAP",
-        "LeverageSHAP",
-        "PolySHAP-2ADD",
-        "PolySHAP-3ADD",
-        "PolySHAP-4ADD",
-        # "PolySHAP-2ADD-10%",
-        # "PolySHAP-2ADD-20%",
-        "PolySHAP-2ADD-50%",
-        # "PolySHAP-2ADD-75%",
-        # "PolySHAP-3ADD-10%",
-        # "PolySHAP-3ADD-20%",
-        "PolySHAP-3ADD-50%",
-        # "PolySHAP-3ADD-75%",
+        "RegressionMSR-Shapley",
+        "RegressionMSR-NoAdjustment",
+        "RegressionMSR-ShapleyNoAdjustment",
+        "RegressionMSRwithKernelSHAP",
+        # "PermutationSampling",
+        # # "KernelSHAP",
+        # "LeverageSHAP",
+        # "PolySHAP-2ADD",
+        # "PolySHAP-3ADD",
+        # "PolySHAP-4ADD",
+        # # "PolySHAP-2ADD-10%",
+        # # "PolySHAP-2ADD-20%",
+        # "PolySHAP-2ADD-50%",
+        # # "PolySHAP-2ADD-75%",
+        # # "PolySHAP-3ADD-10%",
+        # # "PolySHAP-3ADD-20%",
+        # "PolySHAP-3ADD-50%",
+        # # "PolySHAP-3ADD-75%",
     ]
 
     MAX_BUDGET = 20000
@@ -147,9 +149,7 @@ if __name__ == "__main__":
                 id_explain,
             )
             for budget in budget_range:
-                shap_approx = approximator.approximate(
-                    budget=budget, game=game_instance
-                )
+                shap_approx = approximator.approximate(budget=budget, game=game_instance)
                 save_path = (
                     "approximations/exhaustive/"
                     + game_id

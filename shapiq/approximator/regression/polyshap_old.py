@@ -99,15 +99,11 @@ class PolySHAP(Approximator):
             if (i,) not in explanation_frontier:
                 raise ValueError("Poly SHAP requires all main effects in the interaction lookup.")
         # Extend interaction_lookup with pre-defined interactions
-        self.interaction_matrix_binary = np.zeros((len(explanation_frontier), self.n), dtype=bool)
         for S, pos in explanation_frontier.items():
             self.interaction_lookup[S] = pos
-            self.interaction_matrix_binary[pos, S] = True
 
         # init runtime dictionary of type float
         self.runtime_last_approximate_run: dict[str, float] = {}
-
-        self.n_variables = len(explanation_frontier) - 1  # exclude empty coalition
 
     def _init_kernel_weights(self) -> np.ndarray:
         """Initializes the kernel weights for the regression in KernelSHAP-IQ.
@@ -154,7 +150,6 @@ class PolySHAP(Approximator):
         approximate_start_time = time.time()
         # initialize the kernel weights
         kernel_weights = self._init_kernel_weights()
-        self.projection_matrix = np.identity(self.n_variables) - 1 / self.n_variables
 
         # get the coalitions
         self._sampler.sample(budget)
@@ -166,51 +161,33 @@ class PolySHAP(Approximator):
         self.runtime_last_approximate_run["evaluations"] = (
             game_evaluation_end_time - sampling_end_time
         )
-
-        # compute polyshap representation
-        empty_set_value = game_values[0]
-        game_values -= empty_set_value
-        full_set_value = game_values[1]
-
-        # Check inclusion:
-        X = np.all(
-            (
-                self.interaction_matrix_binary[1:, :][None, :, :]
-                <= self._sampler.coalitions_matrix[2:, :][:, None, :]
-            ),
-            axis=2,
+        interaction_representation = self.regression_routine(
+            kernel_weights=kernel_weights,
+            game_values=game_values,
         )
+        baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
-        sampling_normalization = np.sqrt(
-            kernel_weights[self._sampler.coalitions_size[2:]]
-            * self._sampler.sampling_adjustment_weights[2:]
-        )
-        X_tilde = np.diag(sampling_normalization) @ X
-        y_tilde = game_values[2:] * sampling_normalization
-        # solve the least-squares problem
-        lstsq_solution = np.linalg.lstsq(
-            X_tilde @ self.projection_matrix,
-            y_tilde - full_set_value / self.n_variables * np.sum(X_tilde, axis=1),
-            rcond=None,
-        )[0]
-        interaction_representation = np.zeros(self.n_variables + 1, dtype=float)
-        interaction_representation[0] = empty_set_value
-        interaction_representation[1:] = full_set_value / self.n_variables + lstsq_solution
-
-        # Transform to Shapley values
-        sv, sv_lookup = self._transform_to_shapley(interaction_representation)
-
+        sv = self._transform_to_shapley(interaction_representation)
         regression_end_time = time.time()
         self.runtime_last_approximate_run["regression"] = (
             regression_end_time - game_evaluation_end_time
         )
 
+        sv_numpy = np.zeros(self.n + 1, dtype=float)
+        sv_lookup = {}
+        new_pos = 0
+        for key, pos in self.interaction_lookup.items():
+            if len(key) <= 1:
+                sv_numpy[new_pos] = sv[pos]
+                sv_lookup[key] = new_pos
+                new_pos += 1
+
         # Transform the output to the interaction values
         result = InteractionValues(
-            values=sv,
+            values=sv_numpy,
             index="SV",
             interaction_lookup=sv_lookup,
-            baseline_value=empty_set_value,
+            baseline_value=baseline_value,
             min_order=self.min_order,
             max_order=self.max_order,
             n_players=self.n,
@@ -228,18 +205,117 @@ class PolySHAP(Approximator):
         )
         return final_result
 
+    def regression_routine(
+        self,
+        kernel_weights: np.ndarray,
+        game_values: np.ndarray,
+    ) -> np.ndarray[float]:
+        """The main regression routine for the regression approximators.
+
+        Solves a weighted least-square problem based on the representation of the target index.
+        First, approximates the objective of the regression problem and then solves the regression
+        problem using the approximated objective. Extends on KernelSHAP in different forms and
+        computes all interactions using a single regression problem.
+
+        Args:
+            kernel_weights: An array of the regression weights associated with each coalition size.
+            game_values: The computed game values for the sampled coalitions.
+            index_approximation: The current index that is approximated.
+
+        Returns:
+            A numpy array of the approximated interaction values.
+        """
+        coalitions_matrix = self._sampler.coalitions_matrix
+        sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
+        coalitions_size = np.sum(coalitions_matrix, axis=1)
+        sampling_adjustment_weights = sampling_adjustment_weights
+
+        empty_set_prediction = float(game_values[coalitions_size == 0][0])
+        regression_response = game_values - empty_set_prediction
+
+        n_regression_variables = len(self.interaction_lookup)
+        regression_matrix = np.zeros((np.shape(coalitions_matrix)[0], n_regression_variables))
+
+        for coalition_pos, coalition in enumerate(coalitions_matrix):
+            for interaction, interaction_pos in self.interaction_lookup.items():
+                interaction_size = len(interaction)
+                intersection_size = np.sum(coalition[list(interaction)])
+                regression_matrix[coalition_pos, interaction_pos] = int(
+                    interaction_size == intersection_size
+                )
+
+        # Regression weights adjusted by sampling weights
+        regression_weights = kernel_weights[coalitions_size] * sampling_adjustment_weights
+        # Solve the regression problem
+        shapley_interactions_values = self._solve_regression_unconstrained(
+            regression_matrix=regression_matrix,
+            regression_response=regression_response,
+            regression_weights=regression_weights,
+        )
+        shapley_interactions_values[0] = empty_set_prediction
+        return shapley_interactions_values.astype(dtype=float)
+
+    def _solve_regression_unconstrained(
+        self,
+        regression_matrix: np.ndarray,
+        regression_response: np.ndarray,
+        regression_weights: np.ndarray,
+    ) -> np.ndarray[float]:
+        """Solves the regression problem using an unconstrained weighted least squares method by computing a projection matrix first. Assumes empty and full prediction correspond to the first two rows. Returns all
+        approximated interactions.
+
+        Args:
+            regression_matrix: The regression matrix of shape ``[n_coalitions, n_interactions]``.
+                Depends on the index.
+            regression_response: The response vector for each coalition.
+            regression_weights: The weights for the regression problem for each coalition.
+
+        Returns:
+            The solution to the regression problem.
+        """
+        # Retrieve empty and full set response
+        empty_set_prediction = regression_response[0]
+        full_set_prediction = regression_response[1]
+        assert empty_set_prediction == 0
+        # exclude the empty and full coalition
+        regression_matrix_truncated = regression_matrix[2:, 1:]
+        regression_response_truncated = regression_response[2:]
+        regression_weights_truncated = regression_weights[2:]
+        n_variables = np.shape(regression_matrix_truncated)[1]
+        sum_of_rows = np.sum(regression_matrix_truncated, axis=1)
+        response_modified = (
+            regression_response_truncated - sum_of_rows * full_set_prediction / n_variables
+        )
+        projection_matrix = np.identity(n_variables) - 1 / n_variables
+
+        # compute new regression matrices
+        regression_response_modified = (
+            projection_matrix
+            @ regression_matrix_truncated.T
+            @ np.diag(regression_weights_truncated)
+            @ response_modified
+        )
+        regression_matrix_modified = (
+            projection_matrix
+            @ regression_matrix_truncated.T
+            @ np.diag(regression_weights_truncated)
+            @ regression_matrix_truncated
+            @ projection_matrix
+        )
+        # compute solution
+        regression_solution = np.linalg.lstsq(
+            regression_matrix_modified, regression_response_modified, rcond=None
+        )[0]
+        # create shapley interaction values, add empty coalition variable back
+        interaction_values = np.zeros(n_variables + 1, dtype=float)
+        interaction_values[1:] = regression_solution + full_set_prediction / n_variables
+        return interaction_values
+
     def _transform_to_shapley(self, input_values):
-        # transformed_values = np.zeros_like(input_values)
-        sv = np.zeros(self.n + 1)
-        sv_lookup = {}
+        transformed_values = np.zeros_like(input_values)
         for interaction, interaction_pos in self.interaction_lookup.items():
-            if len(interaction) == 0:
-                sv[interaction_pos] = input_values[interaction_pos]
-                sv_lookup[()] = interaction_pos
             for i in interaction:
-                # transformed_values[self.interaction_lookup[(i,)]] += input_values[
-                #    interaction_pos
-                # ] / len(interaction)
-                sv[i + 1] += input_values[interaction_pos] / len(interaction)
-                sv_lookup[(i,)] = i + 1
-        return sv, sv_lookup
+                transformed_values[self.interaction_lookup[(i,)]] += input_values[
+                    interaction_pos
+                ] / len(interaction)
+        return transformed_values

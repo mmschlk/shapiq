@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import pandas as pd
-import math, re
-from shapiq.benchmark import plot_approximation_quality
-import numpy as np
+import math
+import re
 
-import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+from shapiq.benchmark import plot_approximation_quality
 
 DATA_NAMES = {
     "breast_cancer": "Cancer ($d=30$)",
@@ -95,9 +96,7 @@ if __name__ == "__main__":
         lambda x: pd.Series(parse_approximator(x))
     )
     results_df["minimum_budget_to_plot"] = results_df.apply(compute_value, axis=1)
-    results_df = results_df[
-        results_df["used_budget"] >= results_df["minimum_budget_to_plot"]
-    ]
+    results_df = results_df[results_df["used_budget"] >= results_df["minimum_budget_to_plot"]]
 
     # Create and save a legend for the plots
     fig, ax = plot_approximation_quality(
@@ -116,7 +115,7 @@ if __name__ == "__main__":
     # Update legend
     ax.legend(handles, labels)
     # Save the legend separately
-    fig.savefig(f"plots/legend.pdf", bbox_inches="tight")
+    fig.savefig("plots/legend.pdf", bbox_inches="tight")
     # fig_legend.show()
 
     # Plot approximation quality for standard
@@ -124,22 +123,26 @@ if __name__ == "__main__":
         # (results_df["approximator"] == "MSR")
         # | (results_df["approximator"] == "SVARM")
         (results_df["approximator"] == "RegressionMSR")
-        | (results_df["approximator"] == "PermutationSampling")
-        # | (results_df["approximator"] == "KernelSHAP")
+        # | (results_df["approximator"] == "RegressionMSR-Shapley")
+        | (results_df["approximator"] == "RegressionMSR-ShapleyNoAdjustment")
+        | (results_df["approximator"] == "RegressionMSR-NoAdjustment")
+        # | (results_df["approximator"] == "RegressionMSRwithKernelSHAP")
+        # | (results_df["approximator"] == "PermutationSampling")
+        # # | (results_df["approximator"] == "KernelSHAP")
         | (results_df["approximator"] == "LeverageSHAP")
-        # | (results_df["approximator"] == "PolySHAP-2ADD-10%")
-        # | (results_df["approximator"] == "PolySHAP-2ADD-20%")
-        | (results_df["approximator"] == "PolySHAP-2ADD-50%")
-        # | (results_df["approximator"] == "PolySHAP-2ADD-75%")
-        | (results_df["approximator"] == "PolySHAP-2ADD")
-        # | (results_df["approximator"] == "PolySHAP-3ADD-20%")
-        | (results_df["approximator"] == "PolySHAP-3ADD-50%")
-        # | (results_df["approximator"] == "PolySHAP-3ADD-75%")
-        | (results_df["approximator"] == "PolySHAP-3ADD")
-        | (results_df["approximator"] == "PolySHAP-4ADD")
+        # # | (results_df["approximator"] == "PolySHAP-2ADD-10%")
+        # # | (results_df["approximator"] == "PolySHAP-2ADD-20%")
+        # | (results_df["approximator"] == "PolySHAP-2ADD-50%")
+        # # | (results_df["approximator"] == "PolySHAP-2ADD-75%")
+        # | (results_df["approximator"] == "PolySHAP-2ADD")
+        # # | (results_df["approximator"] == "PolySHAP-3ADD-20%")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-50%")
+        # # | (results_df["approximator"] == "PolySHAP-3ADD-75%")
+        # | (results_df["approximator"] == "PolySHAP-3ADD")
+        # | (results_df["approximator"] == "PolySHAP-4ADD")
     ]
 
-    plot_df = plot_df[plot_df["id_config_approximator"] == 39]
+    plot_df = plot_df[plot_df["id_config_approximator"] == 37]
 
     for game_type in GAME_TYPES:
         plot_df_game_type = plot_df[results_df["game_type"] == game_type]
@@ -157,7 +160,7 @@ if __name__ == "__main__":
                 )
                 ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
                 fig.tight_layout()
-                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_standard.pdf")
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_standard.png")
 
                 metric = "Precision@5"
                 dataset = plot_df_game_id["game"].unique()[0]
@@ -249,9 +252,7 @@ if __name__ == "__main__":
                 )
                 ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
                 fig.tight_layout()
-                fig.savefig(
-                    f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf"
-                )
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf")
 
                 metric = "Precision@5"
                 dataset = plot_df_game_id["game"].unique()[0]
@@ -264,9 +265,7 @@ if __name__ == "__main__":
                 )
                 ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
                 fig.tight_layout()
-                fig.savefig(
-                    f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf"
-                )
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf")
 
                 metric = "Precision@10"
                 dataset = plot_df_game_id["game"].unique()[0]
@@ -279,9 +278,7 @@ if __name__ == "__main__":
                 )
                 ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
                 fig.tight_layout()
-                fig.savefig(
-                    f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf"
-                )
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf")
 
                 metric = "SpearmanCorrelation@10"
                 dataset = plot_df_game_id["game"].unique()[0]
@@ -294,9 +291,7 @@ if __name__ == "__main__":
                 )
                 ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
                 fig.tight_layout()
-                fig.savefig(
-                    f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf"
-                )
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf")
 
                 metric = "SpearmanCorrelation"
                 dataset = plot_df_game_id["game"].unique()[0]
@@ -309,6 +304,4 @@ if __name__ == "__main__":
                 )
                 ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
                 fig.tight_layout()
-                fig.savefig(
-                    f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf"
-                )
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf")

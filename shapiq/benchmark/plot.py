@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from typing import TYPE_CHECKING
-from scipy.special import comb
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-import matplotlib.ticker as ticker
+from matplotlib import (
+    pyplot as plt,
+    ticker,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -61,6 +62,10 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "MSR": {"color": "#666666", "marker": "o"},
     "SVARM": {"color": "#707070", "marker": "o"},
     "RegressionMSR": {"color": "#636363", "marker": "o"},
+    "RegressionMSR-Shapley": {"color": "#666666", "marker": "o"},
+    "RegressionMSR-NoAdjustment": {"color": "#bdbdbd", "marker": "o"},
+    "RegressionMSR-ShapleyNoAdjustment": {"color": "#B35900", "marker": "o"},
+    "RegressionMSRwithKernelSHAP": {"color": "#B35900", "marker": "o"},
     "KernelSHAP": {"color": "#d62728", "marker": "o"},
     "LeverageSHAP": {"color": "#009688", "marker": "o"},
     # "LeverageSHAP": {"color": "#9467bd", "marker": "X"},
@@ -108,7 +113,7 @@ MARKER_SIZE = 7
 
 
 LOG_SCALE_MAX = None
-LOG_SCALE_MIN = 1e-7
+LOG_SCALE_MIN = 1e-9
 
 METRICS_LIMITS = {
     "Precision@10": (0.7, 1.02),
@@ -360,7 +365,7 @@ def plot_approximation_quality(
             )
 
     # add x/y labels
-    ax.set_ylabel(metric + " $\pm$ SEM", fontsize=20)
+    ax.set_ylabel(metric + r" $\pm$ SEM", fontsize=20)
     ax.set_xlabel(r"Budget ($m$)", fontsize=20)
     plt.yticks(fontsize=18)
 
@@ -638,5 +643,4 @@ def plot_pairing_vs_standard(plot_df):
 
     ax.set_yscale("log")
     plt.tight_layout()
-    plt.savefig(f"plots/pairing_overview.png")
-    # plt.show()
+    plt.savefig("plots/pairing_overview.png")
