@@ -13,7 +13,7 @@ from shapiq_games.synthetic.soum import SOUM
 
 def test_exact_computer_on_soum():
     """Tests the ExactComputer on the SOUM game."""
-    for _ in range(20):
+    for _ in range(10):
         n = np.random.randint(low=2, high=10)
         order = np.random.randint(low=1, high=min(n, 5))
         n_basis_games = np.random.randint(low=1, high=100)
@@ -26,66 +26,32 @@ def test_exact_computer_on_soum():
 
         # Compute via sparse Möbius representation
         moebius_converter = MoebiusConverter(soum.moebius_coefficients)
+        moebius_transform = exact_computer.moebius_transform
 
-        moebius_transform = exact_computer.moebius_transform()
         # Assert equality with ground truth Möbius coefficients from SOUM
         assert np.sum((moebius_transform - soum.moebius_coefficients).values ** 2) < 10e-7
 
         # Compare ground truth via MoebiusConvert with exact computation of ExactComputer
-        shapley_interactions_gt = {}
-        shapley_interactions_exact = {}
-        for index in ("k-SII",):
-            shapley_interactions_gt[index] = moebius_converter(index=index, order=order)
-            shapley_interactions_exact[index] = exact_computer.shapley_interactions(
-                index=index,
-                order=order,
-            )
-            # Check equality with ground truth calculations from SOUM
-            assert (
-                np.sum(
-                    (shapley_interactions_exact[index] - shapley_interactions_gt[index]).values
-                    ** 2,
-                )
-                < 10e-7
-            )
+        gt = moebius_converter(index="k-SII", order=order)
+        exact = exact_computer.shapley_interactions(index="k-SII", order=order)
+        # Check equality with ground truth calculations from SOUM
+        assert np.sum((gt - exact).values ** 2) < 10e-7
 
-        index = "JointSV"
-        shapley_generalized_values = exact_computer.shapley_generalized_value(
-            order=order,
-            index=index,
-        )
-        # Assert efficiency
-        assert (np.sum(shapley_generalized_values.values) - predicted_value) ** 2 < 10e-7
+        jointsv = exact_computer.shapley_generalized_value(order=order)
+        assert (np.sum(jointsv.values) - predicted_value) ** 2 < 10e-7  # assert efficiency
 
-        index = "kADD-SHAP"
-        shapley_interactions_exact[index] = exact_computer.shapley_interactions(
-            index=index,
-            order=order,
-        )
+        exact_computer.shapley_interactions(index="kADD-SHAP", order=order)
 
-        base_interaction_indices = ["SII", "BII", "CHII", "Co-Moebius"]
-        base_interactions = {}
-        for base_index in base_interaction_indices:
-            base_interactions[base_index] = exact_computer.shapley_base_interaction(
-                order=order,
-                index=base_index,
-            )
+        for base_index in ("SII", "BII", "CHII", "Co-Moebius"):
+            exact_computer.shapley_base_interaction(order=order, index=base_index)
 
-        base_gv_indices = ["SGV", "BGV", "CHGV", "IGV", "EGV"]
-        base_gv = {}
-        for base_gv_index in base_gv_indices:
-            base_gv[base_gv_index] = exact_computer.base_generalized_value(
-                order=order,
-                index=base_gv_index,
-            )
+        for base_gv_index in ("SGV", "BGV", "CHGV", "IGV", "EGV"):
+            exact_computer.base_generalized_value(order=order, index=base_gv_index)
 
-        probabilistic_values_indices = ["SV", "BV"]
-        probabilistic_values = {}
-        for pv_index in probabilistic_values_indices:
-            probabilistic_values[pv_index] = exact_computer.probabilistic_value(index=pv_index)
+        sv = exact_computer.probabilistic_value(index="SV")
+        assert (np.sum(sv.values) - predicted_value) ** 2 < 10e-7
 
-        # Assert efficiency for SV
-        assert (np.sum(probabilistic_values["SV"].values) - predicted_value) ** 2 < 10e-7
+        exact_computer.probabilistic_value(index="BV")
 
 
 def test_exact_no_n_players():

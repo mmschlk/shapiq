@@ -46,7 +46,7 @@ def test_approximator_init():
 def test_abstract_approximator():
     """Tests if the attributes and properties of approximators are set correctly."""
     approx = get_concrete_class(Approximator)(n=7, max_order=2, index="SII", top_order=False)
-    assert approx.n_players == 7
+    assert approx.n == 7
     assert approx.max_order == 2
     assert approx.index == "SII"
     assert approx.top_order is False
