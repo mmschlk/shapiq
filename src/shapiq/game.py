@@ -27,6 +27,7 @@ if TYPE_CHECKING:
         CoalitionTuple,
         GameScores,
         GameValues,
+        IndexType,
         JSONType,
         MetadataBlock,
     )
@@ -712,7 +713,7 @@ class Game:
         """Return a string representation of the game."""
         return self.__repr__()
 
-    def exact_values(self, index: str, order: int) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
         """Uses the ExactComputer to compute the exact interaction values.
 
         Args:
@@ -733,7 +734,7 @@ class Game:
                 stacklevel=2,
             )
 
-        exact_computer = ExactComputer(self.n_players, game=self)
+        exact_computer = ExactComputer(game=self, n_players=self.n_players)
         return exact_computer(index=index, order=order)
 
     @property

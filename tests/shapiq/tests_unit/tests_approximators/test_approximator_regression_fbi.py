@@ -63,7 +63,7 @@ def test_approximate_bv_equality(cooking_game):
     """Tests the approximation of the RegressionFBII approximator to be equal to BV."""
     n_players = 3
     game = cooking_game
-    exact_computer = ExactComputer(n_players, game)
+    exact_computer = ExactComputer(game, n_players)
     banzhaf = exact_computer("BV")
     fbii_exac = exact_computer("FBII", order=1)
     approximator = RegressionFBII(n=n_players, max_order=1)
