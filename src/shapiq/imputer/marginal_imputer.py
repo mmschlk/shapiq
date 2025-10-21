@@ -165,9 +165,9 @@ class MarginalImputer(Imputer):
 
         """
         self._replacement_data = np.copy(data)
-        if self.sample_size > self._replacement_data.shape[0]:
+        if self._sample_size > self._replacement_data.shape[0]:
             warnings.warn(UserWarning(_too_large_sample_size_warning), stacklevel=2)
-            self.sample_size = self._replacement_data.shape[0]
+            self._sample_size = self._replacement_data.shape[0]
         self.calc_empty_prediction()  # reset the empty prediction to the new background data
         return self
 

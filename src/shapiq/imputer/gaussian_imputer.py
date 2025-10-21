@@ -69,12 +69,11 @@ class GaussianImputer(Imputer):
             data=data,
             x=x,
             categorical_features=[],
+            sample_size=sample_size,
             random_state=random_state,
             verbose=verbose,
         )
 
-        # We need to set the member explicitely here, since its type would be `int | None` if we set it through the superclass constructor
-        self.sample_size: int = sample_size
         self._check_categorical_features()
 
         self._mean_per_feature: npt.NDArray[np.floating] | None = None
