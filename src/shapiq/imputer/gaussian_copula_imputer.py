@@ -38,7 +38,7 @@ class GaussianCopulaImputer(GaussianImputer):
     @override
     def __init__(
         self,
-        model: object | Game | Callable[[npt.NDArray[np.floating]], npt.NDArray[np.floating]],
+        model: (object | Game | Callable[[npt.NDArray[np.floating]], npt.NDArray[np.floating]]),
         data: npt.NDArray[np.floating],
         x: npt.NDArray[np.floating] | None = None,
         *,
@@ -164,7 +164,7 @@ class GaussianCopulaImputer(GaussianImputer):
             data_gaussian = data_gaussian[np.newaxis, :, :]
             input_2d = True
         n_features = data_gaussian.shape[2]
-        n_samples = data_gaussian.shape[1]
+        n_samples = self.data.shape[0]
 
         quantiles = norm.cdf(data_gaussian)  # shape (n_coalitions, n_samples, n_features)
         ranks = quantiles * n_samples
@@ -176,7 +176,11 @@ class GaussianCopulaImputer(GaussianImputer):
             # The back-transformed ranks are not necessarily integers, so we interpolate linearly between the closest original datapoints
             _data_sorted = self._data_sorted[:, col]  # Better to access it once outside the loop
             x_original[:, :, col] = np.apply_along_axis(
-                lambda r, _data_sorted=_data_sorted: np.interp(r, rank_indices, _data_sorted),
+                lambda r, _data_sorted=_data_sorted: np.interp(
+                    r,
+                    rank_indices,
+                    _data_sorted,
+                ),
                 0,
                 ranks[:, :, col],
             )
