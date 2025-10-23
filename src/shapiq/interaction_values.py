@@ -13,7 +13,7 @@ from warnings import warn
 import numpy as np
 
 from .game_theory.indices import (
-    ALL_AVAILABLE_INDICES,
+    AllIndices,
     get_index_from_computation_index,
     is_empty_value_the_baseline,
     is_index_aggregated,
@@ -107,7 +107,7 @@ class InteractionValues:
         if not is_index_valid(index, raise_error=False):
             warn(
                 f"Index `{index}` is not a valid interaction index. "
-                f"Valid indices are: {', '.join(ALL_AVAILABLE_INDICES)}.",
+                f"Valid indices are: {', '.join(AllIndices)}.",
                 stacklevel=2,
             )
         index = get_index_from_computation_index(index, max_order)
