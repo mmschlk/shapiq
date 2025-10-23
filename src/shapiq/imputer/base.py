@@ -83,7 +83,7 @@ class Imputer(Game, Generic[TModel]):
         if data.ndim == 1:
             data = data.reshape(1, data.shape[0])
         self.data = data
-        self.sample_size = sample_size
+        self._sample_size = sample_size
         self.empty_prediction: float = 0.0  # will be overwritten in the subclasses
         self.n_features = self.data.shape[1]
         self._cat_features: list = [] if categorical_features is None else categorical_features
@@ -106,6 +106,14 @@ class Imputer(Game, Generic[TModel]):
             msg = "The imputer has not yet been fitted yet."
             raise AttributeError(msg)
         return self._x.copy()
+
+    @property
+    def sample_size(self) -> int:
+        """Returns the sample size."""
+        if self._sample_size is None:
+            msg = "The sample size is not set."
+            raise AttributeError(msg)
+        return self._sample_size
 
     def set_random_state(self, random_state: int | None = None) -> None:
         """Sets the random state for the imputer and the model.

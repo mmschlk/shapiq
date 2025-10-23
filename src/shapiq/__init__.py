@@ -51,7 +51,14 @@ from .game import Game
 from .game_theory.exact import ExactComputer
 
 # imputer classes
-from .imputer import BaselineImputer, ConditionalImputer, MarginalImputer, TabPFNImputer
+from .imputer import (
+    BaselineImputer,
+    GaussianCopulaImputer,
+    GaussianImputer,
+    GenerativeConditionalImputer,
+    MarginalImputer,
+    TabPFNImputer,
+)
 
 # base classes
 from .interaction_values import InteractionValues
@@ -108,8 +115,10 @@ __all__ = [
     # imputers
     "MarginalImputer",
     "BaselineImputer",
-    "ConditionalImputer",
+    "GenerativeConditionalImputer",
     "TabPFNImputer",
+    "GaussianImputer",
+    "GaussianCopulaImputer",
     # plots
     "network_plot",
     "stacked_bar_plot",

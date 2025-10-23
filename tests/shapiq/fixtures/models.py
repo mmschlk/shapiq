@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
+import numpy as np
 import pytest
 from sklearn.ensemble import (
     ExtraTreesClassifier,
@@ -18,10 +19,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 if TYPE_CHECKING:
-    import numpy as np
+    from collections.abc import Callable
 
     from shapiq.explainer.tree import TreeModel
     from shapiq.utils import Model
+
 
 RANDOM_SEED_MODELS = 42
 
@@ -34,7 +36,10 @@ TABULAR_MODEL_FIXTURES = [
 ]
 
 TABULAR_TENSORFLOW_MODEL_FIXTURES = [
-    ("sequential_model_1_class", "tensorflow.python.keras.engine.sequential.Sequential"),
+    (
+        "sequential_model_1_class",
+        "tensorflow.python.keras.engine.sequential.Sequential",
+    ),
     ("sequential_model_2_classes", "keras.src.models.sequential.Sequential"),
     ("sequential_model_3_classes", "keras.engine.sequential.Sequential"),
 ]
@@ -346,3 +351,13 @@ def get_california_housing_random_forest() -> RandomForestRegressor:
 def california_housing_rf_model() -> RandomForestRegressor:
     """Return a random forest model trained on the California housing dataset."""
     return get_california_housing_random_forest()
+
+
+@pytest.fixture
+def dummy_model() -> Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]]:
+    """Defines a simple placeholder model for testing."""
+
+    def predict(x: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
+        return np.asarray(np.sum(x, axis=-1), dtype=float)
+
+    return predict

@@ -48,9 +48,9 @@ class TabularExplainer(Explainer):
         *,
         class_index: int | None = None,
         imputer: Imputer | TabularExplainerImputers = "marginal",
-        approximator: Literal["auto"]
-        | TabularExplainerApproximators
-        | Approximator[TabularExplainerIndices] = "auto",
+        approximator: (
+            Literal["auto"] | TabularExplainerApproximators | Approximator[TabularExplainerIndices]
+        ) = "auto",
         index: TabularExplainerIndices = "k-SII",
         max_order: int = 2,
         random_state: int | None = None,
@@ -110,7 +110,7 @@ class TabularExplainer(Explainer):
         """
         from shapiq.imputer import (
             BaselineImputer,
-            ConditionalImputer,
+            GenerativeConditionalImputer,
             MarginalImputer,
             TabPFNImputer,
         )
@@ -136,7 +136,7 @@ class TabularExplainer(Explainer):
                 **kwargs,
             )
         elif imputer == "conditional":
-            self._imputer = ConditionalImputer(
+            self._imputer = GenerativeConditionalImputer(
                 self.predict,
                 self._data,
                 random_state=random_state,
@@ -150,7 +150,8 @@ class TabularExplainer(Explainer):
                 **kwargs,
             )
         elif isinstance(
-            imputer, MarginalImputer | ConditionalImputer | BaselineImputer | TabPFNImputer
+            imputer,
+            MarginalImputer | GenerativeConditionalImputer | BaselineImputer | TabPFNImputer,
         ):
             self._imputer = imputer
         else:
