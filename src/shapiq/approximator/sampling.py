@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import copy
 import warnings
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.special import binom
 
 from shapiq.utils.sets import powerset
+
+if TYPE_CHECKING:
+    from shapiq.typing import BoolVector, CoalitionTuple, FloatVector, IntVector
 
 
 class CoalitionSampler:
@@ -146,26 +150,27 @@ class CoalitionSampler:
             if weight == 0 and 0 < size < self.n:
                 self.n_max_coalitions -= int(binom(self.n, size))
                 self._coalitions_to_exclude.extend([size])
-        self.adjusted_sampling_weights: np.ndarray[float] | None = None
+        self.adjusted_sampling_weights: FloatVector = np.array([])
 
         # set sample size variables (for border trick)
-        self._coalitions_to_compute: list[int] | None = None  # coalitions to compute
-        self._coalitions_to_sample: list[int] | None = None  # coalitions to sample
+        self._coalitions_to_compute: list[int] = []  # coalitions to compute
+        self._coalitions_to_sample: list[int] = []  # coalitions to sample
 
         # initialize variables to be computed and stored
-        self.sampled_coalitions_dict: dict[tuple[int, ...], int] | None = None  # coal -> count
-        self.coalitions_per_size: np.ndarray[int] | None = None  # number of coalitions per size
+        self.sampled_coalitions_dict: dict[CoalitionTuple, int] = {}
+        self.coalitions_per_size: IntVector = np.array([], dtype=int)
 
         # variables accessible through properties
-        self._sampled_coalitions_matrix: np.ndarray[bool] | None = None  # coalitions
-        self._sampled_coalitions_counter: np.ndarray[int] | None = None  # coalitions_counter
-        self._sampled_coalitions_size_prob: np.ndarray[float] | None = (
-            None  # coalitions_size_probability
-        )
-        self._sampled_coalitions_in_size_prob: np.ndarray[float] | None = (
-            None  # coalitions_in_size_probability
-        )
-        self._is_coalition_size_sampled: np.ndarray[bool] | None = None  # is_coalition_size_sampled
+        # coalitions
+        self._sampled_coalitions_matrix: BoolVector = np.array([], dtype=bool)
+        # coalitions counter
+        self._sampled_coalitions_counter: IntVector = np.array([], dtype=int)
+        # coalitions size probability
+        self._sampled_coalitions_size_prob: FloatVector = np.array([], dtype=float)
+        # coalitions in size probability
+        self._sampled_coalitions_in_size_prob: FloatVector = np.array([], dtype=float)
+        # coalition size sampled
+        self._is_coalition_size_sampled: BoolVector = np.array([], dtype=bool)
 
     @property
     def n_coalitions(self) -> int:
@@ -257,7 +262,7 @@ class CoalitionSampler:
         return copy.deepcopy(self._sampled_coalitions_counter)
 
     @property
-    def coalitions_probability(self) -> np.ndarray | None:
+    def coalitions_probability(self) -> np.ndarray:
         """Returns the coalition probabilities according to the sampling procedure.
 
         Returns the coalition probabilities according to the sampling procedure. The coalitions'
@@ -269,12 +274,7 @@ class CoalitionSampler:
                 if the coalition probabilities are not available.
 
         """
-        if (
-            self._sampled_coalitions_size_prob is not None
-            and self._sampled_coalitions_in_size_prob is not None
-        ):
-            return self._sampled_coalitions_size_prob * self._sampled_coalitions_in_size_prob
-        return None
+        return self._sampled_coalitions_size_prob * self._sampled_coalitions_in_size_prob
 
     @property
     def coalitions_size_probability(self) -> np.ndarray:
@@ -323,7 +323,7 @@ class CoalitionSampler:
         try:
             if self.coalitions_per_size[0] >= 1:
                 return int(np.where(self.coalitions_size == 0)[0][0])
-        except TypeError:
+        except IndexError:
             pass
         return None
 

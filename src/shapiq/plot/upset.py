@@ -11,6 +11,8 @@ from ._config import BLUE, RED
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from matplotlib.figure import Figure
+
     from shapiq.interaction_values import InteractionValues
 
 
@@ -23,7 +25,7 @@ def upset_plot(
     all_features: bool = True,
     figsize: tuple[float, float] | None = None,
     show: bool = False,
-) -> plt.Figure | None:
+) -> Figure | None:
     """Plots the upset plot.
 
     UpSet plots[1]_ can be used to visualize the interactions between features. The plot consists of

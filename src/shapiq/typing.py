@@ -3,33 +3,59 @@
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping, Sequence
-from typing import Literal, TypedDict, TypeVar
+from typing import Any, Literal, Protocol, TypedDict, runtime_checkable
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
-CoalitionMatrix = NDArray[np.bool_ | np.int_]
+FloatVector = NDArray[np.floating]
+"""A 1D array of floating point numbers, typically used to represent game values or"""
+
+IntVector = NDArray[np.integer]
+"""A 1D array of integers, typically used to represent player indices or counts."""
+
+BoolVector = NDArray[np.bool_]
+"""A 1D array of boolean values, typically used to represent the presence or absence of players in
+a coalition."""
+
+CoalitionMatrix = NDArray[np.bool_]
 """A 2D one-hot encoded matrix representing coalitions. A 1 denotes a player is part of the
-coalition, and a 0 denotes they are not. The array is of shape ``(n_coalitions, n_players)``,
-"""
+coalition, and a 0 denotes they are not. The array is of shape ``(n_coalitions, n_players)``."""
 
 CoalitionTuple = tuple[int, ...]
 """A tuple representing a coalition of players. Each integer is a player index, and the tuple is
 sorted in ascending order."""
 
-CoalitionsTuples = Collection[tuple[int, ...]]
+CoalitionsTuples = Collection[CoalitionTuple]
 """A list of coalitions, where each coalition is represented as a tuple of player indices."""
 
-CoalitionsLookup = dict[CoalitionTuple, int]
-"""A dictionary mapping coalitions (as tuples of player indices) to their corresponding index in
-an ordered collection of coalitions (e.g., a vector of game evaluations)."""
+InteractionTuple = tuple[int, ...]
+"""A tuple representing an interaction of players. Each integer is a player index, and the tuple
+is sorted in ascending order."""
 
-GameValues = NDArray[np.floating]
+InteractionScores = dict[InteractionTuple, float]
+"""A dictionary mapping interactions (as tuples of player indices) to their corresponding
+interaction score."""
+
+GameScores = dict[CoalitionTuple, float]
+"""A dictionary mapping coalitions (as tuples of player indices) to their corresponding game
+value."""
+
+GameValues = FloatVector
 """A 1D array representing the values of coalitions in a game. The array is of shape
 ``(n_coalitions,)``, where each entry corresponds to output of a game evaluation for a coalition."""
 
-Model = TypeVar("Model")
+Model = Any
 """A generic type denoting a machine learning model."""
+
+
+@runtime_checkable
+class SklearnLikeModel(Protocol):
+    """A protocol representing a scikit-learn-like model."""
+
+    def fit(self, X: ArrayLike, y: ArrayLike) -> Any: ...
+    def predict(self, X: ArrayLike) -> np.ndarray: ...
+
 
 IndexType = Literal[
     "SII",
@@ -51,7 +77,6 @@ IndexType = Literal[
     "JointSV",
     "Moebius",
     "ELC",
-    "EC",
 ]
 """A type representing the indices used throughout the package."""
 

@@ -11,8 +11,10 @@ if TYPE_CHECKING:
 
     import numpy as np
 
+ValidRegressionKernelSHAIndices = Literal["SV"]
 
-class KernelSHAP(Regression):
+
+class KernelSHAP(Regression[ValidRegressionKernelSHAIndices]):
     """The KernelSHAP regression approximator for estimating the Shapley values.
 
     The KernelSHAP approximator is described in Lundberg and Lee (2017)[1]_. The method estimates
@@ -48,7 +50,7 @@ class KernelSHAP(Regression):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
+    valid_indices: tuple[ValidRegressionKernelSHAIndices, ...] = ("SV",)  # type: ignore[assignment]
 
     def __init__(
         self,

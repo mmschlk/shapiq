@@ -10,7 +10,7 @@ from shapiq import ExactComputer, InteractionValues, bar_plot
 
 def test_bar_cooking_game(cooking_game):
     """Test the bar plot function with concrete values from the cooking game."""
-    exact_computer = ExactComputer(n_players=cooking_game.n_players, game=cooking_game)
+    exact_computer = ExactComputer(game=cooking_game, n_players=cooking_game.n_players)
     sv_exact = exact_computer(index="k-SII", order=2)
     bar_plot([sv_exact], show=False)
 

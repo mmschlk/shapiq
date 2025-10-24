@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 ValidKernelSHAPIQIndices = Literal["k-SII", "SII", "SV"]
 
 
-class KernelSHAPIQ(Regression):
+class KernelSHAPIQ(Regression[ValidKernelSHAPIQIndices]):
     """The KernelSHAP-IQ regression approximator.
 
     The KernelSHAP-IQ regression approximator for estimating the Shapley interaction index (SII)
@@ -43,7 +43,7 @@ class KernelSHAPIQ(Regression):
 
     """
 
-    valid_indices: tuple[ValidKernelSHAPIQIndices] = tuple(get_args(ValidKernelSHAPIQIndices))
+    valid_indices: tuple[ValidKernelSHAPIQIndices, ...] = tuple(get_args(ValidKernelSHAPIQIndices))  # type: ignore[assignment]
     """The valid indices for the KernelSHAPIQ approximator."""
 
     def __init__(
@@ -86,7 +86,7 @@ class KernelSHAPIQ(Regression):
         )
 
 
-class InconsistentKernelSHAPIQ(Regression):
+class InconsistentKernelSHAPIQ(Regression[ValidKernelSHAPIQIndices]):
     """The Inconsistent KernelSHAP-IQ regression approximator.
 
     The Inconsistent KernelSHAP-IQ regression approximator for estimating the Shapley interaction
@@ -114,7 +114,7 @@ class InconsistentKernelSHAPIQ(Regression):
 
     """
 
-    valid_indices: ValidKernelSHAPIQIndices = tuple(get_args(ValidKernelSHAPIQIndices))
+    valid_indices: tuple[ValidKernelSHAPIQIndices, ...] = tuple(get_args(ValidKernelSHAPIQIndices))  # type: ignore[assignment]
     """Valid indices for the InconsistentKernelSHAPIQ approximator."""
 
     def __init__(

@@ -21,9 +21,9 @@ def test_basic_functionality(n_players, budget):
     assert sampler.n == n
     assert np.isclose(sampler._sampling_weights, uniform_sampling_weights).all()
     assert sampler.pairing_trick is False  # default to False
-    assert sampler.coalitions_matrix is None
-    assert sampler.coalitions_counter is None
-    assert sampler.coalitions_probability is None
+    assert len(sampler.coalitions_matrix) == 0
+    assert len(sampler.coalitions_counter) == 0
+    assert len(sampler.coalitions_probability) == 0
     assert sampler.n_max_coalitions == 2**n
     assert sampler.n_coalitions == 0
     assert sampler.empty_coalition_index is None

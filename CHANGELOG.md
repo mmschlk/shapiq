@@ -2,6 +2,11 @@
 
 ## Development
 
+### Shapiq Statically Typechecked [#430](https://github.com/mmschlk/shapiq/pull/430)
+We have introduced static type checking to `shapiq` using [Pyright](https://github.com/microsoft/pyright), and integrated it into our `pre-commit` hooks.
+This ensures that type inconsistencies are caught early during development, improving code quality and maintainability.
+Developers will now benefit from immediate feedback on type errors, making the codebase more robust and reliable as it evolves.
+
 ### Separation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark`
 
 We have begun the process of modularizing the `shapiq` package by splitting it into three distinct packages: `shapiq`, `shapiq_games`, and `shapiq-benchmark`.
@@ -15,6 +20,7 @@ This restructuring aims to improve maintainability and development scalability. 
 ### Maintenance and Development
 - refactored the `shapiq.Games` and `shapiq.InteractionValues` API by adding an interactions and game_values dictionary as the main data structure to store the interaction scores and game values. This allows for more efficient storage and retrieval of interaction values and game values, as well as easier manipulation of the data. [#419](https://github.com/mmschlk/shapiq/pull/419)
 - addition and subtraction of InteractionValues objects (via `shapiq.InteractionValues.__add__`) now also works for different indices, which will raise a warning and will return a new InteractionValues object with the index set of the first. [#422](https://github.com/mmschlk/shapiq/pull/422)
+- refactors the `shapiq.ExactComputer` to allow for initialization without passing n_players when a `shapiq.Game` object is passed [#388](https://github.com/mmschlk/shapiq/issues/388). Also introduces a tighter type hinting for the `index` parameter using `Literal` types. [#450](https://github.com/mmschlk/shapiq/pull/450)
 
 ### Docs
 - added an example notebook for `InteractionValues`, highlighting *Initialization*, *Modification*, *Visualization* and *Save and Loading*.
@@ -27,7 +33,12 @@ This restructuring aims to improve maintainability and development scalability. 
 
 ### Removed Features
 - removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
+- removes `coalition_lookup` and `value_storage` properties from `shapiq.Game` since the seperated view on game values and coalitions they belong to is now outdated. Use the `shapiq.Game.game_values` dictionary instead. [#430](https://github.com/mmschlk/shapiq/pull/430)
 
+## v1.3.2 (2025-10-14)
+
+### Hotfix
+Removes `overrides` import in tabular explainer, which is not part of the package dependencies resulting in an ImportError when importing `shapiq`. [#436](https://github.com/mmschlk/shapiq/issues/436)
 
 ## v1.3.1 (2025-07-11)
 

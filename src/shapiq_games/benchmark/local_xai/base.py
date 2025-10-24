@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from shapiq.game import Game
-from shapiq.imputer.conditional_imputer import ConditionalImputer
+from shapiq.imputer.generative_conditional_imputer import GenerativeConditionalImputer
 from shapiq.imputer.marginal_imputer import MarginalImputer
 from shapiq_games.benchmark.setup import get_x_explain
 
@@ -22,7 +22,7 @@ class LocalExplanation(Game):
     data point as a coalition game. The game evaluates the model's prediction on feature subsets
     around a specific data point. Therein, marginal imputation is used to impute the missing values
     of the data point (for more information see :class:`~shapiq.imputer.MarginalImputer` and
-    :class:`~shapiq.imputer.ConditionalImputer`).
+    :class:`~shapiq.imputer.GenerativeConditionalImputer`).
 
     Attributes:
         x: The data point to explain.
@@ -58,7 +58,7 @@ class LocalExplanation(Game):
         model: Callable[[np.ndarray], np.ndarray],
         *,
         x: np.ndarray | int | None = None,
-        imputer: MarginalImputer | ConditionalImputer | str = "marginal",
+        imputer: MarginalImputer | GenerativeConditionalImputer | str = "marginal",
         normalize: bool = True,
         random_state: int | None = 42,
         verbose: bool = False,
@@ -104,16 +104,16 @@ class LocalExplanation(Game):
                     normalize=False,
                 )
             elif imputer == "conditional":
-                # use only a random subset of the data for the conditional imputer
+                # use only a random subset of the data for the GenerativeConditionalImputer
                 random_indices = np.random.default_rng(random_state).choice(
                     data.shape[0],
                     size=2_000,
                     replace=False,
                 )
                 data_background = data[random_indices]
-                self._imputer = ConditionalImputer(
+                self._imputer = GenerativeConditionalImputer(
                     model=model,
-                    # give only first 2_000 samples to the conditional imputer
+                    # give only first 2_000 samples to the GenerativeConditionalImputer
                     data=data_background,
                     x=self.x,
                     random_state=random_state,

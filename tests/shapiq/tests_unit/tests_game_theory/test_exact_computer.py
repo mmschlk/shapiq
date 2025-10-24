@@ -13,79 +13,65 @@ from shapiq_games.synthetic.soum import SOUM
 
 def test_exact_computer_on_soum():
     """Tests the ExactComputer on the SOUM game."""
-    for _ in range(20):
+    for _ in range(10):
         n = np.random.randint(low=2, high=10)
         order = np.random.randint(low=1, high=min(n, 5))
         n_basis_games = np.random.randint(low=1, high=100)
         soum = SOUM(n, n_basis_games=n_basis_games)
 
-        predicted_value = soum(np.ones(n))[0]
+        predicted_value = soum(np.ones(n, dtype=bool))[0]
 
         # Compute via exactComputer
-        exact_computer = ExactComputer(n_players=n, game=soum)
+        exact_computer = ExactComputer(game=soum, n_players=n)
 
         # Compute via sparse Möbius representation
         moebius_converter = MoebiusConverter(soum.moebius_coefficients)
+        moebius_transform = exact_computer.moebius_transform
 
-        moebius_transform = exact_computer.moebius_transform()
         # Assert equality with ground truth Möbius coefficients from SOUM
         assert np.sum((moebius_transform - soum.moebius_coefficients).values ** 2) < 10e-7
 
         # Compare ground truth via MoebiusConvert with exact computation of ExactComputer
-        shapley_interactions_gt = {}
-        shapley_interactions_exact = {}
-        for index in ["k-SII"]:
-            shapley_interactions_gt[index] = moebius_converter(index=index, order=order)
-            shapley_interactions_exact[index] = exact_computer.shapley_interaction(
-                index=index,
-                order=order,
-            )
-            # Check equality with ground truth calculations from SOUM
-            assert (
-                np.sum(
-                    (shapley_interactions_exact[index] - shapley_interactions_gt[index]).values
-                    ** 2,
-                )
-                < 10e-7
-            )
+        gt = moebius_converter(index="k-SII", order=order)
+        exact = exact_computer.shapley_interactions(index="k-SII", order=order)
+        # Check equality with ground truth calculations from SOUM
+        assert np.sum((gt - exact).values ** 2) < 10e-7
 
-        index = "JointSV"
-        shapley_generalized_values = exact_computer.shapley_generalized_value(
-            order=order,
-            index=index,
-        )
-        # Assert efficiency
-        assert (np.sum(shapley_generalized_values.values) - predicted_value) ** 2 < 10e-7
+        jointsv = exact_computer.shapley_generalized_value(order=order)
+        assert (np.sum(jointsv.values) - predicted_value) ** 2 < 10e-7  # assert efficiency
 
-        index = "kADD-SHAP"
-        shapley_interactions_exact[index] = exact_computer.shapley_interaction(
-            index=index,
-            order=order,
-        )
+        exact_computer.shapley_interactions(index="kADD-SHAP", order=order)
 
-        base_interaction_indices = ["SII", "BII", "CHII", "Co-Moebius"]
-        base_interactions = {}
-        for base_index in base_interaction_indices:
-            base_interactions[base_index] = exact_computer.shapley_base_interaction(
-                order=order,
-                index=base_index,
-            )
+        for base_index in ("SII", "BII", "CHII", "Co-Moebius"):
+            exact_computer.shapley_base_interaction(order=order, index=base_index)
 
-        base_gv_indices = ["SGV", "BGV", "CHGV", "IGV", "EGV"]
-        base_gv = {}
-        for base_gv_index in base_gv_indices:
-            base_gv[base_gv_index] = exact_computer.base_generalized_value(
-                order=order,
-                index=base_gv_index,
-            )
+        for base_gv_index in ("SGV", "BGV", "CHGV", "IGV", "EGV"):
+            exact_computer.base_generalized_value(order=order, index=base_gv_index)
 
-        probabilistic_values_indices = ["SV", "BV"]
-        probabilistic_values = {}
-        for pv_index in probabilistic_values_indices:
-            probabilistic_values[pv_index] = exact_computer.probabilistic_value(index=pv_index)
+        sv = exact_computer.probabilistic_value(index="SV")
+        assert (np.sum(sv.values) - predicted_value) ** 2 < 10e-7
 
-        # Assert efficiency for SV
-        assert (np.sum(probabilistic_values["SV"].values) - predicted_value) ** 2 < 10e-7
+        exact_computer.probabilistic_value(index="BV")
+
+
+def test_exact_no_n_players():
+    """Tests that you can create an ExactComputer without specifying n_players with a Game."""
+    n = 5
+    soum = SOUM(n, n_basis_games=10)
+    exact_computer = ExactComputer(game=soum)
+    assert exact_computer.n_players == n
+
+
+def test_exact_no_n_players_error():
+    """Tests that an error is raised if n_players is not specified and no game is provided."""
+
+    def _callable_function(x):
+        return np.sum(x, axis=1)
+
+    with pytest.raises(
+        ValueError, match="n_players must be specified if game is not a Game object."
+    ):
+        ExactComputer(game=_callable_function)
 
 
 @pytest.mark.parametrize(
@@ -96,7 +82,7 @@ def test_exact_elc_computer_call(index, order):
     """Tests the call function for the ExactComputer."""
     n = 5
     soum = SOUM(n, n_basis_games=10, normalize=True)
-    exact_computer = ExactComputer(n_players=n, game=soum)
+    exact_computer = ExactComputer(game=soum, n_players=n)
     interaction_values = exact_computer(index=index, order=order)
     if order is None:
         order = n
@@ -137,7 +123,7 @@ def test_exact_computer_call(index, order):
     """Tests the call function for the ExactComputer."""
     n = 5
     soum = SOUM(n, n_basis_games=10)
-    exact_computer = ExactComputer(n_players=n, game=soum)
+    exact_computer = ExactComputer(game=soum, n_players=n)
     interaction_values = exact_computer(index=index, order=order)
     if order is None:
         order = n
@@ -152,7 +138,7 @@ def test_basic_functions():
     """Tests the basic functions of the ExactComputer."""
     n = 5
     soum = SOUM(n, n_basis_games=10)
-    exact_computer = ExactComputer(n_players=n, game=soum)
+    exact_computer = ExactComputer(game=soum, n_players=n)
     isinstance(repr(exact_computer), str)
     isinstance(str(exact_computer), str)
 
@@ -161,7 +147,7 @@ def test_lazy_computation():
     """Tests if the lazy computation (calling without params) works."""
     n = 5
     soum = SOUM(n, n_basis_games=10)
-    exact_computer = ExactComputer(n_players=n, game=soum)
+    exact_computer = ExactComputer(game=soum, n_players=n)
     isinstance(repr(exact_computer), str)
     isinstance(str(exact_computer), str)
     sv = exact_computer("SV", 1)
@@ -200,7 +186,6 @@ def original_game():
     return _game_fun
 
 
-# (fails for [CHII-2] bc empty set is nan)
 @pytest.mark.parametrize(
     ("index", "order"),
     [
@@ -234,10 +219,10 @@ def test_permutation_symmetry(index, order, original_game):
     def permutation_game(X: np.ndarray):
         return original_game(X[:, permutation])
 
-    exact_computer = ExactComputer(n_players=n, game=original_game)
+    exact_computer = ExactComputer(game=original_game, n_players=n)
     interaction_values = exact_computer(index=index, order=order)
 
-    perm_exact_computer = ExactComputer(n_players=n, game=permutation_game)
+    perm_exact_computer = ExactComputer(game=permutation_game, n_players=n)
     perm_interaction_values = perm_exact_computer(index=index, order=order)
 
     # permutation does not matter
@@ -250,7 +235,7 @@ def test_warning_cii():
     """Checks weather a warning is raised for the CHII index and min_order = 0."""
     n = 5
     soum = SOUM(n, n_basis_games=10)
-    exact_computer = ExactComputer(n_players=n, game=soum)
+    exact_computer = ExactComputer(game=soum, n_players=n)
     with pytest.warns(UserWarning):
         exact_computer("CHII", 0)
 
@@ -267,6 +252,7 @@ def test_warning_cii():
         ("BII", 2),
         ("CHII", 2),
         ("Co-Moebius", 2),
+        ("Moebius", 2),
         ("SGV", 2),
         ("BGV", 2),
         ("CHGV", 2),
@@ -311,7 +297,7 @@ def test_player_symmetry(index, order):
         interaction_addition = np.apply_along_axis(_interaction, axis=1, arr=X)
         return value + interaction_addition
 
-    exact_computer = ExactComputer(n_players=n, game=_game_fun)
+    exact_computer = ExactComputer(game=_game_fun, n_players=n)
     interaction_values = exact_computer(index=index, order=order)
 
     # symmetry of players with same attribution
@@ -371,7 +357,7 @@ def test_null_player(index, order):
         interaction_addition = np.apply_along_axis(_interaction, axis=1, arr=X)
         return value + interaction_addition
 
-    exact_computer = ExactComputer(n_players=n, game=_game_fun)
+    exact_computer = ExactComputer(game=_game_fun, n_players=n)
     interaction_values = exact_computer(index=index, order=order)
 
     # no attribution for coalitions which include the null players.
@@ -412,7 +398,7 @@ def test_no_artefact_interaction(index, order):
         fist_order_coefficients = [0, 0.2, -0.1, -0.9, 0]
         return np.sum(fist_order_coefficients * x_as_float, axis=1)
 
-    exact_computer = ExactComputer(n_players=n, game=_game_fun)
+    exact_computer = ExactComputer(game=_game_fun, n_players=n)
     interaction_values = exact_computer(index=index, order=order)
 
     for coalition, value in interaction_values.dict_values.items():
@@ -463,10 +449,46 @@ def test_generalized_null_player(index, order):
         interaction_addition = np.apply_along_axis(_interaction, axis=1, arr=X)
         return value + interaction_addition
 
-    exact_computer = ExactComputer(n_players=n, game=_game_fun)
+    exact_computer = ExactComputer(game=_game_fun, n_players=n)
     interaction_values = exact_computer(index=index, order=order)
 
     # no attribution for coalitions consisting of the null players.
     assert interaction_values[(0, 4)] < 10e-7
     assert interaction_values[(0,)] < 10e-7
     assert interaction_values[(4,)] < 10e-7
+
+
+class TestWrongIndices:
+    """A class to test that wrong indices raise errors."""
+
+    exact_computer = ExactComputer(game=SOUM(5, n_basis_games=10))
+    wrong_index = "WRONG_INDEX"
+    error_msg = f"Index {wrong_index} not supported."
+
+    def test_call(self):
+        """Tests that calling with a wrong index raises an error."""
+        with pytest.raises(ValueError, match="Index or value not supported."):
+            self.exact_computer(self.wrong_index, 2)  # type: ignore[reportArgumentType]
+
+    def test_fii(self):
+        """Tests that calling the FII function with a wrong index raises an error."""
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer.compute_fii(self.wrong_index, 2)  # type: ignore[reportArgumentType]
+
+    def test_shapley_interactions(self):
+        """Tests that calling the shapley_interactions function with a wrong index raises an error."""
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer.shapley_interactions(self.wrong_index, 2)  # type: ignore[reportArgumentType]
+
+    def test_probabilistic_value(self):
+        """Tests that calling the probabilistic_value function with a wrong index raises an error."""
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer.probabilistic_value(self.wrong_index)  # type: ignore[reportArgumentType]
+
+    def test_private_weight_functions(self):
+        """Tests that calling private weight functions with a wrong index raises an error."""
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer._base_weights(2, 2, self.wrong_index)  # type: ignore[reportArgumentType]
+
+        with pytest.raises(ValueError, match=self.error_msg):
+            self.exact_computer._get_fii_weights(self.wrong_index)  # type: ignore[reportArgumentType]

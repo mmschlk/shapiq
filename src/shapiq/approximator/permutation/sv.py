@@ -13,9 +13,13 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from shapiq.game import Game
+    from shapiq.typing import FloatVector, IntVector
 
 
-class PermutationSamplingSV(Approximator):
+ValidPermutationSTIIIndices = Literal["SV"]
+
+
+class PermutationSamplingSV(Approximator[ValidPermutationSTIIIndices]):
     """The Permutation Sampling algorithm for estimating the Shapley values.
 
     Permutation Sampling [1]_ (also known as ApproShapley) estimates the Shapley values by drawing
@@ -37,7 +41,7 @@ class PermutationSamplingSV(Approximator):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
+    valid_indices: tuple[ValidPermutationSTIIIndices, ...] = ("SV",)
 
     def __init__(
         self,
@@ -84,8 +88,8 @@ class PermutationSamplingSV(Approximator):
             The estimated interaction values.
 
         """
-        result: np.ndarray[float] = self._init_result()
-        counts: np.ndarray[int] = self._init_result(dtype=int)
+        result: FloatVector = self._init_result()
+        counts: IntVector = self._init_result(dtype=int)
 
         batch_size = 1 if batch_size is None else batch_size
 

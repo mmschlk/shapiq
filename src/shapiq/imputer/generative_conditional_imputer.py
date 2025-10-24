@@ -1,4 +1,4 @@
-"""Implementation of the conditional imputer."""
+"""Implementation of the GenerativeConditionalImputer."""
 
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 
-class ConditionalImputer(Imputer):
-    """A conditional imputer for the shapiq package.
+class GenerativeConditionalImputer(Imputer):
+    """A GenerativeConditionalImputer for the shapiq package.
 
-    The conditional imputer is used to impute the missing values of a data point by using the
+    The GenerativeConditionalImputer is used to impute the missing values of a data point by using the
     conditional distribution estimated with the background data.
 
     Attributes:
@@ -43,7 +43,7 @@ class ConditionalImputer(Imputer):
         method: Literal["generative"] = "generative",
         random_state: int | None = None,
     ) -> None:
-        """Initializes the conditional imputer.
+        """Initializes the GenerativeConditionalImputer.
 
         Args:
             model: The model to explain as a callable function expecting a data points as input and
@@ -70,7 +70,7 @@ class ConditionalImputer(Imputer):
             categorical_features: A list of indices of the categorical features in the background
                 data. Currently unused.
 
-            method: The method to use for the conditional imputer. Currently only ``"generative"``
+            method: The method to use for the GenerativeConditionalImputer. Currently only ``"generative"``
                 is implemented. Defaults to ``"generative"``.
 
             random_state: The random state to use for sampling. Defaults to ``None``.
@@ -84,7 +84,7 @@ class ConditionalImputer(Imputer):
             random_state=random_state,
         )
         if method != "generative":
-            msg = "Currently only a generative conditional imputer is implemented."
+            msg = "Currently only a generative GenerativeConditionalImputer is implemented."
             raise ValueError(msg)
         self.method = method
         self.conditional_budget = conditional_budget
@@ -96,8 +96,8 @@ class ConditionalImputer(Imputer):
         if normalize:
             self.normalization_value = self.empty_prediction
 
-    def init_background(self, data: np.ndarray) -> ConditionalImputer:
-        """Initializes the conditional imputer.
+    def init_background(self, data: np.ndarray) -> GenerativeConditionalImputer:
+        """Initializes the GenerativeConditionalImputer.
 
         Args:
             data: The background data to use for the imputer. The shape of the array must
@@ -156,7 +156,7 @@ class ConditionalImputer(Imputer):
         background_data = self._sample_background_data()
         n_coalitions = coalitions.shape[0]
         n_samples = background_data.shape[0]
-        x_tiled = np.tile(self._x, (n_coalitions * n_samples, 1))
+        x_tiled = np.tile(self.x, (n_coalitions * n_samples, 1))
         background_data_tiled = np.tile(background_data, (n_coalitions, 1))
         coalitions_tiled = np.repeat(coalitions, n_samples, axis=0)
         x_tiled[~coalitions_tiled] = background_data_tiled[~coalitions_tiled]

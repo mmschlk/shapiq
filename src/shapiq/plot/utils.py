@@ -42,7 +42,7 @@ def format_value(
     """
     if not issubclass(type(s), str):
         s = format_str % s
-    s = re.sub(r"\.?0+$", "", s)
+    s = re.sub(r"\.?0+$", "", str(s))
     if s[0] == "-":
         s = "\u2212" + s[1:]
     return str(s)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import math
 from collections import defaultdict
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import numpy as np
 import pandas as pd
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 ValidSparseIndices = ValidMoebiusConverterIndices
 
 
-class Sparse(Approximator):
+class Sparse(Approximator[ValidSparseIndices]):
     """Approximator interface using sparse transformation techniques.
 
     This class implements a sparse approximation method for computing various interaction indices
@@ -68,7 +68,7 @@ class Sparse(Approximator):
         .. [But25] Butler, L., Kang, J.S., Agarwal. A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs https://arxiv.org/pdf/2505.17495
     """
 
-    valid_indices: tuple[ValidSparseIndices] = tuple(get_args(ValidSparseIndices))
+    valid_indices: tuple[ValidSparseIndices, ...] = tuple(get_args(ValidSparseIndices))  # type: ignore[assignment]
     """The valid indices for the SPEX approximator."""
 
     def __init__(
@@ -127,9 +127,9 @@ class Sparse(Approximator):
                 import lightgbm as lgb  # noqa: F401
             except ImportError as err:
                 msg = (
-                    "The 'lightgbm' package is required when decoder_type is 'proxyspex' "
-                    "but it is not installed. Please see the installation instructions at "
-                    "https://github.com/microsoft/LightGBM/tree/master/python-package"
+                    "The 'lightgbm' package is required when decoder_type is 'proxyspex' but it is "
+                    "not installed. Please see the installation instructions at "
+                    "https://github.com/microsoft/LightGBM/tree/master/python-package."
                 )
                 raise ImportError(msg) from err
         # The sampling parameters for the Fourier transform
@@ -201,7 +201,8 @@ class Sparse(Approximator):
             self._uniform_sampler.sample(budget)
 
             train_X = pd.DataFrame(
-                self._uniform_sampler.coalitions_matrix, columns=[f"f{i}" for i in range(self.n)]
+                self._uniform_sampler.coalitions_matrix,
+                columns=np.array([f"f{i}" for i in range(self.n)]),
             )
             train_y = game(self._uniform_sampler.coalitions_matrix)
 
@@ -308,7 +309,9 @@ class Sparse(Approximator):
             baseline_value=moebius_transform.get((), 0.0),
         )
         autoconverter = MoebiusConverter(moebius_coefficients=moebius_interactions)
-        converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
+        converted_interaction_values = autoconverter(
+            index=cast(ValidMoebiusConverterIndices, self.index), order=self.max_order
+        )
         self._interaction_lookup = converted_interaction_values.interaction_lookup
         return converted_interaction_values.values  # noqa: PD011
 
@@ -451,7 +454,7 @@ class Sparse(Approximator):
     def _refine(
         self,
         four_dict: dict[tuple[int, ...], float],
-        train_X: np.ndarray[bool],
+        train_X: np.ndarray,
         train_y: np.ndarray,
     ) -> dict[tuple[int, ...], float]:
         """Refines the estimated Fourier coefficients using a Ridge regression model.

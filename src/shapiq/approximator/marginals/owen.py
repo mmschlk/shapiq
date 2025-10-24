@@ -14,8 +14,11 @@ if TYPE_CHECKING:
 
     from shapiq.game import Game
 
+ValidOwenSamplingSVIndices = Literal["SV"]
+"""The valid indices for the Owen Sampling SV approximator."""
 
-class OwenSamplingSV(Approximator):
+
+class OwenSamplingSV(Approximator[ValidOwenSamplingSVIndices]):
     """Owen Sampling approximator for the Shapley values.
 
     The Owen Sampling algorithm estimates the Shapley values (SV) by sampling random marginal
@@ -34,7 +37,7 @@ class OwenSamplingSV(Approximator):
 
     """
 
-    valid_indices: tuple[Literal["SV"]] = ("SV",)
+    valid_indices: tuple[ValidOwenSamplingSVIndices, ...] = ("SV",)
     """The valid indices for this approximator."""
 
     def __init__(

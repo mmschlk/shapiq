@@ -13,13 +13,14 @@ from warnings import warn
 import numpy as np
 
 from .game_theory.indices import (
-    ALL_AVAILABLE_INDICES,
+    AllIndices,
     get_index_from_computation_index,
     is_empty_value_the_baseline,
     is_index_aggregated,
     is_index_valid,
 )
 from .utils.errors import raise_deprecation_warning
+from .utils.saving import safe_str_to_tuple, safe_tuple_to_str
 from .utils.sets import generate_interaction_lookup
 
 if TYPE_CHECKING:
@@ -29,8 +30,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
 
-    from shapiq.typing import JSONType
-
+    from shapiq.typing import InteractionScores, JSONType
 
 SAVE_JSON_DEPRECATION_MSG = (
     "Saving InteractionValues not as a JSON file is deprecated. "
@@ -64,12 +64,12 @@ class InteractionValues:
 
     """
 
-    interactions: dict[tuple[int, ...], float]
+    interactions: InteractionScores
     """The interactions as a dictionary mapping interactions to their values."""
 
     def __init__(
         self,
-        values: np.ndarray | dict[tuple[int, ...], float],
+        values: np.ndarray | InteractionScores,
         *,
         index: str,
         max_order: int,
@@ -107,7 +107,7 @@ class InteractionValues:
         if not is_index_valid(index, raise_error=False):
             warn(
                 f"Index `{index}` is not a valid interaction index. "
-                f"Valid indices are: {', '.join(ALL_AVAILABLE_INDICES)}.",
+                f"Valid indices are: {', '.join(AllIndices)}.",
                 stacklevel=2,
             )
         index = get_index_from_computation_index(index, max_order)
@@ -335,7 +335,9 @@ class InteractionValues:
                 top_k_interactions[interaction] = self.values[index]
         sorted_top_k_interactions = [
             (interaction, top_k_interactions[interaction])
-            for interaction in sorted(top_k_interactions, key=top_k_interactions.get, reverse=True)
+            for interaction in sorted(
+                top_k_interactions, key=lambda x: top_k_interactions[x], reverse=True
+            )
         ]
         return top_k_interactions, sorted_top_k_interactions
 
@@ -805,6 +807,12 @@ class InteractionValues:
                 removed_in="1.4.0",
             )
             # save object as npz file
+            interaction_keys = np.array(
+                list(map(safe_tuple_to_str, self.interaction_lookup.keys()))
+            )
+            interaction_indices = np.array(list(self.interaction_lookup.values()))
+            estimation_budget = self.estimation_budget if self.estimation_budget is not None else -1
+
             np.savez(
                 path,
                 values=self.values,
@@ -812,9 +820,10 @@ class InteractionValues:
                 max_order=self.max_order,
                 n_players=self.n_players,
                 min_order=self.min_order,
-                interaction_lookup=self.interaction_lookup,
+                interaction_lookup_keys=interaction_keys,
+                interaction_lookup_indices=interaction_indices,
                 estimated=self.estimated,
-                estimation_budget=self.estimation_budget,
+                estimation_budget=estimation_budget,
                 baseline_value=self.baseline_value,
             )
         else:
@@ -843,15 +852,31 @@ class InteractionValues:
         # try loading as npz file
         if path.name.endswith(".npz"):
             data = np.load(path, allow_pickle=True)
+            try:
+                # try to load Pyright save format
+                interaction_lookup = {
+                    safe_str_to_tuple(key): int(value)
+                    for key, value in zip(
+                        data["interaction_lookup_keys"],
+                        data["interaction_lookup_indices"],
+                        strict=False,
+                    )
+                }
+            except KeyError:
+                # fallback to old format
+                interaction_lookup = data["interaction_lookup"].item()
+            estimation_budget = data["estimation_budget"].item()
+            if estimation_budget == -1:
+                estimation_budget = None
             return InteractionValues(
                 values=data["values"],
                 index=str(data["index"]),
                 max_order=int(data["max_order"]),
                 n_players=int(data["n_players"]),
                 min_order=int(data["min_order"]),
-                interaction_lookup=data["interaction_lookup"].item(),
+                interaction_lookup=interaction_lookup,
                 estimated=bool(data["estimated"]),
-                estimation_budget=data["estimation_budget"].item(),
+                estimation_budget=estimation_budget,
                 baseline_value=float(data["baseline_value"]),
             )
         msg = f"Path {path} does not end with .json or .npz. Cannot load InteractionValues."
@@ -1162,7 +1187,9 @@ def aggregate_interaction_values(
     max_order = max([iv.max_order for iv in interaction_values])
     min_order = min([iv.min_order for iv in interaction_values])
     n_players = max([iv.n_players for iv in interaction_values])
-    baseline_value = _aggregate([iv.baseline_value for iv in interaction_values], aggregation)
+    baseline_value = _aggregate(
+        [float(iv.baseline_value) for iv in interaction_values], aggregation
+    )
     estimation_budget = interaction_values[0].estimation_budget
 
     return InteractionValues(
@@ -1223,13 +1250,13 @@ def _validate_and_return_interactions(
 
 
 def _update_interactions_for_index(
-    interactions: dict[tuple[int, ...], float],
+    interactions: InteractionScores,
     index: str,
     target_index: str,
     max_order: int,
     min_order: int,
     baseline_value: float | np.number,
-) -> tuple[dict[tuple[int, ...], float], str, int, float]:
+) -> tuple[InteractionScores, str, int, float]:
     from .game_theory.aggregation import aggregate_base_attributions
 
     if is_index_aggregated(target_index) and target_index != index:
