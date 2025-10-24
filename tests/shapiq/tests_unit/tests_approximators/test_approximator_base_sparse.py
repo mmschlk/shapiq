@@ -13,6 +13,7 @@ from shapiq_games.synthetic import DummyGame
 from tests.shapiq.markers import skip_if_no_lightgbm
 
 
+@skip_if_no_lightgbm
 @pytest.mark.parametrize(
     ("n", "index", "max_order", "top_order", "transform_type", "decoder_type"),
     [
