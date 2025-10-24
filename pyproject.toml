@@ -16,14 +16,13 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "requests",
-    "sparse-transform",
-    "galois",
+    "sparse-transform",  # for sparse approximators (spex, proxyspex)
+    "galois",            # for sparse approximators (spex, proxyspex)
     # plotting
     "matplotlib",
     "networkx",
     "colour",
     "pillow",
-    "pyright>=1.1.402",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -77,20 +76,6 @@ documentation = "https://shapiq.readthedocs.io"
 source = "https://github.com/mmschlk/shapiq"
 tracker = "https://github.com/mmschlk/shapiq/issues"
 changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
-
-[project.optional-dependencies]
-games = [
-    "tabpfn",
-    "torchvision",
-    "torch",
-    "xgboost",
-    "lightgbm; platform_system != 'Darwin'",
-    "transformers",
-    "scikit-image",
-    # tf only for python < 3.13 and not windows
-    "tensorflow; python_version < '3.13' and platform_system != 'Windows'",
-    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",
-]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -229,48 +214,54 @@ include = ["src/shapiq"]
 exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
 venv = ".venv"
 pythonVersion = "3.10"
-
 defineConstant = { DEBUG = true }
-
 reportMissingImports = "error"
 reportMissingTypeStubs = false
-
 pythonPlatform = "Linux"
 
 [dependency-groups]
+all_ml = [
+    "tabpfn>=2.0.7",
+    "torchvision",
+    "torch",
+    "xgboost",
+    "lightgbm; platform_system != 'Darwin'",    # lightgbm has install problems on macOS
+    "transformers",
+    "scikit-image",
+    "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
+    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
+]
 test = [
-    "pytest>=8.3.5",
-    "pytest-cov>=6.0.0",
-    "pytest-xdist>=3.6.1",
-    "packaging>=24.2",
+    "pytest>=8.3.5",        # for running tests
+    "pytest-cov>=6.0.0",    # for coverage
+    "pytest-xdist>=3.8.0",  # for parallel test execution
+    "packaging",            # for version parsing in tests
 ]
 lint = [
-    "ruff>=0.11.2",
-    "pre-commit>=4.2.0",
-    "pyright>=1.1.402",
+    "ruff>=0.14.1",       # for linting
+    "pre-commit>=4.3.0",  # for running the linters pre-commit hooks
+    "pyright>=1.1.402",   # for type checking
 ]
 docs = [
-    "sphinx>=8.0.0",
-    "furo",
-    "myst-parser",
-    "sphinx-copybutton",
-    "sphinx-autodoc-typehints",
-    "sphinx_toolbox",
-    "sphinxcontrib-bibtex", # references based on bibtex
-    "nbconvert",
-    "nbsphinx",
-    "commonmark",  # Markdown parser and renderer
+    "sphinx>=8.0.0",            # documentation generator
+    "furo",                     # beautiful sphinx theme
+    "myst-parser",              # Markdown support for Sphinx
+    "sphinx-copybutton",        # copy button for code blocks
+    "sphinx-autodoc-typehints", # include typehints in docs
+    "sphinx_toolbox",           # various sphinx extensions
+    "sphinxcontrib-bibtex",     # references based on bibtex
+    "nbconvert",                # notebook support for sphinx
+    "nbsphinx",                 # notebook support for sphinx
+    "commonmark",               # Markdown parser and renderer
     # TODO(mmschlk): remove the pin in ipython when we drop python 3.10 support and pin to
     # ipython>=9.0.0, since ipython==8.7.0 introduces a bug with parsing notebooks also discussed
     # here: https://github.com/spatialaudio/nbsphinx/issues/24
-    "ipython<8.38.0",
+    "ipython<8.38.0",           # for code execution in notebooks
 ]
 dev = [
-    "build>=1.2.2.post1",
-    "twine>=6.1.0",
     "notebook>=7.3.3",
     "ipywidgets",
     {include-group = "test"},
     {include-group = "lint"},
-    {include-group = "docs"},
+    {include-group = "all_ml"},
 ]
