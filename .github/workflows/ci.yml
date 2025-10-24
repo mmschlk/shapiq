@@ -1,5 +1,5 @@
 # A GitHub Actions workflow file to run on pull request and on main.
-name: Pull Request Checks
+name: CI Tests
 on:
     pull_request:
     push:
