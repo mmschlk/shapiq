@@ -2,8 +2,8 @@
 
 [![PyPI version](https://badge.fury.io/py/shapiq.svg)](https://badge.fury.io/py/shapiq)
 [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
-[![Coverage Status](https://coveralls.io/repos/github/mmschlk/shapiq/badge.svg?branch=main)](https://coveralls.io/github/mmschlk/shapiq?branch=main)
-[![Tests](https://github.com/mmschlk/shapiq/actions/workflows/tests-shapiq.yml/badge.svg)](https://github.com/mmschlk/shapiq/blob/main/.github/workflows/tests-shapiq.yml)
+[![codecov](https://codecov.io/gh/mmschlk/shapiq/branch/main/graph/badge.svg)](https://codecov.io/gh/mmschlk/shapiq)
+[![Tests](https://github.com/mmschlk/shapiq/actions/workflows/ci.yml/badge.svg)](https://github.com/mmschlk/shapiq/blob/main/.github/workflows/ci.yml)
 [![Read the Docs](https://readthedocs.org/projects/shapiq/badge/?version=latest)](https://shapiq.readthedocs.io/en/latest/?badge=latest)
 
 [![PyPI Version](https://img.shields.io/pypi/pyversions/shapiq.svg)](https://pypi.org/project/shapiq)
@@ -30,6 +30,9 @@ or via `pip`:
 ```sh
 pip install shapiq
 ```
+
+## 👀 Upcoming
+See what’s on the horizon for the library in our [GitHub Project Board](https://github.com/users/mmschlk/projects/4). We plan and track upcoming features, improvements, and maintenance tasks there including new explainers, performance optimizations, and expanded model support.
 
 ## ⭐ Quickstart
 
@@ -159,24 +162,24 @@ fsii_values.plot_force()               # plot the force plot
   <img width="800px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/fsii_tabpfn_force_plot_example.png" alt="Force Plot of FSII values as derived from the example tabpfn notebook">
 </p>
 
-### Use SPEX (SParse EXplainer) <img src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/spex_logo.png" alt="spex_logo" align="right" height="75px"/>
-For large-scale use-cases you can also check out the [👓``SPEX``](https://shapiq.readthedocs.io/en/latest/api/shapiq.approximator.sparse.html#shapiq.approximator.sparse.SPEX) approximator.
+### Use ProxySPEX (Proxy SParse EXplainer) <img src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/spex_logo.png" alt="spex_logo" align="right" height="75px"/>
+For large-scale use-cases you can also check out the [👓``ProxySPEX``](https://shapiq.readthedocs.io/en/latest/api/shapiq.approximator.sparse.html#shapiq.approximator.sparse.SPEX) approximator.
 
 ```python
 # load your data and model with large number of features
 data, model, n_features = ...
 
-# use the SPEX approximator directly
-approximator = shapiq.SPEX(n=n_features, index="FBII", max_order=2)
+# use the ProxySPEX approximator directly
+approximator = shapiq.ProxySPEX(n=n_features, index="FBII", max_order=2)
 fbii_scores = approximator.approximate(budget=2000, game=model.predict)
 
-# or use SPEX with an explainer
+# or use ProxySPEX with an explainer
 explainer = shapiq.Explainer(
     model=model,
     data=data,
     index="FBII",
     max_order=2,
-    approximator="spex"  # specify SPEX as approximator
+    approximator="proxyspex"  # specify ProxySPEX as approximator
 )
 explanation = explainer.explain(data[0])
 ```

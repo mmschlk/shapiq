@@ -19,7 +19,7 @@ build:
     create_environment:
       - uv venv
     install:
-      - uv sync --all-extras
+      - uv sync --group docs
     post_install:
       - uv run python scripts/copy_notebooks.py
     build:
