@@ -118,7 +118,7 @@ jobs:
         name: Test Documentation Build
         runs-on: ubuntu-latest
         needs:
-            - install_and_import
+            - install_and_import_shapiq
             - check_code_quality
         steps:
             -   uses: actions/checkout@v5
@@ -143,7 +143,7 @@ jobs:
         name: Run Test Coverage
         runs-on: ubuntu-latest
         needs:
-            - install_and_import
+            - install_and_import_shapiq
             - check_code_quality
         steps:
             -   uses: actions/checkout@v5
