@@ -23,7 +23,7 @@ WARNING_NO_CLASS_INDEX = (
     "Disregard this warning for regression models."
 )
 
-ExplainerTypes = Literal["tabular", "tree", "tabpfn", "game"]
+ExplainerTypes = Literal["tabular", "tree", "tabpfn", "game", "product_kernel"]
 
 
 def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
@@ -34,6 +34,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
 
     """
     import shapiq.explainer.agnostic as ag
+    import shapiq.explainer.product_kernel.explainer as pk
     import shapiq.explainer.tabpfn as tp
     import shapiq.explainer.tabular as tb
     import shapiq.explainer.tree.explainer as tr
@@ -43,6 +44,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
         "tree": tr.TreeExplainer,
         "tabpfn": tp.TabPFNExplainer,
         "game": ag.AgnosticExplainer,
+        "product_kernel": pk.ProductKernelExplainer,
     }
 
 
@@ -156,6 +158,13 @@ def get_predict_function_and_model_type(
         "tabpfn.regressor.TabPFNRegressor",
     ]:
         _model_type = "tabpfn"
+
+    if model_class in [
+        "sklearn.svm.SVR",
+        "sklearn.svm.SVC",
+        "sklearn.gaussian_process.GaussianProcessRegressor",
+    ]:
+        _model_type = "product_kernel"
 
     # default extraction (sklearn api)
     if _predict_function is None and hasattr(model, "predict_proba"):

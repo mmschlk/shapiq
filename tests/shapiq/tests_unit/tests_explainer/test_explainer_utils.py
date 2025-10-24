@@ -17,12 +17,12 @@ from tests.shapiq.conftest import (
     TABULAR_TENSORFLOW_MODEL_FIXTURES,
     TABULAR_TORCH_MODEL_FIXTURES,
     TREE_MODEL_FIXTURES,
-)
+)  # pyright: ignore[reportCallIssue]  thinks is RuntimeError
 
 
 def _utils_get_model(model, label, x_data):
     predict_function, model_type = get_predict_function_and_model_type(model, label)
-    assert predict_function(model, x_data).ndim == 1
+    assert predict_function(model, x_data).ndim == 1  # pyright: ignore[reportCallIssue] thinks its RuntimeError
     return predict_function, model_type
 
 
@@ -41,10 +41,10 @@ def test_tabular_get_predict_function_and_model_type(
     assert model_type == "tabular"
 
     if label == "custom_model":
-        assert np.all(predict_function(model, x_data) == y)
+        assert np.all(predict_function(model, x_data) == y)  # pyright: ignore[reportCallIssue] thinks its RuntimeError
 
     if label == "sklearn.linear_model.LinearRegression":
-        assert np.all(predict_function(model, x_data) == model.predict(x_data))
+        assert np.all(predict_function(model, x_data) == model.predict(x_data))  # pyright: ignore[reportCallIssue] thinks its RuntimeError
 
 
 @pytest.mark.skipif(
@@ -96,7 +96,7 @@ def test_tree_get_predict_function_and_model_type(
     assert model_type == "tree"
 
     if model_class == "sklearn.tree.DecisionTreeRegressor":
-        assert np.all(predict_function(model, x_data) == model.predict(x_data))
+        assert np.all(predict_function(model, x_data) == model.predict(x_data))  # pyright: ignore[reportCallIssue] thinks its RuntimeError
 
 
 def test_all_supported_tree_models_recognized():
@@ -105,6 +105,19 @@ def test_all_supported_tree_models_recognized():
     for label in SUPPORTED_MODELS:
         predict_function, model_type = get_predict_function_and_model_type(model, label)
         assert model_type == "tree"
+
+
+def test_all_supported_product_kernel_models_recognized():
+    """Test that all supported SVM models are recognized as product kernel models."""
+    model = Mock()
+    svm_models = [
+        "sklearn.svm.SVC",
+        "sklearn.svm.SVR",
+        "sklearn.gaussian_process.GaussianProcessRegressor",
+    ]
+    for label in svm_models:
+        predict_function, model_type = get_predict_function_and_model_type(model, label)
+        assert model_type == "product_kernel"
 
 
 class ModelWithFalseCall:
@@ -134,7 +147,7 @@ def test_class_index():
 
     for i in range(4):
         pred_fun, label = get_predict_function_and_model_type(_model, "custom_model", i)
-        return_value = pred_fun(_model, np.array([[11, 22, 33, 44], [11, 22, 33, 44]]))
+        return_value = pred_fun(_model, np.array([[11, 22, 33, 44], [11, 22, 33, 44]]))  # pyright: ignore[reportCallIssue] thinks its RuntimeError
         assert return_value[0] == i + 1
 
 

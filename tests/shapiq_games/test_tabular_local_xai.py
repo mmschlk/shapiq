@@ -18,8 +18,7 @@ if TYPE_CHECKING:
     from sklearn.tree import DecisionTreeRegressor
 
     from shapiq.typing import NumericArray
-
-    from .fixtures.tabular import TabularDataSet
+    from shapiq_games.fixtures.tabular import TabularDataSet
 
 
 @pytest.fixture(scope="module")
@@ -129,7 +128,10 @@ class TestTabularLocalExplanation:
         x_explain: NumericArray,
     ) -> None:
         """Test the initialization of the LocalExplanation game with an imputer instead of a str."""
-        from shapiq_games.tabular.game_local_xai import TabularLocalExplanation, get_imputer
+        from shapiq_games.tabular.game_local_xai import (
+            TabularLocalExplanation,
+            get_imputer,
+        )
 
         imputer = get_imputer("marginal", model, data, x_explain)
         game = TabularLocalExplanation(x=x_explain, data=data, model=model, imputer=imputer)
@@ -142,7 +144,10 @@ class TestTabularLocalExplanation:
         x_explain: NumericArray,
     ) -> None:
         """Test that we can insert an imputer into a game after initialization."""
-        from shapiq_games.tabular.game_local_xai import TabularLocalExplanation, get_imputer
+        from shapiq_games.tabular.game_local_xai import (
+            TabularLocalExplanation,
+            get_imputer,
+        )
 
         imputer = get_imputer("baseline", model, data, x_explain)
         game = TabularLocalExplanation(x=x_explain, data=data, model=model, imputer=imputer)

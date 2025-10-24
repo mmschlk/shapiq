@@ -111,7 +111,10 @@ class Regression(Approximator[TIndices]):
                 else:
                     weight_vector[coalition_size] = 1 / (
                         (self.n - 2 * interaction_size + 1)
-                        * binom(self.n - 2 * interaction_size, coalition_size - interaction_size)
+                        * binom(
+                            self.n - 2 * interaction_size,
+                            coalition_size - interaction_size,
+                        )
                     )
             return weight_vector
         msg = f"Index {self.index} not available for Regression Approximator."
