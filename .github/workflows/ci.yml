@@ -51,6 +51,7 @@ jobs:
     run_unit_tests:
         name: Run Unit Tests
         strategy:
+            fail-fast: false
             matrix:
                 include:
                     - os: ubuntu-latest
@@ -72,7 +73,7 @@ jobs:
             -   name: Install test dependencies
                 run: uv sync
             -   name: Run unit tests
-                run: uv run pytest "tests/shapiq" -n logical
+                run: uv run pytest "tests/shapiq"
     # ----------------------------------------------------------------------------------------------
     # Test Documentation Build
     # ----------------------------------------------------------------------------------------------
