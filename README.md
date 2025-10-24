@@ -2,8 +2,8 @@
 
 [![PyPI version](https://badge.fury.io/py/shapiq.svg)](https://badge.fury.io/py/shapiq)
 [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
-[![Coverage Status](https://coveralls.io/repos/github/mmschlk/shapiq/badge.svg?branch=main)](https://coveralls.io/github/mmschlk/shapiq?branch=main)
-[![Tests](https://github.com/mmschlk/shapiq/actions/workflows/tests-shapiq.yml/badge.svg)](https://github.com/mmschlk/shapiq/blob/main/.github/workflows/tests-shapiq.yml)
+[![codecov](https://codecov.io/gh/mmschlk/shapiq/branch/main/graph/badge.svg)](https://codecov.io/gh/mmschlk/shapiq)
+[![Tests](https://github.com/mmschlk/shapiq/actions/workflows/ci.yml/badge.svg)](https://github.com/mmschlk/shapiq/blob/main/.github/workflows/ci.yml)
 [![Read the Docs](https://readthedocs.org/projects/shapiq/badge/?version=latest)](https://shapiq.readthedocs.io/en/latest/?badge=latest)
 
 [![PyPI Version](https://img.shields.io/pypi/pyversions/shapiq.svg)](https://pypi.org/project/shapiq)
@@ -30,6 +30,9 @@ or via `pip`:
 ```sh
 pip install shapiq
 ```
+
+## 👀 Upcoming
+See what’s on the horizon for the library in our [GitHub Project Board](https://github.com/users/mmschlk/projects/4). We plan and track upcoming features, improvements, and maintenance tasks there including new explainers, performance optimizations, and expanded model support.
 
 ## ⭐ Quickstart
 
