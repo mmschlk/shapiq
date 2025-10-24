@@ -29,8 +29,8 @@ jobs:
     # ----------------------------------------------------------------------------------------------
     # Install and Import Check
     # ----------------------------------------------------------------------------------------------
-    install_and_import:
-        name: Install and Import Check
+    install_and_import_shapiq:
+        name: Install and import check shapiq
         runs-on: ubuntu-latest
         steps:
             -   uses: actions/checkout@v5
@@ -46,9 +46,30 @@ jobs:
             -   name: Test import
                 run: uv run --no-sync python -c "import shapiq; print('✅ shapiq imported successfully')"
     # ----------------------------------------------------------------------------------------------
+    # Install and Import Check
+    # ----------------------------------------------------------------------------------------------
+    install_and_import_shapiq_games:
+        name: Install and import check shapiq-games
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v5
+            -   name: Set up Python and uv
+                uses: astral-sh/setup-uv@v7
+                with:
+                    python-version: "3.12"
+                    enable-cache: true
+            -   name: Create uv virtual environment
+                run: uv venv
+            -   name: Install shapiq package
+                run: uv run --no-sync uv pip install .
+            -   name: Install dependencies
+                run: uv sync --no-dev --group all_ml
+            -   name: Test import of shapiq_games
+                run: uv run --no-sync python -c "import shapiq_games; print('✅ shapiq_games imported successfully')"
+    # ----------------------------------------------------------------------------------------------
     # Unit Tests with Matrix
     # ----------------------------------------------------------------------------------------------
-    run_unit_tests:
+    test_shapiq:
         name: Run Unit Tests
         strategy:
             fail-fast: false
@@ -74,6 +95,22 @@ jobs:
                 run: uv sync
             -   name: Run unit tests
                 run: uv run pytest "tests/shapiq"
+    # ----------------------------------------------------------------------------------------------
+    # Unit Tests for shapiq-games
+    # ----------------------------------------------------------------------------------------------
+    test_shapiq_games:
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v5
+            -   name: Set up Python and uv
+                uses: astral-sh/setup-uv@v7
+                with:
+                    python-version: "3.12"
+                    enable-cache: true
+            -   name: Install dependencies
+                run: uv sync
+            -   name: Run tests
+                run: uv run pytest "tests/shapiq_games" -n logical
     # ----------------------------------------------------------------------------------------------
     # Test Documentation Build
     # ----------------------------------------------------------------------------------------------
