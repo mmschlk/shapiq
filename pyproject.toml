@@ -77,20 +77,6 @@ source = "https://github.com/mmschlk/shapiq"
 tracker = "https://github.com/mmschlk/shapiq/issues"
 changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 
-[project.optional-dependencies]
-games = [
-    "tabpfn",
-    "torchvision",
-    "torch",
-    "xgboost",
-    "lightgbm",
-    "transformers",
-    "scikit-image",
-    # tf only for python < 3.13 and not windows
-    "tensorflow; python_version < '3.13' and platform_system != 'Windows'",
-    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",
-]
-
 [tool.pytest.ini_options]
 testpaths = [
   "tests/shapiq",
@@ -228,15 +214,23 @@ include = ["src/shapiq"]
 exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
 venv = ".venv"
 pythonVersion = "3.10"
-
 defineConstant = { DEBUG = true }
-
 reportMissingImports = "error"
 reportMissingTypeStubs = false
-
 pythonPlatform = "Linux"
 
 [dependency-groups]
+all_ml = [
+    "tabpfn>=2.0.7",
+    "torchvision",
+    "torch",
+    "xgboost",
+    "lightgbm; platform_system != 'Darwin'",    # lightgbm has install problems on macOS
+    "transformers",
+    "scikit-image",
+    "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
+    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
+]
 test = [
     "pytest>=8.3.5",        # for running tests
     "pytest-cov>=6.0.0",    # for coverage
@@ -269,5 +263,5 @@ dev = [
     "ipywidgets",
     {include-group = "test"},
     {include-group = "lint"},
-    {include-group = "docs"},
+    {include-group = "all_ml"},
 ]

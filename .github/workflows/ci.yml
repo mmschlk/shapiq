@@ -22,10 +22,10 @@ jobs:
                     enable-cache: true
             -   name: Install pre-commit
                 run: |
-                    uv sync --only-group lint
-                    uv run --no-sync pre-commit install
+                    uv sync --group lint
+                    uv run pre-commit install
             -   name: Run code-quality checks
-                run: uv run --no-sync pre-commit run --all-files --show-diff-on-failure
+                run: uv run pre-commit run --all-files --show-diff-on-failure
     # ----------------------------------------------------------------------------------------------
     # Install and Import Check
     # ----------------------------------------------------------------------------------------------
@@ -41,10 +41,10 @@ jobs:
                     enable-cache: true
             -   name: Create uv virtual environment
                 run: uv venv
-            -   name: Install probly package
+            -   name: Install shapiq package
                 run: uv run --no-sync uv pip install .
             -   name: Test import
-                run: uv run --no-sync python -c "import probly; print('✅ probly imported successfully')"
+                run: uv run --no-sync python -c "import shapiq; print('✅ shapiq imported successfully')"
     # ----------------------------------------------------------------------------------------------
     # Unit Tests with Matrix
     # ----------------------------------------------------------------------------------------------
@@ -54,17 +54,13 @@ jobs:
             matrix:
                 include:
                     - os: ubuntu-latest
-                      python-version: "3.12"
-                      dependency-group: "all_ml"
+                      python-version: "3.10"
                     - os: ubuntu-latest
-                      python-version: "3.12"
-                      dependency-group: "torch"
+                      python-version: "3.13"
                     - os: windows-latest
                       python-version: "3.12"
-                      dependency-group: "all_ml"
                     - os: macos-latest
                       python-version: "3.12"
-                      dependency-group: "all_ml"
         runs-on: ${{ matrix.os }}
         steps:
             -   uses: actions/checkout@v5
@@ -74,15 +70,18 @@ jobs:
                     python-version: ${{ matrix.python-version }}
                     enable-cache: true
             -   name: Install test dependencies
-                run: uv sync --no-dev --group test --group ${{ matrix.dependency-group }}
+                run: uv sync
             -   name: Run unit tests
-                run: uv run --no-sync pytest "tests/probly" -m "not integration"
+                run: uv run pytest "tests/shapiq" -n logical
     # ----------------------------------------------------------------------------------------------
     # Test Documentation Build
     # ----------------------------------------------------------------------------------------------
     doc_build:
         name: Test Documentation Build
         runs-on: ubuntu-latest
+        needs:
+            - install_and_import
+            - check_code_quality
         steps:
             -   uses: actions/checkout@v5
             -   name: Set up Python and uv
@@ -95,12 +94,10 @@ jobs:
                     sudo apt-get update
                     sudo apt-get install -y pandoc
             -   name: Install dependencies
-                run: uv sync
-                # TODO(mmshlk) Turn this step to fail on warnings in the future. https://github.com/pwhofman/probly/issues/131
+                run: uv sync --no-dev --group docs
+                # TODO(mmshlk) Turn this step to fail on warnings in the future.
             -   name: Build documentation
-                run: |
-                    uv run sphinx-build -b html docs/source docs/build/html
-
+                run: uv run --no-sync sphinx-build -b html docs/source docs/build/html
     # ----------------------------------------------------------------------------------------------
     # Code Coverage
     # ----------------------------------------------------------------------------------------------
@@ -108,9 +105,8 @@ jobs:
         name: Run Test Coverage
         runs-on: ubuntu-latest
         needs:
-            - run_unit_tests
-            - check_code_quality
             - install_and_import
+            - check_code_quality
         steps:
             -   uses: actions/checkout@v5
             -   name: Set up Python and uv
@@ -119,9 +115,9 @@ jobs:
                     python-version: "3.12"
                     enable-cache: true
             -   name: Install test dependencies
-                run: uv sync --no-dev --group test --group all_ml
+                run: uv sync
             -   name: Measure coverage
-                run: uv run --no-sync pytest "tests/probly" --cov=probly --cov-report=xml
+                run: uv run pytest "tests/shapiq" --cov=shapiq --cov-report=xml -n logical
             -   name: Upload coverage to codecov
                 uses: codecov/codecov-action@v5
                 with:
