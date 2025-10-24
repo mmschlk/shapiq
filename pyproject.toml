@@ -84,7 +84,7 @@ games = [
     "torchvision",
     "torch",
     "xgboost",
-    "lightgbm",
+    "lightgbm; platform_system != 'MacOS'",
     "transformers",
     "scikit-image",
     # tf only for python < 3.13 and not windows
