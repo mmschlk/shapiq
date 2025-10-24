@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from shapiq.explainer.tree import TreeExplainer, TreeModel
+from tests.shapiq.markers import skip_if_no_lightgbm
 
 
 def test_decision_tree_classifier(rf_clf_model, background_clf_data):
@@ -412,6 +413,7 @@ def test_iso_forest_shap(if_clf_model):
     assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-6)
 
 
+@skip_if_no_lightgbm
 def test_decision_stumps(background_reg_dataset, background_clf_dataset):
     """Tests weather you can explain a decision stumps with the shapiq implementation."""
     from lightgbm import LGBMClassifier, LGBMRegressor

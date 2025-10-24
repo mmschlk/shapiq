@@ -25,6 +25,7 @@ from .approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    ProxySPEX,
     RegressionFBII,
     RegressionFSII,
     StratifiedSamplingSV,
@@ -105,6 +106,7 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
+    "ProxySPEX",
     "SPEX",
     # explainers
     "Explainer",
