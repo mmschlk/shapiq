@@ -13,6 +13,8 @@ from .validation import validate_pk_model
 
 if TYPE_CHECKING:
     import numpy as np
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.svm import SVC, SVR
 
     from shapiq.typing import Model
 
@@ -31,19 +33,19 @@ class ProductKernelExplainer(Explainer):
 
     Attributes:
         model: The product kernel model to explain. Can be a dictionary, a ProductKernelModel, or a list of ProductKernelModels.
+             Note that the model will be converted to a ProductKernelModel if it is not already in that format.
+             Supported models include scikit-learn's SVR, SVC (binary classification only), and GaussianProcessRegressor.
+             Beware that for classification models, the class to explain is set to the predicted class of the model.
+             For further details, see the `validate_pk_model` function in `shapiq.explainer.product_kernel.validation`.
         max_order: The maximum interaction order to be computed. Defaults to ``1``.
         min_order: The minimum interaction order to be computed. Defaults to ``0``.
         index: The type of interaction to be computed. Currently, only ``"SV"`` is supported.
-
-    Note:
-        When explaining classification models, the class which is explained equals the predicted class of the model.
-        For further details, consult [pkex-shapley]_ .
     """
 
     def __init__(
         self,
         model: (
-            ProductKernelModel | Model  # pyright: ignore[reportInvalidTypeVarUse]
+            ProductKernelModel | Model | SVR | SVC | GaussianProcessRegressor  # pyright: ignore[reportInvalidTypeVarUse]
         ),
         *,
         min_order: int = 0,

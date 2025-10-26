@@ -22,7 +22,7 @@ SUPPORTED_MODELS = {
 
 
 def validate_pk_model(
-    model: Model,  # pyright: ignore[reportInvalidTypeVarUse]
+    model: (Model | SVR | SVC | GaussianProcessRegressor),  # pyright: ignore[reportInvalidTypeVarUse]
 ) -> ProductKernelModel:
     """Validate the product kernel model.
 
