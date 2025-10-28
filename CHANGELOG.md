@@ -2,6 +2,12 @@
 
 ## Development
 
+### Introducing ProductKernelExplainer
+
+The ProductKernelExplainer is a new model-specific explanation method for Product Kernel based machine learning model, such as  Gaussian Processes or Support Vector Machines.
+
+For further details refer to:  https://arxiv.org/abs/2505.16516
+
 ### Shapiq Statically Typechecked [#430](https://github.com/mmschlk/shapiq/pull/430)
 We have introduced static type checking to `shapiq` using [Pyright](https://github.com/microsoft/pyright), and integrated it into our `pre-commit` hooks.
 This ensures that type inconsistencies are caught early during development, improving code quality and maintainability.

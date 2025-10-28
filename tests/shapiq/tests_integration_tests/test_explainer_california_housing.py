@@ -11,7 +11,9 @@ from shapiq.explainer.agnostic import AgnosticExplainer
 from shapiq.explainer.base import Explainer
 from shapiq.explainer.custom_types import (
     ExplainerIndices,
+    ValidProductKernelExplainerIndices,
 )
+from shapiq.explainer.product_kernel import ProductKernelExplainer
 from shapiq.explainer.tabular import TabularExplainer, TabularExplainerIndices
 from shapiq.explainer.tree import TreeExplainer
 from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
@@ -26,6 +28,7 @@ if TYPE_CHECKING:
 
 TABULAR_NAME_START = "iv_california_housing_imputer_9070456741283270540"
 TREE_NAME_START = "iv_california_housing_tree"
+PRODUCT_KERNEL_NAME_START = "iv_california_housing_product_kernel"
 
 
 @pytest.fixture(scope="module")
@@ -35,11 +38,13 @@ def california_interaction_values() -> dict[str, InteractionValues]:
         compute_tabular_explanations,
         compute_tree_explanations,
     )
+    from .integration_test_product_kernel_explainer import compute_product_kernel_explanations
 
     print("Computing interaction values for California Housing dataset...")  # noqa: T201
     ivs_tabular = compute_tabular_explanations()
     ivs_tree = compute_tree_explanations()
-    return {**ivs_tabular, **ivs_tree}
+    ivs_product_kernel = compute_product_kernel_explanations()
+    return {**ivs_tabular, **ivs_tree, **ivs_product_kernel}
 
 
 def _load_ground_truth_interaction_values_california(
@@ -248,6 +253,36 @@ class TestCaliforniaHousingExplainers:
 
         # load the ground truth interaction values
         name = f"{TABULAR_NAME_START}_index={index}_order={order}.json"
+        gt_iv = california_interaction_values[name]
+
+        # do the comparison of the interaction values
+        _compare(gt=gt_iv, iv=iv, index=index, order=order)
+
+    @pytest.mark.parametrize("index", get_args(ValidProductKernelExplainerIndices))
+    @pytest.mark.parametrize("order", [1])
+    def test_product_kernel_explainer(
+        self,
+        index: IndexType,
+        order: int,
+        california_housing_train_test_explain: tuple[np.ndarray, ...],
+        california_housing_svr_model,
+        california_interaction_values: dict[str, InteractionValues],
+    ) -> None:
+        """Test ProductKernelExplainer on the California Housing dataset."""
+        expected_index = get_expected_index_or_skip(index, order)
+
+        # get the data and model
+        _, _, _, _, x_explain = california_housing_train_test_explain
+        model = california_housing_svr_model
+
+        # get the explainer and explain
+        explainer = ProductKernelExplainer(model=model, index=index, max_order=order)
+        iv = explainer.explain(x_explain.flatten())
+        iv = iv.get_n_order(min_order=1, max_order=order)
+        assert iv.index == expected_index
+
+        # load the ground truth interaction values
+        name = f"{PRODUCT_KERNEL_NAME_START}_index={index}_order={order}.json"
         gt_iv = california_interaction_values[name]
 
         # do the comparison of the interaction values

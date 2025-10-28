@@ -153,7 +153,9 @@ def aggregate_base_interaction(
     )
 
 
-def aggregate_to_one_dimension(interactions: InteractionValues) -> tuple[np.ndarray, np.ndarray]:
+def aggregate_to_one_dimension(
+    interactions: InteractionValues,
+) -> tuple[np.ndarray, np.ndarray]:
     """Flattens the higher-order interaction values to positive and negative one-dimensional values.
 
     The aggregation summarizes all higher-order interaction in the positive and negative
