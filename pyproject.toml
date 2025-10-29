@@ -226,7 +226,7 @@ all_ml = [
     "torchvision; python_version < '3.14'",
     "torch; python_version < '3.14'",
     "xgboost; python_version < '3.14'",
-    "lightgbm; python_version < '3.14'; platform_system != 'Darwin'",    # lightgbm has install problems on macOS in github actions
+    "lightgbm; python_version < '3.14' and platform_system != 'Darwin'",    # lightgbm has install problems on macOS in github actions
     "transformers; python_version < '3.14'",
     "scikit-image; python_version < '3.14'",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
