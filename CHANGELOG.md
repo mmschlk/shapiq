@@ -4,7 +4,7 @@
 
 ### Introducing ProxySPEX
 Adds the ProxySPEX approximator for efficient computation of sparse interaction values using the new ProxySPEX algorithm.
-For further details refer to: Butler, L., Kang, J.S., Agarwal. A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs https://arxiv.org/pdf/2505.17495
+For further details refer to: Butler, L., Kang, J.S., Agarwal, A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs https://arxiv.org/pdf/2505.17495
 
 
 ### Introducing ProductKernelExplainer
