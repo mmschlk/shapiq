@@ -2,10 +2,13 @@
 
 ## Development
 
+### Introducing ProxySPEX
+Adds the ProxySPEX approximator for efficient computation of sparse interaction values using the new ProxySPEX algorithm.
+For further details refer to: Butler, L., Kang, J.S., Agarwal, A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs https://arxiv.org/pdf/2505.17495
+
+
 ### Introducing ProductKernelExplainer
-
 The ProductKernelExplainer is a new model-specific explanation method for Product Kernel based machine learning model, such as  Gaussian Processes or Support Vector Machines.
-
 For further details refer to:  https://arxiv.org/abs/2505.16516
 
 ### Shapiq Statically Typechecked [#430](https://github.com/mmschlk/shapiq/pull/430)
@@ -14,7 +17,6 @@ This ensures that type inconsistencies are caught early during development, impr
 Developers will now benefit from immediate feedback on type errors, making the codebase more robust and reliable as it evolves.
 
 ### Separation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark`
-
 We have begun the process of modularizing the `shapiq` package by splitting it into three distinct packages: `shapiq`, `shapiq_games`, and `shapiq-benchmark`.
 
 - The `shapiq` package now serves as the core library. It contains the main functionality, including approximators, explainers, computation routines, interaction value logic, and plotting utilities.
@@ -34,8 +36,10 @@ This restructuring aims to improve maintainability and development scalability. 
 ### Bugfixes
 - fixes a bug where RegressionFBII approximator was throwing an error when the index was `'BV'` or `'FBII'`.[#420](https://github.com/mmschlk/shapiq/pull/420)
 
-### New Features
+### All New Features
 - adds the ProxySPEX (Proxy Sparse Explanation) module in `approximator.sparse` for even more efficient computation of sparse interaction values [#442](https://github.com/mmschlk/shapiq/pull/442)
+- uses `predict_logits` method of sklearn-like classifiers if available in favor of `predict_proba` to support models that also offer logit outputs like TabPFNClassifier for better interpretability of the explanations [#426](https://github.com/mmschlk/shapiq/issues/426)
+- adds the `shapiq.explainer.ProductKernelExplainer` for model-specific explanation of Product Kernel based models like Gaussian Processes and Support Vector Machines. [#431](https://github.com/mmschlk/shapiq/pull/431)
 
 ### Removed Features
 - removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)

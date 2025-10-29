@@ -166,8 +166,10 @@ def get_predict_function_and_model_type(
     ]:
         _model_type = "product_kernel"
 
-    # default extraction (sklearn api)
-    if _predict_function is None and hasattr(model, "predict_proba"):
+    # default extraction (sklearn api) which tries logits, probabilities, and then predictions
+    if _predict_function is None and hasattr(model, "predict_logits"):
+        _predict_function = predict_logits
+    elif _predict_function is None and hasattr(model, "predict_proba"):
         _predict_function = predict_proba
     elif _predict_function is None and hasattr(model, "predict"):
         _predict_function = predict
@@ -233,6 +235,11 @@ def predict(model: Model, data: np.ndarray) -> np.ndarray:
 def predict_proba(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a model that has a ``predict_proba`` method."""
     return model.predict_proba(data)
+
+
+def predict_logits(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes predictions with a model that has a `predict_logits` method."""
+    return model.predict_logits(data)
 
 
 def predict_xgboost(model: Model, data: np.ndarray) -> np.ndarray:
