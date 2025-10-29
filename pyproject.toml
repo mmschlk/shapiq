@@ -20,7 +20,6 @@ dependencies = [
     "matplotlib",
     "networkx",
     "colour",
-    "pillow",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
