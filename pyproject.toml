@@ -47,6 +47,7 @@ classifiers = [
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
 ]
 keywords = [
     "python",
@@ -221,13 +222,13 @@ pythonPlatform = "Linux"
 
 [dependency-groups]
 all_ml = [
-    "tabpfn>=2.1.3",
-    "torchvision",
-    "torch",
-    "xgboost",
-    "lightgbm; platform_system != 'Darwin'",    # lightgbm has install problems on macOS in github actions
-    "transformers",
-    "scikit-image",
+    "tabpfn>=2.1.3; python_version < '3.14'",
+    "torchvision; python_version < '3.14'",
+    "torch; python_version < '3.14'",
+    "xgboost; python_version < '3.14'",
+    "lightgbm; python_version < '3.14'; platform_system != 'Darwin'",    # lightgbm has install problems on macOS in github actions
+    "transformers; python_version < '3.14'",
+    "scikit-image; python_version < '3.14'",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
     "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
 ]
