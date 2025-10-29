@@ -222,6 +222,24 @@ def tabpfn_regression_problem(
 
 
 @pytest.fixture
+def tabpfn_reg_model(
+    tabpfn_regression_problem,
+) -> Model:
+    """Return a simple tabpfn regression model."""
+    model, _, _, _ = tabpfn_regression_problem
+    return model
+
+
+@pytest.fixture
+def tabpfn_clf_model(
+    tabpfn_classification_problem,
+) -> Model:
+    """Return a simple tabpfn classification model."""
+    model, _, _, _ = tabpfn_classification_problem
+    return model
+
+
+@pytest.fixture
 def dt_reg_model(background_reg_dataset) -> DecisionTreeRegressor:
     """Return a simple decision tree model."""
     X, y = background_reg_dataset
