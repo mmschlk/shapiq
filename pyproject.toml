@@ -225,7 +225,7 @@ all_ml = [
     "torchvision",
     "torch",
     "xgboost",
-    "lightgbm; platform_system != 'Darwin'",    # lightgbm has install problems on macOS
+    "lightgbm; platform_system != 'Darwin'",    # lightgbm has install problems on macOS in github actions
     "transformers",
     "scikit-image",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
