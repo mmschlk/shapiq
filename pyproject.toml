@@ -17,7 +17,7 @@ dependencies = [
     "tqdm",
     "requests",
     "sparse-transform",  # for sparse approximators (spex, proxyspex)
-    "galois",            # for sparse approximators (spex, proxyspex)
+    # "galois",            # for sparse approximators (spex, proxyspex) not working in py3.14
     # plotting
     "matplotlib",
     "networkx",
