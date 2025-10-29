@@ -16,8 +16,6 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "requests",
-    "sparse-transform",  # for sparse approximators (spex, proxyspex)
-    # "galois",            # for sparse approximators (spex, proxyspex) not working in py3.14
     # plotting
     "matplotlib",
     "networkx",
@@ -219,6 +217,11 @@ defineConstant = { DEBUG = true }
 reportMissingImports = "error"
 reportMissingTypeStubs = false
 pythonPlatform = "Linux"
+
+[project.optional-dependencies]
+spex = [
+    "sparse-transform"
+]
 
 [dependency-groups]
 all_ml = [
