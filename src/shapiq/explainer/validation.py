@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv, is_index_valid
+from shapiq.game_theory.indices import (
+    index_generalizes_bv,
+    index_generalizes_sv,
+    is_index_valid,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable

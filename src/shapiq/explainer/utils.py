@@ -23,7 +23,7 @@ WARNING_NO_CLASS_INDEX = (
     "Disregard this warning for regression models."
 )
 
-ExplainerTypes = Literal["tabular", "tree", "tabpfn", "game"]
+ExplainerTypes = Literal["tabular", "tree", "tabpfn", "game", "product_kernel"]
 
 
 def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
@@ -34,6 +34,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
 
     """
     import shapiq.explainer.agnostic as ag
+    import shapiq.explainer.product_kernel.explainer as pk
     import shapiq.explainer.tabpfn as tp
     import shapiq.explainer.tabular as tb
     import shapiq.explainer.tree.explainer as tr
@@ -43,6 +44,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
         "tree": tr.TreeExplainer,
         "tabpfn": tp.TabPFNExplainer,
         "game": ag.AgnosticExplainer,
+        "product_kernel": pk.ProductKernelExplainer,
     }
 
 
@@ -157,8 +159,17 @@ def get_predict_function_and_model_type(
     ]:
         _model_type = "tabpfn"
 
-    # default extraction (sklearn api)
-    if _predict_function is None and hasattr(model, "predict_proba"):
+    if model_class in [
+        "sklearn.svm.SVR",
+        "sklearn.svm.SVC",
+        "sklearn.gaussian_process.GaussianProcessRegressor",
+    ]:
+        _model_type = "product_kernel"
+
+    # default extraction (sklearn api) which tries logits, probabilities, and then predictions
+    if _predict_function is None and hasattr(model, "predict_logits"):
+        _predict_function = predict_logits
+    elif _predict_function is None and hasattr(model, "predict_proba"):
         _predict_function = predict_proba
     elif _predict_function is None and hasattr(model, "predict"):
         _predict_function = predict
@@ -224,6 +235,11 @@ def predict(model: Model, data: np.ndarray) -> np.ndarray:
 def predict_proba(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a model that has a ``predict_proba`` method."""
     return model.predict_proba(data)
+
+
+def predict_logits(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes predictions with a model that has a `predict_logits` method."""
+    return model.predict_logits(data)
 
 
 def predict_xgboost(model: Model, data: np.ndarray) -> np.ndarray:

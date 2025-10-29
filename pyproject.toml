@@ -221,11 +221,11 @@ pythonPlatform = "Linux"
 
 [dependency-groups]
 all_ml = [
-    "tabpfn>=2.0.7",
+    "tabpfn>=2.1.3",
     "torchvision",
     "torch",
     "xgboost",
-    "lightgbm; platform_system != 'Darwin'",    # lightgbm has install problems on macOS
+    "lightgbm; platform_system != 'Darwin'",    # lightgbm has install problems on macOS in github actions
     "transformers",
     "scikit-image",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
