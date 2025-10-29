@@ -11,12 +11,6 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import GridSearchCV
-from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
-from sparse_transform.qsft.signals.input_signal_subsampled import (
-    SubsampledSignal as SubsampledSignalFourier,
-)
-from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
-from sparse_transform.qsft.utils.query import get_bch_decoder
 
 from shapiq.approximator.base import Approximator
 from shapiq.approximator.sampling import CoalitionSampler
@@ -30,6 +24,12 @@ if TYPE_CHECKING:
     from shapiq.game import Game
 
 ValidSparseIndices = ValidMoebiusConverterIndices
+
+
+sparse_transform_error_msg = (
+    "The 'sparse_transform' package is required for Sparse approximator but it is not "
+    "installed. Please install it via 'pip install sparse-transform'."
+)
 
 
 class Sparse(Approximator[ValidSparseIndices]):
@@ -132,6 +132,10 @@ class Sparse(Approximator[ValidSparseIndices]):
                     "https://github.com/microsoft/LightGBM/tree/master/python-package."
                 )
                 raise ImportError(msg) from err
+        try:
+            from sparse_transform.qsft.utils.query import get_bch_decoder
+        except ImportError as err:
+            raise ImportError(sparse_transform_error_msg) from err
         # The sampling parameters for the Fourier transform
         self.query_args = {
             "query_method": "complex",
@@ -192,6 +196,15 @@ class Sparse(Approximator[ValidSparseIndices]):
         Returns:
             The approximated Shapley interaction values.
         """
+        try:
+            from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
+            from sparse_transform.qsft.signals.input_signal_subsampled import (
+                SubsampledSignal as SubsampledSignalFourier,
+            )
+            from sparse_transform.qsft.utils.general import fourier_to_mobius
+        except ImportError as err:
+            raise ImportError(sparse_transform_error_msg) from err
+
         if self.decoder_type == "proxyspex":
             import lightgbm as lgb
 
@@ -243,7 +256,7 @@ class Sparse(Approximator[ValidSparseIndices]):
                 for key, value in sparse_fourier_transform(signal, **self.decoder_args).items()
             }
         # If we are using the fourier transform, we need to convert it to a Moebius transform
-        moebius_transform = fourier_to_moebius(initial_transform)
+        moebius_transform = fourier_to_mobius(initial_transform)
         # Convert the Moebius transform to the desired index
         result = self._process_moebius(moebius_transform=moebius_transform)
         # Filter the output as needed
@@ -332,6 +345,13 @@ class Sparse(Approximator[ValidSparseIndices]):
         Raises:
             ValueError: If the budget is too low to compute the transform with acceptable parameters.
         """
+        try:
+            from sparse_transform.qsft.signals.input_signal_subsampled import (
+                SubsampledSignal as SubsampledSignalFourier,
+            )
+            from sparse_transform.qsft.utils.query import get_bch_decoder
+        except ImportError as err:
+            raise ImportError(sparse_transform_error_msg) from err
         b = SubsampledSignalFourier.get_b_for_sample_budget(
             budget, self.n, self.degree_parameter, 2, self.query_args
         )
