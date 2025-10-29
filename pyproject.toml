@@ -221,7 +221,7 @@ pythonPlatform = "Linux"
 
 [dependency-groups]
 all_ml = [
-    "tabpfn>=2.0.7",
+    "tabpfn>=2.1.3",
     "torchvision",
     "torch",
     "xgboost",
