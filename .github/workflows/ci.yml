@@ -31,13 +31,25 @@ jobs:
     # ----------------------------------------------------------------------------------------------
     install_and_import_shapiq:
         name: Install and import check shapiq
-        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: ubuntu-latest
+                      python-version: "3.10"
+                    - os: ubuntu-latest
+                      python-version: "3.13"
+                    - os: windows-latest
+                      python-version: "3.12"
+                    - os: macos-latest
+                      python-version: "3.12"
+        runs-on: ${{ matrix.os }}
         steps:
             -   uses: actions/checkout@v5
             -   name: Set up Python and uv
                 uses: astral-sh/setup-uv@v7
                 with:
-                    python-version: "3.12"
+                    python-version: ${{ matrix.python-version }}
                     enable-cache: true
             -   name: Create uv virtual environment
                 run: uv venv
