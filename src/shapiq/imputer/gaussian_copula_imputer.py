@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
-from typing_extensions import override
 
 import numpy as np
 from scipy.stats import norm, rankdata
@@ -35,7 +34,6 @@ class GaussianCopulaImputer(GaussianImputer):
 
     More specifically, values will be clipped to the range ``[epsilon, 1 - epsilon]``."""
 
-    @override
     def __init__(
         self,
         model: (object | Game | Callable[[npt.NDArray[np.floating]], npt.NDArray[np.floating]]),
@@ -46,6 +44,26 @@ class GaussianCopulaImputer(GaussianImputer):
         random_state: int | None = None,
         verbose: bool = False,
     ) -> None:
+        """Initializes the GaussianCopulaImputer.
+
+        Args:
+            model: The model to explain as a callable function expecting a data points as input and
+                returning the model's predictions.
+
+            data: The background data to use for the explainer as a two-dimensional array with shape
+                ``(n_samples, n_features)``.
+
+            x: The explanation point as a ``np.ndarray`` of shape ``(1, n_features)`` or
+                ``(n_features,)``.
+
+            sample_size: The number of Monte Carlo samples to draw from the conditional background
+                data for imputation.
+
+            random_state: An optional random seed for reproducibility.
+
+            verbose: A flag to enable verbose imputation, which will print a progress bar for model
+                evaluation. Note that this can slow down the imputation process.
+        """
         super().__init__(
             model=model,
             data=data,
