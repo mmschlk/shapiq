@@ -11,7 +11,7 @@ For further details we refer to the paper, which will be presented at NeurIPS'20
 
 ### Introducing ProductKernelExplainer [#431](https://github.com/mmschlk/shapiq/pull/431)
 The `ProductKernelExplainer` is a new model-specific explanation method for machine learning models that utilize Product Kernels, such as Gaussian Processes and Support Vector Machines.
-Similar to the TreeExplainer, it uses a specific computation sheme that leverages the structure of the underlying product kernels to efficiently compute exact Shapley values.
+Similar to the TreeExplainer, it uses a specific computation scheme that leverages the structure of the underlying product kernels to efficiently compute exact Shapley values.
 **Note**, this explainer is only able to compute Shapley values (not higher-order interactions yet).
 For further details we refer to the paper: Mohammadi, M., Chau, S.-L., Muandet, K. Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. [arxiv](https://arxiv.org/abs/2505.16516)
 
