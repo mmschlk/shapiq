@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
-from typing_extensions import override
 
 import numpy as np
 from numpy.random import default_rng
@@ -47,14 +46,22 @@ class GaussianImputer(Imputer):
         """Initializes the class.
 
         Args:
-            model: The model to explain as a callable function expecting data points as input and
+            model: The model to explain as a callable function expecting a data points as input and
                 returning the model's predictions.
-            data: The background data to use for the explainer as a ``np.ndarray`` of shape ``(n_samples, n_features)``.
-            x: The explanation point as a ``np.ndarray`` of shape ``(1, n_features)`` or ``(n_features,)``. Defaults to ``None``.
-            sample_size: Number of Monte Carlo samples for imputation. Defaults to ``100``.
-            random_state: The random state to use for sampling. Defaults to ``None``.
-            verbose: A flag to enable verbose imputation, which will print a progress bar for model evaluation.
-                Note that this can slow down the imputation process. Defaults to ``False``.
+
+            data: The background data to use for the explainer as a two-dimensional array with shape
+                ``(n_samples, n_features)``.
+
+            x: The explanation point as a ``np.ndarray`` of shape ``(1, n_features)`` or
+                ``(n_features,)``.
+
+            sample_size: The number of Monte Carlo samples to draw from the conditional background
+                data for imputation.
+
+            random_state: An optional random seed for reproducibility.
+
+            verbose: A flag to enable verbose imputation, which will print a progress bar for model
+                evaluation. Note that this can slow down the imputation process.
 
         Raises:
             CategoricalFeatureError: If the background data contains any categorical features.
@@ -207,7 +214,6 @@ class GaussianImputer(Imputer):
 
         return samples_all_coalitions
 
-    @override
     def value_function(self, coalitions: npt.NDArray[np.bool]) -> npt.NDArray[np.floating]:
         """Imputes the missing values of a data point and gets predictions for all coalitions.
 

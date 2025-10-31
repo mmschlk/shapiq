@@ -1,22 +1,31 @@
 # Changelog
 
-## Development
+## v1.4.0 (2025-10-31)
 
-### Introducing ProxySPEX
-Adds the ProxySPEX approximator for efficient computation of sparse interaction values using the new ProxySPEX algorithm.
-For further details refer to: Butler, L., Kang, J.S., Agarwal, A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs https://arxiv.org/pdf/2505.17495
+### Introducing ProxySPEX [#442](https://github.com/mmschlk/shapiq/pull/442)
+Adds the [`ProxySPEX`](https://arxiv.org/pdf/2505.17495) [approximator](https://github.com/mmschlk/shapiq/blob/main/src/shapiq/approximator/sparse/proxyspex.py) for efficient computation of sparse interaction values using the new ProxySPEX algorithm.
+ProxySPEX is a direct extension of the [SPEX](https://openreview.net/pdf?id=UQpYmaBGwB) algorithm, which uses clever fourier representations of the value function and analysis to identify the most relevant interactions (in terms of `Moebius` coefficients) and transforms them into summary scores (Shapley interactions).
+One of the key innovations of ProxySPEX compared to SPEX is the use of a proxy model that approximates the original value function (uses a LightGBM model internally).
+**Notably,** to run ProxySPEX, users have to install the `lightgbm` package in their environment.
+For further details we refer to the paper, which will be presented at NeurIPS'2025: Butler, L., Kang, J.S., Agarwal, A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs. [arxiv](https://arxiv.org/pdf/2505.17495)
 
+### Introducing ProductKernelExplainer [#431](https://github.com/mmschlk/shapiq/pull/431)
+The `ProductKernelExplainer` is a new model-specific explanation method for machine learning models that utilize Product Kernels, such as Gaussian Processes and Support Vector Machines.
+Similar to the TreeExplainer, it uses a specific computation scheme that leverages the structure of the underlying product kernels to efficiently compute exact Shapley values.
+**Note**, this explainer is only able to compute Shapley values (not higher-order interactions yet).
+For further details we refer to the paper: Mohammadi, M., Chau, S.-L., Muandet, K. Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. [arxiv](https://arxiv.org/abs/2505.16516)
 
-### Introducing ProductKernelExplainer
-The ProductKernelExplainer is a new model-specific explanation method for Product Kernel based machine learning model, such as  Gaussian Processes or Support Vector Machines.
-For further details refer to:  https://arxiv.org/abs/2505.16516
+### New Conditional Imputation Methods [#435](https://github.com/mmschlk/shapiq/pull/435)
+Based on traditional statistical methods, we implemented two new conditional imputation methods named `GaussianImputer` and `GaussianCopulaImputer` within the `shapiq.imputer` module.
+Both imputation methods are designed to handle missing feature imputation in a way that respects the underlying data distribution with the assumption that the data follows a multivariate Gaussian distribution (`GaussianImputer`) or can be represented with Gaussian copulas (`GaussianCopulaImputer`).
+In practice, this assumption may often be violated, but these methods can still provide reasonable imputations in many scenarios and serve as a useful benchmark enabling easier research in the field of conditional imputation for Shapley value explanations.
 
 ### Shapiq Statically Typechecked [#430](https://github.com/mmschlk/shapiq/pull/430)
 We have introduced static type checking to `shapiq` using [Pyright](https://github.com/microsoft/pyright), and integrated it into our `pre-commit` hooks.
 This ensures that type inconsistencies are caught early during development, improving code quality and maintainability.
 Developers will now benefit from immediate feedback on type errors, making the codebase more robust and reliable as it evolves.
 
-### Separation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark`
+### Separation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark` [#459](https://github.com/mmschlk/shapiq/issues/459)
 We have begun the process of modularizing the `shapiq` package by splitting it into three distinct packages: `shapiq`, `shapiq_games`, and `shapiq-benchmark`.
 
 - The `shapiq` package now serves as the core library. It contains the main functionality, including approximators, explainers, computation routines, interaction value logic, and plotting utilities.
@@ -25,25 +34,32 @@ We have begun the process of modularizing the `shapiq` package by splitting it i
 
 This restructuring aims to improve maintainability and development scalability. The core `shapiq` package will continue to receive the majority of updates and enhancements, and keeping it streamlined ensures better focus and usability. Meanwhile, separating games and benchmarking functionality allows these components to evolve more independently while maintaining compatibility through clearly defined dependencies.
 
+### List of All New Features
+- adds the ProxySPEX (Proxy Sparse Explanation) module in `approximator.sparse` for even more efficient computation of sparse interaction values [#442](https://github.com/mmschlk/shapiq/pull/442)
+- uses `predict_logits` method of sklearn-like classifiers if available in favor of `predict_proba` to support models that also offer logit outputs like TabPFNClassifier for better interpretability of the explanations [#426](https://github.com/mmschlk/shapiq/issues/426)
+- adds the `shapiq.explainer.ProductKernelExplainer` for model-specific explanation of Product Kernel based models like Gaussian Processes and Support Vector Machines. [#431](https://github.com/mmschlk/shapiq/pull/431)
+- adds the `GaussianImputer` and `GaussianCopulaImputer` classes to the `shapiq.imputer` module for conditional imputation based on Gaussian assumptions. [#435](https://github.com/mmschlk/shapiq/pull/435)
+- speeds up the imputation process in `MarginalImputer` by dropping an unnecessary loop [#449](https://github.com/mmschlk/shapiq/pull/449)
+- makes `n_players` argument of `shapiq.ExactComputer` optional when a `shapiq.Game` object is passed [#388](https://github.com/mmschlk/shapiq/issues/388)
+
+### Removed Features and Breaking Changes
+- removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
+- removes `coalition_lookup` and `value_storage` properties from `shapiq.Game` since the seperated view on game values and coalitions they belong to is now outdated. Use the `shapiq.Game.game_values` dictionary instead. [#430](https://github.com/mmschlk/shapiq/pull/430)
+- reorders the arguments of `shapiq.ExactComputer`'s constructor to have `n_players` be optional if a `shapiq.Game` object is passed. [#388](https://github.com/mmschlk/shapiq/issues/388)
+
+### Bugfixes
+- fixes a bug where RegressionFBII approximator was throwing an error when the index was `'BV'` or `'FBII'`.[#420](https://github.com/mmschlk/shapiq/pull/420)
+- allows subtraction and addition of `InteractionValues` objects with different `index` attributes by ignoring and raising a warning instead of an error. The resulting `InteractionValues` object will have the `index` of the first object. [#423](https://github.com/mmschlk/shapiq/pull/423)
+
 ### Maintenance and Development
 - refactored the `shapiq.Games` and `shapiq.InteractionValues` API by adding an interactions and game_values dictionary as the main data structure to store the interaction scores and game values. This allows for more efficient storage and retrieval of interaction values and game values, as well as easier manipulation of the data. [#419](https://github.com/mmschlk/shapiq/pull/419)
 - addition and subtraction of InteractionValues objects (via `shapiq.InteractionValues.__add__`) now also works for different indices, which will raise a warning and will return a new InteractionValues object with the index set of the first. [#422](https://github.com/mmschlk/shapiq/pull/422)
 - refactors the `shapiq.ExactComputer` to allow for initialization without passing n_players when a `shapiq.Game` object is passed [#388](https://github.com/mmschlk/shapiq/issues/388). Also introduces a tighter type hinting for the `index` parameter using `Literal` types. [#450](https://github.com/mmschlk/shapiq/pull/450)
+- removes zeros from the `InteractionValues.coalition_lookup` from the `MoebiusConverter` for better memory efficiency. [#369](https://github.com/mmschlk/shapiq/issues/369)
 
 ### Docs
 - added an example notebook for `InteractionValues`, highlighting *Initialization*, *Modification*, *Visualization* and *Save and Loading*.
-
-### Bugfixes
-- fixes a bug where RegressionFBII approximator was throwing an error when the index was `'BV'` or `'FBII'`.[#420](https://github.com/mmschlk/shapiq/pull/420)
-
-### All New Features
-- adds the ProxySPEX (Proxy Sparse Explanation) module in `approximator.sparse` for even more efficient computation of sparse interaction values [#442](https://github.com/mmschlk/shapiq/pull/442)
-- uses `predict_logits` method of sklearn-like classifiers if available in favor of `predict_proba` to support models that also offer logit outputs like TabPFNClassifier for better interpretability of the explanations [#426](https://github.com/mmschlk/shapiq/issues/426)
-- adds the `shapiq.explainer.ProductKernelExplainer` for model-specific explanation of Product Kernel based models like Gaussian Processes and Support Vector Machines. [#431](https://github.com/mmschlk/shapiq/pull/431)
-
-### Removed Features
-- removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
-- removes `coalition_lookup` and `value_storage` properties from `shapiq.Game` since the seperated view on game values and coalitions they belong to is now outdated. Use the `shapiq.Game.game_values` dictionary instead. [#430](https://github.com/mmschlk/shapiq/pull/430)
+- makes API reference docs more consistent by adding missing docstrings and improving existing ones across the package. [#420](https://github.com/mmschlk/shapiq/pull/420), [#437](https://github.com/mmschlk/shapiq/issues/437), [#452](https://github.com/mmschlk/shapiq/issues/452) among others.
 
 ## v1.3.2 (2025-10-14)
 
