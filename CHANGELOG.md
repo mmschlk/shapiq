@@ -3,14 +3,14 @@
 ## v1.4.0 (2025-10-31)
 
 ### Introducing ProxySPEX [#442](https://github.com/mmschlk/shapiq/pull/442)
-Adds the [ProxySPEX](https://arxiv.org/pdf/2505.17495) [approximator](https://github.com/mmschlk/shapiq/blob/main/src/shapiq/approximator/sparse/proxyspex.py) for efficient computation of sparse interaction values using the new ProxySPEX algorithm.
+Adds the [`ProxySPEX`](https://arxiv.org/pdf/2505.17495) [approximator](https://github.com/mmschlk/shapiq/blob/main/src/shapiq/approximator/sparse/proxyspex.py) for efficient computation of sparse interaction values using the new ProxySPEX algorithm.
 ProxySPEX is a direct extension of the [SPEX](https://openreview.net/pdf?id=UQpYmaBGwB) algorithm, which uses clever fourier representations of the value function and analysis to identify the most relevant interactions (in terms of `Moebius` coefficients) and transforms them into summary scores (Shapley interactions).
 One of the key innovations of ProxySPEX compared to SPEX is the use of a proxy model that approximates the original value function (uses a LightGBM model internally).
 **Notably,** to run ProxySPEX, users have to install the `lightgbm` package in their environment.
 For further details we refer to the paper, which will be presented at NeurIPS'2025: Butler, L., Kang, J.S., Agarwal, A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs. [arxiv](https://arxiv.org/pdf/2505.17495)
 
 ### Introducing ProductKernelExplainer [#431](https://github.com/mmschlk/shapiq/pull/431)
-The ProductKernelExplainer is a new model-specific explanation method for machine learning models that utilize Product Kernels, such as Gaussian Processes and Support Vector Machines.
+The `ProductKernelExplainer` is a new model-specific explanation method for machine learning models that utilize Product Kernels, such as Gaussian Processes and Support Vector Machines.
 Similar to the TreeExplainer, it uses a specific computation sheme that leverages the structure of the underlying product kernels to efficiently compute exact Shapley values.
 **Note**, this explainer is only able to compute Shapley values (not higher-order interactions yet).
 For further details we refer to the paper: Mohammadi, M., Chau, S.-L., Muandet, K. Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. [arxiv](https://arxiv.org/abs/2505.16516)
