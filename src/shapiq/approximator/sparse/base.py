@@ -259,7 +259,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             interaction_lookup=copy.deepcopy(self.interaction_lookup),
             estimated=True,
             estimation_budget=used_budget,
-            baseline_value=self.interaction_lookup.get((), 0.0),
+            baseline_value=result[self.interaction_lookup[()]] if () in self.interaction_lookup else 0.0,
             target_index=self.index,
         )
 
