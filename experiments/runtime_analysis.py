@@ -87,6 +87,8 @@ if __name__ == "__main__":
 
     APPROXIMATORS = [
         # "KernelSHAP",
+        "RegressionMSR",
+        "OldLeverageSHAP",
         "LeverageSHAP",
         "PolySHAP-2ADD",
         "PolySHAP-3ADD",
@@ -157,7 +159,6 @@ if __name__ == "__main__":
         return runtime_df
 
     if RUN_APPROXIMATION:
-        N_JOBS = 1
         runtime_df = pd.DataFrame()
         for game in GAMES:
             game_id = game.setup.dataset_name + "_" + game.setup.model_name

@@ -85,7 +85,7 @@ if __name__ == "__main__":
         # ),
     ]
 
-    APPROXIMATORS = ["RegressionMSR"]
+    APPROXIMATORS = ["RegressionMSR"] # "OldLeverageSHAP"
 
     MAX_BUDGET = 20000
     N_BUDGET_STEPS = 10

@@ -12,6 +12,7 @@ from scipy.special import bernoulli, binom
 from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues, finalize_computed_interactions
 from shapiq.utils.sets import powerset
+import time
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -80,6 +81,8 @@ class Regression(Approximator):
         self._bernoulli_numbers = bernoulli(self.n)  # used for SII
         # used for SII, if False, then Inconsistent KernelSHAP-IQ is used
         self._sii_consistent = sii_consistent
+        self.runtime_last_approximate_run: dict[str, float] = {}
+
 
     def _init_kernel_weights(self, interaction_size: int) -> np.ndarray:
         """Initializes the kernel weights for the regression in KernelSHAP-IQ.
@@ -145,6 +148,7 @@ class Regression(Approximator):
             The `InteractionValues` object containing the estimated interaction values.
 
         """
+        approximate_start_time = time.time()
         # initialize the kernel weights
         kernel_weights_dict = {}
         for interaction_size in range(1, self.max_order + 1):
@@ -153,8 +157,16 @@ class Regression(Approximator):
         # get the coalitions
         self._sampler.sample(budget)
 
+        sampling_end_time = time.time()
+        self.runtime_last_approximate_run["sampling"] = sampling_end_time - approximate_start_time
+
         # query the game for the coalitions
         game_values = game(self._sampler.coalitions_matrix)
+
+        game_evaluation_end_time = time.time()
+        self.runtime_last_approximate_run["evaluations"] = (
+            game_evaluation_end_time - sampling_end_time
+        )
 
         if self.approximation_index == "SII" and self._sii_consistent:
             shapley_interactions_values = self.kernel_shap_iq_routine(
@@ -167,6 +179,11 @@ class Regression(Approximator):
                 game_values=game_values,
                 index_approximation=self.approximation_index,
             )
+
+        regression_end_time = time.time()
+        self.runtime_last_approximate_run["regression"] = (
+            regression_end_time - game_evaluation_end_time
+        )
 
         baseline_value = float(game_values[self._sampler.empty_coalition_index])
 
@@ -182,7 +199,16 @@ class Regression(Approximator):
             estimation_budget=budget,
         )
 
-        return finalize_computed_interactions(interactions, target_index=self.index)
+        final_result = finalize_computed_interactions(interactions, target_index=self.index)
+        shapiq_post_processing_end_time = time.time()
+        self.runtime_last_approximate_run["shapiq_post_processing"] = (
+            shapiq_post_processing_end_time - regression_end_time
+        )
+        self.runtime_last_approximate_run["total"] = (
+            shapiq_post_processing_end_time - approximate_start_time
+        )
+
+        return final_result
 
     def kernel_shap_iq_routine(
         self,
