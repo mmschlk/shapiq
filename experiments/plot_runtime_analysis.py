@@ -35,7 +35,7 @@ DATA_NAMES = {
 }
 
 
-LINE_STYLES_COMPONENT = {"Evaluations": ":", "Computation": "-"}
+LINE_STYLES_COMPONENT = {"Evaluations": ":", "Computation": "-", "Linear Fit": "--"}
 
 
 def plot_runtime(group_sorted, plot_legend=False):
@@ -46,6 +46,34 @@ def plot_runtime(group_sorted, plot_legend=False):
         color = STYLE_DICT[approximator]["color"]
 
         subset = group_sorted[group_sorted["approximator"] == approximator]
+
+        if len(subset) > 0:
+            regression_linear_fit = np.polyfit(subset["budget"], subset["regression_mean"], 1)
+            subset["regression_linear_fit"] = regression_linear_fit[0] * subset["budget"] + regression_linear_fit[1]
+            evaluations_linear_fit = np.polyfit(
+                subset["budget"], subset["evaluations_mean"], 1
+            )
+            subset["evaluations_linear_fit"] = (
+                evaluations_linear_fit[0] * subset["budget"] + evaluations_linear_fit[1]
+            )
+            ax.plot(
+                subset["budget"],
+                subset["regression_linear_fit"],
+                linestyle="--",
+                linewidth=LINE_THICKNESS,
+                marker=None,
+                color=color,
+                alpha=0.3,
+            )
+            ax.plot(
+                subset["budget"],
+                subset["evaluations_linear_fit"],
+                linestyle="--",
+                linewidth=LINE_THICKNESS,
+                color=color,
+                marker=None,
+                alpha=0.3,
+            )
         ax.plot(
             subset["budget"],
             subset["regression_mean"],
@@ -81,14 +109,18 @@ def plot_runtime(group_sorted, plot_legend=False):
 
     if plot_legend:
         ax.plot([], [], label="$\\bf{PolySHAP}$", color="none")
-        for component in ["Evaluations", "Computation"]:
+        for component in ["Evaluations", "Computation","Linear Fit"]:
+            if component in ["Evaluations", "Computation"]:
+                marker="o"
+            else:
+                marker=None
             ax.plot(
                 [],
                 [],
                 label=f"{component}",
                 color="black",
                 linestyle=LINE_STYLES_COMPONENT[component],
-                marker="o",
+                marker=marker,
                 linewidth=LINE_THICKNESS,
                 mec="white",
             )
@@ -103,7 +135,7 @@ def plot_runtime(group_sorted, plot_legend=False):
             )
         ax.legend()
     n_players = group_sorted["n_players"].iloc[0]
-    # ax.set_yscale("log")
+    ax.set_yscale("log")
     ax.set_xlabel("Budget")
     _set_x_axis_ticks(
         ax, n_players, 20000
@@ -125,9 +157,9 @@ def plot_runtime(group_sorted, plot_legend=False):
 if __name__ == "__main__":
     # This script plots the runtime analysis results from the CSV file
     df = pd.read_csv("runtime_analysis.csv")
-    df_baseline = pd.read_csv("runtime_analysis_baselines.csv")
-
-    df = pd.concat([df, df_baseline], ignore_index=True)
+    # df_baseline = pd.read_csv("runtime_analysis_baselines.csv")
+    #
+    # df = pd.concat([df, df_baseline], ignore_index=True)
 
     df = df[
         df["game_id"].isin(
@@ -190,6 +222,7 @@ if __name__ == "__main__":
     approximators_to_plot = [
         # "KernelSHAP",
         "RegressionMSR",
+        # "OldLeverageSHAP",
         "LeverageSHAP",
         "PolySHAP-2ADD",
         "PolySHAP-3ADD",

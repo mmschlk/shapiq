@@ -97,7 +97,7 @@ class RegressionMSR(Approximator):
         self._sampler.sample(budget)
         coalitions_matrix = (
             self._sampler.coalitions_matrix
-        )  # binary matrix of coalitionshttps://xgboost.readthedocs.io/en/stable/parameter.html
+        )  # binary matrix of coalitions
         sampling_end_time = time.time()
         self.runtime_last_approximate_run["sampling"] = (
             sampling_end_time - approximate_start_time
@@ -120,6 +120,7 @@ class RegressionMSR(Approximator):
             # subsample=0.8,
             # colsample_bytree=0.8,
             random_state=self._random_state,
+            n_jobs=1,
         )
         # Fit the model
         model.fit(coalitions_matrix, game_values)
