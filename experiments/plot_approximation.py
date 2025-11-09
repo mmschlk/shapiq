@@ -214,6 +214,7 @@ if __name__ == "__main__":
     # Plot paired vs standard
     plot_df = results_df[
         # (results_df["approximator"] == "PermutationSampling")
+        # (results_df["approximator"] == "RegressionMSR") |
         # | (results_df["approximator"] == "KernelSHAP")
         (results_df["approximator"] == "LeverageSHAP")
         # | (results_df["approximator"] == "PolySHAP-2ADD-10%")
