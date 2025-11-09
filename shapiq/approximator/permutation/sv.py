@@ -169,34 +169,35 @@ class PermutationSamplingSV(Approximator):
                     coalitions[coalition_index, tuple(coalition)] = True
                     coalition_index += 1
 
-            # evaluate the collected coalitions
-            game_values = game(coalitions)
-            used_budget += len(coalitions)
+            if len(coalitions) > 0:
+                # evaluate the collected coalitions
+                game_values = game(coalitions)
+                used_budget += len(coalitions)
 
-            # update the estimates
-            coalition_index = 0
-            for permutation_id in range(n_permutations):
-                # update the first player in the permutation
-                permutation = permutations[permutation_id]
-                marginal_con = game_values[coalition_index] - empty_val
-                permutation_idx = self._interaction_lookup[(permutation[0],)]
-                result[permutation_idx] += marginal_con
-                counts[permutation_idx] += 1
-                # update the players in the middle of the permutation
-                for i in range(1, self.n - 1):
-                    marginal_con = (
-                        game_values[coalition_index + 1] - game_values[coalition_index]
-                    )
-                    permutation_idx = self._interaction_lookup[(permutation[i],)]
+                # update the estimates
+                coalition_index = 0
+                for permutation_id in range(n_permutations):
+                    # update the first player in the permutation
+                    permutation = permutations[permutation_id]
+                    marginal_con = game_values[coalition_index] - empty_val
+                    permutation_idx = self._interaction_lookup[(permutation[0],)]
+                    result[permutation_idx] += marginal_con
+                    counts[permutation_idx] += 1
+                    # update the players in the middle of the permutation
+                    for i in range(1, self.n - 1):
+                        marginal_con = (
+                            game_values[coalition_index + 1] - game_values[coalition_index]
+                        )
+                        permutation_idx = self._interaction_lookup[(permutation[i],)]
+                        result[permutation_idx] += marginal_con
+                        counts[permutation_idx] += 1
+                        coalition_index += 1
+                    # update the last player in the permutation
+                    marginal_con = full_val - game_values[coalition_index]
+                    permutation_idx = self._interaction_lookup[(permutation[self.n - 1],)]
                     result[permutation_idx] += marginal_con
                     counts[permutation_idx] += 1
                     coalition_index += 1
-                # update the last player in the permutation
-                marginal_con = full_val - game_values[coalition_index]
-                permutation_idx = self._interaction_lookup[(permutation[self.n - 1],)]
-                result[permutation_idx] += marginal_con
-                counts[permutation_idx] += 1
-                coalition_index += 1
 
         result = np.divide(result, counts, out=result, where=counts != 0)
 
