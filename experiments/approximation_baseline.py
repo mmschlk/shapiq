@@ -1,7 +1,4 @@
 from __future__ import annotations
-
-import multiprocessing as mp
-
 import numpy as np
 from init_approximator import get_approximators
 
@@ -16,9 +13,9 @@ if __name__ == "__main__":
     """
     RANDOM_STATE = 40  # random state for the games
     # ID_CONFIG_APPROXIMATORS = 40  # PAIRING=False, REPLACEMENT=True
-    # ID_CONFIG_APPROXIMATORS = 39  # PAIRING=False, REPLACEMENT=False
+    ID_CONFIG_APPROXIMATORS = 39  # PAIRING=False, REPLACEMENT=False
     # ID_CONFIG_APPROXIMATORS = 38  # PAIRING=True, REPLACEMENT=True
-    ID_CONFIG_APPROXIMATORS = 37  # PAIRING=True, REPLACEMENT=False
+    # ID_CONFIG_APPROXIMATORS = 37  # PAIRING=True, REPLACEMENT=False
 
     if ID_CONFIG_APPROXIMATORS == 40:
         REPLACEMENT = True

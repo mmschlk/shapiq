@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.special import binom, comb
 
-from shapiq import PermutationSamplingSV, UnbiasedKernelSHAP, SVARM
+from shapiq import PermutationSamplingSV, UnbiasedKernelSHAP, SVARM, KernelSHAP
 from shapiq.approximator.regressionMSR import RegressionMSR
 from shapiq.approximator.regression.polyshap import (
     ExplanationFrontierGenerator,
@@ -52,6 +52,18 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
             replacement=REPLACEMENT,
         )
         leverage_shap.name = "LeverageSHAP"
+        approximator_list.append(leverage_shap)
+
+    if "OldLeverageSHAP" in APPROXIMATORS:
+        # LeverageSHAP
+        leverage_shap = KernelSHAP(
+            n_players,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        leverage_shap.name = "OldLeverageSHAP"
         approximator_list.append(leverage_shap)
 
     if "PolySHAP-2ADD" in APPROXIMATORS:
@@ -252,6 +264,7 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
             pairing_trick=PAIRING,
             replacement=REPLACEMENT,
             random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
         )
         msr.name = "MSR"
         approximator_list.append(msr)
@@ -262,6 +275,7 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
             pairing_trick=PAIRING,
             replacement=REPLACEMENT,
             random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
         )
         svarm.name = "SVARM"
         approximator_list.append(svarm)
@@ -272,6 +286,7 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
             pairing_trick=PAIRING,
             replacement=REPLACEMENT,
             random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
         )
         regression_msr.name = "RegressionMSR"
         approximator_list.append(regression_msr)

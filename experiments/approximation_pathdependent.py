@@ -1,7 +1,4 @@
 from __future__ import annotations
-
-import multiprocessing as mp
-
 import numpy as np
 from init_approximator import get_approximators
 
@@ -14,7 +11,6 @@ from shapiq.games.benchmark.local_xai.benchmark_tabular import (
     ForestFires,
     IndependentLinear60,
     RealEstate,
-    WineQuality,
 )
 from shapiq.games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
 
