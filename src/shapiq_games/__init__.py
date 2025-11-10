@@ -1,6 +1,7 @@
 """The shapiq-games library."""
 
 import importlib.util
+import warnings
 
 _missing = [
     module
@@ -10,10 +11,8 @@ _missing = [
 
 if _missing:
     msg = (
-        "The 'shapiq_games' package requires optional dependencies. "
-        "Please install shapiq with the 'games' extra:\n"
-        "    uv pip install 'shapiq[games]'\n"
-        "or\n"
-        "    pip install 'shapiq[games]'\n"
+        "The 'shapiq_games' package requires optional dependencies that are more than the normal"
+        " shapiq package. Install and import the packages as you go or preferably via,\n\n "
+        "    uv add --group all_ml"
     )
-    raise ImportError(msg)
+    warnings.warn(msg, ImportWarning, stacklevel=2)
