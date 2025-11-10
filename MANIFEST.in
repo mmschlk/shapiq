@@ -1,15 +1,12 @@
 # exclude configuration and metadata files
 exclude .readthedocs.yml
 exclude .pre-commit-config.yaml
-exclude .coveragerc
 exclude uv.lock
 
 # exclude unnecessary directories
-exclude tests/*
-exclude docs/*
-exclude examples/*
-exclude scripts/*
-exclude .github/*
-exclude benchmark/*
-
 prune data
+prune examples
+prune tests
+prune docs
+prune scripts
+prune benchmark
