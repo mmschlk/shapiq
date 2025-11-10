@@ -11,4 +11,5 @@ exclude examples/*
 exclude scripts/*
 exclude .github/*
 exclude benchmark/*
-exclude data/*
+
+prune data
