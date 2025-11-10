@@ -1,0 +1,12 @@
+# exclude configuration and metadata files
+exclude .readthedocs.yml
+exclude .pre-commit-config.yaml
+exclude uv.lock
+
+# exclude unnecessary directories
+prune data
+prune examples
+prune tests
+prune docs
+prune scripts
+prune benchmark

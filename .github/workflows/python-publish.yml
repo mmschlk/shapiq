@@ -32,16 +32,13 @@ jobs:
         fetch-depth: 0
         ref: ${{ github.event.release.tag_name }}  # build exactly the released tag
 
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.12'
-
-    - name: Install uv
+    - name: Install uv and python
       uses: astral-sh/setup-uv@v7
+      with:
+          python-version: '3.12'
 
     - name: Build package
-      run: python -m build
+      run: uv build
 
     - name: Upload dist artifact
       uses: actions/upload-artifact@v5
