@@ -36,11 +36,17 @@ class ExplanationFrontierGenerator:
         return explanation_basis
 
     def generate_partial(self, n_explanation_terms, sizes_to_exclude=None):
-        perm = list(self.N)
-        np.random.shuffle(perm)
         explanation_basis = {}
         S_pos = 0
-        for S in powerset(self.N):
+        # generate individual's basis
+        for S in powerset(self.N, max_size=1):
+            explanation_basis[S] = S_pos
+            S_pos += 1
+
+        # add interactions in random order
+        perm = list(self.N)
+        np.random.shuffle(perm)
+        for S in powerset(self.N, min_size=2):
             if sizes_to_exclude is not None and len(S) in sizes_to_exclude:
                 continue
             if S_pos < n_explanation_terms:
@@ -49,7 +55,6 @@ class ExplanationFrontierGenerator:
             else:
                 break
         return explanation_basis
-
 
 class PolySHAP(Approximator):
     """Estimates the Shapley values using polynomial regression. Extends KernelSHAP.`_.
@@ -178,20 +183,10 @@ class PolySHAP(Approximator):
             * self._sampler.sampling_adjustment_weights[2:]
         )
 
-
-
-        if np.shape(self.interaction_matrix_binary)[0]>self.n+1: # No interactions
-            X_tilde= np. zeros((budget-2,len(self.explanation_frontier)-1))
+        if self.n_variables>self.n: # interactions available
+            X_tilde= np. zeros((budget-2,self.n_variables))
             for pos,row in enumerate(self.interaction_matrix_binary[1:,:]):
                 X_tilde[:,pos] = np.all(row<= self._sampler.coalitions_matrix[2:,:],axis=1)*sampling_normalization
-            # Check inclusion: (without loop)
-            # X_tilde = sampling_normalization[:,np.newaxis]*np.all(
-            #     (
-            #         self.interaction_matrix_binary[1:, :][None, :, :]
-            #         <= self._sampler.coalitions_matrix[2:, :][:, None, :]
-            #     ),
-            #     axis=2,
-            # )
         else:
             X_tilde = sampling_normalization[:,np.newaxis]*self._sampler.coalitions_matrix[2:,:]
 
