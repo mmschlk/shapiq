@@ -32,10 +32,11 @@ DATA_NAMES = {
     "ViT3by3Patches": "ViT9 ($d=9$)",
     "ResNet18w14Superpixel": "ResNet18 ($d=14$)",
     "SentimentIMDBDistilBERT14": "DistilBERT ($d=14$)",
+    "CIFAR10": "CIFAR10-ViT16 ($d=16$)",
 }
 
 
-LINE_STYLES_COMPONENT = {"Evaluations": ":", "Computation": "-", "Linear Fit": "--"}
+LINE_STYLES_COMPONENT = {"Runtime": "-", "Evaluations": ":", "Computation": "-", "Linear Fit": "--"}
 
 
 def plot_runtime(group_sorted, plot_legend=False):
@@ -48,6 +49,8 @@ def plot_runtime(group_sorted, plot_legend=False):
         subset = group_sorted[group_sorted["approximator"] == approximator]
 
         if len(subset) > 0:
+            total_linear_fit = np.polyfit(subset["budget"], subset["total_mean"], 1)
+            subset["total_linear_fit"] = total_linear_fit[0] * subset["budget"] + total_linear_fit[1]
             regression_linear_fit = np.polyfit(subset["budget"], subset["regression_mean"], 1)
             subset["regression_linear_fit"] = regression_linear_fit[0] * subset["budget"] + regression_linear_fit[1]
             evaluations_linear_fit = np.polyfit(
@@ -58,25 +61,34 @@ def plot_runtime(group_sorted, plot_legend=False):
             )
             ax.plot(
                 subset["budget"],
-                subset["regression_linear_fit"],
+                subset["total_linear_fit"],
                 linestyle="--",
                 linewidth=LINE_THICKNESS,
                 marker=None,
                 color=color,
                 alpha=0.3,
             )
-            ax.plot(
-                subset["budget"],
-                subset["evaluations_linear_fit"],
-                linestyle="--",
-                linewidth=LINE_THICKNESS,
-                color=color,
-                marker=None,
-                alpha=0.3,
-            )
+            # ax.plot(
+            #     subset["budget"],
+            #     subset["regression_linear_fit"],
+            #     linestyle="--",
+            #     linewidth=LINE_THICKNESS,
+            #     marker=None,
+            #     color=color,
+            #     alpha=0.3,
+            # )
+            # ax.plot(
+            #     subset["budget"],
+            #     subset["evaluations_linear_fit"],
+            #     linestyle="--",
+            #     linewidth=LINE_THICKNESS,
+            #     color=color,
+            #     marker=None,
+            #     alpha=0.3,
+            # )
         ax.plot(
             subset["budget"],
-            subset["regression_mean"],
+            subset["total_mean"],
             linestyle="-",
             marker="o",
             linewidth=LINE_THICKNESS,
@@ -85,32 +97,48 @@ def plot_runtime(group_sorted, plot_legend=False):
         )
         ax.fill_between(
             subset["budget"],
-            subset["regression_mean"] - subset["regression_sem"],
-            subset["regression_mean"] + subset["regression_sem"],
+            subset["total_mean"] - subset["total_sem"],
+            subset["total_mean"] + subset["total_sem"],
             alpha=0.1,
             color=color,
         )
-        ax.plot(
-            subset["budget"],
-            subset["evaluations_mean"],
-            linestyle=":",
-            marker="o",
-            linewidth=LINE_THICKNESS,
-            markersize=MARKER_SIZE,
-            color=color,
-        )
-        ax.fill_between(
-            subset["budget"],
-            subset["evaluations_mean"] - subset["evaluations_sem"],
-            subset["evaluations_mean"] + subset["evaluations_sem"],
-            alpha=0.1,
-            color=color,
-        )
+        # ax.plot(
+        #     subset["budget"],
+        #     subset["regression_mean"],
+        #     linestyle="-",
+        #     marker="o",
+        #     linewidth=LINE_THICKNESS,
+        #     markersize=MARKER_SIZE,
+        #     color=color,
+        # )
+        # ax.fill_between(
+        #     subset["budget"],
+        #     subset["regression_mean"] - subset["regression_sem"],
+        #     subset["regression_mean"] + subset["regression_sem"],
+        #     alpha=0.1,
+        #     color=color,
+        # )
+        # ax.plot(
+        #     subset["budget"],
+        #     subset["evaluations_mean"],
+        #     linestyle=":",
+        #     marker="o",
+        #     linewidth=LINE_THICKNESS,
+        #     markersize=MARKER_SIZE,
+        #     color=color,
+        # )
+        # ax.fill_between(
+        #     subset["budget"],
+        #     subset["evaluations_mean"] - subset["evaluations_sem"],
+        #     subset["evaluations_mean"] + subset["evaluations_sem"],
+        #     alpha=0.1,
+        #     color=color,
+        # )
 
     if plot_legend:
         ax.plot([], [], label="$\\bf{PolySHAP}$", color="none")
-        for component in ["Evaluations", "Computation","Linear Fit"]:
-            if component in ["Evaluations", "Computation"]:
+        for component in ["Runtime","Linear Fit"]:
+            if component in ["Runtime"]:
                 marker="o"
             else:
                 marker=None
@@ -145,7 +173,10 @@ def plot_runtime(group_sorted, plot_legend=False):
     plt.yticks(fontsize=14)
     dataset = group_sorted["game_id"].unique()[0]
     # take the part before the last two underscores (_random_forest)
-    dataset = "_".join(dataset.split("_")[:-2])
+    if len(dataset.split("_")) > 2:
+        dataset = "_".join(dataset.split("_")[:-2])
+    else:
+        dataset = dataset.split("_")[0]
     ax.set_title(
         f"{DATA_NAMES[dataset]}",
         fontsize=TITLE_FONT_SIZE,
@@ -157,9 +188,8 @@ def plot_runtime(group_sorted, plot_legend=False):
 if __name__ == "__main__":
     # This script plots the runtime analysis results from the CSV file
     df = pd.read_csv("runtime_analysis.csv")
-    # df_baseline = pd.read_csv("runtime_analysis_baselines.csv")
-    #
-    # df = pd.concat([df, df_baseline], ignore_index=True)
+    df_cifar10 = pd.read_csv("runtime_analysis_cifar10.csv")
+    df = pd.concat([df, df_cifar10], ignore_index=True)
 
     df = df[
         df["game_id"].isin(
@@ -168,6 +198,7 @@ if __name__ == "__main__":
                 "breast_cancer_random_forest",
                 "real_estate_random_forest",
                 "independentlinear60_random_forest",
+                "CIFAR10_1",
             ]
         )
     ]
@@ -197,14 +228,15 @@ if __name__ == "__main__":
         )
         .reset_index()
     )
-
     runtime_results["regression_sem"] = runtime_results[
         ("regression", "std")
     ] / np.sqrt(runtime_results[("regression", "count")])
     runtime_results["evaluations_sem"] = runtime_results[
         ("evaluations", "std")
     ] / np.sqrt(runtime_results[("evaluations", "count")])
-
+    runtime_results["total_sem"] = runtime_results[
+        ("total", "std")
+    ] / np.sqrt(runtime_results[("total", "count")])
     # flatten column multi-index
     runtime_results.columns = [
         "_".join(filter(None, col)).rstrip("_") for col in runtime_results.columns

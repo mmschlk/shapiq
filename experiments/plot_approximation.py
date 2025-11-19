@@ -23,6 +23,7 @@ DATA_NAMES = {
     "ViT3by3Patches": "ViT9 ($d=9$)",
     "ResNet18w14Superpixel": "ResNet18 ($d=14$)",
     "SentimentIMDBDistilBERT14": "DistilBERT ($d=14$)",
+    "CIFAR10": "CIFAR-10 ViT16 ($d=16$)"
 }
 
 APPROXIMATOR_RENAMING = {
@@ -40,6 +41,7 @@ APPROXIMATOR_RENAMING = {
     "PolySHAP-3ADD-20%": "3-PolySHAP (20%)",
     "PolySHAP-3ADD-50%": "3-PolySHAP (50%)",
     "PolySHAP-3ADD-75%": "3-PolySHAP (75%)",
+    "PolySHAP-3ADD-dlog(d)": "3-PolySHAP (log)",
 }
 
 TITLE_FONT_SIZE = 24
@@ -81,10 +83,21 @@ def compute_value(row):
     return float(total)
 
 
+def apply_comb_2(n):
+    return math.comb(n, 2)
+
+
+def apply_comb_3(n):
+    return math.comb(n, 3)
+
 if __name__ == "__main__":
     # Load the results from the CSV file
     results_df = pd.read_csv("results_benchmark.csv")
     results_df = results_df.sort_values(by="n_players")
+
+    results_unbiasedkshap = results_df[results_df["approximator"] == "MSR"]
+    results_unbiasedkshap["approximator"] = "UnbiasedKernelSHAP"
+    results_df = pd.concat([results_df, results_unbiasedkshap],ignore_index=True)
 
     GAME_IDS = results_df["game_id"].unique()
     GAME_TYPES = results_df["game_type"].unique()
@@ -95,6 +108,29 @@ if __name__ == "__main__":
         lambda x: pd.Series(parse_approximator(x))
     )
     results_df["minimum_budget_to_plot"] = results_df.apply(compute_value, axis=1)
+    # Minimum budget to plot for each approximator
+    ids = results_df["approximator"]=="PolySHAP-2ADD-50%"
+    results_df["minimum_budget_to_plot"][ids] = 1 + results_df[ids]["n_players"] + 0.5*results_df[ids]["n_players"].apply(apply_comb_2)
+    ids = results_df["approximator"]=="PolySHAP-3ADD-50%"
+    results_df["minimum_budget_to_plot"][ids] = 1 + results_df[ids]["n_players"] + results_df["n_players"].apply(apply_comb_2) + 0.5*results_df[ids]["n_players"].apply(apply_comb_3)
+    ids = results_df["approximator"]=="PolySHAP-3ADD-dlog(d)"
+    results_df["minimum_budget_to_plot"][ids] = 1 + results_df[ids]["n_players"] + results_df["n_players"].apply(apply_comb_2) + results_df[ids]["n_players"]*np.log(results_df[ids]["n_players"].apply(apply_comb_3))
+    ids = results_df["approximator"] == "PolySHAP-3ADD-dlog(d)/2"
+    results_df["minimum_budget_to_plot"][ids] = 1 + results_df[ids]["n_players"] + results_df["n_players"].apply(
+        apply_comb_2) + results_df[ids]["n_players"] * np.log(results_df[ids]["n_players"].apply(apply_comb_3)) / 2
+    ids = results_df["approximator"]=="PolySHAP-3ADD-2dlog(d)"
+    results_df["minimum_budget_to_plot"][ids] = 1 + results_df[ids]["n_players"] + results_df["n_players"].apply(apply_comb_2) + 2*results_df[ids]["n_players"]*np.log(results_df[ids]["n_players"].apply(apply_comb_3))
+    ids = results_df["approximator"]=="PolySHAP-3ADD-3dlog(d)"
+    results_df["minimum_budget_to_plot"][ids] = 1 + results_df[ids]["n_players"] + results_df["n_players"].apply(apply_comb_2) + 3*results_df[ids]["n_players"]*np.log(results_df[ids]["n_players"].apply(apply_comb_3))
+    ids = results_df["approximator"]=="PolySHAP-3ADD-dlog(d)sqrt(d)"
+    results_df["minimum_budget_to_plot"][ids] = 1 + results_df[ids]["n_players"] + results_df["n_players"].apply(apply_comb_2) + np.sqrt(results_df[ids]["n_players"])*results_df[ids]["n_players"]*np.log(results_df[ids]["n_players"].apply(apply_comb_3))
+    ids = results_df["approximator"]=="PolySHAP-3ADD-5d"
+    results_df["minimum_budget_to_plot"][ids] = 1 + results_df[ids]["n_players"] + results_df["n_players"].apply(apply_comb_2) + 5*results_df[ids]["n_players"]
+    ids = results_df["approximator"]=="PolySHAP-3ADD-4000"
+    results_df["minimum_budget_to_plot"][ids] = 4000
+    ids = results_df["approximator"]=="PolySHAP-3ADD-3000"
+    results_df["minimum_budget_to_plot"][ids] = 3000
+
     results_df = results_df[
         results_df["used_budget"] >= results_df["minimum_budget_to_plot"]
     ]
@@ -123,10 +159,10 @@ if __name__ == "__main__":
     plot_df = results_df[
         # (results_df["approximator"] == "MSR")
         # | (results_df["approximator"] == "SVARM")
-        (results_df["approximator"] == "RegressionMSR")
-        | (results_df["approximator"] == "PermutationSampling")
+        # (results_df["approximator"] == "RegressionMSR")
+        # | (results_df["approximator"] == "PermutationSampling")
         # | (results_df["approximator"] == "KernelSHAP")
-        | (results_df["approximator"] == "LeverageSHAP")
+        (results_df["approximator"] == "LeverageSHAP")
         # | (results_df["approximator"] == "PolySHAP-2ADD-10%")
         # | (results_df["approximator"] == "PolySHAP-2ADD-20%")
         | (results_df["approximator"] == "PolySHAP-2ADD-50%")
@@ -214,7 +250,7 @@ if __name__ == "__main__":
     # Plot paired vs standard
     plot_df = results_df[
         # (results_df["approximator"] == "PermutationSampling")
-        # (results_df["approximator"] == "RegressionMSR") |
+        (results_df["approximator"] == "RegressionMSR") |
         # | (results_df["approximator"] == "KernelSHAP")
         (results_df["approximator"] == "LeverageSHAP")
         # | (results_df["approximator"] == "PolySHAP-2ADD-10%")
@@ -313,3 +349,179 @@ if __name__ == "__main__":
                 fig.savefig(
                     f"plots/{game_type}/{game_id}_{metric}_paired_vs_standard.pdf"
                 )
+
+    # Plot paired and baselines
+    plot_df = results_df[
+        (results_df["approximator"] == "PermutationSampling") |
+        (results_df["approximator"] == "RegressionMSR") |
+        (results_df["approximator"] == "SVARM") |
+        (results_df["approximator"] == "MSR") |
+        (results_df["approximator"] == "UnbiasedKernelSHAP") |
+        # | (results_df["approximator"] == "KernelSHAP")
+        (results_df["approximator"] == "LeverageSHAP")
+        # | (results_df["approximator"] == "PolySHAP-2ADD-10%")
+        # | (results_df["approximator"] == "PolySHAP-2ADD-20%")
+        # | (results_df["approximator"] == "PolySHAP-2ADD-50%")
+        # | (results_df["approximator"] == "PolySHAP-2ADD-75%")
+        # | (results_df["approximator"] == "PolySHAP-2ADD")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-20%")
+        | (results_df["approximator"] == "PolySHAP-3ADD-50%")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-75%")
+        | (results_df["approximator"] == "PolySHAP-3ADD")
+        | (results_df["approximator"] == "PolySHAP-4ADD")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-5d")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-4000")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-3000")
+        | (results_df["approximator"] == "PolySHAP-3ADD-dlog(d)")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-dlog(d)/2")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-2dlog(d)")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-3dlog(d)")
+        # | (results_df["approximator"] == "PolySHAP-3ADD-dlog(d)sqrt(d)")
+        ]
+
+    plot_df = plot_df[plot_df["id_config_approximator"] == 37]
+
+    for game_type in GAME_TYPES:
+        plot_df_game_type = plot_df[results_df["game_type"] == game_type]
+        for game_id in GAME_IDS:
+            plot_df_game_id = plot_df_game_type[plot_df_game_type["game_id"] == game_id]
+            if plot_df_game_id["n_players"].min() < 60:
+                plot_df_game_id = plot_df_game_id[plot_df_game_id["approximator"] != "PolySHAP-3ADD-dlog(d)"]
+            if len(plot_df_game_id) > 0:
+                metric = "MSE"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=True,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_competitors.pdf")
+
+                metric = "Precision@5"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=False,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_competitors.pdf")
+
+                metric = "Precision@10"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=False,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_competitors.pdf")
+
+                metric = "SpearmanCorrelation@10"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=False,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_competitors.pdf")
+
+                metric = "SpearmanCorrelation"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=False,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_paired_competitors.pdf")
+
+
+    plot_df = plot_df[plot_df["id_config_approximator"] == 39]
+
+    for game_type in GAME_TYPES:
+        plot_df_game_type = plot_df[results_df["game_type"] == game_type]
+        for game_id in GAME_IDS:
+            plot_df_game_id = plot_df_game_type[plot_df_game_type["game_id"] == game_id]
+            if len(plot_df_game_id) > 0:
+                metric = "MSE"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=True,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_standard_competitors.pdf")
+
+                metric = "Precision@5"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=False,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_standard_competitors.pdf")
+
+                metric = "Precision@10"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=False,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_standard_competitors.pdf")
+
+                metric = "SpearmanCorrelation@10"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=False,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_standard_competitors.pdf")
+
+                metric = "SpearmanCorrelation"
+                dataset = plot_df_game_id["game"].unique()[0]
+                fig, ax = plot_approximation_quality(
+                    data=plot_df_game_id,
+                    metric=metric,
+                    log_scale_y=False,
+                    log_scale_x=False,
+                    legend=False,
+                )
+                ax.set_title(DATA_NAMES[dataset], fontsize=TITLE_FONT_SIZE)
+                fig.tight_layout()
+                fig.savefig(f"plots/{game_type}/{game_id}_{metric}_standard_competitors.pdf")

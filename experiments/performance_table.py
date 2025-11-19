@@ -23,6 +23,7 @@ DATA_NAMES = {
     "ViT3by3Patches": "ViT9 ($d=9$)",
     "ResNet18w14Superpixel": "ResNet18 ($d=14$)",
     "SentimentIMDBDistilBERT14": "DistilBERT ($d=14$)",
+    "CIFAR10": "CIFAR-10 ViT16 ($d=16$)"
 }
 
 APPROXIMATOR_RENAMING = {
@@ -40,6 +41,7 @@ APPROXIMATOR_RENAMING = {
     "PolySHAP-3ADD-20%": "3-PolySHAP (20%)",
     "PolySHAP-3ADD-50%": "3-PolySHAP (50%)",
     "PolySHAP-3ADD-75%": "3-PolySHAP (75%)",
+    "PolySHAP-3ADD-dlog(d)": "3-PolySHAP (log)",
 }
 
 TITLE_FONT_SIZE = 24
@@ -121,7 +123,10 @@ if __name__ == "__main__":
         | (results_df["approximator"] == "PolySHAP-3ADD-50%")
         | (results_df["approximator"] == "PolySHAP-3ADD")
         | (results_df["approximator"] == "PolySHAP-4ADD")
-    ]
+        | (results_df["approximator"] == "PolySHAP-3ADD-dlog(d)")
+        | (results_df["approximator"] == "MSR")
+        | (results_df["approximator"] == "SVARM")
+        ]
 
     results_df["min_table_budget"] = results_df["n_players"].apply(threshold_budget)
 

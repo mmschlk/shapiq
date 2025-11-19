@@ -14,9 +14,10 @@ from shapiq.utils.sets import powerset
 
 
 class ExplanationFrontierGenerator:
-    def __init__(self, N: set):
+    def __init__(self, N: set, random_state: int | None = None):
         self.N = N
         self.n = len(N)
+        self.random_state = random_state
 
     def generate_kadd(self, max_order, sizes_to_exclude=None):
         explanation_basis = {}
@@ -45,6 +46,9 @@ class ExplanationFrontierGenerator:
 
         # add interactions in random order
         perm = list(self.N)
+        # set random state of numpy
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
         np.random.shuffle(perm)
         for S in powerset(self.N, min_size=2):
             if sizes_to_exclude is not None and len(S) in sizes_to_exclude:
@@ -215,7 +219,7 @@ class PolySHAP(Approximator):
             values=sv,
             index="SV",
             interaction_lookup=sv_lookup,
-            baseline_value=empty_set_value,
+            baseline_value=float(empty_set_value),
             min_order=self.min_order,
             max_order=self.max_order,
             n_players=self.n,

@@ -31,10 +31,11 @@ if __name__ == "__main__":
         "breast_cancer",
         "independentlinear60",
         "corrgroups60",
+        "CIFAR10",
     ]
     MODELS = ["random_forest", "1"]
     RANDOM_STATE = 40
-    ID_EXPLANATIONS = range(10)  # ids of test instances to explain
+    ID_EXPLANATIONS = range(30)  # ids of test instances to explain
     GAME_TYPES = [
         "exhaustive",
         "pathdependent",

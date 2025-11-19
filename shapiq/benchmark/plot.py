@@ -34,6 +34,7 @@ DATA_NAMES = {
     "ViT3b3Patches": "ViT (d=9)",
     "ResNet18w14Superpixel": "ResNet18 (d=14)",
     "SentimentIMDBDistilBERT14": "DistilBERT (d=14)",
+    "CIFAR10": "CIFAR10-ViT (d=16)",
 }
 
 
@@ -52,15 +53,15 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "SVARM": {"color": "#00b4d8", "marker": "o"},
     # shapiq
     "SHAPIQ": {"color": "#ef27a6", "marker": "o"},
-    "UnbiasedKernelSHAP": {"color": "#ef27a6", "marker": "o"},
+    "UnbiasedKernelSHAP": {"color": "#B8B8B8", "marker": "o"},
     # misc SV
     "OwenSamplingSV": {"color": "#7DCE82", "marker": "o"},
     "StratifiedSamplingSV": {"color": "#4B7B4E", "marker": "o"},
     # PolySHAP plots
-    "PermutationSampling": {"color": "#bdbdbd", "marker": "o"},
-    "MSR": {"color": "#666666", "marker": "o"},
-    "SVARM": {"color": "#707070", "marker": "o"},
-    "RegressionMSR": {"color": "#636363", "marker": "o"},
+    "PermutationSampling": {"color": "#E0E0E0", "marker": "o"},
+    "MSR": {"color": "#B0B0B0", "marker": "o"},
+    "SVARM": {"color": "#808080", "marker": "o"},
+    "RegressionMSR": {"color": "#404040", "marker": "o"},
     "KernelSHAP": {"color": "#d62728", "marker": "o"},
     "LeverageSHAP": {"color": "#009688", "marker": "o"},
     # "LeverageSHAP": {"color": "#9467bd", "marker": "X"},
@@ -89,6 +90,14 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "PolySHAP-3ADD-50%": {"color": "#FF5722", "marker": "o"},
     "PolySHAP-3ADD": {"color": "#E64A19", "marker": "o"},
     "PolySHAP-4ADD": {"color": "#BF360C", "marker": "o"},
+    # "PolySHAP-3ADD-5d": {"color": "#FF5722", "marker": "o"},
+    "PolySHAP-3ADD-4000": {"color": "#FFB74D", "marker": "o"},
+    "PolySHAP-3ADD-3000": {"color": "#FFE0B2", "marker": "o"},
+    "PolySHAP-3ADD-dlog(d)": {"color": "#FF8A33", "marker": "o"},
+    "PolySHAP-3ADD-dlog(d)/2": {"color": "#FF5722", "marker": "o"},
+    # "PolySHAP-3ADD-2dlog(d)": {"color": "#FFB74D", "marker": "o"},
+    # "PolySHAP-3ADD-3dlog(d)": {"color": "#FF5722", "marker": "o"},
+    # "PolySHAP-3ADD-dlog(d)sqrt(d)": {"color": "#E64A19", "marker": "o"},
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
@@ -108,7 +117,7 @@ MARKER_SIZE = 7
 
 
 LOG_SCALE_MAX = None
-LOG_SCALE_MIN = 1e-7
+LOG_SCALE_MIN = 1e-9
 
 METRICS_LIMITS = {
     "Precision@10": (0.7, 1.02),
@@ -372,7 +381,7 @@ def plot_approximation_quality(
         add_legend(ax, approximators, orders=orders)
 
     if log_scale_min is not None:
-        log_scale_min = max(log_scale_min, data_order[aggregation].min() / 2)
+        log_scale_min = max(log_scale_min, metric_data[aggregation].min() / 2)
         ax.set_ylim(bottom=log_scale_min)
     if log_scale_max is not None:
         log_scale_max = min(log_scale_max, data_order[aggregation].max() * 2)

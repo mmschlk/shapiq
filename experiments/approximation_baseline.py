@@ -1,7 +1,11 @@
 from __future__ import annotations
 import numpy as np
+
+from experiments.cifar10 import LocalXAICIFAR10Game
 from init_approximator import get_approximators
 
+import os
+import multiprocessing as mp
 from shapiq.benchmark import load_games_from_configuration
 
 if __name__ == "__main__":
@@ -11,11 +15,12 @@ if __name__ == "__main__":
     are computed using exhaustive evaluation. Approximations are stored in
     /approximations/exhaustive/ and ground truth values in /ground_truth/exhaustive/.
     """
+    RECOMPUTE = False # If False, then will skip approximation if file exists
     RANDOM_STATE = 40  # random state for the games
     # ID_CONFIG_APPROXIMATORS = 40  # PAIRING=False, REPLACEMENT=True
-    ID_CONFIG_APPROXIMATORS = 39  # PAIRING=False, REPLACEMENT=False
+    # ID_CONFIG_APPROXIMATORS = 39  # PAIRING=False, REPLACEMENT=False
     # ID_CONFIG_APPROXIMATORS = 38  # PAIRING=True, REPLACEMENT=True
-    # ID_CONFIG_APPROXIMATORS = 37  # PAIRING=True, REPLACEMENT=False
+    ID_CONFIG_APPROXIMATORS = 39  # PAIRING=True, REPLACEMENT=False
 
     if ID_CONFIG_APPROXIMATORS == 40:
         REPLACEMENT = True
@@ -34,14 +39,15 @@ if __name__ == "__main__":
     RUN_APPROXIMATION = True
 
     GAME_IDENTIFIERS = [
-        "SentimentIMDBDistilBERT14",
-        "ResNet18w14Superpixel",
-        "ViT3by3Patches",
-        "ViT4by4Patches",
+        "CIFAR10",
+        # "SentimentIMDBDistilBERT14",
+        # "ResNet18w14Superpixel",
+        # "ViT3by3Patches",
+        # "ViT4by4Patches",
     ]  # , "ImageClassifierLocalXAI"]
     # game_identifier = "SOUM"
     config_id = 1
-    n_games = 10
+    n_games = 30 #only 30 available
 
     GAMES = {}
 
@@ -78,6 +84,15 @@ if __name__ == "__main__":
                 n_games=n_games,
             )
             GAMES[game_identifier] = image_classifier
+        if game_identifier == "CIFAR10":
+            cifar10_games = []
+            for id_explain in range(n_games):
+                cifar10_game = LocalXAICIFAR10Game(id_explain=id_explain, random_state=RANDOM_STATE)
+                save_path = f"cifar10_precomputed/cifar10_{id_explain}_game_values.npz"
+                cifar10_game.load_values(save_path)
+                cifar10_games.append(cifar10_game)
+            GAMES[game_identifier] = cifar10_games
+
 
     if RUN_GROUND_TRUTH:
         # Compute the ground truth values for the games
@@ -98,8 +113,8 @@ if __name__ == "__main__":
                 print(f"Exact: {ground_truth} saved to {save_path}")
 
     APPROXIMATORS = [
-        # "MSR",
-        # "SVARM",
+        "MSR",
+        "SVARM",
         "RegressionMSR",
         "PermutationSampling",
         # "KernelSHAP",
@@ -107,6 +122,7 @@ if __name__ == "__main__":
         "PolySHAP-2ADD",
         "PolySHAP-3ADD",
         "PolySHAP-4ADD",
+        # "PolySHAP-5ADD",
         # "PolySHAP-2ADD-10%",
         # "PolySHAP-2ADD-20%",
         "PolySHAP-2ADD-50%",
@@ -115,6 +131,10 @@ if __name__ == "__main__":
         # "PolySHAP-3ADD-20%",
         "PolySHAP-3ADD-50%",
         # "PolySHAP-3ADD-75%",
+        "PolySHAP-3ADD-dlog(d)",
+        "PolySHAP-3ADD-2dlog(d)",
+        "PolySHAP-3ADD-3dlog(d)",
+        "PolySHAP-3ADD-dlog(d)sqrt(d)"
     ]
 
     MAX_BUDGET = 20000
@@ -131,9 +151,9 @@ if __name__ == "__main__":
         )
         min_budget = game_instance.n_players + 1
         max_budget = min(2**game_instance.n_players, MAX_BUDGET)
-        budget_range = np.logspace(
+        budget_range = np.round(np.logspace(
             np.log10(min_budget), np.log10(max_budget), N_BUDGET_STEPS
-        ).astype(int)
+        )).astype(int)
         for approximator in approximator_list:
             print(
                 "Computing approximations for",
@@ -144,9 +164,6 @@ if __name__ == "__main__":
                 id_explain,
             )
             for budget in budget_range:
-                shap_approx = approximator.approximate(
-                    budget=budget, game=game_instance
-                )
                 save_path = (
                     "approximations/exhaustive/"
                     + game_id
@@ -160,19 +177,28 @@ if __name__ == "__main__":
                     + str(budget)
                     + ".json"
                 )
+                if (not RECOMPUTE) and os.path.exists(save_path):
+                    print(f"Skipping existing file {save_path}")
+                    continue
+                if hasattr(approximator, "n_variables") and approximator.n_variables > budget:
+                    print(f"Skipping budget {budget} due to too many variables {approximator.n_variables}")
+                    continue
+                shap_approx = approximator.approximate(
+                    budget=budget, game=game_instance
+                )
                 shap_approx.save(save_path)
 
     if RUN_APPROXIMATION:
-        N_JOBS = 5
+        N_JOBS = 15
         # Compute the ground truth values for the games
         for game_identifier, game in GAMES.items():
             game_id = game_identifier + "_" + str(config_id)
-            for id_explain, game_instance in enumerate(game):
-                explain_instance((game_id, id_explain, game_instance))
-            # args_list = [
-            #     (game_id, id_explain, game_instance)
-            #     for id_explain, game_instance in enumerate(game)
-            # ]
+            # for id_explain, game_instance in enumerate(game):
+            #     explain_instance((game_id, id_explain, game_instance))
+            args_list = [
+                (game_id, id_explain, game_instance)
+                for id_explain, game_instance in enumerate(game)
+            ]
             # use for parallelization, does not work well with RegressionMSR
-            # with mp.Pool() as pool:
-            #     pool.map(explain_instance, args_list)
+            with mp.Pool() as pool:
+                pool.map(explain_instance, args_list)

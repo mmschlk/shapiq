@@ -5,6 +5,7 @@ import multiprocessing as mp
 import numpy as np
 from init_approximator import get_approximators
 
+from experiments.cifar10 import LocalXAICIFAR10Game
 from shapiq.games.benchmark.local_xai import AdultCensus, BikeSharing, CaliforniaHousing
 from shapiq.games.benchmark.local_xai.benchmark_tabular import (
     NHANESI,
@@ -51,44 +52,10 @@ if __name__ == "__main__":
     RUN_GROUND_TRUTH = False
     RUN_APPROXIMATION = True
 
-    # run the benchmark for the games
-    GAMES = [
-        CaliforniaHousing(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        # # BikeSharing(
-        # #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # # ),
-        # # ForestFires(
-        # #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # # ),
-        # # AdultCensus(
-        # #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # # ),
-        RealEstate(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        BreastCancer(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        IndependentLinear60(
-            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        ),
-        # Corrgroups60(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # NHANESI(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # CommunitiesAndCrime(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-    ]
-
     APPROXIMATORS = [
         # "KernelSHAP",
         "RegressionMSR",
-        "OldLeverageSHAP",
+        # "OldLeverageSHAP",
         "LeverageSHAP",
         "PolySHAP-2ADD",
         "PolySHAP-3ADD",
@@ -107,19 +74,18 @@ if __name__ == "__main__":
     N_BUDGET_STEPS = 10
 
     def explain_instance(args):
-        game_id, id_explain, runtime_df = args
-        tree_game = TREE_GAMES[id_explain]
+        game_instance, game_id, id_explain, runtime_df = args
         approximators = get_approximators(
-            APPROXIMATORS, game.n_players, RANDOM_STATE, PAIRING, REPLACEMENT
+            APPROXIMATORS, game_instance.n_players, RANDOM_STATE, PAIRING, REPLACEMENT
         )
-        min_budget = tree_game.n_players + 1
-        max_budget = min(2**game.n_players, MAX_BUDGET)
+        min_budget = game_instance.n_players + 1
+        max_budget = min(2**game_instance.n_players, MAX_BUDGET)
         budget_range = np.logspace(
             np.log10(min_budget), np.log10(max_budget), N_BUDGET_STEPS
         ).astype(int)
         # print(budget_range)
         for approximator in approximators:
-            if tree_game.n_players > 30 and approximator.name in [
+            if game_instance.n_players > 30 and approximator.name in [
                 "PolySHAP-3ADD",
                 "PolySHAP-3ADD-10%",
                 "PolySHAP-3ADD-20%",
@@ -127,7 +93,7 @@ if __name__ == "__main__":
                 "PolySHAP-3ADD-75%",
             ]:
                 continue
-            if tree_game.n_players > 20 and approximator.name in [
+            if game_instance.n_players > 20 and approximator.name in [
                 "PolySHAP-4ADD",
             ]:
                 continue
@@ -142,37 +108,28 @@ if __name__ == "__main__":
             for budget in budget_range:
                 try:
                     shap_approx = approximator.approximate(
-                        budget=budget, game=tree_game
+                        budget=budget, game=game_instance
                     )
                 except Exception as e:
                     import traceback
                     print(f"Couldn't compute (approximator={getattr(approximator, 'name', None)}, budget={budget}): {e}")
                     traceback.print_exc()
                     continue
-
                 df = pd.DataFrame([approximator.runtime_last_approximate_run])
                 df["game_id"] = game_id
                 df["id_explain"] = id_explain
                 df["approximator"] = approximator.name
                 df["budget"] = budget
-                df["n_players"] = tree_game.n_players
+                df["n_players"] = game_instance.n_players
                 df["id_config_approximator"] = ID_CONFIG_APPROXIMATORS
                 runtime_df = pd.concat([runtime_df, df])
-                runtime_df.to_csv(f"runtime_analysis.csv")
+                runtime_df.to_csv(f"runtime_analysis_cifar10.csv")
         return runtime_df
 
     if RUN_APPROXIMATION:
         runtime_df = pd.DataFrame()
-        for game in GAMES:
-            game_id = game.setup.dataset_name + "_" + game.setup.model_name
-            TREE_GAMES = []
-            for id_explain in ID_EXPLANATIONS:
-                x_explain = game.setup.x_test[id_explain, :]
-                tree_game = TreeSHAPIQXAI(x_explain, game.setup.model, verbose=False)
-                TREE_GAMES.append(tree_game)
-                runtime_df = explain_instance((game_id, id_explain, runtime_df))
-            print(
-                "Tree games initialized for",
-                game.setup.dataset_name,
-                game.setup.model_name,
-            )
+        # add CIFAR10 using ViT inference
+        for id_explain in ID_EXPLANATIONS:
+            cifar10_game = LocalXAICIFAR10Game(id_explain=id_explain, random_state=RANDOM_STATE, use_model=True)
+            game_id = "CIFAR10_1"
+            runtime_df = explain_instance((cifar10_game, game_id, id_explain, runtime_df))

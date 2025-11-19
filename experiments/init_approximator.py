@@ -20,7 +20,7 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
 
     approximator_list = []
 
-    frontier_generator = ExplanationFrontierGenerator(N=set(range(n_players)))
+    frontier_generator = ExplanationFrontierGenerator(N=set(range(n_players)), random_state = RANDOM_STATE)
 
     if "KernelSHAP" in APPROXIMATORS:
         # initialize the weights for KernelSHAP
@@ -107,6 +107,19 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
         )
         polyshap_4add.name = "PolySHAP-4ADD"
         approximator_list.append(polyshap_4add)
+    if "PolySHAP-5ADD" in APPROXIMATORS:
+        # ShapleyGAX with k-add explanation basis
+        explanation_frontier = frontier_generator.generate_kadd(max_order=5)
+        polyshap_5add = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_5add.name = "PolySHAP-5ADD"
+        approximator_list.append(polyshap_5add)
 
     if "PolySHAP-2ADD-10%" in APPROXIMATORS:
         n_coefficients = 1 + n_players + int(0.1 * binom(n_players, 2))
@@ -247,7 +260,170 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
         )
         polyshap_3add_75.name = "PolySHAP-3ADD-75%"
         approximator_list.append(polyshap_3add_75)
-
+    if "PolySHAP-3ADD-dlog(d)/2" in APPROXIMATORS:
+        n_coefficients = (
+            1 + n_players + comb(n_players, 2) + int(n_players/2*np.log(comb(n_players, 3)))
+        )
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_3add_dloghalf = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_3add_dloghalf.name = "PolySHAP-3ADD-dlog(d)/2"
+        approximator_list.append(polyshap_3add_dloghalf)
+    if "PolySHAP-3ADD-dlog(d)" in APPROXIMATORS:
+        n_coefficients = (
+            1 + n_players + comb(n_players, 2) + int(n_players*np.log(comb(n_players, 3)))
+        )
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_3add_dlog = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_3add_dlog.name = "PolySHAP-3ADD-dlog(d)"
+        approximator_list.append(polyshap_3add_dlog)
+    if "PolySHAP-3ADD-2dlog(d)" in APPROXIMATORS:
+        n_coefficients = (
+            1 + n_players + comb(n_players, 2) + int(2*n_players*np.log(comb(n_players, 3)))
+        )
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_3add_2dlog = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_3add_2dlog.name = "PolySHAP-3ADD-2dlog(d)"
+        approximator_list.append(polyshap_3add_2dlog)
+    if "PolySHAP-3ADD-dlog(d)" in APPROXIMATORS:
+        n_coefficients = (
+            1 + n_players + comb(n_players, 2) + int(3*n_players*np.log(comb(n_players, 3)))
+        )
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_3add_3dlog = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_3add_3dlog.name = "PolySHAP-3ADD-3dlog(d)"
+        approximator_list.append(polyshap_3add_3dlog)
+    if "PolySHAP-3ADD-dlog(d)sqrt(d)" in APPROXIMATORS:
+        n_coefficients = (
+            1 + n_players + comb(n_players, 2) + int(np.sqrt(n_players)*n_players*np.log(comb(n_players, 3)))
+        )
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_3add_dlogsqrt = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_3add_dlogsqrt.name = "PolySHAP-3ADD-dlog(d)sqrt(d)"
+        approximator_list.append(polyshap_3add_dlogsqrt)
+    if "PolySHAP-3ADD-5d" in APPROXIMATORS:
+        n_coefficients = (
+            1 + n_players + comb(n_players, 2) + int(5*n_players)
+        )
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_3add_5d = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_3add_5d.name = "PolySHAP-3ADD-5d"
+        approximator_list.append(polyshap_3add_5d)
+    if "PolySHAP-3ADD-20d" in APPROXIMATORS:
+        n_coefficients = (
+            1 + n_players + comb(n_players, 2) + int(20*n_players)
+        )
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_3add_20d = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_3add_20d.name = "PolySHAP-3ADD-20d"
+        approximator_list.append(polyshap_3add_20d)
+    if "PolySHAP-3ADD-3000" in APPROXIMATORS:
+        binom3 = (
+             1 + n_players + comb(n_players, 2) + comb(n_players,3)
+        )
+        n_coefficients = min(3000,binom3)
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_3add_3000 = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_3add_3000.name = "PolySHAP-3ADD-3000"
+        approximator_list.append(polyshap_3add_3000)
+    if "PolySHAP-3ADD-4000" in APPROXIMATORS:
+        binom3 = (
+             1 + n_players + comb(n_players, 2) + comb(n_players,3)
+        )
+        n_coefficients = min(4000,binom3)
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_3add_4000 = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_3add_4000.name = "PolySHAP-3ADD-4000"
+        approximator_list.append(polyshap_3add_4000)
     # define baselines
     if "PermutationSampling" in APPROXIMATORS:
         # Permutation Sampling
