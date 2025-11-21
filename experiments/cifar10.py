@@ -153,7 +153,7 @@ if __name__ == "__main__":
         shap_save_path = f"experiments/cifar10_precomputed/cifar10_{id_explain}_sv"
         shapley_value.save(shap_save_path)
 
-    for id_explain in range(13,30):
+    for id_explain in range(30):
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats()
         compute_game(id_explain)

@@ -250,7 +250,7 @@ if __name__ == "__main__":
     # Plot paired vs standard
     plot_df = results_df[
         # (results_df["approximator"] == "PermutationSampling")
-        (results_df["approximator"] == "RegressionMSR") |
+        # (results_df["approximator"] == "RegressionMSR") |
         # | (results_df["approximator"] == "KernelSHAP")
         (results_df["approximator"] == "LeverageSHAP")
         # | (results_df["approximator"] == "PolySHAP-2ADD-10%")
@@ -368,7 +368,7 @@ if __name__ == "__main__":
         | (results_df["approximator"] == "PolySHAP-3ADD-50%")
         # | (results_df["approximator"] == "PolySHAP-3ADD-75%")
         | (results_df["approximator"] == "PolySHAP-3ADD")
-        | (results_df["approximator"] == "PolySHAP-4ADD")
+        # | (results_df["approximator"] == "PolySHAP-4ADD")
         # | (results_df["approximator"] == "PolySHAP-3ADD-5d")
         # | (results_df["approximator"] == "PolySHAP-3ADD-4000")
         # | (results_df["approximator"] == "PolySHAP-3ADD-3000")
