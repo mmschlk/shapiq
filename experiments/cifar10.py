@@ -158,11 +158,5 @@ if __name__ == "__main__":
         torch.cuda.reset_peak_memory_stats()
         compute_game(id_explain)
 
-    #exact_computer = ExactComputer(n_players=game.n_players,game=game)
-    #shapley_value = exact_computer(index="SV", order=1)
-    #coalition = np.array([[1]*8 + [0]*8])  # Example coalition
-    #value = game.value_function(coalition)
-    #print(f"Value for coalition {coalition}: {value}")
-
 
 

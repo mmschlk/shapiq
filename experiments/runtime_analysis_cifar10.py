@@ -6,18 +6,6 @@ import numpy as np
 from init_approximator import get_approximators
 
 from experiments.cifar10 import LocalXAICIFAR10Game
-from shapiq.games.benchmark.local_xai import AdultCensus, BikeSharing, CaliforniaHousing
-from shapiq.games.benchmark.local_xai.benchmark_tabular import (
-    NHANESI,
-    BreastCancer,
-    CommunitiesAndCrime,
-    Corrgroups60,
-    ForestFires,
-    IndependentLinear60,
-    RealEstate,
-    WineQuality,
-)
-from shapiq.games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
 
 import pandas as pd
 
@@ -53,21 +41,11 @@ if __name__ == "__main__":
     RUN_APPROXIMATION = True
 
     APPROXIMATORS = [
-        # "KernelSHAP",
         "RegressionMSR",
-        # "OldLeverageSHAP",
         "LeverageSHAP",
         "PolySHAP-2ADD",
         "PolySHAP-3ADD",
         "PolySHAP-4ADD",
-        # "PolySHAP-2ADD-10%",
-        # "PolySHAP-2ADD-20%",
-        # "PolySHAP-2ADD-50%",
-        # "PolySHAP-2ADD-75%",
-        # "PolySHAP-3ADD-10%",
-        # "PolySHAP-3ADD-20%",
-        # "PolySHAP-3ADD-50%",
-        # "PolySHAP-3ADD-75%",
     ]
 
     MAX_BUDGET = 20000

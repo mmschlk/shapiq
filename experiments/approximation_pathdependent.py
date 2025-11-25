@@ -53,30 +53,30 @@ if __name__ == "__main__":
 
     # run the benchmark for the games
     GAMES = [
-        # CaliforniaHousing(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # BikeSharing(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # ForestFires(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # AdultCensus(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # RealEstate(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # BreastCancer(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # IndependentLinear60(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # Corrgroups60(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
+        CaliforniaHousing(
+            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        ),
+        BikeSharing(
+            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        ),
+        ForestFires(
+            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        ),
+        AdultCensus(
+            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        ),
+        RealEstate(
+            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        ),
+        BreastCancer(
+            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        ),
+        IndependentLinear60(
+            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        ),
+        Corrgroups60(
+            model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
+        ),
         NHANESI(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
@@ -112,31 +112,17 @@ if __name__ == "__main__":
                 print(f"Exact: {shap_ground_truth.values} saved to {save_path}")
 
     APPROXIMATORS = [
-        # "MSR",
-        # "SVARM",
-        # "RegressionMSR",
-        # "PermutationSampling",
-        # # "KernelSHAP",
-        # "LeverageSHAP",
-        # "PolySHAP-2ADD",
-        # "PolySHAP-3ADD",
-        # "PolySHAP-4ADD",
-        # # "PolySHAP-2ADD-10%",
-        # # "PolySHAP-2ADD-20%",
-        # "PolySHAP-2ADD-50%",
-        # # "PolySHAP-2ADD-75%",
-        # # "PolySHAP-3ADD-10%",
-        # # "PolySHAP-3ADD-20%",
-        # "PolySHAP-3ADD-50%",
-        # # "PolySHAP-3ADD-75%",
-        # "PolySHAP-3ADD-dlog(d)",
-        # "PolySHAP-3ADD-2dlog(d)",
-        # "PolySHAP-3ADD-3dlog(d)",
-        # "PolySHAP-3ADD-dlog(d)sqrt(d)",
-        # "PolySHAP-3ADD-5d",
-        # "PolySHAP-3ADD-3000",
-        "PolySHAP-3ADD-dlog(d)/2",
-        # "PolySHAP-3ADD-4000"
+        "MSR",
+        "SVARM",
+        "RegressionMSR",
+        "PermutationSampling",
+        "LeverageSHAP",
+        "PolySHAP-2ADD",
+        "PolySHAP-3ADD",
+        "PolySHAP-4ADD",
+        "PolySHAP-2ADD-50%",
+        "PolySHAP-3ADD-50%",
+        "PolySHAP-3ADD-dlog(d)",
     ]
 
     MAX_BUDGET = 20000
@@ -221,6 +207,6 @@ if __name__ == "__main__":
             args_list = [(game_id, id_explain) for id_explain in ID_EXPLANATIONS]
             for id_explain in ID_EXPLANATIONS:
                 explain_instance((game_id, id_explain))
-            # use instead for parallelization, does not work well with RegressionMSR
+            # use instead for parallelization, requires a lot of RAM for high-dimensional games
             # with mp.Pool() as pool:
             #     pool.map(explain_instance, args_list)

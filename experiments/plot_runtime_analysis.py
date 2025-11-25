@@ -252,21 +252,11 @@ if __name__ == "__main__":
 
     # approximators to show
     approximators_to_plot = [
-        # "KernelSHAP",
         "RegressionMSR",
-        # "OldLeverageSHAP",
         "LeverageSHAP",
         "PolySHAP-2ADD",
         "PolySHAP-3ADD",
         "PolySHAP-4ADD",
-        # "PolySHAP-2ADD-10%",
-        # "PolySHAP-2ADD-20%",
-        # "PolySHAP-2ADD-50%",
-        # "PolySHAP-2ADD-75%",
-        # "PolySHAP-3ADD-10%",
-        # "PolySHAP-3ADD-20%",
-        # "PolySHAP-3ADD-50%",
-        # "PolySHAP-3ADD-75%",
     ]
 
     runtime_results = runtime_results[

@@ -260,6 +260,24 @@ def get_approximators(APPROXIMATORS, n_players, RANDOM_STATE, PAIRING, REPLACEME
         )
         polyshap_3add_75.name = "PolySHAP-3ADD-75%"
         approximator_list.append(polyshap_3add_75)
+    if "PolySHAP-5ADD-10%" in APPROXIMATORS:
+        n_coefficients = (
+            1 + n_players + comb(n_players, 2) + comb(n_players, 3) + comb(n_players,4) + int(0.1 * comb(n_players, 5))
+        )
+        explanation_frontier = frontier_generator.generate_partial(
+            n_explanation_terms=n_coefficients
+        )
+        # ShapleyGAX with leverage weights for order 1
+        polyshap_5add_10 = PolySHAP(
+            n=n_players,
+            explanation_frontier=explanation_frontier,
+            random_state=RANDOM_STATE,
+            sampling_weights=sampling_weights_leverage_1,
+            pairing_trick=PAIRING,
+            replacement=REPLACEMENT,
+        )
+        polyshap_5add_10.name = "PolySHAP-5ADD-10%"
+        approximator_list.append(polyshap_5add_10)
     if "PolySHAP-3ADD-dlog(d)/2" in APPROXIMATORS:
         n_coefficients = (
             1 + n_players + comb(n_players, 2) + int(n_players/2*np.log(comb(n_players, 3)))

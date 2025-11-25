@@ -56,15 +56,6 @@ if __name__ == "__main__":
         CaliforniaHousing(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
-        # # BikeSharing(
-        # #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # # ),
-        # # ForestFires(
-        # #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # # ),
-        # # AdultCensus(
-        # #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # # ),
         RealEstate(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
@@ -74,33 +65,14 @@ if __name__ == "__main__":
         IndependentLinear60(
             model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
         ),
-        # Corrgroups60(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # NHANESI(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
-        # CommunitiesAndCrime(
-        #     model_name="random_forest", imputer="baseline", random_state=RANDOM_STATE
-        # ),
     ]
 
     APPROXIMATORS = [
-        # "KernelSHAP",
         "RegressionMSR",
-        "OldLeverageSHAP",
         "LeverageSHAP",
         "PolySHAP-2ADD",
         "PolySHAP-3ADD",
         "PolySHAP-4ADD",
-        # "PolySHAP-2ADD-10%",
-        # "PolySHAP-2ADD-20%",
-        # "PolySHAP-2ADD-50%",
-        # "PolySHAP-2ADD-75%",
-        # "PolySHAP-3ADD-10%",
-        # "PolySHAP-3ADD-20%",
-        # "PolySHAP-3ADD-50%",
-        # "PolySHAP-3ADD-75%",
     ]
 
     MAX_BUDGET = 20000

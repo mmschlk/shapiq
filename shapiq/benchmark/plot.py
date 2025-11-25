@@ -95,6 +95,8 @@ STYLE_DICT: dict[str, dict[str, str]] = {
     "PolySHAP-3ADD-3000": {"color": "#FFE0B2", "marker": "o"},
     "PolySHAP-3ADD-dlog(d)": {"color": "#FF8A33", "marker": "o"},
     "PolySHAP-3ADD-dlog(d)/2": {"color": "#FF5722", "marker": "o"},
+    "PolySHAP-5ADD-10%": {"color": "#8C2A06", "marker": "o"},
+    "PolySHAP-5ADD%": {"color": "#8C2A06", "marker": "o"},
     # "PolySHAP-3ADD-2dlog(d)": {"color": "#FFB74D", "marker": "o"},
     # "PolySHAP-3ADD-3dlog(d)": {"color": "#FF5722", "marker": "o"},
     # "PolySHAP-3ADD-dlog(d)sqrt(d)": {"color": "#E64A19", "marker": "o"},

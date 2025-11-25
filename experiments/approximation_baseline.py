@@ -20,7 +20,7 @@ if __name__ == "__main__":
     # ID_CONFIG_APPROXIMATORS = 40  # PAIRING=False, REPLACEMENT=True
     # ID_CONFIG_APPROXIMATORS = 39  # PAIRING=False, REPLACEMENT=False
     # ID_CONFIG_APPROXIMATORS = 38  # PAIRING=True, REPLACEMENT=True
-    ID_CONFIG_APPROXIMATORS = 39  # PAIRING=True, REPLACEMENT=False
+    ID_CONFIG_APPROXIMATORS = 37  # PAIRING=True, REPLACEMENT=False
 
     if ID_CONFIG_APPROXIMATORS == 40:
         REPLACEMENT = True
@@ -40,10 +40,10 @@ if __name__ == "__main__":
 
     GAME_IDENTIFIERS = [
         "CIFAR10",
-        # "SentimentIMDBDistilBERT14",
-        # "ResNet18w14Superpixel",
-        # "ViT3by3Patches",
-        # "ViT4by4Patches",
+        "SentimentIMDBDistilBERT14",
+        "ResNet18w14Superpixel",
+        "ViT3by3Patches",
+        "ViT4by4Patches",
     ]  # , "ImageClassifierLocalXAI"]
     # game_identifier = "SOUM"
     config_id = 1
@@ -117,24 +117,13 @@ if __name__ == "__main__":
         "SVARM",
         "RegressionMSR",
         "PermutationSampling",
-        # "KernelSHAP",
         "LeverageSHAP",
         "PolySHAP-2ADD",
         "PolySHAP-3ADD",
         "PolySHAP-4ADD",
-        # "PolySHAP-5ADD",
-        # "PolySHAP-2ADD-10%",
-        # "PolySHAP-2ADD-20%",
         "PolySHAP-2ADD-50%",
-        # "PolySHAP-2ADD-75%",
-        # "PolySHAP-3ADD-10%",
-        # "PolySHAP-3ADD-20%",
         "PolySHAP-3ADD-50%",
-        # "PolySHAP-3ADD-75%",
         "PolySHAP-3ADD-dlog(d)",
-        "PolySHAP-3ADD-2dlog(d)",
-        "PolySHAP-3ADD-3dlog(d)",
-        "PolySHAP-3ADD-dlog(d)sqrt(d)"
     ]
 
     MAX_BUDGET = 20000
@@ -199,6 +188,6 @@ if __name__ == "__main__":
                 (game_id, id_explain, game_instance)
                 for id_explain, game_instance in enumerate(game)
             ]
-            # use for parallelization, does not work well with RegressionMSR
+            # use for parallelization, requires a lot of RAM for high-dimensional games
             with mp.Pool() as pool:
                 pool.map(explain_instance, args_list)
