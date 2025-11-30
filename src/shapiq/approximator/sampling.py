@@ -40,6 +40,8 @@ class CoalitionSampler:
             ``(n_players + 1,)``.
         - ``sampled_coalitions_dict``:`` A dictionary containing all sampled coalitions mapping to
             their number of occurrences. The dictionary is of type ``dict[tuple[int, ...], int]``.
+    
+    Uses sampling method described in Musco and Witter (2025) "Provably Accurate Shapley Value Estimation via Leverage Score Sampling" (https://arxiv.org/abs/2410.01917)
     '''
     def __init__(
         self,
