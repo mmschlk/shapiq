@@ -128,7 +128,9 @@ class CoalitionSampler:
             None: Sample is stored in self.coalitions_matrix and self.sampled_coalitions_dict
         '''
         self.coalitions_matrix[self._coalition_idx, indices] = 1
-        self.sampled_coalitions_dict[tuple(sorted(indices))] = 1
+        if tuple(sorted(indices)) not in self.sampled_coalitions_dict:
+            self.sampled_coalitions_dict[tuple(sorted(indices))] = 0
+        self.sampled_coalitions_dict[tuple(sorted(indices))] += 1
         self._coalition_idx += 1 
 
     def symmetric_round_even(self, x: np.ndarray) -> np.ndarray:
@@ -340,6 +342,19 @@ class CoalitionSampler:
 
         """
         return self.get_sampling_probs(self.coalitions_size)
+    
+    @property
+    def coalitions_counter(self) -> np.ndarray:
+        """
+        Returns:
+            An array with the number of times each coalition was sampled ``(n_coalitions,)``
+        """
+        # Iterate over each coalition in the coalitions_matrix and get its count from sampled_coalitions_dict
+        counts = np.zeros(self.n_coalitions, dtype=int)
+        for i in range(self.n_coalitions):
+            coalition_tuple = tuple(np.where(self.coalitions_matrix[i])[0])
+            counts[i] = self.sampled_coalitions_dict.get(coalition_tuple, 0)
+        return counts
 
     @property
     def empty_coalition_index(self) -> int | None:
