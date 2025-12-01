@@ -46,8 +46,8 @@ class CoalitionSampler:
         self.distribution = np.concatenate(([0.0], self.distribution, [0.0]))
 
         self.pairing_trick = pairing_trick
-        self._rng = np.random.default_rng(seed=random_state)
         self.sample_with_replacement = sample_with_replacement
+        self.set_random_state(random_state)
 
     def get_sampling_probs(self, sizes: np.ndarray) -> np.ndarray:
         '''
@@ -324,24 +324,21 @@ class CoalitionSampler:
         return self.is_coalition_sampled[self.coalitions_size]
 
     @property
+    def coalitions_probability(self) -> np.ndarray:
+        """
+        Returns:
+            A copy of the sampled coalitions probabilities of shape ``(n_coalitions,)``
+        """
+        return self.get_sampling_probs(self.coalitions_size)
+
+
+    @property
     def sampling_adjustment_weights(self) -> np.ndarray:
         """
         Returns:
             An array with adjusted weight for each coalition ``(n_coalitions,)``
         """
-        return 1 / self.get_sampling_probs(self.coalitions_size)
-
-    @property
-    def coalitions_probability(self) -> np.ndarray:
-        """
-        Returns the probability that each coalition was sampled according to the sampling procedure.
-
-        Returns:
-            A copy of the sampled coalitions probabilities of shape ``(n_coalitions,)`` or ``None``
-                if the coalition probabilities are not available.
-
-        """
-        return self.get_sampling_probs(self.coalitions_size)
+        return 1 / self.coalitions_probability
     
     @property
     def coalitions_counter(self) -> np.ndarray:
@@ -368,4 +365,12 @@ class CoalitionSampler:
         except IndexError:
             pass
         return None
+    
+    def set_random_state(self, random_state: int | None) -> None:
+        '''
+        Set the random state of the sampler.
+        Args:
+            random_state (int | None): Random seed for reproducibility
+        '''
+        self._rng = np.random.default_rng(seed=random_state)
     
