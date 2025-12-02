@@ -237,7 +237,7 @@ class CoalitionSampler:
         budget += budget % 2
 
         # Get sampling probabilities
-        self.get_scale_for_sampling(budget-2) # minus 2 for empty and full coalitions
+        self.get_scale_for_sampling(budget-2) # Exclude empty and full coalitions from budget
         sizes = np.arange(1, self.n_players)
         samples_per_size = self.symmetric_round_even(
             self.get_sampling_probs(sizes) * binom(self.n_players, sizes)
@@ -329,8 +329,11 @@ class CoalitionSampler:
         Returns:
             A copy of the sampled coalitions probabilities of shape ``(n_coalitions,)``
         """
-        return self.get_sampling_probs(self.coalitions_size)
-
+        probs = self.get_sampling_probs(self.coalitions_size)
+        # Replace the empty and full coalition probabilities with 1
+        probs[self.empty_coalition_index] = 1.0
+        probs[self.full_coalition_index] = 1.0
+        return probs
 
     @property
     def sampling_adjustment_weights(self) -> np.ndarray:
@@ -362,6 +365,19 @@ class CoalitionSampler:
         try:
             if self.coalitions_per_size[0] >= 1:
                 return int(np.where(self.coalitions_size == 0)[0][0])
+        except IndexError:
+            pass
+        return None
+
+    @property
+    def full_coalition_index(self) -> int | None:
+        """
+        Returns:
+            The index of the full coalition or ``None`` if the full coalition was not sampled.
+        """
+        try:
+            if self.coalitions_per_size[-1] >= 1:
+                return int(np.where(self.coalitions_size == self.n_players)[0][0])
         except IndexError:
             pass
         return None
