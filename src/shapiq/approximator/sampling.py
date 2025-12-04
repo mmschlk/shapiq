@@ -30,7 +30,7 @@ class CoalitionSampler:
         random_state: int | None = None,
         sample_with_replacement: bool = False,
     ) -> None:
-        self.n_players = n_players
+        self.n = n_players
 
         if len(sampling_weights) == n_players + 1:
             sampling_weights = sampling_weights[1:-1]
@@ -58,7 +58,7 @@ class CoalitionSampler:
             np.ndarray: Sampling probabilities for the given coalition sizes.
         '''
         return np.minimum(
-            self.scale * self.distribution[sizes] / binom(self.n_players, sizes), 1
+            self.scale * self.distribution[sizes] / binom(self.n, sizes), 1
         ) 
     
     def get_scale_for_sampling(self, budget: int):
@@ -69,7 +69,7 @@ class CoalitionSampler:
         Sets self.scale.
         (Function written by ChatGPT)
         """
-        n = self.n_players
+        n = self.n
         sizes = np.arange(1, n)
 
         # Number of coalitions per size
@@ -244,44 +244,44 @@ class CoalitionSampler:
         '''
         # Budget is an EVEN number between 2 and 2^n
         assert budget >= 2, "Budget must be at least 2"
-        budget = min(budget, 2**self.n_players)
+        budget = min(budget, 2**self.n)
         budget += budget % 2
 
         # Get sampling probabilities
         self.get_scale_for_sampling(budget-2) # Exclude empty and full coalitions from budget
-        sizes = np.arange(1, self.n_players)
+        sizes = np.arange(1, self.n)
         samples_per_size = self.symmetric_round_even(
-            self.get_sampling_probs(sizes) * binom(self.n_players, sizes)
+            self.get_sampling_probs(sizes) * binom(self.n, sizes)
         )
 
         # Initialize storage
-        self.coalitions_matrix = np.zeros((budget, self.n_players), dtype=bool)
+        self.coalitions_matrix = np.zeros((budget, self.n), dtype=bool)
         self._coalition_idx = 0
         self.sampled_coalitions_dict = {}
 
         # Sample empty and full coalitions
         self.add_one_sample([])
-        self.add_one_sample(list(range(self.n_players)))
+        self.add_one_sample(list(range(self.n)))
 
         for idx, size in enumerate(sizes):
-            if idx >= self.n_players//2 and self.pairing_trick:
+            if idx >= self.n//2 and self.pairing_trick:
                 break  # Stop early because of pairing
-            if self.pairing_trick and size == self.n_players // 2 and self.n_players % 2 == 0:
+            if self.pairing_trick and size == self.n // 2 and self.n % 2 == 0:
                 combo_gen = self.combination_generator(
-                    self.n_players - 1, size - 1, samples_per_size[idx] // 2
+                    self.n - 1, size - 1, samples_per_size[idx] // 2
                 )
                 for indices in combo_gen:
-                    self.add_one_sample(list(indices) + [self.n_players - 1])
-                    self.add_one_sample(list(set(range(self.n_players-1)) - set(indices)))
+                    self.add_one_sample(list(indices) + [self.n - 1])
+                    self.add_one_sample(list(set(range(self.n-1)) - set(indices)))
             else:
                 combo_gen = self.combination_generator(
-                    self.n_players, size, samples_per_size[idx]
+                    self.n, size, samples_per_size[idx]
                 )
                 for indices in combo_gen:
                     self.add_one_sample(list(indices))
                     if self.pairing_trick:
                         self.add_one_sample(
-                            list(set(range(self.n_players)) - set(indices))
+                            list(set(range(self.n)) - set(indices))
                         )
 
     @property
@@ -311,7 +311,7 @@ class CoalitionSampler:
         Returns:
             An array with the number of coalitions sampled per coalition size ``(n_players + 1,)``
         """
-        coalitions_count = np.zeros(self.n_players + 1, dtype=int)
+        coalitions_count = np.zeros(self.n + 1, dtype=int)
         for size in self.coalitions_size:
             coalitions_count[size] += 1
         return coalitions_count
@@ -322,7 +322,7 @@ class CoalitionSampler:
         Returns:
             The Boolean array whether the coalition size was sampled ``(n_players + 1,)``
         """
-        is_size_sampled = np.zeros(self.n_players + 1, dtype=bool)
+        is_size_sampled = np.zeros(self.n + 1, dtype=bool)
         is_size_sampled[self.coalitions_size] = True
         return is_size_sampled
     
@@ -388,7 +388,7 @@ class CoalitionSampler:
         """
         try:
             if self.coalitions_per_size[-1] >= 1:
-                return int(np.where(self.coalitions_size == self.n_players)[0][0])
+                return int(np.where(self.coalitions_size == self.n)[0][0])
         except IndexError:
             pass
         return None
