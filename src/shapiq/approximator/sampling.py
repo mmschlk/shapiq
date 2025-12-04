@@ -227,6 +227,7 @@ class CoalitionSampler:
         num_combos = math.comb(n, s)
         try:
             assert not self.sample_with_replacement
+            print(f"Sampling {num_samples} combinations of size {s} from {n} without replacement, from {num_combos} options.")
             indices = self._rng.choice(num_combos, num_samples, replace=False)
             for i in indices:
                 yield self.index_th_combination(range(n), s, i)
@@ -250,7 +251,7 @@ class CoalitionSampler:
         # Get sampling probabilities
         self.get_scale_for_sampling(budget-2) # Exclude empty and full coalitions from budget
         sizes = np.arange(1, self.n)
-        samples_per_size = self.symmetric_round_even(
+        self.samples_per_size = self.symmetric_round_even(
             self.get_sampling_probs(sizes) * binom(self.n, sizes)
         )
 
@@ -268,14 +269,14 @@ class CoalitionSampler:
                 break  # Stop early because of pairing
             if self.pairing_trick and size == self.n // 2 and self.n % 2 == 0:
                 combo_gen = self.combination_generator(
-                    self.n - 1, size - 1, samples_per_size[idx] // 2
+                    self.n - 1, size - 1, self.samples_per_size[idx] // 2
                 )
                 for indices in combo_gen:
                     self.add_one_sample(list(indices) + [self.n - 1])
                     self.add_one_sample(list(set(range(self.n-1)) - set(indices)))
             else:
                 combo_gen = self.combination_generator(
-                    self.n, size, samples_per_size[idx]
+                    self.n, size, self.samples_per_size[idx]
                 )
                 for indices in combo_gen:
                     self.add_one_sample(list(indices))
@@ -323,7 +324,8 @@ class CoalitionSampler:
             The Boolean array whether the coalition size was sampled ``(n_players + 1,)``
         """
         is_size_sampled = np.zeros(self.n + 1, dtype=bool)
-        is_size_sampled[self.coalitions_size] = True
+        is_size_sampled[0] = is_size_sampled[self.n] = True
+        is_size_sampled[1:-1] = self.samples_per_size == binom(self.n, np.arange(1, self.n))
         return is_size_sampled
     
     @property
@@ -332,7 +334,7 @@ class CoalitionSampler:
         Returns:
             A dictionary indicating whether each coalition was sampled ``(n_coalitions,)``
         """
-        return self.is_coalition_sampled[self.coalitions_size]
+        return self.is_coalition_size_sampled[self.coalitions_size]
 
     @property
     def coalitions_probability(self) -> np.ndarray:
@@ -345,6 +347,23 @@ class CoalitionSampler:
         probs[self.empty_coalition_index] = 1.0
         probs[self.full_coalition_index] = 1.0
         return probs
+    
+    @property
+    def coalitions_in_size_probability(self) -> np.ndarray:
+        """
+        Returns:
+            The probability a coalition is sampled conditioned on its size ``(n_coalitions,)``
+        """
+        prob_coalition_per_size = 1 / binom(self.n, np.arange(0, self.n+1))
+        return prob_coalition_per_size[self.coalitions_size]
+    
+    @property
+    def coalitions_size_probability(self) -> np.ndarray:
+        """
+        Returns:
+            The probability a coalition size is sampled ``(n_coalitions,)``
+        """
+        return self.coalitions_probability / self.coalitions_in_size_probability
 
     @property
     def sampling_adjustment_weights(self) -> np.ndarray:
