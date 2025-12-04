@@ -59,65 +59,76 @@ class CoalitionSampler:
         '''
         return np.minimum(
             self.scale * self.distribution[sizes] / binom(self.n_players, sizes), 1
-        )
-
+        ) 
+    
     def get_scale_for_sampling(self, budget: int):
-        '''
-        Compute sampling probabilities without iteration by inverting the
-        piecewise-linear function:
-            E(c) = sum_k min(c * distribution[k], choose(n_players, k))
-        For any budget in [0, 2**n_players], this solves for a scale c such that
-        E(c) ~= budget (up to floating-point error).
-        Args:
-            budget (int): Total number of coalitions to sample (excluding empty and full coalitions)
-        Returns:
-            None: Sets self.scale so that self.get_sampling_probs(sizes) gives correct probabilities.
+        """
+        Compute a scale c such that
+            E(c) = sum_k min(c * distribution[k], C(n_players, k)) ~= budget,
+        excluding empty and full coalitions.
+        Sets self.scale.
         (Function written by ChatGPT)
-        '''
+        """
         n = self.n_players
         sizes = np.arange(1, n)
 
-        # Per-size caps = number of coalitions of that size
-        comb_counts = binom(n, sizes).astype(float)          # C(n, k)
-        # Per-size weights from the distribution (>= 1 by construction)
+        # Number of coalitions per size
+        comb_counts = binom(n, sizes).astype(float)           # C(n, k)
+        # Per-size weights (must be non-negative)
         weights = self.distribution[sizes].astype(float)
 
-        # Target expected total, clipped to feasible range [0, 2^n]
-        target_total = float(np.clip(budget, 0, np.sum(comb_counts)))
-        if target_total == 0.0:
+        # Sanity: no negative weights
+        if np.any(weights < 0):
+            raise ValueError("distribution contains negative entries; scale solving assumes weights >= 0.")
+
+        # Max feasible expected total (#non-empty, non-full subsets)
+        max_total = float(np.sum(comb_counts))
+
+        # Clip budget to feasible range
+        target_total = float(np.clip(budget, 0, max_total))
+
+        if target_total <= 0.0:
             self.scale = 0.0
             return self.get_sampling_probs(sizes)
 
-        # Breakpoints where a term saturates: c >= comb_counts[k] / weights[k]
-        saturation_thresholds = comb_counts / weights
-        order = np.argsort(saturation_thresholds)
-        comb_counts_sorted = comb_counts[order]
-        weights_sorted = weights[order]
-        thresholds_sorted = saturation_thresholds[order]
+        # Helper: E(c)
+        def expected_total(c: float) -> float:
+            # min(c * w_k, comb_k) summed over k
+            return np.minimum(c * weights, comb_counts).sum()
 
-        # For the segment before saturating index k:
-        #   E(c) = sum_{j<k} comb_counts_sorted[j] + c * sum_{j>=k} weights_sorted[j]
-        saturated_prefix = np.concatenate(([0.0], np.cumsum(comb_counts_sorted[:-1])))
-        weights_prefix = np.concatenate(([0.0], np.cumsum(weights_sorted[:-1])))
-        remaining_weight = np.sum(weights_sorted) - weights_prefix
+        # --- Find an upper bound where E(c_hi) >= target_total ---
+        total_weight = float(weights.sum())
 
-        # Expected total at each breakpoint (just as k would start saturating)
-        expected_at_threshold = saturated_prefix + thresholds_sorted * remaining_weight
+        # If all weights are zero, nothing can grow; scale doesn't matter.
+        if total_weight <= 0.0:
+            self.scale = 0.0
+            return self.get_sampling_probs(sizes)
 
-        # Find the first segment where target_total fits
-        segment_idx = np.searchsorted(expected_at_threshold, target_total, side="left")
+        # A reasonable first guess if nothing saturates:
+        # E(c) ~= c * sum(weights) => c ~= budget / sum(weights)
+        c_hi = target_total / total_weight
 
-        if segment_idx >= len(thresholds_sorted):
-            # Past all segments: all terms saturate
-            scale = float(thresholds_sorted[-1])
-        else:
-            denom = remaining_weight[segment_idx]
-            # If denom == 0, slope is zero (nothing left to grow) -> stick to the threshold
-            scale = thresholds_sorted[segment_idx] if denom == 0 else \
-                    min((target_total - saturated_prefix[segment_idx]) / denom,
-                        thresholds_sorted[segment_idx])
+        # Make sure c_hi is not absurdly tiny
+        if c_hi <= 0.0:
+            c_hi = 1.0
 
-        self.scale = float(scale)
+        # Grow c_hi until E(c_hi) >= target_total (or we hit a safety cap)
+        if expected_total(c_hi) < target_total:
+            while expected_total(c_hi) < target_total and c_hi < 1e12:
+                c_hi *= 2.0
+
+        c_lo = 0.0
+
+        # --- Binary search for c ---
+        for _ in range(60):  # ~ 2^-60 relative error; plenty for double precision
+            c_mid = 0.5 * (c_lo + c_hi)
+            if expected_total(c_mid) < target_total:
+                c_lo = c_mid
+            else:
+                c_hi = c_mid
+
+        scale = c_hi
+        self.scale = float(scale) 
 
     def add_one_sample(self, indices: Sequence[int]):
         '''
@@ -146,7 +157,7 @@ class CoalitionSampler:
         x = np.asarray(x, float); n = x.size
         tgt = int(np.round(x.sum()/2)*2)           # nearest even ≤ sum
         out = np.floor(x).astype(int)
-        rem = tgt - out.sum()
+        rem = int(tgt) - int(out.sum())
         frac = x - np.floor(x)
 
         pairs = [(i, n-1-i, frac[i]+frac[n-1-i]) for i in range(n//2)]
