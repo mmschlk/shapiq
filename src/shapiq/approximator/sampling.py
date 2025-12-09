@@ -137,12 +137,12 @@ class CoalitionSampler:
             indices (Sequence[int]): Indices of players in the coalition.
         Returns:
             None: Sample is stored in self.coalitions_matrix and self.sampled_coalitions_dict
-        '''
-        self.coalitions_matrix[self._coalition_idx, indices] = 1
-        if tuple(sorted(indices)) not in self.sampled_coalitions_dict:
+        ''' 
+        if tuple(sorted(indices)) not in self.sampled_coalitions_dict:            
+            self.coalitions_matrix[self._coalition_idx, indices] = 1
             self.sampled_coalitions_dict[tuple(sorted(indices))] = 0
-        self.sampled_coalitions_dict[tuple(sorted(indices))] += 1
-        self._coalition_idx += 1 
+            self._coalition_idx += 1 
+        self.sampled_coalitions_dict[tuple(sorted(indices))] += 1        
 
     def symmetric_round_even(self, x: np.ndarray) -> np.ndarray:
         '''
@@ -323,7 +323,7 @@ class CoalitionSampler:
             The Boolean array whether the coalition size was sampled ``(n_players + 1,)``
         """
         is_size_sampled = np.zeros(self.n + 1, dtype=bool)
-        is_size_sampled[0] = is_size_sampled[self.n] = True
+        is_size_sampled[0] = is_size_sampled[self.n] = False
         is_size_sampled[1:-1] = (self.samples_per_size != binom(self.n, np.arange(1, self.n)))
         return is_size_sampled
     
@@ -339,7 +339,7 @@ class CoalitionSampler:
     def coalitions_probability(self) -> np.ndarray:
         """
         Returns:
-            A copy of the sampled coalitions probabilities of shape ``(n_coalitions,)``
+            The probability of sampling each coalition ``(n_coalitions,)``
         """
         probs = self.get_sampling_probs(self.coalitions_size)
         # Replace the empty and full coalition probabilities with 1
@@ -418,4 +418,3 @@ class CoalitionSampler:
             random_state (int | None): Random seed for reproducibility
         '''
         self._rng = np.random.default_rng(seed=random_state)
-    
