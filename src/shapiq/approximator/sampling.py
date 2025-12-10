@@ -32,7 +32,9 @@ class CoalitionSampler:
     ) -> None:
         self.n = n_players
 
-        if len(sampling_weights) == n_players + 1:
+        if len(sampling_weights) < 3:
+            raise ValueError("sampling_weights must have length at least 3.")
+        elif len(sampling_weights) == n_players + 1:
             sampling_weights = sampling_weights[1:-1]
             print('Warning: sampling_weights should be of length n_players-1, ignoring first and last entries.')
         elif len(sampling_weights) == n_players:
