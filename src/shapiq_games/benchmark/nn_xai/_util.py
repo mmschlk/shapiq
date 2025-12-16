@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
@@ -29,3 +29,11 @@ def keep_first_n(mask: npt.NDArray[np.bool], n: int) -> npt.NDArray[np.bool]:
             return out
 
     return mask
+
+
+def _greater_or_close(a: np.floating, b: np.floating) -> np.bool:
+    """Returns ``a >= b`` but allows for floating point error.
+
+    That is, if ``a < b`` but ``np.isclose(a, b)``, ``True`` will be returned.
+    """
+    return cast("np.bool", a >= b) or np.isclose(a, b)

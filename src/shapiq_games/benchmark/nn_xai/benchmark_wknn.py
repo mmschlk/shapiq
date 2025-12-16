@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 from typing_extensions import override
 
 import numpy as np
 
 from shapiq.explainer.nn.weighted_knn import WeightedKNNExplainer
-from shapiq_games.benchmark.nn_xai.base import NNBenchmarkBase
+from shapiq_games.benchmark.nn_xai.base import KNNBenchmarkBase
 
-from ._util import keep_first_n
+from ._util import _greater_or_close, keep_first_n
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from shapiq.typing import GameValues
 
 
-class WeightedKNNExplainerXAI(NNBenchmarkBase):
+class WeightedKNNExplainerXAI(KNNBenchmarkBase):
     """Benchmark game for the WeightedKNNExplainer."""
 
     def __init__(
@@ -61,7 +61,7 @@ class WeightedKNNExplainerXAI(NNBenchmarkBase):
         return sum(binary_game_values) / (self.n_classes - 1)
 
 
-class BinaryWeightedKNNExplainerXAI(NNBenchmarkBase):
+class BinaryWeightedKNNExplainerXAI(KNNBenchmarkBase):
     """Benchmark game for the WeightedKNNExplainer in the binary case."""
 
     def __init__(
@@ -97,7 +97,7 @@ class BinaryWeightedKNNExplainerXAI(NNBenchmarkBase):
             msg = f"Expected exactly {expected_classes} classes but got {n_classes}"
             raise ValueError(msg)
 
-        sortperm, weights = _get_normalized_weights(self.model, self.X_train, self.x)
+        sortperm, weights = self._get_normalized_weights()
 
         if self.n_bits is not None:
             _explainer = WeightedKNNExplainer(self.model, self.class_index, n_bits=self.n_bits)
@@ -128,43 +128,27 @@ class BinaryWeightedKNNExplainerXAI(NNBenchmarkBase):
 
         return utilities
 
+    def _get_normalized_weights(self) -> tuple[npt.NDArray[np.integer], npt.NDArray[np.floating]]:
+        """Calculate normalized weights of training data points with respect to a validation data point.
 
-def _greater_or_close(a: np.floating, b: np.floating) -> np.bool:
-    """Returns ``a >= b`` but allows for floating point error.
+        Returns:
+            A tuple ``(sortperm, weights)``, where both are ``numpy.ndarray``s with dimensions ``(n_training_samples,)`` and
+                - ``sortperm`` is a permutation that sorts the training data points by decreasing weight
+                - ``weights`` contains the weights for each training data point, normalized to the interval [0, 1]
+        """
+        distances, sortperm = self.model.kneighbors(
+            self.x.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=True
+        )
+        distances = distances[0]
+        sortperm = sortperm[0]
 
-    That is, if ``a < b`` but ``np.isclose(a, b)``, ``True`` will be returned.
-    """
-    return cast("np.bool", a >= b) or np.isclose(a, b)
+        # Replicate sklearn behavior: if any training points are zero distance
+        # from the test point, those points get weight 1 and all others 0
+        zero_dist = np.isclose(distances, 0)
+        if np.any(zero_dist):
+            weights = np.zeros_like(distances)
+            weights[zero_dist] = 1
+        else:
+            weights = distances[0] / distances
 
-
-def _get_normalized_weights(
-    model: KNeighborsClassifier, X_train: npt.NDArray, x_val: npt.NDArray[np.floating]
-) -> tuple[npt.NDArray[np.integer], npt.NDArray[np.floating]]:
-    """Calculate normalized weights of training data points with respect to a validation data point.
-
-    Args:
-        model: The KNN model fitted to the training data.
-        X_train: The training data.
-        x_val: The validation data point.
-
-    Returns:
-        A tuple ``(sortperm, weights)``, where both are ``numpy.ndarray``s with dimensions ``(n_training_samples,)`` and
-            - ``sortperm`` is a permutation that sorts the training data points by decreasing weight
-            - ``weights`` contains the weights for each training data point, normalized to the interval [0, 1]
-    """
-    distances, sortperm = model.kneighbors(
-        x_val.reshape(1, -1), n_neighbors=X_train.shape[0], return_distance=True
-    )
-    distances = distances[0]
-    sortperm = sortperm[0]
-
-    # Replicate sklearn behavior: if any training points are zero distance
-    # from the test point, those points get weight 1 and all others 0
-    zero_dist = np.isclose(distances, 0)
-    if np.any(zero_dist):
-        weights = np.zeros_like(distances)
-        weights[zero_dist] = 1
-    else:
-        weights = distances[0] / distances
-
-    return sortperm, weights
+        return sortperm, weights

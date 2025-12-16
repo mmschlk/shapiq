@@ -8,7 +8,7 @@ from typing_extensions import override
 import numpy as np
 
 from ._util import keep_first_n
-from .base import NNBenchmarkBase
+from .base import KNNBenchmarkBase
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -16,18 +16,18 @@ if TYPE_CHECKING:
     from shapiq.typing import GameValues
 
 
-class KNNExplainerXAI(NNBenchmarkBase):
+class KNNExplainerXAI(KNNBenchmarkBase):
     """Benchmark game for the KNNExplainer."""
 
     @override
     def value_function(self, coalitions: npt.NDArray[np.bool]) -> GameValues:
         utilities = np.zeros(coalitions.shape[0])
 
-        for coalition in coalitions:
+        for i, coalition in enumerate(coalitions):
             coalition_first_k = keep_first_n(coalition, n=self.k)
             # TODO(Zaphoood): Handle case where N < k  # noqa: TD003
-            utility = np.sum(self.y_train_sorted[coalition_first_k] == self.class_index) / self.k
-            coalition_tuple = tuple(sorted(self.sortperm[coalition]))
-            utilities[coalition_tuple] = utility
+            utilities[i] = (
+                np.sum(self.y_train_sorted[coalition_first_k] == self.class_index) / self.k
+            )
 
         return utilities
