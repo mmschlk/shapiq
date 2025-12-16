@@ -11,6 +11,7 @@ from scipy.special import comb
 if TYPE_CHECKING:
     import numpy.typing as npt
     import sklearn.neighbors
+    from sklearn.neighbors import RadiusNeighborsClassifier
 
     from shapiq import InteractionValues
     from shapiq.explainer.custom_types import ExplainerIndices
@@ -31,6 +32,9 @@ class ThresholdNNExplainer(NNExplainerBase):
     The algorithm has a runtime complexity of :math:`O(N)` (when explaining a single data point), where :math:`N` is the number of training samples.
     """
 
+    model: RadiusNeighborsClassifier
+
+    @override
     def __init__(
         self,
         model: sklearn.neighbors.RadiusNeighborsClassifier,
@@ -39,26 +43,13 @@ class ThresholdNNExplainer(NNExplainerBase):
         index: ExplainerIndices = "SV",
         max_order: int = 1,
     ) -> None:
-        r"""Initializes the class.
-
-        This method extracts the training data and the threshold :math:`\tau` from the provided model and stores it as class members.
-
-        Args:
-            model: The model to explain. The model must not use multi-output classification, i.e. the ``y`` value provided to ``model.fit(X, y)`` must be a 1D vector.
-            data: This parameter is currently ignored but may be used in future versions.
-            class_index: The class index of the model to explain. Defaults to ``1``.
-            index: The type of Shapley interaction index to use. Only ``"SV"`` is supported.
-            max_order: The maximum interaction order to be computed. Only ``1`` is supported.
-
-        Raises:
-            sklearn.exceptions.NotFittedError: The constructor was called with a model that hasn't been fitted.
-        """
         assert_valid_index_and_order(index, max_order)
         warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
+        if not isinstance(model.radius, int | float):
+            msg = f"Expected RadiusNeighborsClassifier.radius to be int or float but got {type(model.radius)}"
+            raise TypeError(msg)
 
         super().__init__(model, class_index=class_index)
-        self._model = model
-        self.tau = cast("float", model.radius)  # type: ignore[attr-defined]
 
     @override
     def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
@@ -67,7 +58,7 @@ class ThresholdNNExplainer(NNExplainerBase):
         n_train = self.X_train.shape[0]
         n_classes = self.y_train_indices.shape[0]
 
-        neighbor_indices = self._model.radius_neighbors(x.reshape(1, -1), return_distance=False)
+        neighbor_indices = self.model.radius_neighbors(x.reshape(1, -1), return_distance=False)
         neighbor_indices = neighbor_indices[0]
 
         in_neighborhood = np.zeros((n_train,), dtype=bool)

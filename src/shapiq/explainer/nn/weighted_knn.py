@@ -51,35 +51,28 @@ class WeightedKNNExplainer(NNExplainerBase):
     ) -> None:
         assert_valid_index_and_order(index, max_order)
         warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
-
-        super().__init__(model, class_index=class_index)
-        self.knn_model = model
-        self.k: int = self.knn_model.n_neighbors  # type: ignore[attr-defined]
-
-        model_weights = self.knn_model.weights  # type: ignore[attr-defined]
-        if model_weights != "distance":
-            msg = f"KNeighborsClassifier must use weights='distance', but has weights='{model_weights}'"
+        if model.weights != "distance":
+            msg = f"KNeighborsClassifier must use weights='distance', but has weights='{model.weights}'"
             raise ValueError(msg)
-
-        if self.k <= 1:
-            msg = f"Only values of k > 1 are supported, but {self.k=}"
+        if not isinstance(model.n_neighbors, int):
+            msg = f"Expected KNeighborsClassifier.n_neighbors to be int but got {type(model.n_neighbors)}"
+            raise TypeError(msg)
+        if model.n_neighbors <= 1:
+            msg = f"Only values of k > 1 are supported, but got k={model.n_neighbors}"
             raise ValueError(msg)
-
-        model_weights = self.knn_model.weights  # type: ignore[attr-defined]
-        if model_weights != "distance":
-            msg = f"KNeighboursClassifier must use weights='distance', but has weights='{model_weights}'"
-            raise ValueError(msg)
-
         if n_bits < 0:
             msg = f"Number of bits for discretization must be non-negative but was {n_bits}"
             raise ValueError(msg)
-        self.n_bits = n_bits
 
+        super().__init__(model, class_index=class_index)
+
+        self.knn_model = model
+        self.k = model.n_neighbors
+        self.n_bits = n_bits
         self.weights_space_size = 2 * self.k * 2**n_bits + 1
         self.weights_space = cast("npt.NDArray[np.integer]", np.arange(self.weights_space_size))
         # Index in the discrete weight space which weight zero is mapped to
         self.weights_space_zero = self.k * cast("int", 2**n_bits)
-
         self.n_train = self.X_train.shape[0]
 
     @override

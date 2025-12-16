@@ -30,6 +30,8 @@ class KNNExplainer(NNExplainerBase):
     The algorithm itself has a linear time complexity, but expects a sorted array of training points as input, resulting in a time complexity of :math:`O(N \log N)` for explaining a single data point.
     """
 
+    model: KNeighborsClassifier
+
     @override
     def __init__(
         self,
@@ -41,14 +43,15 @@ class KNNExplainer(NNExplainerBase):
     ) -> None:
         assert_valid_index_and_order(index, max_order)
         warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
+        if model.weights != "uniform":
+            msg = f"KNeighborsClassifier must use weights='uniform', but has weights='{model.weights}'"
+            raise ValueError(msg)
+        if not isinstance(model.n_neighbors, int):
+            msg = f"Expected KNeighborsClassifier.n_neighbors to be int but got {type(model.n_neighbors)}"
+            raise TypeError(msg)
 
         super().__init__(model, class_index=class_index)
-        self.knn_model = model
-        self.k: int = self.knn_model.n_neighbors  # type: ignore[attr-defined]
-        model_weights = model.weights  # type: ignore [attr-defined]
-        if model_weights != "uniform":
-            msg = f"KNeighborsClassifier must use weights='uniform', but has weights='{model_weights}'"
-            raise ValueError(msg)
+        self.k = model.n_neighbors
 
     @override
     def explain_function(
@@ -60,7 +63,7 @@ class KNNExplainer(NNExplainerBase):
         n = len(self.X_train)
         sv = np.zeros(n)
 
-        sortperm = self.knn_model.kneighbors(x.reshape(1, -1), n_neighbors=n, return_distance=False)
+        sortperm = self.model.kneighbors(x.reshape(1, -1), n_neighbors=n, return_distance=False)
         sortperm = sortperm[0]
 
         y_train_indices_sorted = self.y_train_indices[sortperm]
