@@ -7,12 +7,18 @@ from typing_extensions import override
 
 from ._common_knn import _CommonKNNExplainer
 from ._lookup_game import LookupGame
-from ._util import interaction_values_from_array, interaction_values_to_array, keep_first_n
+from ._util import (
+    interaction_values_from_array,
+    interaction_values_to_array,
+    keep_first_n,
+    warn_ignored_parameters,
+)
 
 if TYPE_CHECKING:
     import numpy.typing as npt
     from sklearn.neighbors import KNeighborsClassifier
 
+    from shapiq.explainer.custom_types import ExplainerIndices
     from shapiq.interaction_values import InteractionValues
 
 from itertools import product
@@ -214,6 +220,9 @@ class WeightedKNNExplainer(_WeightedKNNExplainerBase):
         model: KNeighborsClassifier,
         class_index: int | None = None,
         n_bits: int = 3,
+        data: np.ndarray | None = None,
+        index: ExplainerIndices = "SV",
+        max_order: int = 1,
     ) -> None:
         """Initializes the class.
 
@@ -223,14 +232,18 @@ class WeightedKNNExplainer(_WeightedKNNExplainerBase):
             model: The KNN model to explain. Must be an instance of ``sklearn.neighbors.KNeighborsClassifier``.
                 The model must not use multi-output classification, i.e. the ``y`` value provided to ``model.fit()`` must be a 1D vector.
             data: This parameter is currently ignored but may be used in future versions.
-            labels: This parameter is currently ignored but may be used in future versions.
             class_index: The class index of the model to explain. Defaults to ``1``.
             n_bits: The number of bits to use for discretizing weights. Must be non-negative.
+            index: The type of Shapley interaction index to use. Only ``"SV"`` is supported.
+            max_order: The maximum interaction order to be computed. Only ``1`` is supported.
 
         Raises:
             sklearn.exceptions.NotFittedError: The constructor was called with a model that hasn't been fitted.
             shapiq_student.explainer.knn.exceptions.MultiOutputKNNError: The constructor was called with a model that uses multi-output classification.
         """
+        # TODO(Zaphoood): Check that index and max_order are valid (only first-order etc.)  # noqa: TD003
+        warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
+
         super().__init__(model, class_index)
 
         if self.k <= 1:

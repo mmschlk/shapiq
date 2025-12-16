@@ -8,15 +8,16 @@ from typing_extensions import override
 
 import numpy as np
 
-from ._common_knn import SupportedKNNWeights, _CommonKNNExplainer
+from ._common_knn import _CommonKNNExplainer
 from ._lookup_game import LookupGame
-from ._util import interaction_values_from_array, keep_first_n
+from ._util import interaction_values_from_array, keep_first_n, warn_ignored_parameters
 
 if TYPE_CHECKING:
     import numpy.typing as npt
     from sklearn.neighbors import KNeighborsClassifier
 
     from shapiq import InteractionValues
+    from shapiq.explainer.custom_types import ExplainerIndices
 
 MODE_NORMAL = "normal"
 
@@ -59,7 +60,7 @@ class _BruteForceNormalKNNExplainer(_CommonKNNExplainer):
         return MODE_NORMAL
 
 
-class NormalKNNExplainer(_CommonKNNExplainer):
+class KNNExplainer(_CommonKNNExplainer):
     r"""Explainer for unweighted KNN models.
 
     Implements the algorithm proposed by Jia et al. (2019) [Jia19]_ to efficiently calculate Shapley values for unweighted KNN models.
@@ -71,12 +72,17 @@ class NormalKNNExplainer(_CommonKNNExplainer):
         self,
         model: KNeighborsClassifier,
         class_index: int | None = None,
+        data: np.ndarray | None = None,
+        index: ExplainerIndices = "SV",
+        max_order: int = 1,
     ) -> None:
-        super().__init__(model, class_index=class_index)
+        # TODO(Zaphoood): Check that index and max_order are valid (only first-order etc.)  # noqa: TD003
+        warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
 
+        super().__init__(model, class_index=class_index)
         model_weights = model.weights  # type: ignore [attr-defined]
-        if model_weights != SupportedKNNWeights.uniform.value:
-            msg = f"Model must have weights '{SupportedKNNWeights.uniform.value}' but got '{model_weights}'"
+        if model_weights != "uniform":
+            msg = f"KNeighborsClassifier must use weights='uniform', but has weights='{model_weights}'"
             raise ValueError(msg)
 
     @override

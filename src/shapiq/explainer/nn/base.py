@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from abc import abstractmethod
 from typing import TYPE_CHECKING, cast
 
-from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 from sklearn.utils.validation import check_is_fitted
 
 from shapiq import Explainer
@@ -16,10 +14,11 @@ from .exceptions import MultiOutputKNNError
 if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
+    from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 
 
-class KNNExplainer(Explainer):
-    """The main interface for KNN explainers.
+class NNExplainerBase(Explainer):
+    """Base class for nearest-neighbor Explainers.
 
     Based on the model passed to the constructor, the class automatically detects between
     :class:`~shapiq_student.explainer.knn.NormalKNNExplainer` and
@@ -58,32 +57,8 @@ class KNNExplainer(Explainer):
             sklearn.exceptions.NotFittedError: The constructor was called with a model that hasn't been fitted.
             shapiq_student.explainer.knn.exceptions.MultiOutputKNNError: The constructor was called with a model that uses multi-output classification.
         """
-        # If this class is instantiated directly, automagically dispatch to the appropriate explainer for the given model
-        # TODO(Zaphoood): Move this to the common automagic dispatch in the base Explainer class  # noqa: TD003
-
-        if self.__class__ is KNNExplainer:
-            explainer_class = get_explainer_class(model)
-            self.__class__ = explainer_class  # type: ignore[reportAttributeAccessIssue]
-            explainer_class.__init__(
-                self,
-                model=model,
-                class_index=class_index,
-            )
-            return
-
-        check_is_fitted(model)
-
-        ignored_parameter_names = ["data", "labels"]
-        for param in ignored_parameter_names:
-            if locals()[param] is not None:
-                logger = logging.getLogger("shapiq_student")
-                logger.warning(
-                    "In the constructor of %s, a non-None value was passed to parameter `%s`, which will be ignored.",
-                    self.__class__.__name__,
-                    param,
-                )
-
         super().__init__(model, data=None, class_index=class_index, index="SV", max_order=1)
+        check_is_fitted(model)
 
         self.X_train = model._fit_X  # type: ignore[union-attr] # noqa: SLF001
         self.y_train_indices = cast("npt.NDArray[np.integer]", model._y)  # type: ignore[union-attr] # noqa: SLF001
@@ -103,19 +78,3 @@ class KNNExplainer(Explainer):
         """The mode in which the Explainer operates."""
         msg = f"Each subclass of {self.__class__.__name__} must implement the mode() property"
         raise NotImplementedError(msg)
-
-
-def get_explainer_class(
-    model: KNeighborsClassifier | RadiusNeighborsClassifier,
-) -> type[KNNExplainer]:
-    """Returns the appropriate subclass of KNNExplainer for the given model."""
-    from ._common_knn import _CommonKNNExplainer
-    from .threshold_nn import ThresholdNNExplainer
-
-    if isinstance(model, KNeighborsClassifier):
-        return _CommonKNNExplainer
-    if isinstance(model, RadiusNeighborsClassifier):
-        return ThresholdNNExplainer
-
-    msg = "Unreachable: Exhaustive check of model types in get_explainer_class"
-    raise RuntimeError(msg)

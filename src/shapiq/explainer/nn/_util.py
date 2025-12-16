@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import logging
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
     import numpy.typing as npt
+
+logger = logging.getLogger()
 
 
 def keep_first_n(mask: npt.NDArray[np.bool], n: int) -> npt.NDArray[np.bool]:
@@ -83,3 +88,15 @@ def interaction_values_to_array(
         out[coalition[0]] = interaction_values.values[lookup_idx]
 
     return out
+
+
+def warn_ignored_parameters(
+    local_vars: Mapping[str, Any], ignored_parameter_names: Iterable[str], class_name: str
+) -> None:
+    for param in ignored_parameter_names:
+        if local_vars[param] is not None:
+            logger.warning(
+                "A non-None value was passed as parameter `%s` to the constructor of %s, which will be ignored.",
+                class_name,
+                param,
+            )

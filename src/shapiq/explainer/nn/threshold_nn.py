@@ -17,15 +17,16 @@ if TYPE_CHECKING:
     from sklearn.neighbors import RadiusNeighborsClassifier
 
     from shapiq import InteractionValues
+    from shapiq.explainer.custom_types import ExplainerIndices
 
 
-from ._util import interaction_values_from_array
-from .base import KNNExplainer
+from ._util import interaction_values_from_array, warn_ignored_parameters
+from .base import NNExplainerBase
 
 MODE_THRESHOLD = "threshold"
 
 
-class _BruteForceTNNExplainer(KNNExplainer):
+class _BruteForceTNNExplainer(NNExplainerBase):
     """Brute force approach for explaining TNN Classifiers."""
 
     def __init__(self, model: RadiusNeighborsClassifier, class_index: int | None = None) -> None:
@@ -75,7 +76,7 @@ class _BruteForceTNNExplainer(KNNExplainer):
         return game.exact_values("SV", order=1)
 
 
-class ThresholdNNExplainer(KNNExplainer):
+class ThresholdNNExplainer(NNExplainerBase):
     r"""Explainer for threshold nearest-neighbor models.
 
     Implements the algorithm for efficiently computing exact Shapley values for threshold nearest neighbor models proposed by Wang et al. (2023) [Wng23]_.
@@ -83,7 +84,12 @@ class ThresholdNNExplainer(KNNExplainer):
     """
 
     def __init__(
-        self, model: sklearn.neighbors.RadiusNeighborsClassifier, class_index: int | None = None
+        self,
+        model: sklearn.neighbors.RadiusNeighborsClassifier,
+        class_index: int | None = None,
+        data: np.ndarray | None = None,
+        index: ExplainerIndices = "SV",
+        max_order: int = 1,
     ) -> None:
         r"""Initializes the class.
 
@@ -92,15 +98,18 @@ class ThresholdNNExplainer(KNNExplainer):
         Args:
             model: The model to explain. The model must not use multi-output classification, i.e. the ``y`` value provided to ``model.fit(X, y)`` must be a 1D vector.
             data: This parameter is currently ignored but may be used in future versions.
-            labels: This parameter is currently ignored but may be used in future versions.
             class_index: The class index of the model to explain. Defaults to ``1``.
+            index: The type of Shapley interaction index to use. Only ``"SV"`` is supported.
+            max_order: The maximum interaction order to be computed. Only ``1`` is supported.
 
         Raises:
             sklearn.exceptions.NotFittedError: The constructor was called with a model that hasn't been fitted.
         """
+        # TODO(Zaphoood): Check that index and max_order are valid (only first-order etc.)  # noqa: TD003
+        warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
+
         super().__init__(model, class_index=class_index)
         self._model = model
-
         self.tau = cast("float", model.radius)  # type: ignore[attr-defined]
 
     @property

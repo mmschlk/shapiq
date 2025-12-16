@@ -23,7 +23,14 @@ WARNING_NO_CLASS_INDEX = (
     "Disregard this warning for regression models."
 )
 
-ExplainerTypes = Literal["tabular", "tree", "tabpfn", "game", "product_kernel"]
+ExplainerTypes = Literal[
+    "tabular", "tree", "tabpfn", "game", "product_kernel", "knn", "wknn", "tnn"
+]
+
+KNN_WEIGHTS_TO_EXPLAINER = {
+    "uniform": "knn",
+    "distance": "wknn",
+}
 
 
 def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
@@ -38,6 +45,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
     import shapiq.explainer.tabpfn as tp
     import shapiq.explainer.tabular as tb
     import shapiq.explainer.tree.explainer as tr
+    from shapiq.explainer import nn
 
     return {
         "tabular": tb.TabularExplainer,
@@ -45,6 +53,9 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
         "tabpfn": tp.TabPFNExplainer,
         "game": ag.AgnosticExplainer,
         "product_kernel": pk.ProductKernelExplainer,
+        "knn": nn.KNNExplainer,
+        "wknn": nn.WeightedKNNExplainer,
+        "tnn": nn.ThresholdNNExplainer,
     }
 
 
@@ -111,6 +122,18 @@ def get_predict_function_and_model_type(
         "sklearn.ensemble._iforest.IsolationForest",
     ]:
         _model_type = "tree"
+
+    # sklearn nearest-neighbor models
+    if model_class == "sklearn.neighbors._classification.KNeighborsClassifier":
+        weights = model.weights  # type: ignore[attr-defined]
+        _model_type = KNN_WEIGHTS_TO_EXPLAINER.get(weights)
+        if _model_type is None:
+            msg = f"KNeighborsClassifier model uses unsupported weights parameter {
+                weights
+            }. Supported values are: {', '.join(KNN_WEIGHTS_TO_EXPLAINER)}"
+            raise ValueError(msg)
+    if model_class == "sklearn.neighbors._classification.RadiusNeighborsClassifier":
+        _model_type = "tnn"
 
     # lightgbm
     if model_class in [
