@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from abc import abstractmethod
 from typing import TYPE_CHECKING, cast
 
 from sklearn.utils.validation import check_is_fitted
@@ -70,11 +69,3 @@ class NNExplainerBase(Explainer):
         if class_index is None:
             class_index = 1
         self.class_index = class_index
-
-    # TODO(Zaphoood): Consider removing this property  # noqa: TD003
-    @property
-    @abstractmethod
-    def mode(self) -> str:
-        """The mode in which the Explainer operates."""
-        msg = f"Each subclass of {self.__class__.__name__} must implement the mode() property"
-        raise NotImplementedError(msg)

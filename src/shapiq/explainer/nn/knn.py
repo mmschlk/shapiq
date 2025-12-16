@@ -19,8 +19,6 @@ if TYPE_CHECKING:
     from shapiq import InteractionValues
     from shapiq.explainer.custom_types import ExplainerIndices
 
-MODE_NORMAL = "normal"
-
 
 class _BruteForceNormalKNNExplainer(_CommonKNNExplainer):
     """Brute force approach to computing Shapley values for normal (unweighted) KNN models."""
@@ -53,11 +51,6 @@ class _BruteForceNormalKNNExplainer(_CommonKNNExplainer):
 
         game = LookupGame(n_players=self.X_train.shape[0], utilities=utilities)
         return game.exact_values("SV", order=1)
-
-    @property
-    @override
-    def mode(self) -> str:
-        return MODE_NORMAL
 
 
 class KNNExplainer(_CommonKNNExplainer):
@@ -113,9 +106,3 @@ class KNNExplainer(_CommonKNNExplainer):
         inv_sortperm[sortperm] = np.arange(sortperm.shape[0])
 
         return interaction_values_from_array(sv[inv_sortperm])
-
-    @property
-    @override
-    def mode(self) -> str:
-        """This explainer's mode, which is ``"normal"``."""
-        return MODE_NORMAL

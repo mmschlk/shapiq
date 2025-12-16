@@ -1,4 +1,4 @@
-"""Implements the Explainer for threshold nearest neighbor models."""
+"""Implements the Explainer for threshold nearest-neighbor models."""
 
 from __future__ import annotations
 
@@ -23,8 +23,6 @@ if TYPE_CHECKING:
 from ._util import interaction_values_from_array, warn_ignored_parameters
 from .base import NNExplainerBase
 
-MODE_THRESHOLD = "threshold"
-
 
 class _BruteForceTNNExplainer(NNExplainerBase):
     """Brute force approach for explaining TNN Classifiers."""
@@ -35,11 +33,6 @@ class _BruteForceTNNExplainer(NNExplainerBase):
         # To circumvent this, we store the model separately in an attribute with a narrower type
         self.tnn_model = model
         self.tau = cast("float", model.radius)  # type: ignore[attr-defined]
-
-    @property
-    @override
-    def mode(self) -> str:
-        return MODE_THRESHOLD
 
     @override
     def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
@@ -111,12 +104,6 @@ class ThresholdNNExplainer(NNExplainerBase):
         super().__init__(model, class_index=class_index)
         self._model = model
         self.tau = cast("float", model.radius)  # type: ignore[attr-defined]
-
-    @property
-    @override
-    def mode(self) -> str:
-        """This explainer's mode, which is ``"threshold"``."""
-        return MODE_THRESHOLD
 
     @override
     def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:

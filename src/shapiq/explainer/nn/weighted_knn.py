@@ -26,8 +26,6 @@ from itertools import product
 import numpy as np
 from scipy.special import comb
 
-MODE_WEIGHTED = "weighted"
-
 
 class _WeightedKNNExplainerBase(_CommonKNNExplainer):
     """Base class for WKNN explainers that provides a utility function for calculating weights of training data points."""
@@ -74,11 +72,6 @@ class _WeightedKNNExplainerBase(_CommonKNNExplainer):
             weights = distances[0] / distances
 
         return sortperm, weights
-
-    @property
-    @override
-    def mode(self) -> str:
-        return MODE_WEIGHTED
 
 
 class _BruteForceWKNNExplainer(_WeightedKNNExplainerBase):
@@ -266,12 +259,6 @@ class WeightedKNNExplainer(_WeightedKNNExplainerBase):
         self.weights_space_zero = self.k * cast("int", 2**n_bits)
 
         self.n_train = self.X_train.shape[0]
-
-    @property
-    @override
-    def mode(self) -> str:
-        """This explainer's mode, which is ``"weighted"``."""
-        return MODE_WEIGHTED
 
     @override
     def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
