@@ -5,11 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast, overload
 from typing_extensions import override
 
-from ._common_knn import _CommonKNNExplainer
-from ._util import (
-    interaction_values_from_array,
-    warn_ignored_parameters,
-)
+from shapiq.explainer.nn.base import NNExplainerBase
+
+from ._util import interaction_values_from_array, warn_ignored_parameters
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -22,7 +20,7 @@ import numpy as np
 from scipy.special import comb
 
 
-class WeightedKNNExplainer(_CommonKNNExplainer):
+class WeightedKNNExplainer(NNExplainerBase):
     r"""Explainer for weighted KNN models.
 
     Implements the algorithm for efficiently computing exact Shapley values for weighted KNN models proposed by [Wng24]_.
@@ -47,27 +45,12 @@ class WeightedKNNExplainer(_CommonKNNExplainer):
         index: ExplainerIndices = "SV",
         max_order: int = 1,
     ) -> None:
-        """Initializes the class.
-
-        This method extracts the training data as well as the parameter :math:`k` from the provided KNN model and stores them as class members.
-
-        Args:
-            model: The KNN model to explain. Must be an instance of ``sklearn.neighbors.KNeighborsClassifier``.
-                The model must not use multi-output classification, i.e. the ``y`` value provided to ``model.fit()`` must be a 1D vector.
-            data: This parameter is currently ignored but may be used in future versions.
-            class_index: The class index of the model to explain. Defaults to ``1``.
-            n_bits: The number of bits to use for discretizing weights. Must be non-negative.
-            index: The type of Shapley interaction index to use. Only ``"SV"`` is supported.
-            max_order: The maximum interaction order to be computed. Only ``1`` is supported.
-
-        Raises:
-            sklearn.exceptions.NotFittedError: The constructor was called with a model that hasn't been fitted.
-            shapiq_student.explainer.knn.exceptions.MultiOutputKNNError: The constructor was called with a model that uses multi-output classification.
-        """
-        super().__init__(model, class_index=class_index)
-
         # TODO(Zaphoood): Check that index and max_order are valid (only first-order etc.)  # noqa: TD003
         warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
+
+        super().__init__(model, class_index=class_index)
+        self.knn_model = model
+        self.k: int = self.knn_model.n_neighbors  # type: ignore[attr-defined]
 
         model_weights = self.knn_model.weights  # type: ignore[attr-defined]
         if model_weights != "distance":

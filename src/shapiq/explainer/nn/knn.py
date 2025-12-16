@@ -7,7 +7,8 @@ from typing_extensions import override
 
 import numpy as np
 
-from ._common_knn import _CommonKNNExplainer
+from shapiq.explainer.nn.base import NNExplainerBase
+
 from ._util import interaction_values_from_array, warn_ignored_parameters
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from shapiq.explainer.custom_types import ExplainerIndices
 
 
-class KNNExplainer(_CommonKNNExplainer):
+class KNNExplainer(NNExplainerBase):
     r"""Explainer for unweighted KNN models.
 
     Implements the algorithm proposed by Jia et al. (2019) [Jia19]_ to efficiently calculate Shapley values for unweighted KNN models.
@@ -38,6 +39,8 @@ class KNNExplainer(_CommonKNNExplainer):
         warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
 
         super().__init__(model, class_index=class_index)
+        self.knn_model = model
+        self.k: int = self.knn_model.n_neighbors  # type: ignore[attr-defined]
         model_weights = model.weights  # type: ignore [attr-defined]
         if model_weights != "uniform":
             msg = f"KNeighborsClassifier must use weights='uniform', but has weights='{model_weights}'"
