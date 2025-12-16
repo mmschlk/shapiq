@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from itertools import product
 from typing import TYPE_CHECKING
 from typing_extensions import override
 
 import numpy as np
 
 from ._common_knn import _CommonKNNExplainer
-from ._lookup_game import LookupGame
-from ._util import interaction_values_from_array, keep_first_n, warn_ignored_parameters
+from ._util import interaction_values_from_array, warn_ignored_parameters
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -18,39 +16,6 @@ if TYPE_CHECKING:
 
     from shapiq import InteractionValues
     from shapiq.explainer.custom_types import ExplainerIndices
-
-
-class _BruteForceNormalKNNExplainer(_CommonKNNExplainer):
-    """Brute force approach to computing Shapley values for normal (unweighted) KNN models."""
-
-    @override
-    def __init__(
-        self,
-        model: KNeighborsClassifier,
-        class_index: int | None = None,
-    ) -> None:
-        super().__init__(model, class_index=class_index)
-
-    @override
-    def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
-        utilities = {}
-
-        sortperm = self.knn_model.kneighbors(
-            x.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=False
-        )
-        sortperm = sortperm[0]
-        y_train_sorted = self.y_train_indices[sortperm]
-
-        for coalition_generator in product([False, True], repeat=self.X_train.shape[0]):
-            coalition = np.array(list(coalition_generator))
-            coalition_first_k = keep_first_n(coalition, n=self.k)
-            utility = np.sum(y_train_sorted[coalition_first_k] == self.class_index) / self.k
-
-            coalition_tuple = tuple(sorted(sortperm[coalition]))
-            utilities[coalition_tuple] = utility
-
-        game = LookupGame(n_players=self.X_train.shape[0], utilities=utilities)
-        return game.exact_values("SV", order=1)
 
 
 class KNNExplainer(_CommonKNNExplainer):
