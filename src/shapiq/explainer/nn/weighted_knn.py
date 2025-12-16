@@ -22,54 +22,7 @@ import numpy as np
 from scipy.special import comb
 
 
-class _WeightedKNNExplainerBase(_CommonKNNExplainer):
-    """Base class for WKNN explainers that provides a utility function for calculating weights of training data points."""
-
-    @override
-    def __init__(
-        self,
-        model: KNeighborsClassifier,
-        class_index: int | None = None,
-    ) -> None:
-        super().__init__(model, class_index=class_index)
-
-        model_weights = self.knn_model.weights  # type: ignore[attr-defined]
-        if model_weights != "distance":
-            msg = f"KNeighborsClassifier must use weights='distance', but has weights='{model_weights}'"
-            raise ValueError(msg)
-
-    def _get_normalized_weights(
-        self, x_val: npt.NDArray[np.floating]
-    ) -> tuple[npt.NDArray[np.integer], npt.NDArray[np.floating]]:
-        """Calculate normalized weights of training data points with respect to a validation data point.
-
-        Args:
-            x_val: The validation data point.
-
-        Returns:
-            A tuple ``(sortperm, weights)``, where both are of type ``numpy.ndarray`` with dimensions ``(n_training_samples,)`` and
-                - ``sortperm`` is a permutation that sorts the training data points by decreasing weight
-                - ``weights`` contains the weights for each training data point, normalized to the interval [0, 1]
-        """
-        distances, sortperm = self.knn_model.kneighbors(
-            x_val.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=True
-        )
-        distances = distances[0]
-        sortperm = sortperm[0]
-
-        # Replicate sklearn behavior: if any training points are zero distance
-        # from the test point, those points get weight 1 and all others 0
-        zero_dist = np.isclose(distances, 0)
-        if np.any(zero_dist):
-            weights = np.zeros_like(distances)
-            weights[zero_dist] = 1
-        else:
-            weights = distances[0] / distances
-
-        return sortperm, weights
-
-
-class WeightedKNNExplainer(_WeightedKNNExplainerBase):
+class WeightedKNNExplainer(_CommonKNNExplainer):
     r"""Explainer for weighted KNN models.
 
     Implements the algorithm for efficiently computing exact Shapley values for weighted KNN models proposed by [Wng24]_.
@@ -110,10 +63,15 @@ class WeightedKNNExplainer(_WeightedKNNExplainerBase):
             sklearn.exceptions.NotFittedError: The constructor was called with a model that hasn't been fitted.
             shapiq_student.explainer.knn.exceptions.MultiOutputKNNError: The constructor was called with a model that uses multi-output classification.
         """
+        super().__init__(model, class_index=class_index)
+
         # TODO(Zaphoood): Check that index and max_order are valid (only first-order etc.)  # noqa: TD003
         warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
 
-        super().__init__(model, class_index)
+        model_weights = self.knn_model.weights  # type: ignore[attr-defined]
+        if model_weights != "distance":
+            msg = f"KNeighborsClassifier must use weights='distance', but has weights='{model_weights}'"
+            raise ValueError(msg)
 
         if self.k <= 1:
             msg = f"Only values of k > 1 are supported, but {self.k=}"
@@ -192,6 +150,36 @@ class WeightedKNNExplainer(_WeightedKNNExplainerBase):
         weights_discrete = self._discretize_weight(weights)
 
         return sortperm, weights_discrete
+
+    def _get_normalized_weights(
+        self, x_val: npt.NDArray[np.floating]
+    ) -> tuple[npt.NDArray[np.integer], npt.NDArray[np.floating]]:
+        """Calculate normalized weights of training data points with respect to a validation data point.
+
+        Args:
+            x_val: The validation data point.
+
+        Returns:
+            A tuple ``(sortperm, weights)``, where both are of type ``numpy.ndarray`` with dimensions ``(n_training_samples,)`` and
+                - ``sortperm`` is a permutation that sorts the training data points by decreasing weight
+                - ``weights`` contains the weights for each training data point, normalized to the interval [0, 1]
+        """
+        distances, sortperm = self.knn_model.kneighbors(
+            x_val.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=True
+        )
+        distances = distances[0]
+        sortperm = sortperm[0]
+
+        # Replicate sklearn behavior: if any training points are zero distance
+        # from the test point, those points get weight 1 and all others 0
+        zero_dist = np.isclose(distances, 0)
+        if np.any(zero_dist):
+            weights = np.zeros_like(distances)
+            weights[zero_dist] = 1
+        else:
+            weights = distances[0] / distances
+
+        return sortperm, weights
 
     def _range_without_i(self, n: int, i: int) -> npt.NDArray[np.integer]:
         """Returns the range [0, ..., i - 1, i + 1, ..., n - 1]."""
