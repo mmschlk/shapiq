@@ -8,8 +8,6 @@ from sklearn.utils.validation import check_is_fitted
 
 from shapiq import Explainer
 
-from .exceptions import MultiOutputNNError
-
 if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
@@ -44,7 +42,6 @@ class NNExplainerBase(Explainer):
 
         Raises:
             sklearn.exceptions.NotFittedError: The constructor was called with a model that hasn't been fitted.
-            shapiq_student.explainer.knn.exceptions.MultiOutputKNNError: The constructor was called with a model that uses multi-output classification.
         """
         super().__init__(model, data=None, class_index=class_index, index="SV", max_order=1)
         check_is_fitted(model)
@@ -52,7 +49,8 @@ class NNExplainerBase(Explainer):
         self.X_train = model._fit_X  # type: ignore[union-attr] # noqa: SLF001
         self.y_train_indices = cast("npt.NDArray[np.integer]", model._y)  # type: ignore[union-attr] # noqa: SLF001
         if self.y_train_indices.ndim != 1:
-            raise MultiOutputNNError
+            msg = "Multi-output nearest-neighbor classifiers are not supported. Make sure to pass the training labels as a 1D vector when calling `model.fit()`."
+            raise ValueError(msg)
         self.y_train_classes = cast("npt.NDArray[np.object_]", model.classes_)
 
         # TODO(Zaphoood): Fix this sketchiness  # noqa: TD003
