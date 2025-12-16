@@ -8,7 +8,7 @@ from sklearn.utils.validation import check_is_fitted
 
 from shapiq import Explainer
 
-from .exceptions import MultiOutputKNNError
+from .exceptions import MultiOutputNNError
 
 if TYPE_CHECKING:
     import numpy as np
@@ -17,15 +17,7 @@ if TYPE_CHECKING:
 
 
 class NNExplainerBase(Explainer):
-    """Base class for nearest-neighbor Explainers.
-
-    Based on the model passed to the constructor, the class automatically detects between
-    :class:`~shapiq_student.explainer.knn.NormalKNNExplainer` and
-    :class:`~shapiq_student.explainer.knn.WeightedKNNExplainer` for (weighted) :math:`k`-nearest neighbor models,
-    as well as :class:`~shapiq_student.explainer.knn.ThresholdNNExplainer` for threshold nearest neighbor models.
-
-    For a detailed description of the different explainers, see the respective classes.
-    """
+    """Base class for nearest-neighbor Explainers."""
 
     X_train: npt.NDArray[np.floating]
     """Training data features extracted from the model."""
@@ -43,13 +35,11 @@ class NNExplainerBase(Explainer):
     ) -> None:
         """Initializes the class.
 
-        This method extracts the training data from the provided model and stores it in a class member.
+        This method extracts the training data from the provided model.
 
         Args:
-            model: The KNN model to explain. Must be an instance of ``sklearn.neighbors.KNeighborsClassifier`` or ``sklearn.neighbors.RadiusNeighborsClassifier``.
+            model: The NN model to explain. Must be an instance of ``sklearn.neighbors.KNeighborsClassifier`` or ``sklearn.neighbors.RadiusNeighborsClassifier``.
                 The model must not use multi-output classification, i.e. the ``y`` value provided to ``model.fit(X, y)`` must be a 1D vector.
-            data: This parameter is currently ignored but may be used in future versions.
-            labels: This parameter is currently ignored but may be used in future versions.
             class_index: The class index of the model to explain. Defaults to ``1``.
 
         Raises:
@@ -62,9 +52,10 @@ class NNExplainerBase(Explainer):
         self.X_train = model._fit_X  # type: ignore[union-attr] # noqa: SLF001
         self.y_train_indices = cast("npt.NDArray[np.integer]", model._y)  # type: ignore[union-attr] # noqa: SLF001
         if self.y_train_indices.ndim != 1:
-            raise MultiOutputKNNError
+            raise MultiOutputNNError
         self.y_train_classes = cast("npt.NDArray[np.object_]", model.classes_)
 
+        # TODO(Zaphoood): Fix this sketchiness  # noqa: TD003
         # This is highly sketchy. We are relying on `shapiq` to handle `class_index == None` analogously, but there is no way to check, since they don't set `class_index` as an attribute of `shapiq.Explainer`
         if class_index is None:
             class_index = 1
