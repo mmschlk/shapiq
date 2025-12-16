@@ -30,7 +30,8 @@ class WeightedKNNExplainer(_CommonKNNExplainer):
 
     * :math:`k` is the defining hyperparameter of the :math:`k`-nearest neighbors model,
     * :math:`N` is the size of the training dataset,
-    * :math:`W = 2^b` (where :math:`b` is the number of discretization bits) is the size of the *discretized weights space*,
+    * :math:`W = 2^b` is the size of the *discretized weights space*, with :math:`b` being the number of discretization
+        bits,
     * :math:`C` is the number of classes of the training dataset.
 
     Since the parameters :math:`k`, :math:`W` and :math:`C` can be considered constants for most purposes, the effective complexity is :math:`O(N^2)`.
