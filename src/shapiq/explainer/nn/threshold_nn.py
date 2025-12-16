@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
-from itertools import product
 from typing import TYPE_CHECKING, cast
 from typing_extensions import override
 
 import numpy as np
 from scipy.special import comb
 
-from ._lookup_game import LookupGame
-
 if TYPE_CHECKING:
     import numpy.typing as npt
     import sklearn.neighbors
-    from sklearn.neighbors import RadiusNeighborsClassifier
 
     from shapiq import InteractionValues
     from shapiq.explainer.custom_types import ExplainerIndices
@@ -22,51 +18,6 @@ if TYPE_CHECKING:
 
 from ._util import interaction_values_from_array, warn_ignored_parameters
 from .base import NNExplainerBase
-
-
-class _BruteForceTNNExplainer(NNExplainerBase):
-    """Brute force approach for explaining TNN Classifiers."""
-
-    def __init__(self, model: RadiusNeighborsClassifier, class_index: int | None = None) -> None:
-        super().__init__(model, class_index=class_index)
-        # The type of the superclass's `model` attribute is too broad, since it also allows for other KNN explainers
-        # To circumvent this, we store the model separately in an attribute with a narrower type
-        self.tnn_model = model
-        self.tau = cast("float", model.radius)  # type: ignore[attr-defined]
-
-    @override
-    def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
-        n_train = self.X_train.shape[0]
-        n_classes = len(self.y_train_indices)
-
-        neighbor_indices = self.tnn_model.radius_neighbors(x.reshape(1, -1), return_distance=False)
-        neighbor_indices = neighbor_indices[0]
-        in_neighborhood = np.zeros((n_train,), dtype=bool)
-        in_neighborhood[neighbor_indices] = True
-
-        y_train_is_class_index = self.y_train_indices == self.class_index
-
-        utilities: dict[tuple[int, ...], float] = {}
-
-        for coalition_generator in product([False, True], repeat=self.X_train.shape[0]):
-            coalition = np.array(list(coalition_generator))
-
-            coal_nhood = coalition & in_neighborhood
-            coal_nhood_with_class_index = coal_nhood & y_train_is_class_index
-
-            n_coal_nhood = np.sum(coal_nhood)
-
-            # Utility function according to equation (3) in paper by Wang et al. (2023) DOI: 2308.15709v2
-            if n_coal_nhood == 0:
-                utility = 1 / n_classes
-            else:
-                utility = np.sum(coal_nhood_with_class_index) / n_coal_nhood
-
-            coal_tuple = tuple(map(int, np.where(coalition)[0]))
-            utilities[coal_tuple] = utility
-
-        game = LookupGame(n_players=self.X_train.shape[0], utilities=utilities)
-        return game.exact_values("SV", order=1)
 
 
 class ThresholdNNExplainer(NNExplainerBase):
