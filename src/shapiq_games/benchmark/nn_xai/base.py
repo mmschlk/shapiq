@@ -30,23 +30,28 @@ class NNBenchmarkBase(Game):
             class_index: The index of the class to explain.
         """
         self.model = model
+        self.x = x
         self.class_index = class_index
 
         X_train = self.model._fit_X  # noqa: SLF001
         if not isinstance(X_train, np.ndarray):
-            msg = (
-                f"Expected model's training data (_fit_X) to be np.ndarray but got {type(X_train)}"
-            )
+            msg = f"Expected model's training data (model._fit_X) to be np.ndarray but got {type(X_train)}"
             raise TypeError(msg)
         self.X_train = cast("np.ndarray", X_train)
 
         y_train = model._y  # noqa: SLF001
         if not isinstance(y_train, np.ndarray):
-            msg = f"Expected model's training data labels (_y) to be np.ndarray but got {type(X_train)}"
+            msg = f"Expected model's training data class indices (model._y) to be np.ndarray but got {type(X_train)}"
             raise TypeError(msg)
-
         self.y_train_indices = cast("np.ndarray", y_train)
-        self.k: int = self.knn_model.n_neighbors  # type: ignore[attr-defined]
+
+        y_train_classes = model.classes_
+        if not isinstance(y_train, np.ndarray):
+            msg = f"Expected model's training data class (model.classes_) to be np.ndarray but got {type(X_train)}"
+            raise TypeError(msg)
+        self.y_train_classes = cast("npt.NDArray[np.object_]", y_train_classes)
+
+        self.k: int = self.model.n_neighbors  # type: ignore[attr-defined]
 
         self.sortperm = self.model.kneighbors(
             x.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=False

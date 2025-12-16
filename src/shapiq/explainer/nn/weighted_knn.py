@@ -6,11 +6,8 @@ from typing import TYPE_CHECKING, cast, overload
 from typing_extensions import override
 
 from ._common_knn import _CommonKNNExplainer
-from ._lookup_game import LookupGame
 from ._util import (
     interaction_values_from_array,
-    interaction_values_to_array,
-    keep_first_n,
     warn_ignored_parameters,
 )
 
@@ -20,8 +17,6 @@ if TYPE_CHECKING:
 
     from shapiq.explainer.custom_types import ExplainerIndices
     from shapiq.interaction_values import InteractionValues
-
-from itertools import product
 
 import numpy as np
 from scipy.special import comb
@@ -72,125 +67,6 @@ class _WeightedKNNExplainerBase(_CommonKNNExplainer):
             weights = distances[0] / distances
 
         return sortperm, weights
-
-
-class _BruteForceWKNNExplainer(_WeightedKNNExplainerBase):
-    """A brute force algorithm for computing WKNN Shapley values.
-
-    References:
-        .. [Wng24] Wang, Jiachen T., Prateek Mittal, and Ruoxi Jia. "Efficient data shapley for weighted nearest neighbor algorithms." International Conference on Artificial Intelligence and Statistics. PMLR, 2024.
-    """
-
-    def __init__(
-        self,
-        model: KNeighborsClassifier,
-        class_index: int | None = None,
-        n_bits: int | None = None,
-    ) -> None:
-        """Initializes the BruteForceWKNNExplainer.
-
-        Args:
-            model: The KNN model to explain.
-            class_index: The class index of the model to explain.
-            n_bits: If not None, then weights will be discretized to this number of bits.
-        """
-        super().__init__(model, class_index)
-
-        self.n_bits = n_bits
-
-    @override
-    def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
-        n_players = self.X_train.shape[0]
-
-        n_classes = len(self.y_train_classes)
-        if n_classes == 1:
-            return interaction_values_from_array(np.full(n_players, 1 / n_players))
-
-        sortperm, weights = self._get_normalized_weights(x)
-
-        sv = np.zeros((n_players,))
-        for other_class_index in range(n_classes):
-            if other_class_index == self.class_index:
-                continue
-            sv_current = self._explain_binary(
-                self.class_index, other_class_index, sortperm, weights
-            )
-            sv += sv_current
-
-        sv /= n_classes - 1
-
-        return interaction_values_from_array(sv)
-
-    def _explain_binary(
-        self,
-        y_val: int,
-        y_other: int,
-        sortperm: npt.NDArray[np.integer],
-        weights: npt.NDArray[np.floating],
-    ) -> npt.NDArray[np.floating]:
-        """Computes the Shapley values for a single binary-class classification game.
-
-        Only training data points which have class index ``y_val`` or ``y_other`` are considered and all others ignored.
-
-        Args:
-            y_val: The index of the class to explain.
-            y_other: The index of the other class to consider for the binary sub-game.
-            sortperm: Sorting permutation of the training data points with respect to weights.
-            weights: Array of weights assigned to each training data point.
-
-        Returns:
-            An ``np.ndarray`` of Shapley values for each training data point.
-        """
-        if self.n_bits is not None:
-            _wang_explainer = WeightedKNNExplainer(
-                self.knn_model, self.class_index, n_bits=self.n_bits
-            )
-            weights = _wang_explainer._undiscretize_weight(  # noqa: SLF001
-                _wang_explainer._discretize_weight(weights)  # noqa: SLF001
-            )
-
-        n_players = self.X_train.shape[0]
-        utilities: dict[tuple[int, ...], float] = {}
-
-        y_train_sorted = self.y_train_indices[sortperm]
-        y_val_mask = y_train_sorted == y_val
-        y_other_mask = y_train_sorted == y_other
-
-        for coalition_generator in product([False, True], repeat=self.X_train.shape[0]):
-            coalition = np.array(list(coalition_generator))
-
-            # Utility function according to equation (15) in Wang et al. (2024), with the modification that the utility of the empty set is zero.
-
-            coalition_relevant_class = coalition & (y_val_mask | y_other_mask)
-            if np.any(coalition_relevant_class):
-                # Mask of k nearest training points of current coalition with class y_val or y_other
-                k_nearest_with_relevant_class = keep_first_n(coalition_relevant_class, self.k)
-                y_val_nearest = y_val_mask & k_nearest_with_relevant_class
-                y_other_nearest = y_other_mask & k_nearest_with_relevant_class
-                utility = int(
-                    _greater_or_close(
-                        np.sum(weights[y_val_nearest]), np.sum(weights[y_other_nearest])
-                    )
-                )
-            else:
-                # Empty coalition must be zero
-                utility = 0
-
-            coalition_tuple = tuple(sorted(sortperm[coalition]))
-            utilities[coalition_tuple] = utility
-
-        game = LookupGame(n_players, utilities)
-        iv = game.exact_values("SV", order=1)
-
-        return interaction_values_to_array(iv)
-
-
-def _greater_or_close(a: np.floating, b: np.floating) -> np.bool:
-    """Returns ``a >= b`` but allows for floating point error.
-
-    That is, if ``a < b`` but ``np.isclose(a, b)``, ``True`` will be returned.
-    """
-    return cast("np.bool", a >= b) or np.isclose(a, b)
 
 
 class WeightedKNNExplainer(_WeightedKNNExplainerBase):

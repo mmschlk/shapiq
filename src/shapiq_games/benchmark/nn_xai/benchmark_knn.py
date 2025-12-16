@@ -13,12 +13,14 @@ from .base import NNBenchmarkBase
 if TYPE_CHECKING:
     import numpy.typing as npt
 
+    from shapiq.typing import GameValues
+
 
 class KNNExplainerXAI(NNBenchmarkBase):
     """Benchmark game for the KNNExplainer."""
 
     @override
-    def value_function(self, coalitions: npt.NDArray[np.bool]) -> npt.NDArray[np.floating]:
+    def value_function(self, coalitions: npt.NDArray[np.bool]) -> GameValues:
         utilities = np.zeros(coalitions.shape[0])
 
         for coalition in coalitions:
