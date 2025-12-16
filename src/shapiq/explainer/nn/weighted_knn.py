@@ -7,7 +7,11 @@ from typing_extensions import override
 
 from shapiq.explainer.nn.base import NNExplainerBase
 
-from ._util import interaction_values_from_array, warn_ignored_parameters
+from ._util import (
+    assert_valid_index_and_order,
+    interaction_values_from_array,
+    warn_ignored_parameters,
+)
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -45,7 +49,7 @@ class WeightedKNNExplainer(NNExplainerBase):
         index: ExplainerIndices = "SV",
         max_order: int = 1,
     ) -> None:
-        # TODO(Zaphoood): Check that index and max_order are valid (only first-order etc.)  # noqa: TD003
+        assert_valid_index_and_order(index, max_order)
         warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
 
         super().__init__(model, class_index=class_index)

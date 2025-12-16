@@ -16,7 +16,11 @@ if TYPE_CHECKING:
     from shapiq.explainer.custom_types import ExplainerIndices
 
 
-from ._util import interaction_values_from_array, warn_ignored_parameters
+from ._util import (
+    assert_valid_index_and_order,
+    interaction_values_from_array,
+    warn_ignored_parameters,
+)
 from .base import NNExplainerBase
 
 
@@ -49,7 +53,7 @@ class ThresholdNNExplainer(NNExplainerBase):
         Raises:
             sklearn.exceptions.NotFittedError: The constructor was called with a model that hasn't been fitted.
         """
-        # TODO(Zaphoood): Check that index and max_order are valid (only first-order etc.)  # noqa: TD003
+        assert_valid_index_and_order(index, max_order)
         warn_ignored_parameters(locals(), ["data"], self.__class__.__name__)
 
         super().__init__(model, class_index=class_index)
