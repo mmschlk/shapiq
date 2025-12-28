@@ -12,7 +12,6 @@ from tests.shapiq.markers import skip_if_no_lightgbm
 
 
 @skip_if_no_lightgbm
-@pytest.mark.external_libraries
 def test_initialization_defaults():
     """Test that ProxySPEX initializes with correct defaults."""
     n = 10
@@ -36,7 +35,6 @@ def test_initialization_defaults():
     ],
 )
 @skip_if_no_lightgbm
-@pytest.mark.external_libraries
 def test_initialization_custom(n, index, max_order, top_order):
     """Test ProxySPEX initialization with custom parameters."""
     proxyspex = ProxySPEX(
@@ -61,7 +59,6 @@ def test_initialization_custom(n, index, max_order, top_order):
     ],
 )
 @skip_if_no_lightgbm
-@pytest.mark.external_libraries
 def test_approximate(n, interactions, budget):
     """Test ProxySPEX approximation functionality."""
 

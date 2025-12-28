@@ -482,6 +482,8 @@ class Sparse(Approximator[ValidSparseIndices]):
         """
         n = train_X.shape[1]
         four_items = list(four_dict.items())
+        if len(four_items) <= self.n:
+            return four_dict
         list_keys = [item[0] for item in four_items]
         four_coefs = np.array([item[1] for item in four_items])
 
@@ -492,6 +494,8 @@ class Sparse(Approximator[ValidSparseIndices]):
             four_coefs_for_energy[nfc_idx] = 0
         four_coefs_sq = four_coefs_for_energy**2
         tot_energy = np.sum(four_coefs_sq)
+        if tot_energy == 0:
+            return four_dict
         sorted_four_coefs_sq = np.sort(four_coefs_sq)[::-1]
         cumulative_energy_ratio = np.cumsum(sorted_four_coefs_sq / tot_energy)
         thresh_idx_95 = np.argmin(cumulative_energy_ratio < 0.95) + 1
