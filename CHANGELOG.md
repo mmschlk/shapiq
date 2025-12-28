@@ -1,5 +1,14 @@
 # Changelog
 
+## development 
+
+### Introducing CTEImputer [#225](https://github.com/mmschlk/shapiq/pull/225)
+Adds the [`CTEImputer`](https://github.com/mmschlk/shapiq/blob/main/src/shapiq/imputer/cte_imputer.py) following the [*compress then explain* (CTE)](https://openreview.net/forum?id=LiUfN9h0Lx) methodology. 
+It replaces missing features of the explanation point by values sampled from the background data, which is first subsampled using a distribution compression algorithm, specifically [Compress++](https://openreview.net/forum?id=lzupY5zjaU9) with [Kernel Thinning](https://www.jmlr.org/papers/v25/21-1334.html). 
+CTE has shown to provide accurate and stable estimates of explanations while being computationally efficient.
+It is a new default imputer in `TabularExplainer`, removing the necessity to set `sample_size`.
+
+
 ## v1.4.1 (2025-11-10)
 
 ### Bugfix
