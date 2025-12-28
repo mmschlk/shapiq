@@ -14,7 +14,7 @@ jobs:
         name: Code Quality Checks
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v6
             -   name: Set up Python and uv
                 uses: astral-sh/setup-uv@v7
                 with:
@@ -45,7 +45,7 @@ jobs:
                       python-version: "3.12"
         runs-on: ${{ matrix.os }}
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v6
             -   name: Set up Python and uv
                 uses: astral-sh/setup-uv@v7
                 with:
@@ -64,7 +64,7 @@ jobs:
         name: Install and import check shapiq-games
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v6
             -   name: Set up Python and uv
                 uses: astral-sh/setup-uv@v7
                 with:
@@ -97,7 +97,7 @@ jobs:
                       python-version: "3.12"
         runs-on: ${{ matrix.os }}
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v6
             -   name: Set up Python and uv
                 uses: astral-sh/setup-uv@v7
                 with:
@@ -113,7 +113,7 @@ jobs:
     test_shapiq_games:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v6
             -   name: Set up Python and uv
                 uses: astral-sh/setup-uv@v7
                 with:
@@ -133,7 +133,7 @@ jobs:
             - install_and_import_shapiq
             - check_code_quality
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v6
             -   name: Set up Python and uv
                 uses: astral-sh/setup-uv@v7
                 with:
@@ -158,7 +158,7 @@ jobs:
             - install_and_import_shapiq
             - check_code_quality
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v6
             -   name: Set up Python and uv
                 uses: astral-sh/setup-uv@v7
                 with:
