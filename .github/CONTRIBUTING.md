@@ -111,13 +111,13 @@ To build the documentation on your end and to check if your changes are document
 need to install the documentation dependencies:
 
 ```sh
-uv sync --all-extras --dev --docs
+uv sync --group docs
 ```
 
 Then, you can build the documentation from the root of the repository with:
 
 ```sh
-sphinx-build docs/source docs/build
+uv run sphinx-build docs/source docs/build
 ```
 
 This will render the documentation in the `docs/build` directory. You can open the `index.html` file
