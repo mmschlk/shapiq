@@ -18,7 +18,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
@@ -447,5 +447,13 @@ def sklearn_knn_model(background_clf_dataset_small) -> KNeighborsClassifier:
 def sklearn_wknn_model(background_clf_dataset_small) -> KNeighborsClassifier:
     X, y = background_clf_dataset_small
     model = KNeighborsClassifier(n_neighbors=3, weights="distance")
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def sklearn_tnn_model(background_clf_dataset_small) -> RadiusNeighborsClassifier:
+    X, y = background_clf_dataset_small
+    model = RadiusNeighborsClassifier()
     model.fit(X, y)
     return model
