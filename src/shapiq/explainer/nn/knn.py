@@ -11,9 +11,9 @@ from shapiq.explainer.nn.base import NNExplainerBase
 
 from ._util import (
     assert_valid_index_and_order,
-    interaction_values_from_array,
     warn_ignored_parameters,
 )
+from .iv_utils import interaction_values_from_array
 
 if TYPE_CHECKING:
     import numpy.typing as npt
