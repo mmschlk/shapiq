@@ -12,7 +12,12 @@ def test_knn(sklearn_knn_model, background_clf_dataset_small):
     X, y = background_clf_dataset_small
     n_classes = np.max(y) + 1
 
-    for x_test in X:
+    # Generate random test points similar to train data (the distribution doesn't really matter but this ensures we
+    # cover a good range of test data)
+    rng = np.random.default_rng(seed=43)
+    X_test = rng.multivariate_normal(np.mean(X, axis=0), np.cov(X, rowvar=False), size=10)
+
+    for x_test in X_test:
         for class_index in range(n_classes):
             ground_truth_game = KNNExplainerXAI(sklearn_knn_model, x_test, class_index)
             iv_expected = ground_truth_game.exact_values("SV", 1)

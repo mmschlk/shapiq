@@ -11,7 +11,10 @@ def test_wknn(sklearn_wknn_model, background_clf_dataset_small):
     n_classes = np.max(y) + 1
     n_bits = 3
 
-    for x_test in X:
+    rng = np.random.default_rng(seed=43)
+    X_test = rng.multivariate_normal(np.mean(X, axis=0), np.cov(X, rowvar=False), size=10)
+
+    for x_test in X_test:
         for class_index in range(n_classes):
             ground_truth_game = WeightedKNNExplainerXAI(
                 sklearn_wknn_model, x_test, class_index, n_bits=n_bits
