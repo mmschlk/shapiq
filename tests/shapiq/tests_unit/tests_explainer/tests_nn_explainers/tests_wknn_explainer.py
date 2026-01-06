@@ -6,7 +6,7 @@ from shapiq.explainer.nn import WeightedKNNExplainer
 from shapiq_games.benchmark.nn_xai.benchmark_wknn import WeightedKNNExplainerXAI
 
 
-def test_knn(sklearn_wknn_model, background_clf_dataset_small):
+def test_wknn(sklearn_wknn_model, background_clf_dataset_small):
     X, y = background_clf_dataset_small
     n_classes = np.max(y) + 1
     n_bits = 3
