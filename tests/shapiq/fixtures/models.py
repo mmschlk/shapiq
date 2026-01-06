@@ -18,6 +18,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
@@ -432,3 +433,11 @@ def dummy_model() -> Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]]:
         return np.asarray(np.sum(x, axis=-1), dtype=float)
 
     return predict
+
+
+@pytest.fixture
+def sklearn_knn_model(background_clf_dataset_small) -> KNeighborsClassifier:
+    X, y = background_clf_dataset_small
+    model = KNeighborsClassifier(n_neighbors=3, weights="uniform")
+    model.fit(X, y)
+    return model
