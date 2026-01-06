@@ -441,3 +441,11 @@ def sklearn_knn_model(background_clf_dataset_small) -> KNeighborsClassifier:
     model = KNeighborsClassifier(n_neighbors=3, weights="uniform")
     model.fit(X, y)
     return model
+
+
+@pytest.fixture
+def sklearn_wknn_model(background_clf_dataset_small) -> KNeighborsClassifier:
+    X, y = background_clf_dataset_small
+    model = KNeighborsClassifier(n_neighbors=3, weights="distance")
+    model.fit(X, y)
+    return model

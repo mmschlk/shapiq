@@ -90,13 +90,6 @@ class BinaryWeightedKNNExplainerXAI(KNNBenchmarkBase):
 
     @override
     def value_function(self, coalitions: npt.NDArray[np.bool]) -> GameValues:
-        n_classes = len(self.y_train_classes)
-        # TODO(Zaphoood): Allow n_classes == 1 # noqa: TD003
-        expected_classes = 2
-        if n_classes != expected_classes:
-            msg = f"Expected exactly {expected_classes} classes but got {n_classes}"
-            raise ValueError(msg)
-
         sortperm, weights = self._get_normalized_weights()
 
         if self.n_bits is not None:
@@ -112,13 +105,14 @@ class BinaryWeightedKNNExplainerXAI(KNNBenchmarkBase):
         # This is the utility function according to equation (15) in Wang et al. (2024), with the modification that the utility of the empty set is zero.
         utilities = np.zeros(coalitions.shape[0])
         for i, coalition in enumerate(coalitions):
-            coalition_relevant_class = coalition & (y_val_mask | y_other_mask)
+            coalition_sorted = coalition[sortperm]
+            coalition_relevant_class = coalition_sorted & (y_val_mask | y_other_mask)
             if not np.any(coalition_relevant_class):
                 # Empty coalition must be zero
                 utilities[i] = 0
                 continue
 
-            # Mask of k nearest training points of current coalition with class y_val or y_other
+            # Mask of k nearest training points of the current coalition with class y_val or y_other
             k_nearest_with_relevant_class = keep_first_n(coalition_relevant_class, self.k)
             y_val_nearest = y_val_mask & k_nearest_with_relevant_class
             y_other_nearest = y_other_mask & k_nearest_with_relevant_class
