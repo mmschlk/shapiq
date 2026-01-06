@@ -54,12 +54,7 @@ class KNNExplainer(NNExplainerBase):
         self.k = model.n_neighbors
 
     @override
-    def explain_function(
-        self, x: npt.NDArray[np.floating], class_index: int | None = None
-    ) -> InteractionValues:
-        if class_index is None:
-            class_index = self.class_index
-
+    def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
         n = len(self.X_train)
         sv = np.zeros(n)
 
@@ -68,7 +63,7 @@ class KNNExplainer(NNExplainerBase):
 
         y_train_indices_sorted = self.y_train_indices[sortperm]
         # Compute indicator function of whether a training point's class agrees with the class to explain
-        y_train_is_class_index = (y_train_indices_sorted == class_index).astype(int)
+        y_train_is_class_index = (y_train_indices_sorted == self.class_index).astype(int)
 
         sv[-1] = y_train_is_class_index[-1] / n
 
