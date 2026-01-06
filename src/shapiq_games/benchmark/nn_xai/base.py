@@ -55,7 +55,7 @@ class NNBenchmarkBase(Game):
 
         self.k: int = self.model.n_neighbors  # type: ignore[attr-defined]
 
-        super().__init__(n_players=self.X_train.shape[0])
+        super().__init__(n_players=self.X_train.shape[0], normalization_value=0)
 
 
 class KNNBenchmarkBase(NNBenchmarkBase):
