@@ -33,8 +33,6 @@ class NNExplainerBase(Explainer):
     ) -> None:
         """Initializes the class.
 
-        This method extracts the training data from the provided model.
-
         Args:
             model: The NN model to explain. Must be an instance of ``sklearn.neighbors.KNeighborsClassifier`` or ``sklearn.neighbors.RadiusNeighborsClassifier``.
                 The model must not use multi-output classification, i.e. the ``y`` value provided to ``model.fit(X, y)`` must be a 1D vector.
