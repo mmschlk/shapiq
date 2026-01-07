@@ -26,8 +26,12 @@ if TYPE_CHECKING:
 class KNNExplainer(NNExplainerBase):
     r"""Explainer for unweighted KNN models.
 
-    Implements the algorithm proposed by Jia et al. (2019) [Jia19]_ to efficiently calculate Shapley values for unweighted KNN models.
-    The algorithm itself has a linear time complexity, but expects a sorted array of training points as input, resulting in a time complexity of :math:`O(N \log N)` for explaining a single data point.
+    Implements the algorithm proposed by :footcite:t:`Jia.2019` to efficiently calculate Shapley values for unweighted KNN models.
+    The algorithm itself has a linear time complexity, but requires sorting training points by distance to the test
+    point, resulting in a time complexity of :math:`O(N \log N)` for explaining a single data point.
+
+    References:
+        .. footbibliography::
     """
 
     model: KNeighborsClassifier

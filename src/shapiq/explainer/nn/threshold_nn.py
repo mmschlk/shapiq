@@ -26,10 +26,13 @@ from .iv_utils import interaction_values_from_array
 
 
 class ThresholdNNExplainer(NNExplainerBase):
-    r"""Explainer for threshold nearest-neighbor models.
+    """Explainer for threshold nearest-neighbor models.
 
-    Implements the algorithm for efficiently computing exact Shapley values for threshold nearest neighbor models proposed by Wang et al. (2023) [Wng23]_.
+    Implements the algorithm for efficiently computing exact Shapley values for threshold nearest neighbor models proposed by :footcite:t:`Wang.2023`.
     The algorithm has a runtime complexity of :math:`O(N)` (when explaining a single data point), where :math:`N` is the number of training samples.
+
+    References:
+        .. footbibliography::
     """
 
     model: RadiusNeighborsClassifier
