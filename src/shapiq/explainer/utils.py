@@ -128,9 +128,10 @@ def get_predict_function_and_model_type(
         weights = model.weights  # type: ignore[attr-defined]
         _model_type = KNN_WEIGHTS_TO_EXPLAINER.get(weights)
         if _model_type is None:
-            msg = f"KNeighborsClassifier model uses unsupported weights parameter {
-                weights
-            }. Supported values are: {', '.join(KNN_WEIGHTS_TO_EXPLAINER)}"
+            msg = (
+                "KNeighborsClassifier model uses unsupported weights parameter "
+                f"{weights}. Supported values are: {', '.join(KNN_WEIGHTS_TO_EXPLAINER)}"
+            )
             raise ValueError(msg)
     if model_class == "sklearn.neighbors._classification.RadiusNeighborsClassifier":
         _model_type = "tnn"
