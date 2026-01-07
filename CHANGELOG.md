@@ -2,7 +2,7 @@
 
 ### Introducing Explainers for Nearest Neighbor Models
 
-Adds three new explainers, namely `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer`, which can explain nearest neighbor models from [scikit-learn](https://scikit-learn.org/stable/) efficiently.
+Adds three new explainers, namely `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer`, which efficiently compute explanations for nearest neighbor models from the [scikit-learn](https://scikit-learn.org/stable/) library.
 One application of these explainers is Data Valuation, i.e. the task of evaluating the usefulness of training data points for training models.
 
 ## v1.4.1 (2025-11-10)
