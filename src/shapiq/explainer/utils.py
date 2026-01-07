@@ -123,7 +123,7 @@ def get_predict_function_and_model_type(
     ]:
         _model_type = "tree"
 
-    # sklearn nearest-neighbor models
+    # sklearn nearest neighbor models
     if model_class == "sklearn.neighbors._classification.KNeighborsClassifier":
         weights = model.weights  # type: ignore[attr-defined]
         _model_type = KNN_WEIGHTS_TO_EXPLAINER.get(weights)

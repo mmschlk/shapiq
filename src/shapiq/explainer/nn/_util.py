@@ -66,7 +66,7 @@ def assert_valid_index_and_order(index: ExplainerIndices, max_order: int) -> Non
     """
     valid_indices: list[ExplainerIndices] = ["SV", "k-SII"]
     if index not in valid_indices:
-        msg = f"Explainer index '{index}' is invalid for nearest-neighbor models. Valid indices are: {', '.join(valid_indices)}"
+        msg = f"Explainer index '{index}' is invalid for nearest neighbor models. Valid indices are: {', '.join(valid_indices)}"
         raise ValueError(msg)
 
     if max_order != 1:

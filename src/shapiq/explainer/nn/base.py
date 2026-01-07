@@ -1,4 +1,4 @@
-"""Implementation of NNExplainerBase."""
+"""Implementation of the base class for nearest neighbor explainers."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class NNExplainerBase(Explainer):
-    """Base class for nearest-neighbor Explainers."""
+    """Base class for nearest neighbor Explainers."""
 
     X_train: npt.NDArray[np.floating]
     """Training data features extracted from the model."""
@@ -65,7 +65,7 @@ class NNExplainerBase(Explainer):
             msg = f"Expected dtype of model's training class indices (model._y) to be a subtype of np.integer, but got {y_train_indices.dtype}"
             raise TypeError(msg)
         if y_train_indices.ndim != 1:
-            msg = "Multi-output nearest-neighbor classifiers are not supported. Make sure to pass the training labels as a 1D vector when calling `model.fit()`."
+            msg = "Multi-output nearest neighbor classifiers are not supported. Make sure to pass the training labels as a 1D vector when calling `model.fit()`."
             raise ValueError(msg)
         self.y_train_indices = y_train_indices
 

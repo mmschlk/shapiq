@@ -1,1 +1,1 @@
-"""Contains benchmark games for nearest-neighbor explainers."""
+"""Contains benchmark games for nearest neighbor explainers."""

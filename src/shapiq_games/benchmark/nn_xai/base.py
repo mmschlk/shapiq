@@ -1,4 +1,4 @@
-"""Base for all nearest-neighbor explainer benchmarks."""
+"""Base for all nearest neighbor explainer benchmarks."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class NNBenchmarkBase(Game):
-    """Base class for all nearest-neighbor explainer benchmarks."""
+    """Base class for all nearest neighbor explainer benchmarks."""
 
     def __init__(
         self,
@@ -59,7 +59,7 @@ class NNBenchmarkBase(Game):
 
 
 class KNNBenchmarkBase(NNBenchmarkBase):
-    """Base class for k nearest-neighbor explainer benchmarks."""
+    """Base class for k-nearest neighbor explainer benchmarks."""
 
     @override
     def __init__(
