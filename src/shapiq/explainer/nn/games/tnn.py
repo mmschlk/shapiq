@@ -7,7 +7,7 @@ from typing_extensions import override
 
 import numpy as np
 
-from .base import NNBenchmarkBase
+from .base import NNExplainerGameBase
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     from shapiq.typing import GameValues
 
 
-class TNNExplainerXAI(NNBenchmarkBase):
-    """Benchmark game for the KNNExplainer."""
+class TNNExplainerGame(NNExplainerGameBase):
+    """Ground-truth benchmark game for the KNNExplainer."""
 
     @override
     def __init__(

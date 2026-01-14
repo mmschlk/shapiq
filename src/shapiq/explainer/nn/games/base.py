@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 
 
-class NNBenchmarkBase(Game):
-    """Base class for all nearest neighbor explainer benchmarks."""
+class NNExplainerGameBase(Game):
+    """Base class for all benchmark games for nearest neighbor explainers."""
 
     def __init__(
         self,
@@ -58,8 +58,8 @@ class NNBenchmarkBase(Game):
         super().__init__(n_players=self.X_train.shape[0], normalization_value=0)
 
 
-class KNNBenchmarkBase(NNBenchmarkBase):
-    """Base class for k-nearest neighbor explainer benchmarks."""
+class KNNExplainerGameBase(NNExplainerGameBase):
+    """Base class for all benchmark games for k-nearest neighbor explainers."""
 
     @override
     def __init__(

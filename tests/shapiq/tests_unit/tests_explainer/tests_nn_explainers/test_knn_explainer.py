@@ -3,9 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from shapiq.explainer.nn import KNNExplainer
-
-# TODO(Zaphoood): Apparently, shapiq_games.benchmark is deprecated, where should NN benchmarks go instead?  # noqa: TD003
-from shapiq_games.benchmark.nn_xai.benchmark_knn import KNNExplainerXAI
+from shapiq.explainer.nn.games.knn import KNNExplainerGame
 
 
 def test_knn(sklearn_knn_model, background_clf_dataset_small):
@@ -19,7 +17,7 @@ def test_knn(sklearn_knn_model, background_clf_dataset_small):
 
     for x_test in X_test:
         for class_index in range(n_classes):
-            ground_truth_game = KNNExplainerXAI(sklearn_knn_model, x_test, class_index)
+            ground_truth_game = KNNExplainerGame(sklearn_knn_model, x_test, class_index)
             iv_expected = ground_truth_game.exact_values("SV", 1)
             knn_explainer = KNNExplainer(sklearn_knn_model, class_index=class_index)
             iv = knn_explainer.explain(x_test)
@@ -40,7 +38,7 @@ def test_knn_small_n(sklearn_knn_model, background_clf_dataset_small):
 
     for x_test in X:
         for class_index in range(n_classes):
-            ground_truth_game = KNNExplainerXAI(sklearn_knn_model, x_test, class_index)
+            ground_truth_game = KNNExplainerGame(sklearn_knn_model, x_test, class_index)
             iv_expected = ground_truth_game.exact_values("SV", 1)
             knn_explainer = KNNExplainer(sklearn_knn_model, class_index=class_index)
             iv = knn_explainer.explain(x_test)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from shapiq.explainer.nn import ThresholdNNExplainer
-from shapiq_games.benchmark.nn_xai.benchmark_tnn import TNNExplainerXAI
+from shapiq.explainer.nn.games.tnn import TNNExplainerGame
 
 
 def test_tnn(sklearn_tnn_model, background_clf_dataset_small):
@@ -15,7 +15,7 @@ def test_tnn(sklearn_tnn_model, background_clf_dataset_small):
 
     for x_test in X_test:
         for class_index in range(n_classes):
-            ground_truth_game = TNNExplainerXAI(sklearn_tnn_model, x_test, class_index)
+            ground_truth_game = TNNExplainerGame(sklearn_tnn_model, x_test, class_index)
             iv_expected = ground_truth_game.exact_values("SV", 1)
             knn_explainer = ThresholdNNExplainer(sklearn_tnn_model, class_index=class_index)
             iv = knn_explainer.explain(x_test)

@@ -8,7 +8,7 @@ from typing_extensions import override
 import numpy as np
 
 from ._util import keep_first_n
-from .base import KNNBenchmarkBase
+from .base import KNNExplainerGameBase
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     from shapiq.typing import GameValues
 
 
-class KNNExplainerXAI(KNNBenchmarkBase):
-    """Benchmark game for the KNNExplainer."""
+class KNNExplainerGame(KNNExplainerGameBase):
+    """Ground-truth benchmark game for the KNNExplainer."""
 
     @override
     def value_function(self, coalitions: npt.NDArray[np.bool]) -> GameValues:

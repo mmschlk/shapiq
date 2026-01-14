@@ -8,9 +8,9 @@ from typing_extensions import override
 import numpy as np
 
 from shapiq.explainer.nn.weighted_knn import WeightedKNNExplainer
-from shapiq_games.benchmark.nn_xai.base import KNNBenchmarkBase
 
 from ._util import _greater_or_close, keep_first_n
+from .base import KNNExplainerGameBase
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from shapiq.typing import GameValues
 
 
-class WeightedKNNExplainerXAI(KNNBenchmarkBase):
-    """Benchmark game for the WeightedKNNExplainer."""
+class WeightedKNNExplainerGame(KNNExplainerGameBase):
+    """Ground-truth benchmark game for the WeightedKNNExplainer."""
 
     def __init__(
         self,
@@ -61,7 +61,7 @@ class WeightedKNNExplainerXAI(KNNBenchmarkBase):
         return sum(binary_game_values) / (self.n_classes - 1)
 
 
-class BinaryWeightedKNNExplainerXAI(KNNBenchmarkBase):
+class BinaryWeightedKNNExplainerXAI(KNNExplainerGameBase):
     """Benchmark game for the WeightedKNNExplainer in the binary case."""
 
     def __init__(

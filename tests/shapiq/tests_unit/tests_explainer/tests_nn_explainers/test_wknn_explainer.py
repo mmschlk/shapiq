@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from shapiq.explainer.nn import WeightedKNNExplainer
-from shapiq_games.benchmark.nn_xai.benchmark_wknn import WeightedKNNExplainerXAI
+from shapiq.explainer.nn.games.wknn import WeightedKNNExplainerGame
 
 
 def test_wknn(sklearn_wknn_model, background_clf_dataset_small):
@@ -16,7 +16,7 @@ def test_wknn(sklearn_wknn_model, background_clf_dataset_small):
 
     for x_test in X_test:
         for class_index in range(n_classes):
-            ground_truth_game = WeightedKNNExplainerXAI(
+            ground_truth_game = WeightedKNNExplainerGame(
                 sklearn_wknn_model, x_test, class_index, n_bits=n_bits
             )
             iv_expected = ground_truth_game.exact_values("SV", 1)
