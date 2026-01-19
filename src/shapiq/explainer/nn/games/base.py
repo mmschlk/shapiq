@@ -38,19 +38,31 @@ class NNExplainerGameBase(Game):
         if not isinstance(X_train, np.ndarray):
             msg = f"Expected model's training data (model._fit_X) to be np.ndarray but got {type(X_train)}"
             raise TypeError(msg)
+        if not (
+            np.issubdtype(X_train.dtype, np.floating) or np.issubdtype(X_train.dtype, np.integer)
+        ):
+            msg = f"Expected dtype of model's training features (model._fit_X) to be a subtype of np.floating or np.integer, but got {X_train.dtype}"
+            raise TypeError(msg)
+        if np.issubdtype(X_train.dtype, np.integer):
+            X_train = X_train.astype(np.float32)
         self.X_train = cast("np.ndarray", X_train)
 
-        y_train = model._y  # noqa: SLF001
-        if not isinstance(y_train, np.ndarray):
+        y_train_indices = model._y  # noqa: SLF001
+        if not isinstance(y_train_indices, np.ndarray):
             msg = f"Expected model's training data class indices (model._y) to be np.ndarray but got {type(X_train)}"
             raise TypeError(msg)
-        self.y_train_indices = cast("np.ndarray", y_train)
+        if not np.issubdtype(y_train_indices.dtype, np.integer):
+            msg = f"Expected dtype of model's training class indices (model._y) to be a subtype of np.integer, but got {y_train_indices.dtype}"
+            raise TypeError(msg)
+        if y_train_indices.ndim != 1:
+            msg = "Multi-output nearest neighbor classifiers are not supported. Make sure to pass the training labels as a 1D vector when calling `model.fit()`."
+            raise ValueError(msg)
+        self.y_train_indices = cast("np.ndarray", y_train_indices)
 
-        y_train_classes = model.classes_
-        if not isinstance(y_train, np.ndarray):
+        if not isinstance(model.classes_, np.ndarray):
             msg = f"Expected model's training data class (model.classes_) to be np.ndarray but got {type(X_train)}"
             raise TypeError(msg)
-        self.y_train_classes = cast("npt.NDArray[np.object_]", y_train_classes)
+        self.y_train_classes = cast("npt.NDArray[np.object_]", model.classes_)
         self.n_classes = self.y_train_classes.shape[0]
 
         self.k: int = self.model.n_neighbors  # type: ignore[attr-defined]
