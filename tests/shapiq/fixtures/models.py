@@ -454,6 +454,6 @@ def sklearn_wknn_model(background_clf_dataset_small) -> KNeighborsClassifier:
 @pytest.fixture
 def sklearn_tnn_model(background_clf_dataset_small) -> RadiusNeighborsClassifier:
     X, y = background_clf_dataset_small
-    model = RadiusNeighborsClassifier()
+    model = RadiusNeighborsClassifier(radius=5)
     model.fit(X, y)
     return model
