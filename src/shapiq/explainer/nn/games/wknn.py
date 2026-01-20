@@ -45,7 +45,7 @@ class WeightedKNNExplainerGame(KNNExplainerGameBase):
             raise ValueError(msg)
 
         self.binary_games = {
-            other_class_index: BinaryWeightedKNNExplainerXAI(
+            other_class_index: BinaryWeightedKNNExplainerGame(
                 model, x, class_index, other_class_index, n_bits
             )
             for other_class_index in range(self.n_classes)
@@ -61,7 +61,7 @@ class WeightedKNNExplainerGame(KNNExplainerGameBase):
         return sum(binary_game_values) / (self.n_classes - 1)
 
 
-class BinaryWeightedKNNExplainerXAI(KNNExplainerGameBase):
+class BinaryWeightedKNNExplainerGame(KNNExplainerGameBase):
     """Benchmark game for the WeightedKNNExplainer in the binary case."""
 
     def __init__(
