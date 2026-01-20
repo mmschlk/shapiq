@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from shapiq.explainer.base import Explainer
+
 if TYPE_CHECKING:
-    from shapiq.explainer.base import Explainer
     from shapiq.explainer.nn.games.base import NNExplainerGameBase
 
 import numpy as np
@@ -16,6 +17,25 @@ from shapiq.explainer.nn.games.wknn import WeightedKNNExplainerGame
 
 
 @pytest.mark.parametrize(
+    "model_fixture, explainer_cls",
+    [
+        ("sklearn_knn_model", KNNExplainer),
+        ("sklearn_wknn_model", WeightedKNNExplainer),
+        ("sklearn_tnn_model", ThresholdNNExplainer),
+    ],
+)
+def test_select_explainer(
+    model_fixture: str,
+    explainer_cls: type[Explainer],
+    request: pytest.FixtureRequest,
+):
+    model = request.getfixturevalue(model_fixture)
+    explainer = Explainer(model, max_order=1)
+
+    assert isinstance(explainer, explainer_cls)
+
+
+@pytest.mark.parametrize(
     "model_fixture, game_cls, explainer_cls, extra_kwargs",
     [
         ("sklearn_knn_model", KNNExplainerGame, KNNExplainer, {}),
@@ -23,7 +43,7 @@ from shapiq.explainer.nn.games.wknn import WeightedKNNExplainerGame
         ("sklearn_tnn_model", TNNExplainerGame, ThresholdNNExplainer, {}),
     ],
 )
-def test_nn_explainers(
+def test_sv_values_agree_with_ground_truth_game(
     model_fixture: str,
     game_cls: type[NNExplainerGameBase],
     explainer_cls: type[Explainer],
