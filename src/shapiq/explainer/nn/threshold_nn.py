@@ -13,16 +13,14 @@ if TYPE_CHECKING:
     import sklearn.neighbors
     from sklearn.neighbors import RadiusNeighborsClassifier
 
-    from shapiq import InteractionValues
     from shapiq.explainer.custom_types import ExplainerIndices
-
+from shapiq import InteractionValues
 
 from ._util import (
     assert_valid_index_and_order,
     warn_ignored_parameters,
 )
 from .base import NNExplainerBase
-from .iv_utils import interaction_values_from_array
 
 
 class ThresholdNNExplainer(NNExplainerBase):
@@ -104,4 +102,4 @@ class ThresholdNNExplainer(NNExplainerBase):
 
         sv = first_summand + second_summand
 
-        return interaction_values_from_array(sv)
+        return InteractionValues.from_first_order_array(sv, index="SV")

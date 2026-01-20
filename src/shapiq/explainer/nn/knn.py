@@ -7,19 +7,18 @@ from typing_extensions import override
 
 import numpy as np
 
+from shapiq import InteractionValues
 from shapiq.explainer.nn.base import NNExplainerBase
 
 from ._util import (
     assert_valid_index_and_order,
     warn_ignored_parameters,
 )
-from .iv_utils import interaction_values_from_array
 
 if TYPE_CHECKING:
     import numpy.typing as npt
     from sklearn.neighbors import KNeighborsClassifier
 
-    from shapiq import InteractionValues
     from shapiq.explainer.custom_types import ExplainerIndices
 
 
@@ -79,4 +78,4 @@ class KNNExplainer(NNExplainerBase):
         inv_sortperm = np.zeros_like(sortperm)
         inv_sortperm[sortperm] = np.arange(sortperm.shape[0])
 
-        return interaction_values_from_array(sv[inv_sortperm])
+        return InteractionValues.from_first_order_array(sv[inv_sortperm], index="SV")

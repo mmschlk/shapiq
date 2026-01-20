@@ -16,6 +16,7 @@ from .game_theory.indices import (
     AllIndices,
     get_index_from_computation_index,
     is_empty_value_the_baseline,
+    is_first_order,
     is_index_aggregated,
     is_index_valid,
 )
@@ -923,6 +924,61 @@ class InteractionValues:
             "estimation_budget": self.estimation_budget,
             "baseline_value": self.baseline_value,
         }
+
+    @classmethod
+    def from_first_order_array(
+        cls, first_order_values: np.ndarray, index: str, baseline_value: float = 0
+    ) -> InteractionValues:
+        """Convert an array of first-order values to an :class:`shapiq.InteractionValues` object.
+
+        Args:
+            first_order_values: An array containing the value of the ith training point at index i.
+            index: The game theoretic index of the resulting :class:`shapiq.InteractionValues` object. Must be a
+                first-order index.
+            baseline_value: Baseline value, defaults to ``0``.
+
+        Returns:
+            An :class:`~shapiq.InteractionValues` object containing the provided values.
+
+        Raises:
+            ValueError: If the provided ``index`` is not a first-order index.
+        """
+        is_first_order(index, raise_error=True)
+
+        n_players = first_order_values.shape[0]
+        interaction_lookup: dict[tuple[int, ...], int] = {(i,): i for i in range(n_players)}
+
+        return InteractionValues(
+            first_order_values,
+            index=index,
+            min_order=0,
+            max_order=1,
+            n_players=n_players,
+            baseline_value=baseline_value,
+            interaction_lookup=interaction_lookup,
+        )
+
+    def to_first_order_array(self) -> np.ndarray:
+        """Convert to an array of first-order values.
+
+        Returns:
+            An array of shape ``(self.n_players,)`` containing at index ``i`` the first-order value of player ``i``.
+
+        Raises:
+            RuntimeError: If the method was called on an :class:`~shapiq.InteractionValues` object with max order
+                not equal to ``1``.
+        """
+        if self.max_order != 1:
+            msg = f"Max order must be 1 but was {self.max_order}"
+            raise ValueError(msg)
+
+        out = np.zeros((self.n_players,))
+        for coalition, lookup_idx in self.interaction_lookup.items():
+            if coalition == ():
+                continue
+            out[coalition[0]] = self.values[lookup_idx]
+
+        return out
 
     def aggregate(
         self,

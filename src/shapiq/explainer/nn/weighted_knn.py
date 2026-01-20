@@ -8,17 +8,16 @@ from typing_extensions import override
 from shapiq.explainer.nn.base import NNExplainerBase
 
 from ._util import assert_valid_index_and_order, warn_ignored_parameters
-from .iv_utils import interaction_values_from_array
 
 if TYPE_CHECKING:
     import numpy.typing as npt
     from sklearn.neighbors import KNeighborsClassifier
 
     from shapiq.explainer.custom_types import ExplainerIndices
-    from shapiq.interaction_values import InteractionValues
-
 import numpy as np
 from scipy.special import comb
+
+from shapiq.interaction_values import InteractionValues
 
 
 class WeightedKNNExplainer(NNExplainerBase):
@@ -82,7 +81,9 @@ class WeightedKNNExplainer(NNExplainerBase):
 
         n_classes = len(self.y_train_classes)
         if n_classes == 1:
-            return interaction_values_from_array(np.full(n_players, 1 / n_players))
+            return InteractionValues.from_first_order_array(
+                np.full(n_players, 1 / n_players), index="SV"
+            )
 
         sortperm, weights = self._get_prepared_weights(x)
 
@@ -91,7 +92,7 @@ class WeightedKNNExplainer(NNExplainerBase):
             sv += self._explain_binary(other_class_index, sortperm, weights)
         sv /= n_classes - 1
 
-        return interaction_values_from_array(sv)
+        return InteractionValues.from_first_order_array(sv, index="SV")
 
     def _explain_binary(
         self,
