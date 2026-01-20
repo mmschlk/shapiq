@@ -102,4 +102,7 @@ class ThresholdNNExplainer(NNExplainerBase):
 
         sv = first_summand + second_summand
 
-        return InteractionValues.from_first_order_array(sv, index="SV")
+        iv = InteractionValues.from_first_order_array(sv, index="SV")
+        iv[()] = 1 / n_classes
+
+        return iv
