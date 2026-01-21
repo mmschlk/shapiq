@@ -36,13 +36,21 @@ class NNExplainerBase(Explainer):
         Args:
             model: The NN model to explain. Must be an instance of ``sklearn.neighbors.KNeighborsClassifier`` or ``sklearn.neighbors.RadiusNeighborsClassifier``.
                 The model must not use multi-output classification, i.e. the ``y`` value provided to ``model.fit(X, y)`` must be a 1D vector.
-            class_index: The class index of the model to explain. Defaults to ``1``.
+            class_index: The class index of the model to explain. Note that, as opposed to most Explainers, this must not be ``None``!
 
         Raises:
             sklearn.exceptions.NotFittedError: The constructor was called with a model that hasn't been fitted.
         """
         super().__init__(model, data=None, class_index=class_index, index="SV", max_order=1)
         check_is_fitted(model)
+
+        if class_index is None:
+            msg = (
+                "Nearest-neighbor explainers require setting class_index explicitely. Please pass a value to"
+                "class_index in the constructor"
+            )
+            raise ValueError(msg)
+        self.class_index = class_index
 
         X_train = _sklearn_model_get_private_attribute(model, "_fit_X")
         if not isinstance(X_train, np.ndarray):
@@ -73,12 +81,6 @@ class NNExplainerBase(Explainer):
             msg = f"Expected model's training classes (model.classes_) to be numpy array but got {type(model.classes_)}"
             raise TypeError(msg)
         self.y_train_classes = cast("npt.NDArray[np.object_]", model.classes_)
-
-        # TODO(Zaphoood): Fix this sketchiness  # noqa: TD003
-        # This is highly sketchy. We are relying on `shapiq` to handle `class_index == None` analogously, but there is no way to check, since they don't set `class_index` as an attribute of `shapiq.Explainer`
-        if class_index is None:
-            class_index = 1
-        self.class_index = class_index
 
 
 def _sklearn_model_get_private_attribute(

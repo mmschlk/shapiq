@@ -30,7 +30,7 @@ def test_select_explainer(
     request: pytest.FixtureRequest,
 ):
     model = request.getfixturevalue(model_fixture)
-    explainer = Explainer(model, max_order=1)
+    explainer = Explainer(model, class_index=0, max_order=1)
 
     assert isinstance(explainer, explainer_cls)
 
