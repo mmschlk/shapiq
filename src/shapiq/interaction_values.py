@@ -16,7 +16,6 @@ from .game_theory.indices import (
     AllIndices,
     get_index_from_computation_index,
     is_empty_value_the_baseline,
-    is_first_order,
     is_index_aggregated,
     is_index_valid,
 )
@@ -933,8 +932,7 @@ class InteractionValues:
 
         Args:
             first_order_values: An array containing the value of the ith training point at index i.
-            index: The game theoretic index of the resulting :class:`shapiq.InteractionValues` object. Must be a
-                first-order index.
+            index: The game theoretic index of the resulting :class:`shapiq.InteractionValues` object.
             baseline_value: Baseline value, defaults to ``0``.
 
         Returns:
@@ -943,8 +941,6 @@ class InteractionValues:
         Raises:
             ValueError: If the provided ``index`` is not a first-order index.
         """
-        is_first_order(index, raise_error=True)
-
         n_players = first_order_values.shape[0]
         interaction_lookup: dict[tuple[int, ...], int] = {(i,): i for i in range(n_players)}
 

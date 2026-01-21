@@ -119,8 +119,6 @@ ALL_AVAILABLE_CONCEPTS: dict[IndexType, dict] = {
 
 AllIndices: tuple[IndexType, ...] = tuple(get_args(IndexType))
 
-FIRST_ORDER_INDICES = ["SV", "BV", "JointSV"]
-
 
 def is_index_valid(index: str, *, raise_error: bool = False) -> bool:
     """Checks if the given index is a valid interaction index.
@@ -302,24 +300,3 @@ def is_empty_value_the_baseline(index: str) -> bool:
 
     """
     return index not in ["SII", "FBII", "BII", "BV"]
-
-
-def is_first_order(index: str, *, raise_error: bool = False) -> bool:
-    """Check if the index represents only first-order interactions.
-
-    Args:
-        index: The interaction index.
-        raise_error: If ``True``, raises a ``ValueError`` if the index is not first-order
-
-    Returns:
-        ``True`` if the index is a first-order index, ``False`` otherwise.
-    """
-    first_order = index in FIRST_ORDER_INDICES
-    if not first_order and raise_error:
-        msg = (
-            f"Expected first-order index but got '{index}'. First-order indices are: "
-            + ", ".join(FIRST_ORDER_INDICES)
-        )
-        raise ValueError(msg)
-
-    return first_order
