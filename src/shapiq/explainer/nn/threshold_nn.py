@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, cast
 from typing_extensions import override
 
 import numpy as np
-from scipy.special import comb
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -86,13 +86,18 @@ class ThresholdNNExplainer(NNExplainerBase):
         )
 
         a2 = np.zeros((n_train,), dtype=np.float64)
+        times = []
         for i in range(n_train):
+            t_start = time.time()
             if not in_neighborhood[i] or c_x_tau[i] < 2:
                 continue
             for k in range(c + 1):
-                binom_term = comb(c - k, c_x_tau[i]) / comb(c + 1, c_x_tau[i])
-                a2[i] += 1 / (k + 1) * (1 - binom_term)
+                factors = np.arange(c - c_x_tau[i] + 2, c + 2)
+                binom_term = np.prod((factors - k - 1) / factors)
+                a2[i] += (1 - binom_term) / (k + 1)
+            times.append(time.time() - t_start)
             a2[i] -= 1
+        print(f"{np.mean(times) * 1e6:.1f}µs")  # noqa: T201
 
         first_summand = a1 * a2
         second_summand = np.zeros((n_train,), dtype=np.float64)
