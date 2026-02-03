@@ -62,6 +62,10 @@ keywords = [
     "shapley values",
     "feature interaction",
 ]
+[tool.coverage.report]
+exclude_also = [
+    'if TYPE_CHECKING:',
+]
 
 [tool.setuptools_scm]
 write_to = "src/shapiq/_version.py"
