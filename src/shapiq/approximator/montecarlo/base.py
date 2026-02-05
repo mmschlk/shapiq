@@ -183,14 +183,15 @@ class MonteCarlo(Approximator[TIndices]):
             ]
 
             # get the sampling adjustment weights depending on the stratification strategy
-            if self.stratify_coalition_size and self.stratify_intersection:  # this is SVARM-IQ
-                sampling_adjustment_weights = self._svarmiq_routine(interaction)
-            elif not self.stratify_coalition_size and self.stratify_intersection:
-                sampling_adjustment_weights = self._intersection_stratification(interaction)
-            elif self.stratify_coalition_size and not self.stratify_intersection:
-                sampling_adjustment_weights = self._coalition_size_stratification()
-            else:  # this is SHAP-IQ
-                sampling_adjustment_weights = self._shapiq_routine()
+            sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
+            #if self.stratify_coalition_size and self.stratify_intersection:  # this is SVARM-IQ
+            #    sampling_adjustment_weights = self._svarmiq_routine(interaction)
+            #elif not self.stratify_coalition_size and self.stratify_intersection:
+            #    sampling_adjustment_weights = self._intersection_stratification(interaction)
+            #elif self.stratify_coalition_size and not self.stratify_intersection:
+            #    sampling_adjustment_weights = self._coalition_size_stratification()
+            #else:  # this is SHAP-IQ
+            #    sampling_adjustment_weights = self._shapiq_routine()
 
             # compute interaction approximation (using adjustment weights and interaction weights)
             shapley_interaction_values[interaction_pos] = np.sum(
@@ -368,6 +369,11 @@ class MonteCarlo(Approximator[TIndices]):
         n_samples_helper = np.array([1, n_samples])  # n_samples for sampled coalitions, else 1
         coalitions_n_samples = n_samples_helper[self._sampler.is_coalition_sampled.astype(int)]
         # Set weights by dividing through the probabilities
+        print()
+        print('sampler.coalitions_counter', self._sampler.coalitions_counter)
+        print('sampler.coalitions_size_probability', self._sampler.coalitions_size_probability)
+        print('sampler.coalitions_in_size_probability', self._sampler.coalitions_in_size_probability)
+        print('coalitions_n_samples:', coalitions_n_samples)
         return self._sampler.coalitions_counter / (
             self._sampler.coalitions_size_probability
             * self._sampler.coalitions_in_size_probability
