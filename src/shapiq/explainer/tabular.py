@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
-TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
+TabularExplainerImputers = Literal["cte", "marginal", "baseline", "conditional"]
 TabularExplainerIndices = ExplainerIndices
 
 
@@ -47,7 +47,7 @@ class TabularExplainer(Explainer):
         data: np.ndarray,
         *,
         class_index: int | None = None,
-        imputer: Imputer | TabularExplainerImputers = "marginal",
+        imputer: Imputer | TabularExplainerImputers = "cte",
         approximator: (
             Literal["auto"] | TabularExplainerApproximators | Approximator[TabularExplainerIndices]
         ) = "auto",
@@ -71,9 +71,9 @@ class TabularExplainer(Explainer):
 
             imputer: Either an :class:`~shapiq.games.imputer.Imputer` as implemented in the
                 :mod:`~shapiq.games.imputer` module, or a literal string from
-                ``["marginal", "baseline", "conditional"]``. Defaults to ``"marginal"``, which
+                ``["cte", "marginal", "baseline", "conditional"]``. Defaults to ``"cte"``, which
                 initializes the default
-                :class:`~shapiq.games.imputer.marginal_imputer.MarginalImputer` with its default
+                :class:`~shapiq.games.imputer.marginal_imputer.CTEImputer` with its default
                 parameters or as provided in ``kwargs``.
 
             approximator: An :class:`~shapiq.approximator.Approximator` object to use for the
@@ -110,6 +110,7 @@ class TabularExplainer(Explainer):
         """
         from shapiq.imputer import (
             BaselineImputer,
+            CTEImputer,
             GenerativeConditionalImputer,
             MarginalImputer,
             TabPFNImputer,
@@ -128,7 +129,14 @@ class TabularExplainer(Explainer):
                 stacklevel=2,
             )
 
-        if imputer == "marginal":
+        if imputer == "cte":
+            self._imputer = CTEImputer(
+                self.predict,
+                self._data,
+                random_state=random_state,
+                **kwargs,
+            )
+        elif imputer == "marginal":
             self._imputer = MarginalImputer(
                 self.predict,
                 self._data,
