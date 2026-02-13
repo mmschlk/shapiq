@@ -1,4 +1,4 @@
-# Supplementary Material PolySHAP – README
+# Supplementary Material for "PolySHAP: Extending KernelSHAP with Interaction-Informed Polynomial Regression"
 
 ## All experiments can be found in the `experiments` folder.
 
