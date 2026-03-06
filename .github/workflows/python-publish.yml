@@ -41,7 +41,7 @@ jobs:
       run: uv build
 
     - name: Upload dist artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: shapiq-${{ github.event.release.tag_name }}-dist
         path: dist/*
