@@ -145,9 +145,8 @@ jobs:
                     sudo apt-get install -y pandoc
             -   name: Install dependencies
                 run: uv sync --no-dev --group docs
-                # TODO(mmshlk) Turn this step to fail on warnings in the future.
             -   name: Build documentation
-                run: uv run --no-sync sphinx-build -b html docs/source docs/build/html
+                run: uv run --no-sync sphinx-build -W --keep-going -b html docs/source docs/build/html
     # ----------------------------------------------------------------------------------------------
     # Code Coverage
     # ----------------------------------------------------------------------------------------------
