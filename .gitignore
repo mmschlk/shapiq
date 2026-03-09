@@ -182,3 +182,6 @@ game_storage/*
 
 # install artifacts
 src/shapiq/_version.py
+
+# Claude
+.claude/
