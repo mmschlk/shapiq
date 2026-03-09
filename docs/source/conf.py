@@ -117,6 +117,11 @@ html_sidebars = {
     ],
 }
 
+# -- Autosectionlabel -----------------------------------------------------------------------------
+# Prefix labels with the document path to avoid collisions when multiple documents
+# share identical section headings (e.g. "General Use", "Feature Names").
+autosectionlabel_prefix_document = True
+
 # -- Autodoc ---------------------------------------------------------------------------------------
 autosummary_generate = True
 autodoc_default_options = {
