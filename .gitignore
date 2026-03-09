@@ -182,3 +182,5 @@ game_storage/*
 
 # install artifacts
 src/shapiq/_version.py
+docs/source/auto_examples/
+docs/source/sg_execution_times.rst

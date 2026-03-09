@@ -263,6 +263,8 @@ docs = [
     # ipython>=9.0.0, since ipython==8.7.0 introduces a bug with parsing notebooks also discussed
     # here: https://github.com/spatialaudio/nbsphinx/issues/24
     "ipython<8.38.0",           # for code execution in notebooks
+    "sphinx-gallery",           # gallery of examples from Python scripts
+    "matplotlib",               # required for sphinx-gallery thumbnails
 ]
 dev = [
     "notebook>=7.3.3",
