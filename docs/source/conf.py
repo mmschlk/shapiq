@@ -49,12 +49,30 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_toolbox.more_autodoc.autoprotocol",
     "sphinxcontrib.bibtex",
+    "sphinx_gallery.gen_gallery",
 ]
 
 nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
 
+# -- Sphinx-Gallery -------------------------------------------------------------------------------
+sphinx_gallery_conf = {
+    "examples_dirs": "../../docs/source/examples",  # source scripts
+    "gallery_dirs": "auto_examples",  # generated output (relative to source/)
+    "filename_pattern": r"/plot_",  # only execute files starting with plot_
+    "ignore_pattern": r"__init__\.py",
+    "plot_gallery": True,
+    "download_all_examples": False,
+    "show_signature": False,
+}
+
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**.ipynb_checkpoints",
+    "auto_examples/**.ipynb",
+]
 bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = (
     "alpha"  # set to alpha to not confuse references the docs with the footcites in docstrings.
