@@ -72,6 +72,8 @@ exclude_patterns = [
     ".DS_Store",
     "**.ipynb_checkpoints",
     "auto_examples/**.ipynb",
+    # sphinx-gallery includes this file internally; exclude to avoid toctree warning
+    "examples/GALLERY_HEADER.rst",
 ]
 bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = (
