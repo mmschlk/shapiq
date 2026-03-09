@@ -225,7 +225,6 @@ def test_approximate_with_spex(
 
 
 @skip_if_no_lightgbm
-@pytest.mark.external_libraries
 def test_approximate_with_proxyspex():
     """Tests the approximate method with the proxyspex decoder."""
     n = 10
@@ -263,3 +262,48 @@ def test_sparse_init_succeeds_lightgbm(monkeypatch):
 
     with pytest.raises(ImportError, match="The 'lightgbm' package is required"):
         Sparse(n=10, index="SII", decoder_type="proxyspex")
+
+
+def test_refine_zero_total_energy():
+    """
+    Tests that the _refine method handles the case when total energy is zero.
+
+    This test ensures that when all Fourier coefficients (excluding the baseline)
+    are zero, the method returns the original dictionary without attempting to
+    divide by zero.
+    """
+    import numpy as np
+
+    n = 5
+    # Use "soft" decoder which doesn't require lightgbm
+    approximator = Sparse(n=n, index="FBII", max_order=2, decoder_type="soft", random_state=42)
+
+    # Create a four_dict where all non-baseline coefficients are zero
+    four_dict = {
+        (): 1.0,  # baseline coefficient
+        (0,): 0.0,
+        (1,): 0.0,
+        (0, 1): 0.0,
+        (2,): 0.0,
+        (1, 2): 0.0,
+    }
+
+    # Create some dummy training data
+    train_X = np.array(
+        [
+            [0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [1, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0],
+            [1, 0, 1, 0, 0],
+        ]
+    )
+    train_y = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+
+    # Call _refine - should not raise a ZeroDivisionError
+    result = approximator._refine(four_dict, train_X, train_y)
+
+    # The result should be the same as the input when total energy is zero
+    assert result == four_dict
+    assert len(result) == len(four_dict)

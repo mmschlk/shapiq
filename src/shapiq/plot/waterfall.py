@@ -372,7 +372,9 @@ def waterfall_plot(
 
     Args:
         interaction_values: The interaction values as an interaction object.
-        feature_names: The names of the features. Defaults to ``None``.
+        feature_names: The names of the features. Defaults to ``None``. To display feature values
+            alongside feature names, provide strings in the format ``"value=feature"`` (e.g.,
+            ``"25=Age"``). The plot will show the value in gray and the feature name in black.
         show: Whether to show the plot. Defaults to ``False``.
         max_display: The maximum number of interactions to display. Defaults to ``10``.
         abbreviate: Whether to abbreviate the feature names. Defaults to ``True``.
