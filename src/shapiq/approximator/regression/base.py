@@ -16,6 +16,7 @@ from shapiq.utils.sets import powerset
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.game import Game
     from shapiq.typing import CoalitionMatrix, FloatVector
 
 
@@ -123,7 +124,7 @@ class Regression(Approximator[TIndices]):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
         *args: Any | None,  # noqa: ARG002
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:

@@ -152,7 +152,7 @@ def _draw_waterfall_plot(
     bbox_to_xscale = xlen / width
     hl_scaled = bbox_to_xscale * head_length
     dpi = fig.dpi
-    renderer = fig.canvas.get_renderer()  # pyright: ignore[reportAttributeAccessIssue]
+    renderer = fig.canvas.get_renderer()  # type: ignore[union-attr]
 
     # draw the positive arrows
     for i in range(len(pos_inds)):

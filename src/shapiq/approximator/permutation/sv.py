@@ -67,7 +67,6 @@ class PermutationSamplingSV(Approximator[ValidPermutationSTIIIndices]):
         budget: int,
         game: Game | Callable[[np.ndarray], np.ndarray],
         batch_size: int | None = 5,
-        *args: Any,  # noqa: ARG002
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the Shapley values using ApproShapley.

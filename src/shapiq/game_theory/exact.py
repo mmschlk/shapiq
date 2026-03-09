@@ -199,7 +199,7 @@ class ExactComputer:
         """Return the coalition lookup dictionary."""
         if not self._game_is_computed:
             self._evaluate_game()
-        return self._coalition_lookup
+        return self._coalition_lookup  # type: ignore[return-value]
 
     @property
     def game_values(self) -> np.ndarray:

@@ -50,7 +50,7 @@ class KernelSHAP(Regression[ValidRegressionKernelSHAIndices]):
 
     """
 
-    valid_indices: tuple[ValidRegressionKernelSHAIndices, ...] = ("SV",)  # type: ignore[assignment]
+    valid_indices: tuple[ValidRegressionKernelSHAIndices, ...] = ("SV",)
 
     def __init__(
         self,

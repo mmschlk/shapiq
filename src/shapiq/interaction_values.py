@@ -75,9 +75,9 @@ class InteractionValues:
         max_order: int,
         n_players: int,
         min_order: int,
-        interaction_lookup: dict[tuple[int, ...], int] | None = None,  # type: ignore[assignment]
+        interaction_lookup: dict[tuple[int, ...], int] | None = None,
         estimated: bool = True,
-        estimation_budget: int | None = None,  # type: ignore[assignment]
+        estimation_budget: int | None = None,
         baseline_value: float | np.number = 0.0,
         target_index: str | None = None,
     ) -> None:
@@ -1238,7 +1238,7 @@ def _validate_and_return_interactions(
         raise TypeError(msg)
 
     if isinstance(values, dict):
-        interactions = copy.deepcopy(values)
+        interactions = copy.deepcopy(values)  # type: ignore[assignment]
     else:
         interactions = {
             interaction: values[index].item() for interaction, index in interaction_lookup.items()

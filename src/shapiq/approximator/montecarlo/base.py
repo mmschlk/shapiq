@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, TypeVar, get_args
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, get_args
 
 import numpy as np
 from scipy.special import binom, factorial
@@ -14,6 +14,7 @@ from shapiq.utils.sets import powerset
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.game import Game
     from shapiq.typing import FloatVector
 
 ValidMonteCarloIndices = Literal["k-SII", "SII", "STII", "FSII", "FBII", "SV", "CHII", "BII", "BV"]
@@ -38,7 +39,7 @@ class MonteCarlo(Approximator[TIndices]):
         self,
         n: int,
         max_order: int,
-        index: TIndices = "k-SII",
+        index: ValidMonteCarloIndices = "k-SII",
         *,
         stratify_coalition_size: bool = True,
         stratify_intersection: bool = True,
@@ -91,13 +92,15 @@ class MonteCarlo(Approximator[TIndices]):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the Shapley interaction values using Monte Carlo sampling.
 
         Args:
             budget: The budget for the approximation.
             game: The game function that returns the values for the coalitions.
+            **kwargs: Additional keyword arguments (unused).
 
         Returns:
             The approximated Shapley interaction values.
