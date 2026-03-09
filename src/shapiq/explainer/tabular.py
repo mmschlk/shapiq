@@ -172,7 +172,7 @@ class TabularExplainer(Explainer):
             random_state,
         )
 
-    def explain_function(
+    def explain_function(  # type: ignore[override]
         self,
         x: np.ndarray,
         budget: int,

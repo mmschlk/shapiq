@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 
@@ -12,6 +12,8 @@ from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from shapiq.game import Game
 
 ValidPermutationSIIIndices = Literal["SII", "k-SII"]
 
@@ -99,8 +101,9 @@ class PermutationSamplingSII(Approximator[ValidPermutationSIIIndices]):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
         batch_size: int | None = 5,
+        **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the interaction values.
 
@@ -108,6 +111,7 @@ class PermutationSamplingSII(Approximator[ValidPermutationSIIIndices]):
             budget: The budget for the approximation.
             game: The game function as a callable that takes a set of players and returns the value.
             batch_size: The size of the batch. If ``None``, the batch size is set to ``1``. Defaults to ``5``.
+            **kwargs: Additional keyword arguments (unused).
 
         Returns:
             InteractionValues: The estimated interaction values.

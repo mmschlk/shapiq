@@ -15,6 +15,8 @@ from shapiq.utils import get_explicit_subsets, powerset
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from shapiq.game import Game
+
 ValidPermutationSTIIIndices = Literal["STII"]
 
 
@@ -89,9 +91,8 @@ class PermutationSamplingSTII(Approximator[ValidPermutationSTIIIndices]):
     def approximate(
         self,
         budget: int,
-        game: Callable[[np.ndarray], np.ndarray],
+        game: Game | Callable[[np.ndarray], np.ndarray],
         batch_size: int = 1,
-        *args: Any,  # noqa: ARG002
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
         """Approximates the interaction values.

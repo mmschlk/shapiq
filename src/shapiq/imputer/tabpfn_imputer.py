@@ -93,7 +93,7 @@ class TabPFNImputer(Imputer[SklearnLikeModel]):
                     f" predict_function={predict_function})."
                 )
                 raise ValueError(msg)
-            model._shapiq_predict_function = predict_function  # pyright: ignore[reportAttributeAccessIssue] # noqa: SLF001
+            model._shapiq_predict_function = predict_function  # type: ignore[union-attr]  # noqa: SLF001
 
         if x_test is None and empty_prediction is None:
             msg = "The empty prediction must be given if no test data is provided"

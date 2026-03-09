@@ -296,9 +296,7 @@ class Explainer:
 
             parallel = joblib.Parallel(n_jobs=n_jobs)
             ivs: list[InteractionValues] = list(
-                parallel(  # type: ignore[assignment]
-                    joblib.delayed(self.explain)(X[i, :], **kwargs) for i in range(X.shape[0])
-                )
+                parallel(joblib.delayed(self.explain)(X[i, :], **kwargs) for i in range(X.shape[0]))
             )
         else:
             ivs: list[InteractionValues] = []

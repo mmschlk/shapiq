@@ -203,6 +203,15 @@ exclude = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ty.src]
+include = ["src/shapiq"]
+exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
+
+[tool.ty.environment]
+python-version = "3.10"
+python = "./.venv"
+python-platform = "linux"
+
 [tool.ruff.lint.isort]
 known-first-party = ["shapiq"]
 extra-standard-library = ["typing_extensions"]
@@ -211,15 +220,6 @@ force-wrap-aliases = true
 no-lines-before = ["future"]
 required-imports = ["from __future__ import annotations"]
 
-[tool.pyright]
-include = ["src/shapiq"]
-exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
-venv = ".venv"
-pythonVersion = "3.10"
-defineConstant = { DEBUG = true }
-reportMissingImports = "error"
-reportMissingTypeStubs = false
-pythonPlatform = "Linux"
 
 [dependency-groups]
 all_ml = [
@@ -242,7 +242,7 @@ test = [
 lint = [
     "ruff>=0.14.1",       # for linting
     "pre-commit>=4.3.0",  # for running the linters pre-commit hooks
-    "pyright>=1.1.402",   # for type checking
+    "ty>=0.0.21",         # for type checking
 ]
 docs = [
     "sphinx>=8.0.0",            # documentation generator

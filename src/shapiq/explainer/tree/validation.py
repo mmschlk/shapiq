@@ -114,4 +114,4 @@ def validate_tree_model(
     if not isinstance(tree_model, list):
         tree_model = [tree_model]
 
-    return tree_model
+    return tree_model  # type: ignore[return-value]
