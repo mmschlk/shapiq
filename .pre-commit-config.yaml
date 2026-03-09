@@ -17,8 +17,11 @@ repos:
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
       - id: ruff-format
 
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.404
+  - repo: local
     hooks:
-    - id: pyright
-      args: [--verbose, --venvpath=.]
+      - id: ty
+        name: ty
+        entry: uv run ty check
+        language: system
+        pass_filenames: false
+        types: [python]

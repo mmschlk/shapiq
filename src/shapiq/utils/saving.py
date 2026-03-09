@@ -49,7 +49,7 @@ def dict_to_interactions(
 def lookup_and_values_to_dict(
     interaction_lookup: Mapping[tuple[int, ...], int],
     interaction_values: Sequence[float] | np.ndarray,
-) -> dict[str, float]:
+) -> dict[str, int | float]:
     """Converts a pair of interaction lookup and values into a dictionary for saving.
 
     Args:

@@ -95,7 +95,7 @@ class AgnosticExplainer(Explainer):
             random_state=random_state,
         )
 
-    def explain_function(
+    def explain_function(  # type: ignore[override]
         self,
         budget: int,
         *,

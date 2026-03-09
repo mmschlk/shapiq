@@ -136,7 +136,7 @@ class Imputer(Game, Generic[TModel]):
             The model's prediction for the given data point as a vector.
 
         """
-        return self._predict_function(self.model, x)
+        return self._predict_function(self.model, x)  # type: ignore[call-arg, operator]
 
     def fit(self, x: np.ndarray) -> Imputer:
         """Fits the imputer to the explanation point.

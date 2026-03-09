@@ -36,11 +36,11 @@ def convert_svm(model: SVC | SVR) -> ProductKernelModel:
         raise ValueError(msg)
 
     return ProductKernelModel(
-        alpha=model.dual_coef_.flatten(),  # pyright: ignore[reportAttributeAccessIssue]
+        alpha=model.dual_coef_.flatten(),  # type: ignore[union-attr]
         X_train=X_train,
         n=n,
         d=d,
-        gamma=model._gamma,  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue] # noqa: SLF001
+        gamma=model._gamma,  # noqa: SLF001
         kernel_type=kernel_type,
         intercept=model.intercept_[0],
     )

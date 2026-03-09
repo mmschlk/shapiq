@@ -44,7 +44,7 @@ class ProxySPEX(Sparse):
 
         """
         try:
-            import lightgbm as lgb  # noqa: F401
+            import lightgbm as lgb  # noqa: F401  # type: ignore[import-unresolved]
         except ImportError as err:
             msg = (
                 "The 'lightgbm' package is required when decoder_type is 'proxyspex' "

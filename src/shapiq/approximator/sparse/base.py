@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import math
 from collections import defaultdict
-from typing import TYPE_CHECKING, Literal, cast, get_args
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import numpy as np
 import pandas as pd
@@ -68,7 +68,7 @@ class Sparse(Approximator[ValidSparseIndices]):
         .. [But25] Butler, L., Kang, J.S., Agarwal. A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs https://arxiv.org/pdf/2505.17495
     """
 
-    valid_indices: tuple[ValidSparseIndices, ...] = tuple(get_args(ValidSparseIndices))  # type: ignore[assignment]
+    valid_indices: tuple[ValidSparseIndices, ...] = tuple(get_args(ValidSparseIndices))
     """The valid indices for the SPEX approximator."""
 
     def __init__(
@@ -124,7 +124,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             raise ValueError(msg)
         if self.decoder_type == "proxyspex":
             try:
-                import lightgbm as lgb  # noqa: F401
+                import lightgbm as lgb  # noqa: F401  # type: ignore[import-unresolved]
             except ImportError as err:
                 msg = (
                     "The 'lightgbm' package is required when decoder_type is 'proxyspex' but it is "
@@ -142,6 +142,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             "num_repeat": 1,
             "t": self.degree_parameter,
         }
+        self.decoder_args: dict[str, Any]
         if self.decoder_type == "proxyspex":
             self.decoder_args = {
                 "max_depth": [3, 5],
@@ -193,7 +194,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             The approximated Shapley interaction values.
         """
         if self.decoder_type == "proxyspex":
-            import lightgbm as lgb
+            import lightgbm as lgb  # type: ignore[import-unresolved]
 
             used_budget = budget
 

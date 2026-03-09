@@ -34,7 +34,7 @@ class RegressionFSII(Regression[ValidRegressionFSIIIndices]):
 
     """
 
-    valid_indices: tuple[ValidRegressionFSIIIndices, ...] = tuple(  # type: ignore[assignment]
+    valid_indices: tuple[ValidRegressionFSIIIndices, ...] = tuple(
         get_args(ValidRegressionFSIIIndices)
     )
     """The valid indices for the RegressionFSII approximator."""
@@ -95,7 +95,7 @@ class RegressionFBII(Regression[ValidRegressionFBIIIndices]):
 
     """
 
-    valid_indices: tuple[ValidRegressionFBIIIndices, ...] = tuple(  # type: ignore[assignment]
+    valid_indices: tuple[ValidRegressionFBIIIndices, ...] = tuple(
         get_args(ValidRegressionFBIIIndices)
     )
     """The valid indices for the RegressionFBII approximator."""

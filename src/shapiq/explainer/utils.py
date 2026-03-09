@@ -178,7 +178,7 @@ def get_predict_function_and_model_type(
         _predict_function = model.compute_empty_prediction
         _model_type = "tree"
     elif isinstance(model, list) and all(isinstance(m, TreeModel) for m in model):
-        _predict_function = model[0].compute_empty_prediction
+        _predict_function = model[0].compute_empty_prediction  # type: ignore[union-attr]
         _model_type = "tree"
     elif _predict_function is None:
         msg = (
@@ -206,12 +206,12 @@ def get_predict_function_and_model_type(
             The model's prediction for the given data point as a vector.
 
         """
-        predictions = _predict_function(model, data)  # pyright: ignore[reportCallIssue] TODO: We here assume that the predict_function takes at least tow arguements. Yet we also define it as None and () -> Float
-        if predictions.ndim == 1:
-            return predictions
-        if predictions.shape[1] == 1:
-            return predictions[:, 0]
-        return predictions[:, class_index]
+        predictions = _predict_function(model, data)  # type: ignore[call-arg, operator]  # predict_function takes at least two arguments
+        if predictions.ndim == 1:  # type: ignore[union-attr]
+            return predictions  # type: ignore[return-value]
+        if predictions.shape[1] == 1:  # type: ignore[union-attr]
+            return predictions[:, 0]  # type: ignore[index]
+        return predictions[:, class_index]  # type: ignore[index]
 
     # validate model type before returning
     if _model_type not in list(get_args(ExplainerTypes)):

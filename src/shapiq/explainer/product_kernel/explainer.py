@@ -95,7 +95,7 @@ class ProductKernelExplainer(Explainer):
 
         self.empty_prediction = self._compute_baseline_value()
 
-    def explain_function(
+    def explain_function(  # type: ignore[override]
         self,
         x: np.ndarray,
         **kwargs: Any,  # noqa: ARG002

@@ -379,7 +379,7 @@ class Game:
                         f"It should have a length of {self.n_players}"
                     )
                     raise TypeError(msg)
-                coalitions = coalitions.reshape((1, self.n_players))
+                coalitions = coalitions.reshape((1, self.n_players))  # type: ignore[call-overload]
             if coalitions.shape[1] != self.n_players:  # check if players match
                 msg = (
                     f"Number of players in the coalitions ({coalitions.shape[1]}) does not match "
@@ -390,7 +390,7 @@ class Game:
             if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
                 msg = "The values in the array of coalitions are not binary."
                 raise TypeError(msg)
-            return coalitions
+            return coalitions  # type: ignore[return-value]
 
         # try for list of tuples
         if isinstance(coalitions, tuple):

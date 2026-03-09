@@ -52,7 +52,7 @@ class SHAPIQ(MonteCarlo[TIndices]):
         self,
         n: int,
         max_order: int = 2,
-        index: TIndices = "k-SII",
+        index: ValidMonteCarloIndices = "k-SII",
         *,
         top_order: bool = False,
         sampling_weights: FloatVector | None = None,
