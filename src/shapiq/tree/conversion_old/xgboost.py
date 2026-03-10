@@ -108,6 +108,12 @@ def _convert_xgboost_tree_as_df(
         .fillna(-1)
         .astype(int)
         .values,
+        children_missing=tree_df["Missing"]
+        .replace(convert_node_str_to_int)
+        .infer_objects(copy=False)
+        .fillna(-1)
+        .astype(int)
+        .values,
         features=tree_df["Feature"].values,
         thresholds=tree_df["Split"].values,
         values=values,  # values in non-leaf nodes are not used

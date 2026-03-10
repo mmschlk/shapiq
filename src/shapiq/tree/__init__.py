@@ -3,5 +3,5 @@
 from .base import TreeModel
 from .explainer import TreeExplainer
 from .treeshapiq import TreeSHAPIQ
-
-__all__ = ["TreeExplainer", "TreeSHAPIQ", "TreeModel"]
+from .interventional import InterventionalTreeExplainer, InterventionalGame
+__all__ = ["TreeExplainer", "TreeSHAPIQ", "TreeModel", "InterventionalTreeExplainer", "InterventionalGame"]

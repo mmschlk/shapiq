@@ -63,6 +63,40 @@ def obtain_E_R_values(tree: TreeModel) -> tuple[list[np.ndarray], list[np.ndarra
 
     return E, R, leaf_vals
 
+def obtain_E_R_values(tree:TreeModel, point_to_explain: np.ndarray, reference_point: np.ndarray):
+    """Obtain two arrays E and R indicating for each leaf and each feature whether the leaf was reached due to features in point_to_explain (E) or due to features in reference_point (R)."""
+    E = []
+    R = []
+    leaf_vals = []
+
+    # Iterative DFS — avoids Python recursion overhead and recursion-depth limits.
+    # Stack entries: (node_id, e_set, r_set)
+    stack = [(0, frozenset(), frozenset())]
+    while stack:
+        node_id, e_set, r_set = stack.pop()
+        if tree.children_left[node_id] == tree.children_right[node_id]:  # leaf
+            E.append(np.array(sorted(e_set), dtype=np.int64))
+            R.append(np.array(sorted(r_set), dtype=np.int64))
+            leaf_vals.append(tree.values[node_id].item())
+            continue
+
+        feature = int(tree.features[node_id])
+        explain_goes_left = tree.decision_function(
+            point_to_explain[feature],
+            tree.thresholds[node_id],
+            tree.children_left_default[node_id],
+        )
+        ref_goes_left = tree.decision_function(
+            reference_point[feature],
+            tree.thresholds[node_id],
+            tree.children_left_default[node_id],
+        )
+        if explain_goes_left != ref_goes_left:
+            if feature not in r_set: # Feature is not fixed by the reference point
+                stack.append((tree.children_left[node_id], e_set | {feature}, r_set))
+            if feature not in e_set: # Feature is not fixed by the explain point
+                stack.append((tree.children_right[node_id], e_set, r_set | {feature}))
+    return E, R, leaf_vals
 
 class InterventionalTreeExplainer:
     """Interventional Tree Shap explainer for a single decision tree.
@@ -213,15 +247,50 @@ class InterventionalTreeExplainer:
 
     def gather_e_r_statistics(self,explain_point):
         self.n_features = self.reference_data.shape[1]
-        self.E_list: list[np.ndarray] = []
-        self.R_list: list[np.ndarray] = []
-        self.leaf_vals_list: list[float] = []
+        E_list: list[np.ndarray] = []
+        R_list: list[np.ndarray] = []
+        leaf_vals_list: list[float] = []
 
-        for tree in self.tree:
-            E, R, leaf_vals = obtain_E_R_values(tree)
-            self.E_list.append(E)
-            self.R_list.append(R)
-            self.leaf_vals_list.append(leaf_vals)
+
+        for r in self.reference_data:
+            for tree in self.tree:
+                E, R, leaf_vals = obtain_E_R_values(tree, explain_point, r)
+                E_list.extend(E)
+                R_list.extend(R)
+                leaf_vals_list.extend(leaf_vals)
+
+        self.E_list = E_list
+        self.R_list = R_list
+        self.leaf_vals = np.array(leaf_vals_list, dtype=np.float32)
+        n_leafs = len(E_list)
+
+        # Per-leaf sizes — computed once and reused for all flattened arrays.
+        e_sizes = np.array([len(e) for e in E_list], dtype=np.int64)
+        r_sizes = np.array([len(r) for r in R_list], dtype=np.int64)
+        er_sizes = e_sizes + r_sizes
+
+        self.n_features_e = e_sizes
+        self.n_features_r = r_sizes
+
+        # Build flatten numpy arrays
+        if n_leafs > 0:
+            self.E_R_flatten = np.concatenate(
+                [np.concatenate([e, r]) for e, r in zip(E_list, R_list)]
+            ).astype(np.int64)
+            self.feature_in_E = np.concatenate(
+                [np.concatenate([np.ones(int(e), dtype=np.int64), np.zeros(int(r), dtype=np.int64)])
+                 for e, r in zip(e_sizes, r_sizes)]
+            )
+        else:
+            self.E_R_flatten = np.array([], dtype=np.int64)
+            self.feature_in_E = np.array([], dtype=np.int64)
+
+        self.leaf_id = np.repeat(np.arange(n_leafs, dtype=np.int64), er_sizes)
+        self.leaf_vals_flatten = np.repeat(self.leaf_vals, er_sizes)
+        self.e_size_flatten = np.repeat(e_sizes, er_sizes)
+        self.r_size_flatten = np.repeat(r_sizes, er_sizes)
+        self.e_length = len(self.E_R_flatten)
+        self.n_leafs = n_leafs
 
     def general_weight_function(self, A, B, N, U, moebius_weight_func):
         """Computes a general weight for given sets A, B, N and U.
@@ -334,7 +403,7 @@ class InterventionalTreeExplainer:
                     feature_index = tree.features[node_id]
                     child_node_x = (
                         tree.children_left[node_id]
-                        if self.decision_function(
+                        if tree.decision_function(
                             x[feature_index],
                             tree.thresholds[node_id],
                             tree.children_left_default[node_id],
@@ -343,7 +412,7 @@ class InterventionalTreeExplainer:
                     )
                     child_node_ref = (
                         tree.children_left[node_id]
-                        if self.decision_function(
+                        if tree.decision_function(
                             reference_point[feature_index],
                             tree.thresholds[node_id],
                             tree.children_left_default[node_id],
@@ -402,7 +471,7 @@ class InterventionalTreeExplainer:
                     # const_coalition /= D
 
                     # Obtain the necessary weight function
-                    if self.index in ["SII"]:
+                    if self.index in ["SII", "SV"]:
                         weight_function = shapley_based_weight_function
                     elif self.index in ["BII", "BV"]:
                         weight_function = banzhaf_weight_function
@@ -445,9 +514,7 @@ class InterventionalTreeExplainer:
         Args:
             x: The instance to explain as a 1-dimensional array.
             **kwargs: Additional keyword arguments are ignored.
-        """
-        if not self.bool_tree:
-            
+        """  
         if self.index not in INDICES_CII_IMPLEMENTATION_CAPABLE:
             warn(
                 f"Index {self.index} not recognized. Checking if callable function was given."
@@ -523,10 +590,11 @@ class InterventionalTreeExplainer:
         Returns:
             InteractionValues object containing the computed interaction values.
         """
+        if not self.bool_tree:
+            self.gather_e_r_statistics(x)
 
 
         interactions = {}
-        res = None
         # For higher order interactions we need to use the sparse implementation as the flatten one is only optimized for main effects and pairwise interactions. For main effects and pairwise interactions we can use the flatten implementation which is faster.
         if self.max_order > 2:
             interactions = compute_interactions_batched_sparse(

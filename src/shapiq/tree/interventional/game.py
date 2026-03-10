@@ -1,9 +1,9 @@
-from lightgbm import LGBMClassifier
 from shapiq.tree.validation import validate_tree_model
 from shapiq.game import Game
 import numpy as np
 from xgboost import XGBClassifier
 import xgboost as xgb
+from shapiq.utils.modules import safe_isinstance
 
 
 class InterventionalGame(Game):
@@ -33,7 +33,7 @@ class InterventionalGame(Game):
             vls = None
             instanceses = np.where(coalition, self.target_instance, self.data)
             if self.class_index is not None:
-                if isinstance(self.model, XGBClassifier):
+                if safe_isinstance(self.model, "xgboost.sklearn.XGBClassifier"):
                     # For XGBClassifier, we need to use DMatrix for prediction with output_margin
                     dmatrix_instance = xgb.DMatrix(instanceses)
                     logits = self.model.get_booster().predict(
@@ -48,8 +48,8 @@ class InterventionalGame(Game):
                         else:
                             vls = -logits
                     else:
-                        vls = logits[self.class_index]
-                elif isinstance(self.model, LGBMClassifier):
+                        vls = logits[:, self.class_index]
+                elif safe_isinstance(self.model, "lightgbm.LGBMClassifier"):
                     vls = self.model.predict_proba(instanceses)[:, self.class_index]
                     logit = np.log(vls / (1 - vls))
                     vls = logit

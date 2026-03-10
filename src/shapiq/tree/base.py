@@ -192,6 +192,7 @@ class TreeModel:
         self.values[~self.leaf_mask] = 0
 
         # Set decision function
+        self.decision_type = decision_type
 
     def decision_function(self, value: float, threshold: float, left_default: bool) -> bool:
         """Decision function for split nodes.
