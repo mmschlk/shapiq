@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "shapiq"
 dynamic = ["readme", "version"]
 description = "Shapley Interactions for Machine Learning"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     # core
     "numpy",
@@ -45,10 +45,9 @@ classifiers = [
     'Operating System :: Unix',
     'Operating System :: MacOS',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14'
 ]
 keywords = [
     "python",

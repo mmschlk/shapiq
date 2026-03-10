@@ -80,8 +80,20 @@ src/
 │   │   └── sparse/             # SPEX, ProxySPEX (for large feature spaces)
 │   ├── explainer/              # High-level explainer interfaces
 │   │   ├── tabular.py          # TabularExplainer (main user-facing class)
-│   │   ├── tree/               # TreeExplainer with model-specific conversions
 │   │   └── product_kernel/     # ProductKernelExplainer
+│   ├── tree/                   # TreeExplainer and tree model conversions (top-level)
+│   │   ├── explainer.py        # TreeExplainer class
+│   │   ├── treeshapiq.py       # TreeSHAPIQ algorithm
+│   │   ├── base.py             # TreeModel and EdgeTree dataclasses
+│   │   ├── validation.py       # SUPPORTED_MODELS, validate_tree_model
+│   │   ├── utils.py            # Tree utility functions
+│   │   ├── conversion/         # Model-specific converters (sklearn, xgboost, lightgbm)
+│   │   │   ├── common.py       # lazydispatch registry, convert_tree_model
+│   │   │   ├── sklearn.py      # sklearn DT, RF, ExtraTrees, IsolationForest
+│   │   │   ├── boosting.py     # XGBoost and LightGBM converters
+│   │   │   ├── edges.py        # create_edge_tree for EdgeTree format
+│   │   │   └── cext/           # C++ extension for fast XGBoost/LightGBM parsing
+│   │   └── interventional/     # Interventional tree explainer
 │   ├── imputer/                # Imputation strategies for missing features
 │   │   ├── marginal_imputer.py # MarginalImputer (most common)
 │   │   ├── baseline_imputer.py

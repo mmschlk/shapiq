@@ -940,8 +940,9 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
     int verbose;
     int n_features;
     int e_length;
+    float scaling_factor = 1.0;
     IndexType index_type;
-    if (!PyArg_ParseTuple(args, "OOOOOOsiiiii", &leaf_predictions_obj, &features_obj, &e_sizes, &r_sizes, &feature_in_e_obj, &leaf_id, &index_cptr, &n_iterations, &n_features, &e_length, &max_order, &verbose))
+    if (!PyArg_ParseTuple(args, "OOOOOOsiiiiif", &leaf_predictions_obj, &features_obj, &e_sizes, &r_sizes, &feature_in_e_obj, &leaf_id, &index_cptr, &n_iterations, &n_features, &e_length, &max_order, &verbose, &scaling_factor))
     {
         return NULL;
     }
@@ -1027,14 +1028,14 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 }
                 else if (index_type == IndexType::FBII)
                 {
-                    weight = sign * inter_weights::fbii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
+                    weight = inter_weights::fbii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
                 }
                 else
                 {
                     weight = sign * inter_weights::general_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order, index_type);
                     // throw std::invalid_argument("Unsupported index type: " + std::to_string(static_cast<int>(index)));
                 }
-                result[feature] += leaf_val * weight;
+                result[feature] += leaf_val * weight / scaling_factor;
             }
         }
         if (max_order == 2)
@@ -1064,13 +1065,13 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 }
                 else if (index_type == IndexType::FBII)
                 {
-                    weight = sign * inter_weights::fbii_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
+                    weight = inter_weights::fbii_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
                 }
                 else
                 {
                     weight = sign * inter_weights::general_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order, index_type);
                 }
-                result[feature] += leaf_val * weight;
+                result[feature] += leaf_val * weight / scaling_factor;
                 
                 // Compute pairwise interactions with other features in the same leaf
                 for (int j = i + 1; j < n_iterations; j++)
@@ -1105,7 +1106,7 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                     }
                     else if (index_type == IndexType::FBII)
                     {
-                        weight = sign * inter_weights::fbii_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
+                        weight = inter_weights::fbii_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
                     }
                     else
                     {
@@ -1113,7 +1114,7 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                     }
                     
                     int idx = algorithms::get_interaction_index(feature, feature_j, n_features, max_order);
-                    result[idx] += leaf_val * weight;
+                    result[idx] += leaf_val * weight / scaling_factor;
                 }
             }
         }

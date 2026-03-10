@@ -63,7 +63,7 @@ def obtain_E_R_values(tree: TreeModel) -> tuple[list[np.ndarray], list[np.ndarra
 
     return E, R, leaf_vals
 
-def obtain_E_R_values(tree:TreeModel, point_to_explain: np.ndarray, reference_point: np.ndarray):
+def obtain_E_R_values_point(tree:TreeModel, point_to_explain: np.ndarray, reference_point: np.ndarray):
     """Obtain two arrays E and R indicating for each leaf and each feature whether the leaf was reached due to features in point_to_explain (E) or due to features in reference_point (R)."""
     E = []
     R = []
@@ -86,16 +86,24 @@ def obtain_E_R_values(tree:TreeModel, point_to_explain: np.ndarray, reference_po
             tree.thresholds[node_id],
             tree.children_left_default[node_id],
         )
+        child_node_explain = (
+            tree.children_left[node_id] if explain_goes_left else tree.children_right[node_id]
+        )
         ref_goes_left = tree.decision_function(
             reference_point[feature],
             tree.thresholds[node_id],
             tree.children_left_default[node_id],
         )
-        if explain_goes_left != ref_goes_left:
+        child_node_ref = (
+            tree.children_left[node_id] if ref_goes_left else tree.children_right[node_id]  
+        )
+        if child_node_explain != child_node_ref:
             if feature not in r_set: # Feature is not fixed by the reference point
-                stack.append((tree.children_left[node_id], e_set | {feature}, r_set))
+                stack.append((child_node_explain, e_set | {feature}, r_set))
             if feature not in e_set: # Feature is not fixed by the explain point
-                stack.append((tree.children_right[node_id], e_set, r_set | {feature}))
+                stack.append((child_node_ref, e_set, r_set | {feature}))
+        else:
+            stack.append((child_node_explain, e_set, r_set))
     return E, R, leaf_vals
 
 class InterventionalTreeExplainer:
@@ -254,7 +262,7 @@ class InterventionalTreeExplainer:
 
         for r in self.reference_data:
             for tree in self.tree:
-                E, R, leaf_vals = obtain_E_R_values(tree, explain_point, r)
+                E, R, leaf_vals = obtain_E_R_values_point(tree, explain_point, r)
                 E_list.extend(E)
                 R_list.extend(R)
                 leaf_vals_list.extend(leaf_vals)
@@ -483,7 +491,7 @@ class InterventionalTreeExplainer:
                             moebius_weight_func=interaction_weight_to_moebius_weight_gv,
                         )
                     elif self.index in ["FBII"]:
-                        weight_function = general_weight_fbii
+                        weight_function = partial(general_weight_fbii,max_order=self.max_order)
                     else:
                         weight_function = partial(
                             self.general_weight_function,
@@ -625,6 +633,7 @@ class InterventionalTreeExplainer:
                 self.e_length,
                 self.max_order,
                 self.debug, # whether to print debug information
+                float(self.reference_data.shape[0]), # number of reference samples for scaling the results
             )
         interactions[()] = self.baseline_value
         return InteractionValues(

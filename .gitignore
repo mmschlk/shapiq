@@ -185,3 +185,6 @@ src/shapiq/_version.py
 
 # Claude
 .claude/
+
+# C-Extension files
+*.so
