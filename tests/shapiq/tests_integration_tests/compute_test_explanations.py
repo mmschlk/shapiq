@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, get_args
 
 from shapiq.explainer.tabular import TabularExplainerIndices
-from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
+from shapiq.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq.game_theory.exact import ExactComputer
 from shapiq_games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
 from tests.shapiq.fixtures.data import get_california_housing_train_test_explain

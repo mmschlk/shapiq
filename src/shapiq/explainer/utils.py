@@ -37,7 +37,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
     import shapiq.explainer.product_kernel.explainer as pk
     import shapiq.explainer.tabpfn as tp
     import shapiq.explainer.tabular as tb
-    import shapiq.explainer.tree.explainer as tr
+    import shapiq.tree.explainer as tr
 
     return {
         "tabular": tb.TabularExplainer,
@@ -78,7 +78,7 @@ def get_predict_function_and_model_type(
     """
     from shapiq.game import Game
 
-    from .tree import TreeModel
+    from shapiq.tree import TreeModel
 
     if model_class is None:
         model_class = print_class(model)
@@ -266,7 +266,7 @@ def print_classes_nicely(obj: list[Any] | dict[ExplainerTypes, Any]) -> list[str
 
     I/O examples:
         - ``[shapiq.explainer._base.Explainer]`` -> ``['shapiq.Explainer']``
-        - ``{'tree': shapiq.explainer.tree.explainer.TreeExplainer}``  -> ``['shapiq.TreeExplainer']``
+        - ``{'tree': shapiq.tree.explainer.TreeExplainer}``  -> ``['shapiq.TreeExplainer']``
         - ``{'tree': shapiq.TreeExplainer}  -> ``['shapiq.TreeExplainer']``.
 
     Args:
@@ -291,9 +291,9 @@ def print_class(obj: object) -> str:
     I/O Examples:
         - ``sklearn.ensemble._forest.RandomForestRegressor`` -> ``'sklearn.ensemble._forest.RandomForestRegressor'``
         - ``type(sklearn.ensemble._forest.RandomForestRegressor)`` -> ``'sklearn.ensemble._forest.RandomForestRegressor'``
-        - ``shapiq.explainer.tree.explainer.TreeExplainer`` -> ``'shapiq.explainer.tree.explainer.TreeExplainer'``
-        - ``shapiq.TreeExplainer`` -> ``'shapiq.explainer.tree.explainer.TreeExplainer'``
-        - ``type(shapiq.TreeExplainer)`` -> ``'shapiq.explainer.tree.explainer.TreeExplainer'``
+        - ``shapiq.tree.explainer.TreeExplainer`` -> ``'shapiq.tree.explainer.TreeExplainer'``
+        - ``shapiq.TreeExplainer`` -> ``'shapiq.tree.explainer.TreeExplainer'``
+        - ``type(shapiq.TreeExplainer)`` -> ``'shapiq.tree.explainer.TreeExplainer'``
 
     Args:
         obj: The object to convert. Can be a class or a class type.

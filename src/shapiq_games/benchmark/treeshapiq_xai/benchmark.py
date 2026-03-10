@@ -35,7 +35,7 @@ class AdultCensus(TreeSHAPIQXAI):
                 models are ``'decision_tree'`` and ``'random_forest'``.
 
             class_label: The class label to use for the model. If ``None``, then the default
-                behaviour of :class:`~shapiq.explainer.tree.TreeExplainer` is used.
+                behaviour of :class:`~shapiq.tree.TreeExplainer` is used.
 
             normalize: A boolean flag to normalize/center the game values. The default value is
                 ``True``.
