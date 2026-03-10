@@ -142,7 +142,13 @@ autodoc_member_order = "groupwise"
 # Duplicate citations/footnotes arise because autodoc renders classes in both the parent package
 # page (via automodule + members) and the native module page. Suppressing these is safe because
 # the actual content is correct; only the duplicate-label warnings are silenced.
-suppress_warnings = ["ref.citation", "ref.footnote", "ref.ref", "py.duplicate_object"]
+suppress_warnings = [
+    "ref.citation",
+    "ref.footnote",
+    "ref.ref",
+    "py.duplicate_object",
+    "autodoc.duplicate_object",
+]
 
 # -- Images ----------------------------------------------------------------------------------------
 StandaloneHTMLBuilder.supported_image_types = [
