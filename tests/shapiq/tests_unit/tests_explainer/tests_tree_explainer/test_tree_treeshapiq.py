@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.explainer.tree import TreeExplainer, TreeModel, TreeSHAPIQ
+from shapiq.tree import TreeExplainer, TreeModel, TreeSHAPIQ
 
 
 def test_init(dt_clf_model, background_clf_data):
@@ -23,6 +23,7 @@ def test_init(dt_clf_model, background_clf_data):
     tree_model = {
         "children_left": np.asarray([1, 2, 3, -1, -1, -1, 7, -1, -1]),
         "children_right": np.asarray([6, 5, 4, -1, -1, -1, 8, -1, -1]),
+        "children_missing": np.asarray([1, 2, 3, -1, -1, -1, 7, -1, -1]),
         "features": np.asarray([0, 1, 0, -2, -2, -2, 2, -2, -2]),
         "thresholds": np.asarray([0, 0, -0.5, -2, -2, -2, 0, -2, -2]),
         "node_sample_weight": np.asarray([100, 50, 38, 15, 23, 12, 50, 20, 30]),
@@ -99,6 +100,7 @@ def test_against_old_treeshapiq_implementation(index: str, expected: dict):
     tree_model = TreeModel(
         children_left=children_left,
         children_right=children_right,
+        children_missing=children_left,
         features=features,
         thresholds=thresholds,
         node_sample_weight=node_sample_weight,
@@ -125,6 +127,7 @@ def test_edge_case_params():
     tree_model = TreeModel(
         children_left=children_left,
         children_right=children_right,
+        children_missing=children_left,  # intentionally set to left_children to test if it is ignored
         features=features,
         thresholds=thresholds,
         node_sample_weight=node_sample_weight,
@@ -152,6 +155,7 @@ def test_no_bug_with_one_feature_tree():
     tree = {
         "children_left": np.array([1, -1, -1]),
         "children_right": np.array([2, -1, -1]),
+        "children_missing": np.array([1, -1, -1]),
         "features": np.array([0, -2, -2]),
         "thresholds": np.array([2.5, -2, -2]),
         "values": np.array([0.5, 0.0, 1]),

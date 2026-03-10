@@ -6,15 +6,15 @@ import numpy as np
 import pytest
 
 from shapiq import TreeExplainer
-from shapiq.explainer.tree.base import TreeModel
-from shapiq.explainer.tree.conversion.edges import create_edge_tree
-from shapiq.explainer.tree.conversion.sklearn import (
-    convert_sklearn_forest,
-    convert_sklearn_isolation_forest,
+from shapiq.explainer.utils import get_predict_function_and_model_type
+from shapiq.tree.base import TreeModel
+from shapiq.tree.conversion.edges import create_edge_tree
+from shapiq.tree.conversion.sklearn import (
+    convert_isolation_forest_tree,
+    convert_random_forest_tree,
     convert_sklearn_tree,
 )
-from shapiq.explainer.tree.validation import SUPPORTED_MODELS
-from shapiq.explainer.utils import get_predict_function_and_model_type
+from shapiq.tree.validation import SUPPORTED_MODELS
 from shapiq.utils import safe_isinstance
 from tests.shapiq.conftest import TREE_MODEL_FIXTURES
 
@@ -30,6 +30,7 @@ def test_tree_model_init():
     tree_model = TreeModel(
         children_left=left_children,
         children_right=right_children,
+        children_missing=left_children,  # intentionally set to left_children to test if it is ignored
         features=features,
         thresholds=thresholds,
         values=values,
@@ -59,6 +60,7 @@ def test_edge_tree_init():
     tree_model = TreeModel(
         children_left=children_left,
         children_right=children_right,
+        children_missing=children_left,  # intentionally set to left_children to test if it is ignored
         features=features,
         thresholds=thresholds,
         node_sample_weight=node_sample_weight,
@@ -85,13 +87,13 @@ def test_edge_tree_init():
         subset_updates_pos_store=interaction_update_positions,
     )
 
-    assert safe_isinstance(edge_tree, ["shapiq.explainer.tree.base.EdgeTree"])
+    assert safe_isinstance(edge_tree, ["shapiq.tree.base.EdgeTree"])
 
 
 def test_sklean_dt_conversion(dt_reg_model, dt_clf_model):
     """Test the conversion of a scikit-learn decision tree model."""
     # test regression model
-    tree_model_class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
+    tree_model_class_path_str = ["shapiq.tree.base.TreeModel"]
     tree_model = convert_sklearn_tree(dt_reg_model)
     assert safe_isinstance(tree_model, tree_model_class_path_str)
     assert tree_model.empty_prediction is not None
@@ -114,16 +116,16 @@ def test_sklean_dt_conversion(dt_reg_model, dt_clf_model):
 
 def test_skleanr_rf_conversion(rf_clf_model, rf_reg_model):
     """Test the conversion of a scikit-learn random forest model."""
-    tree_model_class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
+    tree_model_class_path_str = ["shapiq.tree.base.TreeModel"]
 
     # test the regression model
-    tree_model = convert_sklearn_forest(rf_reg_model)
+    tree_model = convert_random_forest_tree(rf_reg_model)
     assert isinstance(tree_model, list)
     assert safe_isinstance(tree_model[0], tree_model_class_path_str)
     assert tree_model[0].empty_prediction is not None
 
     # test the classification model
-    tree_model = convert_sklearn_forest(rf_clf_model)
+    tree_model = convert_random_forest_tree(rf_clf_model)
     assert isinstance(tree_model, list)
     assert safe_isinstance(tree_model[0], tree_model_class_path_str)
     assert tree_model[0].empty_prediction is not None
@@ -131,10 +133,10 @@ def test_skleanr_rf_conversion(rf_clf_model, rf_reg_model):
 
 def test_sklearn_if_conversion(if_clf_model):
     """Test the conversion of a scikit-learn isolation forest model."""
-    tree_model_class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
+    tree_model_class_path_str = ["shapiq.tree.base.TreeModel"]
 
     # test the isolation forest model
-    tree_model = convert_sklearn_isolation_forest(if_clf_model)
+    tree_model = convert_isolation_forest_tree(if_clf_model)
     assert isinstance(tree_model, list)
     assert safe_isinstance(tree_model[0], tree_model_class_path_str)
     assert tree_model[0].empty_prediction is not None

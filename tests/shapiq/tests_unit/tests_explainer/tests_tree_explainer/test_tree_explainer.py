@@ -7,7 +7,7 @@ import copy
 import numpy as np
 import pytest
 
-from shapiq.explainer.tree import TreeExplainer, TreeModel
+from shapiq.tree import TreeExplainer, TreeModel
 from tests.shapiq.markers import skip_if_no_lightgbm
 
 
@@ -129,6 +129,7 @@ def test_against_shap_implementation():
     tree_model = TreeModel(
         children_left=children_left,
         children_right=children_right,
+        children_missing=children_left,  # no missing values, so we can set this to anything
         features=features,
         thresholds=thresholds,
         node_sample_weight=node_sample_weight,
@@ -182,7 +183,7 @@ def test_xgboost_reg(xgb_reg_model, background_reg_data):
     prediction = xgb_reg_model.predict(x_explain_shapiq.reshape(1, -1))
     assert prediction == pytest.approx(baseline_shapiq + np.sum(sv_shapiq_values), rel=1e-5)
 
-
+1
 def test_xgboost_clf(xgb_clf_model, background_clf_data):
     """Tests the shapiq implementation of TreeSHAP against SHAP's implementation for XGBoost."""
     explanation_instance = 1

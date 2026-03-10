@@ -15,8 +15,8 @@ from shapiq.explainer.custom_types import (
 )
 from shapiq.explainer.product_kernel import ProductKernelExplainer
 from shapiq.explainer.tabular import TabularExplainer, TabularExplainerIndices
-from shapiq.explainer.tree import TreeExplainer
-from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
+from shapiq.tree import TreeExplainer
+from shapiq.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq.interaction_values import InteractionValues
 from tests.shapiq.utils import get_expected_index_or_skip
 
