@@ -16,7 +16,8 @@ class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
     """The kADD-SHAP regression approximator for estimating the kADD-SHAP values.
 
     Estimates the kADD-SHAP values using the kADD-SHAP regression algorithm. The Algorithm is
-    described in Pelegrina et al. (2023) [1]_ and is related to Inconsistent KernelSHAP-IQ [2]_.
+    described in Pelegrina et al. (2023) [Pel23]_ and is related to Inconsistent KernelSHAP-IQ
+    [Fum24]_.
 
     See Also:
         - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
@@ -27,10 +28,6 @@ class kADDSHAP(Regression[ValidRegressionkADDSHAPIndices]):  # noqa: N801
         - :class:`~shapiq.approximator.regression.kernelshapiq.KernelSHAPIQ`: The KernelSHAP-IQ
             approximator for estimating the Shapley interaction index (SII) and the k-Shapley
             interaction index (k-SII).
-
-    References:
-        .. [1] Pelegrina, G. D., Duarte, L. T., Grabisch, M. (2023). A k-additive Choquet integral-based approach to approximate the SHAP values for local interpretability in machine learning. In Artificial Intelligence 325, pp. 104014. doi: https://doi.org/10.1016/j.artint.2023.104014.
-        .. [2] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., and Hammer, B. (2024). KernelSHAP-IQ: Weighted Least Square Optimization for Shapley Interactions. In Proceedings of the 41 st International Conference on Machine Learning. url: https://openreview.net/forum?id=d5jXW2H4gg
 
     """
 

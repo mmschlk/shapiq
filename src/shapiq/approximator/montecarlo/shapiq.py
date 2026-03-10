@@ -39,7 +39,7 @@ class SHAPIQ(MonteCarlo[TIndices]):
 
     See Also:
         - :class:`~shapiq.approximator.montecarlo.shapiq.UnbiasedKernelSHAP`: The Unbiased
-        KernelSHAP approximator.
+          KernelSHAP approximator.
 
     References:
         .. [Fum23] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., (2023). SHAP-IQ: Unified Approximation of any-order Shapley Interactions. In Thirty-seventh Conference on Neural Information Processing Systems. url: https://openreview.net/forum?id=IEMLNF4gK4

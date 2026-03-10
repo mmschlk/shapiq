@@ -43,10 +43,6 @@ class TreeSHAPIQ:
         This class is not intended to be used directly. Instead, use the ``TreeExplainer`` class to
         explain tree-based models which internally uses then the TreeSHAP-IQ algorithm.
 
-    References:
-        .. [Yu22] Peng Yu, Chao Xu, Albert Bifet, Jesse Read Linear Tree Shap (2022). In: Proceedings of 36th Conference on Neural Information Processing Systems. https://openreview.net/forum?id=OzbkiUo24g
-        .. [Mus24] Maximilian Muschalik, Fabian Fumagalli, Barbara Hammer, & Eyke Hüllermeier (2024). Beyond TreeSHAP: Efficient Computation of Any-Order Shapley Interactions for Tree Ensembles. In: Proceedings of the AAAI Conference on Artificial Intelligence, 38(13), 14388-14396. https://doi.org/10.1609/aaai.v38i13.29352
-
     """
 
     def __init__(

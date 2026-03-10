@@ -29,7 +29,7 @@ class TreeModel:
         thresholds: The thresholds of the decision nodes in a tree. Leaf nodes are set to ``np.NaN``.
         values: The values of the leaf nodes in a tree.
         node_sample_weight: The sample weights of the nodes in a tree.
-        empty_prediction: The empty prediction of the tree model. The default value is ``None`.` Then
+        empty_prediction: The empty prediction of the tree model. The default value is ``None``. Then
             the empty prediction is computed from the leaf values and the sample weights.
         leaf_mask: The boolean mask of the leaf nodes in a tree. The default value is ``None``. Then the
             leaf mask is computed from the children left and right arrays.

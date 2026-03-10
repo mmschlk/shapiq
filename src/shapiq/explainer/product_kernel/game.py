@@ -23,7 +23,8 @@ class ProductKernelGame(Game):
     r"""Implements the product kernel game.
 
     For models using the product kernel as the decision function the game can be formulated as
-    ..math::
+
+    .. math::
         v(S) = \alpha^T (K(X_S, x_S))
 
     where K(., .) is the product kernel function, X_S are the samples (support vectors) restricted to the features in S and x_S is the point to explain restricted to the features in S.
