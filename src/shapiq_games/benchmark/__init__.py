@@ -57,6 +57,16 @@ from .local_xai.benchmark_tabular import (
     AdultCensus as AdultCensusLocalXAI,
     BikeSharing as BikeSharingLocalXAI,
     CaliforniaHousing as CaliforniaHousingLocalXAI,
+    Annealing as AnnealingLocalXAI,
+    Arrhythmia as ArrhythmiaLocalXAI,
+    BreastCancer as BreastCancerLocalXAI,
+    Hepatitis as HepatitisLocalXAI,
+    Ionosphere as IonosphereLocalXAI,
+    Mushroom as MushroomLocalXAI,
+    Nursery as NurseryLocalXAI,
+    Soybean as SoybeanLocalXAI,
+    Thyroid as ThyroidLocalXAI,
+    Zoo as ZooLocalXAI,
 )
 
 # treeshap-iq explanation games
@@ -100,6 +110,16 @@ __all__ = [
     "CaliforniaHousingLocalXAI",
     "ImageClassifierLocalXAI",
     "SentimentAnalysisLocalXAI",
+    "AnnealingLocalXAI",
+    "ArrhythmiaLocalXAI",
+    "BreastCancerLocalXAI",
+    "HepatitisLocalXAI",
+    "IonosphereLocalXAI",
+    "MushroomLocalXAI",
+    "NurseryLocalXAI",
+    "SoybeanLocalXAI",
+    "ThyroidLocalXAI",
+    "ZooLocalXAI",
     # dataset_valuation games
     "DatasetValuation",
     "AdultCensusDatasetValuation",
