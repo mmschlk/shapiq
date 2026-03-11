@@ -47,7 +47,6 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
-    "sphinx_toolbox.more_autodoc.autoprotocol",
     "sphinxcontrib.bibtex",
     "sphinx_gallery.gen_gallery",
 ]

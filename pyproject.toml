@@ -253,7 +253,6 @@ docs = [
     "myst-parser",              # Markdown support for Sphinx
     "sphinx-copybutton",        # copy button for code blocks
     "sphinx-autodoc-typehints", # include typehints in docs
-    "sphinx_toolbox",           # various sphinx extensions
     "sphinxcontrib-bibtex",     # references based on bibtex
     "nbconvert",                # notebook support for sphinx
     "nbsphinx",                 # notebook support for sphinx
