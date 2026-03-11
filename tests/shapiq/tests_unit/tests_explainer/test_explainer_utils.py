@@ -10,8 +10,8 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 
-from shapiq.tree.validation import SUPPORTED_MODELS
 from shapiq.explainer.utils import get_predict_function_and_model_type
+from shapiq.tree.validation import SUPPORTED_MODELS
 from tests.shapiq.conftest import (
     TABULAR_MODEL_FIXTURES,
     TABULAR_TENSORFLOW_MODEL_FIXTURES,
@@ -62,7 +62,7 @@ def test_tensorflow_get_predict_function_and_model_type(
     """Tests whether the tensorflow model is recognized as a tabular model."""
     model = request.getfixturevalue(model_name)
     x_data, _ = background_reg_dataset
-    predict_function, model_type = _utils_get_model(model, label, x_data)
+    _predict_function, model_type = _utils_get_model(model, label, x_data)
     assert model_type == "tabular"
 
 
@@ -77,7 +77,7 @@ def test_torch_get_predict_function_and_model_type(
     """Tests whether the torch model is recognized as a tabular model."""
     model = request.getfixturevalue(model_name)
     x_data, _ = background_reg_dataset
-    predict_function, model_type = _utils_get_model(model, label, x_data)
+    _predict_function, model_type = _utils_get_model(model, label, x_data)
     assert model_type == "tabular"
 
 
@@ -91,7 +91,7 @@ def test_tree_get_predict_function_and_model_type(
 ):
     """Tests whether the tree model is recognized as a tree model."""
     model = request.getfixturevalue(model_fixture)
-    x_data, y = background_reg_dataset
+    x_data, _y = background_reg_dataset
     predict_function, model_type = _utils_get_model(model, model_class, x_data)
     assert model_type == "tree"
 
@@ -103,7 +103,7 @@ def test_all_supported_tree_models_recognized():
     """Test that all supported tree models are recognized as tree models."""
     model = Mock()
     for label in SUPPORTED_MODELS:
-        predict_function, model_type = get_predict_function_and_model_type(model, label)
+        _predict_function, model_type = get_predict_function_and_model_type(model, label)
         assert model_type == "tree"
 
 
@@ -116,7 +116,7 @@ def test_all_supported_product_kernel_models_recognized():
         "sklearn.gaussian_process.GaussianProcessRegressor",
     ]
     for label in svm_models:
-        predict_function, model_type = get_predict_function_and_model_type(model, label)
+        _predict_function, model_type = get_predict_function_and_model_type(model, label)
         assert model_type == "product_kernel"
 
 
@@ -146,7 +146,7 @@ def test_class_index():
         return np.array([[1, 2, 3, 4], [1, 2, 3, 4]])
 
     for i in range(4):
-        pred_fun, label = get_predict_function_and_model_type(_model, "custom_model", i)
+        pred_fun, _label = get_predict_function_and_model_type(_model, "custom_model", i)
         return_value = pred_fun(_model, np.array([[11, 22, 33, 44], [11, 22, 33, 44]]))  # pyright: ignore[reportCallIssue] thinks its RuntimeError
         assert return_value[0] == i + 1
 

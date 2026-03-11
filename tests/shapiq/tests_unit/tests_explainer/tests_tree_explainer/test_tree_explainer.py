@@ -183,7 +183,7 @@ def test_xgboost_reg(xgb_reg_model, background_reg_data):
     prediction = xgb_reg_model.predict(x_explain_shapiq.reshape(1, -1))
     assert prediction == pytest.approx(baseline_shapiq + np.sum(sv_shapiq_values), rel=1e-5)
 
-1
+
 def test_xgboost_clf(xgb_clf_model, background_clf_data):
     """Tests the shapiq implementation of TreeSHAP against SHAP's implementation for XGBoost."""
     explanation_instance = 1

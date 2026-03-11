@@ -212,7 +212,9 @@ def test_bike_bug():
     buggy_tree_model = {
         "children_left": np.asarray(children_left),
         "children_right": np.asarray(chidren_right),
-        "children_missing": np.asarray(children_left),  # intentionally set to left_children to test if it is ignored
+        "children_missing": np.asarray(
+            children_left
+        ),  # intentionally set to left_children to test if it is ignored
         "empty_prediction": 190.5770,
         "features": np.asarray(features),
         "thresholds": np.asarray(thresholds),

@@ -99,11 +99,15 @@ def cls_data(background_clf_dataset) -> tuple[np.ndarray, np.ndarray, np.ndarray
     X, y = background_clf_dataset
     return train_test_split(X, y, test_size=0.2, random_state=DATASETS_RANDOM_STATE)
 
+
 @pytest.fixture
-def cls_data_binary(background_clf_dataset_binary) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def cls_data_binary(
+    background_clf_dataset_binary,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Return a binary classification dataset split into (X_train, X_test, y_train, y_test)."""
     X, y = background_clf_dataset_binary
     return train_test_split(X, y, test_size=0.2, random_state=DATASETS_RANDOM_STATE)
+
 
 @pytest.fixture
 def background_clf_dataset_binary() -> tuple[np.ndarray, np.ndarray]:
