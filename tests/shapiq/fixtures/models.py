@@ -203,6 +203,8 @@ def tabpfn_classification_problem(
     data, labels = background_clf_dataset_binary_small
     data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
     model = tabpfn.TabPFNClassifier(n_estimators=1, fit_mode="low_memory")
+    # tabpfn 6.x no longer bundles model weights; fit() downloads the checkpoint
+    # on first use and caches it locally. CI requires network access for this.
     model.fit(data, labels)
     return model, data, labels, x_test
 
@@ -217,6 +219,8 @@ def tabpfn_regression_problem(
     data, labels = background_reg_dataset_small
     data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
     model = tabpfn.TabPFNRegressor(n_estimators=1, fit_mode="low_memory")
+    # tabpfn 6.x no longer bundles model weights; fit() downloads the checkpoint
+    # on first use and caches it locally. CI requires network access for this.
     model.fit(data, labels)
     return model, data, labels, x_test
 
