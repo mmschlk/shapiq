@@ -51,7 +51,7 @@ namespace algorithms
     {
         const float wE = weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order);
         const float wR = weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order);
-        
+
         frame.E.for_each_set_bit([&](uint64_t feature)
                                          { interactions[feature] += value * wE; });
         frame.R.for_each_set_bit([&](uint64_t feature)
@@ -541,5 +541,5 @@ namespace algorithms
     }
 
 
-   
+
 }

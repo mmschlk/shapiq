@@ -121,7 +121,7 @@ namespace inter_weights
     inline double general_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order, IndexType index)
     {
         double w = 0.0;
-        for (int k = 0; k <= r - s_cap_r; k++) 
+        for (int k = 0; k <= r - s_cap_r; k++)
         {
             w += std::pow(-1,k)*binom(r-s_cap_r, k) * moebius_weight(k+s_cap_r + e, s, index);
         }

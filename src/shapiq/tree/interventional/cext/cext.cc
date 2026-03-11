@@ -1072,7 +1072,7 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                     weight = sign * inter_weights::general_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order, index_type);
                 }
                 result[feature] += leaf_val * weight / scaling_factor;
-                
+
                 // Compute pairwise interactions with other features in the same leaf
                 for (int j = i + 1; j < n_iterations; j++)
                 {
@@ -1081,17 +1081,17 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                         // Features belong to different leafs, stop checking pairs with i
                         break;
                     }
-                    
+
                     int feature_j = features[j];
                     int s_cap_e_j = feature_in_e_data[j];
                     int s_cap_r_j = 1 - s_cap_e_j;
-                    
+
                     // Combined counts for the pair (i, j)
                     int s_cap_e_combined = s_cap_e_i + s_cap_e_j;
                     int s_cap_r_combined = s_cap_r_i + s_cap_r_j;
                     s = 2;
                     sign = (s_cap_r_combined % 2 == 0) ? 1 : -1;
-                    
+
                     if (index_type == IndexType::SII)
                     {
                         weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
@@ -1112,7 +1112,7 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                     {
                         weight = sign * inter_weights::general_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order, index_type);
                     }
-                    
+
                     int idx = algorithms::get_interaction_index(feature, feature_j, n_features, max_order);
                     result[idx] += leaf_val * weight / scaling_factor;
                 }

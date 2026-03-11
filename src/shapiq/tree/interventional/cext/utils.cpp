@@ -37,9 +37,9 @@ class BitSet
     uint64_t size;
 public:
     // explicit constructor to initialize the BitSet with the number of features. It determines whether to use small storage (a single uint64_t) or large storage (a vector of uint64_t) based on the number of features.
-    
+
     BitSet() : num_features(0), size(0), storage_type(StorageType::NUM), small_data(0ULL) {}
-    
+
     explicit BitSet(int64_t num_features)
         : num_features(num_features), size(0)
     {
@@ -52,7 +52,7 @@ public:
         } else {
             storage_type = StorageType::HEAP;
             data.assign((num_features + 63) / 64, 0ULL);
-        }   
+        }
 
     }
 
@@ -64,10 +64,10 @@ public:
         {
             // For small feature sets, we can directly check the bit in the small_data uint64_t.
             return (small_data & mask) != 0ULL;
-        } 
+        }
         // feature_id >> 6 is equivalent to feature_id / 64, which gives us the index of the uint64_t word in the data vector that contains the bit for the given feature_id.
         const size_t word_index = feature_id >> 6;
-        
+
         const uint64_t word = (storage_type == StorageType::STACK) ? small_buffer[word_index] : data[word_index];
 
         return (word & mask) != 0ULL;
@@ -122,7 +122,7 @@ public:
         return was_present;
     }
 
-    // Create a function using a template to apply a given function to each set bit in the BitSet. 
+    // Create a function using a template to apply a given function to each set bit in the BitSet.
     // This allows us to efficiently iterate over the features in the set without to copy the entire BitSet.
     // Here `template<typename Func>` allows us to define a function that can accept any callable type (e.g., function pointer, lambda, functor) as an argument.
     // The compiler will generate the appropriate code for the specific type of function that is passed in when the for_each_set_bit function is called.

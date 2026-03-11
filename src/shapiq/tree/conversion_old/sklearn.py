@@ -73,11 +73,12 @@ def convert_sklearn_tree(
     return TreeModel(
         children_left=tree_model.tree_.children_left,
         children_right=tree_model.tree_.children_right,
+        children_missing=tree_model.tree_.children_left,  # isolation trees do not have missing value branches
         features=tree_model.tree_.feature,
         thresholds=tree_model.tree_.threshold,
         values=tree_values,
         node_sample_weight=tree_model.tree_.weighted_n_node_samples,
-        empty_prediction=None,  # type: ignore[arg-type]  # compute empty prediction later
+        empty_prediction=None,  # compute empty prediction later
         original_output_type=output_type,
     )
 
@@ -153,11 +154,12 @@ def convert_isolation_tree(
     return TreeModel(
         children_left=tree_model.tree_.children_left,
         children_right=tree_model.tree_.children_right,
+        children_missing=tree_model.tree_.children_left,  # isolation trees do not have missing value branches
         features=features_updated,
         thresholds=tree_model.tree_.threshold,
         values=values_updated,
         node_sample_weight=tree_model.tree_.weighted_n_node_samples,
-        empty_prediction=None,  # type: ignore[arg-type]  # compute empty prediction later
+        empty_prediction=None,  # compute empty prediction later
         original_output_type=output_type,
     )
 

@@ -313,7 +313,7 @@ class Sparse(Approximator[ValidSparseIndices]):
         )
         autoconverter = MoebiusConverter(moebius_coefficients=moebius_interactions)
         converted_interaction_values = autoconverter(
-            index=cast(ValidMoebiusConverterIndices, self.index), order=self.max_order
+            index=cast("ValidMoebiusConverterIndices", self.index), order=self.max_order
         )
         self._interaction_lookup = converted_interaction_values.interaction_lookup
         return converted_interaction_values.values  # noqa: PD011

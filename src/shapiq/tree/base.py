@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -69,21 +68,21 @@ class TreeModel:
     thresholds: NDArray[np.floating]
     values: NDArray[np.floating]
     node_sample_weight: NDArray[np.floating]
-    children_left_default: NDArray[np.bool_] | None = None
-    empty_prediction: float | None = None
-    leaf_mask: NDArray[np.bool_] | None = None
-    n_features_in_tree: int | None = None
-    max_feature_id: int | None = None
-    feature_ids: set[int] | None = None
-    root_node_id: int | None = None
-    n_nodes: int | None = None
-    decision_type: str | None = None
-    nodes: NDArray[np.int_] | None = None
-    feature_map_original_internal: dict[int, int] | None = None
-    feature_map_internal_original: dict[int, int] | None = None
+    children_left_default: NDArray[np.bool_]
+    empty_prediction: float
+    leaf_mask: NDArray[np.bool_]
+    n_features_in_tree: int
+    max_feature_id: int
+    feature_ids: set[int]
+    root_node_id: int
+    n_nodes: int
+    decision_type: str
+    nodes: NDArray[np.int_]
+    feature_map_original_internal: dict[int, int]
+    feature_map_internal_original: dict[int, int]
     original_output_type: str = "raw"  # not used at the moment
-    intercepts: NDArray[np.floating] | None = None
-    coeffs: NDArray[np.floating] | None = None
+    intercepts: NDArray[np.floating]
+    coeffs: NDArray[np.floating]
 
     def __init__(
         self,
@@ -105,10 +104,11 @@ class TreeModel:
         decision_type: str | None = None,
         feature_map_original_internal: dict[int, int] | None = None,
         feature_map_internal_original: dict[int, int] | None = None,
-        original_output_type: str = "raw",
-        intercepts: NDArray[np.floating] | None = None,
-        coeffs: NDArray[np.floating] | None = None,
-    ):
+        original_output_type: str = "raw",  # noqa: ARG002
+        intercepts: NDArray[np.floating] | None = None,  # noqa: ARG002
+        coeffs: NDArray[np.floating] | None = None,  # noqa: ARG002
+    ) -> None:
+        """Initialize the TreeModel."""
         self.children_left = children_left
         self.children_right = children_right
         self.children_missing = children_missing
@@ -143,14 +143,16 @@ class TreeModel:
         unique_features.discard(-2)  # remove leaf node "features"
         # setup number of features
         if n_features_in_tree is None:
-            self.n_features_in_tree = int(len(unique_features))
+            self.n_features_in_tree = len(unique_features)
         else:
             self.n_features_in_tree = n_features_in_tree
         # setup max feature id
         if max_feature_id is None and len(unique_features) > 0:
             self.max_feature_id = max(unique_features)
-        else:
+        elif max_feature_id is not None:
             self.max_feature_id = max_feature_id
+        else:
+            self.max_feature_id = 0
         # setup feature names
         if feature_ids is None:
             self.feature_ids = unique_features
@@ -192,10 +194,11 @@ class TreeModel:
         self.values[~self.leaf_mask] = 0
 
         # Set decision function
-        self.decision_type = decision_type
+        self.decision_type = decision_type if decision_type is not None else "<="
 
-    def decision_function(self, value: float, threshold: float, left_default: bool) -> bool:
+    def decision_function(self, value: float, threshold: float, *, left_default: bool) -> bool:
         """Decision function for split nodes.
+
         The function compares the input value to the threshold using the specified decision type.
         If the value is NaN, the function returns the left_default.
 
@@ -209,8 +212,7 @@ class TreeModel:
         """
         if self.decision_type == "<":
             return (value < threshold) if not np.isnan(value) else left_default
-        else:
-            return (value <= threshold) if not np.isnan(value) else left_default
+        return (value <= threshold) if not np.isnan(value) else left_default
 
     def compute_empty_prediction(self) -> None:
         """Compute the empty prediction of the tree model.
@@ -284,13 +286,16 @@ class TreeModel:
             feature_id_internal = self.features[node]
             feature_id_original = self.feature_map_internal_original[feature_id_internal]
             if self.decision_function(
-                x[feature_id_original], self.thresholds[node], self.children_left_default[node]
+                x[feature_id_original],
+                self.thresholds[node],
+                left_default=self.children_left_default[node],
             ):
                 node = self.children_left[node]
             else:
                 node = self.children_right[node]
             is_leaf = self.leaf_mask[node]
         return float(self.values[node])
+
 
 class EdgeTree:
     """A dataclass for storing the information of an edge representation of the tree.

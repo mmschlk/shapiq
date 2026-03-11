@@ -27,7 +27,7 @@ from shapiq.tree.base import TreeModel
 from .common import register
 
 if TYPE_CHECKING:
-    from sklearn.tree._tree import Tree
+    from sklearn.tree._tree import Tree  # ty: ignore[unresolved-import]
 
 
 def convert_sklearn_tree(
@@ -171,7 +171,7 @@ def extra_tree_traversal(
 
 def convert_isolation_forest_tree(
     tree_model: IsolationForest,
-    class_label: int | None = None,
+    _class_label: int | None = None,
     scaling: float = 1.0,
 ) -> list[TreeModel]:
     """Convert a scikit-learn IsolationForest to the internal tree format used by shapiq.
@@ -234,6 +234,7 @@ def convert_random_forest_tree(
         )
         for i in range(len(tree_model.estimators_))
     ]
+
 
 register(DecisionTreeRegressor, convert_sklearn_tree)
 register(DecisionTreeClassifier, convert_sklearn_tree)

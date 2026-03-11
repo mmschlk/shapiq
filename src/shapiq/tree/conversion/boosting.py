@@ -1,21 +1,28 @@
+"""Conversion utilities for XGBoost and LightGBM models to the unified internal tree format."""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
-from shapiq.tree.base import TreeModel
-
-from .cext import parse_lightgbm_string_treemodels, parse_xgboost_ubjson_treemodels
+from .cext import (
+    parse_lightgbm_string_treemodels,  # ty: ignore[unresolved-import]
+    parse_xgboost_ubjson_treemodels,  # ty: ignore[unresolved-import]
+)
 from .common import register
 
 if TYPE_CHECKING:
-    from lightgbm import LGBMClassifier, LGBMRegressor
-    from lightgbm.basic import Booster as LightGBMBooster
+    from lightgbm import LGBMClassifier, LGBMRegressor  # ty: ignore[unresolved-import]
+    from lightgbm.basic import Booster as LightGBMBooster  # ty: ignore[unresolved-import]
     from xgboost import XGBClassifier, XGBRegressor
 
-    LightGBMModel = Union[LGBMRegressor, LGBMClassifier, LightGBMBooster]
+    from shapiq.tree.base import TreeModel
+
+    LightGBMModel = LGBMRegressor | LGBMClassifier | LightGBMBooster
 
 
-def convert_xgboost_model(model: XGBRegressor | XGBClassifier, class_label: int | None = None) -> list[TreeModel]:
+def convert_xgboost_model(
+    model: XGBRegressor | XGBClassifier, class_label: int | None = None
+) -> list[TreeModel]:
     """Convert an XGBoost model to the unified internal tree format used by shapiq.
 
     For multiclass models, only the trees for ``class_label`` are returned (round-robin
@@ -57,7 +64,8 @@ def _lightgbm_model_to_bytes(model: LightGBMModel) -> bytes:
     if hasattr(model, "model_to_string"):
         return model.model_to_string().encode("utf-8")
 
-    raise TypeError("Expected a LightGBM model/booster exposing model_to_string()")
+    msg = "Expected a LightGBM model/booster exposing model_to_string()"
+    raise TypeError(msg)
 
 
 def convert_lightgbm_model(model: LightGBMModel, class_label: int | None = None) -> list[TreeModel]:
@@ -89,8 +97,8 @@ except ImportError:
     pass
 
 try:
-    from lightgbm import LGBMClassifier, LGBMRegressor
-    from lightgbm.basic import Booster as LightGBMBooster
+    from lightgbm import LGBMClassifier, LGBMRegressor  # ty: ignore[unresolved-import]
+    from lightgbm.basic import Booster as LightGBMBooster  # ty: ignore[unresolved-import]
 
     register(LGBMRegressor, convert_lightgbm_model)
     register(LGBMClassifier, convert_lightgbm_model)

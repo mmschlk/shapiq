@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
+import pandas as pd
+
 from shapiq.tree.base import TreeModel
 
 if TYPE_CHECKING:
@@ -68,8 +71,14 @@ def _convert_lightgbm_tree_as_df(
 
     """
     convert_node_str_to_int = {k: v for v, k in enumerate(tree_df.node_index)}
-
-    values = tree_df["value"].values * scaling
+    nodes_to_go_for_missing = pd.Series(
+        np.where(
+            tree_df["missing_direction"] == "left",
+            tree_df["left_child"],
+            tree_df["right_child"],
+        )
+    )
+    values = tree_df["value"].to_numpy() * scaling
     return TreeModel(
         children_left=tree_df["left_child"]
         .replace(convert_node_str_to_int)
@@ -83,10 +92,15 @@ def _convert_lightgbm_tree_as_df(
         .fillna(-1)
         .astype(int)
         .values,
+        children_missing=nodes_to_go_for_missing.replace(convert_node_str_to_int)
+        .infer_objects(copy=False)
+        .fillna(-1)
+        .astype(int)
+        .values,
         features=tree_df["split_feature"].fillna(-2).astype(int).values,
         thresholds=tree_df["threshold"].values,
         values=values,
         node_sample_weight=tree_df["count"].values,
-        empty_prediction=None,  # type: ignore[arg-type]  # compute empty prediction later
+        empty_prediction=None,  # compute empty prediction later
         original_output_type=output_type,  # not used
     )

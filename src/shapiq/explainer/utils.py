@@ -77,7 +77,6 @@ def get_predict_function_and_model_type(
 
     """
     from shapiq.game import Game
-
     from shapiq.tree import TreeModel
 
     if model_class is None:
@@ -217,7 +216,7 @@ def get_predict_function_and_model_type(
     if _model_type not in list(get_args(ExplainerTypes)):
         msg = f"Model type {_model_type} is not supported."
         raise ValueError(msg)
-    _model_type_literal = cast(ExplainerTypes, _model_type)
+    _model_type_literal = cast("ExplainerTypes", _model_type)
 
     return _predict_function_with_class_index, _model_type_literal
 

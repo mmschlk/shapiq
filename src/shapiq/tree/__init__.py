@@ -2,6 +2,13 @@
 
 from .base import TreeModel
 from .explainer import TreeExplainer
+from .interventional import InterventionalGame, InterventionalTreeExplainer
 from .treeshapiq import TreeSHAPIQ
-from .interventional import InterventionalTreeExplainer, InterventionalGame
-__all__ = ["TreeExplainer", "TreeSHAPIQ", "TreeModel", "InterventionalTreeExplainer", "InterventionalGame"]
+
+__all__ = [
+    "TreeExplainer",
+    "TreeSHAPIQ",
+    "TreeModel",
+    "InterventionalTreeExplainer",
+    "InterventionalGame",
+]

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from lazy_dispatch import LazyType, lazydispatch
 
-from shapiq.tree.base import TreeModel
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.tree.base import TreeModel
 
 
 @lazydispatch
@@ -32,9 +34,8 @@ def conversion_generator(
     Raises:
         NotImplementedError: If no conversion handler has been registered for ``type(model)``.
     """
-    raise NotImplementedError(
-        f"Conversion for model type {type(model)} is not implemented.",
-    )
+    msg = f"Conversion for model type {type(model)} is not implemented."
+    raise NotImplementedError(msg)
 
 
 def register(cls: LazyType, func: Callable) -> None:
@@ -51,9 +52,7 @@ def register(cls: LazyType, func: Callable) -> None:
     conversion_generator.register(cls=cls, func=func)
 
 
-def convert_tree_model(
-    model: object, class_label: int | None = None
-) -> TreeModel | list[TreeModel]:
+def convert_tree_model(model: object, class_label: int | None = None) -> list[TreeModel]:
     """Convert a tree-based model to the unified internal tree format used by shapiq.
 
     Delegates to the appropriate registered conversion handler via

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from functools import partial
-from time import perf_counter
 from typing import TYPE_CHECKING
 from warnings import warn
 
@@ -16,8 +15,8 @@ from shapiq.utils.modules import safe_isinstance
 from shapiq.utils.sets import powerset
 
 from .cext import (
-    compute_interactions_batched_sparse,
-    compute_interactions_flatten,
+    compute_interactions_batched_sparse,  # ty: ignore[unresolved-import]
+    compute_interactions_flatten,  # ty: ignore[unresolved-import]
 )
 from .weight import (
     banzhaf_weight_function,
@@ -29,10 +28,24 @@ from .weight import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from shapiq.tree.base import TreeModel
 
-INDICES_C_IMPLEMENTATION_CAPABLE = ["SV", "SII", "BII", "BV", "SV", "CHII", "CV", "FBII", "FSII", "STII"]
+INDICES_C_IMPLEMENTATION_CAPABLE = [
+    "SV",
+    "SII",
+    "BII",
+    "BV",
+    "SV",
+    "CHII",
+    "CV",
+    "FBII",
+    "FSII",
+    "STII",
+]
 INDICES_CII_IMPLEMENTATION_CAPABLE = ["WBII", *INDICES_C_IMPLEMENTATION_CAPABLE]
+
 
 def obtain_E_R_values(tree: TreeModel) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
     """Obtain two arrays E and R indicating for each leaf and each feature whether the leaf is reachable by having the feature equal to 1 (E) or equal to 0 (R)."""
@@ -63,7 +76,10 @@ def obtain_E_R_values(tree: TreeModel) -> tuple[list[np.ndarray], list[np.ndarra
 
     return E, R, leaf_vals
 
-def obtain_E_R_values_point(tree:TreeModel, point_to_explain: np.ndarray, reference_point: np.ndarray):
+
+def obtain_E_R_values_point(
+    tree: TreeModel, point_to_explain: np.ndarray, reference_point: np.ndarray
+) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
     """Obtain two arrays E and R indicating for each leaf and each feature whether the leaf was reached due to features in point_to_explain (E) or due to features in reference_point (R)."""
     E = []
     R = []
@@ -84,7 +100,7 @@ def obtain_E_R_values_point(tree:TreeModel, point_to_explain: np.ndarray, refere
         explain_goes_left = tree.decision_function(
             point_to_explain[feature],
             tree.thresholds[node_id],
-            tree.children_left_default[node_id],
+            left_default=tree.children_left_default[node_id],
         )
         child_node_explain = (
             tree.children_left[node_id] if explain_goes_left else tree.children_right[node_id]
@@ -92,19 +108,20 @@ def obtain_E_R_values_point(tree:TreeModel, point_to_explain: np.ndarray, refere
         ref_goes_left = tree.decision_function(
             reference_point[feature],
             tree.thresholds[node_id],
-            tree.children_left_default[node_id],
+            left_default=tree.children_left_default[node_id],
         )
         child_node_ref = (
-            tree.children_left[node_id] if ref_goes_left else tree.children_right[node_id]  
+            tree.children_left[node_id] if ref_goes_left else tree.children_right[node_id]
         )
         if child_node_explain != child_node_ref:
-            if feature not in r_set: # Feature is not fixed by the reference point
+            if feature not in r_set:  # Feature is not fixed by the reference point
                 stack.append((child_node_explain, e_set | {feature}, r_set))
-            if feature not in e_set: # Feature is not fixed by the explain point
+            if feature not in e_set:  # Feature is not fixed by the explain point
                 stack.append((child_node_ref, e_set, r_set | {feature}))
         else:
             stack.append((child_node_explain, e_set, r_set))
     return E, R, leaf_vals
+
 
 class InterventionalTreeExplainer:
     """Interventional Tree Shap explainer for a single decision tree.
@@ -132,19 +149,30 @@ class InterventionalTreeExplainer:
 
     def __init__(
         self,
-        model,
+        model: object,
         data: np.ndarray,
         class_index: int | None = None,
+        *,
         debug: bool = False,
         max_order: int = 2,
         index: str = "SII",
-        index_func: callable | None = None,
+        index_func: Callable | None = None,
         p: float = 0.5,
-        bool_tree:bool = False,
+        bool_tree: bool = False,
     ) -> None:
+        """Initialize the InterventionalTreeExplainer.
 
-
-
+        Args:
+            model: The tree model to explain.
+            data: Background dataset used to compute reference points.
+            class_index: Class index for classification models. Defaults to ``None``.
+            debug: Whether to print debug information. Defaults to ``False``.
+            max_order: Maximum order of interactions. Defaults to ``2``.
+            index: The interaction index to use. Defaults to ``"SII"``.
+            index_func: Custom index function. Defaults to ``None``.
+            p: Probability parameter for WBII index. Defaults to ``0.5``.
+            bool_tree: Whether to use boolean tree mode. Defaults to ``False``.
+        """
         # If Classification model and class_index is None, set to 1
         if class_index is None and hasattr(model, "predict_proba"):
             class_index = 1
@@ -163,7 +191,8 @@ class InterventionalTreeExplainer:
                 import xgboost as xgb
 
                 dmatrix_data = xgb.DMatrix(self.reference_data)
-                logits = model.get_booster().predict(dmatrix_data, output_margin=True)
+                booster = model.get_booster()  # ty: ignore[unresolved-attribute]
+                logits = booster.predict(dmatrix_data, output_margin=True)
                 if logits.ndim == 1:
                     # Binary classification case
                     if class_index == 1:
@@ -171,44 +200,33 @@ class InterventionalTreeExplainer:
                     else:
                         self.baseline_value = np.mean(-logits).astype(np.float64)
                 else:
-                    self.baseline_value = np.mean(logits[:, class_index]).astype(
-                        np.float64
-                    )
+                    self.baseline_value = np.mean(logits[:, class_index]).astype(np.float64)
             else:
-                self.baseline_value = np.mean(
-                    model.predict_proba(self.reference_data)[:, class_index]
-                ).astype(np.float64)
+                proba = model.predict_proba(self.reference_data)  # ty: ignore[unresolved-attribute]
+                self.baseline_value = np.mean(proba[:, class_index]).astype(np.float64)
+        # Check if we have the case of a leaf_matrix directly provided
+        elif isinstance(model, list):
+            self.baseline_value = model[0][-1]  # ty: ignore[not-subscriptable]
         else:
-            # Check if we have the case of a leaf_matrix directly provided
-            if isinstance(model, list):
-                self.baseline_value = model[0][-1]
-            else:
-                self.baseline_value = np.mean(
-                    model.predict(self.reference_data)
-                ).astype(np.float64)
-        self.values_list = [
-                tree.values.astype(np.float32).flatten() for tree in self.tree
-            ]
-        self.threshold_list = [
-                tree.thresholds.astype(np.float32).flatten() for tree in self.tree
-            ]
-        self.features_list = [
-                tree.features.astype(np.int64).flatten() for tree in self.tree
-            ]
+            prediction = model.predict(self.reference_data)  # ty: ignore[unresolved-attribute]
+            self.baseline_value = np.mean(prediction).astype(np.float64)
+        self.values_list = [tree.values.astype(np.float32).flatten() for tree in self.tree]
+        self.threshold_list = [tree.thresholds.astype(np.float32).flatten() for tree in self.tree]
+        self.features_list = [tree.features.astype(np.int64).flatten() for tree in self.tree]
         self.children_left_list = [
-                tree.children_left.astype(np.int64).flatten() for tree in self.tree
-            ]
+            tree.children_left.astype(np.int64).flatten() for tree in self.tree
+        ]
         self.children_right_list = [
-                tree.children_right.astype(np.int64).flatten() for tree in self.tree
-            ]
+            tree.children_right.astype(np.int64).flatten() for tree in self.tree
+        ]
         self.children_left_default_list = [
-                tree.children_left_default.astype(np.bool).flatten()
-                for tree in self.tree
-            ]
+            tree.children_left_default.astype(bool).flatten() for tree in self.tree
+        ]
         if self.bool_tree:
             self.gather_e_r_statistics_bool_tree()
 
-    def gather_e_r_statistics_bool_tree(self):
+    def gather_e_r_statistics_bool_tree(self) -> None:
+        """Gather E and R statistics for boolean tree mode."""
         self.n_features = self.reference_data.shape[1]
         E_list: list[np.ndarray] = []
         R_list: list[np.ndarray] = []
@@ -236,11 +254,15 @@ class InterventionalTreeExplainer:
         # Build flatten numpy arrays
         if n_leafs > 0:
             self.E_R_flatten = np.concatenate(
-                [np.concatenate([e, r]) for e, r in zip(E_list, R_list)]
+                [np.concatenate([e, r]) for e, r in zip(E_list, R_list, strict=False)]
             ).astype(np.int64)
             self.feature_in_E = np.concatenate(
-                [np.concatenate([np.ones(int(e), dtype=np.int64), np.zeros(int(r), dtype=np.int64)])
-                 for e, r in zip(e_sizes, r_sizes)]
+                [
+                    np.concatenate(
+                        [np.ones(int(e), dtype=np.int64), np.zeros(int(r), dtype=np.int64)]
+                    )
+                    for e, r in zip(e_sizes, r_sizes, strict=False)
+                ]
             )
         else:
             self.E_R_flatten = np.array([], dtype=np.int64)
@@ -253,12 +275,16 @@ class InterventionalTreeExplainer:
         self.e_length = len(self.E_R_flatten)
         self.n_leafs = n_leafs
 
-    def gather_e_r_statistics(self,explain_point):
+    def gather_e_r_statistics(self, explain_point: np.ndarray) -> None:
+        """Gather E and R statistics for the given explain point.
+
+        Args:
+            explain_point: The instance to explain as a 1-dimensional array.
+        """
         self.n_features = self.reference_data.shape[1]
         E_list: list[np.ndarray] = []
         R_list: list[np.ndarray] = []
         leaf_vals_list: list[float] = []
-
 
         for r in self.reference_data:
             for tree in self.tree:
@@ -283,11 +309,15 @@ class InterventionalTreeExplainer:
         # Build flatten numpy arrays
         if n_leafs > 0:
             self.E_R_flatten = np.concatenate(
-                [np.concatenate([e, r]) for e, r in zip(E_list, R_list)]
+                [np.concatenate([e, r]) for e, r in zip(E_list, R_list, strict=False)]
             ).astype(np.int64)
             self.feature_in_E = np.concatenate(
-                [np.concatenate([np.ones(int(e), dtype=np.int64), np.zeros(int(r), dtype=np.int64)])
-                 for e, r in zip(e_sizes, r_sizes)]
+                [
+                    np.concatenate(
+                        [np.ones(int(e), dtype=np.int64), np.zeros(int(r), dtype=np.int64)]
+                    )
+                    for e, r in zip(e_sizes, r_sizes, strict=False)
+                ]
             )
         else:
             self.E_R_flatten = np.array([], dtype=np.int64)
@@ -300,7 +330,14 @@ class InterventionalTreeExplainer:
         self.e_length = len(self.E_R_flatten)
         self.n_leafs = n_leafs
 
-    def general_weight_function(self, A, B, N, U, moebius_weight_func):
+    def general_weight_function(
+        self,
+        A: set,
+        B: set,
+        N: set,
+        U: set,
+        moebius_weight_func: Callable,
+    ) -> float:
         """Computes a general weight for given sets A, B, N and U.
 
         Args:
@@ -308,7 +345,8 @@ class InterventionalTreeExplainer:
             B: Set B.
             N: Set of all players.
             U: Current coalition.
-            möbius_weight_func: Möbius weight function to use.
+            moebius_weight_func: Möbius weight function to use.
+
         Returns:
             The general weight.
         """
@@ -329,47 +367,48 @@ class InterventionalTreeExplainer:
 
     def update_values(
         self,
-        interaction_to_values,
-        const_prediction,
-        A,
-        B,
-        NB,
-        max_order,
-        weight_func,
-    ):
-        """Updates the CII based on sets A and NB.
+        interaction_to_values: dict,
+        const_prediction: float,
+        E: set,
+        NR: set,
+        R: set,
+        max_order: int,
+        weight_func: Callable,
+    ) -> dict:
+        """Updates the CII based on sets E and R.
 
         Args:
             interaction_to_values: Mapping from interactions to their effects.
             const_prediction: Constant prediction value.
-            A: Set A.
-            B: Set B.
-            NB: Set NB.
+            E: Set E.
+            NR: Set NR.
+            R: Set R.
             max_order: Maximum order of interactions.
             weight_func: Weight function for the update.
+
         Returns:
             The updated Shapley values.
         """
-        # Though A & NB there is already some filtering of which interactions could even be updated. Irrelevant features will not be part of A or NB.
-        for U in powerset(A.union(NB), min_size=1, max_size=max_order):
-            U = set(U)
+        # Though E & R there is already some filtering of which interactions could even be updated. Irrelevant features will not be part of E or R.
+        for _S in powerset(E.union(R), min_size=1, max_size=max_order):
+            S = set(_S)
             # Compute the weights
-            weight = weight_func(A=A, B=B, N=NB.union(B), U=U)
+            weight = weight_func(A=E, B=NR, N=R.union(NR), U=S)
             if self.debug:
-                print("Updating interaction:", U)
-                print("Weight:", weight)
-                print("const_prediction:", const_prediction)
+                print("Updating interaction:", S)  # noqa: T201
+                print("Weight:", weight)  # noqa: T201
+                print("const_prediction:", const_prediction)  # noqa: T201
             # Update the values
             # Make U contain not numpy numbers
-            U = set(map(int, U))
-            U = tuple(sorted(tuple(U)))
+            S = set(map(int, S))
+            key = tuple(sorted(S))
 
-            try:
-                interaction_to_values[U] += (
+            if key in interaction_to_values:
+                interaction_to_values[key] += (
                     np.array(weight * const_prediction).astype(np.float64).item()
                 )
-            except KeyError:
-                interaction_to_values[U] = (
+            else:
+                interaction_to_values[key] = (
                     np.array(weight * const_prediction).astype(np.float64).item()
                 )
         return interaction_to_values
@@ -386,27 +425,25 @@ class InterventionalTreeExplainer:
             x: The instance to explain as a 1-dimensional array.
             interactions_dict: Resulting interactions dictionary.
             tree: The decision tree to explain.
+
         Returns:
             interventional CII values in a dictionary.
         """
         N = set(range(x.shape[0]))  # number of features
-        D = self.reference_data.shape[0]  # number of reference points
         for r in self.reference_data:
             # Implement the interventional CII value computation here
             reference_point = r
             # Initialize Node Stack
-            node_stack = [(0, (set(), N))]  # (node_id, (A, B))
+            node_stack = [(0, (set(), set()))]  # (node_id, (E, R))
             while node_stack:
-                node_id, (A, B) = node_stack.pop()
+                node_id, (E, R) = node_stack.pop()
 
                 if self.debug:
-                    print("Visiting node:", node_id)
-                    print("Current A:", A)
-                    print("Current B:", B)
+                    print("Visiting node:", node_id)  # noqa: T201
+                    print("Current E:", E)  # noqa: T201
+                    print("Current R:", R)  # noqa: T201
                 # Check if inner node
-                is_inner_node = (
-                    tree.children_left[node_id] != tree.children_right[node_id]
-                )
+                is_inner_node = tree.children_left[node_id] != tree.children_right[node_id]
                 if is_inner_node:  # Inner Node
                     feature_index = tree.features[node_id]
                     child_node_x = (
@@ -414,7 +451,7 @@ class InterventionalTreeExplainer:
                         if tree.decision_function(
                             x[feature_index],
                             tree.thresholds[node_id],
-                            tree.children_left_default[node_id],
+                            left_default=tree.children_left_default[node_id],
                         )
                         else tree.children_right[node_id]
                     )
@@ -423,60 +460,50 @@ class InterventionalTreeExplainer:
                         if tree.decision_function(
                             reference_point[feature_index],
                             tree.thresholds[node_id],
-                            tree.children_left_default[node_id],
+                            left_default=tree.children_left_default[node_id],
                         )
                         else tree.children_right[node_id]
                     )
                     if self.debug:
-                        print(
+                        print(  # noqa: T201
                             f"Feature index: {feature_index}, x value: {x[feature_index]}, ref value: {reference_point[feature_index]}, threshold: {tree.thresholds[node_id]}"
                         )
-                        print(
-                            f"Child node x: {child_node_x}, Child node ref: {child_node_ref}"
-                        )
+                        print(f"Child node x: {child_node_x}, Child node ref: {child_node_ref}")  # noqa: T201
                     # Update stack based on child nodes
                     if child_node_x == child_node_ref:
                         if self.debug:
-                            print("Both go to the same child node.")
-                            print("Adding to stack:", child_node_x, (A, B))
-                        node_stack.append((child_node_x, (A, B)))
+                            print("Both go to the same child node.")  # noqa: T201
+                            print("Adding to stack:", child_node_x, (E, R))  # noqa: T201
+                        node_stack.append((child_node_x, (E, R)))
                     else:
-                        if feature_index in B:  # Keeping Child of x
+                        if feature_index not in R:  # Keeping Child of x
                             if self.debug:
-                                print("Feature index in B, splitting the path.")
-                                print(
+                                print("Feature index in B, splitting the path.")  # noqa: T201
+                                print(  # noqa: T201
                                     "Adding to stack:",
                                     child_node_x,
-                                    (A.union({feature_index}), B),
+                                    (E.union({feature_index}), R),
                                 )
-                            node_stack.append(
-                                (child_node_x, (A.union({feature_index}), B))
-                            )
-                        if feature_index not in A:
+                            node_stack.append((child_node_x, (E.union({feature_index}), R)))
+                        if feature_index not in E:
                             if self.debug:
-                                print("Feature index not in A, splitting the path.")
-                                print(
+                                print("Feature index not in E, splitting the path.")  # noqa: T201
+                                print(  # noqa: T201
                                     "Adding to stack:",
                                     child_node_ref,
-                                    (A, B.difference({feature_index})),
+                                    (E, R.difference({feature_index})),
                                 )
-                            node_stack.append(
-                                (child_node_ref, (A, B.difference({feature_index})))
-                            )
+                            node_stack.append((child_node_ref, (E, R.difference({feature_index}))))
                 else:
-                    # Update Shapley values based on A & B
-                    NB = N.difference(B)
-                    D = self.reference_data.shape[0]
+                    # Update Shapley values based on E & R
                     # Compute Coalition Values [Due to linearity one could also directly use the values at the leaf node and later divide by D]
                     const_coalition = tree.values[node_id]
                     if self.debug:
-                        print("-----Updating at leaf node-----")
-                        print("Node ID:", node_id)
-                        print("A:", A)
-                        print("B:", B)
-                        print("NB: ", NB)
-                        print("const_coalition:", const_coalition)
-                    # const_coalition /= D
+                        print("-----Updating at leaf node-----")  # noqa: T201
+                        print("Node ID:", node_id)  # noqa: T201
+                        print("E:", E)  # noqa: T201
+                        print("R:", R)  # noqa: T201
+                        print("const_coalition:", const_coalition)  # noqa: T201
 
                     # Obtain the necessary weight function
                     if self.index in ["SII", "SV"]:
@@ -491,24 +518,24 @@ class InterventionalTreeExplainer:
                             moebius_weight_func=interaction_weight_to_moebius_weight_gv,
                         )
                     elif self.index in ["FBII"]:
-                        weight_function = partial(general_weight_fbii,max_order=self.max_order)
+                        weight_function = partial(general_weight_fbii, max_order=self.max_order)
                     else:
                         weight_function = partial(
                             self.general_weight_function,
                             moebius_weight_func=interaction_weight_to_moebius_weight,
                         )
                     self.update_values(
-                            interaction_to_values=interactions_dict,
-                            const_prediction=const_coalition,
-                            A=A,
-                            B=B,
-                            NB=NB,
-                            max_order=self.max_order,
-                            weight_func=weight_function,
+                        interaction_to_values=interactions_dict,
+                        const_prediction=const_coalition,
+                        E=E,
+                        NR=N.difference(R),
+                        R=R,
+                        max_order=self.max_order,
+                        weight_func=weight_function,
                     )
                     if self.debug:
-                        print("Updated Shapley values:", interactions_dict)
-                        print("-----Updating at leaf node-----")
+                        print("Updated Shapley values:", interactions_dict)  # noqa: T201
+                        print("-----Updating at leaf node-----")  # noqa: T201
 
         return interactions_dict
 
@@ -522,18 +549,16 @@ class InterventionalTreeExplainer:
         Args:
             x: The instance to explain as a 1-dimensional array.
             **kwargs: Additional keyword arguments are ignored.
-        """  
+        """
         if self.index not in INDICES_CII_IMPLEMENTATION_CAPABLE:
             warn(
-                f"Index {self.index} not recognized. Checking if callable function was given."
+                f"Index {self.index} not recognized. Checking if callable function was given.",
+                stacklevel=2,
             )
             if self.index_func is None:
-                raise ValueError(
-                    f"Index function must be provided if index {self.index} is not recognized."
-                )
-            print("Using custom index function provided by user.")
+                msg = f"Index function must be provided if index {self.index} is not recognized."
+                raise ValueError(msg)
             interaction = self.explain_function_cii(x, **_)
-            # raise ValueError(f"Index {self.index} not supported in interventional explainer.")
         elif self.index not in INDICES_C_IMPLEMENTATION_CAPABLE:
             interaction = self.explain_function_cii(x, **_)
         else:
@@ -557,19 +582,16 @@ class InterventionalTreeExplainer:
         interactions_dict: dict[tuple[int, ...], float] = {}
         for j, tree in enumerate(self.tree):
             if self.debug:
-                print(f"#####Computing CII values for tree {j}#####")
-            interactions = {}
-            interactions = self._compute_interventional_cii_values(
-                x, interactions, tree
-            )
+                print(f"#####Computing CII values for tree {j}#####")  # noqa: T201
+            interactions = self._compute_interventional_cii_values(x, {}, tree)
             for key, value in interactions.items():
-                try:
+                if key in interactions_dict:
                     interactions_dict[key] += value
-                except KeyError:
+                else:
                     interactions_dict[key] = value
 
             if self.debug:
-                print(f"#####Finished Computing CII values for tree #####")
+                print("#####Finished Computing CII values for tree #####")  # noqa: T201
         interactions_dict[()] = self.baseline_value
         interactions_dict = dict(
             sorted(
@@ -578,7 +600,7 @@ class InterventionalTreeExplainer:
             )
         )
 
-        for key in interactions_dict.keys():
+        for key in interactions_dict:
             if key != ():
                 interactions_dict[key] /= self.reference_data.shape[0]
 
@@ -591,16 +613,17 @@ class InterventionalTreeExplainer:
             baseline_value=interactions_dict[()],
         )
 
-    def explain_function_cpp(self, x: np.ndarray) -> dict:
+    def explain_function_cpp(self, x: np.ndarray) -> InteractionValues:
         """Computes the CII values for a single instance using interventional approach with a pure C++ implementation.
+
         Args:
             x: The instance to explain as a 1-dimensional array.
+
         Returns:
             InteractionValues object containing the computed interaction values.
         """
         if not self.bool_tree:
             self.gather_e_r_statistics(x)
-
 
         interactions = {}
         # For higher order interactions we need to use the sparse implementation as the flatten one is only optimized for main effects and pairwise interactions. For main effects and pairwise interactions we can use the flatten implementation which is faster.
@@ -632,8 +655,10 @@ class InterventionalTreeExplainer:
                 self.n_features,
                 self.e_length,
                 self.max_order,
-                self.debug, # whether to print debug information
-                float(self.reference_data.shape[0]), # number of reference samples for scaling the results
+                self.debug,  # whether to print debug information
+                float(
+                    self.reference_data.shape[0]
+                ),  # number of reference samples for scaling the results
             )
         interactions[()] = self.baseline_value
         return InteractionValues(

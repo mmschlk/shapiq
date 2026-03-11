@@ -395,14 +395,14 @@ class Game:
         # try for list of tuples
         if isinstance(coalitions, tuple):
             tuple_list: list[tuple[int, ...]] | list[tuple[str, ...]] = cast(
-                list[tuple[int, ...]] | list[tuple[str, ...]], [coalitions]
+                "list[tuple[int, ...]] | list[tuple[str, ...]]", [coalitions]
             )
         else:
             tuple_list: list[tuple[int, ...]] | list[tuple[str, ...]] = coalitions
 
         try:
             # convert list of tuples to one-hot encoding
-            coalitions_int = cast(list[tuple[int, ...]], tuple_list)
+            coalitions_int = cast("list[tuple[int, ...]]", tuple_list)
             return transform_coalitions_to_array(coalitions_int, self.n_players)
         except (IndexError, TypeError):  # the transform failed because of wrong input type
             pass
@@ -412,7 +412,7 @@ class Game:
             msg = "Player names are not provided. Cannot convert string to integer."
             raise ValueError(msg)
         try:
-            coalitions_str = cast(list[tuple[str, ...]], tuple_list)
+            coalitions_str = cast("list[tuple[str, ...]]", tuple_list)
             coalitions_from_str = []
             for coalition in coalitions_str:
                 coal_indices = sorted([self.player_name_lookup[player] for player in coalition])
