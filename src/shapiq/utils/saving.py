@@ -102,7 +102,7 @@ def make_file_metadata(
         "created_from": repr(created_from) if created_from else None,
         "description": desc,
         "parameters": parameters or {},
-        "timestamp": datetime.datetime.now(tz=datetime.timezone.utc).isoformat() + "Z",
+        "timestamp": datetime.datetime.now(tz=datetime.UTC).isoformat() + "Z",
     }
 
 

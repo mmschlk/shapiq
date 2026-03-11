@@ -211,7 +211,7 @@ include = ["src/shapiq"]
 exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
 
 [tool.ty.environment]
-python-version = "3.10"
+python-version = "3.12"
 python = "./.venv"
 python-platform = "linux"
 
