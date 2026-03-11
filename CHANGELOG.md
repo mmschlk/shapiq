@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.5.0 (unreleased)
+
+### Removed Deprecated Features
+- removes `path_to_values` parameter from `shapiq.Game`, which was previously deprecated. Use `shapiq.Game.load()` instead.
+- removes pickle support from `shapiq.InteractionValues`. JSON is now the only supported file format. Use `InteractionValues.save()` and `InteractionValues.load()` with JSON files.
+
 ## v1.4.1 (2025-11-10)
 
 ### Bugfix
