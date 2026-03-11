@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from functools import reduce, singledispatch, update_wrapper
 import operator
+from collections.abc import Callable
+from functools import reduce, singledispatch, update_wrapper
 from typing import TYPE_CHECKING, Any, get_args, overload
 
 from lazy_dispatch.isinstance import (
@@ -15,15 +16,14 @@ from lazy_dispatch.isinstance import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from types import UnionType
 
-type RegistrationFunction = Callable[[type], Any]
+RegistrationFunction = Callable[[type], Any]
 
 
 def is_valid_dispatch_type(cls: LazyType) -> bool:
     """Check if cls is a valid dispatch type."""
-    if isinstance(cls, (type, str)):
+    if isinstance(cls, type | str):
         return True
     if isinstance(cls, tuple):
         return all(is_valid_dispatch_type(c) for c in cls)
@@ -32,24 +32,24 @@ def is_valid_dispatch_type(cls: LazyType) -> bool:
     return False
 
 
-def first_argument[T](x: T, *args: Any, **kwargs: Any) -> T:  # noqa: ANN401, ARG001
+def first_argument(x: Any, *args: Any, **kwargs: Any) -> Any:  # noqa: ARG001, ANN401
     """Return the first argument."""
     return x
 
 
-class lazydispatch[A: Callable, Out]:  # noqa: N801
+class lazydispatch:  # noqa: N801
     """A lazy version of functools.singledispatch that also works with string types."""
 
     def __new__(
         cls,
-        func: A | None = None,
+        func: Callable | None = None,
         *,
         dispatch_on: Callable = first_argument,
-    ) -> lazydispatch[A, Out] | Callable[[A], lazydispatch[A, Out]]:
+    ) -> lazydispatch | Callable[[Callable], lazydispatch]:
         """Create a new lazy_singledispatch or return a decorator."""
         if func is None:
 
-            def decorator(func: A) -> lazydispatch[A, Out]:
+            def decorator(func: Callable) -> lazydispatch:
                 return cls(func, dispatch_on=dispatch_on)
 
             return decorator
@@ -58,7 +58,7 @@ class lazydispatch[A: Callable, Out]:  # noqa: N801
 
     def __init__(
         self,
-        func: A | None = None,
+        func: Callable | None = None,
         *,
         dispatch_on: Callable = first_argument,
     ) -> None:
@@ -74,7 +74,7 @@ class lazydispatch[A: Callable, Out]:  # noqa: N801
         self.delayed_registration_registry: dict[str | type, RegistrationFunction] = {}
         self.dispatch_on = dispatch_on
 
-    def dispatch(self, cls: type, *, delayed_register: bool = True) -> Callable[..., Out]:
+    def dispatch(self, cls: type, *, delayed_register: bool = True) -> Callable[..., Any]:
         """Find the best available function for the given type or string."""
         delayed_registration_registry = self.delayed_registration_registry
         string_registry = self.string_registry
@@ -98,7 +98,9 @@ class lazydispatch[A: Callable, Out]:  # noqa: N801
 
         return self._singledispatcher.dispatch(cls)
 
-    def eager_register(self, cls: type | UnionType | Callable, func: Callable | None = None) -> Callable:
+    def eager_register(
+        self, cls: type | UnionType | Callable, func: Callable | None = None
+    ) -> Callable:
         """Eagerly register a new implementation for the given type or union type."""
         return self._singledispatcher.register(cls, func)  # type: ignore[arg-type]
 
@@ -144,13 +146,17 @@ class lazydispatch[A: Callable, Out]:  # noqa: N801
         return func  # type: ignore[return-value]
 
     @overload
-    def delayed_register(self, cls: LazyType) -> Callable[[RegistrationFunction], RegistrationFunction]: ...
+    def delayed_register(
+        self, cls: LazyType
+    ) -> Callable[[RegistrationFunction], RegistrationFunction]: ...
 
     @overload
     def delayed_register(self, cls: RegistrationFunction) -> RegistrationFunction: ...
 
     @overload
-    def delayed_register(self, cls: LazyType, func: RegistrationFunction) -> RegistrationFunction: ...
+    def delayed_register(
+        self, cls: LazyType, func: RegistrationFunction
+    ) -> RegistrationFunction: ...
 
     def delayed_register(
         self,
@@ -196,7 +202,7 @@ class lazydispatch[A: Callable, Out]:  # noqa: N801
 
         return func  # type: ignore[return-value]
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Out:  # noqa: ANN401
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
         """Call the appropriate registered function based on the type of the first argument."""
         if not args:
             msg = f"{self.funcname} requires at least 1 positional argument"

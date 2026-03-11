@@ -5,7 +5,7 @@ from __future__ import annotations
 from types import UnionType
 from typing import Any, Union, get_args, get_origin
 
-type LazyType = type | str | UnionType | tuple[LazyType, ...]
+LazyType = type | str | UnionType | tuple  # type: ignore[assignment]
 
 
 def _is_union_type(cls: Any) -> bool:  # noqa: ANN401
@@ -56,7 +56,9 @@ def _find_matching_string_type(cls: type, string_types: set[str] | dict[str, Any
     return None
 
 
-def _find_closest_string_type(cls: type, string_types: set[str] | dict[str, Any]) -> tuple[type, str] | None:
+def _find_closest_string_type(
+    cls: type, string_types: set[str] | dict[str, Any]
+) -> tuple[type, str] | None:
     """Check if any type in the MRO matches any of the strings."""
     mro = cls.__mro__
     for super_cls in mro:
