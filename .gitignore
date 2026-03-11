@@ -188,3 +188,7 @@ src/shapiq/_version.py
 
 # C-Extension files
 *.so
+
+# Documentation build artifacts
+docs/source/auto_examples/
+docs/source/sg_execution_times.rst

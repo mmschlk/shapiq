@@ -246,11 +246,12 @@ class TestSavingGames:
 
     @pytest.mark.parametrize("suffix", [".json", ".npz"])
     def test_init_from_saved_game(self, suffix, cooking_game_pre_computed: Game, tmp_path: Path):
-        """Test initializing a game from a saved file."""
+        """Test loading a game from a saved file using load_values."""
         path = tmp_path / "dummy_game"
         path = path.with_suffix(suffix)
         cooking_game_pre_computed.save_values(path)
-        loaded_game = Game(path_to_values=path)
+        loaded_game = Game(n_players=cooking_game_pre_computed.n_players)
+        loaded_game.load_values(path, precomputed=True)
         check_game_equality(cooking_game_pre_computed, loaded_game)
 
     @pytest.mark.parametrize("suffix", [".json", ".npz"])
@@ -262,10 +263,11 @@ class TestSavingGames:
         assert path_with_suffix.exists()
 
     def test_save_game_npz(self, cooking_game_pre_computed: Game, tmp_path: Path):
-        """Test initializing a game from a saved file."""
+        """Test loading a game from a saved npz file using load_values."""
         path = tmp_path / "dummy_game.npz"
         cooking_game_pre_computed.save_values(path, as_npz=True)
-        loaded_game = Game(path_to_values=path)
+        loaded_game = Game(n_players=cooking_game_pre_computed.n_players)
+        loaded_game.load_values(path, precomputed=True)
         check_game_equality(cooking_game_pre_computed, loaded_game)
 
     def test_save_and_load_json(self, cooking_game_pre_computed: Game, tmp_path: Path):
@@ -295,15 +297,18 @@ class TestSavingGames:
         path = tmp_path / f"dummy_game.{suffix}"
         game.save_values(path)
 
-        game_loaded = Game(path_to_values=path)
+        game_loaded = Game(n_players=4)
+        game_loaded.load_values(path, precomputed=True)
         assert game_loaded.normalize  # should be normalized
         assert game_loaded.normalization_value == normalization_value
         empty_value = game_loaded(game_loaded.empty_coalition)
         # the output should be the same as the original game with normalization (-0.25)
         assert empty_value == dummy_game_empty_output - normalization_value
 
-        # load with normalization set to False
-        game_loaded = Game(path_to_values=path, normalize=False)
+        # load without normalization by resetting normalization_value after loading
+        game_loaded = Game(n_players=4)
+        game_loaded.load_values(path, precomputed=True)
+        game_loaded.normalization_value = 0.0
         assert not game_loaded.normalize  # should not be normalized
         assert game_loaded.normalization_value == 0.0
         empty_value = game_loaded(game_loaded.empty_coalition)

@@ -2886,12 +2886,14 @@ docs = [
     { name = "commonmark" },
     { name = "furo" },
     { name = "ipython" },
+    { name = "matplotlib" },
     { name = "myst-parser" },
     { name = "nbconvert" },
     { name = "nbsphinx" },
     { name = "sphinx" },
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-copybutton" },
+    { name = "sphinx-gallery" },
     { name = "sphinx-toolbox" },
     { name = "sphinxcontrib-bibtex" },
 ]
@@ -2960,12 +2962,14 @@ docs = [
     { name = "commonmark" },
     { name = "furo" },
     { name = "ipython", specifier = "<8.38.0" },
+    { name = "matplotlib" },
     { name = "myst-parser" },
     { name = "nbconvert" },
     { name = "nbsphinx" },
     { name = "sphinx", specifier = ">=8.0.0" },
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-copybutton" },
+    { name = "sphinx-gallery" },
     { name = "sphinx-toolbox" },
     { name = "sphinxcontrib-bibtex" },
 ]
@@ -3094,6 +3098,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fc/2b/a964715e7f5295f77509e59309959f4125122d648f86b4fe7d70ca1d882c/sphinx-copybutton-0.5.2.tar.gz", hash = "sha256:4cf17c82fb9646d1bc9ca92ac280813a3b605d8c421225fd9913154103ee1fbd", size = 23039, upload-time = "2023-04-14T08:10:22.998Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9e/48/1ea60e74949eecb12cdd6ac43987f9fd331156388dcc2319b45e2ebb81bf/sphinx_copybutton-0.5.2-py3-none-any.whl", hash = "sha256:fb543fd386d917746c9a2c50360c7905b605726b9355cd26e9974857afeae06e", size = 13343, upload-time = "2023-04-14T08:10:20.844Z" },
+]
+
+[[package]]
+name = "sphinx-gallery"
+version = "0.20.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pillow" },
+    { name = "sphinx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5f/14/9238ac61932299b38c20c7c37dbfe60348c0348ea4d400f9ef25875b3bf7/sphinx_gallery-0.20.0.tar.gz", hash = "sha256:70281510c6183d812d3595957005ccf555c5a793f207410f6cd16a25bf08d735", size = 473502 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/27/fd/818a53d4da56ef2da7b08f77bb3a825635941d1fcc6b6a490995dec1a81c/sphinx_gallery-0.20.0-py3-none-any.whl", hash = "sha256:188b7456e269649945825661b76cdbfbf0b70c2cfd5b75c9a11fe52519879e4d", size = 458655 },
 ]
 
 [[package]]
