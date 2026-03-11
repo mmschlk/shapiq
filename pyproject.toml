@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "shapiq"
 dynamic = ["readme", "version"]
 description = "Shapley Interactions for Machine Learning"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     # core
     "numpy",
@@ -45,8 +45,6 @@ classifiers = [
     'Operating System :: Unix',
     'Operating System :: MacOS',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
 ]
@@ -93,7 +91,7 @@ minversion = "8.0"
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 src = ["tests", "src", "docs"]
 
 [tool.ruff.lint]
@@ -238,8 +236,8 @@ all_ml = [
     "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
 ]
 test = [
-    "pytest>=8.3.5",        # for running tests
-    "pytest-cov>=6.0.0",    # for coverage
+    "pytest>=9.0.2",        # for running tests
+    "pytest-cov>=7.0.0",    # for coverage
     "pytest-xdist>=3.8.0",  # for parallel test execution
     "packaging",            # for version parsing in tests
 ]
