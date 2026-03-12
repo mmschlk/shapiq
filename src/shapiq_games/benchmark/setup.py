@@ -31,10 +31,6 @@ from shapiq_games.datasets import (
     load_california_housing,
     load_hepatitis,
     load_ionosphere,
-    load_iris,
-    load_monks1,
-    load_monks2,
-    load_monks3,
     load_mushroom,
     load_nursery,
     load_soybean,
@@ -230,22 +226,6 @@ class GameBenchmarkSetup:
             x_data, y_data = load_ionosphere()
             self.feature_names: list = list(x_data.columns)
             self.dataset_type = "classification"
-        elif dataset_name == "iris":
-            x_data, y_data = load_iris()
-            self.feature_names: list = list(x_data.columns)
-            self.dataset_type = "classification"
-        elif dataset_name == "monks1":
-            x_data, y_data = load_monks1()
-            self.feature_names: list = list(x_data.columns)
-            self.dataset_type = "classification"
-        elif dataset_name == "monks2":
-            x_data, y_data = load_monks2()
-            self.feature_names: list = list(x_data.columns)
-            self.dataset_type = "classification"
-        elif dataset_name == "monks3":
-            x_data, y_data = load_monks3()
-            self.feature_names: list = list(x_data.columns)
-            self.dataset_type = "classification"
         elif dataset_name == "mushroom":
             x_data, y_data = load_mushroom()
             self.feature_names: list = list(x_data.columns)
@@ -300,129 +280,27 @@ class GameBenchmarkSetup:
         self.score_function = None
         self.predict_function = None
         self.loss_function = None
-
-        # load the model
-        if dataset_name == "adult_census":  # adult census dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "bike_sharing":  # bike sharing dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_regressor()
-            if model_name == "random_forest":
-                self.init_random_forest_regressor()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_regressor()
-        if dataset_name == "california_housing":
-            if model_name == "decision_tree":
-                self.init_decision_tree_regressor()
-            if model_name == "random_forest":
-                self.init_random_forest_regressor()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_regressor()
-            if model_name == "neural_network":
-                self.init_california_neural_network()
-        if dataset_name == "iris":  # iris dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "annealing":  # annealing dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "arrhythmia":  # arrhythmia dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "breast_cancer":  # breast_cancer dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "hepatitis":  # hepatitis dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "ionosphere":  # ionosphere dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "monks1":  # monks1 dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "monks2":  # monks2 dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "monks3":  # monks3 dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "mushroom":  # mushroom dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "nursery":  # nursery dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "soybean":  # soybean dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "thyroid":  # thyroid dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "zoo":  # zoo dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
+        if self.dataset_type == "classification":
+            match model_name:
+                case "decision_tree":
+                    self.init_decision_tree_classifier()
+                case "random_forest":
+                    self.init_random_forest_classifier()
+                case "gradient_boosting":
+                    self.init_gradient_boosting_classifier()
+        elif self.dataset_type == "regression":
+            match model_name:
+                case "decision_tree":
+                    self.init_decision_tree_regressor()
+                case "random_forest":
+                    self.init_random_forest_regressor()
+                case "gradient_boosting":
+                    self.init_gradient_boosting_regressor()
+                case "neural_network":
+                    if dataset_name != "california_housing":
+                        msg = f"The neural network model is only available for the california_housing dataset, not {dataset_name}."
+                        raise ValueError(msg)
+                    self.init_california_neural_network()
 
         # check if the model is loaded
         if self.model is None and model_name is not None:

@@ -251,7 +251,7 @@ public:
         throw std::runtime_error("Invalid marker for floating-point value: " + std::to_string(marker));
     }
 
-    double readBaseScoreOrZero()
+    double readBaseScoreOrZero(int class_label = 0)
     {
         ByteStream s = *this;
         while (s.pos < s.size)
@@ -267,6 +267,22 @@ public:
             if (std::memcmp(s.data + s.pos, "base_score", 10) == 0)
             {
                 s.pos += 10;
+                // XGBoost 3 multi-class: base_score is a per-class typed array [$type#num_class ...]
+                // Skip to the element for class_label and read it directly.
+                if (s.pos < s.size && s.data[s.pos] == '[' &&
+                    s.pos + 1 < s.size && s.data[s.pos + 1] == '$')
+                {
+                    s.pos += 2; // consume '[' and '$'
+                    uint8_t type_marker = s.readByte();
+                    s.pos++; // consume '#'
+                    uint8_t count_marker = s.readByte();
+                    uint64_t count = s.readNonNegativeIntByMarker(count_marker);
+                    uint64_t idx = (class_label >= 0 && static_cast<uint64_t>(class_label) < count)
+                                       ? static_cast<uint64_t>(class_label)
+                                       : 0;
+                    s.pos += idx * s.typedElementSize(type_marker);
+                    return s.readTypedValueAsDouble(type_marker);
+                }
                 return s.readDoubleLike();
             }
         }
@@ -907,7 +923,7 @@ public:
         // tree i belongs to class (i % num_class).
         uint64_t total_trees = static_cast<uint64_t>(readNumTrees());
         uint64_t num_rounds = total_trees / static_cast<uint64_t>(num_class > 0 ? num_class : 1);
-        double base_score = readBaseScoreOrZero();
+        double base_score = readBaseScoreOrZero(class_label);
 
         // Whether to filter: keep only trees for the requested class.
         bool filtering = (class_label >= 0) && (num_class > 1);
