@@ -48,7 +48,6 @@ def get_openmp_flags() -> dict[str, list[str]]:
                         "-Xpreprocessor",
                         "-fopenmp",
                         "-O3",
-                        "-march=native",
                         "-ffast-math",
                     ],
                     "extra_link_args": ["-lomp"],
@@ -62,7 +61,7 @@ def get_openmp_flags() -> dict[str, list[str]]:
         raise RuntimeError(msg)
     # Linux and others
     return {
-        "extra_compile_args": ["-std=c++17", "-fopenmp", "-O3", "-march=native", "-ffast-math"],
+        "extra_compile_args": ["-std=c++17", "-fopenmp", "-O3", "-ffast-math"],
         "extra_link_args": ["-fopenmp"],
         "include_dirs": [],
         "library_dirs": [],
@@ -91,6 +90,6 @@ ext_modules = [
 setup(
     name="shapiq",
     ext_modules=ext_modules,
-    setup_requires=["numpy", "scipy"],
+    setup_requires=["numpy"],
     cmdclass={"build_ext": BuildExt},
 )
