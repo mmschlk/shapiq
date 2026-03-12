@@ -362,17 +362,10 @@ class InterventionalTreeExplainer:
                     for s_cap_r in range(
                         min(r, s) + 1
                     ):  # s_cap_r can only go up to min(r, s) since we can't have more than r features in R and we can't have more than s features in the interaction
-                        s_cap_e = s - s_cap_r
-                        if s_cap_e > e or s_cap_r > r:
+                        if s_cap_r > r:
                             continue
-                        idx = (
-                            e * (N * K * K * K)
-                            + r * (K * K * K)
-                            + s_cap_e * (K * K)
-                            + s_cap_r * K
-                            + s
-                        )
-                        table[idx] = self.general_weight(e, r, s_cap_r, s, n)
+                        idx = e * (N * K * K * K) + r * (K * K) + s_cap_r * K + s
+                        table[idx] = self._general_weight(e, r, s_cap_r, s, n)
         return table
 
     def _discrete_weight_to_moebius(
@@ -394,7 +387,7 @@ class InterventionalTreeExplainer:
         """
         return weight_func(coalition_size - interaction_size, interaction_size, coalition_size)
 
-    def general_weight(
+    def _general_weight(
         self,
         e: int,
         r: int,

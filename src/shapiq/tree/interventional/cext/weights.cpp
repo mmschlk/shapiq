@@ -153,11 +153,11 @@ namespace inter_weights
         }
     }
 
-    inline int64_t custom_weight_index(int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s,
+    inline int64_t custom_weight_index(int64_t e, int64_t r, int64_t s_cap_r, int64_t s,
                                         int64_t N, int64_t K)
     {
         // N = n_features + 1, K = max_order + 1
-        return e * (N * K * K * K) + r * (K * K * K) + s_cap_e * (K * K) + s_cap_r * K + s;
+        return e * (N * K * K * K) + r * (K * K) + s_cap_r * K + s;
     }
 
     // Hash function for tuple-based cache key
@@ -211,7 +211,7 @@ namespace inter_weights
             // Early return for custom index: look up directly in the precomputed table
             if (index == IndexType::CUSTOM)
             {
-                int64_t idx = custom_weight_index(e, r, s_cap_e, s_cap_r, s, custom_N, custom_K);
+                int64_t idx = custom_weight_index(e, r, s_cap_r, s, custom_N, custom_K);
                 return custom_table[idx];
             }
             // Construct the key
