@@ -221,7 +221,7 @@ skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
 test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; print('C extensions OK')\""
 
 [tool.cibuildwheel.linux]
-manylinux-x86_64-image = "manylinux2014"
+manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
 before-build = "brew install libomp || true"
