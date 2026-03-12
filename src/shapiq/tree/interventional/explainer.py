@@ -200,6 +200,16 @@ class InterventionalTreeExplainer:
                         self.baseline_value = np.mean(-logits).astype(np.float64)
                 else:
                     self.baseline_value = np.mean(logits[:, class_index]).astype(np.float64)
+            elif safe_isinstance(model, "lightgbm.LGBMClassifier"):
+                raw_scores = model.predict(  # ty: ignore[unresolved-attribute]
+                    self.reference_data, raw_score=True
+                )
+                if raw_scores.ndim == 1:
+                    self.baseline_value = (
+                        np.mean(raw_scores) if class_index == 1 else np.mean(-raw_scores)
+                    ).astype(np.float64)
+                else:
+                    self.baseline_value = np.mean(raw_scores[:, class_index]).astype(np.float64)
             else:
                 proba = model.predict_proba(self.reference_data)  # ty: ignore[unresolved-attribute]
                 self.baseline_value = np.mean(proba[:, class_index]).astype(np.float64)

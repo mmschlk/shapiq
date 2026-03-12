@@ -1204,7 +1204,6 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
         }
         chrono::steady_clock::time_point end_time = chrono::steady_clock::now();
         chrono::duration<double> elapsed_seconds = end_time - start_time;
-        cout << "Time taken to compute interactions: " << elapsed_seconds.count() << " seconds" << endl;
 
         // Step convert output directly to dict
         start_time = chrono::steady_clock::now();
@@ -1256,7 +1255,6 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
 
         end_time = chrono::steady_clock::now();
         elapsed_seconds = end_time - start_time;
-        cout << "Time taken to convert output to dict: " << elapsed_seconds.count() << " seconds" << endl;
 
         delete[] result; // Free memory allocated for the result array
 
@@ -1372,11 +1370,17 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
 
         for (int j = 0; j < e_count; j++)
         {
-            e_buffer[j] = static_cast<uint64_t>(e_data[i * e_stride + j]);
+            int feature_index = e_data[i * e_stride + j];
+            if (feature_index > -1) {
+                e_buffer[j] = static_cast<uint64_t>(feature_index);
+            }
         }
         for (int j = 0; j < r_count; j++)
         {
-            r_buffer[j] = static_cast<uint64_t>(r_data[i * r_stride + j]);
+            int feature_index = r_data[i* r_stride + j];
+            if (feature_index > -1) {
+                r_buffer[j] = static_cast<uint64_t>(feature_index);
+            }
         }
         // Get leaf value and compute contributions for all subsets of E and R up to the specified max_order.
         // We iterate over all possible subset sizes s from 1 to max_order.

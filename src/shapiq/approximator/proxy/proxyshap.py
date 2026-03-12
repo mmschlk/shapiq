@@ -50,9 +50,9 @@ class MSRBiased(Approximator):
     def __init__(
         self,
         n: int,
-        max_order: int,
-        index: int,
         *,
+        max_order: int = 2,
+        index: str = "SII",
         sampling_weights: FloatVector | None = None,
         pairing_trick: bool = False,
         random_state: int | None = None,
@@ -91,16 +91,22 @@ class MSRBiased(Approximator):
             e_counts: A vector of shape (n_samples,) where each entry is the number of features included in the corresponding coalition.
             r_counts: A vector of shape (n_samples,) where each entry is the number of features not included in the corresponding coalition.
         """
+        mask = coalition_matrix.astype(bool)
         n_samples, n_features = coalition_matrix.shape
-        e_matrix = np.ones((n_samples, n_features), dtype=int) * -1
-        r_matrix = np.ones((n_samples, n_features), dtype=int) * -1
-        e_counts = np.zeros(n_samples, dtype=int)
-        r_counts = np.zeros(n_samples, dtype=int)
-
-        e_matrix[coalition_matrix == 1] = 1
-        r_matrix[coalition_matrix == 0] = 1
-        e_counts = np.sum(e_matrix == 1, axis=1)
-        r_counts = np.sum(r_matrix == 1, axis=1)
+        e_counts = mask.sum(axis=1, dtype=np.int64)
+        r_counts = n_features - e_counts
+        e_matrix = np.full((n_samples, n_features), -1, dtype=np.int64)
+        r_matrix = np.full((n_samples, n_features), -1, dtype=np.int8)
+        # Included features (mask == True)
+        e_pos = np.cumsum(mask, axis=1) - 1
+        rows_e, cols_e = np.nonzero(mask)
+        # rows_e and cols_e give the row and column indices of the included features in the coalition matrix.
+        e_matrix[rows_e, e_pos[rows_e, cols_e]] = cols_e
+        # Feature of reference point
+        not_mask = ~mask
+        r_pos = np.cumsum(not_mask, axis=1) - 1
+        rows_r, cols_r = np.nonzero(not_mask)
+        r_matrix[rows_r, r_pos[rows_r, cols_r]] = cols_r
         return e_matrix, r_matrix, e_counts, r_counts
 
     def approximate(
@@ -114,7 +120,14 @@ class MSRBiased(Approximator):
         coalition_values -= baseline_value  # Normalize values
         e_matrix, r_matrix, e_counts, r_counts = self._coalitions_to_tree_paths(coalitions_matrix)
         interactions_dict = compute_interactions_sparse(
-            e_matrix, r_matrix, e_counts, r_counts, self.index, self.n, self.max_order
+            coalition_values.astype(np.float32),
+            e_matrix,
+            r_matrix,
+            e_counts,
+            r_counts,
+            self.index,
+            self.n,
+            self.max_order,
         )
         interactions_dict[()] = baseline_value  # Set the value of the empty coalition
         return InteractionValues(
@@ -123,7 +136,7 @@ class MSRBiased(Approximator):
             max_order=self.max_order,
             n_players=self.n,
             min_order=0,
-            estimated=budget < 2**self.n,
+            estimated=budget >= 2**self.n,
             estimation_budget=budget,
             baseline_value=float(baseline_value),
         )
@@ -135,11 +148,11 @@ class ProxySHAP(Approximator):
     def __init__(
         self,
         n: int,
-        max_order: int,
-        index: int,
         *,
+        max_order: int = 2,
+        index: str = "SII",
         proxy_model: object | None = None,
-        adjustment: str = "none",
+        adjustment: str = "msr-b",
         sampling_weights: FloatVector | None = None,
         pairing_trick: bool = False,
         random_state: int | None = None,
@@ -175,7 +188,7 @@ class ProxySHAP(Approximator):
             except ImportError as e:
                 msg = "XGBoost is required for the default proxy model. Please install it with 'pip install xgboost' or provide a custom proxy_model."
                 raise ImportError(msg) from e
-            self.proxy_model = XGBRegressor()
+            self.proxy_model = XGBRegressor(random_state=random_state)
 
         self.set_adjustment_method(adjustment)
 
@@ -253,7 +266,7 @@ class ProxySHAP(Approximator):
             max_order=self.max_order,
             n_players=self.n,
             min_order=0,
-            estimated=budget < 2**self.n,
+            estimated=budget >= 2**self.n,
             estimation_budget=budget,
             baseline_value=float(baseline_value),
         )
@@ -267,5 +280,6 @@ class ProxySHAP(Approximator):
             residual_values -= residual_values[0]  # Normalize residuals
             residual_game = ResidualGame(n_players=self.n, game_values=residual_values)
             proxy_interactions += self.adjustment_method.approximate(budget, residual_game)
-
+        proxy_interactions.baseline_value = baseline_value
+        proxy_interactions[()] = baseline_value  # Ensure empty coalition value is correct
         return proxy_interactions

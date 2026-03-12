@@ -124,7 +124,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             raise ValueError(msg)
         if self.decoder_type == "proxyspex":
             try:
-                import lightgbm as lgb  # noqa: F401  # type: ignore[import-unresolved]
+                import lightgbm as lgb  # noqa: F401
             except ImportError as err:
                 msg = (
                     "The 'lightgbm' package is required when decoder_type is 'proxyspex' but it is "
@@ -194,7 +194,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             The approximated Shapley interaction values.
         """
         if self.decoder_type == "proxyspex":
-            import lightgbm as lgb  # type: ignore[import-unresolved]
+            import lightgbm as lgb
 
             used_budget = budget
 

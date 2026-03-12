@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .cext import parse_lightgbm_string_treemodels, parse_xgboost_ubjson_treemodels
+from .cext import (
+    parse_lightgbm_string_treemodels,  # ty: ignore[unresolved-import]
+    parse_xgboost_ubjson_treemodels,  # ty: ignore[unresolved-import]
+)
 from .common import register
 
 if TYPE_CHECKING:
@@ -14,7 +17,7 @@ if TYPE_CHECKING:
 
     from shapiq.tree.base import TreeModel
 
-    LightGBMModel = LGBMRegressor | LGBMClassifier | LightGBMBooster
+    type LightGBMModel = LGBMRegressor | LGBMClassifier | LightGBMBooster
 
 
 def convert_xgboost_model(
@@ -51,12 +54,12 @@ def _lightgbm_model_to_bytes(model: LightGBMModel) -> bytes:
         TypeError: If the model does not expose a ``model_to_string()`` method.
     """
     if hasattr(model, "get_booster"):
-        booster = model.get_booster()
+        booster = model.get_booster()  # ty: ignore[call-non-callable]
         if hasattr(booster, "model_to_string"):
-            return booster.model_to_string().encode("utf-8")
+            return booster.model_to_string().encode("utf-8")  # ty: ignore[call-non-callable]
 
     if hasattr(model, "booster_") and hasattr(model.booster_, "model_to_string"):
-        return model.booster_.model_to_string().encode("utf-8")
+        return model.booster_.model_to_string().encode("utf-8")  # ty: ignore[call-non-callable]
 
     if hasattr(model, "model_to_string"):
         return model.model_to_string().encode("utf-8")

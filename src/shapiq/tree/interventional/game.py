@@ -70,12 +70,13 @@ class InterventionalGame(Game):
                     else:
                         vls = logits[:, self.class_index]
                 elif safe_isinstance(self.model, "lightgbm.LGBMClassifier"):
-                    proba = self.model.predict_proba(  # ty: ignore[unresolved-attribute]
-                        instanceses
+                    raw_scores = self.model.predict(  # ty: ignore[unresolved-attribute]
+                        instanceses, raw_score=True
                     )
-                    vls = proba[:, self.class_index]
-                    logit = np.log(vls / (1 - vls))
-                    vls = logit
+                    if raw_scores.ndim == 1:
+                        vls = raw_scores if self.class_index == 1 else -raw_scores
+                    else:
+                        vls = raw_scores[:, self.class_index]
                 else:
                     proba = self.model.predict_proba(  # ty: ignore[unresolved-attribute]
                         instanceses

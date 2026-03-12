@@ -66,13 +66,18 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
     [
         ("SV", 1),
         ("BV", 1),
+        ("FBII", 1),
         ("SII", 2),
         ("BII", 2),
         ("CHII", 2),
         ("FBII", 2),
-        ("FBII", 1),
         ("FSII", 2),
         ("STII", 2),
+        ("SII", 3),
+        ("BII", 3),
+        ("CHII", 3),
+        ("FBII", 3),
+        ("FSII", 3),
     ],
 )
 def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, order):
@@ -125,13 +130,18 @@ def test_correct_calculation_dt_clas_index_order(dt_clf_model, cls_data, index, 
     [
         ("SV", 1),
         ("BV", 1),
+        ("FBII", 1),
         ("SII", 2),
         ("BII", 2),
         ("CHII", 2),
-        ("FBII", 1),
         ("FBII", 2),
         ("FSII", 2),
         ("STII", 2),
+        ("SII", 3),
+        ("BII", 3),
+        ("CHII", 3),
+        ("FBII", 3),
+        ("FSII", 3),
     ],
 )
 def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, order):
@@ -176,13 +186,18 @@ def test_correct_calculation_rf_reg_index_order(rf_reg_model, reg_data, index, o
     [
         ("SV", 1),
         ("BV", 1),
+        ("FBII", 1),
         ("SII", 2),
         ("BII", 2),
         ("CHII", 2),
-        ("FBII", 1),
         ("FBII", 2),
         ("FSII", 2),
         ("STII", 2),
+        ("SII", 3),
+        ("BII", 3),
+        ("CHII", 3),
+        ("FBII", 3),
+        ("FSII", 3),
     ],
 )
 def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, order):
@@ -235,13 +250,18 @@ def test_correct_calculation_rf_clas_index_order(rf_clf_model, cls_data, index, 
     [
         ("SV", 1),
         ("BV", 1),
+        ("FBII", 1),
         ("SII", 2),
         ("BII", 2),
         ("CHII", 2),
-        ("FBII", 1),
         ("FBII", 2),
         ("FSII", 2),
         ("STII", 2),
+        ("SII", 3),
+        ("BII", 3),
+        ("CHII", 3),
+        ("FBII", 3),
+        ("FSII", 3),
     ],
 )
 def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index, order):
@@ -267,17 +287,17 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
         if index in ["FSII", "STII"]:
             if len(interaction) != order:
                 continue
-            # Only check full interactions for FBII and FSII due to the current code supporting only the discrete derivate formula
+            # Using 1e-5 tolerance due to float32 vs float64 precision differences in XGBoost calculations
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
-                atol=1e-6,
+                atol=1e-5,
             )
         elif len(interaction) > 0:
             assert np.isclose(
                 own_interactions[interaction],
                 game_interactions.get(interaction, 0),
-                atol=1e-6,
+                atol=1e-5,
             )
 
 
@@ -286,13 +306,18 @@ def test_correct_calculation_xgb_reg_index_order(xgb_reg_model, reg_data, index,
     [
         ("SV", 1),
         ("BV", 1),
+        ("FBII", 1),
         ("SII", 2),
         ("BII", 2),
         ("CHII", 2),
-        ("FBII", 1),
         ("FBII", 2),
         ("FSII", 2),
         ("STII", 2),
+        ("SII", 3),
+        ("BII", 3),
+        ("CHII", 3),
+        ("FBII", 3),
+        ("FSII", 3),
     ],
 )
 def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index, order):
@@ -345,13 +370,18 @@ def test_correct_calculation_xgb_clas_index_order(xgb_clf_model, cls_data, index
     [
         ("SV", 1),
         ("BV", 1),
+        ("FBII", 1),
         ("SII", 2),
         ("BII", 2),
         ("CHII", 2),
-        ("FBII", 1),
         ("FBII", 2),
         ("FSII", 2),
         ("STII", 2),
+        ("SII", 3),
+        ("BII", 3),
+        ("CHII", 3),
+        ("FBII", 3),
+        ("FSII", 3),
     ],
 )
 def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, index, order):
@@ -396,13 +426,18 @@ def test_correct_calculation_lgbm_reg_index_order(lightgbm_reg_model, reg_data, 
     [
         ("SV", 1),
         ("BV", 1),
+        ("FBII", 1),
         ("SII", 2),
         ("BII", 2),
         ("CHII", 2),
-        ("FBII", 1),
         ("FBII", 2),
         ("FSII", 2),
         ("STII", 2),
+        ("SII", 3),
+        ("BII", 3),
+        ("CHII", 3),
+        ("FBII", 3),
+        ("FSII", 3),
     ],
 )
 def test_correct_calculation_lgbm_clas_index_order(lightgbm_clf_model, cls_data, index, order):
