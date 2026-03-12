@@ -218,7 +218,7 @@ python-platform = "linux"
 [tool.cibuildwheel]
 build = ["cp312-*", "cp313-*", "cp314-*"]
 skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
-build-frontend = "build[uv]"
+build-frontend = "uv"
 test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; print('C extensions OK')\""
 
 [tool.cibuildwheel.linux]

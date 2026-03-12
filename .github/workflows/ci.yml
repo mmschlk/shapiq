@@ -198,13 +198,14 @@ jobs:
                 with:
                     python-version: "3.12"
             -   name: Build wheels for all supported Python versions (native arch only)
-                run: uvx cibuildwheel==2.23.3 --output-dir wheelhouse
+                run: uvx cibuildwheel==3.4.0 --output-dir wheelhouse
                 env:
                     CIBW_ARCHS_MACOS: "native"
                     CIBW_ARCHS_LINUX: "x86_64"
                     CIBW_ARCHS_WINDOWS: "AMD64"
                     CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=15.0"
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    UV_PYTHON: ""
             -   name: Check wheels were produced
                 shell: bash
                 run: ls wheelhouse/*.whl | wc -l
