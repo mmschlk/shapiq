@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include "interventional.cpp"
+#include <cstring>
 #include <iostream>
 #include <vector>
 #include <unordered_map>
@@ -275,8 +276,8 @@ static PyObject *compute_interactions(PyObject *self, PyObject *args)
 
     // 5. Step create Tree object
     Tree tree = Tree(leaf_predictions, thresholds, features, children_left, children_right, children_missing, decision_type);
-    int n_reference_samples = reference_data_array->dimensions[0];
-    int n_features = reference_data_array->dimensions[1];
+    int n_reference_samples = static_cast<int>(reference_data_array->dimensions[0]);
+    int n_features = static_cast<int>(reference_data_array->dimensions[1]);
 
     // Calculate result array size based on max_order
     // Uses compact representation: sum of binomial coefficients
@@ -533,8 +534,8 @@ static PyObject *compute_interactions_batched(PyObject *self, PyObject *args)
     {
         cout << "Successfully extracted C-type pointers from numpy arrays." << endl;
     }
-    int n_reference_samples = reference_data_array->dimensions[0];
-    int n_features = reference_data_array->dimensions[1];
+    int n_reference_samples = static_cast<int>(reference_data_array->dimensions[0]);
+    int n_features = static_cast<int>(reference_data_array->dimensions[1]);
 
     // Calculate result array size based on max_order
     // Uses compact representation: sum of binomial coefficients
@@ -844,8 +845,8 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
 
     float *reference_data = (float *)PyArray_DATA(reference_data_array);
     float *explain_data = (float *)PyArray_DATA(explain_data_array);
-    int n_reference_samples = reference_data_array->dimensions[0];
-    int n_features = reference_data_array->dimensions[1];
+    int n_reference_samples = static_cast<int>(reference_data_array->dimensions[0]);
+    int n_features = static_cast<int>(reference_data_array->dimensions[1]);
 
     IndexType index_type;
     if (!parse_index_type(index, index_type))
