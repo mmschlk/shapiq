@@ -49,8 +49,8 @@ namespace algorithms
 
     void first_order_update(const StackFrame &frame, float value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index, int max_order, int verbose)
     {
-        const float wE = weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order);
-        const float wR = weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order);
+        const float wE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order));
+        const float wR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order));
 
         frame.E.for_each_set_bit([&](uint64_t feature)
                                          { interactions[feature] += value * wE; });
@@ -65,15 +65,15 @@ namespace algorithms
     {
 
         // Main Effect updates (diagonal elements)
-        const float wE = weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order);
-        const float wR = weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order);
+        const float wE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 0, 1, index, max_order));
+        const float wR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 1, 1, index, max_order));
         frame.E.for_each_set_bit([&](uint64_t feature)
                                  {
-            int idx = get_interaction_index(feature, feature, num_features, max_order);
+            int idx = get_interaction_index(static_cast<int>(feature), static_cast<int>(feature), num_features, max_order);
             interactions[idx] += value * wE; });
         frame.R.for_each_set_bit([&](uint64_t feature)
                                  {
-            int idx = get_interaction_index(feature, feature, num_features, max_order);
+            int idx = get_interaction_index(static_cast<int>(feature), static_cast<int>(feature), num_features, max_order);
             interactions[idx] += value * wR; });
 
         // Fill the buffers with the feature indices in E and R.
@@ -82,34 +82,34 @@ namespace algorithms
         frame.R.fill_buffer(r_buffer);
 
         // Interaction in E (upper triangle)
-        const float wEE = weight_cache.get_weight(num_features, frame.e, frame.r, 2, 0, 2, index, max_order);
+        const float wEE = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 2, 0, 2, index, max_order));
         for (size_t i = 0; i < e_count; i++)
         {
             for (size_t j = i + 1; j < e_count; j++)
             {
-                int idx = get_interaction_index(e_buffer[i], e_buffer[j], num_features, max_order);
+                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), num_features, max_order);
                 interactions[idx] += value * wEE;
             }
         }
         // Interactions in R (upper triangle)
-        const float wRR = weight_cache.get_weight(num_features, frame.e, frame.r, 0, 2, 2, index, max_order);
+        const float wRR = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 0, 2, 2, index, max_order));
         for (size_t i = 0; i < r_count; i++)
         {
             for (size_t j = i + 1; j < r_count; j++)
             {
-                int idx = get_interaction_index(r_buffer[i], r_buffer[j], num_features, max_order);
+                int idx = get_interaction_index(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[j]), num_features, max_order);
                 interactions[idx] += value * wRR;
             }
         }
         // Cross interactions (E × R)
-        const float wER = weight_cache.get_weight(num_features, frame.e, frame.r, 1, 1, 2, index, max_order);
+        const float wER = static_cast<float>(weight_cache.get_weight(num_features, frame.e, frame.r, 1, 1, 2, index, max_order));
         for (size_t i = 0; i < e_count; i++)
         {
             for (size_t j = 0; j < r_count; j++)
             {
                 if (e_buffer[i] == r_buffer[j])
                     continue; // Skip if the same feature is in both E and R, as this would correspond to a main effect, not an interaction.
-                int idx = get_interaction_index(e_buffer[i], r_buffer[j], num_features, max_order);
+                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), num_features, max_order);
                 interactions[idx] += value * wER;
             }
         }
@@ -427,8 +427,8 @@ namespace algorithms
 
     void first_order_bitset_update(const BitSet E, const BitSet R, float value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index)
     {
-        const float wE = weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 0, 1, index, 1);
-        const float wR = weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 1);
+        const float wE = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 0, 1, index, 1));
+        const float wR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 1));
         E.for_each_set_bit([&](uint64_t feature)
                                          { interactions[feature] += value * wE; });
         R.for_each_set_bit([&](uint64_t feature)
@@ -441,15 +441,15 @@ namespace algorithms
         float value, double *interactions, inter_weights::WeightCache &weight_cache, int num_features, IndexType index)
     {
         // Main Effect updates (diagonal elements)
-        const float wE = weight_cache.get_weight(num_features, E.num_bits(),R.num_bits(), 1, 0, 1, index, 2);
-        const float wR = weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 2);
+        const float wE = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(),R.num_bits(), 1, 0, 1, index, 2));
+        const float wR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 1, 1, index, 2));
         E.for_each_set_bit([&](uint64_t feature)
                                  {
-            int idx = get_interaction_index(feature, feature, num_features, 2);
+            int idx = get_interaction_index(static_cast<int>(feature), static_cast<int>(feature), num_features, 2);
             interactions[idx] += value * wE; });
         R.for_each_set_bit([&](uint64_t feature)
                                  {
-            int idx = get_interaction_index(feature, feature, num_features, 2);
+            int idx = get_interaction_index(static_cast<int>(feature), static_cast<int>(feature), num_features, 2);
             interactions[idx] += value * wR; });
 
         // Fill the buffers with the feature indices in E and R.
@@ -458,34 +458,34 @@ namespace algorithms
         R.fill_buffer(r_buffer);
 
         // Interaction in E (upper triangle)
-        const float wEE = weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 0, 2, index, 2);
+        const float wEE = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 2, 0, 2, index, 2));
         for (size_t i = 0; i < e_count; i++)
         {
             for (size_t j = i + 1; j < e_count; j++)
             {
-                int idx = get_interaction_index(e_buffer[i], e_buffer[j], num_features, 2);
+                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(e_buffer[j]), num_features, 2);
                 interactions[idx] += value * wEE;
             }
         }
         // Interactions in R (upper triangle)
-        const float wRR = weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 2, 2, index, 2);
+        const float wRR = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 0, 2, 2, index, 2));
         for (size_t i = 0; i < r_count; i++)
         {
             for (size_t j = i + 1; j < r_count; j++)
             {
-                int idx = get_interaction_index(r_buffer[i], r_buffer[j], num_features, 2);
+                int idx = get_interaction_index(static_cast<int>(r_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
                 interactions[idx] += value * wRR;
             }
         }
         // Cross interactions (E × R)
-        const float wER = weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 1, 2, index, 2);
+        const float wER = static_cast<float>(weight_cache.get_weight(num_features, E.num_bits(), R.num_bits(), 1, 1, 2, index, 2));
         for (size_t i = 0; i < e_count; i++)
         {
             for (size_t j = 0; j < r_count; j++)
             {
                 if (e_buffer[i] == r_buffer[j])
                     continue; // Skip if the same feature is in both E and R, as this would correspond to a main effect, not an interaction.
-                int idx = get_interaction_index(e_buffer[i], r_buffer[j], num_features, 2);
+                int idx = get_interaction_index(static_cast<int>(e_buffer[i]), static_cast<int>(r_buffer[j]), num_features, 2);
                 interactions[idx] += value * wER;
             }
         }
