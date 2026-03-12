@@ -171,6 +171,33 @@ jobs:
             -   name: Build documentation
                 run: uv run --no-sync sphinx-build --keep-going -b html docs/source docs/build/html
     # ----------------------------------------------------------------------------------------------
+    # Build Wheel Test (validates C extensions build correctly on all platforms)
+    # ----------------------------------------------------------------------------------------------
+    build_wheels_test:
+        name: Test wheel build (${{ matrix.os }})
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest, windows-latest, macos-latest]
+        steps:
+            -   uses: actions/checkout@v4
+                with:
+                    fetch-depth: 0
+            -   uses: astral-sh/setup-uv@v5
+                with:
+                    python-version: "3.12"
+            -   name: Build cp312 wheel (native arch only)
+                run: uvx cibuildwheel==2.23.3 --output-dir wheelhouse
+                env:
+                    CIBW_BUILD: "cp312-*"
+                    CIBW_ARCHS_MACOS: "native"
+                    CIBW_ARCHS_LINUX: "x86_64"
+                    CIBW_ARCHS_WINDOWS: "AMD64"
+            -   name: Check wheel was produced
+                shell: bash
+                run: ls wheelhouse/*.whl | wc -l
+    # ----------------------------------------------------------------------------------------------
     # Code Coverage
     # ----------------------------------------------------------------------------------------------
     run_coverage:
