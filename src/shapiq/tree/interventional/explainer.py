@@ -147,7 +147,6 @@ class InterventionalTreeExplainer:
         max_order: int = 2,
         index: str = "SII",
         index_func: Callable | None = None,
-        p: float = 0.5,
         bool_tree: bool = False,
         weight_fn: Callable[[int, int, int], float] | None = None,
     ) -> None:
@@ -178,7 +177,6 @@ class InterventionalTreeExplainer:
         self.index = index
         self.n_players = data.shape[1]
         self.index_func = index_func
-        self.p = p
         self.bool_tree = bool_tree
         self.look_up_table: np.ndarray | None = None
         self._custom_weight_table: np.ndarray | None = None
