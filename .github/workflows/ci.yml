@@ -205,6 +205,7 @@ jobs:
                     CIBW_ARCHS_WINDOWS: "AMD64"
                     CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=15.0"
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    UV_PYTHON: ""
             -   name: Check wheels were produced
                 shell: bash
                 run: ls wheelhouse/*.whl | wc -l

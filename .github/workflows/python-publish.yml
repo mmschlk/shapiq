@@ -45,6 +45,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_target }}"
+          UV_PYTHON: ""
 
       - uses: actions/upload-artifact@v4
         with:
