@@ -175,26 +175,9 @@ static PyObject *sparse_map_to_pydict(const algorithms::SparseInteractionMap &sp
     return output;
 }
 
-/**
- * Define the compute_interactions function, which serves as the main entry point for computing feature interactions using the interventional algorithm.
- * The function should get the following input parameters( in exact order):
- * - leaf_predictions: A numpy array containing the predictions at the leaf nodes of the decision tree.
- * - thresholds: A numpy array containing the threshold values for the decision nodes in the tree.
- * - features: A numpy array containing the feature indices used for splitting at each decision node.
- * - children_left: A numpy array containing the indices of the left child nodes for each decision node.
- * - children_right: A numpy array containing the indices of the right child nodes for each decision node.
- * - children_missing: A boolean numpy array indicating whether the left node should be followed when the feature value is missing (NaN) for each decision node.
- * - reference_data: A numpy array containing the reference data samples used for computing interactions.
- * - explain_data: A numpy array containing the data sample for which interactions are to be computed.
- * - decision_type: A string indicating the type of decision tree (e.g., "classification" or "regression").
- * - index: A string indicating the type of interaction index to compute (e.g., "shapley" or "banzhaf").
- * - max_order: An integer specifying the maximum order of interactions to compute.
- * - verbose: An integer specifying the verbosity level for logging during computation.
- * The function returns a numpy array containing the computed feature interactions based on the provided input parameters and the interventional algorithm.
- */
+
 static PyObject *compute_interactions(PyObject *self, PyObject *args)
 {
-    // 1. Step define input arguements
 
     // Tree parameters
     PyObject *leaf_predictions_obj;
@@ -667,6 +650,25 @@ static PyObject *compute_interactions_batched(PyObject *self, PyObject *args)
 
 static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *args)
 {
+    /**
+     * This function is an extension of the batched version of compute_interactions, which computes interactions in parallel for each tree and returns a sparse representation of the interactions as a dictionary mapping feature subsets to interaction values.
+     * The input parameters are the same as the batched version, but the output is different to accommodate the sparse representation.
+     * This function should be used when the max_order exceeds 2.
+     * The funcion has the following input parameters( in exact order):
+     * - leaf_predictions: A list of numpy arrays, where each array contains the predictions at the leaf nodes of a decision tree.
+     * - thresholds: A list of numpy arrays, where each array contains the threshold values for the decision nodes in a tree.
+     * - features: A list of numpy arrays, where each array contains the feature indices used for splitting at each decision node in a tree.
+     * - children_left: A list of numpy arrays, where each array contains the indices of the left child nodes for each decision node in a tree.
+     * - children_right: A list of numpy arrays, where each array contains the indices of the right child nodes for each decision node in a tree.
+     * - children_missing: A list of boolean numpy arrays, where each array indicates whether the left node should be followed when the feature value is missing (NaN) for each decision node in a tree.
+     * - reference_data: A numpy array containing the reference data samples used for computing interactions.
+     * - explain_data: A numpy array containing the data sample for which interactions are to be computed.
+     * - decision_type: A string indicating the type of decision tree (e.g., "classification" or "regression").
+     * - index: A string indicating the type of interaction index to compute (e.g., "shapley" or "banzhaf").
+     * - max_order: An integer specifying the maximum order of interactions to compute.
+     * - verbose: An integer specifying the verbosity level for logging during computation.
+     * The function returns a dictionary where the keys are frozensets of feature indices representing the subsets of features involved in the interactions, and the values are the corresponding interaction values computed based on the provided input parameters and the interventional algorithm.
+     */
     // Tree parameters
     PyObject *leaf_predictions_obj;
     PyObject *thresholds_obj;
@@ -970,6 +972,19 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
 
 static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
 {
+    /**
+     * This function computes interactions for a single tree using a flattened representation of the tree structure, which is more memory efficient and can be faster to process.
+     * The input parameters are similar to compute_interactions_batched_sparse, but instead of lists of numpy arrays for multiple trees, we have single numpy arrays that represent the flattened tree structure.
+     * The function also supports an optional custom weight table for computing interactions.
+     * The function should be used when the max_order is below or equal to 2.
+     * The funcion has the following input parameters( in exact order):
+     * - leaf_predictions: A numpy array containing the predictions at the leaf nodes of a decision tree.
+     * - features: A numpy array containing the feature indices used for splitting at each decision node in a flattened tree representation.
+     * - e_sizes: A numpy array containing the sizes of the subsets of features taken according to the point explained ("e") for each node in the flattened tree representation.
+     * - r_sizes: A numpy array containing the sizes of the subsets of features taken according to the reference point ("r") set for each node in the flattened tree representation.
+     * - features_in_e: A numy array indicating whether the currently observed feature is part of "e" or "r".
+     * - leaf_id: A numpy array indicating to which leaf the corresponding feature belongs to. Necessary for order 2 computation.
+     */
 
     PyObject *leaf_predictions_obj;
     PyObject *features_obj;
@@ -1272,6 +1287,20 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
 
 static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
 {
+    /**
+     * Computes interactions for a single tree using a sparse representation of the tree structure, which is more efficient for  max_order bigger than 2.
+     * The function should be used if max_order is bigger than 2.
+     * The funcion has the following input parameters( in exact order):
+     * - leaf_predictions: A numpy array containing the predictions at the leaf nodes of a decision tree.
+     * - e: A numpy array containing the feature indices in the "e" set for each node in the flattened tree representation. Important: The array should have the format (n_samples,n_features) and features not used in the corresponding set should be filled with -1. This is to ensure that the function can efficiently process the features in E and R for each node without needing to check for variable-length lists or additional size information.
+     * - r: A numpy array containing the feature indices in the "r" set for each node in the flattened tree representation. Important: The array should have the format (n_samples,n_features) and features not used in the corresponding set should be filled with -1. This is to ensure that the function can efficiently process the features in E and R for each node without needing to check for variable-length lists or additional size information.
+     * - e_sizes A numpy array containing the sizes of the subsets of features taken according to the point explained ("e") for each node in the flattened tree representation.
+     * - r_sizes A numpy array containing the sizes of the subsets of features taken according to the reference point ("r") set for each node in the flattened tree representation.
+     * - index: A string indicating the type of index to compute (e.g., "shapley", "banzhaf", "chaining", "fbii", or "custom"). This determines the weighting scheme used in the interaction computation.
+     * - n_features: An integer representing the total number of features in the dataset. This is used to determine the size of the weight cache and to compute the weights for interactions.
+     * - max_order: An integer representing the maximum order of interactions to compute. This determines how many features can be involved in an interaction (e.g., max_order=2 means only pairwise interactions will be computed).
+     *
+     */
     PyObject *leaf_predictions_obj;
     PyObject *e_obj;
     PyObject *r_obj;
