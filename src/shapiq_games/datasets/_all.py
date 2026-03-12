@@ -10,7 +10,6 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.datasets import (
     load_breast_cancer as breast_cancer,
-    load_iris as iris,
 )
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -656,7 +655,7 @@ def load_group(n_samples=1000, n_irrelevant=2, random_state=None):
     counts = [per] * 4
     counts[-1] += n_samples - sum(counts)
     xs, ys = [], []
-    for k, (cnt, center) in enumerate(zip(counts, centers)):
+    for k, (cnt, center) in enumerate(zip(counts, centers, strict=False)):
         xs.append(rng.normal(loc=center, scale=0.8, size=(cnt, 2)))
         ys.extend([cluster_labels[k]] * cnt)
     xy = np.vstack(xs)
@@ -883,7 +882,6 @@ def load_ionosphere() -> tuple[pd.DataFrame, pd.Series]:
     return X, y
 
 
-
 def load_mushroom() -> tuple[pd.DataFrame, pd.Series]:
     """Load the Mushroom dataset from the UCI Machine Learning Repository.
 
@@ -1017,5 +1015,3 @@ def load_zoo() -> tuple[pd.DataFrame, pd.Series]:
     y = data["target"]
     y = pd.Series(LabelEncoder().fit_transform(y.astype(str)), name="target")
     return X, y
-
-

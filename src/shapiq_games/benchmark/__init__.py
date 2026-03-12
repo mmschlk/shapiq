@@ -55,11 +55,11 @@ from .local_xai.benchmark_image import ImageClassifier as ImageClassifierLocalXA
 from .local_xai.benchmark_language import SentimentAnalysis as SentimentAnalysisLocalXAI
 from .local_xai.benchmark_tabular import (
     AdultCensus as AdultCensusLocalXAI,
-    BikeSharing as BikeSharingLocalXAI,
-    CaliforniaHousing as CaliforniaHousingLocalXAI,
     Annealing as AnnealingLocalXAI,
     Arrhythmia as ArrhythmiaLocalXAI,
+    BikeSharing as BikeSharingLocalXAI,
     BreastCancer as BreastCancerLocalXAI,
+    CaliforniaHousing as CaliforniaHousingLocalXAI,
     Hepatitis as HepatitisLocalXAI,
     Ionosphere as IonosphereLocalXAI,
     Mushroom as MushroomLocalXAI,
