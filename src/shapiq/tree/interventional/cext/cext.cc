@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include "interventional.cpp"
+#include <cstring>
 #include <iostream>
 #include <vector>
 #include <unordered_map>
@@ -280,8 +281,8 @@ static PyObject *compute_interactions(PyObject *self, PyObject *args)
 
     // 5. Step create Tree object
     Tree tree = Tree(leaf_predictions, thresholds, features, children_left, children_right, children_missing, decision_type);
-    int n_reference_samples = reference_data_array->dimensions[0];
-    int n_features = reference_data_array->dimensions[1];
+    int n_reference_samples = static_cast<int>(reference_data_array->dimensions[0]);
+    int n_features = static_cast<int>(reference_data_array->dimensions[1]);
 
     // Calculate result array size based on max_order
     // Uses compact representation: sum of binomial coefficients
@@ -538,8 +539,8 @@ static PyObject *compute_interactions_batched(PyObject *self, PyObject *args)
     {
         cout << "Successfully extracted C-type pointers from numpy arrays." << endl;
     }
-    int n_reference_samples = reference_data_array->dimensions[0];
-    int n_features = reference_data_array->dimensions[1];
+    int n_reference_samples = static_cast<int>(reference_data_array->dimensions[0]);
+    int n_features = static_cast<int>(reference_data_array->dimensions[1]);
 
     // Calculate result array size based on max_order
     // Uses compact representation: sum of binomial coefficients
@@ -852,8 +853,8 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
 
     float *reference_data = (float *)PyArray_DATA(reference_data_array);
     float *explain_data = (float *)PyArray_DATA(explain_data_array);
-    int n_reference_samples = reference_data_array->dimensions[0];
-    int n_features = reference_data_array->dimensions[1];
+    int n_reference_samples = static_cast<int>(reference_data_array->dimensions[0]);
+    int n_features = static_cast<int>(reference_data_array->dimensions[1]);
 
     IndexType index_type;
     if (!parse_index_type(index, index_type))
@@ -1073,11 +1074,11 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
         {
             for (int i = 0; i < n_iterations; i++)
             {
-                int feature = features[i];
+                int feature = static_cast<int>(features[i]);
                 double leaf_val = leaf_predictions[i];
-                int e = e_sizes_data[i];
-                int r = r_sizes_data[i];
-                int s_cap_e = feature_in_e_data[i];
+                int e = static_cast<int>(e_sizes_data[i]);
+                int r = static_cast<int>(r_sizes_data[i]);
+                int s_cap_e = static_cast<int>(feature_in_e_data[i]);
                 int s_cap_r = 1 - s_cap_e;
                 int s = 1;
                 int sign = (s_cap_r % 2 == 0) ? 1 : -1;
@@ -1114,11 +1115,11 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
         {
             for (int i = 0; i < n_iterations; i++)
             {
-                int feature = features[i];
+                int feature = static_cast<int>(features[i]);
                 double leaf_val = leaf_predictions[i];
-                int e = e_sizes_data[i];
-                int r = r_sizes_data[i];
-                int s_cap_e_i = feature_in_e_data[i];
+                int e = static_cast<int>(e_sizes_data[i]);
+                int r = static_cast<int>(r_sizes_data[i]);
+                int s_cap_e_i = static_cast<int>(feature_in_e_data[i]);
                 int s_cap_r_i = 1 - s_cap_e_i;
                 int s = 1;
                 int sign = (s_cap_r_i % 2 == 0) ? 1 : -1;
@@ -1158,8 +1159,8 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                         break;
                     }
 
-                    int feature_j = features[j];
-                    int s_cap_e_j = feature_in_e_data[j];
+                    int feature_j = static_cast<int>(features[j]);
+                    int s_cap_e_j = static_cast<int>(feature_in_e_data[j]);
                     int s_cap_r_j = 1 - s_cap_e_j;
 
                     // Combined counts for the pair (i, j)

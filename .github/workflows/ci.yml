@@ -53,6 +53,9 @@ jobs:
                 with:
                     python-version: ${{ matrix.python-version }}
                     enable-cache: true
+            -   if: matrix.os == 'macos-latest'
+                name: Install libomp on macOS
+                run: brew install libomp
             -   name: Create uv virtual environment
                 run: uv venv
             -   name: Install shapiq package

@@ -1,4 +1,5 @@
 /** This file contains the UBJSON parser for gradient boosting models. */
+#include <cctype>
 #include <cstdint>
 #include <stdexcept>
 #include <cstring>
