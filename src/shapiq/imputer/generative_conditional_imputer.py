@@ -134,7 +134,9 @@ class GenerativeConditionalImputer(Imputer):
             X_masked[coalitions_matrix] = np.nan  # old numpy version
         except AttributeError:  # interim solution since numpy changed
             X_masked[coalitions_matrix] = np.nan  # new numpy version
-        tree_embedder = xgboost.XGBRegressor(random_state=self.random_state)
+        tree_embedder = xgboost.XGBRegressor(  # ty: ignore[possibly-missing-attribute]
+            random_state=self.random_state
+        )
         tree_embedder.fit(X_masked, X_tiled)
         self._data_embedded = tree_embedder.apply(data)
         self._tree_embedder = tree_embedder

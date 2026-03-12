@@ -79,7 +79,7 @@ def convert_extra_tree(
     tree_model: ExtraTreeClassifier | ExtraTreeRegressor,
     tree_features: np.ndarray,
     scaling: float = 1.0,
-    class_label: int | None = None, # noqa: ARG001
+    class_label: int | None = None,  # noqa: ARG001
 ) -> TreeModel:
     """Convert a scikit-learn ExtraTree to the internal tree format used by shapiq.
 
@@ -94,6 +94,7 @@ def convert_extra_tree(
             corresponding global feature index.
         scaling: A multiplicative scaling factor applied to all leaf values. Defaults to ``1.0``.
         class_label: The class index whose probability is extracted as the leaf value. Only here for API consistency with other converters; ignored since ExtraTrees don't support multi-class outputs.
+
     Returns:
         The tree converted to the internal ``TreeModel`` format.
     """
@@ -172,7 +173,7 @@ def extra_tree_traversal(
 
 def convert_isolation_forest_tree(
     tree_model: IsolationForest,
-    class_label: int | None = None, # noqa: ARG001
+    class_label: int | None = None,  # noqa: ARG001
     scaling: float = 1.0,
 ) -> list[TreeModel]:
     """Convert a scikit-learn IsolationForest to the internal tree format used by shapiq.
