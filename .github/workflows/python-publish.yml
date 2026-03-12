@@ -41,7 +41,7 @@ jobs:
           python-version: "3.12"
 
       - name: Build wheels
-        run: uvx cibuildwheel==2.23.3 --output-dir wheelhouse
+        run: uvx cibuildwheel==3.4.0 --output-dir wheelhouse
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_target }}"

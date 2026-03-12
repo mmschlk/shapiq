@@ -198,7 +198,7 @@ jobs:
                 with:
                     python-version: "3.12"
             -   name: Build wheels for all supported Python versions (native arch only)
-                run: uvx cibuildwheel==2.23.3 --output-dir wheelhouse
+                run: uvx cibuildwheel==3.4.0 --output-dir wheelhouse
                 env:
                     CIBW_ARCHS_MACOS: "native"
                     CIBW_ARCHS_LINUX: "x86_64"
