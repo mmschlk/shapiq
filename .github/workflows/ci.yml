@@ -204,6 +204,7 @@ jobs:
                     CIBW_ARCHS_MACOS: "native"
                     CIBW_ARCHS_LINUX: "x86_64"
                     CIBW_ARCHS_WINDOWS: "AMD64"
+                    CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=15.0"
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             -   name: Check wheel was produced
                 shell: bash

@@ -24,6 +24,11 @@ jobs:
           - windows-latest   # Windows AMD64
           - macos-13         # macOS Intel x86_64
           - macos-latest     # macOS Apple Silicon arm64
+        include:
+          - os: macos-13
+            macos_target: "13.0"
+          - os: macos-latest
+            macos_target: "15.0"
 
     steps:
       - uses: actions/checkout@v6
@@ -39,6 +44,7 @@ jobs:
         run: uvx cibuildwheel==2.23.3 --output-dir wheelhouse
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_target }}"
 
       - uses: actions/upload-artifact@v4
         with:
