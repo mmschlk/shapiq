@@ -29,6 +29,13 @@ class BuildExt(_build_ext):
 
 def get_openmp_flags() -> dict[str, list[str]]:
     """Get OpenMP compiler and linker flags based on platform."""
+    if sys.platform == "win32":  # Windows (MSVC)
+        return {
+            "extra_compile_args": ["/std:c++17", "/openmp", "/O2"],
+            "extra_link_args": [],
+            "include_dirs": [],
+            "library_dirs": [],
+        }
     if sys.platform == "darwin":  # macOS
         # Prefer standard Homebrew libomp locations to avoid subprocess calls in setup.
         for brew_prefix in (Path("/opt/homebrew/opt/libomp"), Path("/usr/local/opt/libomp")):
@@ -37,6 +44,7 @@ def get_openmp_flags() -> dict[str, list[str]]:
             if include_dir.exists() and library_dir.exists():
                 return {
                     "extra_compile_args": [
+                        "-std=c++17",
                         "-Xpreprocessor",
                         "-fopenmp",
                         "-O3",
@@ -54,7 +62,7 @@ def get_openmp_flags() -> dict[str, list[str]]:
         raise RuntimeError(msg)
     # Linux and others
     return {
-        "extra_compile_args": ["-fopenmp", "-O3", "-march=native", "-ffast-math"],
+        "extra_compile_args": ["-std=c++17", "-fopenmp", "-O3", "-march=native", "-ffast-math"],
         "extra_link_args": ["-fopenmp"],
         "include_dirs": [],
         "library_dirs": [],

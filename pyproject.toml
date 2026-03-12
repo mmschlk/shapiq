@@ -257,10 +257,7 @@ docs = [
     "nbconvert",                # notebook support for sphinx
     "nbsphinx",                 # notebook support for sphinx
     "commonmark",               # Markdown parser and renderer
-    # TODO(mmschlk): remove the pin in ipython when we drop python 3.10 support and pin to
-    # ipython>=9.0.0, since ipython==8.7.0 introduces a bug with parsing notebooks also discussed
-    # here: https://github.com/spatialaudio/nbsphinx/issues/24
-    "ipython<8.39.0",           # for code execution in notebooks
+    "ipython>=9.0.0",           # for code execution in notebooks
     "sphinx-gallery",           # gallery of examples from Python scripts
     "matplotlib",               # required for sphinx-gallery thumbnails
 ]
