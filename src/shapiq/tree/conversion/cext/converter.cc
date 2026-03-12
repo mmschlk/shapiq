@@ -267,21 +267,27 @@ public:
             if (std::memcmp(s.data + s.pos, "base_score", 10) == 0)
             {
                 s.pos += 10;
-                // XGBoost 3 multi-class: base_score is a per-class typed array [$type#num_class ...]
-                // Skip to the element for class_label and read it directly.
-                if (s.pos < s.size && s.data[s.pos] == '[' &&
-                    s.pos + 1 < s.size && s.data[s.pos + 1] == '$')
+                // XGBoost 3 multi-class: base_score is a string-encoded CSV array
+                // e.g. S L<len> "[-9.950876E-3,1.990199E-2,-9.950876E-3]"
+                if (s.pos < s.size && s.data[s.pos] == 'S')
                 {
-                    s.pos += 2; // consume '[' and '$'
-                    uint8_t type_marker = s.readByte();
-                    s.pos++; // consume '#'
-                    uint8_t count_marker = s.readByte();
-                    uint64_t count = s.readNonNegativeIntByMarker(count_marker);
-                    uint64_t idx = (class_label >= 0 && static_cast<uint64_t>(class_label) < count)
-                                       ? static_cast<uint64_t>(class_label)
-                                       : 0;
-                    s.pos += idx * s.typedElementSize(type_marker);
-                    return s.readTypedValueAsDouble(type_marker);
+                    s.pos++; // consume 'S'
+                    std::string value = s.readString();
+                    // Strip surrounding '[' ... ']' if present.
+                    if (!value.empty() && value.front() == '[' && value.back() == ']')
+                        value = value.substr(1, value.size() - 2);
+                    // Parse the class_label-th comma-separated token.
+                    int idx = 0;
+                    size_t start = 0;
+                    while (idx < class_label)
+                    {
+                        size_t comma = value.find(',', start);
+                        if (comma == std::string::npos)
+                            break; // fewer tokens than expected; use last one
+                        start = comma + 1;
+                        idx++;
+                    }
+                    return std::strtod(value.c_str() + start, nullptr);
                 }
                 return s.readDoubleLike();
             }
