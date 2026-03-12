@@ -130,6 +130,9 @@ jobs:
                 with:
                     python-version: ${{ matrix.python-version }}
                     enable-cache: true
+            -   if: matrix.os == 'macos-latest'
+                name: Install libomp on macOS
+                run: brew install libomp
             -   name: Install test dependencies
                 run: uv sync
             -   name: Run unit tests
