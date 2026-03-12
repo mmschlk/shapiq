@@ -3,6 +3,19 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#ifdef _MSC_VER
+#include <intrin.h>
+static inline int ctz64(uint64_t x) {
+    unsigned long idx;
+    _BitScanForward64(&idx, x);
+    return (int)idx;
+}
+#else
+static inline int ctz64(uint64_t x) {
+    return __builtin_ctzll(x);
+}
+#endif
+
 enum class IndexType
 {
     SII,
@@ -134,7 +147,7 @@ public:
             uint64_t bits = small_data;
             while (bits)
             {
-                int feature_id = __builtin_ctzll(bits); // Get the index of the least significant set bit
+                int feature_id = ctz64(bits); // Get the index of the least significant set bit
                 f(feature_id);
                 bits &= bits - 1; // Clear the least significant set bit
             }
@@ -146,7 +159,7 @@ public:
                 uint64_t bits = small_buffer[i];
                 while (bits)
                 {
-                    int feature_id = __builtin_ctzll(bits) + (i * 64); // Get the index of the least significant set bit and adjust for the word index
+                    int feature_id = ctz64(bits) + (i * 64); // Get the index of the least significant set bit and adjust for the word index
                     f(feature_id);
                     bits &= bits - 1; // Clear the least significant set bit
                 }
@@ -158,7 +171,7 @@ public:
                 uint64_t bits = data[i];
                 while (bits)
                 {
-                    int feature_id = __builtin_ctzll(bits) + (i * 64); // Get the index of the least significant set bit and adjust for the word index
+                    int feature_id = ctz64(bits) + (i * 64); // Get the index of the least significant set bit and adjust for the word index
                     f(feature_id);
                     bits &= bits - 1; // Clear the least significant set bit
                 }
