@@ -37,6 +37,8 @@ jobs:
 
       - name: Build wheels
         run: uvx cibuildwheel==2.23.3 --output-dir wheelhouse
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
         with:
