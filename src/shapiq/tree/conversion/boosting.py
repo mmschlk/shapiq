@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .cext import (
-    parse_lightgbm_string_treemodels,  # ty: ignore[unresolved-import]
-    parse_xgboost_ubjson_treemodels,  # ty: ignore[unresolved-import]
-)
+from .cext import parse_lightgbm_string_treemodels, parse_xgboost_ubjson_treemodels
 from .common import register
 
 if TYPE_CHECKING:
-    from lightgbm import LGBMClassifier, LGBMRegressor  # ty: ignore[unresolved-import]
-    from lightgbm.basic import Booster as LightGBMBooster  # ty: ignore[unresolved-import]
+    from lightgbm import LGBMClassifier, LGBMRegressor
+    from lightgbm.basic import Booster as LightGBMBooster
     from xgboost import XGBClassifier, XGBRegressor
 
     from shapiq.tree.base import TreeModel
@@ -97,8 +94,8 @@ except ImportError:
     pass
 
 try:
-    from lightgbm import LGBMClassifier, LGBMRegressor  # ty: ignore[unresolved-import]
-    from lightgbm.basic import Booster as LightGBMBooster  # ty: ignore[unresolved-import]
+    from lightgbm import LGBMClassifier, LGBMRegressor
+    from lightgbm.basic import Booster as LightGBMBooster
 
     register(LGBMRegressor, convert_lightgbm_model)
     register(LGBMClassifier, convert_lightgbm_model)
