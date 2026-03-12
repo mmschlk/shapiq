@@ -16,11 +16,14 @@ static PyObject *compute_interactions(PyObject *self, PyObject *args);
 static PyObject *compute_interactions_batched(PyObject *self, PyObject *args);
 static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *args);
 static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args);
+static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args);
+
 static PyMethodDef module_methods[] = {
     {"compute_interactions", compute_interactions, METH_VARARGS, "Compute feature interactions using the interventional algorithm."},
     {"compute_interactions_batched", compute_interactions_batched, METH_VARARGS, "Compute feature interactions in batches using the interventional algorithm."},
     {"compute_interactions_batched_sparse", compute_interactions_batched_sparse, METH_VARARGS, "Compute sparse feature interactions in batches using the interventional algorithm."},
     {"compute_interactions_flatten", compute_interactions_flatten, METH_VARARGS, "Compute feature interactions with flattened input."},
+    {"compute_interactions_sparse", compute_interactions_sparse, METH_VARARGS, "Compute sparse feature interactions using the interventional algorithm."},
     {NULL, NULL, 0, NULL}};
 /** Define the Python Module for both Python 3 and Python 2 Version.
  * This code is mostly copied from https://github.com/yupbank/linear_tree_shap/blob/main/linear_tree_shap/cext/_cext.cc
@@ -96,6 +99,11 @@ static bool parse_index_type(const std::string &index, IndexType &index_type)
     if (index == "STII")
     {
         index_type = IndexType::STII;
+        return true;
+    }
+    if (index == "CUSTOM")
+    {
+        index_type = IndexType::CUSTOM;
         return true;
     }
     return false;
@@ -675,7 +683,10 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
     int max_order;
     int verbose;
 
-    if (!PyArg_ParseTuple(args, "OOOOOOOOssii", &leaf_predictions_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &reference_data_obj, &explain_data_obj, &decision_type_cptr, &index_cptr, &max_order, &verbose))
+    // Optional custom weight table (None when not used)
+    PyObject *weight_table_obj = Py_None;
+
+    if (!PyArg_ParseTuple(args, "OOOOOOOOssii|O", &leaf_predictions_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &reference_data_obj, &explain_data_obj, &decision_type_cptr, &index_cptr, &max_order, &verbose, &weight_table_obj))
     {
         return NULL;
     }
@@ -866,13 +877,43 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
         return NULL;
     }
 
+    // Extract custom weight table pointer if provided
+    const double *custom_table = nullptr;
+    int64_t custom_N = 0, custom_K = 0;
+    PyArrayObject *weight_table_array = nullptr;
+    if (weight_table_obj != Py_None)
+    {
+        weight_table_array = (PyArrayObject *)PyArray_FROM_OTF(weight_table_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+        if (!weight_table_array)
+        {
+            Py_XDECREF(reference_data_array);
+            Py_XDECREF(explain_data_array);
+            for (const auto &arr_tuple : arrays_for_decref)
+            {
+                Py_XDECREF(std::get<0>(arr_tuple));
+                Py_XDECREF(std::get<1>(arr_tuple));
+                Py_XDECREF(std::get<2>(arr_tuple));
+                Py_XDECREF(std::get<3>(arr_tuple));
+                Py_XDECREF(std::get<4>(arr_tuple));
+                Py_XDECREF(std::get<5>(arr_tuple));
+            }
+            PyErr_SetString(PyExc_TypeError, "weight_table must be a float64 numpy array");
+            return NULL;
+        }
+        custom_table = (const double *)PyArray_DATA(weight_table_array);
+        custom_N = (int64_t)n_features + 1;
+        custom_K = (int64_t)max_order + 1;
+    }
+
     algorithms::SparseInteractionMap sparse_result;
 
     Py_BEGIN_ALLOW_THREADS
 #pragma omp parallel
     {
         algorithms::SparseInteractionMap local_sparse_result;
-        inter_weights::WeightCache weight_cache(3 * n_features);
+        inter_weights::WeightCache weight_cache = (custom_table != nullptr)
+                                                      ? inter_weights::WeightCache((uint64_t)(3 * n_features), custom_table, custom_N, custom_K)
+                                                      : inter_weights::WeightCache((uint64_t)(3 * n_features));
 
 #pragma omp for nowait
         for (int t = 0; t < num_trees; t++)
@@ -913,6 +954,7 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
 
     Py_XDECREF(reference_data_array);
     Py_XDECREF(explain_data_array);
+    Py_XDECREF(weight_table_array);
     for (const auto &arr_tuple : arrays_for_decref)
     {
         Py_XDECREF(std::get<0>(arr_tuple));
@@ -942,8 +984,10 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
     int n_features;
     int e_length;
     float scaling_factor = 1.0;
+    // Optional custom weight table (None when not used)
+    PyObject *weight_table_obj = Py_None;
     IndexType index_type;
-    if (!PyArg_ParseTuple(args, "OOOOOOsiiiiif", &leaf_predictions_obj, &features_obj, &e_sizes, &r_sizes, &feature_in_e_obj, &leaf_id, &index_cptr, &n_iterations, &n_features, &e_length, &max_order, &verbose, &scaling_factor))
+    if (!PyArg_ParseTuple(args, "OOOOOOsiiiiif|O", &leaf_predictions_obj, &features_obj, &e_sizes, &r_sizes, &feature_in_e_obj, &leaf_id, &index_cptr, &n_iterations, &n_features, &e_length, &max_order, &verbose, &scaling_factor, &weight_table_obj))
     {
         return NULL;
     }
@@ -986,6 +1030,33 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_ValueError, ("Unsupported index type: " + std::string(index_cptr)).c_str());
         return NULL;
     }
+
+    // Extract custom weight table pointer if provided
+    const double *custom_table = nullptr;
+    int64_t custom_N = 0, custom_K = 0;
+    PyArrayObject *weight_table_array = nullptr;
+    if (weight_table_obj != Py_None)
+    {
+        weight_table_array = (PyArrayObject *)PyArray_FROM_OTF(weight_table_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+        if (!weight_table_array)
+        {
+            Py_XDECREF(leaf_predictions_array);
+            Py_XDECREF(features_array);
+            Py_XDECREF(e_sizes_array);
+            Py_XDECREF(r_sizes_array);
+            Py_XDECREF(feature_in_e_array);
+            Py_XDECREF(leaf_id_array);
+            PyErr_SetString(PyExc_TypeError, "weight_table must be a float64 numpy array");
+            return NULL;
+        }
+        custom_table = (const double *)PyArray_DATA(weight_table_array);
+        custom_N = (int64_t)n_features + 1;
+        custom_K = (int64_t)max_order + 1;
+    }
+    inter_weights::WeightCache weight_cache = (custom_table != nullptr)
+                                                  ? inter_weights::WeightCache((uint64_t)(3 * n_features), custom_table, custom_N, custom_K)
+                                                  : inter_weights::WeightCache((uint64_t)(3 * n_features));
+
     chrono::steady_clock::time_point start_time = chrono::steady_clock::now();
 
     if (max_order <= 2)
@@ -1015,7 +1086,11 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 int s = 1;
                 int sign = (s_cap_r % 2 == 0) ? 1 : -1;
                 double weight = 0;
-                if (index_type == IndexType::SII)
+                if (index_type == IndexType::CUSTOM)
+                {
+                    weight = weight_cache.get_weight(n_features, e, r, s_cap_e, s_cap_r, s, index_type, max_order);
+                }
+                else if (index_type == IndexType::SII)
                 {
                     weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
                 }
@@ -1052,7 +1127,11 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 int s = 1;
                 int sign = (s_cap_r_i % 2 == 0) ? 1 : -1;
                 double weight = 0;
-                if (index_type == IndexType::SII)
+                if (index_type == IndexType::CUSTOM)
+                {
+                    weight = weight_cache.get_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, index_type, max_order);
+                }
+                else if (index_type == IndexType::SII)
                 {
                     weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
                 }
@@ -1093,7 +1172,11 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                     s = 2;
                     sign = (s_cap_r_combined % 2 == 0) ? 1 : -1;
 
-                    if (index_type == IndexType::SII)
+                    if (index_type == IndexType::CUSTOM)
+                    {
+                        weight = weight_cache.get_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, index_type, max_order);
+                    }
+                    else if (index_type == IndexType::SII)
                     {
                         weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
                     }
@@ -1152,7 +1235,7 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 Py_DECREF(key);
                 Py_DECREF(key_item);
                 Py_DECREF(value);
-                for (int j = i+1; j < n_features; j++)
+                for (int j = i + 1; j < n_features; j++)
                 {
                     key = PyTuple_New(2);
                     PyObject *key_item1 = PyLong_FromLong(i);
@@ -1168,7 +1251,6 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                     Py_DECREF(value);
                 }
                 Py_DECREF(key_item);
-
             }
         }
 
@@ -1184,7 +1266,158 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
         Py_XDECREF(r_sizes_array);
         Py_XDECREF(feature_in_e_array);
         Py_XDECREF(leaf_id_array);
+        Py_XDECREF(weight_table_array);
 
         return output;
     }
+}
+
+static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
+{
+    PyObject *leaf_predictions_obj;
+    PyObject *e_obj;
+    PyObject *r_obj;
+    PyObject *e_sizes;
+    PyObject *r_sizes;
+    int n_features;
+    int max_order;
+    const char *index_cptr;
+
+    if (!PyArg_ParseTuple(args, "OOOOOsii", &leaf_predictions_obj, &e_obj, &r_obj, &e_sizes, &r_sizes, &index_cptr, &n_features, &max_order))
+    {
+        return NULL;
+    }
+    if (!PyArray_Check(leaf_predictions_obj) || !PyArray_Check(e_obj) || !PyArray_Check(r_obj) || !PyArray_Check(e_sizes) || !PyArray_Check(r_sizes))
+    {
+        PyErr_SetString(PyExc_TypeError, "Input data must be numpy arrays");
+        return NULL;
+    }
+
+    PyArrayObject *leaf_predictions_array = (PyArrayObject *)PyArray_FROM_OTF(leaf_predictions_obj, NPY_FLOAT32, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *e_array = (PyArrayObject *)PyArray_FROM_OTF(e_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *r_array = (PyArrayObject *)PyArray_FROM_OTF(r_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *e_sizes_array = (PyArrayObject *)PyArray_FROM_OTF(e_sizes, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *r_sizes_array = (PyArrayObject *)PyArray_FROM_OTF(r_sizes, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    std::string index_str = std::string(index_cptr);
+    if (!leaf_predictions_array || !e_array || !r_array || !e_sizes_array || !r_sizes_array)
+    {
+        Py_XDECREF(leaf_predictions_array);
+        Py_XDECREF(e_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(e_sizes_array);
+        Py_XDECREF(r_sizes_array);
+        PyErr_SetString(PyExc_TypeError, "Failed to convert input to numpy arrays");
+        return NULL;
+    }
+
+    IndexType index;
+    if (!parse_index_type(index_str, index))
+    {
+        Py_XDECREF(leaf_predictions_array);
+        Py_XDECREF(e_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(e_sizes_array);
+        Py_XDECREF(r_sizes_array);
+        PyErr_SetString(PyExc_ValueError, ("Unsupported index type: " + index_str).c_str());
+        return NULL;
+    }
+
+    int64_t *e_data = (int64_t *)PyArray_DATA(e_array);
+    int64_t *r_data = (int64_t *)PyArray_DATA(r_array);
+    int64_t *e_sizes_data = (int64_t *)PyArray_DATA(e_sizes_array);
+    int64_t *r_sizes_data = (int64_t *)PyArray_DATA(r_sizes_array);
+    float *leaf_predictions = (float *)PyArray_DATA(leaf_predictions_array);
+
+    int n_nodes   = static_cast<int>(e_array->dimensions[0]);
+    int e_stride  = static_cast<int>(e_array->dimensions[1]);
+    int r_stride  = static_cast<int>(r_array->dimensions[1]);
+
+    // Initialize weight cache and buffers for processing E and R sets for each node.
+    // The weight cache is initialized with a size based on the number of features, and we use fixed-size bit buffers for small sets of features (up to 64) and dynamic vectors for larger sets to efficiently store the indices of features in E and R for each node.
+    inter_weights::WeightCache weight_cache = inter_weights::WeightCache((uint64_t)(3 * n_features));
+    algorithms::SparseInteractionMap sparse_result;
+
+    uint64_t bit_buffer_E[64];
+    uint64_t bit_buffer_R[64];
+    std::vector<uint64_t> vector_buffer_E;
+    std::vector<uint64_t> vector_buffer_R;
+    uint64_t *e_buffer;
+    uint64_t *r_buffer;
+    int e_count, r_count;
+
+    for (int i = 0; i < n_nodes; i++)
+    {
+
+        // Choose the appropriate buffer based on the size of E and R for the current node.
+        e_count = static_cast<int>(e_sizes_data[i]);
+        r_count = static_cast<int>(r_sizes_data[i]);
+        if (e_count <= 64)
+        {
+            e_buffer = bit_buffer_E;
+        }
+        else
+        {
+            vector_buffer_E.resize(e_count);
+            e_buffer = vector_buffer_E.data();
+        }
+        if (r_count <= 64)
+        {
+            r_buffer = bit_buffer_R;
+        }
+        else
+        {
+            vector_buffer_R.resize(r_count);
+            r_buffer = vector_buffer_R.data();
+        }
+
+        for (int j = 0; j < e_count; j++)
+        {
+            e_buffer[j] = static_cast<uint64_t>(e_data[i * e_stride + j]);
+        }
+        for (int j = 0; j < r_count; j++)
+        {
+            r_buffer[j] = static_cast<uint64_t>(r_data[i * r_stride + j]);
+        }
+        // Get leaf value and compute contributions for all subsets of E and R up to the specified max_order.
+        // We iterate over all possible subset sizes s from 1 to max_order.
+        // For each subset size s, we determine how many features in the subset come from E (s_cap_e) and how many come from R (s_cap_r).
+        // We then compute the weight for that combination of features using the weight cache and call the recursive enumeration functions to generate all subsets of E and R with the specified number of features, updating the interactions map with the contributions.
+        float leaf_value = leaf_predictions[i];
+        BitSet subset(n_features);
+        for (int s = 1; s <= max_order; ++s)
+        {
+            int min_from_e = std::max(0, s - static_cast<int>(r_count));
+            int max_from_e = std::min(s, static_cast<int>(e_count));
+            for (int s_cap_e = min_from_e; s_cap_e <= max_from_e; ++s_cap_e)
+            {
+                int s_cap_r = s - s_cap_e;
+                const double weight = weight_cache.get_weight(n_features, e_count, r_count, s_cap_e, s_cap_r, s, index, max_order);
+                if (weight == 0.0)
+                {
+                    continue;
+                }
+                const double contribution = static_cast<double>(leaf_value) * weight;
+                // We now update all the interactions corresponding to subsets of E and R with s_cap_e features from E and s_cap_r features from R by calling the enumerate_e_subsets function, which will recursively generate all such subsets and update the interactions map with the computed contribution for each subset.
+                algorithms::enumerate_e_subsets(
+                    e_buffer,
+                    static_cast<int>(e_count),
+                    r_buffer,
+                    static_cast<int>(r_count),
+                    0,
+                    s_cap_e,
+                    s_cap_r,
+                    subset,
+                    contribution,
+                    sparse_result);
+            }
+        }
+    }
+    PyObject *output = sparse_map_to_pydict(sparse_result);
+
+    Py_XDECREF(leaf_predictions_array);
+    Py_XDECREF(e_array);
+    Py_XDECREF(r_array);
+    Py_XDECREF(e_sizes_array);
+    Py_XDECREF(r_sizes_array);
+    return output;
 }

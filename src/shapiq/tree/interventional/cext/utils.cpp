@@ -23,7 +23,8 @@ enum class IndexType
     CHII,
     FBII,
     FSII,
-    STII
+    STII,
+    CUSTOM
 };
 
 enum class StorageType
@@ -51,7 +52,7 @@ class BitSet
 public:
     // explicit constructor to initialize the BitSet with the number of features. It determines whether to use small storage (a single uint64_t) or large storage (a vector of uint64_t) based on the number of features.
 
-    BitSet() : num_features(0), size(0), storage_type(StorageType::NUM), small_data(0ULL) {}
+    BitSet() : size(0), num_features(0), small_data(0ULL),  storage_type(StorageType::NUM) {}
 
     explicit BitSet(int64_t num_features)
         : num_features(num_features), size(0)
@@ -91,6 +92,11 @@ public:
     {
         for (size_t i = 0; i < count; i++)
         {
+            if (feature_ids[i] < 0)
+            {
+                // Assume that -1 is used as a sentinel value to indicate the end of the feature list. If we encounter a negative feature ID, we stop processing further.
+                break;
+            }
             add(feature_ids[i]);
         }
     }

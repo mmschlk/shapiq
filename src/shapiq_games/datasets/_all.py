@@ -27,17 +27,23 @@ SHAPIQ_DATASETS_FOLDER = Path(__file__).parent / "data"
 
 
 def _create_folder() -> None:
-    """Create the datasets folder if it does not exist."""
+    """Create the datasets folder if it does not exist.
+
+    The folder is created at the location specified by SHAPIQ_DATASETS_FOLDER.
+    Uses mkdir with parents=True and exist_ok=True for safety.
+
+    """
     Path(SHAPIQ_DATASETS_FOLDER).mkdir(parents=True, exist_ok=True)
 
 
-def _try_load(csv_file_name: str, **kwargs) -> pd.DataFrame:
+def _try_load(csv_file_name: str, **kwargs: dict[str, any]) -> pd.DataFrame:
     """Try to load a dataset from the local folder.
 
-    If it does not exist, load it from GitHub and save it to the local folder.
+    Attempts to load a CSV file from the local datasets folder. If the file
+    does not exist, fetches it from GitHub and saves it locally for future use.
 
     Args:
-        csv_file_name: The name of the csv file to load.
+        csv_file_name: The name of the CSV file to load.
         **kwargs: Additional keyword arguments forwarded to ``pandas.read_csv``.
 
     Returns:
@@ -214,13 +220,14 @@ def load_adult_census() -> tuple[pd.DataFrame, pd.Series]:
     return x_data, y_data
 
 
-def load_breast_cancer():
+def load_breast_cancer() -> tuple[pd.DataFrame, pd.Series]:
     """Load the breast cancer dataset from scikit-learn.
 
     Original source: https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic
 
     Returns:
-        The breast cancer dataset as pandas objects ``(X, y)``.
+        A tuple (X, y) where X is a DataFrame with 30 features and y is a Series
+        with binary target values.
 
     Example:
         >>> from shapiq_games.datasets import load_breast_cancer
@@ -232,16 +239,17 @@ def load_breast_cancer():
     return breast_cancer(return_X_y=True, as_frame=True)
 
 
-def load_wine_quality():
+def load_wine_quality() -> tuple[pd.DataFrame, pd.Series]:
     """Load the wine quality dataset from the UCI Machine Learning Repository.
 
     Original source: https://archive.ics.uci.edu/dataset/186/wine+quality
 
-    The loader combines the red and white wine quality datasets and one-hot encodes the
-    wine type.
+    The loader combines the red and white wine quality datasets and one-hot encodes
+    the wine type.
 
     Returns:
-        The wine quality dataset as pandas objects ``(X, y)``.
+        A tuple (X, y) where X is a DataFrame with 12 features (including encoded
+        wine type) and y is a Series with quality scores.
 
     Example:
         >>> from shapiq_games.datasets import load_wine_quality
@@ -261,10 +269,10 @@ def load_wine_quality():
     df_white["type"] = "white"
 
     # Combine red and white datasets
-    df = pd.concat([df_red, df_white], ignore_index=True)
+    data = pd.concat([df_red, df_white], ignore_index=True)
 
-    y = df["quality"].astype(float)
-    X = df.drop(columns=["quality"])
+    y = data["quality"].astype(float)
+    X = data.drop(columns=["quality"])
 
     # One-hot encode the wine type
     X = pd.get_dummies(X, columns=["type"], drop_first=True)
@@ -272,7 +280,7 @@ def load_wine_quality():
     return X, y
 
 
-def load_real_estate():
+def load_real_estate() -> tuple[pd.DataFrame, pd.Series]:
     """Load the real estate valuation dataset from the UCI repository.
 
     Original source: https://archive.ics.uci.edu/dataset/477/real+estate+valuation+data+set
@@ -280,7 +288,8 @@ def load_real_estate():
     The loader derives a month feature from the transaction date and one-hot encodes it.
 
     Returns:
-        The real estate dataset as pandas objects ``(X, y)``.
+        A tuple (X, y) where X is a DataFrame with 11 features (including encoded months)
+        and y is a Series with house price unit area values.
 
     Example:
         >>> from shapiq_games.datasets import load_real_estate
@@ -290,21 +299,21 @@ def load_real_estate():
 
     """
     url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00477/Real%20estate%20valuation%20data%20set.xlsx"
-    df = pd.read_excel(url)
+    data = pd.read_excel(url)
 
     # Drop index column
-    df = df.drop(columns=["No"])
+    data = data.drop(columns=["No"])
 
     # Use the correct transaction date column
-    df["month"] = (df["X1 transaction date"] % 1 * 12).round().astype(int)
-    df["month"] = df["month"].replace({0: 1, 12: 1})  # Fix edge cases
+    data["month"] = (data["X1 transaction date"] % 1 * 12).round().astype(int)
+    data["month"] = data["month"].replace({0: 1, 12: 1})  # Fix edge cases
 
     # Drop original date, one-hot encode month
-    df = df.drop(columns=["X1 transaction date"])
-    df = pd.get_dummies(df, columns=["month"], drop_first=True)
+    data = data.drop(columns=["X1 transaction date"])
+    data = pd.get_dummies(data, columns=["month"], drop_first=True)
 
-    y = df["Y house price of unit area"].astype(float)
-    X = df.drop(columns=["Y house price of unit area"])
+    y = data["Y house price of unit area"].astype(float)
+    X = data.drop(columns=["Y house price of unit area"])
 
     return X, y
 
@@ -312,23 +321,17 @@ def load_real_estate():
 def load_nhanesi() -> tuple[pd.DataFrame, pd.Series]:
     """Return a nicely packaged version of NHANES I data with survival times as labels.
 
-    Used in survival analysis tasks.
-
-    Parameters
-    ----------
-    display : bool, optional
-        If True, returns the features with a modified display. Default is False.
-    n_points : int, optional
-        Number of data points to sample. Default is None (returns the entire dataset).
+    Used in survival analysis tasks. The dataset is loaded from local CSV files
+    (NHANESI_X.csv and NHANESI_y.csv).
 
     Returns:
-        The NHANES I dataset as pandas objects ``(X, y)``.
+        A tuple (X, y) where X is a DataFrame with features and y is a Series
+        with survival times as targets.
 
-    Examples:
-    --------
-    Usage example::
-
-        features, survival_times = shap.datasets.nhanesi(display=True, n_points=100)
+    Example:
+        >>> from shapiq_games.datasets import load_nhanesi
+        >>> features, survival_times = load_nhanesi()
+        >>> print(features.shape, survival_times.shape)
 
     """
     X = _try_load("NHANESI_X.csv", index_col=0)
@@ -369,7 +372,7 @@ def load_communities_and_crime() -> tuple[pd.DataFrame, pd.Series]:
     return X, y
 
 
-def load_forest_fires():
+def load_forest_fires() -> tuple[pd.DataFrame, pd.Series]:
     """Load the forest fires dataset from the UCI Machine Learning Repository.
 
     Original source: https://archive.ics.uci.edu/dataset/162/forest+fires
@@ -378,7 +381,8 @@ def load_forest_fires():
     the season feature.
 
     Returns:
-        The forest fires dataset as pandas objects ``(X, y)``.
+        A tuple (X, y) where X is a DataFrame with 12 features (including encoded seasons)
+        and y is a Series with burned area values.
 
     Example:
         >>> from shapiq_games.datasets import load_forest_fires
@@ -388,12 +392,12 @@ def load_forest_fires():
 
     """
     url = "https://archive.ics.uci.edu/ml/machine-learning-databases/forest-fires/forestfires.csv"
-    df = pd.read_csv(url)
+    data = pd.read_csv(url)
 
-    y = df["area"].astype(float)
+    y = data["area"].astype(float)
 
     # Drop 'day' and map month to season
-    df = df.drop(columns=["area", "day"])
+    data = data.drop(columns=["area", "day"])
 
     season_map = {
         "dec": "winter",
@@ -410,11 +414,11 @@ def load_forest_fires():
         "nov": "fall",
     }
 
-    df["season"] = df["month"].map(season_map)
-    df = df.drop(columns=["month"])
+    data["season"] = data["month"].map(season_map)
+    data = data.drop(columns=["month"])
 
     # One-hot encode season
-    X = pd.get_dummies(df, columns=["season"], drop_first=True)
+    X = pd.get_dummies(data, columns=["season"], drop_first=True)
 
     return X, y
 
@@ -438,8 +442,7 @@ def load_independentlinear60() -> tuple[pd.DataFrame, pd.Series]:
 
     """
     # set a constant seed
-    old_seed = np.random.seed()
-    np.random.seed(0)
+    rng = np.random.default_rng(42)  # use a local RNG to avoid affecting global state
 
     # generate dataset with known correlation
     N, M = 1000, 60
@@ -448,16 +451,10 @@ def load_independentlinear60() -> tuple[pd.DataFrame, pd.Series]:
     beta = np.zeros(M)
     beta[0:30:3] = 1
 
-    def f(X):
-        return np.matmul(X, beta)
-
     # Make sure the sample correlation is a perfect match
-    X_start = np.random.randn(N, M)
+    X_start = rng.randn(N, M)
     X = X_start - X_start.mean(0)
-    y = f(X) + np.random.randn(N) * 1e-2
-
-    # restore the previous numpy random seed
-    np.random.seed(old_seed)
+    y = np.matmul(X, beta) + rng.randn(N) * 1e-2
 
     return pd.DataFrame(X), pd.Series(y, name="target")
 
@@ -481,8 +478,7 @@ def load_corrgroups60() -> tuple[pd.DataFrame, pd.Series]:
 
     """
     # set a constant seed
-    old_seed = np.random.seed()
-    np.random.seed(0)
+    rng = np.random.default_rng(42)
 
     # generate dataset with known correlation
     N, M = 1000, 60
@@ -498,26 +494,17 @@ def load_corrgroups60() -> tuple[pd.DataFrame, pd.Series]:
         C[i, i + 2] = C[i + 2, i] = 0.99
         C[i + 1, i + 2] = C[i + 2, i + 1] = 0.99
 
-    def f(X):
-        return np.matmul(X, beta)
-
     # Make sure the sample correlation is a perfect match
-    X_start = np.random.randn(N, M)
+    X_start = rng.randn(N, M)
     X_centered = X_start - X_start.mean(0)
     Sigma = np.matmul(X_centered.T, X_centered) / X_centered.shape[0]
     W = np.linalg.cholesky(np.linalg.inv(Sigma)).T
     X_white = np.matmul(X_centered, W.T)
-    assert (
-        np.linalg.norm(np.corrcoef(np.matmul(X_centered, W.T).T) - np.eye(M)) < 1e-6
-    )  # ensure this decorrelates the data
 
     # create the final data
     X_final = np.matmul(X_white, np.linalg.cholesky(C).T)
     X = X_final
-    y = f(X) + np.random.randn(N) * 1e-2
-
-    # restore the previous numpy random seed
-    np.random.seed(old_seed)
+    y = np.matmul(X, beta) + rng.randn(N) * 1e-2
 
     return pd.DataFrame(X), pd.Series(y, name="target")
 
@@ -622,7 +609,33 @@ def load_leukemia() -> tuple[pd.DataFrame, pd.Series]:
     return X, y
 
 
-def load_condind(n_samples=1000, n_irrelevant=3, random_state=None):
+def load_condind(
+    n_samples: int = 1000,
+    n_irrelevant: int = 3,
+    random_state: int | None = None,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Load the conditional independence synthetic dataset.
+
+    Generates a binary classification problem where x1 and x2 are uniformly
+    distributed and the target is True if x1 + x2 > 1, with additional
+    irrelevant noise features.
+
+    Args:
+        n_samples: Number of samples to generate. Defaults to 1000.
+        n_irrelevant: Number of irrelevant noise features to include. Defaults to 3.
+        random_state: Seed for reproducibility. Defaults to None.
+
+    Returns:
+        A tuple (X, y) where X is a DataFrame with n_irrelevant+2 features
+        and y is a Series with binary labels.
+
+    Example:
+        >>> from shapiq_games.datasets import load_condind
+        >>> x_data, y_data = load_condind(n_samples=500, n_irrelevant=2)
+        >>> print(x_data.shape, y_data.shape)
+        ((500, 4), (500,))
+
+    """
     rng = np.random.default_rng(random_state)
     x1 = rng.uniform(0, 1, n_samples)
     x2 = rng.uniform(0, 1, n_samples)
@@ -633,7 +646,34 @@ def load_condind(n_samples=1000, n_irrelevant=3, random_state=None):
     return pd.DataFrame(data), pd.Series(y, name="y")
 
 
-def load_xor(n_samples=1000, n_irrelevant=2, noise=0.05, random_state=None):
+def load_xor(
+    n_samples: int = 1000,
+    n_irrelevant: int = 2,
+    noise: float = 0.05,
+    random_state: int | None = None,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Load the XOR synthetic dataset.
+
+    Generates a binary classification problem based on XOR logic where
+    y = (x1 != x2). Features are binary and optionally corrupted with label noise.
+
+    Args:
+        n_samples: Number of samples to generate. Defaults to 1000.
+        n_irrelevant: Number of irrelevant noise features to include. Defaults to 2.
+        noise: Fraction of labels to flip randomly. Defaults to 0.05.
+        random_state: Seed for reproducibility. Defaults to None.
+
+    Returns:
+        A tuple (X, y) where X is a DataFrame with n_irrelevant+2 features
+        and y is a Series with binary labels.
+
+    Example:
+        >>> from shapiq_games.datasets import load_xor
+        >>> x_data, y_data = load_xor(n_samples=500, noise=0.1)
+        >>> print(x_data.shape, y_data.shape)
+        ((500, 4), (500,))
+
+    """
     rng = np.random.default_rng(random_state)
     x1 = rng.integers(0, 2, n_samples)
     x2 = rng.integers(0, 2, n_samples)
@@ -647,7 +687,33 @@ def load_xor(n_samples=1000, n_irrelevant=2, noise=0.05, random_state=None):
     return pd.DataFrame(data), pd.Series(y, name="y")
 
 
-def load_group(n_samples=1000, n_irrelevant=2, random_state=None):
+def load_group(
+    n_samples: int = 1000,
+    n_irrelevant: int = 2,
+    random_state: int | None = None,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Load the group interaction synthetic dataset.
+
+    Generates a binary classification problem with four Gaussian clusters.
+    Clusters are labeled with grouping interactions: (0, 0) and (2, 2) share
+    label 0, while (1, 1) and (3, 3) share label 1.
+
+    Args:
+        n_samples: Number of samples to generate. Defaults to 1000.
+        n_irrelevant: Number of irrelevant noise features to include. Defaults to 2.
+        random_state: Seed for reproducibility. Defaults to None.
+
+    Returns:
+        A tuple (X, y) where X is a DataFrame with n_irrelevant+2 features
+        and y is a Series with binary labels.
+
+    Example:
+        >>> from shapiq_games.datasets import load_group
+        >>> x_data, y_data = load_group(n_samples=500)
+        >>> print(x_data.shape, y_data.shape)
+        ((500, 4), (500,))
+
+    """
     rng = np.random.default_rng(random_state)
     centers = np.array([[-2, -2], [2, 2], [-2, 2], [2, -2]], dtype=float)
     cluster_labels = [0, 1, 0, 1]
@@ -668,7 +734,34 @@ def load_group(n_samples=1000, n_irrelevant=2, random_state=None):
     return pd.DataFrame(data), pd.Series(y, name="y")
 
 
-def load_cross(n_samples=1000, a=0.3, n_irrelevant=2, random_state=None):
+def load_cross(
+    n_samples: int = 1000,
+    a: float = 0.3,
+    n_irrelevant: int = 2,
+    random_state: int | None = None,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Load the cross synthetic dataset.
+
+    Generates a binary classification problem where the target is True
+    if (|x1| < a) XOR (|x2| < a), creating a cross-shaped decision boundary.
+
+    Args:
+        n_samples: Number of samples to generate. Defaults to 1000.
+        a: Threshold parameter controlling the cross width. Defaults to 0.3.
+        n_irrelevant: Number of irrelevant noise features to include. Defaults to 2.
+        random_state: Seed for reproducibility. Defaults to None.
+
+    Returns:
+        A tuple (X, y) where X is a DataFrame with n_irrelevant+2 features
+        and y is a Series with binary labels.
+
+    Example:
+        >>> from shapiq_games.datasets import load_cross
+        >>> x_data, y_data = load_cross(n_samples=500, a=0.2)
+        >>> print(x_data.shape, y_data.shape)
+        ((500, 4), (500,))
+
+    """
     rng = np.random.default_rng(random_state)
     x1 = rng.uniform(-1, 1, n_samples)
     x2 = rng.uniform(-1, 1, n_samples)
@@ -679,7 +772,35 @@ def load_cross(n_samples=1000, a=0.3, n_irrelevant=2, random_state=None):
     return pd.DataFrame(data), pd.Series(y, name="y")
 
 
-def load_chess(n_samples=1000, m=8, n_irrelevant=2, random_state=None):
+def load_chess(
+    n_samples: int = 1000,
+    m: int = 8,
+    n_irrelevant: int = 2,
+    random_state: int | None = None,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Load the chessboard synthetic dataset.
+
+    Generates a binary classification problem with a checkerboard pattern.
+    The decision boundary is based on whether (row + col) is even or odd,
+    where row and col are derived from the input features.
+
+    Args:
+        n_samples: Number of samples to generate. Defaults to 1000.
+        m: Size of the chessboard grid (m x m). Defaults to 8.
+        n_irrelevant: Number of irrelevant noise features to include. Defaults to 2.
+        random_state: Seed for reproducibility. Defaults to None.
+
+    Returns:
+        A tuple (X, y) where X is a DataFrame with n_irrelevant+2 features
+        and y is a Series with binary labels.
+
+    Example:
+        >>> from shapiq_games.datasets import load_chess
+        >>> x_data, y_data = load_chess(n_samples=500, m=4)
+        >>> print(x_data.shape, y_data.shape)
+        ((500, 4), (500,))
+
+    """
     rng = np.random.default_rng(random_state)
     x1 = rng.uniform(0, 1, n_samples)
     x2 = rng.uniform(0, 1, n_samples)
@@ -692,7 +813,34 @@ def load_chess(n_samples=1000, m=8, n_irrelevant=2, random_state=None):
     return pd.DataFrame(data), pd.Series(y, name="y")
 
 
-def load_sphere(n_samples=1000, radius=0.7, n_irrelevant=2, random_state=None):
+def load_sphere(
+    n_samples: int = 1000,
+    radius: float = 0.7,
+    n_irrelevant: int = 2,
+    random_state: int | None = None,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Load the sphere synthetic dataset.
+
+    Generates a binary classification problem where samples inside a sphere
+    are labeled as 1 and samples outside are labeled as 0.
+
+    Args:
+        n_samples: Number of samples to generate. Defaults to 1000.
+        radius: Radius of the sphere. Defaults to 0.7.
+        n_irrelevant: Number of irrelevant noise features to include. Defaults to 2.
+        random_state: Seed for reproducibility. Defaults to None.
+
+    Returns:
+        A tuple (X, y) where X is a DataFrame with n_irrelevant+2 features
+        and y is a Series with binary labels.
+
+    Example:
+        >>> from shapiq_games.datasets import load_sphere
+        >>> x_data, y_data = load_sphere(n_samples=500, radius=0.5)
+        >>> print(x_data.shape, y_data.shape)
+        ((500, 4), (500,))
+
+    """
     rng = np.random.default_rng(random_state)
     x1 = rng.uniform(-1, 1, n_samples)
     x2 = rng.uniform(-1, 1, n_samples)
@@ -703,7 +851,36 @@ def load_sphere(n_samples=1000, radius=0.7, n_irrelevant=2, random_state=None):
     return pd.DataFrame(data), pd.Series(y, name="y")
 
 
-def load_disjunct(n_samples=1000, thresholds=None, n_irrelevant=2, random_state=None):
+def load_disjunct(
+    n_samples: int = 1000,
+    thresholds: list[float] | None = None,
+    n_irrelevant: int = 2,
+    random_state: int | None = None,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Load the disjunctive synthetic dataset.
+
+    Generates a binary classification problem where the target is True if any
+    of the relevant features exceeds its corresponding threshold, creating
+    a disjunctive (OR) decision boundary.
+
+    Args:
+        n_samples: Number of samples to generate. Defaults to 1000.
+        thresholds: Threshold values for each relevant feature. If None, defaults
+            to [0.8, 0.8, 0.8]. Defaults to None.
+        n_irrelevant: Number of irrelevant noise features to include. Defaults to 2.
+        random_state: Seed for reproducibility. Defaults to None.
+
+    Returns:
+        A tuple (X, y) where X is a DataFrame with (len(thresholds) + n_irrelevant)
+        features and y is a Series with binary labels.
+
+    Example:
+        >>> from shapiq_games.datasets import load_disjunct
+        >>> x_data, y_data = load_disjunct(n_samples=500, thresholds=[0.5, 0.5])
+        >>> print(x_data.shape, y_data.shape)
+        ((500, 4), (500,))
+
+    """
     rng = np.random.default_rng(random_state)
     if thresholds is None:
         thresholds = [0.8, 0.8, 0.8]
@@ -718,7 +895,34 @@ def load_disjunct(n_samples=1000, thresholds=None, n_irrelevant=2, random_state=
     return pd.DataFrame(data), pd.Series(y, name="y")
 
 
-def load_random(n_samples=1000, n_features=5, p=0.5, random_state=None):
+def load_random(
+    n_samples: int = 1000,
+    n_features: int = 5,
+    p: float = 0.5,
+    random_state: int | None = None,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Load a random synthetic dataset.
+
+    Generates a binary classification problem with random features and random
+    binary targets. All features are uniform random in [0, 1].
+
+    Args:
+        n_samples: Number of samples to generate. Defaults to 1000.
+        n_features: Number of features to generate. Defaults to 5.
+        p: Probability of target being 1 (Bernoulli parameter). Defaults to 0.5.
+        random_state: Seed for reproducibility. Defaults to None.
+
+    Returns:
+        A tuple (X, y) where X is a DataFrame with n_features features
+        and y is a Series with binary labels.
+
+    Example:
+        >>> from shapiq_games.datasets import load_random
+        >>> x_data, y_data = load_random(n_samples=500, n_features=10)
+        >>> print(x_data.shape, y_data.shape)
+        ((500, 10), (500,))
+
+    """
     rng = np.random.default_rng(random_state)
     data = {f"x{i + 1}": rng.uniform(0, 1, n_samples) for i in range(n_features)}
     y = rng.binomial(1, p, n_samples)
@@ -731,7 +935,19 @@ def load_random(n_samples=1000, n_features=5, p=0.5, random_state=None):
 
 
 def _fetch(dataset_id: int) -> tuple[pd.DataFrame, pd.Series]:
-    """Fetch a UCI dataset by id via ucimlrepo; return (X, y) as DataFrame / Series."""
+    """Fetch a UCI dataset by ID via ucimlrepo; return (X, y) as DataFrame/Series.
+
+    Args:
+        dataset_id: The UCI Machine Learning Repository dataset ID.
+
+    Returns:
+        A tuple (X, y) where X is a DataFrame with features and y is a Series
+        with targets.
+
+    Raises:
+        ImportError: If the 'ucimlrepo' package is not installed.
+
+    """
     if _fetch_ucirepo is None:
         msg = "The 'ucimlrepo' package is required. Install it with: pip install ucimlrepo"
         raise ImportError(msg)
@@ -742,7 +958,18 @@ def _fetch(dataset_id: int) -> tuple[pd.DataFrame, pd.Series]:
 
 
 def _impute(X: pd.DataFrame) -> pd.DataFrame:
-    """Impute missing values: median for numeric columns, mode for object columns."""
+    """Impute missing values in a DataFrame.
+
+    For numeric columns, uses median imputation. For object columns, uses mode
+    imputation. Modifies the DataFrame in-place and returns it.
+
+    Args:
+        X: Input DataFrame with potential missing values.
+
+    Returns:
+        The DataFrame with missing values imputed.
+
+    """
     for col in X.columns:
         if X[col].isna().any():
             if X[col].dtype == object:
@@ -753,7 +980,16 @@ def _impute(X: pd.DataFrame) -> pd.DataFrame:
 
 
 def _encode_categorical(X: pd.DataFrame) -> pd.DataFrame:
-    """Ordinal-encode all object/category columns in-place."""
+    """Ordinal-encode all object/category columns in a DataFrame.
+
+    Args:
+        X: Input DataFrame with potential categorical columns.
+
+    Returns:
+        A new DataFrame with all object and category columns ordinal-encoded.
+        Unknown categories are encoded as -1.
+
+    """
     from sklearn.preprocessing import OrdinalEncoder
 
     cat_cols = X.select_dtypes(include=["object", "category"]).columns

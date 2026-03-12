@@ -33,7 +33,7 @@ def test_correct_calculation_dt_reg_index_order(dt_reg_model, reg_data, index, o
     own_interventional_explainer = InterventionalTreeExplainer(
         model, X_train, index=index, max_order=order, debug=False
     )
-    explanation = own_interventional_explainer.explain_function_cpp(point_to_explain.flatten())
+    explanation = own_interventional_explainer.explain_function(point_to_explain.flatten())
     own_interactions = explanation.interactions
 
     # Interventional Game with Exact Computer
