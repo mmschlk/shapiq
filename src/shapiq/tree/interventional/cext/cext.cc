@@ -68,17 +68,17 @@ static bool parse_index_type(const std::string &index, IndexType &index_type)
      * This function takes a string representation of the index type and maps it to the corresponding IndexType enum value.
      * It returns true if the mapping is successful and false if the input string does not match any supported index type.
      */
-    if (index == "SII" or index == "SV")
+    if (index == "SII" || index == "SV")
     {
         index_type = IndexType::SII;
         return true;
     }
-    if (index == "BII" or index == "BV")
+    if (index == "BII" || index == "BV")
     {
         index_type = IndexType::BII;
         return true;
     }
-    if (index == "CHII" or index == "CV")
+    if (index == "CHII" || index == "CV")
     {
         index_type = IndexType::CHII;
         return true;
@@ -286,7 +286,7 @@ static PyObject *compute_interactions(PyObject *self, PyObject *args)
     int result_size = 0;
     for (int order = 1; order <= max_order; order++)
     {
-        result_size += inter_weights::binom(n_features, order);
+        result_size += static_cast<int>(inter_weights::binom(n_features, order));
     }
 
     double *result = new double[result_size];
@@ -544,7 +544,7 @@ static PyObject *compute_interactions_batched(PyObject *self, PyObject *args)
     int result_size = 0;
     for (int order = 1; order <= max_order; order++)
     {
-        result_size += inter_weights::binom(n_features, order);
+        result_size += static_cast<int>(inter_weights::binom(n_features, order));
     }
 
     double *result = new double[result_size];
@@ -994,7 +994,7 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
         int result_size = 0;
         for (int order = 1; order <= max_order; order++)
         {
-            result_size += inter_weights::binom(n_features, order);
+            result_size += static_cast<int>(inter_weights::binom(n_features, order));
         }
 
         double *result = new double[result_size];
