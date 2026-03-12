@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import math
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Literal, cast, get_args
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 import pandas as pd
@@ -312,9 +312,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             baseline_value=moebius_transform.get((), 0.0),
         )
         autoconverter = MoebiusConverter(moebius_coefficients=moebius_interactions)
-        converted_interaction_values = autoconverter(
-            index=cast("ValidMoebiusConverterIndices", self.index), order=self.max_order
-        )
+        converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
         self._interaction_lookup = converted_interaction_values.interaction_lookup
         return converted_interaction_values.values  # noqa: PD011
 
