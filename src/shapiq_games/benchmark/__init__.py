@@ -49,6 +49,25 @@ from .global_xai.benchmark_tabular import (
     CaliforniaHousing as CaliforniaHousingGlobalXAI,
 )
 
+# interventional treeshap-iq explanation games
+from .interventionaltreeshapiq_xai.base import InterventionalGame
+from .interventionaltreeshapiq_xai.benchmark import (
+    AdultCensus as AdultCensusInterventionalTreeSHAPIQXAI,
+    Annealing as AnnealingInterventionalTreeSHAPIQXAI,
+    Arrhythmia as ArrhythmiaInterventionalTreeSHAPIQXAI,
+    BikeSharing as BikeSharingInterventionalTreeSHAPIQXAI,
+    BreastCancer as BreastCancerInterventionalTreeSHAPIQXAI,
+    CaliforniaHousing as CaliforniaHousingInterventionalTreeSHAPIQXAI,
+    Hepatitis as HepatitisInterventionalTreeSHAPIQXAI,
+    Ionosphere as IonosphereInterventionalTreeSHAPIQXAI,
+    Mushroom as MushroomInterventionalTreeSHAPIQXAI,
+    Nursery as NurseryInterventionalTreeSHAPIQXAI,
+    Soybean as SoybeanInterventionalTreeSHAPIQXAI,
+    SynthData as SynthDataInterventionalTreeSHAPIQXAI,
+    Thyroid as ThyroidInterventionalTreeSHAPIQXAI,
+    Zoo as ZooInterventionalTreeSHAPIQXAI,
+)
+
 # local explanation games
 from .local_xai.base import LocalExplanation
 from .local_xai.benchmark_image import ImageClassifier as ImageClassifierLocalXAI
@@ -169,4 +188,20 @@ __all__ = [
     "BikeSharingTreeSHAPIQXAI",
     "CaliforniaHousingTreeSHAPIQXAI",
     "SynthDataTreeSHAPIQXAI",
+    # interventional_treeshapiq_xai games
+    "InterventionalGame",
+    "AdultCensusInterventionalTreeSHAPIQXAI",
+    "AnnealingInterventionalTreeSHAPIQXAI",
+    "ArrhythmiaInterventionalTreeSHAPIQXAI",
+    "BikeSharingInterventionalTreeSHAPIQXAI",
+    "BreastCancerInterventionalTreeSHAPIQXAI",
+    "CaliforniaHousingInterventionalTreeSHAPIQXAI",
+    "HepatitisInterventionalTreeSHAPIQXAI",
+    "IonosphereInterventionalTreeSHAPIQXAI",
+    "MushroomInterventionalTreeSHAPIQXAI",
+    "NurseryInterventionalTreeSHAPIQXAI",
+    "SoybeanInterventionalTreeSHAPIQXAI",
+    "SynthDataInterventionalTreeSHAPIQXAI",
+    "ThyroidInterventionalTreeSHAPIQXAI",
+    "ZooInterventionalTreeSHAPIQXAI",
 ]

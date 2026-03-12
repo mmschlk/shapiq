@@ -11,6 +11,66 @@ if TYPE_CHECKING:
     import numpy as np
 
 
+def _init_classification_game(
+    game: TreeSHAPIQXAI,
+    *,
+    dataset_name: str,
+    x: np.ndarray | int | None,
+    model_name: str,
+    class_label: int | None,
+    normalize: bool,
+    verbose: bool,
+    random_state: int | None,
+) -> None:
+    """Initialize a classification TreeSHAPIQXAI game from a benchmark dataset."""
+    setup = GameBenchmarkSetup(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        verbose=verbose,
+        random_state=random_state,
+    )
+
+    x_explain = get_x_explain(x, setup.x_test)
+
+    TreeSHAPIQXAI.__init__(
+        game,
+        x=x_explain,
+        tree_model=setup.model,
+        normalize=normalize,
+        class_label=class_label,
+        verbose=verbose,
+    )
+
+
+def _init_regression_game(
+    game: TreeSHAPIQXAI,
+    *,
+    dataset_name: str,
+    x: np.ndarray | int | None,
+    model_name: str,
+    normalize: bool,
+    verbose: bool,
+    random_state: int | None,
+) -> None:
+    """Initialize a regression TreeSHAPIQXAI game from a benchmark dataset."""
+    setup = GameBenchmarkSetup(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        verbose=verbose,
+        random_state=random_state,
+    )
+
+    x_explain = get_x_explain(x, setup.x_test)
+
+    TreeSHAPIQXAI.__init__(
+        game,
+        x=x_explain,
+        tree_model=setup.model,
+        normalize=normalize,
+        verbose=verbose,
+    )
+
+
 class AdultCensus(TreeSHAPIQXAI):
     """The Adult Census dataset as a TreeSHAP-IQ explanation game."""
 
@@ -49,23 +109,15 @@ class AdultCensus(TreeSHAPIQXAI):
             msg = "Model name must be either decision_tree' or 'random_forest'."
             raise ValueError(msg)
 
-        setup = GameBenchmarkSetup(
+        _init_classification_game(
+            self,
             dataset_name="adult_census",
+            x=x,
             model_name=model_name,
+            class_label=class_label,
+            normalize=normalize,
             verbose=verbose,
             random_state=random_state,
-        )
-
-        # get x_explain
-        x = get_x_explain(x, setup.x_test)
-
-        # call the super constructor
-        super().__init__(
-            x=x,
-            tree_model=setup.model,
-            normalize=normalize,
-            class_label=class_label,
-            verbose=verbose,
         )
 
 
@@ -103,22 +155,14 @@ class BikeSharing(TreeSHAPIQXAI):
             msg = "Model name must be either decision_tree' or 'random_forest'."
             raise ValueError(msg)
 
-        setup = GameBenchmarkSetup(
+        _init_regression_game(
+            self,
             dataset_name="bike_sharing",
-            model_name=model_name,
-            verbose=verbose,
-            random_state=random_state,
-        )
-
-        # get x_explain
-        x = get_x_explain(x, setup.x_test)
-
-        # call the super constructor
-        super().__init__(
             x=x,
-            tree_model=setup.model,
+            model_name=model_name,
             normalize=normalize,
             verbose=verbose,
+            random_state=random_state,
         )
 
 
@@ -156,22 +200,14 @@ class CaliforniaHousing(TreeSHAPIQXAI):
             msg = "Model name must be either decision_tree' or 'random_forest'."
             raise ValueError(msg)
 
-        setup = GameBenchmarkSetup(
+        _init_regression_game(
+            self,
             dataset_name="california_housing",
-            model_name=model_name,
-            verbose=verbose,
-            random_state=random_state,
-        )
-
-        # get x_explain
-        x = get_x_explain(x, setup.x_test)
-
-        # call the super constructor
-        super().__init__(
             x=x,
-            tree_model=setup.model,
+            model_name=model_name,
             normalize=normalize,
             verbose=verbose,
+            random_state=random_state,
         )
 
 

@@ -267,9 +267,9 @@ def test_xgboost_multiclass_base_score():
 
     x_explain = X[0]
     booster = model.get_booster()
-    
+
     raw_scores = booster.predict(xgb.DMatrix(x_explain.reshape(1, -1)), output_margin=True)[0]
-    
+
     for class_idx in range(3):
         explainer = TreeExplainer(model=model, max_order=1, index="SV", class_index=class_idx)
         sv = explainer.explain(x_explain)
