@@ -258,7 +258,7 @@ def test_xgboost_multiclass_base_score():
     from sklearn.datasets import make_classification
 
     X, y = make_classification(
-        random_state=42, n_samples=200, n_features=5, n_classes=3, n_informative=4
+        random_state=42, n_samples=200, n_features=5, n_classes=3, n_informative=5, n_redundant=0
     )
     model = xgb.XGBClassifier(
         random_state=42, n_estimators=10, max_depth=2, objective="multi:softprob", num_class=3
@@ -267,15 +267,22 @@ def test_xgboost_multiclass_base_score():
 
     x_explain = X[0]
     booster = model.get_booster()
+    
     raw_scores = booster.predict(xgb.DMatrix(x_explain.reshape(1, -1)), output_margin=True)[0]
-
+    
     for class_idx in range(3):
         explainer = TreeExplainer(model=model, max_order=1, index="SV", class_index=class_idx)
         sv = explainer.explain(x_explain)
-        efficiency = sv.values.sum() + sv.baseline_value
+        # TreeExplainer defaults to min_order=0, so sv[()] = baseline_value is included in
+        # sv.values. The efficiency property is therefore: sv.values.sum() == raw_score.
+        # (Adding sv.baseline_value again would double-count it.)
+        assert sv.baseline_value != 0.0, (
+            f"baseline_value is 0.0 for class {class_idx}, indicating base_score was not read correctly"
+        )
+        efficiency = sv.values.sum()
         assert pytest.approx(efficiency, rel=1e-4) == raw_scores[class_idx], (
             f"Efficiency failed for class {class_idx}: {efficiency} != {raw_scores[class_idx]}. "
-            f"baseline_value={sv.baseline_value} (0.0 indicates base_score was not read correctly)"
+            f"baseline_value={sv.baseline_value}"
         )
 
 
