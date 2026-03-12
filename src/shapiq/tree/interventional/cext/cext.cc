@@ -1279,10 +1279,11 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
     PyObject *r_obj;
     PyObject *e_sizes;
     PyObject *r_sizes;
+    int n_features;
     int max_order;
     const char *index_cptr;
 
-    if (!PyArg_ParseTuple(args, "OOOOsi", &leaf_predictions_obj, &e_obj, &r_obj, &e_sizes, &r_sizes, &index_cptr, &max_order))
+    if (!PyArg_ParseTuple(args, "OOOOOsii", &leaf_predictions_obj, &e_obj, &r_obj, &e_sizes, &r_sizes, &index_cptr, &n_features, &max_order))
     {
         return NULL;
     }
@@ -1291,7 +1292,8 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_TypeError, "Input data must be numpy arrays");
         return NULL;
     }
-    PyArrayObject *leaf_predictions_array = (PyArrayObject *)PyArray_FROM_OTF(leaf_predictions_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+
+    PyArrayObject *leaf_predictions_array = (PyArrayObject *)PyArray_FROM_OTF(leaf_predictions_obj, NPY_FLOAT32, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *e_array = (PyArrayObject *)PyArray_FROM_OTF(e_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *r_array = (PyArrayObject *)PyArray_FROM_OTF(r_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
     PyArrayObject *e_sizes_array = (PyArrayObject *)PyArray_FROM_OTF(e_sizes, NPY_INT64, NPY_ARRAY_IN_ARRAY);
@@ -1326,8 +1328,9 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
     int64_t *r_sizes_data = (int64_t *)PyArray_DATA(r_sizes_array);
     float *leaf_predictions = (float *)PyArray_DATA(leaf_predictions_array);
 
-    int n_nodes = static_cast<int>(e_array->dimensions[0]);
-    int n_features = static_cast<int>(r_array->dimensions[0]);
+    int n_nodes   = static_cast<int>(e_array->dimensions[0]);
+    int e_stride  = static_cast<int>(e_array->dimensions[1]);
+    int r_stride  = static_cast<int>(r_array->dimensions[1]);
 
     // Initialize weight cache and buffers for processing E and R sets for each node.
     // The weight cache is initialized with a size based on the number of features, and we use fixed-size bit buffers for small sets of features (up to 64) and dynamic vectors for larger sets to efficiently store the indices of features in E and R for each node.
@@ -1366,47 +1369,46 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
             vector_buffer_R.resize(r_count);
             r_buffer = vector_buffer_R.data();
         }
-        // Fill the buffers
+
         for (int j = 0; j < e_count; j++)
         {
-            e_buffer[j] = static_cast<uint64_t>(e_data[i * n_features + j]);
+            e_buffer[j] = static_cast<uint64_t>(e_data[i * e_stride + j]);
         }
         for (int j = 0; j < r_count; j++)
         {
-            r_buffer[j] = static_cast<uint64_t>(r_data[i * n_features + j]);
-            // Get leaf value
-            float leaf_value = leaf_predictions[i];
-            BitSet subset(n_features);
-            // Compute contributions for all subsets of E and R up to the specified max_order.
-            // We iterate over all possible subset sizes s from 1 to max_order.
-            // For each subset size s, we determine how many features in the subset come from E (s_cap_e) and how many come from R (s_cap_r).
-            // We then compute the weight for that combination of features using the weight cache and call the recursive enumeration functions to generate all subsets of E and R with the specified number of features, updating the interactions map with the contributions.
-            for (int s = 1; s <= max_order; ++s)
+            r_buffer[j] = static_cast<uint64_t>(r_data[i * r_stride + j]);
+        }
+        // Get leaf value and compute contributions for all subsets of E and R up to the specified max_order.
+        // We iterate over all possible subset sizes s from 1 to max_order.
+        // For each subset size s, we determine how many features in the subset come from E (s_cap_e) and how many come from R (s_cap_r).
+        // We then compute the weight for that combination of features using the weight cache and call the recursive enumeration functions to generate all subsets of E and R with the specified number of features, updating the interactions map with the contributions.
+        float leaf_value = leaf_predictions[i];
+        BitSet subset(n_features);
+        for (int s = 1; s <= max_order; ++s)
+        {
+            int min_from_e = std::max(0, s - static_cast<int>(r_count));
+            int max_from_e = std::min(s, static_cast<int>(e_count));
+            for (int s_cap_e = min_from_e; s_cap_e <= max_from_e; ++s_cap_e)
             {
-                int min_from_e = std::max(0, s - static_cast<int>(r_count));
-                int max_from_e = std::min(s, static_cast<int>(e_count));
-                for (int s_cap_e = min_from_e; s_cap_e <= max_from_e; ++s_cap_e)
+                int s_cap_r = s - s_cap_e;
+                const double weight = weight_cache.get_weight(n_features, e_count, r_count, s_cap_e, s_cap_r, s, index, max_order);
+                if (weight == 0.0)
                 {
-                    int s_cap_r = s - s_cap_e;
-                    const double weight = weight_cache.get_weight(n_features, e_count, r_count, s_cap_e, s_cap_r, s, index, max_order);
-                    if (weight == 0.0)
-                    {
-                        continue;
-                    }
-                    const double contribution = static_cast<double>(leaf_value) * weight;
-                    // We now update all the interactions corresponding to subsets of E and R with s_cap_e features from E and s_cap_r features from R by calling the enumerate_e_subsets function, which will recursively generate all such subsets and update the interactions map with the computed contribution for each subset.
-                    algorithms::enumerate_e_subsets(
-                        e_buffer,
-                        static_cast<int>(e_count),
-                        r_buffer,
-                        static_cast<int>(r_count),
-                        0,
-                        s_cap_e,
-                        s_cap_r,
-                        subset,
-                        contribution,
-                        sparse_result);
+                    continue;
                 }
+                const double contribution = static_cast<double>(leaf_value) * weight;
+                // We now update all the interactions corresponding to subsets of E and R with s_cap_e features from E and s_cap_r features from R by calling the enumerate_e_subsets function, which will recursively generate all such subsets and update the interactions map with the computed contribution for each subset.
+                algorithms::enumerate_e_subsets(
+                    e_buffer,
+                    static_cast<int>(e_count),
+                    r_buffer,
+                    static_cast<int>(r_count),
+                    0,
+                    s_cap_e,
+                    s_cap_r,
+                    subset,
+                    contribution,
+                    sparse_result);
             }
         }
     }

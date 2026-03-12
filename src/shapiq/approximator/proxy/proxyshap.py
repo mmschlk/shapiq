@@ -114,7 +114,7 @@ class MSRBiased(Approximator):
         coalition_values -= baseline_value  # Normalize values
         e_matrix, r_matrix, e_counts, r_counts = self._coalitions_to_tree_paths(coalitions_matrix)
         interactions_dict = compute_interactions_sparse(
-            e_matrix, r_matrix, e_counts, r_counts, self.index, self.max_order
+            e_matrix, r_matrix, e_counts, r_counts, self.index, self.n, self.max_order
         )
         interactions_dict[()] = baseline_value  # Set the value of the empty coalition
         return InteractionValues(
