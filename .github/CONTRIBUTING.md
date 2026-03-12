@@ -68,7 +68,7 @@ to stay up-to-date with the latest Python versions. With `uv`, you can set up yo
 environment with the following command:
 
 ```sh
-uv sync --all-extras --dev
+uv sync
 ```
 
 Now you are all set up and ready to go.
@@ -117,7 +117,7 @@ uv sync --group docs
 Then, you can build the documentation from the root of the repository with:
 
 ```sh
-uv run sphinx-build docs/source docs/build
+uv run sphinx-build -b html docs/source docs/build/html
 ```
 
 This will render the documentation in the `docs/build` directory. You can open the `index.html` file
@@ -152,8 +152,15 @@ uv run pytest --cov=shapiq
 
 #### Static Type Checking and Code Quality
 
-Currently, we do not have static type checking in place. We use `pre-commit` to run some code quality
-checks. These checks **absolutely need to pass**. You can run the checks with the following command:
+We use [`ty`](https://github.com/astral-sh/ty) for static type checking on the `src/shapiq/` package.
+You can run the type checker with:
+
+```sh
+uv run ty check src/shapiq
+```
+
+We also use `pre-commit` to run code quality checks. These checks **absolutely need to pass**. You
+can run the checks with the following command:
 
 ```sh
 uv run pre-commit run --all-files
