@@ -71,7 +71,7 @@ write_to = "src/shapiq/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["./src"]
-include = ["shapiq*"]
+include = ["shapiq*", "lazy_dispatch"]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
