@@ -90,7 +90,7 @@ class TestMetadataBlock:
 
     def test_meta_data_time(self, iv_7_all):
         """Tests if the timestamp is created correctly."""
-        now = datetime.datetime.now(tz=datetime.timezone.utc).isoformat() + "Z"
+        now = datetime.datetime.now(tz=datetime.UTC).isoformat() + "Z"
         metadata = make_file_metadata(iv_7_all)
         now_metadata = metadata["timestamp"]
         assert now_metadata.startswith(now[:20])  # check if timestamp is almost equal to now

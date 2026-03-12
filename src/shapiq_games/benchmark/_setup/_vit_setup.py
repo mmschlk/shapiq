@@ -13,7 +13,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F  # noqa: N812
 from torch import nn
-from transformers import ViTFeatureExtractor, ViTForImageClassification
+from transformers import ViTForImageClassification, ViTImageProcessor
 
 if TYPE_CHECKING:
     from PIL.Image import Image
@@ -54,7 +54,7 @@ class ViTModel:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # load model
-        feature_extractor = ViTFeatureExtractor.from_pretrained("google/vit-base-patch32-384")
+        feature_extractor = ViTImageProcessor.from_pretrained("google/vit-base-patch32-384")
         model = ViTForImageClassification.from_pretrained("google/vit-base-patch32-384")
         model.to(device)
 

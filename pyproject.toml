@@ -47,7 +47,7 @@ classifiers = [
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
-    'Programming Language :: Python :: 3.14'
+    'Programming Language :: Python :: 3.14',
 ]
 keywords = [
     "python",
@@ -92,7 +92,7 @@ minversion = "8.0"
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 src = ["tests", "src", "docs"]
 
 [tool.ruff.lint]
@@ -211,7 +211,7 @@ include = ["src/shapiq"]
 exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
 
 [tool.ty.environment]
-python-version = "3.10"
+python-version = "3.12"
 python = "./.venv"
 python-platform = "linux"
 
@@ -237,8 +237,8 @@ all_ml = [
     "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
 ]
 test = [
-    "pytest>=8.3.5",        # for running tests
-    "pytest-cov>=6.0.0",    # for coverage
+    "pytest>=9.0.2",        # for running tests
+    "pytest-cov>=7.0.0",    # for coverage
     "pytest-xdist>=3.8.0",  # for parallel test execution
     "packaging",            # for version parsing in tests
 ]
@@ -253,7 +253,6 @@ docs = [
     "myst-parser",              # Markdown support for Sphinx
     "sphinx-copybutton",        # copy button for code blocks
     "sphinx-autodoc-typehints", # include typehints in docs
-    "sphinx_toolbox",           # various sphinx extensions
     "sphinxcontrib-bibtex",     # references based on bibtex
     "nbconvert",                # notebook support for sphinx
     "nbsphinx",                 # notebook support for sphinx

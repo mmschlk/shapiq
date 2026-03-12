@@ -2,6 +2,10 @@
 
 ## v1.5.0 (unreleased)
 
+### Python Version
+- adds support for Python 3.14 making the package compatible with the latest Python version.
+- drops support for Python 3.10 and 3.11. The minimum supported Python version is now 3.12.
+
 ### Removed Deprecated Features
 - removes `path_to_values` parameter from `shapiq.Game`, which was previously deprecated. Use `shapiq.Game.load()` instead.
 - removes pickle support from `shapiq.InteractionValues`. JSON is now the only supported file format. Use `InteractionValues.save()` and `InteractionValues.load()` with JSON files.
