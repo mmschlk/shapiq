@@ -735,14 +735,14 @@ class Game:
     def empty_coalition_value(self) -> float:
         """Return the value of the empty coalition."""
         if self._empty_coalition_value_property is None:
-            self._empty_coalition_value_property = float(self(self.empty_coalition))
+            self._empty_coalition_value_property = float(self(self.empty_coalition)[0])
         return self._empty_coalition_value_property
 
     @property
     def grand_coalition_value(self) -> float:
         """Return the value of the grand coalition."""
         if self._grand_coalition_value_property is None:
-            self._grand_coalition_value_property = float(self(self.grand_coalition))
+            self._grand_coalition_value_property = float(self(self.grand_coalition)[0])
         return self._grand_coalition_value_property
 
     def __getitem__(self, item: tuple[int, ...]) -> float:

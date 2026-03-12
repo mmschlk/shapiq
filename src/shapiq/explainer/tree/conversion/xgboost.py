@@ -29,7 +29,10 @@ def convert_xgboost_booster(
     try:
         intercept = tree_booster.base_score
         if intercept is None:
-            intercept = float(tree_booster.intercept_[0])
+            _intercept_arr = tree_booster.intercept_
+            _class_idx = class_label if class_label is not None else 0
+            _class_idx = min(_class_idx, len(_intercept_arr) - 1)
+            intercept = float(_intercept_arr[_class_idx])
         tree_booster = tree_booster.get_booster()
     except AttributeError:
         intercept = 0.0
@@ -49,7 +52,7 @@ def convert_xgboost_booster(
         feature_names = [f"f{i}" for i in range(tree_booster.num_features())]
     convert_feature_str_to_int = {k: v for v, k in enumerate(feature_names)}
     convert_feature_str_to_int["Leaf"] = -2
-    booster_df.loc[:, "Feature"] = booster_df.loc[:, "Feature"].replace(convert_feature_str_to_int)
+    booster_df["Feature"] = booster_df["Feature"].map(convert_feature_str_to_int)
 
     if len(booster_df["Tree"].unique()) > tree_booster.num_boosted_rounds():
         # choose only trees for the selected class (xgboost grows n_estimators*n_class trees)

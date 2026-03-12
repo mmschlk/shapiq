@@ -139,7 +139,7 @@ class TabPFNImputer(Imputer[SklearnLikeModel]):
             x_train_coal = self.x_train[:, coalition]
             x_explain_coal = self.x[:, coalition]
             self.model.fit(x_train_coal, self.y_train)
-            pred = float(self.predict(x_explain_coal))
+            pred = float(self.predict(x_explain_coal)[0])
             output[i] = pred
         # refit the model on the full training data to ensure it is in a consistent state
         self.model.fit(self.x_train, self.y_train)
