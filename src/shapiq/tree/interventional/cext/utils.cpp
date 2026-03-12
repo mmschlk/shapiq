@@ -10,7 +10,8 @@ enum class IndexType
     CHII,
     FBII,
     FSII,
-    STII
+    STII,
+    CUSTOM
 };
 
 enum class StorageType

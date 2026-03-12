@@ -86,9 +86,9 @@ namespace inter_weights
         }
         if (index == IndexType::CHII)
         {
-            return interaction_size / (
-                (interaction_size + coalition_size)
-                * binom(num_players, coalition_size + interaction_size)
+            return static_cast<double>(interaction_size) / (
+                static_cast<double>(interaction_size + coalition_size)
+                * static_cast<double>(binom(num_players, coalition_size + interaction_size))
             );
         }
         if (index == IndexType::FSII)
@@ -153,6 +153,13 @@ namespace inter_weights
         }
     }
 
+    inline int64_t custom_weight_index(int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s,
+                                        int64_t N, int64_t K)
+    {
+        // N = n_features + 1, K = max_order + 1
+        return e * (N * K * K * K) + r * (K * K * K) + s_cap_e * (K * K) + s_cap_r * K + s;
+    }
+
     // Hash function for tuple-based cache key
     struct CacheKeyHash
     {
@@ -180,14 +187,33 @@ namespace inter_weights
         // The CacheKeyHash struct is used to compute hash values for the tuple keys.
         std::unordered_map<CacheKey, double, CacheKeyHash> cache;
 
+        // Optional custom weight table (nullptr when not in use)
+        const double* custom_table;
+        int64_t custom_N;  // n_features + 1
+        int64_t custom_K;  // max_order + 1
+
+        // Existing constructor (no custom table)
         WeightCache(uint64_t max_number)
+            : max_number(max_number), custom_table(nullptr), custom_N(0), custom_K(0)
         {
-            this->max_number = max_number;
         }
+
+        // New constructor for custom table
+        WeightCache(uint64_t max_number, const double* table, int64_t N, int64_t K)
+            : max_number(max_number), custom_table(table), custom_N(N), custom_K(K)
+        {
+        }
+
         uint64_t max_number;
 
         double get_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, IndexType index, int64_t max_order)
         {
+            // Early return for custom index: look up directly in the precomputed table
+            if (index == IndexType::CUSTOM)
+            {
+                int64_t idx = custom_weight_index(e, r, s_cap_e, s_cap_r, s, custom_N, custom_K);
+                return custom_table[idx];
+            }
             // Construct the key
             CacheKey key = std::make_tuple(num_features, e, r, s_cap_e, s_cap_r, s, static_cast<int>(index), max_order);
             // Find inherently calls the hash function (CacheKeyHash) to compute the hash value for the key and then looks up the corresponding value in the cache.

@@ -97,6 +97,11 @@ static bool parse_index_type(const std::string &index, IndexType &index_type)
         index_type = IndexType::STII;
         return true;
     }
+    if (index == "CUSTOM")
+    {
+        index_type = IndexType::CUSTOM;
+        return true;
+    }
     return false;
 }
 
@@ -674,7 +679,10 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
     int max_order;
     int verbose;
 
-    if (!PyArg_ParseTuple(args, "OOOOOOOOssii", &leaf_predictions_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &reference_data_obj, &explain_data_obj, &decision_type_cptr, &index_cptr, &max_order, &verbose))
+    // Optional custom weight table (None when not used)
+    PyObject *weight_table_obj = Py_None;
+
+    if (!PyArg_ParseTuple(args, "OOOOOOOOssii|O", &leaf_predictions_obj, &thresholds_obj, &features_obj, &children_left_obj, &children_right_obj, &children_missing_obj, &reference_data_obj, &explain_data_obj, &decision_type_cptr, &index_cptr, &max_order, &verbose, &weight_table_obj))
     {
         return NULL;
     }
@@ -865,13 +873,43 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
         return NULL;
     }
 
+    // Extract custom weight table pointer if provided
+    const double *custom_table = nullptr;
+    int64_t custom_N = 0, custom_K = 0;
+    PyArrayObject *weight_table_array = nullptr;
+    if (weight_table_obj != Py_None)
+    {
+        weight_table_array = (PyArrayObject *)PyArray_FROM_OTF(weight_table_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+        if (!weight_table_array)
+        {
+            Py_XDECREF(reference_data_array);
+            Py_XDECREF(explain_data_array);
+            for (const auto &arr_tuple : arrays_for_decref)
+            {
+                Py_XDECREF(std::get<0>(arr_tuple));
+                Py_XDECREF(std::get<1>(arr_tuple));
+                Py_XDECREF(std::get<2>(arr_tuple));
+                Py_XDECREF(std::get<3>(arr_tuple));
+                Py_XDECREF(std::get<4>(arr_tuple));
+                Py_XDECREF(std::get<5>(arr_tuple));
+            }
+            PyErr_SetString(PyExc_TypeError, "weight_table must be a float64 numpy array");
+            return NULL;
+        }
+        custom_table = (const double *)PyArray_DATA(weight_table_array);
+        custom_N = (int64_t)n_features + 1;
+        custom_K = (int64_t)max_order + 1;
+    }
+
     algorithms::SparseInteractionMap sparse_result;
 
     Py_BEGIN_ALLOW_THREADS
 #pragma omp parallel
     {
         algorithms::SparseInteractionMap local_sparse_result;
-        inter_weights::WeightCache weight_cache(3 * n_features);
+        inter_weights::WeightCache weight_cache = (custom_table != nullptr)
+            ? inter_weights::WeightCache((uint64_t)(3 * n_features), custom_table, custom_N, custom_K)
+            : inter_weights::WeightCache((uint64_t)(3 * n_features));
 
 #pragma omp for nowait
         for (int t = 0; t < num_trees; t++)
@@ -912,6 +950,7 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
 
     Py_XDECREF(reference_data_array);
     Py_XDECREF(explain_data_array);
+    Py_XDECREF(weight_table_array);
     for (const auto &arr_tuple : arrays_for_decref)
     {
         Py_XDECREF(std::get<0>(arr_tuple));
@@ -941,8 +980,10 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
     int n_features;
     int e_length;
     float scaling_factor = 1.0;
+    // Optional custom weight table (None when not used)
+    PyObject *weight_table_obj = Py_None;
     IndexType index_type;
-    if (!PyArg_ParseTuple(args, "OOOOOOsiiiiif", &leaf_predictions_obj, &features_obj, &e_sizes, &r_sizes, &feature_in_e_obj, &leaf_id, &index_cptr, &n_iterations, &n_features, &e_length, &max_order, &verbose, &scaling_factor))
+    if (!PyArg_ParseTuple(args, "OOOOOOsiiiiif|O", &leaf_predictions_obj, &features_obj, &e_sizes, &r_sizes, &feature_in_e_obj, &leaf_id, &index_cptr, &n_iterations, &n_features, &e_length, &max_order, &verbose, &scaling_factor, &weight_table_obj))
     {
         return NULL;
     }
@@ -985,6 +1026,33 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_ValueError, ("Unsupported index type: " + std::string(index_cptr)).c_str());
         return NULL;
     }
+
+    // Extract custom weight table pointer if provided
+    const double *custom_table = nullptr;
+    int64_t custom_N = 0, custom_K = 0;
+    PyArrayObject *weight_table_array = nullptr;
+    if (weight_table_obj != Py_None)
+    {
+        weight_table_array = (PyArrayObject *)PyArray_FROM_OTF(weight_table_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+        if (!weight_table_array)
+        {
+            Py_XDECREF(leaf_predictions_array);
+            Py_XDECREF(features_array);
+            Py_XDECREF(e_sizes_array);
+            Py_XDECREF(r_sizes_array);
+            Py_XDECREF(feature_in_e_array);
+            Py_XDECREF(leaf_id_array);
+            PyErr_SetString(PyExc_TypeError, "weight_table must be a float64 numpy array");
+            return NULL;
+        }
+        custom_table = (const double *)PyArray_DATA(weight_table_array);
+        custom_N = (int64_t)n_features + 1;
+        custom_K = (int64_t)max_order + 1;
+    }
+    inter_weights::WeightCache weight_cache = (custom_table != nullptr)
+        ? inter_weights::WeightCache((uint64_t)(3 * n_features), custom_table, custom_N, custom_K)
+        : inter_weights::WeightCache((uint64_t)(3 * n_features));
+
     chrono::steady_clock::time_point start_time = chrono::steady_clock::now();
 
     if (max_order <= 2)
@@ -1014,7 +1082,11 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 int s = 1;
                 int sign = (s_cap_r % 2 == 0) ? 1 : -1;
                 double weight = 0;
-                if (index_type == IndexType::SII)
+                if (index_type == IndexType::CUSTOM)
+                {
+                    weight = weight_cache.get_weight(n_features, e, r, s_cap_e, s_cap_r, s, index_type, max_order);
+                }
+                else if (index_type == IndexType::SII)
                 {
                     weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
                 }
@@ -1051,7 +1123,11 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 int s = 1;
                 int sign = (s_cap_r_i % 2 == 0) ? 1 : -1;
                 double weight = 0;
-                if (index_type == IndexType::SII)
+                if (index_type == IndexType::CUSTOM)
+                {
+                    weight = weight_cache.get_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, index_type, max_order);
+                }
+                else if (index_type == IndexType::SII)
                 {
                     weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
                 }
@@ -1092,7 +1168,11 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                     s = 2;
                     sign = (s_cap_r_combined % 2 == 0) ? 1 : -1;
 
-                    if (index_type == IndexType::SII)
+                    if (index_type == IndexType::CUSTOM)
+                    {
+                        weight = weight_cache.get_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, index_type, max_order);
+                    }
+                    else if (index_type == IndexType::SII)
                     {
                         weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
                     }
@@ -1183,6 +1263,7 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
         Py_XDECREF(r_sizes_array);
         Py_XDECREF(feature_in_e_array);
         Py_XDECREF(leaf_id_array);
+        Py_XDECREF(weight_table_array);
 
         return output;
     }
