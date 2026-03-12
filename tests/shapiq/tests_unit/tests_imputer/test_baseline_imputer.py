@@ -93,6 +93,27 @@ def test_baseline_imputer_background_computation(background_reg_dataset):
     assert imputer.baseline_values[0, 2] == np.mean(data[:, 2])
 
 
+def test_baseline_value_function_imputes_correctly():
+    """Test that value_function substitutes baseline values for absent features."""
+    captured = []
+
+    def model(x: np.ndarray) -> np.ndarray:
+        captured.append(x.copy())
+        return np.zeros(x.shape[0])
+
+    x = np.array([[1, 2, 3]])
+    baseline = np.array([[10, 20, 30]])
+    imputer = BaselineImputer(model=model, data=baseline, x=x)
+
+    coalitions = np.array([[True, False, True], [False, True, False]])
+    imputer(coalitions)
+
+    assert len(captured) == 1
+    result = captured[0]
+    np.testing.assert_array_equal(result[0], [1, 20, 3])
+    np.testing.assert_array_equal(result[1], [10, 2, 30])
+
+
 def test_baseline_imputer_init():
     """Test the initialization of the marginal imputer."""
 

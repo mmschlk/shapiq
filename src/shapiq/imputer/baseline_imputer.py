@@ -105,10 +105,7 @@ class BaselineImputer(Imputer):
                ``(n_subsets, n_outputs)``.
 
         """
-        n_coalitions = coalitions.shape[0]
-        data = np.tile(np.copy(self.x), (n_coalitions, 1))
-        for i in range(n_coalitions):
-            data[i, ~coalitions[i]] = self.baseline_values[0, ~coalitions[i]]
+        data = np.where(coalitions, self.x, self.baseline_values)
         return self.predict(data)
 
     def init_background(self, data: np.ndarray) -> BaselineImputer:
