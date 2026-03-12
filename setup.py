@@ -85,6 +85,14 @@ ext_modules = [
         language="c++",
         **get_openmp_flags(),
     ),
+    Extension(
+        "shapiq.tree.linear.cext",
+        sources=[
+            "src/shapiq/tree/linear/cext/cext.cc",
+        ],
+        language="c++",
+        **get_openmp_flags(),
+    ),
 ]
 
 setup(

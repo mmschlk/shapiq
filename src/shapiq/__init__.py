@@ -42,7 +42,6 @@ from .explainer import (
     Explainer,
     TabPFNExplainer,
     TabularExplainer,
-    TreeExplainer,
 )
 
 # game classes
@@ -76,6 +75,7 @@ from .plot import (
     upset_plot,
     waterfall_plot,
 )
+from .tree import TreeExplainer
 
 # public utils functions
 from .utils import (  # sets.py  # tree.py
