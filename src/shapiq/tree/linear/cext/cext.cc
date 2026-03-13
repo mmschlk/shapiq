@@ -57,7 +57,6 @@ PyMODINIT_FUNC init_cext(void)
 #endif
 }
 
-
 static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
 /**
  * @brief C++ iterative implementation of Linear Tree SHAP.
@@ -89,48 +88,50 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
 
     /* Parse the input tuple */
     if (!PyArg_ParseTuple(
-        args, "OOOOOOOOiiOOOOO",
-	&weights_obj,
-	&leaf_predictions_obj,
-	&thresholds_obj,
-	&parents_obj,
-	&edge_heights_obj,
-    &features_obj,
-	&children_left_obj,
-	&children_right_obj,
-    &max_depth,
-    &num_nodes,
-	&base_obj,
-    &offset_obj,
-	&norm_obj,
-	&X_obj,
-    &out_contribs_obj
-    )) return NULL;
+            args, "OOOOOOOOiiOOOOO",
+            &weights_obj,
+            &leaf_predictions_obj,
+            &thresholds_obj,
+            &parents_obj,
+            &edge_heights_obj,
+            &features_obj,
+            &children_left_obj,
+            &children_right_obj,
+            &max_depth,
+            &num_nodes,
+            &base_obj,
+            &offset_obj,
+            &norm_obj,
+            &X_obj,
+            &out_contribs_obj))
+        return NULL;
 
     /* Interpret the input objects as numpy arrays. */
-    PyArrayObject *weights_array = (PyArrayObject*)PyArray_FROM_OTF(weights_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *leaf_predictions_array = (PyArrayObject*)PyArray_FROM_OTF(leaf_predictions_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *thresholds_array = (PyArrayObject*)PyArray_FROM_OTF(thresholds_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *parents_array = (PyArrayObject*)PyArray_FROM_OTF(parents_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *edge_heights_array = (PyArrayObject*)PyArray_FROM_OTF(edge_heights_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *features_array = (PyArrayObject*)PyArray_FROM_OTF(features_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *children_left_array = (PyArrayObject*)PyArray_FROM_OTF(children_left_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *children_right_array = (PyArrayObject*)PyArray_FROM_OTF(children_right_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *weights_array = (PyArrayObject *)PyArray_FROM_OTF(weights_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *leaf_predictions_array = (PyArrayObject *)PyArray_FROM_OTF(leaf_predictions_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *thresholds_array = (PyArrayObject *)PyArray_FROM_OTF(thresholds_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *parents_array = (PyArrayObject *)PyArray_FROM_OTF(parents_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *edge_heights_array = (PyArrayObject *)PyArray_FROM_OTF(edge_heights_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *features_array = (PyArrayObject *)PyArray_FROM_OTF(features_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *children_left_array = (PyArrayObject *)PyArray_FROM_OTF(children_left_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *children_right_array = (PyArrayObject *)PyArray_FROM_OTF(children_right_obj, NPY_INT, NPY_ARRAY_IN_ARRAY);
 
-    PyArrayObject *base_array = (PyArrayObject*)PyArray_FROM_OTF(base_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *offset_array = (PyArrayObject*)PyArray_FROM_OTF(offset_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *norm_array = (PyArrayObject*)PyArray_FROM_OTF(norm_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *X_array = (PyArrayObject*)PyArray_FROM_OTF(X_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *out_contribs_array = (PyArrayObject*)PyArray_FROM_OTF(out_contribs_obj, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY2);
+    PyArrayObject *base_array = (PyArrayObject *)PyArray_FROM_OTF(base_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *offset_array = (PyArrayObject *)PyArray_FROM_OTF(offset_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *norm_array = (PyArrayObject *)PyArray_FROM_OTF(norm_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *X_array = (PyArrayObject *)PyArray_FROM_OTF(X_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *out_contribs_array = (PyArrayObject *)PyArray_FROM_OTF(out_contribs_obj, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY2);
 
     /* If that didn't work, throw an exception. */
     if (!children_left_array || !children_right_array || !features_array || !leaf_predictions_array ||
-        !edge_heights_array || !parents_array || !weights_array || !base_array ||
-        !offset_array || !norm_array || !X_array || !out_contribs_array) {
+        !edge_heights_array || !parents_array || !weights_array || !base_array || !thresholds_array ||
+        !offset_array || !norm_array || !X_array || !out_contribs_array)
+    {
         Py_XDECREF(children_left_array);
         Py_XDECREF(children_right_array);
         Py_XDECREF(features_array);
         Py_XDECREF(leaf_predictions_array);
+        Py_XDECREF(thresholds_array);
         Py_XDECREF(edge_heights_array);
         Py_XDECREF(parents_array);
         Py_XDECREF(weights_array);
@@ -144,37 +145,35 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
     }
 
     // Get pointers to the data as C-types
-    double *weights = (double*)PyArray_DATA(weights_array);
-    double *leaf_predictions  = (double*)PyArray_DATA(leaf_predictions_array);
-    double *thresholds  = (double*)PyArray_DATA(thresholds_array);
-    int *parents = (int*)PyArray_DATA(parents_array);
-    int *edge_heights = (int*)PyArray_DATA(edge_heights_array);
-    int *features = (int*)PyArray_DATA(features_array);
-    int *children_left = (int*)PyArray_DATA(children_left_array);
-    int *children_right = (int*)PyArray_DATA(children_right_array);
-    double *base  = (double*)PyArray_DATA(base_array);
-    double *offset  = (double*)PyArray_DATA(offset_array);
-    double *norm  = (double*)PyArray_DATA(norm_array);
-    double *X = (double*)PyArray_DATA(X_array);
-    double *out_contribs = (double*)PyArray_DATA(out_contribs_array);
+    double *weights = (double *)PyArray_DATA(weights_array);
+    double *leaf_predictions = (double *)PyArray_DATA(leaf_predictions_array);
+    double *thresholds = (double *)PyArray_DATA(thresholds_array);
+    int *parents = (int *)PyArray_DATA(parents_array);
+    int *edge_heights = (int *)PyArray_DATA(edge_heights_array);
+    int *features = (int *)PyArray_DATA(features_array);
+    int *children_left = (int *)PyArray_DATA(children_left_array);
+    int *children_right = (int *)PyArray_DATA(children_right_array);
+    double *base = (double *)PyArray_DATA(base_array);
+    double *offset = (double *)PyArray_DATA(offset_array);
+    double *norm = (double *)PyArray_DATA(norm_array);
+    double *X = (double *)PyArray_DATA(X_array);
+    double *out_contribs = (double *)PyArray_DATA(out_contribs_array);
 
     // Create tree structure
     Tree tree = Tree(
-    	weights, leaf_predictions,
-	thresholds,
-	parents, edge_heights,
-	features,
+        weights, leaf_predictions,
+        thresholds,
+        parents, edge_heights,
+        features,
         children_left, children_right,
-        max_depth, num_nodes
-    );
+        max_depth, num_nodes);
 
     const int row_x = (int)PyArray_DIM(X_array, 0);
     const int col_x = (int)PyArray_DIM(X_array, 1);
 
     // Call iterative implementation
     linear_tree_shap_iterative(tree, base, offset, norm,
-			X, row_x, col_x, out_contribs
-			);
+                               X, row_x, col_x, out_contribs);
 
     // retrieve return value before python cleanup of objects
     double ret_value = (double)leaf_predictions[0];
@@ -185,6 +184,7 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
     Py_XDECREF(features_array);
     Py_XDECREF(leaf_predictions_array);
     Py_XDECREF(edge_heights_array);
+    Py_XDECREF(thresholds_array);
     Py_XDECREF(parents_array);
     Py_XDECREF(weights_array);
     Py_XDECREF(base_array);
