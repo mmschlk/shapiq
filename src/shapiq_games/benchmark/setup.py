@@ -21,13 +21,45 @@ from sklearn.metrics import (
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from shapiq.datasets import load_adult_census, load_bike_sharing, load_california_housing
 from shapiq.utils import shuffle_data
+from shapiq_games.datasets import (
+    load_adult_census,
+    load_annealing,
+    load_arrhythmia,
+    load_bike_sharing,
+    load_breast_cancer,
+    load_california_housing,
+    load_hepatitis,
+    load_ionosphere,
+    load_mushroom,
+    load_nursery,
+    load_soybean,
+    load_thyroid,
+    load_zoo,
+)
 
 if TYPE_CHECKING:
     from shapiq.typing import Model
 
-AVAILABLE_DATASETS = ["adult_census", "bike_sharing", "california_housing"]
+AVAILABLE_DATASETS = [
+    "adult_census",
+    "annealing",
+    "arrhythmia",
+    "bike_sharing",
+    "breast_cancer",
+    "california_housing",
+    "hepatitis",
+    "ionosphere",
+    "iris",
+    "monks1",
+    "monks2",
+    "monks3",
+    "mushroom",
+    "nursery",
+    "soybean",
+    "thyroid",
+    "zoo",
+]
 
 
 class GameBenchmarkSetup:
@@ -97,17 +129,48 @@ class GameBenchmarkSetup:
 
         Args:
             dataset_name: The dataset to load the models for. Available datasets are
-                ``'adult_census'``,``'bike_sharing'``, and ``'california_housing'``.
+                ``'adult_census'``, ``'annealing'``, ``'arrhythmia'``, ``'bike_sharing'``,
+                ``'breast_cancer'``, ``'california_housing'``, ``'hepatitis'``,
+                ``'ionosphere'``, ``'iris'``, ``'monks1'``, ``'monks2'``, ``'monks3'``,
+                ``'mushroom'``, ``'nursery'``, ``'soybean'``, ``'thyroid'``, and ``'zoo'``.
 
             model_name: If specified, the name of the model to load. Defaults to ``None``, which
                 means that no model will be loaded. Available models for the datasets are the
                 following:
-                - ``'adult_census'``: '``decision_tree'``, ``'random_forest'``,
+                - ``'adult_census'``: ``'decision_tree'``, ``'random_forest'``,
                     ``'gradient_boosting'``
                 - ``'bike_sharing'``: ``'decision_tree'``, ``'random_forest'``,
                     ``'gradient_boosting'``
                 - ``'california_housing'``: ``'decision_tree'``, ``'random_forest'``,
                     ``'gradient_boosting'``, ``'neural_network'``
+                - ``'annealing'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'arrhythmia'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'breast_cancer'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'hepatitis'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'ionosphere'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'iris'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'monks1'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'monks2'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'monks3'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'mushroom'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'nursery'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'soybean'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'thyroid'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
+                - ``'zoo'``: ``'decision_tree'``, ``'random_forest'``,
+                    ``'gradient_boosting'``
 
             loss_function: If specified, the loss function to use for the game (as a string).
                 Defaults to ``None``, which means ``'r2_score'`` for regression and
@@ -143,10 +206,52 @@ class GameBenchmarkSetup:
         elif dataset_name == "california_housing":
             x_data, y_data = load_california_housing()
             self.feature_names: list = list(x_data.columns)
+        elif dataset_name == "annealing":
+            x_data, y_data = load_annealing()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
+        elif dataset_name == "arrhythmia":
+            x_data, y_data = load_arrhythmia()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
+        elif dataset_name == "breast_cancer":
+            x_data, y_data = load_breast_cancer()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
+        elif dataset_name == "hepatitis":
+            x_data, y_data = load_hepatitis()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
+        elif dataset_name == "ionosphere":
+            x_data, y_data = load_ionosphere()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
+        elif dataset_name == "mushroom":
+            x_data, y_data = load_mushroom()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
+        elif dataset_name == "nursery":
+            x_data, y_data = load_nursery()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
+        elif dataset_name == "soybean":
+            x_data, y_data = load_soybean()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
+        elif dataset_name == "thyroid":
+            x_data, y_data = load_thyroid()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
+        elif dataset_name == "zoo":
+            x_data, y_data = load_zoo()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "classification"
         else:
             msg = (
                 f"Invalid dataset name {dataset_name}. Available datasets are 'adult_census', "
-                "'bike_sharing', 'california_housing'."
+                "'annealing', 'arrhythmia', 'bike_sharing', 'breast_cancer', "
+                "'california_housing', 'hepatitis', 'ionosphere', 'iris', 'monks1', "
+                "'monks2', 'monks3', 'mushroom', 'nursery', 'soybean', 'thyroid', 'zoo'."
             )
             raise ValueError(msg)
 
@@ -175,31 +280,27 @@ class GameBenchmarkSetup:
         self.score_function = None
         self.predict_function = None
         self.loss_function = None
-
-        # load the model
-        if dataset_name == "adult_census":  # adult census dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_classifier()
-            if model_name == "random_forest":
-                self.init_random_forest_classifier()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_classifier()
-        if dataset_name == "bike_sharing":  # bike sharing dataset
-            if model_name == "decision_tree":
-                self.init_decision_tree_regressor()
-            if model_name == "random_forest":
-                self.init_random_forest_regressor()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_regressor()
-        if dataset_name == "california_housing":
-            if model_name == "decision_tree":
-                self.init_decision_tree_regressor()
-            if model_name == "random_forest":
-                self.init_random_forest_regressor()
-            if model_name == "gradient_boosting":
-                self.init_gradient_boosting_regressor()
-            if model_name == "neural_network":
-                self.init_california_neural_network()
+        if self.dataset_type == "classification":
+            match model_name:
+                case "decision_tree":
+                    self.init_decision_tree_classifier()
+                case "random_forest":
+                    self.init_random_forest_classifier()
+                case "gradient_boosting":
+                    self.init_gradient_boosting_classifier()
+        elif self.dataset_type == "regression":
+            match model_name:
+                case "decision_tree":
+                    self.init_decision_tree_regressor()
+                case "random_forest":
+                    self.init_random_forest_regressor()
+                case "gradient_boosting":
+                    self.init_gradient_boosting_regressor()
+                case "neural_network":
+                    if dataset_name != "california_housing":
+                        msg = f"The neural network model is only available for the california_housing dataset, not {dataset_name}."
+                        raise ValueError(msg)
+                    self.init_california_neural_network()
 
         # check if the model is loaded
         if self.model is None and model_name is not None:

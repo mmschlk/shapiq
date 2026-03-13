@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+import os
+
+# Limit OpenMP threads before any native library (numpy, sklearn, torch) is loaded.
+# Without this, PyTorch's OpenMP threads conflict with numpy/sklearn's OpenMP threads
+# already resident in the pytest process, causing segfaults in TabPFN tests.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import matplotlib as mpl
 import numpy as np
 import pytest

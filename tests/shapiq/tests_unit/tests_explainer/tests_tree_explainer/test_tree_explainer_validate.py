@@ -5,13 +5,13 @@ from __future__ import annotations
 import pytest
 
 from shapiq import safe_isinstance
-from shapiq.explainer.tree.validation import SUPPORTED_MODELS, validate_tree_model
+from shapiq.tree.validation import SUPPORTED_MODELS, validate_tree_model
 from tests.shapiq.conftest import TREE_MODEL_FIXTURES
 
 
 def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model, if_clf_model):
     """Test the validation of the model."""
-    class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
+    class_path_str = ["shapiq.tree.base.TreeModel"]
     # sklearn dt models are supported
     tree_model = validate_tree_model(dt_clf_model)
     assert safe_isinstance(tree_model[0], class_path_str)
@@ -41,7 +41,7 @@ def test_validate_model_fixtures(model_fixture, model_class, request):
     if model_class not in SUPPORTED_MODELS:
         return
     model = request.getfixturevalue(model_fixture)
-    class_path_str = ["shapiq.explainer.tree.base.TreeModel"]
+    class_path_str = ["shapiq.tree.base.TreeModel"]
     tree_model = validate_tree_model(model)
     if type(tree_model) is not list:
         tree_model = [tree_model]

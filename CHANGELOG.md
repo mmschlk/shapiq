@@ -2,13 +2,61 @@
 
 ## v1.5.0 (unreleased)
 
-### Python Version
+### Python Version [#497](https://github.com/mmschlk/shapiq/pull/497)
 - adds support for Python 3.14 making the package compatible with the latest Python version.
 - drops support for Python 3.10 and 3.11. The minimum supported Python version is now 3.12.
 
 ### Removed Deprecated Features
-- removes `path_to_values` parameter from `shapiq.Game`, which was previously deprecated. Use `shapiq.Game.load()` instead.
-- removes pickle support from `shapiq.InteractionValues`. JSON is now the only supported file format. Use `InteractionValues.save()` and `InteractionValues.load()` with JSON files.
+- removes `path_to_values` parameter from `shapiq.Game`, which was previously deprecated. Use `shapiq.Game.load()` instead. [#496](https://github.com/mmschlk/shapiq/pull/496)
+- removes pickle support from `shapiq.InteractionValues`. JSON is now the only supported file format. Use `InteractionValues.save()` and `InteractionValues.load()` with JSON files. [#496](https://github.com/mmschlk/shapiq/pull/496)
+
+### Introducing ProxySHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
+Adds [`ProxySHAP`](src/shapiq/approximator/proxy/proxyshap.py) — a new approximator that accelerates Shapley interaction estimation by fitting a lightweight **proxy tree model** (XGBoost by default) on sampled coalitions, computing *exact* interactions for the proxy via the `InterventionalTreeExplainer`, and then optionally correcting for the approximation error on the true model.
+
+Four adjustment strategies are supported:
+- **`"none"`** — use proxy interactions directly (fastest, least accurate)
+- **`"msr-b"`** *(default)* — biased MSR adjustment using the new `MSRBiased` approximator
+- **`"shapiq"`** / **`"svarm"`** / **`"kernel"`** — unbiased adjustments via established estimators
+
+The internal `MSRBiased` approximator is also exposed for use as a standalone estimator.
+This implementation relies on C-extension routines (`compute_interactions_sparse`) for high-throughput coalition evaluation.
+
+### Introducing LinearTreeSHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
+Adds [`LinearTreeSHAP`](src/shapiq/tree/linear/explainer.py) — an efficient implementation of the **Linear TreeSHAP** algorithm (Yu et al., 2022) for computing first-order Shapley values on tree-based models.
+Unlike `TreeSHAPIQ`, which supports any-order interactions, `LinearTreeSHAP` is optimised exclusively for Shapley values (`index="SV"`) and achieves higher throughput by using a dedicated C++ extension (`linear_tree_shap_iterative`).
+It is exported from `shapiq.tree.LinearTreeSHAP`.
+
+For further details we refer to the paper: Yu, S., Zheng, S., Chen, H., & Li, J. (2022). Linear TreeSHAP. *NeurIPS 2022*.
+
+### Complete Refactor of the `shapiq.tree` Module [#501](https://github.com/mmschlk/shapiq/pull/501)
+The internal tree infrastructure has been fully reorganised into a clean subpackage layout:
+
+```
+shapiq/tree/
+├── base.py              — TreeModel and EdgeTree data structures
+├── treeshapiq.py        — TreeSHAP-IQ: any-order interactions via Chebyshev interpolation
+├── explainer.py         — TreeExplainer (main user-facing API, unchanged interface)
+├── validation.py        — validate_tree_model() for sklearn / XGBoost / LightGBM
+├── utils.py             — helper utilities
+├── conversion/          — tree-to-internal-format converters (sklearn, XGBoost, LightGBM)
+├── linear/              — LinearTreeSHAP implementation
+└── interventional/      — InterventionalTreeExplainer and InterventionalGame
+```
+
+Key improvements:
+- **Cleaner separation of concerns** — conversion, explanation, and validation are now independent submodules.
+- **Multi-class LightGBM support** — `InterventionalGame` now correctly handles LightGBM multi-class classification.
+- **C-extension powered** — `InterventionalTreeExplainer` uses batched sparse C-extensions (`compute_interactions_batched_sparse`) for faster tree traversal.
+- **Expanded model support** — `IsolationForest` added alongside `DecisionTree`, `RandomForest`, `ExtraTree`, `XGBRegressor/Classifier`, and `LGBMRegressor/Classifier/Booster`.
+
+### List of All New Features (tree_refactor)
+- adds `ProxySHAP` approximator in `shapiq.approximator.proxy` for proxy-model-accelerated interaction estimation
+- adds `MSRBiased` approximator for biased multilinear-extension sampling regression
+- adds `LinearTreeSHAP` in `shapiq.tree.linear` for fast first-order Shapley value computation
+- refactors `shapiq.tree` into submodules: `conversion/`, `linear/`, `interventional/`
+- adds `InterventionalTreeExplainer` and `InterventionalGame` in `shapiq.tree.interventional`
+- fixes `InterventionalGame` for LightGBM multi-class classification
+- adds `IsolationForest` to the list of supported sklearn tree models
 
 ## v1.4.1 (2025-11-10)
 

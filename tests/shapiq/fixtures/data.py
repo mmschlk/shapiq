@@ -16,11 +16,15 @@ import numpy as np
 import pytest
 from PIL import Image
 from sklearn.datasets import make_classification, make_regression
+from sklearn.model_selection import train_test_split
 
 # normal datasets
 NR_FEATURES = 7
 NR_FEATURES_INFORMATIVE = 7
 BUDGET_NR_FEATURES = 2**NR_FEATURES
+
+# coalition datasets (binary features, small n for ExactComputer tractability)
+NR_FEATURES_COALITIONS = 5
 
 # small datasets
 NR_FEATURES_SMALL = 3
@@ -61,6 +65,13 @@ def background_reg_data(background_reg_dataset) -> np.ndarray:
 
 
 @pytest.fixture
+def reg_data(background_reg_dataset) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return a regression dataset split into (X_train, X_test, y_train, y_test)."""
+    X, y = background_reg_dataset
+    return train_test_split(X, y, test_size=0.2, random_state=DATASETS_RANDOM_STATE)
+
+
+@pytest.fixture
 def background_clf_dataset() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple background dataset."""
     X, y = make_classification(
@@ -80,6 +91,22 @@ def background_clf_data(background_clf_dataset) -> np.ndarray:
     """Return a simple background dataset."""
     X, _ = background_clf_dataset
     return copy.deepcopy(X)
+
+
+@pytest.fixture
+def cls_data(background_clf_dataset) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return a multiclass classification dataset split into (X_train, X_test, y_train, y_test)."""
+    X, y = background_clf_dataset
+    return train_test_split(X, y, test_size=0.2, random_state=DATASETS_RANDOM_STATE)
+
+
+@pytest.fixture
+def cls_data_binary(
+    background_clf_dataset_binary,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return a binary classification dataset split into (X_train, X_test, y_train, y_test)."""
+    X, y = background_clf_dataset_binary
+    return train_test_split(X, y, test_size=0.2, random_state=DATASETS_RANDOM_STATE)
 
 
 @pytest.fixture
@@ -118,6 +145,31 @@ def background_reg_dataset_small() -> tuple[np.ndarray, np.ndarray]:
     X, y = make_regression(
         n_samples=10, n_features=NR_FEATURES_SMALL, random_state=DATASETS_RANDOM_STATE
     )
+    return copy.deepcopy(X), copy.deepcopy(y)
+
+
+@pytest.fixture
+def reg_data_coalitions() -> tuple[np.ndarray, np.ndarray]:
+    """Return a binary-feature regression dataset for coalition-based correctness tests.
+
+    Features are 0/1 so that np.zeros and np.ones are meaningful background/explain points.
+    """
+    rng = np.random.default_rng(DATASETS_RANDOM_STATE)
+    X = rng.integers(0, 2, size=(100, NR_FEATURES_COALITIONS)).astype(float)
+    weights = rng.standard_normal(NR_FEATURES_COALITIONS)
+    y = X @ weights + 0.1 * rng.standard_normal(100)
+    return copy.deepcopy(X), copy.deepcopy(y)
+
+
+@pytest.fixture
+def cls_data_coalitions() -> tuple[np.ndarray, np.ndarray]:
+    """Return a binary-feature multiclass classification dataset for coalition-based correctness tests.
+
+    Features are 0/1; labels are 3 classes derived from the feature sum.
+    """
+    rng = np.random.default_rng(DATASETS_RANDOM_STATE)
+    X = rng.integers(0, 2, size=(100, NR_FEATURES_COALITIONS)).astype(float)
+    y = X.sum(axis=1).astype(int) % 3
     return copy.deepcopy(X), copy.deepcopy(y)
 
 

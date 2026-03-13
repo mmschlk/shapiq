@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, get_args
 
 from shapiq.explainer.tabular import TabularExplainerIndices
-from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq.game_theory.exact import ExactComputer
+from shapiq.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq_games.benchmark.treeshapiq_xai import TreeSHAPIQXAI
 from tests.shapiq.fixtures.data import get_california_housing_train_test_explain
 from tests.shapiq.fixtures.games import get_california_housing_imputer
@@ -76,7 +76,7 @@ def _compute_values(
 
 def compute_tabular_explanations(save_path: Path | None = None) -> dict[str, InteractionValues]:
     """Compute explanations for the California Housing dataset using the Tabular Explainer."""
-    x_train, y_train, x_test, y_test, x_explain = get_california_housing_train_test_explain()
+    _x_train, _y_train, x_test, y_test, x_explain = get_california_housing_train_test_explain()
     model = get_california_housing_random_forest()
     print(f"Model score: {model.score(x_test, y_test)}")
     print(f"Model prediction for x_explain: {model.predict(x_explain)}")
@@ -104,7 +104,7 @@ def compute_tabular_explanations(save_path: Path | None = None) -> dict[str, Int
 
 def compute_tree_explanations(save_path: Path | None = None) -> dict[str, InteractionValues]:
     """Compute explanations for the California Housing dataset using the TreeSHAPIQ Explainer."""
-    x_train, y_train, x_test, y_test, x_explain = get_california_housing_train_test_explain()
+    _x_train, _y_train, x_test, y_test, x_explain = get_california_housing_train_test_explain()
     model = get_california_housing_random_forest()
     print(f"Model score: {model.score(x_test, y_test)}")
     print(f"Model prediction for x_explain: {model.predict(x_explain)}")

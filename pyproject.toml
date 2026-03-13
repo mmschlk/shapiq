@@ -71,7 +71,7 @@ write_to = "src/shapiq/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["./src"]
-include = ["shapiq*"]
+include = ["shapiq*", "lazy_dispatch"]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
@@ -215,6 +215,22 @@ python-version = "3.12"
 python = "./.venv"
 python-platform = "linux"
 
+[tool.cibuildwheel]
+build = ["cp312-*", "cp313-*", "cp314-*"]
+skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
+build-frontend = "uv"
+test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; print('C extensions OK')\""
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.macos]
+before-build = "brew install libomp || true"
+
+[tool.cibuildwheel.windows]
+# MSVC ships OpenMP runtime (vcomp140.dll) with Visual C++ Redistributable
+# No extra setup needed; /openmp flag in setup.py handles everything
+
 [tool.ruff.lint.isort]
 known-first-party = ["shapiq"]
 extra-standard-library = ["typing_extensions"]
@@ -230,7 +246,7 @@ all_ml = [
     "torchvision",
     "torch",
     "xgboost",
-    "lightgbm; platform_system != 'Darwin'",    # lightgbm has install problems on macOS in github actions
+    "lightgbm",    # lightgbm has install problems on macOS in github actions
     "transformers",
     "scikit-image",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12

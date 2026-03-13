@@ -15,9 +15,9 @@ from shapiq.explainer.custom_types import (
 )
 from shapiq.explainer.product_kernel import ProductKernelExplainer
 from shapiq.explainer.tabular import TabularExplainer, TabularExplainerIndices
-from shapiq.explainer.tree import TreeExplainer
-from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq.interaction_values import InteractionValues
+from shapiq.tree import TreeExplainer
+from shapiq.tree.treeshapiq import TreeSHAPIQIndices
 from tests.shapiq.utils import get_expected_index_or_skip
 
 if TYPE_CHECKING:
@@ -38,7 +38,9 @@ def california_interaction_values() -> dict[str, InteractionValues]:
         compute_tabular_explanations,
         compute_tree_explanations,
     )
-    from .integration_test_product_kernel_explainer import compute_product_kernel_explanations
+    from .integration_test_product_kernel_explainer import (
+        compute_product_kernel_explanations,
+    )
 
     print("Computing interaction values for California Housing dataset...")  # noqa: T201
     ivs_tabular = compute_tabular_explanations()
@@ -226,7 +228,7 @@ class TestCaliforniaHousingExplainers:
         expected_index = get_expected_index_or_skip(index, order)
 
         # get the data and model
-        x_train, y_train, x_test, y_test, x_explain = california_housing_train_test_explain
+        x_train, _y_train, x_test, _y_test, x_explain = california_housing_train_test_explain
         n_features = x_train.shape[1]
         model = california_housing_rf_model
 

@@ -7,7 +7,7 @@ import copy
 import numpy as np
 import pytest
 
-from shapiq.explainer.tree import TreeExplainer, TreeModel
+from shapiq.tree import TreeExplainer, TreeModel
 from tests.shapiq.markers import skip_if_no_lightgbm
 
 
@@ -129,6 +129,7 @@ def test_against_shap_implementation():
     tree_model = TreeModel(
         children_left=children_left,
         children_right=children_right,
+        children_missing=children_left,  # no missing values, so we can set this to anything
         features=features,
         thresholds=thresholds,
         node_sample_weight=node_sample_weight,

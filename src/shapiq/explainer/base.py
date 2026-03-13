@@ -72,7 +72,7 @@ class Explainer:
 
     shapiq.Explainer is a simplified interface for the ``shapiq`` package. It detects between
     :class:`~shapiq.explainer.tabular.TabularExplainer`,
-    :class:`~shapiq.explainer.tree.TreeExplainer`,
+    :class:`~shapiq.tree.TreeExplainer`,
     and :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. For a detailed description of the
     different explainers, see the respective classes.
     """
@@ -101,7 +101,7 @@ class Explainer:
                 :class:`~shapiq.explainer.tabular.TabularExplainer` or
                 :class:`~shapiq.explainer.tabpfn.TabPFNExplainer`. This is a 2-dimensional
                 NumPy array with shape ``(n_samples, n_features)``. Can be empty for the
-                :class:`~shapiq.explainer.tree.TreeExplainer`, which does not require background
+                :class:`~shapiq.tree.TreeExplainer`, which does not require background
                 data.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.explainer.tree import TreeExplainer, TreeModel, TreeSHAPIQ
+from shapiq.tree import TreeExplainer, TreeModel, TreeSHAPIQ
 
 
 def test_bike_bug():
@@ -212,6 +212,9 @@ def test_bike_bug():
     buggy_tree_model = {
         "children_left": np.asarray(children_left),
         "children_right": np.asarray(chidren_right),
+        "children_missing": np.asarray(
+            children_left
+        ),  # intentionally set to left_children to test if it is ignored
         "empty_prediction": 190.5770,
         "features": np.asarray(features),
         "thresholds": np.asarray(thresholds),
@@ -242,6 +245,45 @@ def test_bike_bug():
 
     # if this test runs without an error, the bug is fixed
     assert True
+
+
+def test_xgboost_multiclass_base_score():
+    """Test that XGBoost 3 multi-class base_score array is correctly parsed per class.
+
+    In XGBoost 3, base_score for multi-class models is serialized as a per-class typed array
+    instead of a single scalar. Previously readBaseScoreOrZero() would fall back to 0.0,
+    breaking the efficiency property of Shapley values.
+    """
+    import xgboost as xgb
+    from sklearn.datasets import make_classification
+
+    X, y = make_classification(
+        random_state=42, n_samples=200, n_features=5, n_classes=3, n_informative=5, n_redundant=0
+    )
+    model = xgb.XGBClassifier(
+        random_state=42, n_estimators=10, max_depth=2, objective="multi:softprob", num_class=3
+    )
+    model.fit(X, y)
+
+    x_explain = X[0]
+    booster = model.get_booster()
+
+    raw_scores = booster.predict(xgb.DMatrix(x_explain.reshape(1, -1)), output_margin=True)[0]
+
+    for class_idx in range(3):
+        explainer = TreeExplainer(model=model, max_order=1, index="SV", class_index=class_idx)
+        sv = explainer.explain(x_explain)
+        # TreeExplainer defaults to min_order=0, so sv[()] = baseline_value is included in
+        # sv.values. The efficiency property is therefore: sv.values.sum() == raw_score.
+        # (Adding sv.baseline_value again would double-count it.)
+        assert sv.baseline_value != 0.0, (
+            f"baseline_value is 0.0 for class {class_idx}, indicating base_score was not read correctly"
+        )
+        efficiency = sv.values.sum()
+        assert pytest.approx(efficiency, rel=1e-4) == raw_scores[class_idx], (
+            f"Efficiency failed for class {class_idx}: {efficiency} != {raw_scores[class_idx]}. "
+            f"baseline_value={sv.baseline_value}"
+        )
 
 
 def test_xgboost_bug():
