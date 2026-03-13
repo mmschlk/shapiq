@@ -90,6 +90,7 @@ intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "matplotlib": ("https://matplotlib.org/stable", None),
     "PIL": ("https://pillow.readthedocs.io/en/stable/", None),
+    "sklearn": ("https://scikit-learn.org/stable", None),
 }
 
 # -- Options for HTML output -----------------------------------------------------------------------
@@ -123,8 +124,13 @@ html_sidebars = {
 # share identical section headings (e.g. "General Use", "Feature Names").
 autosectionlabel_prefix_document = True
 
+# -- Napoleon (Google-style docstrings) ------------------------------------------------------------
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+
 # -- Autodoc ---------------------------------------------------------------------------------------
 autosummary_generate = True
+autosummary_ignore_module_all = False
 autodoc_default_options = {
     "show-inheritance": True,
     "members": True,
