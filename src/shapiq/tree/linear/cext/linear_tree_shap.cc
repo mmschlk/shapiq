@@ -1,4 +1,10 @@
 #include <vector>
+
+// MSVC uses __restrict instead of __restrict__
+#ifdef _MSC_VER
+  #define __restrict__ __restrict
+#endif
+
 struct Tree
 {
     double *weights;

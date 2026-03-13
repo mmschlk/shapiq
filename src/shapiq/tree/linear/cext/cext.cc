@@ -168,8 +168,8 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
         max_depth, num_nodes
     );
 
-    const unsigned row_x = PyArray_DIM(X_array, 0);
-    const unsigned col_x = PyArray_DIM(X_array, 1);
+    const int row_x = (int)PyArray_DIM(X_array, 0);
+    const int col_x = (int)PyArray_DIM(X_array, 1);
 
     // Call iterative implementation
     linear_tree_shap_iterative(tree, base, offset, norm,
