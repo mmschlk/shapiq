@@ -165,3 +165,8 @@ can run the checks with the following command:
 ```sh
 uv run pre-commit run --all-files
 ```
+
+## 🚀 Creating a Release
+
+If you are a maintainer and need to cut a new release, please follow the steps in
+[CREATE_RELEASE.md](./CREATE_RELEASE.md).
