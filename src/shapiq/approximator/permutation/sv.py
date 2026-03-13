@@ -22,9 +22,9 @@ ValidPermutationSTIIIndices = Literal["SV"]
 class PermutationSamplingSV(Approximator[ValidPermutationSTIIIndices]):
     """The Permutation Sampling algorithm for estimating the Shapley values.
 
-    Permutation Sampling [1]_ (also known as ApproShapley) estimates the Shapley values by drawing
-    random permutations of the player set and extracting all marginal contributions from each
-    permutation. For details, see Castro et al. (2009)[1]_.
+    Permutation Sampling [Cas09]_ (also known as ApproShapley) estimates the Shapley values by
+    drawing random permutations of the player set and extracting all marginal contributions from
+    each permutation. For details, see Castro et al. (2009) [Cas09]_.
 
     Args:
         n: The number of players.
@@ -37,7 +37,7 @@ class PermutationSamplingSV(Approximator[ValidPermutationSTIIIndices]):
             Sampling approximator for the STII index
 
     References:
-        .. [1] Castro, J., Gómez, D., and Tejada, J. (2009) Polynomial calculation of the Shapley value based on sampling. In Computers & Operations Research 36(5), 1726-1730. doi: https://doi.org/10.1016/j.cor.2008.04.004
+        .. [Cas09] Castro, J., Gómez, D., and Tejada, J. (2009) Polynomial calculation of the Shapley value based on sampling. In Computers & Operations Research 36(5), 1726-1730. doi: https://doi.org/10.1016/j.cor.2008.04.004
 
     """
 

@@ -71,6 +71,8 @@ exclude_patterns = [
     ".DS_Store",
     "**.ipynb_checkpoints",
     "auto_examples/**.ipynb",
+    # sphinx-gallery includes this file internally; exclude to avoid toctree warning
+    "examples/GALLERY_HEADER.rst",
 ]
 bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = (
@@ -88,6 +90,7 @@ intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "matplotlib": ("https://matplotlib.org/stable", None),
     "PIL": ("https://pillow.readthedocs.io/en/stable/", None),
+    "sklearn": ("https://scikit-learn.org/stable", None),
 }
 
 # -- Options for HTML output -----------------------------------------------------------------------
@@ -116,8 +119,18 @@ html_sidebars = {
     ],
 }
 
+# -- Autosectionlabel -----------------------------------------------------------------------------
+# Prefix labels with the document path to avoid collisions when multiple documents
+# share identical section headings (e.g. "General Use", "Feature Names").
+autosectionlabel_prefix_document = True
+
+# -- Napoleon (Google-style docstrings) ------------------------------------------------------------
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+
 # -- Autodoc ---------------------------------------------------------------------------------------
 autosummary_generate = True
+autosummary_ignore_module_all = False
 autodoc_default_options = {
     "show-inheritance": True,
     "members": True,
@@ -129,6 +142,19 @@ autodoc_default_options = {
 autoclass_content = "both"
 autodoc_inherit_docstrings = True
 autodoc_member_order = "groupwise"
+
+# -- Suppress known structural warnings -----------------------------------------------------------
+# Duplicate citations/footnotes arise because autodoc renders classes in both the parent package
+# page (via automodule + members) and the native module page. Suppressing these is safe because
+# the actual content is correct; only the duplicate-label warnings are silenced.
+suppress_warnings = [
+    "ref.citation",
+    "ref.footnote",
+    "ref.ref",
+    "py.duplicate_object",
+    "autodoc.duplicate_object",
+    "ref.python",  # suppress "duplicate label" warnings for Python objects (e.g. classes) that are rendered in multiple places
+]
 
 # -- Images ----------------------------------------------------------------------------------------
 StandaloneHTMLBuilder.supported_image_types = [

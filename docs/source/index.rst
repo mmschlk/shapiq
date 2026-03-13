@@ -60,7 +60,7 @@ Contents
    :maxdepth: 2
    :caption: API REFERENCE
 
-   api
+   api_reference
 
 .. toctree::
    :maxdepth: 1

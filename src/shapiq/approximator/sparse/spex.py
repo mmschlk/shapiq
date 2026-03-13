@@ -12,10 +12,6 @@ class SPEX(Sparse):
 
     An approximator for cardinal interaction indices using Fourier transform sampling to efficiently
     compute sparse higher-order interactions. SPEX is presented in [Kan25]_.
-
-
-    References:
-        .. [Kan25] Kang, J.S., Butler, L., Agarwal. A., Erginbas, Y.E., Pedarsani, R., Ramchandran, K., Yu, Bin (2025). SPEX: Scaling Feature Interaction Explanations for LLMs https://arxiv.org/abs/2502.13870
     """
 
     def __init__(

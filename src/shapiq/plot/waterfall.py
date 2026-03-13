@@ -368,7 +368,7 @@ def waterfall_plot(
     """Draws a waterfall plot with the interaction values.
 
     The waterfall plot shows the individual contributions of the features to the interaction values.
-    The plot is based on the waterfall plot from the SHAP[1]_ package.
+    The plot is based on the waterfall plot from the `SHAP <https://github.com/shap/shap>`_ package.
 
     Args:
         interaction_values: The interaction values as an interaction object.
@@ -381,9 +381,6 @@ def waterfall_plot(
 
     Returns:
         The plot if ``show`` is ``False``.
-
-    References:
-        .. [1] SHAP is available at https://github.com/shap/shap
 
     """
     if feature_names is None:

@@ -38,7 +38,7 @@ def stacked_bar_plot(
     for a given instance. The interaction values are plotted as stacked bars with positive and
     negative parts stacked on top of each other. The colors represent the order of the
     interaction values. For a detailed explanation of this plot, we refer to Bordt and von Luxburg
-    (2023)[1]_.
+    (2023) [Bor23stk]_.
 
     An example of the plot is shown below.
 
@@ -82,7 +82,7 @@ def stacked_bar_plot(
         >>> plt.show()
 
     References:
-        .. [1] Bordt, M., and von Luxburg, U. (2023). From Shapley Values to Generalized Additive Models and back. Proceedings of The 26th International Conference on Artificial Intelligence and Statistics, PMLR 206:709-745. url: https://proceedings.mlr.press/v206/bordt23a.html
+        .. [Bor23stk] Bordt, M., and von Luxburg, U. (2023). From Shapley Values to Generalized Additive Models and back. Proceedings of The 26th International Conference on Artificial Intelligence and Statistics, PMLR 206:709-745. url: https://proceedings.mlr.press/v206/bordt23a.html
 
     """
     # sanitize inputs

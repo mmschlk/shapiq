@@ -29,35 +29,30 @@ class TreeModel:
         thresholds: The thresholds of the decision nodes in a tree. Leaf nodes are set to ``np.nan``.
         values: The values of the leaf nodes in a tree.
         node_sample_weight: The sample weights of the nodes in a tree.
-        children_left_default: Boolean array indicating whether missing values route left at each
-            node. Derived from ``children_missing`` in ``__post_init__``; ``None`` before init.
-        empty_prediction: The empty prediction of the tree model. If ``None`` on construction, it
-            is computed from the leaf values and the sample weights during ``__post_init__``.
-        leaf_mask: The boolean mask of the leaf nodes in a tree. If ``None`` on construction, it
-            is computed from ``children_left`` during ``__post_init__``.
-        n_features_in_tree: The number of features in the tree model. If ``None`` on construction,
-            it is computed from the unique feature indices in the features array.
-        max_feature_id: The maximum feature index in the tree model. If ``None`` on construction,
-            it is computed from the features array.
-        feature_ids: The set of unique feature indices used by decision nodes in the tree. If
-            ``None`` on construction, it is computed from the features array.
-        root_node_id: The root node id of the tree model. If ``None`` on construction, it is set
-            to ``0``.
-        n_nodes: The number of nodes in the tree model. If ``None`` on construction, it is
-            computed from the length of ``children_left``.
-        decision_type: The comparison operator used at split nodes. ``"<"`` selects strict
-            less-than; any other value (or ``None``) selects less-than-or-equal.
-        nodes: The node ids of the tree model. If ``None`` on construction, it is set to
-            ``np.arange(n_nodes)``.
-        feature_map_original_internal: A mapping from original feature indices (as used by the
-            source model) to internal feature indices (as used in this tree representation).
-        feature_map_internal_original: A mapping from internal feature indices (as used in this
-            tree representation) to original feature indices (as used by the source model).
-        original_output_type: The original output type of the tree model. Defaults to ``"raw"``.
-        intercepts: Optional per-node intercept values. Not used by all converters.
-        coeffs: Optional per-node coefficient values. Not used by all converters.
-        decision_function: The split comparison callable, set automatically in ``__post_init__``
-            based on ``decision_type``. Not exposed as a constructor argument.
+        empty_prediction: The empty prediction of the tree model. The default value is ``None``. Then
+            the empty prediction is computed from the leaf values and the sample weights.
+        leaf_mask: The boolean mask of the leaf nodes in a tree. The default value is ``None``. Then the
+            leaf mask is computed from the children left and right arrays.
+        n_features_in_tree: The number of features in the tree model. The default value is ``None``.
+            Then the number of features in the tree model is computed from the unique feature
+            indices in the features array.
+        max_feature_id: The maximum feature index in the tree model. The default value is ``None``. Then
+            the maximum feature index in the tree model is computed from the features array.
+        feature_ids: The feature indices of the decision nodes in the tree model. The default value
+            is ``None``. Then the feature indices of the decision nodes in the tree model are computed
+            from the unique feature indices in the features array.
+        root_node_id: The root node id of the tree model. The default value is ``None``. Then the root
+            node id of the tree model is set to ``0``.
+        n_nodes: The number of nodes in the tree model. The default value is ``None``. Then the number
+            of nodes in the tree model is computed from the children left array.
+        nodes: The node ids of the tree model. The default value is ``None``. Then the node ids of the
+            tree model are computed from the number of nodes in the tree model.
+        feature_map_original_internal: A mapping of feature indices from the original feature
+            indices (as in the model) to the internal feature indices (as in the tree model).
+        feature_map_internal_original: A mapping of feature indices from the internal feature
+            indices (as in the tree model) to the original feature indices (as in the model).
+        original_output_type: The original output type of the tree model. The default value is
+            ``"raw"``.
 
     """
 
