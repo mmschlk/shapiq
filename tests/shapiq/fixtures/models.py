@@ -24,7 +24,7 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from shapiq.explainer.tree import TreeModel
+    from shapiq.tree import TreeModel
     from shapiq.utils import Model
 
 
@@ -146,6 +146,15 @@ def xgb_reg_model(background_reg_dataset) -> Model:
 
 
 @pytest.fixture
+def dt_clf_binary_model(background_clf_dataset_binary) -> DecisionTreeClassifier:
+    """Return a simple decision tree classification model."""
+    X, y = background_clf_dataset_binary
+    model = DecisionTreeClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
 def rf_clf_binary_model(background_clf_dataset_binary) -> RandomForestClassifier:
     """Return a simple random forest model."""
     X, y = background_clf_dataset_binary
@@ -202,7 +211,11 @@ def tabpfn_classification_problem(
 
     data, labels = background_clf_dataset_binary_small
     data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
-    model = tabpfn.TabPFNClassifier(n_estimators=1, fit_mode="low_memory")
+    model = tabpfn.TabPFNClassifier(
+        model_path="tabpfn-v2-classifier.ckpt", n_estimators=1, fit_mode="low_memory"
+    )
+    # tabpfn 6.x no longer bundles model weights; fit() downloads the checkpoint
+    # on first use and caches it locally. CI requires network access for this.
     model.fit(data, labels)
     return model, data, labels, x_test
 
@@ -216,7 +229,11 @@ def tabpfn_regression_problem(
 
     data, labels = background_reg_dataset_small
     data, x_test, labels, _ = train_test_split(data, labels, random_state=42, train_size=8)
-    model = tabpfn.TabPFNRegressor(n_estimators=1, fit_mode="low_memory")
+    model = tabpfn.TabPFNRegressor(
+        model_path="tabpfn-v2-regressor.ckpt", n_estimators=1, fit_mode="low_memory"
+    )
+    # tabpfn 6.x no longer bundles model weights; fit() downloads the checkpoint
+    # on first use and caches it locally. CI requires network access for this.
     model.fit(data, labels)
     return model, data, labels, x_test
 
@@ -300,7 +317,7 @@ def lightgbm_clf_model(background_clf_dataset) -> Model:
 @pytest.fixture
 def dt_clf_model_tree_model(background_clf_dataset) -> TreeModel:
     """Return a simple decision tree as a TreeModel."""
-    from shapiq.explainer.tree.validation import validate_tree_model
+    from shapiq.tree.validation import validate_tree_model
 
     X, y = background_clf_dataset
     model = DecisionTreeClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3)
@@ -422,6 +439,83 @@ def get_california_housing_svr() -> SVR:
 def california_housing_svr_model() -> SVR:
     """Return a SVR model trained on the California housing dataset."""
     return get_california_housing_svr()
+
+
+# Coalition model fixtures — trained on binary-feature datasets
+@pytest.fixture
+def dt_reg_model_coalitions(reg_data_coalitions) -> DecisionTreeRegressor:
+    """Return a DecisionTreeRegressor trained on binary-feature regression data."""
+    X, y = reg_data_coalitions
+    model = DecisionTreeRegressor(random_state=RANDOM_SEED_MODELS, max_depth=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def dt_cls_model_coalitions(cls_data_coalitions) -> DecisionTreeClassifier:
+    """Return a DecisionTreeClassifier trained on binary-feature multiclass data."""
+    X, y = cls_data_coalitions
+    model = DecisionTreeClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def rf_reg_model_coalitions(reg_data_coalitions) -> RandomForestRegressor:
+    """Return a RandomForestRegressor trained on binary-feature regression data."""
+    X, y = reg_data_coalitions
+    model = RandomForestRegressor(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def rf_cls_model_coalitions(cls_data_coalitions) -> RandomForestClassifier:
+    """Return a RandomForestClassifier trained on binary-feature multiclass data."""
+    X, y = cls_data_coalitions
+    model = RandomForestClassifier(random_state=RANDOM_SEED_MODELS, max_depth=3, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def xgb_reg_model_coalitions(reg_data_coalitions):
+    """Return an XGBRegressor trained on binary-feature regression data."""
+    xgboost = pytest.importorskip("xgboost")
+    X, y = reg_data_coalitions
+    model = xgboost.XGBRegressor(random_state=RANDOM_SEED_MODELS, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def xgb_cls_model_coalitions(cls_data_coalitions):
+    """Return an XGBClassifier trained on binary-feature multiclass data."""
+    xgboost = pytest.importorskip("xgboost")
+    X, y = cls_data_coalitions
+    model = xgboost.XGBClassifier(random_state=RANDOM_SEED_MODELS, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def lgbm_reg_model_coalitions(reg_data_coalitions):
+    """Return an LGBMRegressor trained on binary-feature regression data."""
+    lightgbm = pytest.importorskip("lightgbm")
+    X, y = reg_data_coalitions
+    model = lightgbm.LGBMRegressor(random_state=RANDOM_SEED_MODELS, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def lgbm_cls_model_coalitions(cls_data_coalitions):
+    """Return an LGBMClassifier trained on binary-feature multiclass data."""
+    lightgbm = pytest.importorskip("lightgbm")
+    X, y = cls_data_coalitions
+    model = lightgbm.LGBMClassifier(random_state=RANDOM_SEED_MODELS, n_estimators=3)
+    model.fit(X, y)
+    return model
 
 
 @pytest.fixture

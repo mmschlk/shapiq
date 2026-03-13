@@ -7,7 +7,7 @@ import copy
 import numpy as np
 import pytest
 
-from shapiq.explainer.tree import TreeExplainer, TreeModel
+from shapiq.tree import TreeExplainer, TreeModel
 from tests.shapiq.markers import skip_if_no_lightgbm
 
 
@@ -129,6 +129,7 @@ def test_against_shap_implementation():
     tree_model = TreeModel(
         children_left=children_left,
         children_right=children_right,
+        children_missing=children_left,  # no missing values, so we can set this to anything
         features=features,
         thresholds=thresholds,
         node_sample_weight=node_sample_weight,
@@ -200,7 +201,7 @@ def test_xgboost_clf(xgb_clf_model, background_clf_data):
     # sv_shap = sv_shap_all_classes[0][:, class_label]
     # print(sv_shap)
     """
-    sv = [-0.00545454, -0.15837783, -0.17675081, -0.24213657, 0.00247543, 0.00988865, -0.01564346]
+    sv = [-0.00543903, -0.15696308, -0.17532629, -0.24037467, 0.00245022, 0.00986468, -0.01556843]
     sv_shap = np.array(sv)
 
     # compute with shapiq
@@ -352,7 +353,7 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     # sv_shap = sv_shap_all_classes[0][:, class_label]  # noqa: ERA001
     # print(sv_shap)  # noqa: ERA001
     # print(baseline_shap)  # noqa: ERA001
-    sv = [-0.00163636, 0.05099502, -0.13182959, -0.44538185, 0.00428653, -0.04872373, -0.01370917]
+    sv = [-0.00163171, 0.05075389, -0.13064955, -0.4421068, 0.00424677, -0.04832656, -0.01364264]
     sv_shap = np.array(sv)
 
     # setup shapiq TreeSHAP

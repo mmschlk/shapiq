@@ -42,7 +42,6 @@ from .explainer import (
     Explainer,
     TabPFNExplainer,
     TabularExplainer,
-    TreeExplainer,
 )
 
 # game classes
@@ -76,6 +75,7 @@ from .plot import (
     upset_plot,
     waterfall_plot,
 )
+from .tree import TreeExplainer
 
 # public utils functions
 from .utils import (  # sets.py  # tree.py
@@ -143,6 +143,10 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str) -> ModuleType | None:
+def __getattr__(name: str) -> ModuleType:
     """Redirect deprecated imports to the new module."""
-    return try_import_deprecated(name)
+    result = try_import_deprecated(name)
+    if result is None:
+        msg = f"module 'shapiq' has no attribute {name!r}"
+        raise AttributeError(msg)
+    return result

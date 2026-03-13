@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools>=69", "wheel", "setuptools_scm>=8"]
+requires = ["setuptools>=69", "wheel", "setuptools_scm>=8", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "shapiq"
 dynamic = ["readme", "version"]
 description = "Shapley Interactions for Machine Learning"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     # core
     "numpy",
@@ -45,10 +45,9 @@ classifiers = [
     'Operating System :: Unix',
     'Operating System :: MacOS',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
 ]
 keywords = [
     "python",
@@ -72,7 +71,7 @@ write_to = "src/shapiq/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["./src"]
-include = ["shapiq*"]
+include = ["shapiq*", "lazy_dispatch"]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
@@ -93,7 +92,7 @@ minversion = "8.0"
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 src = ["tests", "src", "docs"]
 
 [tool.ruff.lint]
@@ -212,9 +211,25 @@ include = ["src/shapiq"]
 exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
 
 [tool.ty.environment]
-python-version = "3.10"
+python-version = "3.12"
 python = "./.venv"
 python-platform = "linux"
+
+[tool.cibuildwheel]
+build = ["cp312-*", "cp313-*", "cp314-*"]
+skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
+build-frontend = "uv"
+test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; print('C extensions OK')\""
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.macos]
+before-build = "brew install libomp || true"
+
+[tool.cibuildwheel.windows]
+# MSVC ships OpenMP runtime (vcomp140.dll) with Visual C++ Redistributable
+# No extra setup needed; /openmp flag in setup.py handles everything
 
 [tool.ruff.lint.isort]
 known-first-party = ["shapiq"]
@@ -231,15 +246,15 @@ all_ml = [
     "torchvision",
     "torch",
     "xgboost",
-    "lightgbm; platform_system != 'Darwin'",    # lightgbm has install problems on macOS in github actions
+    "lightgbm",    # lightgbm has install problems on macOS in github actions
     "transformers",
     "scikit-image",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
     "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
 ]
 test = [
-    "pytest>=8.3.5",        # for running tests
-    "pytest-cov>=6.0.0",    # for coverage
+    "pytest>=9.0.2",        # for running tests
+    "pytest-cov>=7.0.0",    # for coverage
     "pytest-xdist>=3.8.0",  # for parallel test execution
     "packaging",            # for version parsing in tests
 ]
@@ -254,15 +269,11 @@ docs = [
     "myst-parser",              # Markdown support for Sphinx
     "sphinx-copybutton",        # copy button for code blocks
     "sphinx-autodoc-typehints", # include typehints in docs
-    "sphinx_toolbox",           # various sphinx extensions
     "sphinxcontrib-bibtex",     # references based on bibtex
     "nbconvert",                # notebook support for sphinx
     "nbsphinx",                 # notebook support for sphinx
     "commonmark",               # Markdown parser and renderer
-    # TODO(mmschlk): remove the pin in ipython when we drop python 3.10 support and pin to
-    # ipython>=9.0.0, since ipython==8.7.0 introduces a bug with parsing notebooks also discussed
-    # here: https://github.com/spatialaudio/nbsphinx/issues/24
-    "ipython<8.38.0",           # for code execution in notebooks
+    "ipython>=9.0.0",           # for code execution in notebooks
     "sphinx-gallery",           # gallery of examples from Python scripts
     "matplotlib",               # required for sphinx-gallery thumbnails
 ]
