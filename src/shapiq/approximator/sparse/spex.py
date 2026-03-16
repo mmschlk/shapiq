@@ -11,7 +11,7 @@ class SPEX(Sparse):
     """SPEX (SParse EXplainer) via Fourier transform sampling.
 
     An approximator for cardinal interaction indices using Fourier transform sampling to efficiently
-    compute sparse higher-order interactions. SPEX is presented in [Kan25]_.
+    compute sparse higher-order interactions. SPEX is presented in :cite:t:`Kang.2025`.
     """
 
     def __init__(

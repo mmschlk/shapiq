@@ -22,10 +22,11 @@ TIndices = TypeVar("TIndices", bound=ValidMonteCarloIndices)
 class SHAPIQ(MonteCarlo[TIndices]):
     """SHAP-IQ approximator for estimating Shapley interactions.
 
-    The SHAP-IQ estimator [Fum23]_ is a MonteCarlo approximation algorithm that estimates Shapley
-    interactions. It is the default method from MonteCarlo approximator with no stratification.
-    For details, see the original paper by Fumagalli et al. (2023) [Fum23]_. SHAP-IQ can be seen as
-    a generalization of the Unbiased KernelSHAP method [Cov21]_ for any-order Shapley interactions.
+    The SHAP-IQ estimator :cite:t:`Fumagalli.2023` is a MonteCarlo approximation algorithm
+    that estimates Shapley interactions. It is the default method from MonteCarlo approximator with
+    no stratification. For details, see the original paper by Fumagalli et al. (2023)
+    :cite:t:`Fumagalli.2023`. SHAP-IQ can be seen as a generalization of the Unbiased
+    KernelSHAP method :cite:t:`Covert.2021` for any-order Shapley interactions.
 
     Examples:
         >>> from shapiq_games.benchmark import DummyGame
@@ -40,11 +41,6 @@ class SHAPIQ(MonteCarlo[TIndices]):
     See Also:
         - :class:`~shapiq.approximator.montecarlo.shapiq.UnbiasedKernelSHAP`: The Unbiased
           KernelSHAP approximator.
-
-    References:
-        .. [Fum23] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., (2023). SHAP-IQ: Unified Approximation of any-order Shapley Interactions. In Thirty-seventh Conference on Neural Information Processing Systems. url: https://openreview.net/forum?id=IEMLNF4gK4
-
-        .. [Cov21] Covert, I., and Lee, S.-I. (2021). Improving KernelSHAP: Practical Shapley Value Estimation via Linear Regression. In Proceedings of The 24th International Conference on Artificial Intelligence and Statistics, PMLR 130:3457-3465. url: https://proceedings.mlr.press/v130/covert21a.html
 
     """
 
@@ -104,10 +100,11 @@ ValidUnbiasedKernelSHAPIndices = Literal["SV"]
 class UnbiasedKernelSHAP(SHAPIQ[ValidUnbiasedKernelSHAPIndices]):
     """The Unbiased KernelSHAP approximator for estimating the Shapley value (SV).
 
-    The Unbiased KernelSHAP estimator [Cov21a]_ is a variant of the KernelSHAP estimator (though
-    deeply different). Unbiased KernelSHAP was proposed by Covert and Lee (2021) [Cov21a]_ as an
-    unbiased version of KernelSHAP. In Fumagalli et al. (2023) [Fum23a]_ it was shown that Unbiased
-    KernelSHAP is a more specific variant of the SHAP-IQ approximation method (Theorem 4.5).
+    The Unbiased KernelSHAP estimator :cite:t:`Covert.2021` is a variant of the KernelSHAP
+    estimator (though deeply different). Unbiased KernelSHAP was proposed by Covert and Lee (2021)
+    :cite:t:`Covert.2021` as an unbiased version of KernelSHAP. In Fumagalli et al. (2023)
+    :cite:t:`Fumagalli.2023` it was shown that Unbiased KernelSHAP is a more specific variant
+    of the SHAP-IQ approximation method (Theorem 4.5).
 
     Example:
         >>> from shapiq_games.benchmark import DummyGame
@@ -128,11 +125,6 @@ class UnbiasedKernelSHAP(SHAPIQ[ValidUnbiasedKernelSHAPIndices]):
 
     See Also:
         - :class:`~shapiq.approximator.montecarlo.shapiq.SHAPIQ`: The SHAPIQ approximator.
-
-    References:
-        .. [Cov21a] Covert, I., and Lee, S.-I. (2021). Improving KernelSHAP: Practical Shapley Value Estimation via Linear Regression. In Proceedings of The 24th International Conference on Artificial Intelligence and Statistics, PMLR 130:3457-3465. url: https://proceedings.mlr.press/v130/covert21a.html
-
-        .. [Fum23a] Fumagalli, F., Muschalik, M., Kolpaczki, P., Hüllermeier, E., (2023). SHAP-IQ: Unified Approximation of any-order Shapley Interactions. In Thirty-seventh Conference on Neural Information Processing Systems. url: https://openreview.net/forum?id=IEMLNF4gK4
 
     """
 

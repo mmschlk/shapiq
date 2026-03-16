@@ -16,15 +16,16 @@ if TYPE_CHECKING:
     from shapiq.typing import FloatVector, IntVector
 
 
-ValidPermutationSTIIIndices = Literal["SV"]
+ValidPermutationSVIndices = Literal["SV"]
 
 
-class PermutationSamplingSV(Approximator[ValidPermutationSTIIIndices]):
+class PermutationSamplingSV(Approximator[ValidPermutationSVIndices]):
     """The Permutation Sampling algorithm for estimating the Shapley values.
 
-    Permutation Sampling [Cas09]_ (also known as ApproShapley) estimates the Shapley values by
-    drawing random permutations of the player set and extracting all marginal contributions from
-    each permutation. For details, see Castro et al. (2009) [Cas09]_.
+    Permutation Sampling :cite:t:`Castro.2009` (also known as ApproShapley) estimates the
+    Shapley values by drawing random permutations of the player set and extracting all marginal
+    contributions from each permutation. For details, see Castro et al. (2009)
+    :cite:t:`Castro.2009`.
 
     Args:
         n: The number of players.
@@ -36,12 +37,9 @@ class PermutationSamplingSV(Approximator[ValidPermutationSTIIIndices]):
         - :class:`~shapiq.approximator.permutation.stii.PermutationSamplingSTII`: The Permutation
             Sampling approximator for the STII index
 
-    References:
-        .. [Cas09] Castro, J., Gómez, D., and Tejada, J. (2009) Polynomial calculation of the Shapley value based on sampling. In Computers & Operations Research 36(5), 1726-1730. doi: https://doi.org/10.1016/j.cor.2008.04.004
-
     """
 
-    valid_indices: tuple[ValidPermutationSTIIIndices, ...] = ("SV",)
+    valid_indices: tuple[ValidPermutationSVIndices, ...] = ("SV",)
 
     def __init__(
         self,

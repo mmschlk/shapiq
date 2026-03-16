@@ -3,45 +3,62 @@ Approximators
 
 Algorithms for approximating Shapley values and interaction indices.
 
-.. currentmodule:: shapiq
+.. currentmodule:: shapiq.approximator
 
 .. autosummary::
    :nosignatures:
 
-   PermutationSamplingSV
-   PermutationSamplingSII
-   PermutationSamplingSTII
-   KernelSHAP
-   UnbiasedKernelSHAP
-   kADDSHAP
-   KernelSHAPIQ
-   InconsistentKernelSHAPIQ
-   RegressionFSII
-   RegressionFBII
-   SHAPIQ
-   SVARM
-   SVARMIQ
-   OwenSamplingSV
-   StratifiedSamplingSV
-   SPEX
-   ProxySPEX
-   approximator.ProxySHAP
-   approximator.MSRBiased
+   ~shapiq.approximator.Approximator
+   ~shapiq.approximator.regression.Regression
+   ~shapiq.approximator.montecarlo.MonteCarlo
+   ~shapiq.approximator.sparse.Sparse
+   ~shapiq.approximator.permutation.PermutationSamplingSV
+   ~shapiq.approximator.permutation.PermutationSamplingSII
+   ~shapiq.approximator.permutation.PermutationSamplingSTII
+   ~shapiq.approximator.regression.KernelSHAP
+   ~shapiq.approximator.montecarlo.UnbiasedKernelSHAP
+   ~shapiq.approximator.regression.kADDSHAP
+   ~shapiq.approximator.regression.KernelSHAPIQ
+   ~shapiq.approximator.regression.InconsistentKernelSHAPIQ
+   ~shapiq.approximator.regression.RegressionFSII
+   ~shapiq.approximator.regression.RegressionFBII
+   ~shapiq.approximator.montecarlo.SHAPIQ
+   ~shapiq.approximator.montecarlo.SVARM
+   ~shapiq.approximator.montecarlo.SVARMIQ
+   ~shapiq.approximator.marginals.OwenSamplingSV
+   ~shapiq.approximator.marginals.StratifiedSamplingSV
+   ~shapiq.approximator.sparse.SPEX
+   ~shapiq.approximator.sparse.ProxySPEX
+   ~shapiq.approximator.proxy.ProxySHAP
+   ~shapiq.approximator.proxy.MSRBiased
+
+Base Classes
+~~~~~~~~~~~~
+
+.. autoclass:: shapiq.approximator.Approximator
+   :members:
+   :no-private-members:
+   :show-inheritance:
+
+.. autoclass:: shapiq.approximator.regression.Regression
+   :members:
+   :no-private-members:
+   :show-inheritance:
+
+.. autoclass:: shapiq.approximator.montecarlo.MonteCarlo
+   :members:
+   :no-private-members:
+   :show-inheritance:
+
+.. autoclass:: shapiq.approximator.sparse.Sparse
+   :members:
+   :no-private-members:
+   :show-inheritance:
 
 Permutation-based
 ~~~~~~~~~~~~~~~~~
 
-.. autoclass:: PermutationSamplingSV
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. autoclass:: PermutationSamplingSII
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. autoclass:: PermutationSamplingSTII
+.. automodule:: shapiq.approximator.permutation
    :members:
    :no-private-members:
    :show-inheritance:
@@ -49,68 +66,25 @@ Permutation-based
 Regression-based
 ~~~~~~~~~~~~~~~~
 
-.. autoclass:: KernelSHAP
+.. automodule:: shapiq.approximator.regression
    :members:
    :no-private-members:
    :show-inheritance:
-
-.. autoclass:: UnbiasedKernelSHAP
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. autoclass:: kADDSHAP
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. autoclass:: KernelSHAPIQ
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. autoclass:: InconsistentKernelSHAPIQ
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. autoclass:: RegressionFSII
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. autoclass:: RegressionFBII
-   :members:
-   :no-private-members:
-   :show-inheritance:
+   :exclude-members: Regression
 
 Monte Carlo
 ~~~~~~~~~~~
 
-.. autoclass:: SHAPIQ
+.. automodule:: shapiq.approximator.montecarlo
    :members:
    :no-private-members:
    :show-inheritance:
-
-.. autoclass:: SVARM
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. autoclass:: SVARMIQ
-   :members:
-   :no-private-members:
-   :show-inheritance:
+   :exclude-members: MonteCarlo
 
 Marginal Sampling
 ~~~~~~~~~~~~~~~~~
 
-.. autoclass:: OwenSamplingSV
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. autoclass:: StratifiedSamplingSV
+.. automodule:: shapiq.approximator.marginals
    :members:
    :no-private-members:
    :show-inheritance:
@@ -118,32 +92,19 @@ Marginal Sampling
 Sparse
 ~~~~~~
 
-.. autoclass:: SPEX
+.. automodule:: shapiq.approximator.sparse
    :members:
    :no-private-members:
    :show-inheritance:
-
-.. autoclass:: ProxySPEX
-   :members:
-   :no-private-members:
-   :show-inheritance:
+   :exclude-members: Sparse
 
 Proxy
 ~~~~~
 
-.. currentmodule:: shapiq.approximator
-
-.. autoclass:: ProxySHAP
+.. automodule:: shapiq.approximator.proxy
    :members:
    :no-private-members:
    :show-inheritance:
-
-.. autoclass:: MSRBiased
-   :members:
-   :no-private-members:
-   :show-inheritance:
-
-.. currentmodule:: shapiq
 
 Approximator Groups
 ~~~~~~~~~~~~~~~~~~~

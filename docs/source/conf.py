@@ -78,6 +78,7 @@ bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = (
     "alpha"  # set to alpha to not confuse references the docs with the footcites in docstrings.
 )
+bibtex_reference_style = "author_year"
 
 source_suffix = {
     ".rst": "restructuredtext",
