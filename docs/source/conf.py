@@ -154,6 +154,7 @@ suppress_warnings = [
     "py.duplicate_object",
     "autodoc.duplicate_object",
     "ref.python",  # suppress "duplicate label" warnings for Python objects (e.g. classes) that are rendered in multiple places
+    "misc.highlighting_failure",  # suppress 'ipython2' lexer warnings from legacy notebooks
 ]
 
 # -- Images ----------------------------------------------------------------------------------------

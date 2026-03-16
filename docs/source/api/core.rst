@@ -1,18 +1,36 @@
 Core
 ====
 
-The fundamental data structure and the cooperative game interface.
+Fundamental data structures and the cooperative game interface.
 
-.. automodule:: shapiq.game
+.. currentmodule:: shapiq
+
+.. autosummary::
+   :nosignatures:
+
+   Game
+   InteractionValues
+   ExactComputer
+
+Game
+----
+
+.. autoclass:: Game
    :members:
    :no-private-members:
    :show-inheritance:
 
-.. automodule:: shapiq.interaction_values
+InteractionValues
+-----------------
+
+.. autoclass:: InteractionValues
    :members:
    :no-private-members:
 
-.. automodule:: shapiq.game_theory.exact
+ExactComputer
+-------------
+
+.. autoclass:: ExactComputer
    :members:
    :no-private-members:
    :show-inheritance:
