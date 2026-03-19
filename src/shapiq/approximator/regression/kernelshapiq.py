@@ -36,7 +36,7 @@ class KernelSHAPIQ(Regression[ValidKernelSHAPIQIndices]):
             (SII) and the k-Shapley interaction index (k-SII).
         - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The KernelSHAP
             approximator for estimating the Shapley values.
-        - :class:`~shapiq.approximator.regression.fsi.RegressionFSII`: The Faithful KernelSHAP
+        - :class:`~shapiq.approximator.regression.faithful.RegressionFSII`: The Faithful KernelSHAP
             approximator for estimating the Faithful Shapley interaction index (FSII).
 
     """
@@ -104,7 +104,7 @@ class InconsistentKernelSHAPIQ(Regression[ValidKernelSHAPIQIndices]):
             approximator for estimating the Shapley values.
         - :class:`~shapiq.approximator.regression.kadd_shap.kADDSHAP`: The kADD-SHAP approximator
             for estimating the kADD-SHAP values.
-        - :class:`~shapiq.approximator.regression.fsi.RegressionFSII`: The Faithful KernelSHAP
+        - :class:`~shapiq.approximator.regression.faithful.RegressionFSII`: The Faithful KernelSHAP
             approximator for estimating the Faithful Shapley interaction index (FSII).
 
     """

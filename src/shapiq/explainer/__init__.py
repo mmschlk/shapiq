@@ -1,4 +1,17 @@
-"""Explainer objects, including TreeSHAP-IQ."""
+"""High-level interfaces for explaining ML model predictions.
+
+The main entry point is :class:`Explainer`, which auto-selects the best
+explanation method for a given model type. For more control, use one of the
+specialised explainers directly:
+
+- :class:`TabularExplainer` — tabular data via imputation-based games
+- :class:`TabPFNExplainer` — fast in-context learning with TabPFN
+- :class:`AgnosticExplainer` — any callable model
+- :class:`TreeExplainer` — optimised for tree-based models
+
+.. seealso::
+   :doc:`Tabular tutorial </notebooks/tabular>` for end-to-end examples.
+"""
 
 from shapiq.tree.explainer import TreeExplainer
 

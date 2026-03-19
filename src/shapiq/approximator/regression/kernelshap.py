@@ -42,7 +42,7 @@ class KernelSHAP(Regression[ValidRegressionKernelSHAIndices]):
         - :class:`~shapiq.approximator.regression.kernelshapiq.KernelSHAPIQ`: The KernelSHAPIQ
             approximator for estimating the Shapley interaction index (SII) and the
             k-Shapley interaction index (k-SII).
-        - :class:`~shapiq.approximator.regression.fsi.RegressionFSII`: The Faithful KernelSHAP
+        - :class:`~shapiq.approximator.regression.faithful.RegressionFSII`: The Faithful KernelSHAP
             approximator for estimating the Faithful Shapley interaction index (FSII).
 
     """

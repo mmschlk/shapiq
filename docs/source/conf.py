@@ -135,6 +135,7 @@ autosummary_ignore_module_all = False
 autodoc_default_options = {
     "show-inheritance": True,
     "members": True,
+    "private-members": False,
     "member-order": "groupwise",
     "special-members": "__call__",
     "undoc-members": True,
@@ -143,18 +144,16 @@ autodoc_default_options = {
 autoclass_content = "both"
 autodoc_inherit_docstrings = True
 autodoc_member_order = "groupwise"
+autodoc_typehints = "both"
 
 # -- Suppress known structural warnings -----------------------------------------------------------
 # Duplicate citations/footnotes arise because autodoc renders classes in both the parent package
 # page (via automodule + members) and the native module page. Suppressing these is safe because
 # the actual content is correct; only the duplicate-label warnings are silenced.
 suppress_warnings = [
-    "ref.citation",
-    "ref.footnote",
-    "ref.ref",
-    "py.duplicate_object",
-    "autodoc.duplicate_object",
-    "ref.python",  # suppress "duplicate label" warnings for Python objects (e.g. classes) that are rendered in multiple places
+    # "py.duplicate_object",  # noqa: ERA001
+    # "autodoc.duplicate_object",  # noqa: ERA001
+    # "ref.python",  # noqa: ERA001 # suppress "duplicate label" warnings for Python objects (e.g. classes) that are rendered in multiple places
     "misc.highlighting_failure",  # suppress 'ipython2' lexer warnings from legacy notebooks
 ]
 
