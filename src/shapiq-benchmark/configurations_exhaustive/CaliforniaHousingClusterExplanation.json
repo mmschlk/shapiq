@@ -1,0 +1,52 @@
+{
+    "game_name": "CaliforniaHousingClusterExplanation",
+    "game_class": "CaliforniaHousing",
+    "configurations": [
+        {
+            "cluster_method": "kmeans",
+            "score_method": "silhouette_score"
+        },
+        {
+            "cluster_method": "agglomerative",
+            "score_method": "calinski_harabasz_score"
+        }
+    ],
+    "iteration_parameter": "random_state",
+    "iteration_parameter_values_names": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+    ],
+    "iteration_parameter_values": [
+        1
+    ],
+    "n_players": 8,
+    "precompute": true
+}

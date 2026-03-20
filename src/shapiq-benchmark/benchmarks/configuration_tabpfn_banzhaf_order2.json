@@ -1,0 +1,52 @@
+{
+    "BikeSharingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive_tabpfn/BikeSharingLocalXAI.json",
+        "n_games": 30,
+        "config_id": 1,
+        "approximation_methods": [
+            "RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "BII",
+        "order": 2
+    },
+    "CaliforniaHousingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive_tabpfn/CaliforniaHousingLocalXAI.json",
+        "n_games": 30,
+        "config_id": 1,
+        "approximation_methods": [
+            "RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "BII",
+        "order": 2
+    },
+    "AdultCensusLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive_tabpfn/AdultCensusLocalXAI.json",
+        "n_games": 30,
+        "config_id": 1,
+        "approximation_methods": [
+            "RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "BII",
+        "order": 2
+    },
+    "ForestFiresLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive_tabpfn/ForestFiresLocalXAI.json",
+        "n_games": 30,
+        "config_id": 1,
+        "approximation_methods": [
+            "RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "BII",
+        "order": 2
+    },
+    "RealEstateLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive_tabpfn/RealEstateLocalXAI.json",
+        "n_games": 30,
+        "config_id": 1,
+        "approximation_methods": [
+            "RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "BII",
+        "order": 2
+    }
+}

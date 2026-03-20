@@ -1,0 +1,42 @@
+{
+    "LeukemiaLocalXAI": {
+            "game_config_name": "shapiq-benchmark/configurations_huge/LeukemiaLocalXAI.json",
+            "n_games": 30,
+            "config_id": 2,
+            "approximation_methods": [
+                "Tree-RECAP"
+            ],
+            "index": "SII",
+            "order": 2
+        },
+    "BioresponseLocalXAI": {
+            "game_config_name": "shapiq-benchmark/configurations_huge/BioresponseLocalXAI.json",
+            "n_games": 30,
+            "config_id": 2,
+            "approximation_methods": [
+                "Tree-RECAP"
+            ],
+            "index": "SII",
+            "order": 2
+        },
+    "MicroresponseLocalXAI": {
+            "game_config_name": "shapiq-benchmark/configurations_huge/MicroresponseLocalXAI.json",
+            "n_games": 30,
+            "config_id": 2,
+            "approximation_methods": [
+                "Tree-RECAP"
+            ],
+            "index": "SII",
+            "order": 2
+        },
+        "AmazonLocalXAI": {
+            "game_config_name": "shapiq-benchmark/configurations_huge/AmazonLocalXAI.json",
+            "n_games": 30,
+            "config_id": 2,
+            "approximation_methods": [
+                "Tree-RECAP"
+            ],
+            "index": "SII",
+            "order": 2
+        }
+}

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from shapiq.game import Game
+from shapiq.imputer.baseline_imputer import BaselineImputer
 from shapiq.imputer.generative_conditional_imputer import GenerativeConditionalImputer
 from shapiq.imputer.marginal_imputer import MarginalImputer
 from shapiq_games.benchmark.setup import get_x_explain
@@ -115,6 +116,16 @@ class LocalExplanation(Game):
                     model=model,
                     # give only first 2_000 samples to the GenerativeConditionalImputer
                     data=data_background,
+                    x=self.x,
+                    random_state=random_state,
+                    normalize=False,
+                )
+            elif imputer == "baseline":
+                baseline = np.mean(data, axis=0, keepdims=True)
+                # use the model as a baseline imputer
+                self._imputer = BaselineImputer(
+                    model=model,
+                    data=baseline,
                     x=self.x,
                     random_state=random_state,
                     normalize=False,

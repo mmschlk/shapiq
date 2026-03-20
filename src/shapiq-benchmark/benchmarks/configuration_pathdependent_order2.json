@@ -1,0 +1,102 @@
+{
+    "AdultCensusLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/AdultCensusLocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "BikeSharingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/BikeSharingLocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "CaliforniaHousingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/CaliforniaHousingLocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "CommunitiesAndCrimeLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/CommunitiesAndCrimeLocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "Corrgroups60LocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/Corrgroups60LocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "ForestFiresLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/ForestFiresLocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "IndependentLinear60LocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/IndependentLinear60LocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "NHANESILocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/NHANESILocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "BreastCancerLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/BreastCancerLocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "RealEstateLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_pathdependent/RealEstateLocalXAI.json",
+        "n_games": 30,
+        "config_id": 2,
+        "approximation_methods": [
+"RegressionMSRIQ-XGB-PreDef-NoAdjustment"
+        ],
+        "index": "SII",
+        "order": 2
+    }
+}

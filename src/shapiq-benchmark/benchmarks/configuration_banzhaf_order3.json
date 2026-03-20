@@ -1,0 +1,14 @@
+{
+    "CommunitiesAndCrimeLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_interventional/CommunitiesAndCrimeLocalXAI.json",
+        "n_games": 2,
+        "config_id": 2,
+        "approximation_methods": [
+                        "RegressionMSRIQ-XGB-CV-BO-NoAdjustment",
+                        "RegressionMSRIQ-XGB-CV-BO",
+                        "Tree-RECAP-XGB-CV-BO"
+        ],
+        "index": "BII",
+        "order": 3
+    }
+}

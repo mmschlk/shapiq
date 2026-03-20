@@ -1,0 +1,81 @@
+{
+    "ResNet18w14Superpixel": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/ResNet18w14Superpixel.json",
+        "n_games": 10,
+        "config_id": 1,
+        "approximation_methods": [
+            "ProxySHAP",
+            "ProxySHAP-NoAdjustment",
+            "ConsistentTree"
+        ],
+        "index": "SII",
+        "order": 2
+    },
+    "ViT3by3Patches": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/ViT3by3Patches.json",
+        "n_games": 10,
+        "config_id": 1,
+        "approximation_methods": [
+            "ProxySHAP",
+            "ProxySHAP-NoAdjustment",
+            "ConsistentTree"       ],
+        "index": "SII",
+        "order": 2
+    },
+    "ViT4by4Patches": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/ViT4by4Patches.json",
+        "n_games": 10,
+        "config_id": 1,
+        "approximation_methods": [
+                "Tree-RECAP-DT",
+                "Tree-RECAP",
+                "RegressionMSRIQ-NoAdjustment"        ],
+        "index": "SII",
+        "order": 2
+    },
+    "BikeSharingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/BikeSharingLocalXAI.json",
+        "n_games": 10,
+        "config_id": 3,
+        "approximation_methods": [
+            "ProxySHAP",
+            "ProxySHAP-NoAdjustment",
+            "ConsistentTree"     ],
+        "index": "SII",
+        "order": 2
+    },
+    "CaliforniaHousingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/CaliforniaHousingLocalXAI.json",
+        "n_games": 10,
+        "config_id": 4,
+        "approximation_methods": [
+            "ProxySHAP",
+            "ProxySHAP-NoAdjustment",
+            "ConsistentTree"      ],
+        "index": "SII",
+        "order": 2
+    },
+    "AdultCensusLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/AdultCensusLocalXAI.json",
+        "n_games": 10,
+        "config_id": 3,
+        "approximation_methods": [
+            "ProxySHAP",
+            "ProxySHAP-NoAdjustment",
+            "ConsistentTree"        ],
+        "index": "SII",
+        "order": 2
+    },
+    "SentimentAnalysisLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/SentimentAnalysisLocalXAI.json",
+        "n_games": 10,
+        "config_id": 1,
+        "approximation_methods": [
+            "ProxySHAP",
+            "ProxySHAP-NoAdjustment",
+            "ConsistentTree"
+        ],
+        "index": "SII",
+        "order": 2
+    }
+}

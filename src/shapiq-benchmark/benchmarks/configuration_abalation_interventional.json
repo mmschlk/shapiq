@@ -1,0 +1,23 @@
+{
+    "CaliforniaHousingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_interventional/CaliforniaHousingLocalXAI.json",
+        "n_games": 1,
+        "config_id": 2,
+        "index": "SII",
+        "order": 2
+    },
+    "CommunitiesAndCrimeLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_interventional/CommunitiesAndCrimeLocalXAI.json",
+        "n_games": 1,
+        "config_id": 2,
+        "index": "SII",
+        "order": 2
+    },
+    "Corrgroups60LocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_interventional/Corrgroups60LocalXAI.json",
+        "n_games": 1,
+        "config_id": 2,
+        "index": "SII",
+        "order": 2
+    }
+}

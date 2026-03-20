@@ -1,0 +1,47 @@
+{
+"CommunitiesAndCrimeLocalXAI": {
+    "game_config_name": "shapiq-benchmark/configurations_interventional/CommunitiesAndCrimeLocalXAI.json",
+    "n_games": 30,
+    "config_id": 2,
+    "approximation_methods": [
+            "Linear-RECAP",
+            "Linear-Tree",
+            "Linear-NoAdjustment"
+    ],
+    "index": "SII",
+    "order": 3
+},
+"Corrgroups60LocalXAI": {
+    "game_config_name": "shapiq-benchmark/configurations_interventional/Corrgroups60LocalXAI.json",
+    "n_games": 30,
+    "config_id": 2,
+    "approximation_methods": [
+            "Linear-RECAP",
+            "Linear-Tree",
+            "Linear-NoAdjustment"   ],
+    "index": "SII",
+    "order": 3
+},
+"IndependentLinear60LocalXAI": {
+    "game_config_name": "shapiq-benchmark/configurations_interventional/IndependentLinear60LocalXAI.json",
+    "n_games": 30,
+    "config_id": 2,
+    "approximation_methods": [
+            "Linear-RECAP",
+            "Linear-Tree",
+            "Linear-NoAdjustment"    ],
+    "index": "SII",
+    "order": 3
+},
+"NHANESILocalXAI": {
+    "game_config_name": "shapiq-benchmark/configurations_interventional/NHANESILocalXAI.json",
+    "n_games": 30,
+    "config_id": 2,
+    "approximation_methods": [
+            "Linear-RECAP",
+            "Linear-Tree",
+            "Linear-NoAdjustment"   ],
+    "index": "SII",
+    "order": 3
+}
+}

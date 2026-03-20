@@ -1,0 +1,114 @@
+{
+  "ResNet18w14Superpixel": {
+    "game_config_name": "shapiq-benchmark/configurations_exhaustive/ResNet18w14Superpixel.json",
+    "n_games": 10,
+    "config_id": 1,
+    "approximation_methods": [
+      "ConsistentTree",
+      "ConsistentTree-Value",
+      "ConsistentTree-Value-KernelSHAP",
+      "ConsistentTree-Marginal",
+      "ConsistentTree-Simple-InverseBinom",
+      "ConsistentTree-Simple-KernelSHAP",
+      "ConsistentTree-Two-Stage"
+    ],
+    "index": "SV",
+    "order": 1
+  },
+  "ViT3by3Patches": {
+    "game_config_name": "shapiq-benchmark/configurations_exhaustive/ViT3by3Patches.json",
+    "n_games": 10,
+    "config_id": 1,
+    "approximation_methods": [
+      "ConsistentTree",
+      "ConsistentTree-Value",
+      "ConsistentTree-Value-KernelSHAP",
+      "ConsistentTree-Marginal",
+      "ConsistentTree-Simple-InverseBinom",
+      "ConsistentTree-Simple-KernelSHAP",
+      "ConsistentTree-Two-Stage"
+    ],
+    "index": "SV",
+    "order": 1
+  },
+  "ViT4by4Patches": {
+    "game_config_name": "shapiq-benchmark/configurations_exhaustive/ViT4by4Patches.json",
+    "n_games": 10,
+    "config_id": 1,
+    "approximation_methods": [
+      "ConsistentTree",
+      "ConsistentTree-Value",
+      "ConsistentTree-Value-KernelSHAP",
+      "ConsistentTree-Marginal",
+      "ConsistentTree-Simple-InverseBinom",
+      "ConsistentTree-Simple-KernelSHAP",
+      "ConsistentTree-Two-Stage"
+    ],
+    "index": "SV",
+    "order": 1
+  },
+  "BikeSharingLocalXAI": {
+    "game_config_name": "shapiq-benchmark/configurations_exhaustive/BikeSharingLocalXAI.json",
+    "n_games": 10,
+    "config_id": 3,
+    "approximation_methods": [
+      "ConsistentTree",
+      "ConsistentTree-Value",
+      "ConsistentTree-Value-KernelSHAP",
+      "ConsistentTree-Marginal",
+      "ConsistentTree-Simple-InverseBinom",
+      "ConsistentTree-Simple-KernelSHAP",
+      "ConsistentTree-Two-Stage"
+    ],
+    "index": "SV",
+    "order": 1
+  },
+  "CaliforniaHousingLocalXAI": {
+    "game_config_name": "shapiq-benchmark/configurations_exhaustive/CaliforniaHousingLocalXAI.json",
+    "n_games": 10,
+    "config_id": 4,
+    "approximation_methods": [
+      "ConsistentTree",
+      "ConsistentTree-Value",
+      "ConsistentTree-Value-KernelSHAP",
+      "ConsistentTree-Marginal",
+      "ConsistentTree-Simple-InverseBinom",
+      "ConsistentTree-Simple-KernelSHAP",
+      "ConsistentTree-Two-Stage"
+    ],
+    "index": "SV",
+    "order": 1
+  },
+  "AdultCensusLocalXAI": {
+    "game_config_name": "shapiq-benchmark/configurations_exhaustive/AdultCensusLocalXAI.json",
+    "n_games": 10,
+    "config_id": 3,
+    "approximation_methods": [
+      "ConsistentTree",
+      "ConsistentTree-Value",
+      "ConsistentTree-Value-KernelSHAP",
+      "ConsistentTree-Marginal",
+      "ConsistentTree-Simple-InverseBinom",
+      "ConsistentTree-Simple-KernelSHAP",
+      "ConsistentTree-Two-Stage"
+    ],
+    "index": "SV",
+    "order": 1
+  },
+  "SentimentAnalysisLocalXAI": {
+    "game_config_name": "shapiq-benchmark/configurations_exhaustive/SentimentAnalysisLocalXAI.json",
+    "n_games": 10,
+    "config_id": 1,
+    "approximation_methods": [
+      "ConsistentTree",
+      "ConsistentTree-Value",
+      "ConsistentTree-Value-KernelSHAP",
+      "ConsistentTree-Marginal",
+      "ConsistentTree-Simple-InverseBinom",
+      "ConsistentTree-Simple-KernelSHAP",
+      "ConsistentTree-Two-Stage"
+    ],
+    "index": "SV",
+    "order": 1
+  }
+}

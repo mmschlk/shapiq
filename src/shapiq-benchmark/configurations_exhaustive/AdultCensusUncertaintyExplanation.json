@@ -1,0 +1,97 @@
+{
+    "game_name": "AdultCensusUncertaintyExplanation",
+    "game_class": "AdultCensus",
+    "configurations": [
+        {
+            "uncertainty_to_explain": "total",
+            "imputer": "marginal"
+        },
+        {
+            "uncertainty_to_explain": "total",
+            "imputer": "conditional"
+        },
+        {
+            "uncertainty_to_explain": "aleatoric",
+            "imputer": "marginal"
+        },
+        {
+            "uncertainty_to_explain": "aleatoric",
+            "imputer": "conditional"
+        },
+        {
+            "uncertainty_to_explain": "epistemic",
+            "imputer": "marginal"
+        },
+        {
+            "uncertainty_to_explain": "epistemic",
+            "imputer": "conditional"
+        }
+    ],
+    "iteration_parameter": "x",
+    "iteration_parameter_values_names": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+    ],
+    "iteration_parameter_values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+    ],
+    "n_players": 14,
+    "precompute": true
+}

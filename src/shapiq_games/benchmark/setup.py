@@ -36,7 +36,26 @@ from shapiq_games.datasets import (
     load_soybean,
     load_thyroid,
     load_zoo,
+    load_forest_fires,
+    load_independentlinear60,
+    load_amazon,
+    load_bioresponse,
+    load_communities_and_crime,
+    load_chess,
+    load_condind,
+    load_corrgroups60,
+    load_cross,
+    load_disjunct,
+    load_sphere,
+    load_nhanesi,
+    load_real_estate,
+    load_microresponse,
+    load_group,
+    load_leukemia,
+    load_wine_quality,
+    load_xor,
 )
+import shapiq_games.datasets as _tabarena_datasets_module  # for TabARENA dynamic loaders
 
 if TYPE_CHECKING:
     from shapiq.typing import Model
@@ -44,21 +63,86 @@ if TYPE_CHECKING:
 AVAILABLE_DATASETS = [
     "adult_census",
     "annealing",
+    "amazon",
     "arrhythmia",
     "bike_sharing",
+    "bioresponse",
     "breast_cancer",
     "california_housing",
+    "chess",
+    "communities_and_crime",
+    "condind",
+    "corrgroups60",
+    "cross",
+    "disjunct",
+    "group",
     "hepatitis",
+    "independentlinear60",
     "ionosphere",
-    "iris",
-    "monks1",
-    "monks2",
-    "monks3",
+    "leukemia",
+    "microresponse",
     "mushroom",
+    "nhanesi",
     "nursery",
+    "real_estate",
     "soybean",
+    "sphere",
     "thyroid",
+    "wine_quality",
+    "xor",
     "zoo",
+    "forest_fires",
+    "tabarena_airfoil_self_noise",
+    "tabarena_amazon_employee_access",
+    "tabarena_anneal",
+    "tabarena_fiat_500",
+    "tabarena_aps_failure",
+    "tabarena_bank_marketing",
+    "tabarena_bank_customer_churn",
+    "tabarena_bioresponse",
+    "tabarena_blood_transfusion",
+    "tabarena_churn",
+    "tabarena_coil2000",
+    "tabarena_concrete_strength",
+    "tabarena_credit_g",
+    "tabarena_credit_card_default",
+    "tabarena_airline_satisfaction",
+    "tabarena_diabetes",
+    "tabarena_diabetes130us",
+    "tabarena_diamonds",
+    "tabarena_ecommerce_shipping",
+    "tabarena_fitness_club",
+    "tabarena_food_delivery",
+    "tabarena_give_me_credit",
+    "tabarena_hazelnut",
+    "tabarena_health_insurance",
+    "tabarena_heloc",
+    "tabarena_hiva_agnostic",
+    "tabarena_houses",
+    "tabarena_hr_analytics",
+    "tabarena_coupon_recommendation",
+    "tabarena_good_customer",
+    "tabarena_kddcup09",
+    "tabarena_marketing_campaign",
+    "tabarena_maternal_health",
+    "tabarena_miami_housing",
+    "tabarena_online_shoppers",
+    "tabarena_protein",
+    "tabarena_bankruptcy",
+    "tabarena_qsar_biodeg",
+    "tabarena_qsar_tid11",
+    "tabarena_qsar_fish_toxicity",
+    "tabarena_sdss17",
+    "tabarena_seismic_bumps",
+    "tabarena_splice",
+    "tabarena_students_dropout",
+    "tabarena_superconductivity",
+    "tabarena_taiwanese_bankruptcy",
+    "tabarena_website_phishing",
+    "tabarena_wine_quality",
+    "tabarena_naticusdroid",
+    "tabarena_jm1",
+    "tabarena_mic",
 ]
 
 
@@ -129,48 +213,22 @@ class GameBenchmarkSetup:
 
         Args:
             dataset_name: The dataset to load the models for. Available datasets are
-                ``'adult_census'``, ``'annealing'``, ``'arrhythmia'``, ``'bike_sharing'``,
-                ``'breast_cancer'``, ``'california_housing'``, ``'hepatitis'``,
-                ``'ionosphere'``, ``'iris'``, ``'monks1'``, ``'monks2'``, ``'monks3'``,
-                ``'mushroom'``, ``'nursery'``, ``'soybean'``, ``'thyroid'``, and ``'zoo'``.
+                ``'adult_census'``, ``'annealing'``, ``'amazon'``, ``'arrhythmia'``,
+                ``'bike_sharing'``, ``'bioresponse'``, ``'breast_cancer'``,
+                ``'california_housing'``, ``'chess'``, ``'communities_and_crime'``,
+                ``'condind'``, ``'corrgroups60'``, ``'cross'``, ``'disjunct'``,
+                ``'forest_fires'``, ``'group'``, ``'hepatitis'``,
+                ``'independentlinear60'``, ``'ionosphere'``, ``'leukemia'``,
+                ``'microresponse'``, ``'mushroom'``, ``'nhanesi'``, ``'nursery'``,
+                ``'real_estate'``, ``'soybean'``, ``'sphere'``, ``'thyroid'``,
+                ``'wine_quality'``, ``'xor'``, and ``'zoo'``.
 
             model_name: If specified, the name of the model to load. Defaults to ``None``, which
                 means that no model will be loaded. Available models for the datasets are the
                 following:
-                - ``'adult_census'``: ``'decision_tree'``, ``'random_forest'``,
+                - For all datasets: ``'decision_tree'``, ``'random_forest'``,
                     ``'gradient_boosting'``
-                - ``'bike_sharing'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'california_housing'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``, ``'neural_network'``
-                - ``'annealing'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'arrhythmia'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'breast_cancer'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'hepatitis'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'ionosphere'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'iris'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'monks1'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'monks2'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'monks3'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'mushroom'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'nursery'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'soybean'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'thyroid'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
-                - ``'zoo'``: ``'decision_tree'``, ``'random_forest'``,
-                    ``'gradient_boosting'``
+                - Only for ``'california_housing'``: ``'neural_network'``
 
             loss_function: If specified, the loss function to use for the game (as a string).
                 Defaults to ``None``, which means ``'r2_score'`` for regression and
@@ -246,12 +304,91 @@ class GameBenchmarkSetup:
             x_data, y_data = load_zoo()
             self.feature_names: list = list(x_data.columns)
             self.dataset_type = "classification"
+        elif dataset_name == "forest_fires":
+            x_data, y_data = load_forest_fires()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "nhanesi":
+            x_data, y_data = load_nhanesi()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "real_estate":
+            x_data, y_data = load_real_estate()
+            self.feature_names: list = list(x_data.columns)
+            self.dataset_type = "regression"
+        elif dataset_name == "independentlinear60":
+            x_data, y_data = load_independentlinear60()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "regression"
+        elif dataset_name == "amazon":
+            x_data, y_data = load_amazon()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "bioresponse":
+            x_data, y_data = load_bioresponse()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "communities_and_crime":
+            x_data, y_data = load_communities_and_crime()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "regression"
+        elif dataset_name == "chess":
+            x_data, y_data = load_chess()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "condind":
+            x_data, y_data = load_condind()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "corrgroups60":
+            x_data, y_data = load_corrgroups60()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "regression"
+        elif dataset_name == "cross":
+            x_data, y_data = load_cross()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "disjunct":
+            x_data, y_data = load_disjunct()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "sphere":
+            x_data, y_data = load_sphere()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "microresponse":
+            x_data, y_data = load_microresponse()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "group":
+            x_data, y_data = load_group()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "leukemia":
+            x_data, y_data = load_leukemia()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name == "wine_quality":
+            x_data, y_data = load_wine_quality()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "regression"
+        elif dataset_name == "xor":
+            x_data, y_data = load_xor()
+            self.feature_names: list = [f"feature_{i}" for i in range(x_data.shape[1])]
+            self.dataset_type = "classification"
+        elif dataset_name.startswith("tabarena_") and dataset_name in AVAILABLE_DATASETS:
+            _loader = getattr(_tabarena_datasets_module, f"load_{dataset_name}")
+            x_data, y_data = _loader()
+            self.feature_names: list = list(x_data.columns)
+            import pandas as _pd
+            self.dataset_type = (
+                "regression" if _pd.api.types.is_float_dtype(y_data) else "classification"
+            )
         else:
+            available_datasets = ", ".join(f"'{name}'" for name in AVAILABLE_DATASETS)
             msg = (
-                f"Invalid dataset name {dataset_name}. Available datasets are 'adult_census', "
-                "'annealing', 'arrhythmia', 'bike_sharing', 'breast_cancer', "
-                "'california_housing', 'hepatitis', 'ionosphere', 'iris', 'monks1', "
-                "'monks2', 'monks3', 'mushroom', 'nursery', 'soybean', 'thyroid', 'zoo'."
+                f"Invalid dataset name {dataset_name}. Available datasets are "
+                f"{available_datasets}."
             )
             raise ValueError(msg)
 

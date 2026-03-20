@@ -1,0 +1,23 @@
+{
+    "CaliforniaHousingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive_tabpfn/CaliforniaHousingLocalXAI.json",
+        "n_games": 1,
+        "config_id": 1,
+        "index": "SII",
+        "order": 2
+    },
+    "BikeSharingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive_tabpfn/BikeSharingLocalXAI.json",
+        "n_games": 1,
+        "config_id": 1,
+        "index": "SII",
+        "order": 2
+    },
+    "RealEstateLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive_tabpfn/RealEstateLocalXAI.json",
+        "n_games": 1,
+        "config_id": 1,
+        "index": "SII",
+        "order": 2
+    }
+}

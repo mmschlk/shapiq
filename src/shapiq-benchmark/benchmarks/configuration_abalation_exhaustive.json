@@ -1,0 +1,23 @@
+{
+    "ViT4by4Patches": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/ViT4by4Patches.json",
+        "n_games": 1,
+        "config_id": 1,
+        "index": "SII",
+        "order": 2
+    },
+    "BikeSharingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/BikeSharingLocalXAI.json",
+        "n_games": 1,
+        "config_id": 3,
+        "index": "SII",
+        "order": 2
+    },
+    "CaliforniaHousingLocalXAI": {
+        "game_config_name": "shapiq-benchmark/configurations_exhaustive/CaliforniaHousingLocalXAI.json",
+        "n_games": 1,
+        "config_id": 4,
+        "index": "SII",
+        "order": 2
+    }   
+}
