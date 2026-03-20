@@ -40,9 +40,7 @@ def get_game_files(game: Game | str, n_players: int) -> list[str]:
         game_name: str = game
     else:
         game_name: str = game.get_game_name()
-    save_dir = Path(
-        SHAPIQ_DATA_DIR / game_name / str(n_players)
-    )  # / game_name / str(n_players)
+    save_dir = Path(SHAPIQ_DATA_DIR / game_name / str(n_players))  # / game_name / str(n_players)
     try:
         return os.listdir(save_dir)
     except FileNotFoundError:
@@ -70,7 +68,7 @@ def pre_compute_and_store(
         # this file path
         save_dir = Path(__file__).parent
         save_dir = save_dir / "precomputed" / game.game_name / str(game.n_players)
-    elif str(game.n_players) not in save_dir: # pyright: ignore[reportOperatorIssue]
+    elif str(game.n_players) not in save_dir:  # pyright: ignore[reportOperatorIssue]
         save_dir = Path(save_dir) / str(game.n_players)
     save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -108,11 +106,7 @@ def pre_compute_from_configuration(
         get_game_file_name_from_config,
     )
 
-    game_class = (
-        get_game_class_from_name(game_class)
-        if isinstance(game_class, str)
-        else game_class
-    )
+    game_class = get_game_class_from_name(game_class) if isinstance(game_class, str) else game_class
 
     show_tqdm = True
 
@@ -130,9 +124,7 @@ def pre_compute_from_configuration(
         "iteration_parameter_values",
         BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
     )
-    iteration_names = game_class_config.get(
-        "iteration_parameter_values_names", iterations
-    )
+    iteration_names = game_class_config.get("iteration_parameter_values_names", iterations)
     if n_iterations is not None:
         iterations = iterations[:n_iterations]
         iteration_names = iteration_names[:n_iterations]
@@ -140,9 +132,7 @@ def pre_compute_from_configuration(
     parameter_space = []
     for config in configurations:
         for iteration, iteration_name in zip(iterations, iteration_names, strict=False):
-            save_dir = (
-                Path(SHAPIQ_DATA_DIR) / game_class.get_game_name() / str(n_players)
-            )
+            save_dir = Path(SHAPIQ_DATA_DIR) / game_class.get_game_name() / str(n_players)
             game_id = get_game_file_name_from_config(config, iteration)
             save_path = Path(save_dir) / game_id
             save_path_npz = save_path.with_suffix(".npz")

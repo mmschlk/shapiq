@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import requests
+from shapiq.game import Game
 
 from .configuration import (
     BENCHMARK_CONFIGURATIONS,
@@ -21,7 +22,6 @@ from .configuration import (
     get_game_file_name_from_config,
 )
 from .precompute import SHAPIQ_DATA_DIR
-from shapiq.game import Game
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -33,9 +33,9 @@ __all__ = [
 ]
 
 
-class GameFactory():
+class GameFactory:
     """A factory to create game instances from configuration files."""
-    
+
     @staticmethod
     def create_game_from_configs(
         configuration: dict[str, Any],
@@ -62,6 +62,7 @@ class GameFactory():
             check_pre_computed: A flag to check if the game is pre-computed (load from disk). Defaults
                 to True.
             only_pre_computed: A flag to only load the pre-computed games. Defaults to False.
+
         Returns:
             An initialized game object with the given configuration.
         """
@@ -94,20 +95,21 @@ class GameFactory():
                     )
                 except FileNotFoundError:
                     # Try loading .json files
-                     try:  # try to load the game from disk
+                    try:  # try to load the game from disk
                         yield GameFactory.load_game_from_precomputed_json(
                             game_class,
                             n_players,
                             configuration,
                             iteration=game_iteration,
                         )
-                     except FileNotFoundError:
+                    except FileNotFoundError:
                         if (
                             only_pre_computed
                         ):  # if only pre-computed games are requested, skip the game
                             continue
                         else:  # fallback to creating the game which is not pre-computed
                             yield game_class(**params)
+
     @staticmethod
     def load_game_from_precomputed(
         game_class: Game,
@@ -122,17 +124,15 @@ class GameFactory():
             configuration: The configuration to use to load the game.
             iteration: The iteration of the game to load. Defaults to 1.
             n_player_id: The player ID to use. Defaults to 0. Not all games have multiple player IDs.
+
         Returns:
             An initialized game object with the given configuration.
         """
         file_name = get_game_file_name_from_config(configuration, iteration)
         path_to_values = (
-            SHAPIQ_DATA_DIR
-            / game_class.get_game_name()
-            / str(n_players)
-            / f"{file_name}.npz"
+            SHAPIQ_DATA_DIR / game_class.get_game_name() / str(n_players) / f"{file_name}.npz"
         )
-        
+
         try:
             game = Game(
                 n_players=n_players,
@@ -173,19 +173,17 @@ class GameFactory():
             configuration: The configuration to use to load the game.
             iteration: The iteration of the game to load. Defaults to 1.
             n_player_id: The player ID to use. Defaults to 0. Not all games have multiple player IDs.
+
         Returns:
             An initialized game object with the given configuration.
         """
         file_name = get_game_file_name_from_config(configuration, iteration)
-        #print(f"Loading precomputed game {game_class.get_game_name()} with file name: {file_name}")
+        # print(f"Loading precomputed game {game_class.get_game_name()} with file name: {file_name}")
         path_to_values = (
-            SHAPIQ_DATA_DIR
-            / game_class.get_game_name()
-            / str(n_players)
-            / f"{file_name}.json"
+            SHAPIQ_DATA_DIR / game_class.get_game_name() / str(n_players) / f"{file_name}.json"
         )
-       # print(path_to_values)
-        
+        # print(path_to_values)
+
         try:
             return Game.from_json_file(path_to_values)
         except FileNotFoundError as error:
@@ -194,7 +192,7 @@ class GameFactory():
                 f"{configuration} and iteration {iteration} could not be found."
             )
             raise FileNotFoundError(msg) from error
-        
+
     @staticmethod
     def load_configuration_file_interactive(
         config_path: str,
@@ -213,24 +211,26 @@ class GameFactory():
             The loaded configuration as a dictionary.
         """
         params = BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS.copy()
-        with open(config_path, "r") as file:
+        with open(config_path) as file:
             configurations = json.load(file)
         game_class: Game = GAME_NAME_TO_CLASS_MAPPING[configurations["game_name"]]
-        
+
         ## Load Configuration ID
-        print(f"The following configuration options are available for {configurations['game_name']}:")
         # Check if there is only one configuration
         if len(configurations["configurations"]) == 1:
             config_id = 1
         else:
-            for idx, config in enumerate(configurations["configurations"], start=1):
-                print(f"Configuration ID {idx}: {config}")
-            config_id = int(input("Enter configuration ID (int) or 'dict' to use the full configuration: "))
+            for _idx, _config in enumerate(configurations["configurations"], start=1):
+                pass
+            config_id = int(
+                input("Enter configuration ID (int) or 'dict' to use the full configuration: ")
+            )
         # Load the configuration
         if config_id > 0 and config_id <= len(configurations["configurations"]):
             configuration = configurations["configurations"][config_id - 1]
         else:
-            raise ValueError("Invalid configuration ID.")
+            msg = "Invalid configuration ID."
+            raise ValueError(msg)
         params.update(configuration)
         ## Load class-specific configurations
         game_should_be_precomputed = configurations["precompute"]
@@ -239,8 +239,10 @@ class GameFactory():
             "iteration_parameter_values",
             BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
         )
-        iteration_param_values_names = configurations.get("iteration_parameter_values_names", iteration_param_values)
-        
+        iteration_param_values_names = configurations.get(
+            "iteration_parameter_values_names", iteration_param_values
+        )
+
         game_generator = GameFactory.create_game_from_configs(
             configuration=configuration,
             game_should_be_precomputed=game_should_be_precomputed,
@@ -253,10 +255,11 @@ class GameFactory():
             check_pre_computed=check_pre_computed,
             only_pre_computed=only_pre_computed,
         )
-        
+
         if return_config_id:
             return game_generator, config_id
         return game_generator
+
     @staticmethod
     def load_configuration_file(
         config_path: str,
@@ -271,18 +274,18 @@ class GameFactory():
         Args:
             config_path: The path to the configuration file.
             config_id: The configuration ID to load.
+
         Returns:
             The loaded configuration as a dictionary.
         """
         params = BENCHMARK_CONFIGURATIONS_DEFAULT_PARAMS.copy()
-        with open(config_path, "r") as file:
+        with open(config_path) as file:
             configurations = json.load(file)
         game_class = GAME_NAME_TO_CLASS_MAPPING[configurations["game_name"]]
-        
+
         ## Load Configuration ID
-        
+
         configuration = configurations["configurations"][config_id - 1]
-        print(f"Loaded configuration: {configuration} for game {configurations['game_name']}")
         params.update(configuration)
         ## Load class-specific configurations
         game_should_be_precomputed = configurations["precompute"]
@@ -291,7 +294,9 @@ class GameFactory():
             "iteration_parameter_values",
             BENCHMARK_CONFIGURATIONS_DEFAULT_ITERATIONS,
         )
-        iteration_param_values_names = configurations.get("iteration_parameter_values_names", iteration_param_values)
+        iteration_param_values_names = configurations.get(
+            "iteration_parameter_values_names", iteration_param_values
+        )
         return GameFactory.create_game_from_configs(
             configuration=configuration,
             game_should_be_precomputed=game_should_be_precomputed,
@@ -304,7 +309,6 @@ class GameFactory():
             check_pre_computed=check_pre_computed,
             only_pre_computed=only_pre_computed,
         )
-            
 
 
 class BenchmarkFactory:
@@ -313,12 +317,7 @@ class BenchmarkFactory:
         game_config_names: list[str],
         *,
         n_games: list[int] | int = 30,
-        approximation_methods: list[str] = [
-            "SVARM",
-            "KernelSHAP",
-            "PermutationSamplingSV",
-            "RegressionMSR",
-        ],
+        approximation_methods: list[str] | None = None,
         index: str = "SV",
         order: int = 1,
         config_path: str = "shapiq-benchmark/configurations_exhaustive/",
@@ -329,20 +328,26 @@ class BenchmarkFactory:
         The game_config_names should correspond to the json files in
         shapiq-benchmark/configurations_exhaustive/.
 
-         Args:
+        Args:
             game_config_names (list[str]): List of game configuration names.
             n_games (list[int] | None): List of number of games to create for each configuration.
                 If None, all games will be created. Default is None.
-         Returns:
+
+        Returns:
             dict: Dictionary of benchmarks with game configuration names as keys and
                 game generators as values.
         """
+        if approximation_methods is None:
+            approximation_methods = [
+                "SVARM",
+                "KernelSHAP",
+                "PermutationSamplingSV",
+                "RegressionMSR",
+            ]
         benchmarks = {}
         json_dict = {}
         for idx, game_config_name in enumerate(game_config_names):
-            game_n_games: int | None = (
-                n_games[idx] if isinstance(n_games, list) else n_games
-            )
+            game_n_games: int | None = n_games[idx] if isinstance(n_games, list) else n_games
             game_generator, config_id = GameFactory.load_configuration_file_interactive(
                 config_path=f"{config_path}{game_config_name}.json",
                 n_games=game_n_games,
@@ -378,7 +383,7 @@ class BenchmarkFactory:
         import json
 
         benchmarks = {}
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             json_dict = json.load(f)
         for benchmark_name, benchmark_info in json_dict.items():
             game_generator = GameFactory.load_configuration_file(
@@ -390,16 +395,12 @@ class BenchmarkFactory:
             )
             benchmarks[benchmark_name + "_" + str(benchmark_info["config_id"])] = {
                 "games": game_generator,
-                "approximation_methods": benchmark_info.get(
-                    "approximation_methods", []
-                ),
+                "approximation_methods": benchmark_info.get("approximation_methods", []),
                 "index": benchmark_info["index"],
                 "order": benchmark_info["order"],
             }
         return benchmarks
 
-
-    
 
 def load_games_from_configuration(
     game_class: Game | str,
@@ -426,15 +427,13 @@ def load_games_from_configuration(
 
     """
     game_class = (
-        GAME_NAME_TO_CLASS_MAPPING[game_class]
-        if isinstance(game_class, str)
-        else game_class
+        GAME_NAME_TO_CLASS_MAPPING[game_class] if isinstance(game_class, str) else game_class
     )
     # get config if it is an int
     try:
-        configuration: dict = BENCHMARK_CONFIGURATIONS[game_class][n_player_id][
-            "configurations"
-        ][config_id - 1]
+        configuration: dict = BENCHMARK_CONFIGURATIONS[game_class][n_player_id]["configurations"][
+            config_id - 1
+        ]
     except TypeError:  # not a dict
         configuration: dict = config_id
     params = {}
@@ -465,9 +464,7 @@ def load_games_from_configuration(
     )
     for i in range(n_games):
         game_iteration = iteration_param_values[i]  # from 1 to 30
-        game_iteration_value = iteration_param_values_names[
-            i
-        ]  # i.e. the sentence or random state
+        game_iteration_value = iteration_param_values_names[i]  # i.e. the sentence or random state
         params[iteration_param] = game_iteration_value  # set the iteration parameter
         if not game_should_be_precomputed or (
             not check_pre_computed and not only_pre_computed
@@ -482,9 +479,7 @@ def load_games_from_configuration(
                     n_player_id=n_player_id,
                 )
             except FileNotFoundError:
-                if (
-                    only_pre_computed
-                ):  # if only pre-computed games are requested, skip the game
+                if only_pre_computed:  # if only pre-computed games are requested, skip the game
                     continue
                 else:  # fallback to creating the game which is not pre-computed
                     yield game_class(**params)
@@ -515,10 +510,7 @@ def load_game_data(
     file_name = get_game_file_name_from_config(configuration, iteration)
 
     path_to_values = (
-        SHAPIQ_DATA_DIR
-        / game_class.get_game_name()
-        / str(n_players)
-        / f"{file_name}.npz"
+        SHAPIQ_DATA_DIR / game_class.get_game_name() / str(n_players) / f"{file_name}.npz"
     )
     try:
         game = Game(
@@ -559,9 +551,7 @@ def download_game_data(game_name: str, n_players: int, file_name: str) -> None:
         FileNotFoundError: If the file could not be downloaded.
 
     """
-    github_url = (
-        "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/precomputed_games"
-    )
+    github_url = "https://raw.githubusercontent.com/mmschlk/shapiq/main/data/precomputed_games"
 
     # create the directory if it does not exist
     game_dir = SHAPIQ_DATA_DIR / game_name / str(n_players)

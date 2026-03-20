@@ -6,10 +6,11 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
+from intiq.interventional import InterventionalGame, InterventionalTreeExplainer
 from shapiq import Game, TreeExplainer
 from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
 from shapiq.explainer.tree.validation import validate_tree_model
-from intiq.interventional import InterventionalTreeExplainer, InterventionalGame
+
 from .base import Benchmark, GroundTruthComputer
 
 if TYPE_CHECKING:
@@ -186,15 +187,17 @@ class TreeLocalXAI(Game):
             if sum(coalition) == 0:
                 worth[i] = self._empty_value
                 continue
-            worth[i] = compute_tree_output_from_coalition(
-                coalition, self._trees, self._x_explain
-            )
+            worth[i] = compute_tree_output_from_coalition(coalition, self._trees, self._x_explain)
         return worth
 
+
 def decision_function_smaller_equal(value: float, threshold: float, is_left_default: bool) -> bool:
-    return (value <= threshold) or (np.isnan(value) and is_left_default) 
+    return (value <= threshold) or (np.isnan(value) and is_left_default)
+
+
 def decision_function_smaller(value: float, threshold: float, is_left_default: bool) -> bool:
-    return  (value < threshold) or (np.isnan(value) and is_left_default) 
+    return (value < threshold) or (np.isnan(value) and is_left_default)
+
 
 def compute_tree_output_from_coalition(
     coalition: np.ndarray, trees: list[TreeModel], x_explain: np.ndarray
@@ -245,33 +248,34 @@ def _get_tree_prediction(
     elif tree.decision_type == "<":
         decision_function = decision_function_smaller
     else:
-        raise ValueError(f"Unsupported decision type: {tree.decision_type}")
-    if tree.leaf_mask[
-        node_id
-    ]:  # end of recursion (base case, return the leaf prediction)
+        msg = f"Unsupported decision type: {tree.decision_type}"
+        raise ValueError(msg)
+    if tree.leaf_mask[node_id]:  # end of recursion (base case, return the leaf prediction)
         return tree.values[node_id]
     # not a leaf we have to go deeper
     feature_id, threshold = tree.features[node_id], tree.thresholds[node_id]
     is_present = bool(coalition[feature_id])
     left_child, right_child = tree.children_left[node_id], tree.children_right[node_id]
     if is_present:
-        next_node = left_child if decision_function(x_explain[feature_id], threshold, tree.children_left_default[node_id]) else right_child
-        tree_prediction = _get_tree_prediction(
-            int(next_node), tree, coalition, x_explain
+        next_node = (
+            left_child
+            if decision_function(
+                x_explain[feature_id], threshold, tree.children_left_default[node_id]
+            )
+            else right_child
         )
+        tree_prediction = _get_tree_prediction(int(next_node), tree, coalition, x_explain)
     else:  # feature is out of coalition we have to go both ways and average the predictions
-        prediction_left = _get_tree_prediction(
-            int(left_child), tree, coalition, x_explain
-        )
-        prediction_right = _get_tree_prediction(
-            int(right_child), tree, coalition, x_explain
-        )
+        prediction_left = _get_tree_prediction(int(left_child), tree, coalition, x_explain)
+        prediction_right = _get_tree_prediction(int(right_child), tree, coalition, x_explain)
         # get weights (tree probabilities of going left or right)
         left_weight = tree.node_sample_weight[left_child]
         right_weight = tree.node_sample_weight[right_child]
         sum_of_weights = left_weight + right_weight
-        
-        tree_prediction = (left_weight * prediction_left + right_weight * prediction_right) / sum_of_weights
+
+        tree_prediction = (
+            left_weight * prediction_left + right_weight * prediction_right
+        ) / sum_of_weights
         # # scale predictions
         # prediction_left *= left_weight / sum_of_weights
         # prediction_right *= right_weight / sum_of_weights

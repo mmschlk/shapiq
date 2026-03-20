@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.ticker import LogLocator, NullFormatter
-import scienceplots
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -149,10 +148,7 @@ STYLE_DICT: dict[str, dict[str, str]] = {
         "color": "#df5050",
         "marker": "o",
         "linestyle": "solid",
-    }
-
-
-
+    },
 }
 STYLE_DICT = defaultdict(lambda: {"color": "black", "marker": "o"}, STYLE_DICT)
 MARKERS = []
@@ -226,9 +222,7 @@ def create_application_name(setup: str, *, abbrev: bool = False) -> str:
     return application_name
 
 
-def abbreviate_application_name(
-    application_name: str, *, new_line: bool = False
-) -> str:
+def abbreviate_application_name(application_name: str, *, new_line: bool = False) -> str:
     """Abbreviate the application name.
 
     Abbreviate the application name by taking the first three characters after each capital
@@ -402,14 +396,12 @@ def plot_approximation_quality_vstime(
     # create the plot
     plt.style.use(["science", "no-latex"])
     fig, ax = plt.subplots(figsize=figsize)
-    approx_max_x = 0
     for approximator in approximators:
         for order in metric_data["order"].unique():
             if orders is not None and order not in orders:
                 continue
             data_order = metric_data[
-                (metric_data["approximator"] == approximator)
-                & (metric_data["order"] == order)
+                (metric_data["approximator"] == approximator) & (metric_data["order"] == order)
             ].copy()
 
             if log_scale_y:
@@ -512,7 +504,7 @@ def plot_approximation_quality(
     linewidth: float = LINE_THICKNESS,
     highlight_size: float = 1.5,
     style_dict: dict[str, dict[str, str]] | None = None,
-    plot_labels: bool = True
+    plot_labels: bool = True,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the approximation quality curves.
 
@@ -573,7 +565,7 @@ def plot_approximation_quality(
     bot_lim = bot_lim.split("e")[1]  # get the exponent
     bot_lim = int(bot_lim)  # get the top limit as the exponent + 1
     bot_lim = 10**bot_lim  # get the top limit in scientific notation
-    #log_scale_min = max(log_scale_min, bot_lim)
+    # log_scale_min = max(log_scale_min, bot_lim)
     # make sure orders is a list
     if orders is None:
         orders = ["all"]
@@ -601,8 +593,7 @@ def plot_approximation_quality(
             if orders is not None and order not in orders:
                 continue
             data_order = metric_data[
-                (metric_data["approximator"] == approximator)
-                & (metric_data["order"] == order)
+                (metric_data["approximator"] == approximator) & (metric_data["order"] == order)
             ].copy()
 
             # Log-scale x cannot display 0 or negative budgets.
@@ -636,9 +627,7 @@ def plot_approximation_quality(
             line_marker = STYLE_DICT[approximator]["marker"]
             line_style = STYLE_DICT[approximator].get("linestyle", line_style)
             linewidth = STYLE_DICT[approximator].get("linewidth", linewidth)
-            zorder = STYLE_DICT[approximator].get(
-                "zorder", APPROXIMATOR_TO_ZORDER[approximator]
-            )
+            zorder = STYLE_DICT[approximator].get("zorder", APPROXIMATOR_TO_ZORDER[approximator])
             marker_size = STYLE_DICT[approximator].get("marker_size", marker_size)
             highlight_size = STYLE_DICT[approximator].get(
                 "highlight_size",
@@ -789,9 +778,7 @@ def _set_x_axis_ticks(
             sorted(set(snapped) | {float(unique_budgets[0]), float(unique_budgets[-1])})
         )
         budgets_relative = (
-            budgets / (2**n_players)
-            if n_players < 64
-            else np.zeros_like(budgets) + 0.01
+            budgets / (2**n_players) if n_players < 64 else np.zeros_like(budgets) + 0.01
         )
 
     elif (n_players <= 16) and (not log_scale_x):
@@ -805,9 +792,7 @@ def _set_x_axis_ticks(
         # remove all values greater than max_budget * 1.05
         budgets = budgets[budgets <= max_budget * 1.05]
         budgets_relative = (
-            budgets / (2**n_players)
-            if n_players < 64
-            else np.zeros_like(budgets) + 0.01
+            budgets / (2**n_players) if n_players < 64 else np.zeros_like(budgets) + 0.01
         )
 
     xtick_labels = []
@@ -824,9 +809,7 @@ def _set_x_axis_ticks(
     ax.set_xticklabels(xtick_labels)
 
 
-def _set_y_axis_log_scale(
-    ax: plt.Axes, log_scale_min: float, log_scale_max: float
-) -> None:
+def _set_y_axis_log_scale(ax: plt.Axes, log_scale_min: float, log_scale_max: float) -> None:
     """Sets the y-axis to a log scale and adjusts the limits."""
     # adjust the top limit to be one order of magnitude higher than the current top limit
     top_lim = ax.get_ylim()[1]
@@ -841,9 +824,7 @@ def _set_y_axis_log_scale(
     ax.set_ylim(bottom=log_scale_min * 1.1, top=top_lim)
 
     ## Ensure minor ticks are shown on log scale ##
-    ax.yaxis.set_minor_locator(
-        LogLocator(base=10.0, subs=np.arange(1.0, 10.0) * 0.1, numticks=10)
-    )
+    ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=np.arange(1.0, 10.0) * 0.1, numticks=10))
     ax.yaxis.set_minor_formatter(NullFormatter())
 
 
@@ -865,7 +846,6 @@ def get_metric_data_time(
     """
     # get the metric columns for each order in the results
     metric_columns = [col for col in results_df.columns if metric == col]
-    print(f"Metric columns: {metric_columns}: Metric: {metric}")
     metric_dfs = []
     for metric_col in metric_columns:
         data_order = (
@@ -885,13 +865,10 @@ def get_metric_data_time(
             )
             .reset_index()
         )
-        data_order["order"] = (
-            "all" if "_" not in metric_col else int(metric_col.split("_")[0])
-        )
+        data_order["order"] = "all" if "_" not in metric_col else int(metric_col.split("_")[0])
         # rename the columns of grouped data
         new_columns = [
-            "_".join(col).strip() if col[1] != "" else col[0]
-            for col in data_order.columns
+            "_".join(col).strip() if col[1] != "" else col[0] for col in data_order.columns
         ]
         new_columns = [col.replace(f"{metric_col}_", "") for col in new_columns]
 
@@ -902,9 +879,7 @@ def get_metric_data_time(
     metric_df = pd.concat(metric_dfs)
 
     # compute the standard error
-    metric_df["sem"] = (
-        metric_df["std"] / metric_df["count"] ** 0.5
-    )  # compute standard error
+    metric_df["sem"] = metric_df["std"] / metric_df["count"] ** 0.5  # compute standard error
 
     return metric_df
 
@@ -922,7 +897,6 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
     """
     # get the metric columns for each order in the results
     metric_columns = [col for col in results_df.columns if metric == col]
-    print(f"Metric columns: {metric_columns}: Metric: {metric}")
     metric_dfs = []
     for metric_col in metric_columns:
         data_order = (
@@ -942,13 +916,10 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
             )
             .reset_index()
         )
-        data_order["order"] = (
-            "all" if "_" not in metric_col else int(metric_col.split("_")[0])
-        )
+        data_order["order"] = "all" if "_" not in metric_col else int(metric_col.split("_")[0])
         # rename the columns of grouped data
         new_columns = [
-            "_".join(col).strip() if col[1] != "" else col[0]
-            for col in data_order.columns
+            "_".join(col).strip() if col[1] != "" else col[0] for col in data_order.columns
         ]
         new_columns = [col.replace(f"{metric_col}_", "") for col in new_columns]
 
@@ -959,9 +930,7 @@ def get_metric_data(results_df: pd.DataFrame, metric: str = "MSE") -> pd.DataFra
     metric_df = pd.concat(metric_dfs)
 
     # compute the standard error
-    metric_df["sem"] = (
-        metric_df["std"] / metric_df["count"] ** 0.5
-    )  # compute standard error
+    metric_df["sem"] = metric_df["std"] / metric_df["count"] ** 0.5  # compute standard error
 
     return metric_df
 
@@ -1031,8 +1000,6 @@ def add_legend(
             ),
             linewidth=LINE_THICKNESS,
         )
-    leg = axis.legend(
-        loc=loc, bbox_to_anchor=(1.05, 1), frameon=True, fancybox=True, framealpha=1
-    )
+    leg = axis.legend(loc=loc, bbox_to_anchor=(1.05, 1), frameon=True, fancybox=True, framealpha=1)
     leg.get_frame().set_linewidth(1.0)
     leg.get_frame().set_facecolor("none")

@@ -46,9 +46,6 @@ from shapiq.approximator import (
     SV_APPROXIMATORS,
     Approximator,
 )
-
-from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
-from shapiq_games.synthetic import SOUM
 from shapiq_games.benchmark import (
     AdultCensusDatasetValuation,
     AdultCensusDataValuation,
@@ -59,6 +56,9 @@ from shapiq_games.benchmark import (
     AdultCensusRandomForestEnsembleSelection,
     AdultCensusUncertaintyExplanation,
     AdultCensusUnsupervisedData,
+    AmazonLocalXAI,
+    AnnealingLocalXAI,
+    ArrhythmiaLocalXAI,
     BikeSharingClusterExplanation,
     BikeSharingDatasetValuation,
     BikeSharingDataValuation,
@@ -68,6 +68,8 @@ from shapiq_games.benchmark import (
     BikeSharingLocalXAI,
     BikeSharingRandomForestEnsembleSelection,
     BikeSharingUnsupervisedData,
+    BioresponseLocalXAI,
+    BreastCancerLocalXAI,
     CaliforniaHousingClusterExplanation,
     CaliforniaHousingDatasetValuation,
     CaliforniaHousingDataValuation,
@@ -77,39 +79,36 @@ from shapiq_games.benchmark import (
     CaliforniaHousingLocalXAI,
     CaliforniaHousingRandomForestEnsembleSelection,
     CaliforniaHousingUnsupervisedData,
-    ImageClassifierLocalXAI,
-    SentimentAnalysisLocalXAI,
-    # not to be precomputed
-    SynthDataTreeSHAPIQXAI,
-    ForestFiresLocalXAI,
-    IndependentLinear60LocalXAI,
-    Corrgroups60LocalXAI,
-    NHANESILocalXAI,
-    RealEstateLocalXAI,
-    CommunitiesAndCrimeLocalXAI,
-    BreastCancerLocalXAI,
-    AmazonLocalXAI,
-    BioresponseLocalXAI,
-    LeukemiaLocalXAI,
-    MicroresponseLocalXAI,
-    AnnealingLocalXAI,
-    ArrhythmiaLocalXAI,
     ChessLocalXAI,
+    CommunitiesAndCrimeLocalXAI,
     CondindLocalXAI,
+    Corrgroups60LocalXAI,
     CrossLocalXAI,
     DisjunctLocalXAI,
+    ForestFiresLocalXAI,
     GroupLocalXAI,
     HepatitisLocalXAI,
+    ImageClassifierLocalXAI,
+    IndependentLinear60LocalXAI,
     IonosphereLocalXAI,
+    LeukemiaLocalXAI,
+    MicroresponseLocalXAI,
     MushroomLocalXAI,
+    NHANESILocalXAI,
     NurseryLocalXAI,
+    RealEstateLocalXAI,
+    SentimentAnalysisLocalXAI,
     SoybeanLocalXAI,
     SphereLocalXAI,
+    # not to be precomputed
+    SynthDataTreeSHAPIQXAI,
     ThyroidLocalXAI,
     WineQualityLocalXAI,
     XorLocalXAI,
     ZooLocalXAI,
 )
+from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
+from shapiq_games.synthetic import SOUM
 
 if TYPE_CHECKING:
     from shapiq.game import Game
@@ -214,7 +213,7 @@ class GameConfigurator:
         game_class_or_name: Game | str,
         *,
         config_path: str | None = None,
-        configurations: list[dict[str, Any]] = [],
+        configurations: list[dict[str, Any]] | None = None,
         iteration_parameter: str | None = None,
         iteration_parameter_values_names: list[str] | None = None,
         iteration_parameter_values: list[str] | None = None,
@@ -227,6 +226,8 @@ class GameConfigurator:
             game_class (type[Game]): The game class to configure.
             configuration (dict[str, Any]): The configuration dictionary for the game class.
         """
+        if configurations is None:
+            configurations = []
         if isinstance(game_class_or_name, str):
             self.game_class = GAME_NAME_TO_CLASS_MAPPING[game_class_or_name]
             self.game_name = game_class_or_name
@@ -271,7 +272,7 @@ class GameConfigurator:
         """Loads the GameConfigurator from a JSON file."""
         import json
 
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             data = json.load(f)
 
         self.game_name = data["game_name"]
@@ -279,9 +280,7 @@ class GameConfigurator:
         self.configurations = data["configurations"]
         self.config_path = file_path
         self.iteration_parameter = data["iteration_parameter"]
-        self.iteration_parameter_values_names = data.get(
-            "iteration_parameter_values_names", None
-        )
+        self.iteration_parameter_values_names = data.get("iteration_parameter_values_names", None)
         self.iteration_parameter_values = data.get("iteration_parameter_values", None)
         self.n_players = data["n_players"]
         self.precompute = data["precompute"]
@@ -305,7 +304,8 @@ class GameConfigurator:
             del self.configurations[index]
             self.to_json()
         else:
-            raise IndexError("Configuration index out of range.")
+            msg = "Configuration index out of range."
+            raise IndexError(msg)
 
     def choose_configuration(self, index: int) -> dict[str, Any]:
         """Chooses a configuration from the GameConfigurator.
@@ -315,8 +315,8 @@ class GameConfigurator:
         """
         if 0 <= index < len(self.configurations):
             return self.configurations[index]
-        else:
-            raise IndexError("Configuration index out of range.")
+        msg = "Configuration index out of range."
+        raise IndexError(msg)
 
     def __repr__(self) -> str:
         """Returns a string representation of the GameConfigurator."""
@@ -384,9 +384,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game, list[dict[str, Any]]] = {
         {
             "configurations": [{"mask_strategy": "mask"}],
             "iteration_parameter": "input_text",
-            "iteration_parameter_values": list(
-                range(1, len(SENTIMENT_ANALYSIS_TEXTS) + 1)
-            ),
+            "iteration_parameter_values": list(range(1, len(SENTIMENT_ANALYSIS_TEXTS) + 1)),
             "iteration_parameter_values_names": SENTIMENT_ANALYSIS_TEXTS,
             "n_players": 14,
             "precompute": True,
@@ -397,9 +395,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game, list[dict[str, Any]]] = {
         {
             "configurations": [{"model_name": "resnet_18", "n_superpixel_resnet": 14}],
             "iteration_parameter": "x_explain_path",
-            "iteration_parameter_values": list(
-                range(1, len(IMAGENET_EXAMPLE_FILES) + 1)
-            ),
+            "iteration_parameter_values": list(range(1, len(IMAGENET_EXAMPLE_FILES) + 1)),
             "iteration_parameter_values_names": IMAGENET_EXAMPLE_FILES,
             "n_players": 14,
             "precompute": True,
@@ -407,9 +403,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game, list[dict[str, Any]]] = {
         {
             "configurations": [{"model_name": "vit_9_patches"}],
             "iteration_parameter": "x_explain_path",
-            "iteration_parameter_values": list(
-                range(1, len(IMAGENET_EXAMPLE_FILES) + 1)
-            ),
+            "iteration_parameter_values": list(range(1, len(IMAGENET_EXAMPLE_FILES) + 1)),
             "iteration_parameter_values_names": IMAGENET_EXAMPLE_FILES,
             "n_players": 9,
             "precompute": True,
@@ -417,9 +411,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game, list[dict[str, Any]]] = {
         {
             "configurations": [{"model_name": "vit_16_patches"}],
             "iteration_parameter": "x_explain_path",
-            "iteration_parameter_values": list(
-                range(1, len(IMAGENET_EXAMPLE_FILES) + 1)
-            ),
+            "iteration_parameter_values": list(range(1, len(IMAGENET_EXAMPLE_FILES) + 1)),
             "iteration_parameter_values_names": IMAGENET_EXAMPLE_FILES,
             "n_players": 16,
             "precompute": True,
@@ -710,9 +702,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game, list[dict[str, Any]]] = {
                 },
             ],
             "iteration_parameter": "random_state",  # for agglomerative this does not change the game
-            "iteration_parameter_values": [
-                1
-            ],  # for agglomerative this does not change the game
+            "iteration_parameter_values": [1],  # for agglomerative this does not change the game
             "n_players": 12,
             "precompute": True,
         },
@@ -727,9 +717,7 @@ BENCHMARK_CONFIGURATIONS: dict[Game, list[dict[str, Any]]] = {
                 },
             ],
             "iteration_parameter": "random_state",  # for agglomerative this does not change the game
-            "iteration_parameter_values": [
-                1
-            ],  # for agglomerative this does not change the game
+            "iteration_parameter_values": [1],  # for agglomerative this does not change the game
             "n_players": 8,
             "precompute": True,
         },
@@ -978,9 +966,9 @@ GAME_NAME_TO_CLASS_MAPPING = {
     "ViT4by4Patches": ImageClassifier,
     "SOUM": SOUM,
     "SOUM1k": SOUM,
-    "SOUM10k":SOUM,
-    "SOUM50k":SOUM,
-    "SOUM100k":SOUM,
+    "SOUM10k": SOUM,
+    "SOUM50k": SOUM,
+    "SOUM100k": SOUM,
     "AmazonLocalXAI": AmazonLocalXAI,
     "BioresponseLocalXAI": BioresponseLocalXAI,
     "LeukemiaLocalXAI": LeukemiaLocalXAI,
@@ -1088,9 +1076,7 @@ def get_name_from_game_class(game_class: Game) -> str:
 def print_benchmark_configurations() -> None:
     """Print the configurations of the benchmark games."""
     game_classes = list(BENCHMARK_CONFIGURATIONS.keys())
-    game_identifiers = [
-        GAME_CLASS_TO_NAME_MAPPING[game_class] for game_class in game_classes
-    ]
+    game_identifiers = [GAME_CLASS_TO_NAME_MAPPING[game_class] for game_class in game_classes]
     game_identifiers = sorted(game_identifiers)
     for game_identifier in game_identifiers:
         game_class = GAME_NAME_TO_CLASS_MAPPING[game_identifier]

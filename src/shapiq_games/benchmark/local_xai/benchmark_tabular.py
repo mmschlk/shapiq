@@ -805,6 +805,7 @@ class Zoo(LocalExplanation):
             random_state=random_state,
         )
 
+
 class ForestFires(LocalExplanation):
     """The ForestFires dataset as a LocalExplanation game.
 
@@ -1402,407 +1403,1426 @@ def _init_tabarena_game(
 class TabArenaAirfoilSelfNoise(LocalExplanation):
     """The TabArena airfoil_self_noise dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaAirfoilSelfNoise LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_airfoil_self_noise", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_airfoil_self_noise",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaAmazonEmployeeAccess(LocalExplanation):
     """The TabArena amazon_employee_access dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaAmazonEmployeeAccess LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_amazon_employee_access", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_amazon_employee_access",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaAnneal(LocalExplanation):
     """The TabArena anneal dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaAnneal LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_anneal", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_anneal",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaFiat500(LocalExplanation):
     """The TabArena fiat_500 dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaFiat500 LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_fiat_500", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_fiat_500",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaApsFailure(LocalExplanation):
     """The TabArena aps_failure dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaApsFailure LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_aps_failure", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_aps_failure",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaBankMarketing(LocalExplanation):
     """The TabArena bank_marketing dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaBankMarketing LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_bank_marketing", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_bank_marketing",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaBankCustomerChurn(LocalExplanation):
     """The TabArena bank_customer_churn dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaBankCustomerChurn LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_bank_customer_churn", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_bank_customer_churn",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaBioresponse(LocalExplanation):
     """The TabArena bioresponse dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaBioresponse LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_bioresponse", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_bioresponse",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaBloodTransfusion(LocalExplanation):
     """The TabArena blood_transfusion dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaBloodTransfusion LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_blood_transfusion", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_blood_transfusion",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaChurn(LocalExplanation):
     """The TabArena churn dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaChurn LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_churn", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_churn",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaCoil2000(LocalExplanation):
     """The TabArena coil2000 dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaCoil2000 LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_coil2000", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_coil2000",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaConcreteStrength(LocalExplanation):
     """The TabArena concrete_strength dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaConcreteStrength LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_concrete_strength", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_concrete_strength",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaCreditG(LocalExplanation):
     """The TabArena credit_g dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaCreditG LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_credit_g", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_credit_g",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaCreditCardDefault(LocalExplanation):
     """The TabArena credit_card_default dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaCreditCardDefault LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_credit_card_default", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_credit_card_default",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaAirlineSatisfaction(LocalExplanation):
     """The TabArena airline_satisfaction dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaAirlineSatisfaction LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_airline_satisfaction", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_airline_satisfaction",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaDiabetes(LocalExplanation):
     """The TabArena diabetes dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaDiabetes LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_diabetes", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_diabetes",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaDiabetes130us(LocalExplanation):
     """The TabArena diabetes130us dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaDiabetes130us LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_diabetes130us", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_diabetes130us",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaDiamonds(LocalExplanation):
     """The TabArena diamonds dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaDiamonds LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_diamonds", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_diamonds",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaEcommerceShipping(LocalExplanation):
     """The TabArena ecommerce_shipping dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaEcommerceShipping LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_ecommerce_shipping", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_ecommerce_shipping",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaFitnessClub(LocalExplanation):
     """The TabArena fitness_club dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaFitnessClub LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_fitness_club", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_fitness_club",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaFoodDelivery(LocalExplanation):
     """The TabArena food_delivery dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaFoodDelivery LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_food_delivery", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_food_delivery",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaGiveMeCredit(LocalExplanation):
     """The TabArena give_me_credit dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaGiveMeCredit LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_give_me_credit", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_give_me_credit",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaHazelnut(LocalExplanation):
     """The TabArena hazelnut dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaHazelnut LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_hazelnut", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_hazelnut",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaHealthInsurance(LocalExplanation):
     """The TabArena health_insurance dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaHealthInsurance LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_health_insurance", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_health_insurance",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaHeloc(LocalExplanation):
     """The TabArena heloc dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaHeloc LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_heloc", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_heloc",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaHivaAgnostic(LocalExplanation):
     """The TabArena hiva_agnostic dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaHivaAgnostic LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_hiva_agnostic", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_hiva_agnostic",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaHouses(LocalExplanation):
     """The TabArena houses dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaHouses LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_houses", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_houses",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaHrAnalytics(LocalExplanation):
     """The TabArena hr_analytics dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaHrAnalytics LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_hr_analytics", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_hr_analytics",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaCouponRecommendation(LocalExplanation):
     """The TabArena coupon_recommendation dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaCouponRecommendation LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_coupon_recommendation", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_coupon_recommendation",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaGoodCustomer(LocalExplanation):
     """The TabArena good_customer dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaGoodCustomer LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_good_customer", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_good_customer",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaKddcup09(LocalExplanation):
     """The TabArena kddcup09 dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaKddcup09 LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_kddcup09", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_kddcup09",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaMarketingCampaign(LocalExplanation):
     """The TabArena marketing_campaign dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaMarketingCampaign LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_marketing_campaign", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_marketing_campaign",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaMaternalHealth(LocalExplanation):
     """The TabArena maternal_health dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaMaternalHealth LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_maternal_health", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_maternal_health",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaMiamiHousing(LocalExplanation):
     """The TabArena miami_housing dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaMiamiHousing LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_miami_housing", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_miami_housing",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaOnlineShoppers(LocalExplanation):
     """The TabArena online_shoppers dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaOnlineShoppers LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_online_shoppers", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_online_shoppers",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaProtein(LocalExplanation):
     """The TabArena protein dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaProtein LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_protein", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_protein",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaBankruptcy(LocalExplanation):
     """The TabArena bankruptcy dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaBankruptcy LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_bankruptcy", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_bankruptcy",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaQsarBiodeg(LocalExplanation):
     """The TabArena qsar_biodeg dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaQsarBiodeg LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_qsar_biodeg", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_qsar_biodeg",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaQsarTid11(LocalExplanation):
     """The TabArena qsar_tid11 dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaQsarTid11 LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_qsar_tid11", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_qsar_tid11",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaQsarFishToxicity(LocalExplanation):
     """The TabArena qsar_fish_toxicity dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaQsarFishToxicity LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_qsar_fish_toxicity", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_qsar_fish_toxicity",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaSdss17(LocalExplanation):
     """The TabArena sdss17 dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaSdss17 LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_sdss17", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_sdss17",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaSeismicBumps(LocalExplanation):
     """The TabArena seismic_bumps dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaSeismicBumps LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_seismic_bumps", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_seismic_bumps",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaSplice(LocalExplanation):
     """The TabArena splice dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaSplice LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_splice", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_splice",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaStudentsDropout(LocalExplanation):
     """The TabArena students_dropout dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaStudentsDropout LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_students_dropout", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_students_dropout",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaSuperconductivity(LocalExplanation):
     """The TabArena superconductivity dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaSuperconductivity LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_superconductivity", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_superconductivity",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaTaiwaneseBankruptcy(LocalExplanation):
     """The TabArena taiwanese_bankruptcy dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaTaiwaneseBankruptcy LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_taiwanese_bankruptcy", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_taiwanese_bankruptcy",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaWebsitePhishing(LocalExplanation):
     """The TabArena website_phishing dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaWebsitePhishing LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_website_phishing", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_website_phishing",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaWineQuality(LocalExplanation):
     """The TabArena wine_quality dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaWineQuality LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_wine_quality", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_wine_quality",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaNaticusdroid(LocalExplanation):
     """The TabArena naticusdroid dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaNaticusdroid LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_naticusdroid", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_naticusdroid",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaJm1(LocalExplanation):
     """The TabArena jm1 dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaJm1 LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_jm1", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_jm1",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )
 
 
 class TabArenaMic(LocalExplanation):
     """The TabArena mic dataset as a local explanation game."""
 
-    def __init__(self, *, class_to_explain: int | None = None, x: np.ndarray | int | None = None, model_name: str = "decision_tree", imputer: str = "marginal", normalize: bool = True, verbose: bool = False, random_state: int | None = 42) -> None:
+    def __init__(
+        self,
+        *,
+        class_to_explain: int | None = None,
+        x: np.ndarray | int | None = None,
+        model_name: str = "decision_tree",
+        imputer: str = "marginal",
+        normalize: bool = True,
+        verbose: bool = False,
+        random_state: int | None = 42,
+    ) -> None:
         """Initializes the TabArenaMic LocalExplanation game."""
-        _init_tabarena_game(self, dataset_name="tabarena_mic", class_to_explain=class_to_explain, x=x, model_name=model_name, imputer=imputer, normalize=normalize, verbose=verbose, random_state=random_state)
-
+        _init_tabarena_game(
+            self,
+            dataset_name="tabarena_mic",
+            class_to_explain=class_to_explain,
+            x=x,
+            model_name=model_name,
+            imputer=imputer,
+            normalize=normalize,
+            verbose=verbose,
+            random_state=random_state,
+        )

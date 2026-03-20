@@ -4,20 +4,18 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
-from shapiq import Game, TabPFNImputer, TreeExplainer
-from shapiq.explainer.tree.treeshapiq import TreeSHAPIQIndices
+from shapiq import Game, TabPFNImputer
 from shapiq.explainer.tabpfn import TabPFNExplainer
-from shapiq.explainer.tree.validation import validate_tree_model
-from shapiq.typing import CoalitionMatrix, GameValues
-from shapiq.typing import IndexType
+
 from .base import Benchmark, GroundTruthComputer
 
 if TYPE_CHECKING:
-    from shapiq.explainer.tree import TreeModel
     from shapiq.interaction_values import InteractionValues
+    from shapiq.typing import IndexType
+
 
 class TabPFNBenchmark(Benchmark):
-    def __init__(self, tabpfn_model,data,labels, x_explain, *args, **kwargs):
+    def __init__(self, tabpfn_model, data, labels, x_explain, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.tabpfn_model = tabpfn_model
         self.x_explain = x_explain
@@ -27,10 +25,9 @@ class TabPFNBenchmark(Benchmark):
             labels=deepcopy(labels),
             x_explain=self.x_explain,
         )
-        game = TabPFNGame(
-            
-        )
-        super().__init__(game=game,computer=computer)
+        game = TabPFNGame()
+        super().__init__(game=game, computer=computer)
+
 
 class TabPFNComputer(GroundTruthComputer):
     def __init__(self, tabpfn_model, data, labels, x_explain) -> None:
@@ -51,8 +48,20 @@ class TabPFNComputer(GroundTruthComputer):
         )
         return explainer.explain(self.x_explain)
 
+
 class TabPFNGame(Game):
-    def __init__(self,tabpfn_model, data, labels, x_explain, * , x_test=None, empty_prediction=None, normalize=True, class_label:int | None = None) -> None:
+    def __init__(
+        self,
+        tabpfn_model,
+        data,
+        labels,
+        x_explain,
+        *,
+        x_test=None,
+        empty_prediction=None,
+        normalize=True,
+        class_label: int | None = None,
+    ) -> None:
         self.tabpfn_model = tabpfn_model
         n_samples = data.shape[0]
         x_train = data

@@ -21,41 +21,41 @@ from sklearn.metrics import (
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
+import shapiq_games.datasets as _tabarena_datasets_module  # for TabARENA dynamic loaders
 from shapiq.utils import shuffle_data
 from shapiq_games.datasets import (
     load_adult_census,
+    load_amazon,
     load_annealing,
     load_arrhythmia,
     load_bike_sharing,
+    load_bioresponse,
     load_breast_cancer,
     load_california_housing,
-    load_hepatitis,
-    load_ionosphere,
-    load_mushroom,
-    load_nursery,
-    load_soybean,
-    load_thyroid,
-    load_zoo,
-    load_forest_fires,
-    load_independentlinear60,
-    load_amazon,
-    load_bioresponse,
-    load_communities_and_crime,
     load_chess,
+    load_communities_and_crime,
     load_condind,
     load_corrgroups60,
     load_cross,
     load_disjunct,
-    load_sphere,
-    load_nhanesi,
-    load_real_estate,
-    load_microresponse,
+    load_forest_fires,
     load_group,
+    load_hepatitis,
+    load_independentlinear60,
+    load_ionosphere,
     load_leukemia,
+    load_microresponse,
+    load_mushroom,
+    load_nhanesi,
+    load_nursery,
+    load_real_estate,
+    load_soybean,
+    load_sphere,
+    load_thyroid,
     load_wine_quality,
     load_xor,
+    load_zoo,
 )
-import shapiq_games.datasets as _tabarena_datasets_module  # for TabARENA dynamic loaders
 
 if TYPE_CHECKING:
     from shapiq.typing import Model
@@ -381,14 +381,14 @@ class GameBenchmarkSetup:
             x_data, y_data = _loader()
             self.feature_names: list = list(x_data.columns)
             import pandas as _pd
+
             self.dataset_type = (
                 "regression" if _pd.api.types.is_float_dtype(y_data) else "classification"
             )
         else:
             available_datasets = ", ".join(f"'{name}'" for name in AVAILABLE_DATASETS)
             msg = (
-                f"Invalid dataset name {dataset_name}. Available datasets are "
-                f"{available_datasets}."
+                f"Invalid dataset name {dataset_name}. Available datasets are {available_datasets}."
             )
             raise ValueError(msg)
 

@@ -8,11 +8,12 @@ from typing import TYPE_CHECKING, Literal, NamedTuple
 import numpy as np
 from scipy.stats import kendalltau, spearmanr
 from shapiq import powerset
-from shapiq.game import Game
-from shapiq.utils.sets import count_interactions
 from shapiq.approximator.sampling import CoalitionSampler
+from shapiq.utils.sets import count_interactions
 from sklearn.metrics import r2_score
+
 if TYPE_CHECKING:
+    from shapiq.game import Game
     from shapiq.interaction_values import InteractionValues
 
 __all__ = ["get_all_metrics"]
@@ -37,9 +38,7 @@ def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
 
 DIFF_METRICS = Literal["MSE", "MAE", "SSE", "SAE"]
 RANKING_METRICS = Literal["KendallTau@k", "Precision@k"]
-METRICS = (
-    DIFF_METRICS | RANKING_METRICS | Literal["SpearmanCorrelation", "Faithfulness"]
-)
+METRICS = DIFF_METRICS | RANKING_METRICS | Literal["SpearmanCorrelation", "Faithfulness"]
 
 
 class Metric(NamedTuple):
@@ -114,9 +113,7 @@ def compute_kendall_tau(
     ground_truth = _remove_empty_value(ground_truth)
     estimated = _remove_empty_value(estimated)
 
-    for interaction in set(ground_truth.interactions.keys()).union(
-        estimated.interactions.keys()
-    ):
+    for interaction in set(ground_truth.interactions.keys()).union(estimated.interactions.keys()):
         gt_values.append(ground_truth[interaction])
         estimated_values.append(estimated[interaction])
     # array conversion
@@ -135,7 +132,7 @@ def compute_kendall_tau(
 
 
 def compute_spearmans_correlation(
-    ground_truth: InteractionValues, estimated: InteractionValues, k: int = None
+    ground_truth: InteractionValues, estimated: InteractionValues, k: int | None = None
 ) -> float:
     """Compute the Spearman's correlation between two interaction values.
 
@@ -195,11 +192,9 @@ def compute_precision_at_k(
     estimated_values = _remove_empty_value(estimated)
     top_k, _ = ground_truth_values.get_top_k(k=k, as_interaction_values=False)
     top_k_estimated, _ = estimated_values.get_top_k(k=k, as_interaction_values=False)
-    precision_at_k = (
-        len(set(top_k.keys()).intersection(set(top_k_estimated.keys()))) / k
-    )
+    precision_at_k = len(set(top_k.keys()).intersection(set(top_k_estimated.keys()))) / k
     return Metric(
-        metric_id=f"Precision@k",
+        metric_id="Precision@k",
         value=precision_at_k,
         computed_k=k,
     )
@@ -209,9 +204,11 @@ def compute_faithullness(estimated_game: Game, estimated: InteractionValues) -> 
     """Compute the Faithullness between two interaction values.
     Sample coaltions and sum the banzhaf interactions in both ground truth and estimated, which are contained in the sampleed coalitions.
     Then compute the R^2 between the two sums.
+
     Args:
         estimated_game: The estimated game.
         estimated: The estimated interaction values.
+
     Returns:
         The Faithullness between the ground truth and estimated interaction values.
     """
@@ -227,7 +224,7 @@ def compute_faithullness(estimated_game: Game, estimated: InteractionValues) -> 
     for coalition in sampled_coalitions:
         coalition_set = set(np.where(coalition)[0])
         est_sum = 0.0
-        for interaction in estimated.interactions.keys():
+        for interaction in estimated.interactions:
             if len(set(interaction)) >= 1 and set(interaction).issubset(coalition_set):
                 est_sum += estimated[interaction]
         est_sums.append(est_sum)
@@ -254,7 +251,6 @@ def get_all_metrics(
         The metrics as a dictionary.
 
     """
-
     metrics = [
         compute_spearmans_correlation(ground_truth, estimated, k=10),
         compute_spearmans_correlation(ground_truth, estimated),

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-
-from lightgbm import LGBMRegressor
 import numpy as np
-from shapiq.approximator import SVARMIQ, SHAPIQ, KernelSHAPIQ, ProxySPEX, ProxySHAP
+from shapiq.approximator import SHAPIQ, SVARMIQ, KernelSHAPIQ, ProxySHAP, ProxySPEX
 
 
 def get_approximators(
