@@ -238,8 +238,19 @@ def _run_benchmark(
         "estimated": estimates.estimated,
     }
     # compute the metrics
-    metrics_all_orders = get_all_metrics(gt_value, estimates)
-    result.update(metrics_all_orders)
+    metrics_all_orders = get_all_metrics(gt_value, estimates, game)
+
+    metrics_dict = {}
+    for metric in metrics_all_orders:
+        key = metric.metric_id
+        if metric.computed_k is not None:
+            key = f"{key}@{metric.computed_k}"
+        if metric.order is not None:
+            key = f"{key}_order{metric.order}"
+        metrics_dict[key] = metric.value
+
+    result.update(metrics_dict)
+    #result.update(metrics_all_orders)
     # for order in range(1, gt_value.max_order + 1):
     #     metrics_order = get_all_metrics(
     #         gt_value.get_n_order(order),
@@ -445,7 +456,7 @@ def run_benchmark_from_configuration(
     gt_values = [game.exact_values(index=index, order=order) for game in tqdm(games, unit=" games")]
 
     # run the benchmark
-    run_benchmark(
+    return run_benchmark(
         index=index,
         order=order,
         approximators=approximators,

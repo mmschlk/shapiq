@@ -1022,6 +1022,42 @@ APPROXIMATION_BENCHMARK_PARAMS.update(
     ),
 )
 
+DATASET_NAME_TO_GAME_MAPPING={
+    "adultcensus": AdultCensusLocalXAI,
+    "bikesharing": BikeSharingLocalXAI,
+    "californiahousing": CaliforniaHousingLocalXAI,
+    
+    "sentimentanalysis": SentimentAnalysisLocalXAI,
+    "imageclassifier": ImageClassifierLocalXAI,
+    "forestfires": ForestFiresLocalXAI,
+    "independentlinear60": IndependentLinear60LocalXAI,
+    "corrgroups60": Corrgroups60LocalXAI,
+    "nhanesi": NHANESILocalXAI,
+    "realestate": RealEstateLocalXAI,
+    "communitiesandcrime": CommunitiesAndCrimeLocalXAI,
+    "breastcancer": BreastCancerLocalXAI,
+    "amazon": AmazonLocalXAI,
+    "bioresponse": BioresponseLocalXAI,
+    "leukemia": LeukemiaLocalXAI,
+    "microresponse": MicroresponseLocalXAI,
+    "annealing": AnnealingLocalXAI,
+    "arrhythmia": ArrhythmiaLocalXAI,
+    "chess": ChessLocalXAI,
+    "condind": CondindLocalXAI,
+    "cross": CrossLocalXAI,
+    "disjunct": DisjunctLocalXAI,
+    "group": GroupLocalXAI,
+    "hepatitis": HepatitisLocalXAI,
+    "ionosphere": IonosphereLocalXAI,
+    "mushroom": MushroomLocalXAI,
+    "nursery": NurseryLocalXAI,
+    "soybean": SoybeanLocalXAI,
+    "sphere": SphereLocalXAI,
+    "thyroid": ThyroidLocalXAI,
+    "winequality": WineQualityLocalXAI,
+    "xor": XorLocalXAI,
+    "zoo": ZooLocalXAI,
+    }
 
 def get_game_file_name_from_config(
     configuration: dict[str, Any],
