@@ -175,7 +175,6 @@ static PyObject *sparse_map_to_pydict(const algorithms::SparseInteractionMap &sp
     return output;
 }
 
-
 static PyObject *compute_interactions(PyObject *self, PyObject *args)
 {
 
@@ -908,14 +907,13 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
     }
 
     algorithms::SparseInteractionMap sparse_result;
-
     Py_BEGIN_ALLOW_THREADS
 #pragma omp parallel
     {
         algorithms::SparseInteractionMap local_sparse_result;
         inter_weights::WeightCache weight_cache = (custom_table != nullptr)
-                                                      ? inter_weights::WeightCache((uint64_t)(3 * n_features), custom_table, custom_N, custom_K)
-                                                      : inter_weights::WeightCache((uint64_t)(3 * n_features));
+                                                      ? inter_weights::WeightCache((uint64_t)(2 * n_features), custom_table, custom_N, custom_K)
+                                                      : inter_weights::WeightCache((uint64_t)(2 * n_features));
 
 #pragma omp for nowait
         for (int t = 0; t < num_trees; t++)
@@ -946,8 +944,8 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
     }
     Py_END_ALLOW_THREADS
 
-        // Keep behavior aligned with existing batched method: average over reference samples only.
-        for (auto &entry : sparse_result)
+    // Keep behavior aligned with existing batched method: average over reference samples only.
+    for (auto &entry : sparse_result)
     {
         entry.second /= static_cast<double>(n_reference_samples);
     }
@@ -1121,6 +1119,10 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 {
                     weight = inter_weights::fbii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
                 }
+                else if (index_type == IndexType::FSII)
+                {
+                    weight = inter_weights::fsii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
+                }
                 else
                 {
                     weight = sign * inter_weights::general_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order, index_type);
@@ -1161,6 +1163,10 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 else if (index_type == IndexType::FBII)
                 {
                     weight = inter_weights::fbii_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
+                }
+                else if (index_type == IndexType::FSII)
+                {
+                    weight = inter_weights::fsii_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
                 }
                 else
                 {
@@ -1207,6 +1213,10 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                     {
                         weight = inter_weights::fbii_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
                     }
+                    else if (index_type == IndexType::FSII)
+                    {
+                        weight = inter_weights::fsii_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
+                    }
                     else
                     {
                         weight = sign * inter_weights::general_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order, index_type);
@@ -1233,7 +1243,6 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 PyObject *value = PyFloat_FromDouble(result[i]);
                 PyDict_SetItem(output, key, value);
                 Py_DECREF(key);
-                Py_DECREF(key_item);
                 Py_DECREF(value);
             }
         }
@@ -1247,7 +1256,6 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                 PyObject *value = PyFloat_FromDouble(result[i]);
                 PyDict_SetItem(output, key, value);
                 Py_DECREF(key);
-                Py_DECREF(key_item);
                 Py_DECREF(value);
                 for (int j = i + 1; j < n_features; j++)
                 {
@@ -1260,11 +1268,8 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
                     value = PyFloat_FromDouble(result[idx]);
                     PyDict_SetItem(output, key, value);
                     Py_DECREF(key);
-                    Py_DECREF(key_item1);
-                    Py_DECREF(key_item2);
                     Py_DECREF(value);
                 }
-                Py_DECREF(key_item);
             }
         }
 
@@ -1355,13 +1360,54 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
     int64_t *r_sizes_data = (int64_t *)PyArray_DATA(r_sizes_array);
     float *leaf_predictions = (float *)PyArray_DATA(leaf_predictions_array);
 
-    int n_nodes   = static_cast<int>(e_array->dimensions[0]);
-    int e_stride  = static_cast<int>(e_array->dimensions[1]);
-    int r_stride  = static_cast<int>(r_array->dimensions[1]);
+    if (PyArray_NDIM(leaf_predictions_array) != 1 ||
+        PyArray_NDIM(e_array) != 2 ||
+        PyArray_NDIM(r_array) != 2 ||
+        PyArray_NDIM(e_sizes_array) != 1 ||
+        PyArray_NDIM(r_sizes_array) != 1)
+    {
+        Py_XDECREF(leaf_predictions_array);
+        Py_XDECREF(e_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(e_sizes_array);
+        Py_XDECREF(r_sizes_array);
+        PyErr_SetString(PyExc_ValueError, "Expected shapes: leaf_predictions=(n_nodes,), e=(n_nodes, n_features), r=(n_nodes, n_features), e_sizes=(n_nodes,), r_sizes=(n_nodes,)");
+        return NULL;
+    }
+
+    int n_nodes = static_cast<int>(e_array->dimensions[0]);
+    int n_nodes_r = static_cast<int>(r_array->dimensions[0]);
+    int e_stride = static_cast<int>(e_array->dimensions[1]);
+    int r_stride = static_cast<int>(r_array->dimensions[1]);
+
+    if (n_nodes != n_nodes_r ||
+        static_cast<int>(leaf_predictions_array->dimensions[0]) != n_nodes ||
+        static_cast<int>(e_sizes_array->dimensions[0]) != n_nodes ||
+        static_cast<int>(r_sizes_array->dimensions[0]) != n_nodes)
+    {
+        Py_XDECREF(leaf_predictions_array);
+        Py_XDECREF(e_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(e_sizes_array);
+        Py_XDECREF(r_sizes_array);
+        PyErr_SetString(PyExc_ValueError, "Input arrays must share the same first dimension n_nodes");
+        return NULL;
+    }
+
+    if (n_features <= 0 || e_stride < n_features || r_stride < n_features)
+    {
+        Py_XDECREF(leaf_predictions_array);
+        Py_XDECREF(e_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(e_sizes_array);
+        Py_XDECREF(r_sizes_array);
+        PyErr_SetString(PyExc_ValueError, "Invalid n_features or incompatible e/r matrix width");
+        return NULL;
+    }
 
     // Initialize weight cache and buffers for processing E and R sets for each node.
     // The weight cache is initialized with a size based on the number of features, and we use fixed-size bit buffers for small sets of features (up to 64) and dynamic vectors for larger sets to efficiently store the indices of features in E and R for each node.
-    inter_weights::WeightCache weight_cache = inter_weights::WeightCache((uint64_t)(3 * n_features));
+    inter_weights::WeightCache weight_cache = inter_weights::WeightCache((uint64_t)(2 * n_features + 1));
     algorithms::SparseInteractionMap sparse_result;
 
     uint64_t bit_buffer_E[64];
@@ -1371,13 +1417,27 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
     uint64_t *e_buffer;
     uint64_t *r_buffer;
     int e_count, r_count;
-
+    bool has_error = false;
     for (int i = 0; i < n_nodes; i++)
     {
 
         // Choose the appropriate buffer based on the size of E and R for the current node.
         e_count = static_cast<int>(e_sizes_data[i]);
         r_count = static_cast<int>(r_sizes_data[i]);
+        if (e_count < 0 || r_count < 0 || e_count > e_stride || r_count > r_stride || e_count + r_count > n_features)
+        {
+            PyErr_Format(
+                PyExc_ValueError,
+                "Invalid e/r sizes at node %d: e_count=%d, r_count=%d, e_stride=%d, r_stride=%d, n_features=%d",
+                i,
+                e_count,
+                r_count,
+                e_stride,
+                r_stride,
+                n_features);
+            has_error = true;
+            break;
+        }
         if (e_count <= 64)
         {
             e_buffer = bit_buffer_E;
@@ -1399,17 +1459,45 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
 
         for (int j = 0; j < e_count; j++)
         {
-            int feature_index = e_data[i * e_stride + j];
-            if (feature_index > -1) {
-                e_buffer[j] = static_cast<uint64_t>(feature_index);
+            int64_t feature_index = e_data[i * e_stride + j];
+            if (feature_index < 0 || feature_index >= n_features)
+            {
+                PyErr_Format(
+                    PyExc_ValueError,
+                    "Invalid feature index in E at node %d, pos %d: %lld (expected in [0, %d))",
+                    i,
+                    j,
+                    static_cast<long long>(feature_index),
+                    n_features);
+                has_error = true;
+                break;
             }
+            e_buffer[j] = static_cast<uint64_t>(feature_index);
+        }
+        if (has_error)
+        {
+            break;
         }
         for (int j = 0; j < r_count; j++)
         {
-            int feature_index = r_data[i* r_stride + j];
-            if (feature_index > -1) {
-                r_buffer[j] = static_cast<uint64_t>(feature_index);
+            int64_t feature_index = r_data[i * r_stride + j];
+            if (feature_index < 0 || feature_index >= n_features)
+            {
+                PyErr_Format(
+                    PyExc_ValueError,
+                    "Invalid feature index in R at node %d, pos %d: %lld (expected in [0, %d))",
+                    i,
+                    j,
+                    static_cast<long long>(feature_index),
+                    n_features);
+                has_error = true;
+                break;
             }
+            r_buffer[j] = static_cast<uint64_t>(feature_index);
+        }
+        if (has_error)
+        {
+            break;
         }
         // Get leaf value and compute contributions for all subsets of E and R up to the specified max_order.
         // We iterate over all possible subset sizes s from 1 to max_order.
@@ -1430,6 +1518,10 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
                     continue;
                 }
                 const double contribution = static_cast<double>(leaf_value) * weight;
+                if (std::abs(contribution) < 1e-12) // Skip negligible contributions to save time on enumeration and map updates.
+                {
+                    continue;
+                }
                 // We now update all the interactions corresponding to subsets of E and R with s_cap_e features from E and s_cap_r features from R by calling the enumerate_e_subsets function, which will recursively generate all such subsets and update the interactions map with the computed contribution for each subset.
                 algorithms::enumerate_e_subsets(
                     e_buffer,
@@ -1444,6 +1536,15 @@ static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
                     sparse_result);
             }
         }
+    }
+    if (has_error)
+    {
+        Py_XDECREF(leaf_predictions_array);
+        Py_XDECREF(e_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(e_sizes_array);
+        Py_XDECREF(r_sizes_array);
+        return NULL;
     }
     PyObject *output = sparse_map_to_pydict(sparse_result);
 
