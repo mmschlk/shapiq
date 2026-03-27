@@ -73,6 +73,8 @@ exclude_patterns = [
     "auto_examples/**.ipynb",
     # sphinx-gallery includes this file internally; exclude to avoid toctree warning
     "examples/GALLERY_HEADER.rst",
+    # stale sphinx-gallery artifact at source root (real copy lives in auto_examples/)
+    "sg_execution_times.rst",
 ]
 bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = (
@@ -128,6 +130,7 @@ autosectionlabel_prefix_document = True
 # -- Napoleon (Google-style docstrings) ------------------------------------------------------------
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
+napoleon_use_ivar = True
 
 # -- Autodoc ---------------------------------------------------------------------------------------
 autosummary_generate = True
@@ -146,15 +149,9 @@ autodoc_inherit_docstrings = True
 autodoc_member_order = "groupwise"
 autodoc_typehints = "both"
 
-# -- Suppress known structural warnings -----------------------------------------------------------
-# Duplicate citations/footnotes arise because autodoc renders classes in both the parent package
-# page (via automodule + members) and the native module page. Suppressing these is safe because
-# the actual content is correct; only the duplicate-label warnings are silenced.
+# -- Suppress warnings -----------------------------------------------------------------------------
 suppress_warnings = [
-    # "py.duplicate_object",  # noqa: ERA001
-    # "autodoc.duplicate_object",  # noqa: ERA001
-    # "ref.python",  # noqa: ERA001 # suppress "duplicate label" warnings for Python objects (e.g. classes) that are rendered in multiple places
-    "misc.highlighting_failure",  # suppress 'ipython2' lexer warnings from legacy notebooks
+    "misc.highlighting_failure",  # should be fixed in the future
 ]
 
 # -- Images ----------------------------------------------------------------------------------------

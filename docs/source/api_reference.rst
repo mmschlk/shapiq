@@ -8,7 +8,6 @@ This is the API reference for the ``shapiq`` package.
 
 .. autosummary::
    :toctree: generated/
-   :recursive:
    :nosignatures:
 
    shapiq.interaction_values

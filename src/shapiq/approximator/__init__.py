@@ -5,7 +5,6 @@ a common interface: pass a :class:`~shapiq.Game` and a computational budget, and
 :class:`~shapiq.interaction_values.InteractionValues` as output.
 """
 
-from . import marginals, montecarlo, permutation, proxy, regression, sparse
 from .base import Approximator
 from .marginals import OwenSamplingSV, StratifiedSamplingSV
 from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
@@ -126,11 +125,4 @@ __all__ = [
     "STII_APPROXIMATORS",
     "FSII_APPROXIMATORS",
     "FBII_APPROXIMATORS",
-    # submodules (exposed for sphinx autosummary :recursive: discovery)
-    "marginals",
-    "montecarlo",
-    "permutation",
-    "proxy",
-    "regression",
-    "sparse",
 ]

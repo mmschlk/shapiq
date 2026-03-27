@@ -35,14 +35,3 @@
    {{ item }}
 {%- endfor %}
 {% endif %}
-
-{% if modules %}
-.. rubric:: Submodules
-
-.. autosummary::
-   :toctree:
-   :recursive:
-{% for item in modules %}
-   {{ item }}
-{%- endfor %}
-{% endif %}
