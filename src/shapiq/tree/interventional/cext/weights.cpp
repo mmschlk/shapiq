@@ -61,13 +61,28 @@ namespace inter_weights
         return s * (std::tgamma(w1) * std::tgamma(w2) / std::tgamma(w1 + w2));
     }
 
+    inline double fsii_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
+    {
+        // Compute the lambda
+        double w = 0.0;
+        for (int i = 0; i <= r - s_cap_r; i++)
+        {
+            // We can ignore terms where max_order + 1 - u0 - e  < 0 as they contribute 0
+            uint64_t denom = binom(e + s_cap_r + i + max_order - 1, max_order + s);
+            if (denom == 0) continue;  // numerator is also 0 here; skip to avoid 0/0 = NaN
+            w += std::pow(-1.0, s_cap_r + i + max_order - s) * (static_cast<double>(s) / (static_cast<double>(max_order) + static_cast<double>(s)))  * binom(max_order, s) * binom(r - s_cap_r, i) * (static_cast<double>(binom(e + i + s_cap_r - 1, max_order)) / static_cast<double>(denom));
+        }
+        w += (s_cap_e == e) ? (std::pow(-1.0, s_cap_r)) : 0.0;
+        return w;
+    }
+
     inline double fbii_weight(int64_t num_features, int64_t e, int64_t r, int64_t s_cap_e, int64_t s_cap_r, int64_t s, int64_t max_order)
     {
         // Comput the lambda
         double w = 0.0;
         for (int i = 0; i <= r - s_cap_r; i++)
         {
-            // We can ignore terms where max_order + 1 - u0 -a  < 0 as they contribute 0
+            // We can ignore terms where max_order + 1 - u0 - e  < 0 as they contribute 0
 
             w += std::pow(-1.0, s_cap_r + i + max_order - s) * std::ldexp(1.0, -(e + i + s_cap_r - s)) * binom(e + i + s_cap_r - s - 1, max_order - s) * binom(r - s_cap_r, i);
         }

@@ -7,8 +7,89 @@ import copy
 import numpy as np
 import pytest
 
+from shapiq.approximator.proxy.proxyshap import MSRBiased
 from shapiq.tree import TreeExplainer, TreeModel
+from shapiq.tree.interventional.cext import compute_interactions_sparse
 from tests.shapiq.markers import skip_if_no_lightgbm
+
+
+def test_compute_interactions_sparse_high_dimensional_indices_do_not_overflow():
+    """Regression test for index overflow in sparse interaction computation.
+
+    This test uses more than 127 features to ensure path-index arrays keep int64
+    indices and the C-extension runs without crashing.
+    """
+
+    n_features = 170
+    approximator = MSRBiased(n=n_features, max_order=1, index="SV")
+
+    coalition_matrix = np.zeros((3, n_features), dtype=np.int64)
+    coalition_matrix[0, :5] = 1
+    coalition_matrix[1, 100:110] = 1
+    coalition_matrix[2, 160:] = 1
+
+    e_matrix, r_matrix, e_counts, r_counts = approximator._coalitions_to_tree_paths(
+        coalition_matrix,
+    )
+
+    assert e_matrix.dtype == np.int64
+    assert r_matrix.dtype == np.int64
+    assert np.max(r_matrix[r_matrix >= 0]) == n_features - 1
+
+    coalition_values = np.array([0.1, -0.2, 0.3], dtype=np.float32)
+    interactions = compute_interactions_sparse(
+        coalition_values,
+        e_matrix,
+        r_matrix,
+        e_counts,
+        r_counts,
+        "SV",
+        n_features,
+        1,
+    )
+
+    assert isinstance(interactions, dict)
+    assert interactions
+    for key in interactions:
+        assert isinstance(key, tuple)
+        for feature_index in key:
+            assert 0 <= feature_index < n_features
+
+
+def test_compute_interactions_flatten_repeated_calls_do_not_segfault():
+    """Regression test for refcount corruption in flatten interaction output conversion.
+
+    This test calls the compute_interactions_flatten function multiple times to check that it does not segfault due to refcount corruption in the C-extension.
+    """
+
+    from shapiq.tree.interventional.cext import compute_interactions_flatten
+
+    n_features = 1778
+    n_iterations = n_features
+    leaf_predictions = np.ones(n_iterations, dtype=np.float32)
+    features = np.arange(n_features, dtype=np.int64)
+    e_sizes = np.ones(n_iterations, dtype=np.int64)
+    r_sizes = np.zeros(n_iterations, dtype=np.int64)
+    feature_in_e = np.ones(n_iterations, dtype=np.int64)
+    leaf_id = np.zeros(n_iterations, dtype=np.int64)
+
+    for _ in range(5):
+        out = compute_interactions_flatten(
+            leaf_predictions,
+            features,
+            e_sizes,
+            r_sizes,
+            feature_in_e,
+            leaf_id,
+            "SV",
+            n_iterations,
+            n_features,
+            n_iterations,
+            1,
+            0,
+            1.0,
+        )
+        assert len(out) == n_features
 
 
 def test_decision_tree_classifier(rf_clf_model, background_clf_data):
@@ -76,7 +157,7 @@ def test_random_forest_regression(rf_reg_model, background_reg_data):
     )
     assert explanation.baseline_value == explainer.baseline_value
 
-    # assert efficieny
+    # assert efficiency
     prediction = rf_reg_model.predict(x_explain.reshape(1, -1))[0]
     sum_of_values = sum(explanation.values)
     assert prediction == pytest.approx(sum_of_values)
