@@ -177,7 +177,7 @@ jobs:
             -   name: Install dependencies
                 run: uv sync --no-dev --group docs
             -   name: Build documentation
-                run: uv run --no-sync sphinx-build --keep-going -b html docs/source docs/build/html
+                run: uv run --no-sync sphinx-build --keep-going -b -W html docs/source docs/build/html
     # ----------------------------------------------------------------------------------------------
     # Code Coverage
     # ----------------------------------------------------------------------------------------------

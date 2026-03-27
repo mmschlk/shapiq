@@ -264,7 +264,7 @@ lint = [
     "ty>=0.0.21",         # for type checking
 ]
 docs = [
-    "sphinx>=8.0.0",            # documentation generator
+    "sphinx>=9.1.0",            # documentation generator
     "furo",                     # beautiful sphinx theme
     "myst-parser",              # Markdown support for Sphinx
     "sphinx-copybutton",        # copy button for code blocks
@@ -276,6 +276,7 @@ docs = [
     "ipython>=9.0.0",           # for code execution in notebooks
     "sphinx-gallery",           # gallery of examples from Python scripts
     "matplotlib",               # required for sphinx-gallery thumbnails
+    {include-group = "all_ml"}
 ]
 dev = [
     "notebook>=7.3.3",
