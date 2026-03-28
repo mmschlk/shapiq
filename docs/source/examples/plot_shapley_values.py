@@ -1,10 +1,9 @@
 """Computing Shapley Values.
-
-========================
+=========================
 
 A minimal example showing how to compute exact Shapley values for a small
 cooperative game using :class:`~shapiq.ExactComputer`.
-"""
+"""  # noqa: D205
 
 from __future__ import annotations
 

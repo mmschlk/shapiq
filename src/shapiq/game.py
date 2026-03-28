@@ -1,4 +1,4 @@
-"""Base Game class for games and benchmarks."""
+"""Base Game class wrapping any callable as a cooperative game for Shapley analysis."""
 
 from __future__ import annotations
 
@@ -61,9 +61,6 @@ class Game:
     Attributes:
         _precompute_flag: A flag to manually override the precomputed check. If set to ``True``, the
             game is considered precomputed and only uses the lookup.
-        value_storage: The storage for the game values without normalization applied.
-        coalition_lookup: A lookup dictionary mapping from coalitions to indices in the
-            ``value_storage``.
         n_players: The number of players in the game.
         normalization_value: The value to normalize and center the game values with.
         empty_coalition: The empty coalition of the game.

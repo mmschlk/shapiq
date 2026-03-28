@@ -160,7 +160,7 @@ def beeswarm_plot(
     rng_seed: int | None = 42,
     show: bool = True,
 ) -> Axes | None:
-    """Plots a beeswarm plot of SHAP-IQ interaction values. Based on the SHAP beeswarm plot[1]_.
+    """Plots a beeswarm plot of SHAP-IQ interaction values. Based on the `SHAP <https://github.com/shap/shap>`_ beeswarm plot.
 
     The beeswarm plot visualizes how the magnitude and direction of interaction effects are distributed across all samples in the data,
     revealing dependencies between the feature's value and the strength of the interaction.
@@ -182,8 +182,6 @@ def beeswarm_plot(
         If ``show`` is ``False``, the function returns the axis of the plot. Otherwise, it returns
         ``None``.
 
-    References:
-        .. [1] SHAP is available at https://github.com/shap/shap
     """
     if not isinstance(interaction_values_list, list) or len(interaction_values_list) == 0:
         error_message = "shap_interaction_values must be a non-empty list."

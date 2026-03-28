@@ -119,22 +119,11 @@ class InterventionalTreeExplainer:
     This class implements the interventional TreeSHAP algorithm for a single
     sklearn DecisionTreeClassifier or DecisionTreeRegressor.
 
-    Attributes.
-    ----------
-    tree : Any
-        Validated tree structure returned by validate_tree_model for the fitted
-        sklearn tree.
-    data : np.ndarray
-        Background dataset used to compute the reference point.
-    reference_point : np.ndarray
-        The baseline/reference feature values (mean over the background data).
-
-    Methods.
-    -------
-    _compute_interventional_shapley_value(x, reference_points) -> np.ndarray
-        Compute interventional Shapley values for one instance x given reference points.
-    explain_function(x, **kwargs) -> InteractionValues
-        Compute Shapley values for a single instance and return InteractionValues.
+    Attributes:
+        tree: Validated tree structure returned by validate_tree_model for the fitted
+            sklearn tree.
+        data: Background dataset used to compute the reference point.
+        reference_point: The baseline/reference feature values (mean over the background data).
     """
 
     def __init__(

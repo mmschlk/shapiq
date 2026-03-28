@@ -23,7 +23,8 @@ class OwenSamplingSV(Approximator[ValidOwenSamplingSVIndices]):
 
     The Owen Sampling algorithm estimates the Shapley values (SV) by sampling random marginal
     contributions for each player and each coalition size. The marginal contributions are used to
-    update an integral representation of the SV. For more information, see [Okh20]_.
+    update an integral representation of the SV. For more information, see
+    :cite:t:`Okhrati.2020`.
     The number of anchor points M at which the integral is to be palpated share the available budget
     for each player equally. A higher `n_anchor_points` increases the resolution of the integral
     reducing bias while reducing the accuracy of the estimation at each point.
@@ -31,9 +32,6 @@ class OwenSamplingSV(Approximator[ValidOwenSamplingSVIndices]):
     Attributes:
         n: The number of players.
         iteration_cost: The cost of a single iteration of the approximator.
-
-    References:
-        .. [Okh20] Ramin Okhrati, Aldo Lipani (2020). A Multilinear Sampling Algorithm to Estimate Shapley Values. arXiv preprint arXiv:2010.12082. https://doi.org/10.48550/arXiv.2010.12082
 
     """
 

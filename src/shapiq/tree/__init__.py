@@ -1,4 +1,8 @@
-"""Implementation of TreeSHAPIQ and the TreeExplainer."""
+"""Tree-based explanation algorithms, including TreeSHAP-IQ.
+
+Provides :class:`TreeSHAPIQ` for computing exact Shapley interaction values on tree ensembles,
+along with supporting data structures and algorithm variants.
+"""
 
 from .base import TreeModel
 from .interventional import InterventionalGame, InterventionalTreeExplainer

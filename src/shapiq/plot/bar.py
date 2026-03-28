@@ -194,7 +194,7 @@ def bar_plot(
     global_plot: bool = True,
     plot_base_value: bool = False,
 ) -> Axes | None:
-    """Draws interaction values as a SHAP bar plot[1]_.
+    """Draws interaction values as a bar plot (adapted from `SHAP <https://github.com/shap/shap>`_).
 
     The function draws the interaction values on a bar plot. The interaction values can be
     aggregated into a global explanation or plotted separately.
@@ -219,9 +219,6 @@ def bar_plot(
     Returns:
         If ``show`` is ``False``, the function returns the axis of the plot. Otherwise, it returns
         ``None``.
-
-    References:
-        .. [1] SHAP is available at https://github.com/shap/shap
 
     """
     n_players = list_of_interaction_values[0].n_players

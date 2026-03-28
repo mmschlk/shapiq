@@ -1,4 +1,8 @@
-"""Plotting functions for the shapiq package."""
+"""Visualization functions for :class:`~shapiq.InteractionValues`.
+
+Provides bar plots, beeswarm plots, force plots, network graphs, and more for
+visualising Shapley values and interaction scores.
+"""
 
 from .bar import bar_plot
 from .beeswarm import beeswarm_plot

@@ -1,4 +1,4 @@
-"""InteractionValues data-class, which is used to store the interaction scores."""
+"""Central output container for interaction scores produced by approximators and explainers."""
 
 from __future__ import annotations
 
