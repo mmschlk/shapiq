@@ -56,7 +56,7 @@ def _get_red_blue_cmap() -> mcolors.LinearSegmentedColormap:
         ],
         "alpha": [(0, 1.0, 1.0), (0.494949494949495, 1.0, 1.0), (1.0, 1.0, 1.0)],
     }
-    red_blue = mcolors.LinearSegmentedColormap("red_blue", cdict)
+    red_blue = mcolors.LinearSegmentedColormap("red_blue", cdict)  # type: ignore[arg-type]
     red_blue.set_bad(gray_rgb.tolist(), 1.0)
     red_blue.set_over(gray_rgb.tolist(), 1.0)
     red_blue.set_under(gray_rgb.tolist(), 1.0)
@@ -160,7 +160,7 @@ def beeswarm_plot(
     rng_seed: int | None = 42,
     show: bool = True,
 ) -> Axes | None:
-    """Plots a beeswarm plot of SHAP-IQ interaction values. Based on the SHAP beeswarm plot[1]_.
+    """Plots a beeswarm plot of SHAP-IQ interaction values. Based on the `SHAP <https://github.com/shap/shap>`_ beeswarm plot.
 
     The beeswarm plot visualizes how the magnitude and direction of interaction effects are distributed across all samples in the data,
     revealing dependencies between the feature's value and the strength of the interaction.
@@ -182,8 +182,6 @@ def beeswarm_plot(
         If ``show`` is ``False``, the function returns the axis of the plot. Otherwise, it returns
         ``None``.
 
-    References:
-        .. [1] SHAP is available at https://github.com/shap/shap
     """
     if not isinstance(interaction_values_list, list) or len(interaction_values_list) == 0:
         error_message = "shap_interaction_values must be a non-empty list."
@@ -256,7 +254,7 @@ def beeswarm_plot(
         fig = plt.gcf()
         fig.set_size_inches(fig_width, fig_height)
     else:
-        fig: Figure = ax.get_figure()  # pyright: ignore[reportAssignmentType]. Axes will always be a figure as Subfigure would not provide get_size_inches()
+        fig: Figure = ax.get_figure()  # type: ignore[assignment]  # Axes will always be a figure as Subfigure would not provide get_size_inches()
         row_height = (fig.get_size_inches()[1] - 1.5) / total_sub_features
     config_dict = _get_config(row_height)
 
@@ -423,7 +421,7 @@ def beeswarm_plot(
     cb.set_label("Feature value", size=12, labelpad=0)
     cb.ax.tick_params(labelsize=11, length=0)
     cb.set_alpha(1)
-    cb.outline.set_visible(False)  # pyright: ignore[reportCallIssue]. TODO(advueu963): This seems to work but statically not safe
+    cb.outline.set_visible(False)  # type: ignore[union-attr]
 
     plt.tight_layout(rect=(0, 0, 0.95, 1))
 

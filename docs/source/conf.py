@@ -47,18 +47,40 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
-    "sphinx_toolbox.more_autodoc.autoprotocol",
     "sphinxcontrib.bibtex",
+    "sphinx_gallery.gen_gallery",
 ]
 
 nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
 
+# -- Sphinx-Gallery -------------------------------------------------------------------------------
+sphinx_gallery_conf = {
+    "examples_dirs": "../../docs/source/examples",  # source scripts
+    "gallery_dirs": "auto_examples",  # generated output (relative to source/)
+    "filename_pattern": r"/plot_",  # only execute files starting with plot_
+    "ignore_pattern": r"__init__\.py",
+    "plot_gallery": True,
+    "download_all_examples": False,
+    "show_signature": False,
+}
+
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**.ipynb_checkpoints",
+    "auto_examples/**.ipynb",
+    # sphinx-gallery includes this file internally; exclude to avoid toctree warning
+    "examples/GALLERY_HEADER.rst",
+    # stale sphinx-gallery artifact at source root (real copy lives in auto_examples/)
+    "sg_execution_times.rst",
+]
 bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = (
     "alpha"  # set to alpha to not confuse references the docs with the footcites in docstrings.
 )
+bibtex_reference_style = "author_year"
 
 source_suffix = {
     ".rst": "restructuredtext",
@@ -71,6 +93,7 @@ intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "matplotlib": ("https://matplotlib.org/stable", None),
     "PIL": ("https://pillow.readthedocs.io/en/stable/", None),
+    "sklearn": ("https://scikit-learn.org/stable", None),
 }
 
 # -- Options for HTML output -----------------------------------------------------------------------
@@ -99,11 +122,23 @@ html_sidebars = {
     ],
 }
 
+# -- Autosectionlabel -----------------------------------------------------------------------------
+# Prefix labels with the document path to avoid collisions when multiple documents
+# share identical section headings (e.g. "General Use", "Feature Names").
+autosectionlabel_prefix_document = True
+
+# -- Napoleon (Google-style docstrings) ------------------------------------------------------------
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+napoleon_use_ivar = True
+
 # -- Autodoc ---------------------------------------------------------------------------------------
 autosummary_generate = True
+autosummary_ignore_module_all = False
 autodoc_default_options = {
     "show-inheritance": True,
     "members": True,
+    "private-members": False,
     "member-order": "groupwise",
     "special-members": "__call__",
     "undoc-members": True,
@@ -112,6 +147,12 @@ autodoc_default_options = {
 autoclass_content = "both"
 autodoc_inherit_docstrings = True
 autodoc_member_order = "groupwise"
+autodoc_typehints = "both"
+
+# -- Suppress warnings -----------------------------------------------------------------------------
+suppress_warnings = [
+    "misc.highlighting_failure",  # should be fixed in the future
+]
 
 # -- Images ----------------------------------------------------------------------------------------
 StandaloneHTMLBuilder.supported_image_types = [

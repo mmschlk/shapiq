@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from shapiq.explainer.tree import TreeExplainer, TreeModel
 from shapiq.game import Game
+from shapiq.tree import TreeExplainer, TreeModel
 
 if TYPE_CHECKING:
     from shapiq.interaction_values import InteractionValues
@@ -43,7 +43,7 @@ class TreeSHAPIQXAI(Game):
 
             class_label: The class label to use for the model. If ``None``, then the model is
                 assumed to be a regression model and / or the default behaviour of
-                :class:`~shapiq.explainer.tree.TreeExplainer` is used.
+                :class:`~shapiq.tree.TreeExplainer` is used.
 
             normalize: A boolean flag to normalize/center the game values. The default value is
                 ``True``.

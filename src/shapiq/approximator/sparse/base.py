@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import math
 from collections import defaultdict
-from typing import TYPE_CHECKING, Literal, cast, get_args
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 import pandas as pd
@@ -38,13 +38,13 @@ class Sparse(Approximator[ValidSparseIndices]):
     This class implements a sparse approximation method for computing various interaction indices
     using sparse Fourier transforms. It efficiently estimates interaction values with a limited
     sample budget by leveraging sparsity in the Fourier domain. The notion of sparse approximation
-    is described in [Kan25]_ and further improved in [But25]_.
+    is described in :cite:t:`Kang.2025` and further improved in :cite:t:`Butler.2025`.
 
     See Also:
         - :class:`~shapiq.approximator.sparse.SPEX` for a specific implementation of the
-            sparse approximation using Fourier transforms described in [Kan25]_.
+            sparse approximation using Fourier transforms described in :cite:t:`Kang.2025`.
         - :class:`~shapiq.approximator.sparse.ProxySPEX` for a specific implementation of the
-            sparse approximation using Fourier transforms described in [But25]_.
+            sparse approximation using Fourier transforms described in :cite:t:`Butler.2025`.
 
     Attributes:
         transform_type: Type of transform used (currently only ``"fourier"`` is supported).
@@ -62,13 +62,9 @@ class Sparse(Approximator[ValidSparseIndices]):
 
     Raises:
         ValueError: If transform_type is not "fourier" or if decoder_type is not "soft" or "hard".
-
-    References:
-        .. [Kan25] Kang, J.S., Butler, L., Agarwal. A., Erginbas, Y.E., Pedarsani, R., Ramchandran, K., Yu, Bin (2025). SPEX: Scaling Feature Interaction Explanations for LLMs https://arxiv.org/abs/2502.13870
-        .. [But25] Butler, L., Kang, J.S., Agarwal. A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs https://arxiv.org/pdf/2505.17495
     """
 
-    valid_indices: tuple[ValidSparseIndices, ...] = tuple(get_args(ValidSparseIndices))  # type: ignore[assignment]
+    valid_indices: tuple[ValidSparseIndices, ...] = tuple(get_args(ValidSparseIndices))
     """The valid indices for the SPEX approximator."""
 
     def __init__(
@@ -142,6 +138,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             "num_repeat": 1,
             "t": self.degree_parameter,
         }
+        self.decoder_args: dict[str, Any]
         if self.decoder_type == "proxyspex":
             self.decoder_args = {
                 "max_depth": [3, 5],
@@ -311,9 +308,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             baseline_value=moebius_transform.get((), 0.0),
         )
         autoconverter = MoebiusConverter(moebius_coefficients=moebius_interactions)
-        converted_interaction_values = autoconverter(
-            index=cast(ValidMoebiusConverterIndices, self.index), order=self.max_order
-        )
+        converted_interaction_values = autoconverter(index=self.index, order=self.max_order)
         self._interaction_lookup = converted_interaction_values.interaction_lookup
         return converted_interaction_values.values  # noqa: PD011
 

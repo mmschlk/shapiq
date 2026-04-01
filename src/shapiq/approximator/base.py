@@ -179,7 +179,6 @@ class Approximator(ABC, Generic[TIndices]):
         self,
         budget: int,
         game: Game | Callable[[np.ndarray], np.ndarray],
-        *args: Any,
         **kwargs: Any,
     ) -> InteractionValues:
         """Approximates the interaction values.

@@ -1,4 +1,9 @@
-"""Approximators to estimate the Shapley interaction values."""
+"""Algorithms for approximating Shapley values and interaction indices.
+
+All approximators inherit from :class:`~shapiq.approximator.Approximator` and follow
+a common interface: pass a :class:`~shapiq.Game` and a computational budget, and receive
+:class:`~shapiq.interaction_values.InteractionValues` as output.
+"""
 
 from .base import Approximator
 from .marginals import OwenSamplingSV, StratifiedSamplingSV
@@ -6,6 +11,7 @@ from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
+from .proxy import MSRBiased, ProxySHAP
 from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
@@ -27,6 +33,8 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     kADDSHAP,
     SPEX,
     ProxySPEX,
+    ProxySHAP,
+    MSRBiased,
 ]
 
 # contains all SI approximators
@@ -38,6 +46,8 @@ SI_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     KernelSHAPIQ,
     RegressionFSII,
+    ProxySHAP,
+    MSRBiased,
 ]
 
 # contains all approximators that can be used for SII
@@ -49,6 +59,8 @@ SII_APPROXIMATORS: list[Approximator.__class__] = [
     SHAPIQ,
     SPEX,
     ProxySPEX,
+    ProxySHAP,
+    MSRBiased,
 ]
 
 # contains all approximators that can be used for STII
@@ -60,6 +72,8 @@ STII_APPROXIMATORS: list[Approximator.__class__] = [
     SHAPIQ,
     SPEX,
     ProxySPEX,
+    ProxySHAP,
+    MSRBiased,
 ]
 
 # contains all approximators that can be used for FSII
@@ -71,6 +85,8 @@ FSII_APPROXIMATORS: list[Approximator.__class__] = [
     SHAPIQ,
     SPEX,
     ProxySPEX,
+    ProxySHAP,
+    MSRBiased,
 ]
 
 # contains all approximators that can be used for FBII
@@ -78,9 +94,12 @@ FBII_APPROXIMATORS: list[Approximator.__class__] = [
     RegressionFBII,
     SPEX,
     ProxySPEX,
+    ProxySHAP,
+    MSRBiased,
 ]
 
 __all__ = [
+    "Approximator",
     "PermutationSamplingSII",
     "PermutationSamplingSTII",
     "PermutationSamplingSV",
@@ -92,6 +111,8 @@ __all__ = [
     "KernelSHAPIQ",
     "InconsistentKernelSHAPIQ",
     "ProxySPEX",
+    "ProxySHAP",
+    "MSRBiased",
     "SHAPIQ",
     "SVARM",
     "SVARMIQ",

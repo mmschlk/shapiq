@@ -5,7 +5,9 @@ on:
     push:
         branches: [main]
     workflow_dispatch:
-
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
 jobs:
     # ----------------------------------------------------------------------------------------------
     # Code Quality Checks and Linting
@@ -27,7 +29,7 @@ jobs:
             -   name: Run code-quality checks
                 run: uv run pre-commit run --all-files --show-diff-on-failure
     # ----------------------------------------------------------------------------------------------
-    # Install and Import Check
+    # Install and Import Check `shapiq`
     # ----------------------------------------------------------------------------------------------
     install_and_import_shapiq:
         name: Install and import check shapiq
@@ -36,9 +38,9 @@ jobs:
             matrix:
                 include:
                     - os: ubuntu-latest
-                      python-version: "3.10"
+                      python-version: "3.12"
                     - os: ubuntu-latest
-                      python-version: "3.13"
+                      python-version: "3.14"
                     - os: windows-latest
                       python-version: "3.12"
                     - os: macos-latest
@@ -51,6 +53,9 @@ jobs:
                 with:
                     python-version: ${{ matrix.python-version }}
                     enable-cache: true
+            -   if: matrix.os == 'macos-latest'
+                name: Install libomp on macOS
+                run: brew install libomp
             -   name: Create uv virtual environment
                 run: uv venv
             -   name: Install shapiq package
@@ -58,11 +63,13 @@ jobs:
             -   name: Test import
                 run: uv run --no-sync python -c "import shapiq; print('shapiq imported successfully')"
     # ----------------------------------------------------------------------------------------------
-    # Install and Import Check
+    # Install and Import Check `shapiq_games`
     # ----------------------------------------------------------------------------------------------
     install_and_import_shapiq_games:
         name: Install and import check shapiq-games
         runs-on: ubuntu-latest
+        needs:
+            - install_and_import_shapiq
         steps:
             -   uses: actions/checkout@v6
             -   name: Set up Python and uv
@@ -79,22 +86,39 @@ jobs:
             -   name: Test import of shapiq_games
                 run: uv run --no-sync python -c "import shapiq_games; print('shapiq_games imported successfully')"
     # ----------------------------------------------------------------------------------------------
-    # Unit Tests with Matrix
+    # Unit Tests for shapiq (Stable Python and Matrix)
     # ----------------------------------------------------------------------------------------------
-    test_shapiq:
-        name: Run Unit Tests
+    test_shapiq_stable:
+        name: Run Unit Tests (Stable Python)
+        runs-on: ubuntu-latest
+        needs:
+            - install_and_import_shapiq
+        steps:
+            -   uses: actions/checkout@v6
+            -   name: Set up Python and uv
+                uses: astral-sh/setup-uv@v7
+                with:
+                    python-version: "3.12"
+                    enable-cache: true
+            -   name: Install test dependencies
+                run: uv sync
+            -   name: Run unit tests
+                run: uv run pytest "tests/shapiq"
+    test_shapiq_matrix:
+        name: Run Unit Tests (Matrix)
+        needs:
+            - test_shapiq_stable
+            - install_and_import_shapiq
         strategy:
             fail-fast: false
             matrix:
                 include:
                     - os: ubuntu-latest
-                      python-version: "3.10"
-                    - os: ubuntu-latest
-                      python-version: "3.13"
+                      python-version: "3.14"  # Test latest Python on Ubuntu
                     - os: windows-latest
-                      python-version: "3.12"
+                      python-version: "3.12"  # Test stable Python on Windows
                     - os: macos-latest
-                      python-version: "3.12"
+                      python-version: "3.12"  # Test stable Python on macOS
         runs-on: ${{ matrix.os }}
         steps:
             -   uses: actions/checkout@v6
@@ -103,6 +127,9 @@ jobs:
                 with:
                     python-version: ${{ matrix.python-version }}
                     enable-cache: true
+            -   if: matrix.os == 'macos-latest'
+                name: Install libomp on macOS
+                run: brew install libomp
             -   name: Install test dependencies
                 run: uv sync
             -   name: Run unit tests
@@ -112,6 +139,9 @@ jobs:
     # ----------------------------------------------------------------------------------------------
     test_shapiq_games:
         runs-on: ubuntu-latest
+        needs:
+            - install_and_import_shapiq
+            - test_shapiq_stable
         steps:
             -   uses: actions/checkout@v6
             -   name: Set up Python and uv
@@ -132,6 +162,7 @@ jobs:
         needs:
             - install_and_import_shapiq
             - check_code_quality
+            - test_shapiq_stable
         steps:
             -   uses: actions/checkout@v6
             -   name: Set up Python and uv
@@ -145,9 +176,8 @@ jobs:
                     sudo apt-get install -y pandoc
             -   name: Install dependencies
                 run: uv sync --no-dev --group docs
-                # TODO(mmshlk) Turn this step to fail on warnings in the future.
             -   name: Build documentation
-                run: uv run --no-sync sphinx-build -b html docs/source docs/build/html
+                run: uv run --no-sync sphinx-build -W --keep-going -b html docs/source docs/build/html
     # ----------------------------------------------------------------------------------------------
     # Code Coverage
     # ----------------------------------------------------------------------------------------------
@@ -157,6 +187,7 @@ jobs:
         needs:
             - install_and_import_shapiq
             - check_code_quality
+            - test_shapiq_stable
         steps:
             -   uses: actions/checkout@v6
             -   name: Set up Python and uv

@@ -131,7 +131,7 @@ def load_bike_sharing(
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
     transformed_data: np.ndarray = cast(
-        np.ndarray, column_transformer.fit_transform(dataset)
+        "np.ndarray", column_transformer.fit_transform(dataset)
     )  # Transformations will always return a dense array
     dataset = pd.DataFrame(
         transformed_data,
@@ -209,7 +209,7 @@ def load_adult_census(
     col_names = num_feature_names + cat_feature_names
     col_names += [feature for feature in dataset.columns if feature not in col_names]
     transformed_data = cast(
-        np.ndarray, column_transformer.fit_transform(dataset)
+        "np.ndarray", column_transformer.fit_transform(dataset)
     )  # Transformations will always return a dense array
     dataset = pd.DataFrame(
         transformed_data,

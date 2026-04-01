@@ -199,7 +199,7 @@ class ExactComputer:
         """Return the coalition lookup dictionary."""
         if not self._game_is_computed:
             self._evaluate_game()
-        return self._coalition_lookup
+        return self._coalition_lookup  # type: ignore[return-value]
 
     @property
     def game_values(self) -> np.ndarray:
@@ -542,11 +542,12 @@ class ExactComputer:
         Base Generalized Values are probabilistic generalized values that do not depend on the
         order. According to the underlying representation using marginal contributions from
         [Mar07]_, the following indices are supported:
-            - SGV: Shapley Generalized Value [Mar00]_
-            - BGV: Banzhaf Generalized Value [Mar00]_
-            - CHGV: Chaining Generalized Value [Mar07]_
-            - IGV: Internal Generalized Value [Mar07]_
-            - EGV: External Generalized Value [Mar07]_
+
+        - SGV: Shapley Generalized Value [Mar00]_
+        - BGV: Banzhaf Generalized Value [Mar00]_
+        - CHGV: Chaining Generalized Value [Mar07]_
+        - IGV: Internal Generalized Value [Mar07]_
+        - EGV: External Generalized Value [Mar07]_
 
         Args:
             order: The highest order of interactions
@@ -889,7 +890,8 @@ class ExactComputer:
 
         The underlying representation of Shapley Generalized Values (i.e. Generalized Values that
         satisfy efficiency) is presented in [Mar07]_. The following indices are supported:
-            - JointSV [Har22]_
+
+        - JointSV [Har22]_
 
         Args:
             order: The highest order of interactions.
@@ -912,10 +914,11 @@ class ExactComputer:
 
         According to the underlying representation using discrete derivatives from [Fui06]_, the
         following indices are supported:
-            - k-SII: k-Shapley Values [Bor23]_
-            - STII:  Shapley-Taylor Interaction Index [Sun20]_
-            - kADD-SHAP: k-additive Shapley Values [Pel23]_
-            - FSII: Faithful Shapley Interaction Index [Tsa23]_
+
+        - k-SII: k-Shapley Values [Bor23]_
+        - STII:  Shapley-Taylor Interaction Index [Sun20]_
+        - kADD-SHAP: k-additive Shapley Values [Pel23]_
+        - FSII: Faithful Shapley Interaction Index [Tsa23]_
 
         Args:
             order: The highest order of interactions
@@ -951,11 +954,12 @@ class ExactComputer:
 
         According to the underlying representation using discrete derivatives from [Fui06]_, the
         following indices are supported:
-            - SII: Shapley Interaction Index [Gra99]_
-            - BII: Banzhaf Interaction Index [Gra99]_
-            - CHII: Chaining Interaction Index [Mar99]_
-            - Moebius: Moebius Transform [Ras02]_
-            - Co-Moebius: Co-Moebius Transform [Mar07]_
+
+        - SII: Shapley Interaction Index [Gra99]_
+        - BII: Banzhaf Interaction Index [Gra99]_
+        - CHII: Chaining Interaction Index [Mar99]_
+        - Moebius: Moebius Transform [Ras02]_
+        - Co-Moebius: Co-Moebius Transform [Mar07]_
 
         Args:
             order: The highest order of interactions
@@ -963,6 +967,9 @@ class ExactComputer:
 
         Returns:
             An InteractionValues object containing interaction values
+
+        References:
+            .. [Ras02] Rota, G.-C. (1964). On the foundations of combinatorial theory I. Theory of Möbius functions. Zeitschrift für Wahrscheinlichkeitstheorie und verwandte Gebiete 2, 340-368. doi: https://doi.org/10.1007/BF00531932
 
         """
         base_interaction = self.base_interaction(index, order)
@@ -976,8 +983,9 @@ class ExactComputer:
         ``order = 1``. According to the underlying representation using marginal contributions; cf.
         semi-values [Dub81]_, or probabilistic values [Web09]_ for the following indices are
         supported:
-            - SV: Shapley value [Sha53]_
-            - BV: Banzhaf value [Ban64]_
+
+        - SV: Shapley value [Sha53]_
+        - BV: Banzhaf value [Ban64]_
 
         Args:
             index: The interaction index

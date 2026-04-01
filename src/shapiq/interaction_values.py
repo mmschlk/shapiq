@@ -1,11 +1,10 @@
-"""InteractionValues data-class, which is used to store the interaction scores."""
+"""Central output container for interaction scores produced by approximators and explainers."""
 
 from __future__ import annotations
 
 import contextlib
 import copy
 import json
-import pickle
 from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
@@ -19,8 +18,6 @@ from .game_theory.indices import (
     is_index_aggregated,
     is_index_valid,
 )
-from .utils.errors import raise_deprecation_warning
-from .utils.saving import safe_str_to_tuple, safe_tuple_to_str
 from .utils.sets import generate_interaction_lookup
 
 if TYPE_CHECKING:
@@ -31,11 +28,6 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
     from shapiq.typing import InteractionScores, JSONType
-
-SAVE_JSON_DEPRECATION_MSG = (
-    "Saving InteractionValues not as a JSON file is deprecated. "
-    "The parameters `as_pickle` and `as_npz` will be removed in the future. "
-)
 
 
 class InteractionValues:
@@ -75,9 +67,9 @@ class InteractionValues:
         max_order: int,
         n_players: int,
         min_order: int,
-        interaction_lookup: dict[tuple[int, ...], int] | None = None,  # type: ignore[assignment]
+        interaction_lookup: dict[tuple[int, ...], int] | None = None,
         estimated: bool = True,
-        estimation_budget: int | None = None,  # type: ignore[assignment]
+        estimation_budget: int | None = None,
         baseline_value: float | np.number = 0.0,
         target_index: str | None = None,
     ) -> None:
@@ -773,61 +765,18 @@ class InteractionValues:
             baseline_value=self.baseline_value,
         )
 
-    def save(self, path: Path, *, as_pickle: bool = False, as_npz: bool = False) -> None:
-        """Save the InteractionValues object to a file.
-
-        By default, the InteractionValues object is saved as a JSON file.
+    def save(self, path: Path) -> None:
+        """Save the InteractionValues object to a JSON file.
 
         Args:
             path: The path to save the InteractionValues object to.
-            as_pickle: Whether to save the InteractionValues object as a pickle file (``True``).
-            as_npz: Whether to save the InteractionValues object as a ``npz`` file (``True``).
-
-        Raises:
-            DeprecationWarning: If `as_pickle` or `as_npz` is set to ``True``, a deprecation
-                warning is raised
         """
         # check if the directory exists
         directory = Path(path).parent
         if not Path(directory).exists():
             with contextlib.suppress(FileNotFoundError):
                 Path(directory).mkdir(parents=True, exist_ok=True)
-        if as_pickle:
-            raise_deprecation_warning(
-                message=SAVE_JSON_DEPRECATION_MSG,
-                deprecated_in="1.3.1",
-                removed_in="1.4.0",
-            )
-            with Path(path).open("wb") as file:
-                pickle.dump(self, file)
-        elif as_npz:
-            raise_deprecation_warning(
-                message=SAVE_JSON_DEPRECATION_MSG,
-                deprecated_in="1.3.1",
-                removed_in="1.4.0",
-            )
-            # save object as npz file
-            interaction_keys = np.array(
-                list(map(safe_tuple_to_str, self.interaction_lookup.keys()))
-            )
-            interaction_indices = np.array(list(self.interaction_lookup.values()))
-            estimation_budget = self.estimation_budget if self.estimation_budget is not None else -1
-
-            np.savez(
-                path,
-                values=self.values,
-                index=self.index,
-                max_order=self.max_order,
-                n_players=self.n_players,
-                min_order=self.min_order,
-                interaction_lookup_keys=interaction_keys,
-                interaction_lookup_indices=interaction_indices,
-                estimated=self.estimated,
-                estimation_budget=estimation_budget,
-                baseline_value=self.baseline_value,
-            )
-        else:
-            self.to_json_file(path)
+        self.to_json_file(path)
 
     @classmethod
     def load(cls, path: Path | str) -> InteractionValues:
@@ -841,46 +790,10 @@ class InteractionValues:
 
         """
         path = Path(path)
-        # check if path ends with .json
-        if path.name.endswith(".json"):
-            return cls.from_json_file(path)
-
-        raise_deprecation_warning(
-            SAVE_JSON_DEPRECATION_MSG, deprecated_in="1.3.1", removed_in="1.4.0"
-        )
-
-        # try loading as npz file
-        if path.name.endswith(".npz"):
-            data = np.load(path, allow_pickle=True)
-            try:
-                # try to load Pyright save format
-                interaction_lookup = {
-                    safe_str_to_tuple(key): int(value)
-                    for key, value in zip(
-                        data["interaction_lookup_keys"],
-                        data["interaction_lookup_indices"],
-                        strict=False,
-                    )
-                }
-            except KeyError:
-                # fallback to old format
-                interaction_lookup = data["interaction_lookup"].item()
-            estimation_budget = data["estimation_budget"].item()
-            if estimation_budget == -1:
-                estimation_budget = None
-            return InteractionValues(
-                values=data["values"],
-                index=str(data["index"]),
-                max_order=int(data["max_order"]),
-                n_players=int(data["n_players"]),
-                min_order=int(data["min_order"]),
-                interaction_lookup=interaction_lookup,
-                estimated=bool(data["estimated"]),
-                estimation_budget=estimation_budget,
-                baseline_value=float(data["baseline_value"]),
-            )
-        msg = f"Path {path} does not end with .json or .npz. Cannot load InteractionValues."
-        raise ValueError(msg)
+        if not path.name.endswith(".json"):
+            msg = f"Path {path} does not end with .json. Cannot load InteractionValues."
+            raise ValueError(msg)
+        return cls.from_json_file(path)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> InteractionValues:
@@ -1290,7 +1203,7 @@ def _validate_and_return_interactions(
         raise TypeError(msg)
 
     if isinstance(values, dict):
-        interactions = copy.deepcopy(values)
+        interactions = copy.deepcopy(values)  # type: ignore[assignment]
     else:
         interactions = {
             interaction: values[index].item() for interaction, index in interaction_lookup.items()

@@ -187,7 +187,7 @@ def _add_labels(
         # We need to draw the plot to be able to get the size of the
         # text box
         fig.canvas.draw()
-        box_size = text_out_val.get_bbox_patch().get_extents().transformed(ax.transData.inverted())  # pyright: ignore[reportOptionalMemberAccess]
+        box_size = text_out_val.get_bbox_patch().get_extents().transformed(ax.transData.inverted())  # type: ignore[union-attr]
         if feature_type == "positive":
             box_end_ = box_size.get_points()[0][0]
         else:
@@ -649,9 +649,6 @@ def force_plot(
 
     Returns:
         plt.Figure: The figure of the plot
-
-    References:
-        .. [1] SHAP is available at https://github.com/shap/shap
 
     """
     if feature_names is None:

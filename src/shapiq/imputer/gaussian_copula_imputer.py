@@ -27,6 +27,7 @@ class GaussianCopulaImputer(GaussianImputer):
     Monte Carlo samples are then drawn from the conditional multivariate normal distribution in this transformed (Gaussian)
     space, given the observed values in a coalition. These samples are finally transformed back to the original feature space
     using the inverse of the empirical CDFs.
+
     """
 
     QUANTILE_CLIP_EPSILON = 1e-10

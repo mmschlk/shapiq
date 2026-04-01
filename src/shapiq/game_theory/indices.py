@@ -176,7 +176,7 @@ def index_generalizes_sv(index: str) -> bool:
 
     """
     if index in ALL_AVAILABLE_CONCEPTS:
-        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "SV"
+        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "SV"  # type: ignore[literal-required]
     return False
 
 
@@ -199,7 +199,7 @@ def index_generalizes_bv(index: str) -> bool:
 
     """
     if index in ALL_AVAILABLE_CONCEPTS:
-        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "BV"
+        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "BV"  # type: ignore[literal-required]
     return False
 
 

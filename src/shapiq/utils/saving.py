@@ -49,7 +49,7 @@ def dict_to_interactions(
 def lookup_and_values_to_dict(
     interaction_lookup: Mapping[tuple[int, ...], int],
     interaction_values: Sequence[float] | np.ndarray,
-) -> dict[str, float]:
+) -> dict[str, int | float]:
     """Converts a pair of interaction lookup and values into a dictionary for saving.
 
     Args:
@@ -102,7 +102,7 @@ def make_file_metadata(
         "created_from": repr(created_from) if created_from else None,
         "description": desc,
         "parameters": parameters or {},
-        "timestamp": datetime.datetime.now(tz=datetime.timezone.utc).isoformat() + "Z",
+        "timestamp": datetime.datetime.now(tz=datetime.UTC).isoformat() + "Z",
     }
 
 

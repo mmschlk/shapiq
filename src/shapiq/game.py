@@ -1,9 +1,8 @@
-"""Base Game class for games and benchmarks."""
+"""Base Game class wrapping any callable as a cooperative game for Shapley analysis."""
 
 from __future__ import annotations
 
 import json
-import os
 import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypedDict, cast
@@ -13,7 +12,6 @@ from tqdm.auto import tqdm
 
 from shapiq.utils import (
     powerset,
-    raise_deprecation_warning,
     transform_array_to_coalitions,
     transform_coalitions_to_array,
 )
@@ -63,9 +61,6 @@ class Game:
     Attributes:
         _precompute_flag: A flag to manually override the precomputed check. If set to ``True``, the
             game is considered precomputed and only uses the lookup.
-        value_storage: The storage for the game values without normalization applied.
-        coalition_lookup: A lookup dictionary mapping from coalitions to indices in the
-            ``value_storage``.
         n_players: The number of players in the game.
         normalization_value: The value to normalize and center the game values with.
         empty_coalition: The empty coalition of the game.
@@ -99,10 +94,6 @@ class Game:
         >>> new_game.load_values("dummy_game.npz")
         >>> game.precomputed, game.n_values_stored
         True, 2
-        >>> # you can also load a game of any class with the Game class
-        >>> new_game = Game(path_to_values="dummy_game.npz")
-        >>> new_game.precomputed, new_game.n_values_stored
-        True, 2
         >>> # save and load the game
         >>> game.save("game.pkl")
         >>> new_game = DummyGame.load("game.pkl")
@@ -130,7 +121,6 @@ class Game:
         *,
         normalize: bool = True,
         normalization_value: float | None = None,
-        path_to_values: Path | str | None = None,
         verbose: bool = False,
         player_names: list[str] | None = None,
         **kwargs: Any,  # noqa: ARG002
@@ -151,9 +141,6 @@ class Game:
                 to ``False`` this value is not required. Otherwise, the value is needed to normalize and
                 center the game. If no value is provided, the game raises a warning.
 
-            path_to_values: The path to load the game values from. If the path is provided, the game
-                values are loaded from the given path. Defaults to ``None``.
-
             verbose: Whether to show a progress bar for the evaluation. Defaults to ``False``. Note
                 that this only has an effect if the game is not precomputed and may slow down the
                 evaluation.
@@ -164,14 +151,7 @@ class Game:
             kwargs: Additional keyword arguments (not used).
 
         """
-        if path_to_values is not None:
-            msg = (
-                "Initializing a Game with `path_to_values` is deprecated and will be removed in a"
-                " future version. Use `Game.load` or `Game().load_values()` instead."
-            )
-            raise_deprecation_warning(message=msg, deprecated_in="1.3.1", removed_in="1.4.0")
-
-        if n_players is None and path_to_values is None:
+        if n_players is None:
             msg = "The number of players has to be provided if game is not loaded from values."
             raise ValueError(msg)
 
@@ -180,11 +160,10 @@ class Game:
 
         # define storage variables
         self.game_values = {}
-        # TODO(mmschlk): Remove None Assignment below and drop the pyright ignore when we remove path_to_values # noqa: TD003
-        self.n_players = n_players  # type: ignore[assignment]
+        self.n_players = n_players
         # setup normalization of the game
         self.normalization_value = 0.0
-        if normalize and path_to_values is None:
+        if normalize:
             if normalization_value is None:
                 # this is desired behavior, as in some cases normalization is set by the subclasses
                 # after init of the base Game class. For example, in the imputer classes.
@@ -201,12 +180,6 @@ class Game:
 
         game_id = str(hash(self))[:8]
         self.game_id = f"{self.get_game_name()}_{game_id}"
-        if path_to_values is not None:
-            self.load_values(path_to_values, precomputed=True)
-            self.game_id = str(path_to_values).split(os.path.sep)[-1].split(".")[0]
-            # if game should not be normalized, reset normalization value to 0
-            if not normalize and self.normalization_value != 0:
-                self.normalization_value = 0.0
 
         # define some handy coalition variables
         self.empty_coalition = np.zeros(self.n_players, dtype=bool)
@@ -379,7 +352,7 @@ class Game:
                         f"It should have a length of {self.n_players}"
                     )
                     raise TypeError(msg)
-                coalitions = coalitions.reshape((1, self.n_players))
+                coalitions = coalitions.reshape((1, self.n_players))  # type: ignore[call-overload]
             if coalitions.shape[1] != self.n_players:  # check if players match
                 msg = (
                     f"Number of players in the coalitions ({coalitions.shape[1]}) does not match "
@@ -390,19 +363,19 @@ class Game:
             if not np.all(np.logical_or(coalitions == 0, coalitions == 1)):
                 msg = "The values in the array of coalitions are not binary."
                 raise TypeError(msg)
-            return coalitions
+            return coalitions  # type: ignore[return-value]
 
         # try for list of tuples
         if isinstance(coalitions, tuple):
             tuple_list: list[tuple[int, ...]] | list[tuple[str, ...]] = cast(
-                list[tuple[int, ...]] | list[tuple[str, ...]], [coalitions]
+                "list[tuple[int, ...]] | list[tuple[str, ...]]", [coalitions]
             )
         else:
             tuple_list: list[tuple[int, ...]] | list[tuple[str, ...]] = coalitions
 
         try:
             # convert list of tuples to one-hot encoding
-            coalitions_int = cast(list[tuple[int, ...]], tuple_list)
+            coalitions_int = cast("list[tuple[int, ...]]", tuple_list)
             return transform_coalitions_to_array(coalitions_int, self.n_players)
         except (IndexError, TypeError):  # the transform failed because of wrong input type
             pass
@@ -412,7 +385,7 @@ class Game:
             msg = "Player names are not provided. Cannot convert string to integer."
             raise ValueError(msg)
         try:
-            coalitions_str = cast(list[tuple[str, ...]], tuple_list)
+            coalitions_str = cast("list[tuple[str, ...]]", tuple_list)
             coalitions_from_str = []
             for coalition in coalitions_str:
                 coal_indices = sorted([self.player_name_lookup[player] for player in coalition])
@@ -759,14 +732,14 @@ class Game:
     def empty_coalition_value(self) -> float:
         """Return the value of the empty coalition."""
         if self._empty_coalition_value_property is None:
-            self._empty_coalition_value_property = float(self(self.empty_coalition))
+            self._empty_coalition_value_property = float(self(self.empty_coalition)[0])
         return self._empty_coalition_value_property
 
     @property
     def grand_coalition_value(self) -> float:
         """Return the value of the grand coalition."""
         if self._grand_coalition_value_property is None:
-            self._grand_coalition_value_property = float(self(self.grand_coalition))
+            self._grand_coalition_value_property = float(self(self.grand_coalition)[0])
         return self._grand_coalition_value_property
 
     def __getitem__(self, item: tuple[int, ...]) -> float:
