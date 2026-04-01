@@ -62,8 +62,8 @@ class NNExplainerBase(Explainer):
             msg = f"Expected dtype of model's training features (model._fit_X) to be a subtype of np.floating or np.integer, but got {X_train.dtype}"
             raise TypeError(msg)
         if np.issubdtype(X_train.dtype, np.integer):
-            X_train = X_train.astype(np.float32)
-        self.X_train = X_train
+            X_train = X_train.astype(np.float32)  # ty: ignore[no-matching-overload]
+        self.X_train = cast("npt.NDArray[np.floating]", X_train)
 
         y_train_indices = _sklearn_model_get_private_attribute(model, "_y")
         if not isinstance(y_train_indices, np.ndarray):
@@ -75,7 +75,7 @@ class NNExplainerBase(Explainer):
         if y_train_indices.ndim != 1:
             msg = "Multi-output nearest neighbor classifiers are not supported. Make sure to pass the training labels as a 1D vector when calling `model.fit()`."
             raise ValueError(msg)
-        self.y_train_indices = y_train_indices
+        self.y_train_indices = cast("npt.NDArray[np.integer]", y_train_indices)
 
         if not isinstance(model.classes_, np.ndarray):
             msg = f"Expected model's training classes (model.classes_) to be numpy array but got {type(model.classes_)}"

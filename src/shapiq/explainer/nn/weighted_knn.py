@@ -75,7 +75,9 @@ class WeightedKNNExplainer(NNExplainerBase):
         self.n_train = self.X_train.shape[0]
 
     @override
-    def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
+    def explain_function(
+        self, x: npt.NDArray[np.floating]
+    ) -> InteractionValues:  # ty: ignore[invalid-method-override]
         n_players = self.X_train.shape[0]
 
         n_classes = len(self.y_train_classes)

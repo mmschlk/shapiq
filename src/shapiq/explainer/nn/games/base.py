@@ -80,10 +80,10 @@ class KNNExplainerGameBase(NNExplainerGameBase):
         class_index: int,
     ) -> None:
         super().__init__(model, x, class_index)
-        # Reassign in order to narrow type to KNeighborsClassifier
-        self.model = model
+        # Seperate attribute with narrower type KNeighborsClassifier
+        self.knn_model = model
 
-        self.sortperm = self.model.kneighbors(
+        self.sortperm = self.knn_model.kneighbors(
             x.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=False
         )[0]
         self.y_train_sorted = self.y_train_indices[self.sortperm]

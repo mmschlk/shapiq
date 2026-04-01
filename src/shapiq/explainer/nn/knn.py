@@ -56,7 +56,9 @@ class KNNExplainer(NNExplainerBase):
         self.k = model.n_neighbors
 
     @override
-    def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
+    def explain_function(
+        self, x: npt.NDArray[np.floating]
+    ) -> InteractionValues:  # ty: ignore[invalid-method-override]
         n = len(self.X_train)
         sv = np.zeros(n)
 

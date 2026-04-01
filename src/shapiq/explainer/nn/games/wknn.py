@@ -92,7 +92,7 @@ class BinaryWeightedKNNExplainerGame(KNNExplainerGameBase):
         sortperm, weights = self._get_normalized_weights()
 
         if self.n_bits is not None:
-            _explainer = WeightedKNNExplainer(self.model, self.class_index, n_bits=self.n_bits)
+            _explainer = WeightedKNNExplainer(self.knn_model, self.class_index, n_bits=self.n_bits)
             weights = _explainer._undiscretize_weight(  # noqa: SLF001
                 _explainer._discretize_weight(weights)  # noqa: SLF001
             )
@@ -129,7 +129,7 @@ class BinaryWeightedKNNExplainerGame(KNNExplainerGameBase):
                 - ``sortperm`` is a permutation that sorts the training data points by decreasing weight
                 - ``weights`` contains the weights for each training data point, normalized to the interval [0, 1]
         """
-        distances, sortperm = self.model.kneighbors(
+        distances, sortperm = self.knn_model.kneighbors(
             self.x.reshape(1, -1), n_neighbors=self.X_train.shape[0], return_distance=True
         )
         distances = distances[0]

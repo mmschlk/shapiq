@@ -52,7 +52,9 @@ class ThresholdNNExplainer(NNExplainerBase):
         super().__init__(model, class_index=class_index)
 
     @override
-    def explain_function(self, x: npt.NDArray[np.floating]) -> InteractionValues:
+    def explain_function(
+        self, x: npt.NDArray[np.floating]
+    ) -> InteractionValues:  # ty: ignore[invalid-method-override]
         # Following Theorem 13 and equation (7) in Wang et al. (2023) DOI: 2308.15709v2
         # Counting queries defined in C.2.2 ibid.
         n_train = self.X_train.shape[0]

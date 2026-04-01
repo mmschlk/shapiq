@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -36,4 +36,4 @@ def _greater_or_close(a: np.floating, b: np.floating) -> np.bool:
 
     That is, if ``a < b`` but ``np.isclose(a, b)``, ``True`` will be returned.
     """
-    return cast("np.bool", a >= b) or np.isclose(a, b)
+    return a >= b or np.isclose(a, b)
