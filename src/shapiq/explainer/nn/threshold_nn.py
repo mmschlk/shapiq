@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
-from typing_extensions import override
+from typing import TYPE_CHECKING, cast, override
 
 import numpy as np
 from scipy.special import comb

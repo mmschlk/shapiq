@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast, overload
-from typing_extensions import override
+from typing import TYPE_CHECKING, cast, overload, override
 
 from shapiq.explainer.nn.base import NNExplainerBase
 
