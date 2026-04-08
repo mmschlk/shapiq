@@ -76,8 +76,8 @@ sv.plot_force(feature_names=patch_names)
 # We can also compute pairwise interactions to see which patches
 # interact with each other.
 
-approx_fsii = shapiq.KernelSHAPIQ(n=game.n_players, index="k-SII", max_order=2, random_state=42)
-sii = approx_fsii.approximate(budget=50, game=game)
+approx_k_sii = shapiq.KernelSHAPIQ(n=game.n_players, index="k-SII", max_order=2, random_state=42)
+sii = approx_k_sii.approximate(budget=50, game=game)
 
 sii.plot_network(feature_names=patch_names)
 
