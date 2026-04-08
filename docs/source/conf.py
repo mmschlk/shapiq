@@ -61,7 +61,7 @@ sphinx_gallery_conf = {
     "download_all_examples": False,
     "show_signature": False,
     "run_stale_examples": True,
-    "abort_on_example_error": False,
+    "abort_on_example_error": True,
     "default_thumb_file": str(
         root / "docs" / "source" / "_static" / "logo" / "logo_shapiq_light.svg"
     ),
