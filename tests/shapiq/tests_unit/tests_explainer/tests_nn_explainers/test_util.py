@@ -35,12 +35,11 @@ def test_warn_ignored_parameters_emits_warning(caplog):
 
 def test_valid_index_and_order():
     assert_valid_index_and_order("SV", 1)
-    assert_valid_index_and_order("k-SII", 1)
 
 
 def test_invalid_index_and_order():
     for index in get_args(ExplainerIndices):
-        if index in ["SV", "k-SII"]:
+        if index == "SV":
             continue
         with pytest.raises(ValueError, match="Explainer index .* is invalid"):
             assert_valid_index_and_order(index, 1)

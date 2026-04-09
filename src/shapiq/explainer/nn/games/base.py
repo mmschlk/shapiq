@@ -48,7 +48,7 @@ class NNExplainerGameBase(Game):
 
         y_train_indices = model._y  # noqa: SLF001
         if not isinstance(y_train_indices, np.ndarray):
-            msg = f"Expected model's training data class indices (model._y) to be np.ndarray but got {type(X_train)}"
+            msg = f"Expected model's training data class indices (model._y) to be np.ndarray but got {type(y_train_indices)}"
             raise TypeError(msg)
         if not np.issubdtype(y_train_indices.dtype, np.integer):
             msg = f"Expected dtype of model's training class indices (model._y) to be a subtype of np.integer, but got {y_train_indices.dtype}"
@@ -59,7 +59,7 @@ class NNExplainerGameBase(Game):
         self.y_train_indices = cast("np.ndarray", y_train_indices)
 
         if not isinstance(model.classes_, np.ndarray):
-            msg = f"Expected model's training data class (model.classes_) to be np.ndarray but got {type(X_train)}"
+            msg = f"Expected model's training data class (model.classes_) to be np.ndarray but got {type(model.classes_)}"
             raise TypeError(msg)
         self.y_train_classes = cast("npt.NDArray[np.object_]", model.classes_)
         self.n_classes = self.y_train_classes.shape[0]

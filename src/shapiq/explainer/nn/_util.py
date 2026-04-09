@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
-    from shapiq.explainer.custom_types import ExplainerIndices
+    from shapiq.explainer.custom_types import ValidNNExplainerIndices
 
 logger = logging.getLogger()
 
@@ -20,15 +20,15 @@ def warn_ignored_parameters(
         if local_vars[param] is not None:
             logger.warning(
                 "A non-None value was passed as parameter `%s` to the constructor of %s, which will be ignored.",
-                class_name,
                 param,
+                class_name,
             )
 
 
-def assert_valid_index_and_order(index: ExplainerIndices, max_order: int) -> None:
+def assert_valid_index_and_order(index: ValidNNExplainerIndices, max_order: int) -> None:
     """Check that the explainer index and max_order are valid for NN models, raise otherwise.
 
-    The only valid indices are ``'SV'`` and ``'k-SII'``; the only valid max. order is ``1``.
+    The only valid index is ``'SV'``; the only valid max. order is ``1``.
 
     Args:
         index: The explainer index to validate.
@@ -37,9 +37,8 @@ def assert_valid_index_and_order(index: ExplainerIndices, max_order: int) -> Non
     Raises:
         ValueError: If either of the parameters does not satisfy the requirements.
     """
-    valid_indices: list[ExplainerIndices] = ["SV", "k-SII"]
-    if index not in valid_indices:
-        msg = f"Explainer index '{index}' is invalid for nearest neighbor models. Valid indices are: {', '.join(valid_indices)}"
+    if index != "SV":
+        msg = f"Explainer index '{index}' is invalid for nearest neighbor models. The only valid index is 'SV'."
         raise ValueError(msg)
 
     if max_order != 1:

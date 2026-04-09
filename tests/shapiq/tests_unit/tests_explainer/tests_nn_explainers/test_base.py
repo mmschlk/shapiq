@@ -15,7 +15,7 @@ class TestErrorHandling:
         with pytest.raises(
             ValueError, match="Nearest-neighbor explainers require setting class_index"
         ):
-            Explainer(sklearn_knn_model, class_index=None, max_order=1)
+            Explainer(sklearn_knn_model, class_index=None, index="SV", max_order=1)
 
     def test_X_train_data_type_checks(self, sklearn_knn_model) -> None:
         model = deepcopy(sklearn_knn_model)

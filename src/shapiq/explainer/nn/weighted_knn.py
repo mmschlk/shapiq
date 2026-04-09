@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     import numpy.typing as npt
     from sklearn.neighbors import KNeighborsClassifier
 
-    from shapiq.explainer.custom_types import ExplainerIndices
+    from shapiq.explainer.custom_types import ValidNNExplainerIndices
 import numpy as np
 from scipy.special import comb
 
@@ -45,7 +45,7 @@ class WeightedKNNExplainer(NNExplainerBase):
         class_index: int | None = None,
         n_bits: int = 3,
         data: np.ndarray | None = None,
-        index: ExplainerIndices = "SV",
+        index: ValidNNExplainerIndices = "SV",
         max_order: int = 1,
     ) -> None:
         assert_valid_index_and_order(index, max_order)

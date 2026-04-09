@@ -46,7 +46,7 @@ class NNExplainerBase(Explainer):
 
         if class_index is None:
             msg = (
-                "Nearest-neighbor explainers require setting class_index explicitely. Please pass a value to"
+                "Nearest-neighbor explainers require setting class_index explicitly. Please pass a value to"
                 "class_index in the constructor"
             )
             raise ValueError(msg)

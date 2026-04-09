@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     import sklearn.neighbors
     from sklearn.neighbors import RadiusNeighborsClassifier
 
-    from shapiq.explainer.custom_types import ExplainerIndices
+    from shapiq.explainer.custom_types import ValidNNExplainerIndices
 from shapiq import InteractionValues
 
 from ._util import (
@@ -40,7 +40,7 @@ class ThresholdNNExplainer(NNExplainerBase):
         model: sklearn.neighbors.RadiusNeighborsClassifier,
         class_index: int | None = None,
         data: np.ndarray | None = None,
-        index: ExplainerIndices = "SV",
+        index: ValidNNExplainerIndices = "SV",
         max_order: int = 1,
     ) -> None:
         assert_valid_index_and_order(index, max_order)
