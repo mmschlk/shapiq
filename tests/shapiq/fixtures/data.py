@@ -107,7 +107,7 @@ def background_clf_dataset_small() -> tuple[np.ndarray, np.ndarray]:
         n_classes=3,
         n_informative=NR_FEATURES_SMALL_INFORMATIVE,
         n_repeated=0,
-        n_redundant=NR_FEATURES_SMALL_BINARY - NR_FEATURES_SMALL_BINARY_INFORMATIVE,
+        n_redundant=NR_FEATURES_SMALL - NR_FEATURES_SMALL_INFORMATIVE,
     )
     return copy.deepcopy(X), copy.deepcopy(y)
 
