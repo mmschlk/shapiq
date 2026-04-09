@@ -10,7 +10,7 @@ specialised explainers directly:
 - :class:`TreeExplainer` — optimised for tree-based models
 
 .. seealso::
-   :doc:`Tabular tutorial </notebooks/tabular>` for end-to-end examples.
+   :doc:`Examples & Tutorials </auto_examples/index>` for end-to-end examples.
 """
 
 from shapiq.tree.explainer import TreeExplainer

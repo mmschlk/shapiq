@@ -85,6 +85,9 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# TabPFN checkpoints
+tabpfn-*.ckpt
+
 # IPython
 profile_default/
 ipython_config.py
