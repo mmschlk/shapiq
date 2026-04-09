@@ -851,8 +851,6 @@ class InteractionValues:
         Returns:
             An :class:`~shapiq.InteractionValues` object containing the provided values.
 
-        Raises:
-            ValueError: If the provided ``index`` is not a first-order index.
         """
         n_players = first_order_values.shape[0]
         interaction_lookup: dict[tuple[int, ...], int] = {(i,): i for i in range(n_players)}
@@ -874,7 +872,7 @@ class InteractionValues:
             An array of shape ``(self.n_players,)`` containing at index ``i`` the first-order value of player ``i``.
 
         Raises:
-            RuntimeError: If the method was called on an :class:`~shapiq.InteractionValues` object with max order
+            ValueError: If the method was called on an :class:`~shapiq.InteractionValues` object with max order
                 not equal to ``1``.
         """
         if self.max_order != 1:
