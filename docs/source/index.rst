@@ -31,30 +31,9 @@ Contents
 
 .. toctree::
    :maxdepth: 2
-   :caption: TUTORIALS
-
-   Basic Examples <notebooks/basics>
-   Tabular Examples <notebooks/tabular>
-   Tree Examples <notebooks/trees>
-   Vision Examples <notebooks/vision>
-   Language Examples <notebooks/language>
-   Visualization <notebooks/visualization>
-   Game Theoretic Concepts <notebooks/game_theory>
-   Benchmarking <notebooks/benchmark>
-
-.. toctree::
-   :maxdepth: 2
-   :caption: EXAMPLES
-   :glob:
+   :caption: EXAMPLES & TUTORIALS
 
    auto_examples/index
-
-.. toctree::
-   :maxdepth: 2
-   :caption: API EXAMPLES
-   :glob:
-
-   api_examples/*
 
 .. toctree::
    :maxdepth: 2
