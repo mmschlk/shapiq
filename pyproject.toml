@@ -171,13 +171,14 @@ exclude = [
     "SLF",  # private members are okay in tests
     "TRY",
 ]
-"*.ipynb" = [
-    "E402",  # Module level import not at top of file (its .ipynb)
-    "T20",  # notebooks can have print statements
-    "I002",  # notebooks do not have to import required modules
-    "D",  # docstrings are not required in notebooks
-    "SLF001",  # private members are okay in notebooks
-    "ANN001",  # type annotations are not required in notebooks
+"examples/**/*.py" = [
+    "E402",  # Module level import not at top of file
+    "T20",  # examples can have print statements
+    "I002",  # examples do not have to import required modules
+    "D",  # docstrings are not required in examples
+    "SLF001",  # private members are okay in examples
+    "ANN001",  # type annotations are not required in examples
+    "INP",  # examples are an implicit namespace package
 ]
 "docs/source/*.py" = [
     "A001",  # some conf.py variables shadow builtins which is okay here
@@ -189,9 +190,6 @@ exclude = [
     "INP", # imports can be different here
     "I002",  # benchmark code does not have to import required modules
     "PTH"  # in benchmark code we use a lot of os, which is okay
-]
-"docs/copy_notebooks.py" = [
-    "I002",  # benchmark code does not have to import required modules
 ]
 "__init__.py" = [
     "I002", # __init__.py does not have to import required modules
@@ -274,10 +272,7 @@ docs = [
     "sphinx-copybutton",        # copy button for code blocks
     "sphinx-autodoc-typehints", # include typehints in docs
     "sphinxcontrib-bibtex",     # references based on bibtex
-    "nbconvert",                # notebook support for sphinx
-    "nbsphinx",                 # notebook support for sphinx
-    "commonmark",               # Markdown parser and renderer
-    "ipython>=9.0.0",           # for code execution in notebooks
+    "ipython>=9.0.0",           # for code execution in sphinx-gallery
     "sphinx-gallery",           # gallery of examples from Python scripts
     "matplotlib",               # required for sphinx-gallery thumbnails
     {include-group = "all_ml"}

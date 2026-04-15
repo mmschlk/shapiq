@@ -170,10 +170,6 @@ jobs:
                 with:
                     python-version: "3.12"
                     enable-cache: true
-            -   name: Install pandoc
-                run: |
-                    sudo apt-get update
-                    sudo apt-get install -y pandoc
             -   name: Install dependencies
                 run: uv sync --no-dev --group docs
             -   name: Build documentation

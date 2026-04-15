@@ -10,7 +10,6 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-import commonmark
 from sphinx.builders.html import StandaloneHTMLBuilder
 
 root = Path(__file__).resolve().parents[2]  # ../../ from this file
@@ -35,7 +34,6 @@ version = version("shapiq")
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = [
     "sphinx.ext.napoleon",
-    "nbsphinx",
     "sphinx.ext.duration",
     "myst_parser",
     "sphinx.ext.intersphinx",
@@ -51,17 +49,22 @@ extensions = [
     "sphinx_gallery.gen_gallery",
 ]
 
-nbsphinx_allow_errors = True  # optional, avoids build breaking due to execution errors
-
 # -- Sphinx-Gallery -------------------------------------------------------------------------------
 sphinx_gallery_conf = {
-    "examples_dirs": "../../docs/source/examples",  # source scripts
-    "gallery_dirs": "auto_examples",  # generated output (relative to source/)
-    "filename_pattern": r"/plot_",  # only execute files starting with plot_
-    "ignore_pattern": r"__init__\.py",
+    "examples_dirs": [str(root / "examples")],
+    "gallery_dirs": ["auto_examples"],
+    "backreferences_dir": "gen_modules/backreferences",
+    "doc_module": ("shapiq",),
+    "reference_url": {"shapiq": None},
+    "filename_pattern": r"plot_.*\.py",
     "plot_gallery": True,
     "download_all_examples": False,
     "show_signature": False,
+    "run_stale_examples": True,
+    "abort_on_example_error": True,
+    "default_thumb_file": str(
+        root / "docs" / "source" / "_static" / "logo" / "logo_shapiq_light.svg"
+    ),
 }
 
 templates_path = ["_templates"]
@@ -69,10 +72,7 @@ exclude_patterns = [
     "_build",
     "Thumbs.db",
     ".DS_Store",
-    "**.ipynb_checkpoints",
     "auto_examples/**.ipynb",
-    # sphinx-gallery includes this file internally; exclude to avoid toctree warning
-    "examples/GALLERY_HEADER.rst",
     # stale sphinx-gallery artifact at source root (real copy lives in auto_examples/)
     "sg_execution_times.rst",
 ]
@@ -165,22 +165,3 @@ StandaloneHTMLBuilder.supported_image_types = [
 # Ignore >>> when copying code
 copybutton_prompt_text = r">>> |\.\.\. "
 copybutton_prompt_is_regexp = True
-
-# -- Markdown in docstring -----------------------------------------------------------------------------
-# https://gist.github.com/dmwyatt/0f555c8f9c129c0ac6fed6fabe49078b#file-docstrings-py
-# based on https://stackoverflow.com/a/56428123/23972
-
-
-def docstring(_app, _what, _name, _obj, _options, lines) -> None:
-    """Convert Markdown in docstrings to reStructuredText."""
-    if len(lines) > 1 and lines[0] == "@&ismd":
-        md = "\n".join(lines[1:])
-        ast = commonmark.Parser().parse(md)
-        rst = commonmark.ReStructuredTextRenderer().render(ast)
-        lines.clear()
-        lines += rst.splitlines()
-
-
-def setup(app) -> None:
-    """Setup function for the Sphinx extension to convert Markdown in docstrings to reStructuredText."""
-    app.connect("autodoc-process-docstring", docstring)
