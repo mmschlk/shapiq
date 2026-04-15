@@ -89,6 +89,10 @@ testpaths = [
 ]
 pythonpath = ["src"]
 minversion = "8.0"
+markers = [
+    "slow: marks tests that require > 5s or optional deps (deselect with '-m not slow')",
+]
+addopts = "-m 'not slow'"
 
 [tool.ruff]
 line-length = 100
