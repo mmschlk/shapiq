@@ -16,7 +16,6 @@ from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
 
-
 # ===================================================================
 # ExactComputer
 # ===================================================================

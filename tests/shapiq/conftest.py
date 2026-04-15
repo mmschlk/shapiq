@@ -1,118 +1,150 @@
-"""This test module contains all fixtures for all tests of shapiq."""
+"""Shared fixtures for all shapiq tests."""
 
 from __future__ import annotations
 
 import os
 
-# Limit OpenMP threads before any native library (numpy, sklearn, torch) is loaded.
-# Without this, PyTorch's OpenMP threads conflict with numpy/sklearn's OpenMP threads
-# already resident in the pytest process, causing segfaults in TabPFN tests.
+# Limit OpenMP threads to prevent segfaults when PyTorch/sklearn coexist.
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
+
+import importlib.util
 
 import matplotlib as mpl
 import numpy as np
 import pytest
 
-mpl.use("Agg")  # For headless environments. Removes Tkinter warning.
+mpl.use("Agg")
 
-from shapiq import InteractionValues
+from shapiq.game_theory.exact import ExactComputer
+from shapiq_games.synthetic import DummyGame
 
-from .fixtures.models import (
-    TABULAR_MODEL_FIXTURES,
-    TABULAR_TENSORFLOW_MODEL_FIXTURES,
-    TABULAR_TORCH_MODEL_FIXTURES,
-    TREE_MODEL_FIXTURES,
+# ---------------------------------------------------------------------------
+# Skip markers for optional dependencies
+# ---------------------------------------------------------------------------
+
+
+def _is_installed(pkg: str) -> bool:
+    return importlib.util.find_spec(pkg) is not None
+
+
+skip_if_no_xgboost = pytest.mark.skipif(
+    not _is_installed("xgboost"), reason="xgboost not installed"
 )
-
-ALL_MODEL_FIXTURES = (
-    TABULAR_MODEL_FIXTURES
-    + TREE_MODEL_FIXTURES
-    + TABULAR_TENSORFLOW_MODEL_FIXTURES
-    + TABULAR_TORCH_MODEL_FIXTURES
+skip_if_no_lightgbm = pytest.mark.skipif(
+    not _is_installed("lightgbm"), reason="lightgbm not installed"
 )
+skip_if_no_tabpfn = pytest.mark.skipif(not _is_installed("tabpfn"), reason="tabpfn not installed")
+
+# ---------------------------------------------------------------------------
+# Games
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def interaction_values_list():
-    """Returns a list of three InteractionValues objects."""
-    rng = np.random.RandomState(42)
+def dummy_game_3():
+    """3-player DummyGame with interaction (0, 1). Fast and deterministic."""
+    return DummyGame(n=3, interaction=(0, 1))
 
-    from shapiq.interaction_values import InteractionValues
-    from shapiq.utils import powerset
 
-    n_objects = 3
-    n_players = 5
-    min_order = 0
-    max_order = n_players
-    iv_list = []
-    for _ in range(n_objects):
-        values = []
-        interaction_lookup = {}
-        for i, interaction in enumerate(
-            powerset(range(n_players), min_size=min_order, max_size=max_order),
-        ):
-            interaction_lookup[interaction] = i
-            values.append(rng.uniform(0, 1))
-        values = np.array(values)
-        iv = InteractionValues(
-            n_players=n_players,
-            values=values,
-            baseline_value=float(values[interaction_lookup[()]]),
-            index="Moebius",
-            interaction_lookup=interaction_lookup,
-            max_order=max_order,
-            min_order=min_order,
-        )
-        iv_list.append(iv)
-    return iv_list
+@pytest.fixture
+def dummy_game_7():
+    """7-player DummyGame with interaction (1, 2). Used by approximator protocol."""
+    return DummyGame(n=7, interaction=(1, 2))
+
+
+# ---------------------------------------------------------------------------
+# Exact ground truth
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def exact_computer_3(dummy_game_3):
+    """ExactComputer for the 3-player dummy game (2^3 = 8 evaluations)."""
+    return ExactComputer(dummy_game_3)
+
+
+# ---------------------------------------------------------------------------
+# Tiny datasets (no sklearn dependency)
+# ---------------------------------------------------------------------------
+
+_RNG = np.random.default_rng(42)
+_TINY_X = _RNG.normal(size=(30, 5))
+_TINY_Y_REG = _TINY_X[:, 0] + 0.5 * _TINY_X[:, 1] + _RNG.normal(0, 0.1, size=30)
+_TINY_Y_CLF = (np.median(_TINY_Y_REG) < _TINY_Y_REG).astype(int)
+
+
+@pytest.fixture
+def tiny_data():
+    """30 samples, 5 features. Regression target."""
+    return _TINY_X.copy(), _TINY_Y_REG.copy()
+
+
+@pytest.fixture
+def tiny_data_clf():
+    """30 samples, 5 features. Binary classification target."""
+    return _TINY_X.copy(), _TINY_Y_CLF.copy()
+
+
+# ---------------------------------------------------------------------------
+# Model factories (sklearn only — always available)
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="module")
-def example_values():
-    return InteractionValues(
-        n_players=4,
-        values=np.array(
-            [
-                0.0,  # ()
-                -0.2,  # (1)
-                0.4,  # (2)
-                0.2,  # (3)
-                -0.1,  # (4)
-                0.2,  # (1, 2)
-                -0.2,  # (1, 3)
-                0.2,  # (1, 4)
-                0.2,  # (2, 3)
-                -0.2,  # (2, 4)
-                0.2,  # (3, 4)
-                0.4,  # (1, 2, 3)
-                0.0,  # (1, 2, 4)
-                0.0,  # (1, 3, 4)
-                0.0,  # (2, 3, 4)
-                -0.1,  # (1, 2, 3, 4)
-            ],
-            dtype=float,
-        ),
-        index="k-SII",
-        interaction_lookup={
-            (): 0,
-            (1,): 1,
-            (2,): 2,
-            (3,): 3,
-            (4,): 4,
-            (1, 2): 5,
-            (1, 3): 6,
-            (1, 4): 7,
-            (2, 3): 8,
-            (2, 4): 9,
-            (3, 4): 10,
-            (1, 2, 3): 11,
-            (1, 2, 4): 12,
-            (1, 3, 4): 13,
-            (2, 3, 4): 14,
-            (1, 2, 3, 4): 15,
-        },
-        baseline_value=0,
-        min_order=0,
-        max_order=4,
-    )
+def dt_reg_model():
+    """DecisionTreeRegressor, max_depth=3, fit on tiny data."""
+    from sklearn.tree import DecisionTreeRegressor
+
+    model = DecisionTreeRegressor(max_depth=3, random_state=42)
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(30, 5))
+    y = X[:, 0] + 0.5 * X[:, 1] + rng.normal(0, 0.1, size=30)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture(scope="module")
+def dt_clf_model():
+    """DecisionTreeClassifier, max_depth=3, fit on tiny data."""
+    from sklearn.tree import DecisionTreeClassifier
+
+    model = DecisionTreeClassifier(max_depth=3, random_state=42)
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(30, 5))
+    y = (X[:, 0] > 0).astype(int)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture(scope="module")
+def rf_reg_model():
+    """RandomForestRegressor, 5 trees, max_depth=3, fit on tiny data."""
+    from sklearn.ensemble import RandomForestRegressor
+
+    model = RandomForestRegressor(n_estimators=5, max_depth=3, random_state=42)
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(30, 5))
+    y = X[:, 0] + 0.5 * X[:, 1] + rng.normal(0, 0.1, size=30)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture(scope="module")
+def rf_clf_model():
+    """RandomForestClassifier, 5 trees, max_depth=3, fit on tiny data."""
+    from sklearn.ensemble import RandomForestClassifier
+
+    model = RandomForestClassifier(n_estimators=5, max_depth=3, random_state=42)
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(30, 5))
+    y = (X[:, 0] > 0).astype(int)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture(scope="module")
+def background_data():
+    """Shared background data array for explainer/imputer tests. 30 samples, 5 features."""
+    rng = np.random.default_rng(42)
+    return rng.normal(size=(30, 5))

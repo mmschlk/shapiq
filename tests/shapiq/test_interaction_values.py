@@ -8,7 +8,6 @@ import pytest
 from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 from shapiq.utils import powerset
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

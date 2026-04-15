@@ -7,10 +7,5 @@ pytest_plugins = [
     "tests.shapiq.fixtures.models",
     "tests.shapiq.fixtures.data",
     "tests.shapiq.fixtures.interaction_values",
+    "tests.shapiq_games.fixtures.tabular",
 ]
-
-pytest_plugins.extend(
-    [
-        "tests.shapiq_games.fixtures.tabular",
-    ]
-)

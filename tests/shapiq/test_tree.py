@@ -26,7 +26,7 @@ skip_if_no_lightgbm = pytest.mark.skipif(
 _RNG = np.random.default_rng(42)
 _BG_REG_X = _RNG.normal(size=(100, 7))
 _BG_REG_Y = _BG_REG_X[:, 0] + 0.5 * _BG_REG_X[:, 1] + _RNG.normal(0, 0.1, size=100)
-_BG_CLF_Y = (_BG_REG_Y > np.median(_BG_REG_Y)).astype(int)
+_BG_CLF_Y = (np.median(_BG_REG_Y) < _BG_REG_Y).astype(int)
 
 
 # ---------------------------------------------------------------------------
@@ -172,9 +172,7 @@ class TestTreeProtocol:
         explainer = TreeExplainer(
             model=model, max_order=1, min_order=0, index="SV", class_index=class_index
         )
-        expected_baseline = sum(
-            te.empty_prediction for te in explainer._treeshapiq_explainers
-        )
+        expected_baseline = sum(te.empty_prediction for te in explainer._treeshapiq_explainers)
         assert explainer.baseline_value == pytest.approx(expected_baseline)
 
 
