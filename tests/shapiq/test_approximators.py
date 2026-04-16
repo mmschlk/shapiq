@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import inspect
 
-import numpy as np
 import pytest
 
 from shapiq.approximator import (
@@ -29,6 +28,8 @@ from shapiq.approximator import (
 )
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
+
+from .conftest import assert_iv_close
 
 # ---------------------------------------------------------------------------
 # Indices where sum(values) == game(N) - game(empty) holds
@@ -136,8 +137,11 @@ class TestApproximatorProtocol:
     def test_reproducible(self, config):
         """Same random_state produces identical results.
 
-        SPEX uses a sparse transform whose post-processing is numerically sensitive
-        to floating-point noise. We therefore allow a small absolute tolerance.
+        Compare by ``interaction_lookup`` alignment rather than raw array
+        ordering: SPEX's sparse transform produces the same interaction values
+        but can place them in a different position in the ``values`` array
+        across runs on some platforms (notably Windows). A small absolute
+        tolerance is allowed for floating-point noise in post-processing.
         """
         game1 = DummyGame(n=config["n"], interaction=(1, 2))
         game2 = DummyGame(n=config["n"], interaction=(1, 2))
@@ -146,7 +150,7 @@ class TestApproximatorProtocol:
         r1 = a1.approximate(config["budget"], game1)
         r2 = a2.approximate(config["budget"], game2)
 
-        assert np.allclose(r1.values, r2.values, atol=1e-3)
+        assert_iv_close(r1, r2, atol=1e-3)
 
     def test_rejects_invalid_index(self, config):
         """Raises error for indices not in valid_indices."""

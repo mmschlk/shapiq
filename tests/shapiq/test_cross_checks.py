@@ -37,7 +37,6 @@ from shapiq.approximator import (
 )
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.game_theory.moebius_converter import MoebiusConverter
-from shapiq_games.synthetic import SOUM
 
 from .conftest import GROUND_TRUTH_INDICES, assert_iv_close
 
