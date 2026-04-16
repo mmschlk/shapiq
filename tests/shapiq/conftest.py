@@ -9,6 +9,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
 import importlib.util
+from typing import TYPE_CHECKING
 
 import matplotlib as mpl
 import numpy as np
@@ -17,7 +18,47 @@ import pytest
 mpl.use("Agg")
 
 from shapiq.game_theory.exact import ExactComputer
-from shapiq_games.synthetic import DummyGame
+from shapiq_games.synthetic import SOUM, DummyGame
+
+if TYPE_CHECKING:
+    from shapiq.interaction_values import InteractionValues
+
+# ---------------------------------------------------------------------------
+# Indices for which we have a closed-form ground truth via MoebiusConverter
+# ---------------------------------------------------------------------------
+
+GROUND_TRUTH_INDICES: tuple[str, ...] = ("SV", "k-SII", "STII", "SII", "FSII", "FBII")
+
+
+def assert_iv_close(
+    actual: InteractionValues,
+    expected: InteractionValues,
+    *,
+    atol: float = 1e-8,
+    check_baseline: bool = False,
+) -> None:
+    """Compare two InteractionValues by aligning their interaction_lookups.
+
+    Only interactions present in *both* lookups are compared — different
+    pipelines use different conventions for whether the empty interaction
+    ``()`` is carried in the lookup vs. only in ``baseline_value``. Set
+    ``check_baseline=True`` to additionally require the ``baseline_value``
+    fields to match.
+    """
+    shared = set(actual.interaction_lookup) & set(expected.interaction_lookup)
+    non_empty = {i for i in shared if len(i) > 0}
+    assert non_empty, "No non-empty interactions in common between IVs."
+    for interaction in non_empty:
+        expected_value = float(expected[interaction])
+        actual_value = float(actual[interaction])
+        assert actual_value == pytest.approx(expected_value, abs=atol), (
+            f"Interaction {interaction}: expected {expected_value}, got {actual_value}"
+        )
+    if check_baseline:
+        assert float(actual.baseline_value) == pytest.approx(
+            float(expected.baseline_value), abs=atol
+        )
+
 
 # ---------------------------------------------------------------------------
 # Skip markers for optional dependencies
@@ -51,6 +92,23 @@ def dummy_game_3():
 def dummy_game_7():
     """7-player DummyGame with interaction (1, 2). Used by approximator protocol."""
     return DummyGame(n=7, interaction=(1, 2))
+
+
+# ---------------------------------------------------------------------------
+# SOUM games — analytically tractable ground-truth for all GROUND_TRUTH_INDICES
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def soum_5():
+    """5-player SOUM used for fast cross-checks (2^5 = 32 coalitions)."""
+    return SOUM(n=5, n_basis_games=10, max_interaction_size=3, random_state=42)
+
+
+@pytest.fixture
+def soum_7():
+    """7-player SOUM used for slow cross-checks and convergence tests."""
+    return SOUM(n=7, n_basis_games=15, max_interaction_size=3, random_state=42)
 
 
 # ---------------------------------------------------------------------------

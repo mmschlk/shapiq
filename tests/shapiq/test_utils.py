@@ -23,7 +23,6 @@ from shapiq.utils import (
     transform_coalitions_to_array,
 )
 
-
 # ===================================================================
 # sets.py
 # ===================================================================
@@ -156,9 +155,7 @@ class TestModules:
 
     def test_safe_isinstance_unimported_module_returns_false(self):
         # A fully-qualified path from a module that's almost certainly not imported.
-        assert (
-            safe_isinstance(object(), "zzz_definitely_not_a_module.SomeClass") is False
-        )
+        assert safe_isinstance(object(), "zzz_definitely_not_a_module.SomeClass") is False
 
     def test_safe_isinstance_invalid_path_raises(self):
         with pytest.raises(ValueError):
@@ -210,9 +207,7 @@ class TestRaiseDeprecationWarning:
     def test_emits_deprecation_warning(self):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            raise_deprecation_warning(
-                "foo is deprecated", deprecated_in="1.0", removed_in="2.0"
-            )
+            raise_deprecation_warning("foo is deprecated", deprecated_in="1.0", removed_in="2.0")
 
         assert len(caught) == 1
         assert issubclass(caught[0].category, DeprecationWarning)
