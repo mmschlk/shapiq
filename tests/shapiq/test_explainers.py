@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib.util
+
 import numpy as np
 import pytest
 
@@ -10,6 +12,10 @@ from shapiq.explainer.product_kernel import ProductKernelExplainer
 from shapiq.explainer.tabular import TabularExplainer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
+
+skip_if_no_tabpfn = pytest.mark.skipif(
+    importlib.util.find_spec("tabpfn") is None, reason="tabpfn not installed"
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -282,3 +288,51 @@ class TestProductKernelExplainerValidation:
         model = SVC(kernel="rbf", probability=True).fit(X, y)
         with pytest.raises(TypeError, match="binary SVM"):
             ProductKernelExplainer(model=model, max_order=1)
+
+
+# ===================================================================
+# TabPFNExplainer (slow — downloads model weights from HuggingFace)
+# ===================================================================
+
+
+@skip_if_no_tabpfn
+@pytest.mark.slow
+class TestTabPFNExplainer:
+    """TabPFNExplainer wraps TabularExplainer for TabPFN in-context learners."""
+
+    def _make_explainer(self):
+        from tabpfn import TabPFNRegressor
+
+        from shapiq.explainer.tabpfn import TabPFNExplainer
+
+        rng = np.random.default_rng(42)
+        X = rng.normal(size=(30, 5))
+        y = X[:, 0] + 0.5 * X[:, 1]
+        model = TabPFNRegressor(n_estimators=1)
+        try:
+            model.fit(X, y)
+        except Exception as exc:  # noqa: BLE001
+            pytest.skip(f"TabPFN model unavailable: {exc}")
+
+        explainer = TabPFNExplainer(
+            model=model,
+            data=X,
+            labels=y,
+            index="SV",
+            max_order=1,
+        )
+        return explainer, X
+
+    def test_explain_returns_interaction_values(self):
+        explainer, X = self._make_explainer()
+        result = explainer.explain(X[0].reshape(1, -1), budget=2**5)
+        assert isinstance(result, InteractionValues)
+        assert result.index == "SV"
+        assert result.max_order == 1
+        assert result.n_players == X.shape[1]
+
+    def test_explain_X_batch(self):
+        explainer, X = self._make_explainer()
+        results = explainer.explain_X(X[:2], budget=2**5)
+        assert len(results) == 2
+        assert all(isinstance(r, InteractionValues) for r in results)
