@@ -1,0 +1,106 @@
+"""Local XAI benchmark implementation."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable
+
+import numpy as np
+from shapiq.typing import IndexType
+from shapiq_games.benchmark.local_xai.base import LocalExplanation
+
+from .base import Benchmark, GroundTruthComputer
+from .computers import LocalXAIComputer
+from .setup import load_data_from_str, load_model_from_str
+from .bench_types import BenchmarkDataset
+
+if TYPE_CHECKING:
+    from shapiq import Game, InteractionValues
+
+
+def _build_predict_fn(
+    model: object, data_type: str, class_label: int | None
+) -> Callable[[np.ndarray], np.ndarray]:
+    if data_type == "classification" and hasattr(model, "predict_proba"):
+        label = 0 if class_label is None else class_label
+
+        def _predict(x_data: np.ndarray) -> np.ndarray:
+            return model.predict_proba(x_data)[:, label]  # ty: ignore[call-arg]
+
+        return _predict
+
+    def _predict(x_data: np.ndarray) -> np.ndarray:
+        return model.predict(x_data)  # ty: ignore[call-arg]
+
+    return _predict
+
+
+class LocalXAIBench(Benchmark[IndexType]):
+    """Benchmark for local explanation games."""
+
+    def __init__(
+        self,
+        data_str: str,
+        model_str: str,
+        *,
+        class_label: int | None = 1,
+        imputer: str = "marginal",
+        normalize: bool = True,
+        random_state: int | None = 42,
+        test_size: float = 0.2,
+        n_estimators: int = 10,
+    ) -> None:
+        """Initialize the benchmark by loading data and model and fitting the model.
+
+        Args:
+            data_str: Dataset identifier (e.g. "adult_census").
+            model_str: Model identifier (e.g. "decision_tree").
+            class_label: Class index for classification models.
+            imputer: Imputer strategy used by the LocalExplanation game.
+            normalize: Whether to normalize game values.
+            random_state: Random state used for data split and model init.
+            test_size: Fraction of data used for testing.
+            n_estimators: Number of estimators for random forest models.
+        """
+        self.dataset: BenchmarkDataset = load_data_from_str(
+            data_str,
+            random_state=random_state,
+            test_size=test_size,
+        )
+        self.model = load_model_from_str(
+            model_str,
+            self.dataset,
+            random_state=random_state,
+            n_estimators=n_estimators,
+        )
+        self.model.fit(
+            self.dataset.x_train, self.dataset.y_train
+        )  
+
+        if self.dataset.data_type == "regression":
+            class_label = None
+
+        predict_fn = _build_predict_fn(self.model, self.dataset.data_type, class_label)
+        self._game = LocalExplanation(
+            data=self.dataset.x_train,
+            model=predict_fn,
+            x=self.dataset.x_explain,
+            imputer=imputer,
+            normalize=normalize,
+            random_state=random_state,
+            verbose=False,
+        )
+        self._computer = LocalXAIComputer(self._game)
+
+    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
+        """Compute exact interaction values using the benchmark computer."""
+        return self._computer.exact_values(index=index, order=order)
+
+    @property
+    def game(self) -> Game:
+        """Game instance used by this benchmark."""
+        return self._game
+
+    @property
+    def computer(self) -> GroundTruthComputer[IndexType]:
+        """Ground truth computer used by this benchmark."""
+        return self._computer
