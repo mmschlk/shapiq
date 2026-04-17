@@ -23,7 +23,6 @@ from shapiq.approximator import (
     SHAPIQ,
     SVARM,
     SVARMIQ,
-    InconsistentKernelSHAPIQ,
     KernelSHAP,
     KernelSHAPIQ,
     OwenSamplingSV,
@@ -40,16 +39,21 @@ from shapiq.game_theory.moebius_converter import MoebiusConverter
 
 from .conftest import GROUND_TRUTH_INDICES, assert_iv_close
 
+# Note: ``InconsistentKernelSHAPIQ`` is *not* included below. It uses a
+# k-additive least-squares projection that only matches the true SII when the
+# underlying game is already k-additive; on genuine non-k-additive games (see
+# :func:`soum_5`) it diverges even at budget = 2**n.
+
 # ---------------------------------------------------------------------------
 # Registries
 # ---------------------------------------------------------------------------
 
 # Approximators that are exact at budget = 2**n on an arbitrary game.
-# (cls, max_order, index) — verified empirically against SOUM(n=5) at 2**5.
+# (cls, max_order, index) — verified empirically against the non-k-additive
+# ``soum_5`` fixture (``max_interaction_size = n``) at budget 2**5.
 CONSISTENT_APPROXIMATORS: list[tuple[type, int, str]] = [
     (KernelSHAP, 1, "SV"),
     (KernelSHAPIQ, 2, "k-SII"),
-    (InconsistentKernelSHAPIQ, 2, "k-SII"),
     (UnbiasedKernelSHAP, 1, "SV"),
     (RegressionFSII, 2, "FSII"),
     (RegressionFBII, 2, "FBII"),
@@ -97,17 +101,19 @@ def _max_abs_error(actual, expected) -> float:
 class TestExactVsSOUM:
     """``ExactComputer(SOUM)`` must match ``SOUM.exact_values`` exactly."""
 
-    def test_small_soum(self, soum_5, index):
+    def test_small_soum(self, soum_5, exact_soum_5, index):
         order = _order_for(index)
         expected = soum_5.exact_values(index, order)
-        actual = ExactComputer(soum_5)(index, order=order)
-        assert_iv_close(actual, expected, atol=1e-10)
+        actual = exact_soum_5(index, order=order)
+        # 1e-8 is the floor set by the FSII/FBII least-squares solve on
+        # genuinely non-k-additive games; the other indices agree to ~1e-15.
+        assert_iv_close(actual, expected, atol=1e-8)
 
     @pytest.mark.slow
-    def test_medium_soum(self, soum_7, index):
+    def test_medium_soum(self, soum_7, exact_soum_7, index):
         order = _order_for(index)
         expected = soum_7.exact_values(index, order)
-        actual = ExactComputer(soum_7)(index, order=order)
+        actual = exact_soum_7(index, order=order)
         # n=7 FSII/FBII run through a larger LS solve; allow some numerical noise.
         assert_iv_close(actual, expected, atol=1e-8)
 
@@ -123,16 +129,64 @@ class TestMoebiusConverter:
     direct ExactComputer call for the target index.
     """
 
-    def test_roundtrip_on_soum(self, soum_5, index):
+    def test_roundtrip_on_soum(self, soum_5, exact_soum_5, index):
         order = _order_for(index)
         # 1. Moebius values computed by ExactComputer on the game.
-        moebius = ExactComputer(soum_5)("Moebius", order=soum_5.n_players)
+        moebius = exact_soum_5("Moebius", order=soum_5.n_players)
         # 2. Convert Moebius -> target index via MoebiusConverter.
         converter = MoebiusConverter(moebius)
         converted = converter(index, order=order)
         # 3. Target values computed directly by ExactComputer.
-        direct = ExactComputer(soum_5)(index, order=order)
-        assert_iv_close(converted, direct, atol=1e-10)
+        direct = exact_soum_5(index, order=order)
+        # 1e-8 is the floor set by the FSII/FBII least-squares solve; the
+        # other indices agree to ~1e-15.
+        assert_iv_close(converted, direct, atol=1e-8)
+
+
+# ===================================================================
+# 2b. ExactComputer's Moebius transform == SOUM's analytical Moebius
+# ===================================================================
+
+
+class TestMoebiusVsSOUM:
+    """The Möbius transform computed by ``ExactComputer`` must equal the
+    analytical Möbius coefficients stored by the SOUM itself.
+
+    This closes the loop with two independently-derived ground truths:
+    - ``exact_computer("Moebius", n)`` — brute-forced inversion over 2^n.
+    - ``soum.moebius_coefficients`` — summed from the unanimity-basis weights.
+    """
+
+    def test_small_soum(self, soum_5, exact_soum_5):
+        expected = soum_5.moebius_coefficients  # sparse: only basis interactions
+        actual = exact_soum_5("Moebius", order=soum_5.n_players)
+        # Every non-zero basis interaction in ``expected`` must match; every
+        # other entry in ``actual`` must be ~ 0.
+        for interaction, idx in expected.interaction_lookup.items():
+            assert float(actual[interaction]) == pytest.approx(
+                float(expected.values[idx]), abs=1e-10
+            ), f"Moebius[{interaction}] mismatch"
+        # All actual-only entries should be (near) zero.
+        for interaction in actual.interaction_lookup:
+            if interaction in expected.interaction_lookup:
+                continue
+            assert abs(float(actual[interaction])) < 1e-10, (
+                f"ExactComputer reports non-zero Moebius[{interaction}] "
+                f"but SOUM has no corresponding basis game."
+            )
+
+    @pytest.mark.slow
+    def test_medium_soum(self, soum_7, exact_soum_7):
+        expected = soum_7.moebius_coefficients
+        actual = exact_soum_7("Moebius", order=soum_7.n_players)
+        for interaction, idx in expected.interaction_lookup.items():
+            assert float(actual[interaction]) == pytest.approx(
+                float(expected.values[idx]), abs=1e-8
+            ), f"Moebius[{interaction}] mismatch"
+        for interaction in actual.interaction_lookup:
+            if interaction in expected.interaction_lookup:
+                continue
+            assert abs(float(actual[interaction])) < 1e-8
 
 
 # ===================================================================
@@ -154,6 +208,13 @@ class TestApproximatorAtFullBudget:
             warnings.simplefilter("ignore")
             result = approx.approximate(2**n, soum_5)
         expected = soum_5.exact_values(index, max_order)
+        # Machine-precision estimators (SHAPIQ, SVARM, SVARMIQ,
+        # UnbiasedKernelSHAP, RegressionFBII) hit ~1e-15 on this fixture;
+        # the Shapley-kernel LS solvers (KernelSHAP, KernelSHAPIQ,
+        # RegressionFSII) hit ~5e-7 on genuinely non-k-additive games due
+        # to conditioning of the weighted LS matrix. 1e-6 accommodates both
+        # and still leaves a 10,000x margin against InconsistentKernelSHAPIQ
+        # (which produces ~1e-2 errors on the same fixture).
         assert_iv_close(result, expected, atol=1e-6)
 
 

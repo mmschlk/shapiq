@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 # Indices for which we have a closed-form ground truth via MoebiusConverter
 # ---------------------------------------------------------------------------
 
-GROUND_TRUTH_INDICES: tuple[str, ...] = ("SV", "k-SII", "STII", "SII", "FSII", "FBII")
+GROUND_TRUTH_INDICES: tuple[str, ...] = ("SV", "BV", "k-SII", "STII", "SII", "FSII", "FBII")
 
 
 def assert_iv_close(
@@ -99,16 +99,54 @@ def dummy_game_7():
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def soum_5():
-    """5-player SOUM used for fast cross-checks (2^5 = 32 coalitions)."""
-    return SOUM(n=5, n_basis_games=10, max_interaction_size=3, random_state=42)
+    """5-player SOUM used for fast cross-checks (2^5 = 32 coalitions).
+
+    Deliberately non-trivial: ``max_interaction_size=n`` forces the game to
+    contain interactions of all orders up to ``n``, including orders strictly
+    above ``max_order=2``. This is what separates *consistent* approximators
+    (which recover exact values at budget ``2**n``) from *inconsistent* ones
+    (like ``InconsistentKernelSHAPIQ``) that only look exact when the true
+    game happens to sit in a k-additive regime.
+    """
+    return SOUM(
+        n=5,
+        n_basis_games=25,
+        min_interaction_size=1,
+        max_interaction_size=5,
+        random_state=42,
+    )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def soum_7():
-    """7-player SOUM used for slow cross-checks and convergence tests."""
-    return SOUM(n=7, n_basis_games=15, max_interaction_size=3, random_state=42)
+    """7-player SOUM used for slow cross-checks and convergence tests.
+
+    Like :func:`soum_5` but larger; ``max_interaction_size=n`` keeps the game
+    genuinely non-k-additive.
+    """
+    return SOUM(
+        n=7,
+        n_basis_games=40,
+        min_interaction_size=1,
+        max_interaction_size=7,
+        random_state=42,
+    )
+
+
+@pytest.fixture(scope="module")
+def exact_soum_5(soum_5):
+    """Cached ``ExactComputer`` for :func:`soum_5` — avoids re-running the
+    brute-force transform once per parametrised test.
+    """
+    return ExactComputer(soum_5)
+
+
+@pytest.fixture(scope="module")
+def exact_soum_7(soum_7):
+    """Cached ``ExactComputer`` for :func:`soum_7`."""
+    return ExactComputer(soum_7)
 
 
 # ---------------------------------------------------------------------------
