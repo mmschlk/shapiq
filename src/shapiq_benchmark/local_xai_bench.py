@@ -42,7 +42,7 @@ class LocalXAIBench(Benchmark[IndexType]):
         data_str: str,
         model_str: str,
         *,
-        class_label: int | None = 1,
+        class_index: int | None = 1,
         imputer: str = "marginal",
         normalize: bool = True,
         random_state: int | None = 42,
@@ -54,7 +54,7 @@ class LocalXAIBench(Benchmark[IndexType]):
         Args:
             data_str: Dataset identifier (e.g. "adult_census").
             model_str: Model identifier (e.g. "decision_tree").
-            class_label: Class index for classification models.
+            class_index: Class index for classification models.
             imputer: Imputer strategy used by the LocalExplanation game.
             normalize: Whether to normalize game values.
             random_state: Random state used for data split and model init.
@@ -77,9 +77,9 @@ class LocalXAIBench(Benchmark[IndexType]):
         )  
 
         if self.dataset.data_type == "regression":
-            class_label = None
+            class_index = None
 
-        predict_fn = _build_predict_fn(self.model, self.dataset.data_type, class_label)
+        predict_fn = _build_predict_fn(self.model, self.dataset.data_type, class_index)
         self._game = LocalExplanation(
             data=self.dataset.x_train,
             model=predict_fn,

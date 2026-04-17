@@ -25,7 +25,7 @@ class PathdependentBench(Benchmark[IndexType]):
         data_str: str,
         model_str: str,
         *,
-        class_label: int | None = 1,
+        class_index: int | None = 1,
         normalize: bool = True,
         verbose: bool = False,
         random_state: int | None = 42,
@@ -37,7 +37,7 @@ class PathdependentBench(Benchmark[IndexType]):
         Args:
             data_str: Dataset identifier (e.g. "adult_census").
             model_str: Model identifier (e.g. "decision_tree").
-            class_label: Class index for classification models.
+            class_index: Class index for classification models.
             normalize: Whether to normalize game values.
             verbose: Whether to enable verbose output in the game.
             random_state: Random state used for data split and model init.
@@ -58,12 +58,12 @@ class PathdependentBench(Benchmark[IndexType]):
         self.model.fit(self.dataset.x_train, self.dataset.y_train)
 
         if self.dataset.data_type == "regression":
-            class_label = None
+            class_index = None
             
         self._game = TreeSHAPIQXAI(
             x=self.dataset.x_explain,
             tree_model=self.model,
-            class_label=class_label,
+            class_label=class_index,
             normalize=normalize,
             verbose=verbose,
         )

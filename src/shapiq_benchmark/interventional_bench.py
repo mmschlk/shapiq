@@ -25,7 +25,7 @@ class InterventionalBench(Benchmark[IndexType]):
         data_str: str,
         model_str: str,
         *,
-        class_label: int | None = 1,
+        class_index: int | None = 1,
         random_state: int | None = 42,
         test_size: float = 0.2,
         n_estimators: int = 10,
@@ -35,7 +35,7 @@ class InterventionalBench(Benchmark[IndexType]):
         Args:
                 data_str: Dataset identifier (e.g. "adult_census").
                 model_str: Model identifier (e.g. "decision_tree").
-                class_label: Class index for classification models.
+                class_index: Class index for classification models.
                 random_state: Random state used for data split and model init.
                 test_size: Fraction of data used for testing.
                 n_estimators: Number of estimators for random forest models.
@@ -54,13 +54,13 @@ class InterventionalBench(Benchmark[IndexType]):
         self.model.fit(self.dataset.x_train, self.dataset.y_train)
 
         if self.dataset.data_type == "regression":
-            class_label = None
+            class_index = None
 
         self._game = InterventionalGame(
             model=self.model,
             reference_data=self.dataset.x_train,
             target_instance=self.dataset.x_explain,
-            class_index=class_label,
+            class_index=class_index,
         )
         self._computer = InterventionalComputer(self._game)
 
