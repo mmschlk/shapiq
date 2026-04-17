@@ -5,12 +5,17 @@ Ground-truth sources used here:
 
 1. ``ExactComputer(game)(index, order)`` — brute-force over 2^n coalitions.
 2. ``SOUM.exact_values(index, order)`` — closed-form via Moebius conversion.
-3. ``SOUM.moebius_coefficients`` — the SOUM's own analytical Moebius transform.
-4. Consistent approximators at ``budget = 2**n`` — regression family + SHAPIQ /
-   SVARMIQ on indices where they are known to be exact.
-5. ``InterventionalTreeExplainer.explain_function(x)`` — TreeSHAP-IQ on a tree
-   model, versus ``ExactComputer`` running on the matching
+3. ``SOUM.moebius_coefficients`` — the SOUM's own analytical Moebius transform
+   (compared directly against ``ExactComputer("Moebius", n)``).
+4. Consistent approximators at ``budget = 2**n`` — regression family + SHAPIQ
+   / SVARMIQ on indices where they are known to be exact, plus ``kADDSHAP``
+   cross-checked against ``ExactComputer("kADD-SHAP")``.
+5. ``InterventionalTreeExplainer.explain_function(x)`` — interventional
+   TreeSHAP-IQ, versus ``ExactComputer`` running on the matching
    ``InterventionalGame`` wrapping the same tree.
+6. Path-dependent ``TreeExplainer`` — covered by the SV efficiency axiom
+   (``sum(SV) == f(x) - E[f]``), since no path-dependent ``Game`` wrapper
+   exists for a full cross-check.
 """
 
 from __future__ import annotations
@@ -34,6 +39,7 @@ from shapiq.approximator import (
     RegressionFSII,
     StratifiedSamplingSV,
     UnbiasedKernelSHAP,
+    kADDSHAP,
 )
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.game_theory.moebius_converter import MoebiusConverter
@@ -108,7 +114,9 @@ class TestExactVsSOUM:
         actual = exact_soum_5(index, order=order)
         # 1e-8 is the floor set by the FSII/FBII least-squares solve on
         # genuinely non-k-additive games; the other indices agree to ~1e-15.
-        assert_iv_close(actual, expected, atol=1e-8)
+        # ``strict=True``: both sides are analytical and must populate the
+        # same set of interactions.
+        assert_iv_close(actual, expected, atol=1e-8, strict=True)
 
     @pytest.mark.slow
     def test_medium_soum(self, soum_7, exact_soum_7, index):
@@ -116,7 +124,7 @@ class TestExactVsSOUM:
         expected = soum_7.exact_values(index, order)
         actual = exact_soum_7(index, order=order)
         # n=7 FSII/FBII run through a larger LS solve; allow some numerical noise.
-        assert_iv_close(actual, expected, atol=1e-8)
+        assert_iv_close(actual, expected, atol=1e-8, strict=True)
 
 
 # ===================================================================
@@ -140,8 +148,9 @@ class TestMoebiusConverter:
         # 3. Target values computed directly by ExactComputer.
         direct = exact_soum_5(index, order=order)
         # 1e-8 is the floor set by the FSII/FBII least-squares solve; the
-        # other indices agree to ~1e-15.
-        assert_iv_close(converted, direct, atol=1e-8)
+        # other indices agree to ~1e-15. ``strict=True``: both sides should
+        # populate the same set of interactions.
+        assert_iv_close(converted, direct, atol=1e-8, strict=True)
 
 
 # ===================================================================
@@ -162,16 +171,18 @@ class TestMoebiusVsSOUM:
         expected = soum_5.moebius_coefficients  # sparse: only basis interactions
         actual = exact_soum_5("Moebius", order=soum_5.n_players)
         # Every non-zero basis interaction in ``expected`` must match; every
-        # other entry in ``actual`` must be ~ 0.
+        # other entry in ``actual`` must be ~ 0. Tolerance 1e-9 accommodates
+        # the alternating-sign sum over 2^n coalitions on Windows/macOS where
+        # FMA ordering can consume several ULPs.
         for interaction, idx in expected.interaction_lookup.items():
             assert float(actual[interaction]) == pytest.approx(
-                float(expected.values[idx]), abs=1e-10
+                float(expected.values[idx]), abs=1e-9
             ), f"Moebius[{interaction}] mismatch"
         # All actual-only entries should be (near) zero.
         for interaction in actual.interaction_lookup:
             if interaction in expected.interaction_lookup:
                 continue
-            assert abs(float(actual[interaction])) < 1e-10, (
+            assert abs(float(actual[interaction])) < 1e-9, (
                 f"ExactComputer reports non-zero Moebius[{interaction}] "
                 f"but SOUM has no corresponding basis game."
             )
@@ -206,7 +217,9 @@ class TestApproximatorAtFullBudget:
         n = soum_5.n_players
         approx = cls(n=n, max_order=max_order, index=index, random_state=42)
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            # Approximators warn about border-trick budget; that's expected
+            # at full budget. Don't swallow other warning categories.
+            warnings.simplefilter("ignore", category=UserWarning)
             result = approx.approximate(2**n, soum_5)
         expected = soum_5.exact_values(index, max_order)
         # Machine-precision estimators (SHAPIQ, SVARM, SVARMIQ,
@@ -216,6 +229,33 @@ class TestApproximatorAtFullBudget:
         # to conditioning of the weighted LS matrix. 1e-6 accommodates both
         # and still leaves a 10,000x margin against InconsistentKernelSHAPIQ
         # (which produces ~1e-2 errors on the same fixture).
+        assert_iv_close(result, expected, atol=1e-6)
+
+
+# ===================================================================
+# 3b. kADD-SHAP approximator vs ExactComputer (SOUM has no ground truth)
+# ===================================================================
+
+
+class TestKAddSHAPAtFullBudget:
+    """``kADDSHAP`` at budget = 2^n must agree with ``ExactComputer("kADD-SHAP")``.
+
+    ``SOUM.exact_values`` / ``MoebiusConverter`` don't support the
+    ``kADD-SHAP`` index, so ``ExactComputer`` is the only ground-truth
+    source for this index. The cross-check is still meaningful: the
+    approximator runs its own weighted-LS algorithm while ``ExactComputer``
+    brute-forces a Möbius-weighted sum over all 2^n coalitions. Agreement
+    at full budget pins the approximator down.
+    """
+
+    def test_matches_ground_truth(self, soum_5, exact_soum_5):
+        n = soum_5.n_players
+        approx = kADDSHAP(n=n, max_order=2, random_state=42)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            result = approx.approximate(2**n, soum_5)
+        expected = exact_soum_5("kADD-SHAP", order=2)
+        # Same tolerance floor as the other LS-based approximators.
         assert_iv_close(result, expected, atol=1e-6)
 
 
@@ -236,20 +276,30 @@ class TestApproximatorConvergence:
         n = soum_7.n_players
         expected = soum_7.exact_values(index, max_order)
 
+        # Average error over multiple seeds to smooth out single-run
+        # fluctuations — sampling methods can legitimately oscillate at a
+        # single budget with a fixed seed.
+        seeds = (42, 43, 44)
         budgets = [2**n, 4 * 2**n, 16 * 2**n]
-        errors = []
+        mean_errors = []
         for budget in budgets:
-            approx = cls(n=n, max_order=max_order, index=index, random_state=42)
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                result = approx.approximate(budget, soum_7)
-            errors.append(_max_abs_error(result, expected))
+            errors_for_budget = []
+            for seed in seeds:
+                approx = cls(n=n, max_order=max_order, index=index, random_state=seed)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=UserWarning)
+                    result = approx.approximate(budget, soum_7)
+                errors_for_budget.append(_max_abs_error(result, expected))
+            mean_errors.append(sum(errors_for_budget) / len(errors_for_budget))
 
-        # Final error should be smaller than the initial error — sampling
-        # methods must make progress with more budget.
-        assert errors[-1] < errors[0], (
-            f"{cls.__name__} ({index}): error did not decrease across "
-            f"budgets {budgets}: errors={errors}"
+        # With a 16x budget increase, a functioning sampling estimator
+        # should halve its Monte-Carlo error on average. This is strictly
+        # tighter than ``errors[-1] < errors[0]`` — the latter passes when
+        # the final error is a hair below the initial, which a silently
+        # broken estimator could hit by noise alone.
+        assert mean_errors[-1] < 0.5 * mean_errors[0], (
+            f"{cls.__name__} ({index}): mean error did not halve across "
+            f"budgets {budgets}: mean_errors={mean_errors}"
         )
 
 
@@ -266,7 +316,7 @@ TREE_CROSS_CHECK_INDICES: tuple[str, ...] = ("SV", "BV", "SII", "BII", "FSII", "
 
 
 @pytest.fixture(scope="module")
-def _small_tree_setup():
+def small_tree_setup():
     """Tiny decision tree on 5 features — small enough for ExactComputer."""
     from sklearn.tree import DecisionTreeRegressor
 
@@ -297,11 +347,11 @@ class TestInterventionalTreeCrossCheck:
     """
 
     @pytest.mark.parametrize("index", TREE_CROSS_CHECK_INDICES)
-    def test_matches(self, _small_tree_setup, index):
+    def test_matches(self, small_tree_setup, index):
         from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
         from shapiq.tree.interventional.game import InterventionalGame
 
-        model, x, reference = _small_tree_setup
+        model, x, reference = small_tree_setup
         order = _order_for(index)
 
         game = InterventionalGame(model=model, reference_data=reference, target_instance=x)
@@ -315,3 +365,38 @@ class TestInterventionalTreeCrossCheck:
         # ~4e-9 is the observed numerical floor; 1e-7 accommodates float32
         # conversion inside the C extension without masking real divergence.
         assert_iv_close(via_exact_computer, via_tree_explainer, atol=1e-7)
+
+
+# ===================================================================
+# 6. Path-dependent TreeExplainer efficiency invariant
+# ===================================================================
+
+
+class TestPathDependentTreeEfficiency:
+    """Covers the default ``shapiq.TreeExplainer`` (path-dependent
+    TreeSHAP-IQ), which :class:`TestInterventionalTreeCrossCheck` can't
+    reach — path-dependent and interventional explanations do not share
+    coalition semantics, so they disagree by design.
+
+    Instead of a full cross-check (which would need an as-yet-unimplemented
+    path-dependent ``Game`` wrapper), we pin down the *efficiency axiom*:
+    for order-1 SV, ``sum(SV) == f(x) - baseline``. This is the single
+    invariant most likely to break on a regression in the TreeSHAP-IQ
+    polynomial arithmetic or the baseline computation.
+    """
+
+    def test_sv_efficiency(self, small_tree_setup):
+        from shapiq.tree import TreeExplainer
+
+        model, x, _ = small_tree_setup
+        explainer = TreeExplainer(model=model, max_order=1, index="SV", min_order=1)
+        iv = explainer.explain(x)
+
+        sv_sum = sum(float(iv[k]) for k in iv.interaction_lookup if len(k) == 1)
+        baseline = float(iv.baseline_value)
+        prediction = float(model.predict(x.reshape(1, -1))[0])
+
+        # SV efficiency: sum of all Shapley values equals f(x) - E[f].
+        assert sv_sum == pytest.approx(prediction - baseline, abs=1e-10), (
+            f"SV efficiency violated: sum(SV)={sv_sum}, f(x)-baseline={prediction - baseline}"
+        )

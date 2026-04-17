@@ -36,6 +36,7 @@ def assert_iv_close(
     *,
     atol: float = 1e-8,
     check_baseline: bool = False,
+    strict: bool = False,
 ) -> None:
     """Compare two InteractionValues by aligning their interaction_lookups.
 
@@ -44,11 +45,37 @@ def assert_iv_close(
     ``()`` is carried in the lookup vs. only in ``baseline_value``. Set
     ``check_baseline=True`` to additionally require the ``baseline_value``
     fields to match.
+
+    Set ``strict=True`` to also require the non-empty supports to match
+    exactly; use this when both pipelines should populate the same set of
+    interactions (e.g. ExactComputer vs. SOUM.exact_values). Leave
+    ``strict=False`` when one side may legitimately carry extra
+    interactions (e.g. a sampling approximator emitting keys the
+    analytical ground truth doesn't).
     """
-    shared = set(actual.interaction_lookup) & set(expected.interaction_lookup)
-    non_empty = {i for i in shared if len(i) > 0}
-    assert non_empty, "No non-empty interactions in common between IVs."
-    for interaction in non_empty:
+    actual_non_empty = {k for k in actual.interaction_lookup if len(k) > 0}
+    expected_non_empty = {k for k in expected.interaction_lookup if len(k) > 0}
+    if strict:
+        # Different pipelines have different conventions for zero-valued
+        # interactions: ``ExactComputer`` emits them, ``MoebiusConverter``
+        # drops them. Accept keys present on only one side *iff* the value
+        # on that side is within ``atol`` of zero — this still catches the
+        # regression the ``strict`` flag is designed for (an interaction
+        # that should be non-zero getting dropped) while tolerating the
+        # encoding difference.
+        only_actual_bad = {
+            k for k in actual_non_empty - expected_non_empty if abs(float(actual[k])) > atol
+        }
+        only_expected_bad = {
+            k for k in expected_non_empty - actual_non_empty if abs(float(expected[k])) > atol
+        }
+        assert not only_actual_bad and not only_expected_bad, (
+            f"Non-zero interaction support mismatch: only_actual={only_actual_bad}, "
+            f"only_expected={only_expected_bad}"
+        )
+    shared = actual_non_empty & expected_non_empty
+    assert shared, "No non-empty interactions in common between IVs."
+    for interaction in shared:
         expected_value = float(expected[interaction])
         actual_value = float(actual[interaction])
         assert actual_value == pytest.approx(expected_value, abs=atol), (
