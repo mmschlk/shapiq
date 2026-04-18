@@ -102,6 +102,29 @@ def lgbm_clf():
     return m
 
 
+@pytest.fixture(scope="module")
+def lgbm_reg():
+    pytest.importorskip("lightgbm")
+    from lightgbm import LGBMRegressor
+
+    m = LGBMRegressor(n_estimators=3, max_depth=3, random_state=42, verbose=-1, min_child_samples=5)
+    m.fit(_BG_REG_X, _BG_REG_Y)
+    return m
+
+
+@pytest.fixture(scope="module")
+def lgbm_booster():
+    pytest.importorskip("lightgbm")
+    import lightgbm as lgb
+
+    train = lgb.Dataset(_BG_REG_X, label=_BG_REG_Y)
+    return lgb.train(
+        {"verbose": -1, "min_data_in_leaf": 5, "max_depth": 3},
+        train,
+        num_boost_round=3,
+    )
+
+
 # ===================================================================
 # Protocol: every tree model must satisfy these
 # ===================================================================
@@ -119,7 +142,9 @@ SKLEARN_TREE_MODELS = [
 OPTIONAL_TREE_MODELS = [
     pytest.param("xgb_reg", "regression", None, marks=skip_if_no_xgboost),
     pytest.param("xgb_clf", "basic", 0, marks=skip_if_no_xgboost),
+    pytest.param("lgbm_reg", "regression", None, marks=skip_if_no_lightgbm),
     pytest.param("lgbm_clf", "basic", 0, marks=skip_if_no_lightgbm),
+    pytest.param("lgbm_booster", "regression", None, marks=skip_if_no_lightgbm),
 ]
 
 ALL_TREE_MODELS = SKLEARN_TREE_MODELS + OPTIONAL_TREE_MODELS
@@ -299,3 +324,29 @@ class TestTreeEdgeCases:
                 1.0,
             )
             assert len(out) == n_features
+
+
+# ===================================================================
+# Known gap: native xgboost.Booster conversion is unimplemented
+# ===================================================================
+
+
+class TestXGBoostBoosterUnsupported:
+    """Pin the current behavior for native ``xgboost.Booster`` inputs.
+
+    The ``delayed_register`` hook at ``src/shapiq/tree/conversion/__init__.py``
+    fires on first use, but ``convert_xgboost_model`` only handles the
+    sklearn wrappers (``XGBRegressor`` / ``XGBClassifier``) — passing a raw
+    ``Booster`` raises ``TypeError``. This test pins that behavior so we
+    reverse-alarm when native ``Booster`` support is added.
+    """
+
+    @skip_if_no_xgboost
+    def test_raises_type_error(self):
+        import xgboost as xgb
+
+        dtrain = xgb.DMatrix(_BG_REG_X, label=_BG_REG_Y)
+        booster = xgb.train({"max_depth": 3}, dtrain, num_boost_round=3)
+
+        with pytest.raises(TypeError, match="not supported"):
+            TreeExplainer(model=booster, max_order=1, index="SV").explain(_BG_REG_X[0])
