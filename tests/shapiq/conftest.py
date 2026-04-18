@@ -177,6 +177,53 @@ def exact_soum_7(soum_7):
 
 
 # ---------------------------------------------------------------------------
+# Seeded SOUM variants — used by analytical cross-checks to exercise
+# multiple random game instances. Each fixture is module-scoped and
+# parametrised over ``GROUND_TRUTH_SEEDS``; pytest expands it into one
+# test per (seed, index) combination. Keeps CI fully deterministic while
+# surfacing conditioning edge cases that a single fixed game would hide.
+# ---------------------------------------------------------------------------
+
+GROUND_TRUTH_SEEDS: tuple[int, ...] = (42, 1337, 7, 2024, 31415)
+
+
+@pytest.fixture(scope="module", params=GROUND_TRUTH_SEEDS)
+def soum_5_seeded(request):
+    """5-player SOUM, parametrised across several fixed seeds."""
+    return SOUM(
+        n=5,
+        n_basis_games=25,
+        min_interaction_size=1,
+        max_interaction_size=5,
+        random_state=request.param,
+    )
+
+
+@pytest.fixture(scope="module")
+def exact_soum_5_seeded(soum_5_seeded):
+    """Cached ``ExactComputer`` for :func:`soum_5_seeded`."""
+    return ExactComputer(soum_5_seeded)
+
+
+@pytest.fixture(scope="module", params=GROUND_TRUTH_SEEDS)
+def soum_7_seeded(request):
+    """7-player SOUM, parametrised across several fixed seeds."""
+    return SOUM(
+        n=7,
+        n_basis_games=40,
+        min_interaction_size=1,
+        max_interaction_size=7,
+        random_state=request.param,
+    )
+
+
+@pytest.fixture(scope="module")
+def exact_soum_7_seeded(soum_7_seeded):
+    """Cached ``ExactComputer`` for :func:`soum_7_seeded`."""
+    return ExactComputer(soum_7_seeded)
+
+
+# ---------------------------------------------------------------------------
 # Exact ground truth
 # ---------------------------------------------------------------------------
 

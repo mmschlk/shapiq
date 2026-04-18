@@ -106,12 +106,17 @@ def _max_abs_error(actual, expected) -> float:
 
 @pytest.mark.parametrize("index", GROUND_TRUTH_INDICES)
 class TestExactVsSOUM:
-    """``ExactComputer(SOUM)`` must match ``SOUM.exact_values`` exactly."""
+    """``ExactComputer(SOUM)`` must match ``SOUM.exact_values`` exactly.
 
-    def test_small_soum(self, soum_5, exact_soum_5, index):
+    Parametrised over several fixed seeds (see ``GROUND_TRUTH_SEEDS`` in
+    ``conftest.py``) so that conditioning edge cases specific to one
+    random game instance can't silently pass.
+    """
+
+    def test_small_soum(self, soum_5_seeded, exact_soum_5_seeded, index):
         order = _order_for(index)
-        expected = soum_5.exact_values(index, order)
-        actual = exact_soum_5(index, order=order)
+        expected = soum_5_seeded.exact_values(index, order)
+        actual = exact_soum_5_seeded(index, order=order)
         # 1e-8 is the floor set by the FSII/FBII least-squares solve on
         # genuinely non-k-additive games; the other indices agree to ~1e-15.
         # ``strict=True``: both sides are analytical and must populate the
@@ -119,10 +124,10 @@ class TestExactVsSOUM:
         assert_iv_close(actual, expected, atol=1e-8, strict=True)
 
     @pytest.mark.slow
-    def test_medium_soum(self, soum_7, exact_soum_7, index):
+    def test_medium_soum(self, soum_7_seeded, exact_soum_7_seeded, index):
         order = _order_for(index)
-        expected = soum_7.exact_values(index, order)
-        actual = exact_soum_7(index, order=order)
+        expected = soum_7_seeded.exact_values(index, order)
+        actual = exact_soum_7_seeded(index, order=order)
         # n=7 FSII/FBII run through a larger LS solve; allow some numerical noise.
         assert_iv_close(actual, expected, atol=1e-8, strict=True)
 
@@ -136,17 +141,20 @@ class TestExactVsSOUM:
 class TestMoebiusConverter:
     """``MoebiusConverter`` on a Moebius IV produces the same values as the
     direct ExactComputer call for the target index.
+
+    Parametrised across several fixed SOUM seeds for game-instance
+    diversity (see ``GROUND_TRUTH_SEEDS``).
     """
 
-    def test_roundtrip_on_soum(self, soum_5, exact_soum_5, index):
+    def test_roundtrip_on_soum(self, soum_5_seeded, exact_soum_5_seeded, index):
         order = _order_for(index)
         # 1. Moebius values computed by ExactComputer on the game.
-        moebius = exact_soum_5("Moebius", order=soum_5.n_players)
+        moebius = exact_soum_5_seeded("Moebius", order=soum_5_seeded.n_players)
         # 2. Convert Moebius -> target index via MoebiusConverter.
         converter = MoebiusConverter(moebius)
         converted = converter(index, order=order)
         # 3. Target values computed directly by ExactComputer.
-        direct = exact_soum_5(index, order=order)
+        direct = exact_soum_5_seeded(index, order=order)
         # 1e-8 is the floor set by the FSII/FBII least-squares solve; the
         # other indices agree to ~1e-15. ``strict=True``: both sides should
         # populate the same set of interactions.
