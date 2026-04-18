@@ -16,6 +16,9 @@ Ground-truth sources used here:
 6. Path-dependent ``TreeExplainer`` — covered by the SV efficiency axiom
    (``sum(SV) == f(x) - E[f]``), since no path-dependent ``Game`` wrapper
    exists for a full cross-check.
+7. ``ProductKernelExplainer.explain(x)`` — closed-form Shapley values via
+   elementary symmetric polynomials on kernel vectors, versus
+   ``ExactComputer`` running on the matching ``ProductKernelGame``.
 """
 
 from __future__ import annotations
@@ -408,3 +411,58 @@ class TestPathDependentTreeEfficiency:
         assert sv_sum == pytest.approx(prediction - baseline, abs=1e-10), (
             f"SV efficiency violated: sum(SV)={sv_sum}, f(x)-baseline={prediction - baseline}"
         )
+
+
+# ===================================================================
+# 7. ProductKernelExplainer vs ExactComputer on ProductKernelGame
+# ===================================================================
+
+
+@pytest.fixture(scope="module")
+def product_kernel_setup():
+    """Tiny SVR on 5 features — small enough for ExactComputer."""
+    from sklearn.svm import SVR
+
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(30, 5))
+    y = X[:, 0] + 0.5 * X[:, 1] + rng.normal(0, 0.1, size=30)
+    svr = SVR(kernel="rbf").fit(X, y)
+    return svr, X[0]
+
+
+class TestProductKernelCrossCheck:
+    """``ExactComputer`` on ``ProductKernelGame`` must agree with
+    ``ProductKernelExplainer``'s closed-form Shapley values.
+
+    The two sides share the same RBF kernel and training data; the
+    explainer applies a polynomial-arithmetic shortcut (elementary
+    symmetric polynomials on per-feature kernel vectors), while the game
+    brute-forces 2^n coalition evaluations. Agreement pins the closed-form
+    algorithm against an independent ground truth.
+
+    The explainer only supports ``index="SV"`` with ``max_order=1``, so
+    there is nothing to parametrise over.
+    """
+
+    def test_sv_matches(self, product_kernel_setup):
+        from shapiq.explainer.product_kernel import ProductKernelExplainer
+        from shapiq.explainer.product_kernel.game import ProductKernelGame
+
+        svr, x = product_kernel_setup
+
+        explainer = ProductKernelExplainer(model=svr, max_order=1, index="SV")
+        via_explainer = explainer.explain(x)
+
+        # ``ProductKernelGame`` takes the validated ``ProductKernelModel``
+        # (with ``.X_train`` / ``.alpha`` attributes), not the raw sklearn
+        # estimator. The explainer has already done this conversion.
+        game = ProductKernelGame(
+            n_players=x.shape[0],
+            explain_point=x,
+            model=explainer.converted_model,
+        )
+        via_exact_computer = ExactComputer(game)("SV", order=1)
+
+        # Empirically agrees to ~1e-16; 1e-10 leaves ample headroom for
+        # cross-platform FMA variance without masking real divergence.
+        assert_iv_close(via_exact_computer, via_explainer, atol=1e-10)
