@@ -19,6 +19,10 @@ Ground-truth sources used here:
 7. ``ProductKernelExplainer.explain(x)`` — closed-form Shapley values via
    elementary symmetric polynomials on kernel vectors, versus
    ``ExactComputer`` running on the matching ``ProductKernelGame``.
+8. ``LinearTreeSHAP.explain_function(x)`` — Chebyshev polynomial shortcut
+   for path-dependent order-1 SV, versus ``ExactComputer`` on a local
+   brute-force path-dependent tree game helper (``_PathDependentTreeGame``
+   in this module).
 """
 
 from __future__ import annotations
@@ -44,6 +48,7 @@ from shapiq.approximator import (
     UnbiasedKernelSHAP,
     kADDSHAP,
 )
+from shapiq.game import Game
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 
@@ -464,5 +469,89 @@ class TestProductKernelCrossCheck:
         via_exact_computer = ExactComputer(game)("SV", order=1)
 
         # Empirically agrees to ~1e-16; 1e-10 leaves ample headroom for
+        # cross-platform FMA variance without masking real divergence.
+        assert_iv_close(via_exact_computer, via_explainer, atol=1e-10)
+
+
+# ===================================================================
+# 8. LinearTreeSHAP vs ExactComputer on a path-dependent tree game
+# ===================================================================
+
+
+class _PathDependentTreeGame(Game):
+    """Brute-force reference game for path-dependent TreeSHAP.
+
+    Test scaffolding, NOT production code. Replicates the value-function
+    logic the (removed) ``TreeSHAPIQXAI`` used internally: for each
+    coalition and each tree in the ensemble, traverse from root, take the
+    feature's child if the feature is in the coalition, otherwise average
+    the two children weighted by ``node_sample_weight``. Sum across trees.
+
+    This lets us run ``ExactComputer`` over 2^n coalitions and compare
+    against :class:`shapiq.tree.linear.explainer.LinearTreeSHAP`, which
+    computes the same quantity via a Chebyshev polynomial shortcut.
+    """
+
+    def __init__(self, tree_model: object, x_explain: np.ndarray) -> None:
+        from shapiq.tree.validation import validate_tree_model
+
+        self._trees = validate_tree_model(tree_model)
+        self._x = np.asarray(x_explain).flatten()
+        n = self._x.shape[0]
+        empty = self._predict(np.zeros(n, dtype=bool))
+        super().__init__(n_players=n, normalize=False, normalization_value=empty)
+
+    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
+        return np.array([self._predict(c) for c in coalitions], dtype=float)
+
+    def _predict(self, coalition: np.ndarray) -> float:
+        return sum(self._traverse(tree, 0, coalition) for tree in self._trees)
+
+    def _traverse(self, tree, node_id: int, coalition: np.ndarray) -> float:
+        if tree.leaf_mask[node_id]:
+            return float(tree.values[node_id])
+        feature = int(tree.features[node_id])
+        threshold = tree.thresholds[node_id]
+        left = int(tree.children_left[node_id])
+        right = int(tree.children_right[node_id])
+        if bool(coalition[feature]):
+            nxt = left if self._x[feature] <= threshold else right
+            return self._traverse(tree, nxt, coalition)
+        # Feature absent: weighted average of both children.
+        left_weight = float(tree.node_sample_weight[left])
+        right_weight = float(tree.node_sample_weight[right])
+        total = left_weight + right_weight
+        if total == 0.0:
+            left_weight = right_weight = 1.0
+            total = 2.0
+        return (left_weight / total) * self._traverse(tree, left, coalition) + (
+            right_weight / total
+        ) * self._traverse(tree, right, coalition)
+
+
+class TestLinearTreeSHAPCrossCheck:
+    """``LinearTreeSHAP`` (Chebyshev polynomial SV shortcut) must agree
+    with ``ExactComputer`` running on the equivalent brute-force
+    path-dependent tree game.
+
+    Both sides compute first-order path-dependent Shapley values for the
+    same sklearn tree on the same instance — the explainer uses a
+    closed-form polynomial algorithm over edge-tree representation, the
+    game brute-forces 2^n coalitions with node-weighted averaging for
+    absent features. Agreement pins the polynomial algorithm against an
+    independent numerical ground truth.
+    """
+
+    def test_sv_matches(self, small_tree_setup):
+        from shapiq.tree.linear.explainer import LinearTreeSHAP
+
+        model, x, _ = small_tree_setup
+        explainer = LinearTreeSHAP(model=model)
+        via_explainer = explainer.explain_function(x)
+
+        game = _PathDependentTreeGame(model, x)
+        via_exact_computer = ExactComputer(game)("SV", order=1)
+
+        # Empirically agrees to ~1e-16; 1e-10 leaves headroom for
         # cross-platform FMA variance without masking real divergence.
         assert_iv_close(via_exact_computer, via_explainer, atol=1e-10)
