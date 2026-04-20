@@ -73,13 +73,24 @@ def test_tabular_explainer_readme_flow(california_rf, index, max_order):
     assert iv.values.sum() == pytest.approx(pred, abs=1e-2)
 
 
-def test_tree_explainer_ksii_efficiency(california_rf):
-    """TreeExplainer k-SII order-2 efficiency — novel seam vs. the SV-only
-    invariant already covered by ``test_cross_checks.TestPathDependentTreeEfficiency``.
+@pytest.mark.parametrize(
+    ("index", "max_order"),
+    [
+        ("SV", 1),
+        ("k-SII", 2),
+    ],
+)
+def test_tree_explainer_efficiency(california_rf, index, max_order):
+    """TreeExplainer pointwise efficiency — exercises the public
+    ``shapiq.TreeExplainer(...).explain(x)`` path end-to-end. The SV/1 case
+    intentionally overlaps with ``test_cross_checks.TestPathDependentTreeEfficiency``:
+    the duplication is a feature, since the cross-check exercises the
+    lower-level invariant with ``min_order=1``, whereas this test asserts
+    the same property through the canonical public API flow.
     """
     model, x_data, _ = california_rf
     x = x_data[0]
-    iv = shapiq.TreeExplainer(model=model, index="k-SII", max_order=2).explain(x)
+    iv = shapiq.TreeExplainer(model=model, index=index, max_order=max_order).explain(x)
 
     pred = float(model.predict(x.reshape(1, -1))[0])
     assert iv.values.sum() == pytest.approx(pred, abs=1e-4)
