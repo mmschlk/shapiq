@@ -46,7 +46,7 @@ print(f"Prediction probabilities: {y_explain_proba}")
 
 # %%
 # Using the ``KNNExplainer`` for Unweighted :math:`k`-Nearest Neighbor Models
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 #
 # To explain the prediction, we create an explainer for the model by passing it to the constructor of ``Explainer``, which will automatically dispatch to the adequate subclass ``KNNExplainer``.
 
