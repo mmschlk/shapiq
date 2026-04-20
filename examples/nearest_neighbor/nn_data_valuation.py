@@ -16,9 +16,9 @@ When explaining NN models, a game is defined by first choosing an explanation po
 
 import matplotlib.pyplot as plt
 import numpy as np
-from util_plot import plot_datasets
 from sklearn.datasets import make_classification
 from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
+from util_plot import plot_datasets
 
 X_train, y_train = make_classification(
     n_samples=30,
