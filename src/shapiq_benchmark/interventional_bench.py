@@ -67,6 +67,10 @@ class InterventionalBench(Benchmark[IndexType]):
     def exact_values(self, index: IndexType, order: int) -> InteractionValues:
         """Compute exact interaction values using the benchmark computer."""
         return self._computer.exact_values(index=index, order=order)
+    
+    def get_dataset(self) -> BenchmarkDataset:
+        """Get the dataset used in this benchmark."""
+        return self.dataset 
 
     @property
     def game(self) -> Game:
