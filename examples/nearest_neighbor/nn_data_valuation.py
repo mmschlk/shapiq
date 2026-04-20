@@ -1,14 +1,16 @@
 """
-# Data Valuation with Nearest Neighbor Explainers
+Data Valuation with Nearest Neighbor Explainers
+===============================================
 
 This notebook shows how explainers of nearest-neighbor (NN) models can be used for Data Valuation, the task of evaluating the usefulness of individual training data points in classification problems.
 When explaining NN models, a game is defined by first choosing an explanation point :math:`x_\\text{explain}` and class :math:`y_\\text{explain}`; the training data points :math:`\\mathcal{D} := \\mathcal{X} \\times \\mathcal{Y}` are the game's players, and the definition of the utility :math:`\\nu(S)` of a coalition :math:`S \\subseteq \\mathcal{D}` is based on the probability of the model predicting class :math:`y_\\text{explain}` on :math:`x_\\text{explain}` if it's training data were limited to :math:`S`.
 """
 
 # %%
-# There is support for explaining the the `KNeighborsClassifier` model (with `'uniform'` or `'distance'` weights) and `RadiusNeighborsClassifier` model from the `scikit-learn` library.
-# The algorithms are based on the publications from [Jia et al. (2019)](https://doi.org/10.48550/arXiv.1908.08619/), [Wang et al. (2024)](https://doi.org/10.48550/arXiv.1908.08619)
-# and [Wang et al. (2023)](https://doi.org/10.48550/arXiv.2308.15709), respectively.
+# There is support for explaining the the ``KNeighborsClassifier`` model (with ``'uniform'`` or ``'distance'`` weights) and ``RadiusNeighborsClassifier`` model from the ``scikit-learn`` library.
+# The algorithms are based on the publications from `Jia et al. (2019) <https://doi.org/10.48550/arXiv.1908.08619/>`__,
+# `Wang et al. (2024) <https://doi.org/10.48550/arXiv.1908.08619>`__
+# and `Wang et al. (2023) <https://doi.org/10.48550/arXiv.2308.15709>`__, respectively.
 #
 # Let's start by generating a synthetic classification datset and fitting a simple `KNeighborsClassifier` to it.
 
@@ -43,9 +45,10 @@ print(f"Prediction probabilities: {y_explain_proba}")
 
 
 # %%
-# ## Using the `KNNExplainer` for Unweighted :math:`k`-Nearest Neighbor Models
+# Using the ``KNNExplainer`` for Unweighted :math:`k`-Nearest Neighbor Models
+# -------------------------------------------------------------------------
 #
-# To explain the prediction, we create an explainer for the model by passing it to the constructor of `Explainer`, which will automatically dispatch to the adequate subclass `KNNExplainer`.
+# To explain the prediction, we create an explainer for the model by passing it to the constructor of ``Explainer``, which will automatically dispatch to the adequate subclass ``KNNExplainer``.
 
 from shapiq import Explainer
 
@@ -54,7 +57,7 @@ print(type(explainer))
 
 
 # %%
-# Note that we set `class_index=y_explain_pred`, since for now, we want to quantify the contribution of the training data to the class that was actually predicted. (We could also set a different class index if we wished to see how much the data points contribute to shifting the prediction towards another class.)
+# Note that we set ``class_index=y_explain_pred``, since for now, we want to quantify the contribution of the training data to the class that was actually predicted. (We could also set a different class index if we wished to see how much the data points contribute to shifting the prediction towards another class.)
 #
 # Now we can get an explanation for the prediction we saw above:
 
@@ -63,7 +66,8 @@ print(iv)
 
 
 # %%
-# ## Explaining Weighted :math:`k`-Nearest Neighbor and Threshold Nearest Neighbor Models
+# Explaining Weighted :math:`k`-Nearest Neighbor and Threshold Nearest Neighbor Models
+# ------------------------------------------------------------------------------------
 
 # %%
 # There are separate explainers for weighted :math:`k`-NN and threshold NN models, which are selected automatically when an `Explainer` is instantiated with a corresponding model:
@@ -87,7 +91,8 @@ print(tnn_explainer.explain(x_explain))
 
 
 # %%
-# ### Large numbers of training samples
+# Large numbers of training samples
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #
 # Since the algorithms are pretty efficient, we can run them on large sets of training data.
 
@@ -141,10 +146,11 @@ print_explain_times(RadiusNeighborsClassifier(radius=5), n=100_000, n_test=50)
 
 # %%
 # ## Identifying corrupted training samples
+# -----------------------------------------
 #
-# We can estimate the usefulness of each point of a training data set by calculating Shapley values for a set of test data points and averaging the results. This will allow us to identify potentially mislabeled data points.
+# We can estimate the usefulness of each point of a training datset by calculating Shapley values for a set of test data points and averaging the results. This will allow us to identify potentially mislabeled data points.
 #
-# First, let's create a classification data set and split it into train and test sets. We will corrupt the training data by changing the class of a few randomly selected data points.
+# First, let's create a classification datset and split it into train and test sets. We will corrupt the training data by changing the class of a few randomly selected data points.
 
 from sklearn.model_selection import train_test_split
 
@@ -205,4 +211,4 @@ print(f"Negative Shapley values: {np.where(sv_test < 0)[0]}")
 
 
 # %%
-# We have identified the set corrupted samples almost exactly. The fact that the point with index 20 was missed, however, shows that this method is not failsafe but only an estimate.
+# We have identified the set corrupted samples almost exactly.
