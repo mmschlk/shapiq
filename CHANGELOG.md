@@ -61,6 +61,7 @@ Key improvements:
 ## v1.4.1 (2025-11-10)
 
 ### Bugfix
+- `sentence_plot` and `beeswarm_plot` now raise `ValueError` on malformed input (word-count / data-column mismatch with `n_players`) instead of silently producing wrong output.
 - fixes a bug in `ProxySPEX` where the `baseline_value` was set to a wrong id and not the correct score of the empty coalition. [#469](https://github.com/mmschlk/shapiq/issues/469)
 - fixes the build process of `shapiq` to correctly exclude all test/benchmark/docs/etc. files from the built package. [#464](https://github.com/mmschlk/shapiq/issues/464)
 
