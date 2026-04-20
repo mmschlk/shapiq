@@ -49,7 +49,7 @@ print(f"Prediction probabilities: {y_explain_proba}")
 
 from shapiq import Explainer
 
-explainer = Explainer(model, class_index=y_explain_pred, max_order=1)
+explainer = Explainer(model, class_index=y_explain_pred, index="SV", max_order=1)
 print(type(explainer))
 
 
@@ -70,12 +70,12 @@ print(iv)
 
 wknn_model = KNeighborsClassifier(n_neighbors=3, weights="distance")
 wknn_model.fit(X_train, y_train)
-wknn_explainer = Explainer(wknn_model, class_index=0, max_order=1)
+wknn_explainer = Explainer(wknn_model, class_index=0, index="SV", max_order=1)
 print(type(wknn_explainer))
 
 tnn_model = RadiusNeighborsClassifier()
 tnn_model.fit(X_train, y_train)
-tnn_explainer = Explainer(tnn_model, class_index=0, max_order=1)
+tnn_explainer = Explainer(tnn_model, class_index=0, index="SV", max_order=1)
 print(type(tnn_explainer))
 
 
@@ -108,7 +108,7 @@ def print_explain_times(model, n, n_test) -> None:
     X_train = X_train[n_test:]
     y_train = y_train[n_test:]
     model.fit(X_train, y_train)
-    explainer = Explainer(model, class_index=0, max_order=1)
+    explainer = Explainer(model, class_index=0, index="SV", max_order=1)
 
     times = np.zeros((n_test,))
     for i, x_test in enumerate(X_test):
@@ -190,7 +190,7 @@ model.fit(X_train, y_train_corrupted)
 sv_test = np.zeros(X_train.shape[0], dtype=np.float64)
 
 for x_test_current, y_test_current in zip(X_test, y_test, strict=True):
-    explainer = Explainer(model, class_index=y_test_current, max_order=1)
+    explainer = Explainer(model, class_index=y_test_current, index="SV", max_order=1)
     iv = explainer.explain(x_test_current)
     sv_test += iv.to_first_order_array()
 
