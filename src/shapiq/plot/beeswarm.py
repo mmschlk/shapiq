@@ -202,6 +202,12 @@ def beeswarm_plot(
     n_samples = len(data)
     n_players = interaction_values_list[0].n_players
 
+    if data.shape[1] != n_players:
+        error_message = (
+            f"data must have {n_players} columns to match n_players, but got {data.shape[1]}."
+        )
+        raise ValueError(error_message)
+
     if feature_names is not None:
         if abbreviate:
             feature_names = abbreviate_feature_names(feature_names)

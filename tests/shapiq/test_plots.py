@@ -421,3 +421,17 @@ class TestPlotEdgeCases:
             max_display=2,
         )
         assert ax is not None
+
+    def test_sentence_plot_word_count_mismatch_raises(self):
+        """``sentence_plot`` must raise when len(words) != n_players."""
+        iv = _build_iv(n=3).get_n_order(order=1)
+        with pytest.raises(ValueError, match="must match"):
+            sentence_plot(iv, words=["only-one"])
+        with pytest.raises(ValueError, match="must match"):
+            sentence_plot(iv, words=["a", "b", "c", "d", "e"])
+
+    def test_beeswarm_plot_data_column_mismatch_raises(self, sample_iv_list):
+        """``beeswarm_plot`` must raise when data has wrong number of columns."""
+        bad_data = np.random.default_rng(0).normal(size=(len(sample_iv_list), 99))
+        with pytest.raises(ValueError, match="columns"):
+            beeswarm_plot(sample_iv_list, data=bad_data, show=False)
