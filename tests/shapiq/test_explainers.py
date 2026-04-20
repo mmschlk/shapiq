@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.util
-
 import numpy as np
 import pytest
 
@@ -13,9 +11,7 @@ from shapiq.explainer.tabular import TabularExplainer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
 
-skip_if_no_tabpfn = pytest.mark.skipif(
-    importlib.util.find_spec("tabpfn") is None, reason="tabpfn not installed"
-)
+from .conftest import skip_if_no_tabpfn
 
 # ---------------------------------------------------------------------------
 # Helpers

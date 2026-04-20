@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 
 # Limit OpenMP threads to prevent segfaults when PyTorch/sklearn coexist.
@@ -26,6 +27,23 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 GROUND_TRUTH_INDICES: tuple[str, ...] = ("SV", "BV", "k-SII", "STII", "SII", "FSII", "FBII")
+
+# ---------------------------------------------------------------------------
+# Skip markers for optional dependencies
+# ---------------------------------------------------------------------------
+
+
+def _is_installed(pkg: str) -> bool:
+    return importlib.util.find_spec(pkg) is not None
+
+
+skip_if_no_xgboost = pytest.mark.skipif(
+    not _is_installed("xgboost"), reason="xgboost not installed"
+)
+skip_if_no_lightgbm = pytest.mark.skipif(
+    not _is_installed("lightgbm"), reason="lightgbm not installed"
+)
+skip_if_no_tabpfn = pytest.mark.skipif(not _is_installed("tabpfn"), reason="tabpfn not installed")
 
 
 def assert_iv_close(

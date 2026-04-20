@@ -2,23 +2,13 @@
 
 from __future__ import annotations
 
-import importlib.util
-
 import numpy as np
 import pytest
 
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree import TreeExplainer, TreeModel
 
-# ---------------------------------------------------------------------------
-# Skip markers
-# ---------------------------------------------------------------------------
-skip_if_no_xgboost = pytest.mark.skipif(
-    not importlib.util.find_spec("xgboost"), reason="xgboost not installed"
-)
-skip_if_no_lightgbm = pytest.mark.skipif(
-    not importlib.util.find_spec("lightgbm"), reason="lightgbm not installed"
-)
+from .conftest import skip_if_no_lightgbm, skip_if_no_xgboost
 
 # ---------------------------------------------------------------------------
 # Shared data (module-level, generated once)
