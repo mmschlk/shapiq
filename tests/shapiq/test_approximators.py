@@ -132,7 +132,7 @@ class TestApproximatorProtocol:
         approx = _make_approximator(config, random_state=42)
         approx.approximate(config["budget"], game)
 
-        assert game.access_counter <= config["budget"] + 2
+        assert game.access_counter <= config["budget"] + 2  # allow 2 extra calls for empty and full
 
     def test_reproducible(self, config):
         """Same random_state produces identical results.
