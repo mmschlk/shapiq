@@ -8,9 +8,3 @@ pytest_plugins = [
     "tests.shapiq.fixtures.data",
     "tests.shapiq.fixtures.interaction_values",
 ]
-
-pytest_plugins.extend(
-    [
-        "tests.shapiq_games.fixtures.tabular",
-    ]
-)
