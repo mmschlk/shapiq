@@ -91,6 +91,13 @@ def sentence_plot(
         :align: center
 
     """
+    if len(words) != interaction_values.n_players:
+        error_message = (
+            f"Number of words ({len(words)}) must match "
+            f"interaction_values.n_players ({interaction_values.n_players})."
+        )
+        raise ValueError(error_message)
+
     # set all the size parameters
     fontsize = 20
     word_spacing = 15
