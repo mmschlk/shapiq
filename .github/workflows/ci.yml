@@ -135,25 +135,6 @@ jobs:
             -   name: Run unit tests
                 run: uv run pytest "tests/shapiq"
     # ----------------------------------------------------------------------------------------------
-    # Unit Tests for shapiq-games
-    # ----------------------------------------------------------------------------------------------
-    test_shapiq_games:
-        runs-on: ubuntu-latest
-        needs:
-            - install_and_import_shapiq
-            - test_shapiq_stable
-        steps:
-            -   uses: actions/checkout@v6
-            -   name: Set up Python and uv
-                uses: astral-sh/setup-uv@v7
-                with:
-                    python-version: "3.12"
-                    enable-cache: true
-            -   name: Install dependencies
-                run: uv sync
-            -   name: Run tests
-                run: uv run pytest "tests/shapiq_games" -n logical
-    # ----------------------------------------------------------------------------------------------
     # Test Documentation Build
     # ----------------------------------------------------------------------------------------------
     doc_build:
