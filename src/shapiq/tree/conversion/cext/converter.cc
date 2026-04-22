@@ -7,6 +7,32 @@
 #include <cstdlib>
 #include <vector>
 
+// Locale-independent strtod: always uses '.' as decimal separator regardless
+// of the process LC_NUMERIC setting.  On systems where the user has set a
+// European locale (e.g. de_DE where ',' is the decimal separator) the
+// standard strtod() would fail to parse the '.' decimal used in LightGBM's
+// model_to_string() output.  strtod_l / _strtod_l accept an explicit locale
+// and are available on every platform we target.
+#ifdef _WIN32
+#  include <clocale>
+static _locale_t C_NUMERIC_LOCALE = _create_locale(LC_NUMERIC, "C");
+static inline double strtod_c(const char *s, char **e)
+{
+    if (C_NUMERIC_LOCALE != NULL)
+        return _strtod_l(s, e, C_NUMERIC_LOCALE);
+    return std::strtod(s, e);  // degraded fallback if locale creation failed
+}
+#else
+#  include <clocale>
+static locale_t C_NUMERIC_LOCALE = newlocale(LC_ALL_MASK, "C", NULL);
+static inline double strtod_c(const char *s, char **e)
+{
+    if (C_NUMERIC_LOCALE != (locale_t)0)  // newlocale() returns (locale_t)0 on failure; cast needed because locale_t is opaque
+        return strtod_l(s, e, C_NUMERIC_LOCALE);
+    return std::strtod(s, e);  // degraded fallback if locale creation failed
+}
+#endif
+
 struct ParsedTreeArrays
 {
     std::vector<int64_t> node_ids;
@@ -43,6 +69,15 @@ public:
 
     // Byte-swap helpers for converting UBJSON big-endian integers to host order.
     // UBJSON is always big-endian; x86 and Apple-silicon macOS are little-endian.
+    // Portable bit-shift implementations are used instead of compiler built-ins
+    // (__builtin_bswap* / _byteswap_*) because std::byteswap is only available in
+    // C++23 and using intrinsics would require the same #ifdef _WIN32 split already
+    // present for locale code.  Modern compilers optimise these patterns to a single
+    // native bswap instruction, so there is no runtime cost.
+    static uint16_t bswap16(uint16_t v) noexcept
+    {
+        return static_cast<uint16_t>((v << 8) | (v >> 8));
+    }
     static uint32_t bswap32(uint32_t v) noexcept
     {
         return ((v & 0x000000FFu) << 24) | ((v & 0x0000FF00u) << 8) | ((v & 0x00FF0000u) >> 8) | ((v & 0xFF000000u) >> 24);
@@ -118,12 +153,17 @@ public:
     }
     int16_t readInt16()
     {
-        uint16_t v = static_cast<uint16_t>(data[pos] << 8) | data[pos + 1];
+        if (pos + 2 > size)
+            throw std::runtime_error("End of stream");
+        uint16_t v;
+        std::memcpy(&v, data + pos, 2);
         pos += 2;
-        return static_cast<int16_t>(v);
+        return static_cast<int16_t>(bswap16(v));
     }
     int32_t readInt32()
     {
+        if (pos + 4 > size)
+            throw std::runtime_error("End of stream");
         uint32_t v;
         std::memcpy(&v, data + pos, 4);
         pos += 4;
@@ -131,6 +171,8 @@ public:
     }
     int64_t readInt64()
     {
+        if (pos + 8 > size)
+            throw std::runtime_error("End of stream");
         uint64_t v;
         std::memcpy(&v, data + pos, 8);
         pos += 8;
@@ -138,6 +180,8 @@ public:
     }
     float readFloat()
     {
+        if (pos + 4 > size)
+            throw std::runtime_error("End of stream");
         uint32_t v;
         std::memcpy(&v, data + pos, 4);
         pos += 4;
@@ -148,6 +192,8 @@ public:
     }
     double readDouble()
     {
+        if (pos + 8 > size)
+            throw std::runtime_error("End of stream");
         uint64_t v;
         std::memcpy(&v, data + pos, 8);
         pos += 8;
@@ -242,12 +288,12 @@ public:
             {
                 value = value.substr(1, value.size() - 2);
             }
-            return std::strtod(value.c_str(), nullptr);
+            return strtod_c(value.c_str(), nullptr);
         }
         if (marker == 'H')
         {
             std::string num_str = readString();
-            return std::strtod(num_str.c_str(), nullptr);
+            return strtod_c(num_str.c_str(), nullptr);
         }
         throw std::runtime_error("Invalid marker for floating-point value: " + std::to_string(marker));
     }
@@ -288,7 +334,7 @@ public:
                         start = comma + 1;
                         idx++;
                     }
-                    return std::strtod(value.c_str() + start, nullptr);
+                    return strtod_c(value.c_str() + start, nullptr);
                 }
                 return s.readDoubleLike();
             }
@@ -523,6 +569,9 @@ public:
                 // Bulk-copy the contiguous big-endian block, then byte-swap
                 // each 8-byte element in place to host (little-endian) order.
                 static_assert(sizeof(double) == 8, "double must be 8 bytes");
+                static_assert(sizeof(float) == 4, "float must be 4 bytes");
+                if (pos + num_nodes * 8 > size)
+                    throw std::runtime_error("End of stream in typed double array");
                 std::memcpy(array, data + pos, num_nodes * 8);
                 pos += num_nodes * 8;
                 for (uint64_t i = 0; i < num_nodes; i++)
@@ -654,6 +703,8 @@ public:
                 // load 4 bytes with memcpy, byte-swap, sign-extend, advance pos
                 // once for the whole array at the end.
                 static_assert(sizeof(int32_t) == 4, "int32_t must be 4 bytes");
+                if (pos + num_nodes * 4 > size)
+                    throw std::runtime_error("End of stream in typed int32 array");
                 for (uint64_t i = 0; i < num_nodes; i++)
                 {
                     uint32_t raw;
@@ -848,24 +899,27 @@ public:
             return; // no payload
         case 'i':
         case 'U':
-            pos += 1;
-            return; // 1-byte payload
+            readByte(); // 1-byte payload — readByte() includes bounds check
+            return;
         case 'I':
-            pos += 2;
-            return; // 2-byte payload
+            readByte(); readByte(); // 2-byte payload
+            return;
         case 'l':
         case 'd':
-            pos += 4;
-            return; // 4-byte payload
+            readByte(); readByte(); readByte(); readByte(); // 4-byte payload
+            return;
         case 'L':
         case 'D':
-            pos += 8;
-            return; // 8-byte payload
+            readByte(); readByte(); readByte(); readByte();
+            readByte(); readByte(); readByte(); readByte(); // 8-byte payload
+            return;
         case 'S':
         case 'H':
         {
             uint8_t lm = readByte();
             uint64_t len = readNonNegativeIntByMarker(lm);
+            if (pos + len > size)
+                throw std::runtime_error("End of stream in string payload");
             pos += len;
             return;
         }
@@ -895,7 +949,12 @@ public:
             pos++; // consume '#'
             uint8_t count_marker = readByte();
             uint64_t count = readNonNegativeIntByMarker(count_marker);
-            pos += count * typedElementSize(type_marker);
+            uint64_t byte_count = count * typedElementSize(type_marker);
+            if (count > 0 && byte_count / count != typedElementSize(type_marker))
+                throw std::runtime_error("Typed array element count overflow");
+            if (pos + byte_count > size)
+                throw std::runtime_error("End of stream in typed array skip");
+            pos += byte_count;
         }
         else if (data[pos] == '#')
         {
@@ -1153,7 +1212,10 @@ public:
             if (pos >= size || data[pos] == '\n')
                 break;
             char *endptr = nullptr;
-            double value = std::strtod(data + pos, &endptr);
+            // Use strtod_c (locale-independent) so that numbers with '.' as
+            // decimal separator are parsed correctly even when the process
+            // LC_NUMERIC is set to a locale that uses ',' (e.g. de_DE).
+            double value = strtod_c(data + pos, &endptr);
             if (endptr == data + pos)
             {
                 throw std::runtime_error("Expected floating-point number at position: " + std::to_string(pos));
