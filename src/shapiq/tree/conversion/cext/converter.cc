@@ -1128,6 +1128,13 @@ public:
             pos++;
         }
     }
+
+    void skipHorizontalWhitespace()
+    {
+        // Skip only spaces and tabs — does NOT cross line boundaries (\n or \r).
+        while (pos < size && (data[pos] == ' ' || data[pos] == '\t'))
+            pos++;
+    }
     void skipLine()
     {
         // Skip characters until the end of the current line (i.e., until a newline character or the end of the string).
@@ -1187,10 +1194,11 @@ public:
     void parseIntLine(std::vector<int64_t> &output)
     {
         // Parse a line of whitespace-separated integers starting from the current position and append them to the output vector.
-        while (pos < size && data[pos] != '\n')
+        // Uses skipHorizontalWhitespace so \r\n (Windows CRLF) line endings do not cause the parser to bleed into the next line.
+        while (pos < size && data[pos] != '\n' && data[pos] != '\r')
         {
-            skipWhitespace();
-            if (pos >= size || data[pos] == '\n')
+            skipHorizontalWhitespace();
+            if (pos >= size || data[pos] == '\n' || data[pos] == '\r')
                 break;
             char *endptr = nullptr;
             int64_t value = std::strtoll(data + pos, &endptr, 10);
@@ -1206,10 +1214,11 @@ public:
     void parseDoubleLine(std::vector<double> &output)
     {
         // Parse a line of whitespace-separated floating-point numbers starting from the current position and append them to the output vector.
-        while (pos < size && data[pos] != '\n')
+        // Uses skipHorizontalWhitespace so \r\n (Windows CRLF) line endings do not cause the parser to bleed into the next line.
+        while (pos < size && data[pos] != '\n' && data[pos] != '\r')
         {
-            skipWhitespace();
-            if (pos >= size || data[pos] == '\n')
+            skipHorizontalWhitespace();
+            if (pos >= size || data[pos] == '\n' || data[pos] == '\r')
                 break;
             char *endptr = nullptr;
             // Use strtod_c (locale-independent) so that numbers with '.' as
