@@ -57,6 +57,7 @@ sphinx_gallery_conf = {
     "doc_module": ("shapiq",),
     "reference_url": {"shapiq": None},
     "filename_pattern": r"plot_.*\.py",
+    "ignore_pattern": r"util_.*\.py",
     "plot_gallery": True,
     "download_all_examples": False,
     "show_signature": False,

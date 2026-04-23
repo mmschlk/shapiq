@@ -894,3 +894,38 @@ class TestSavingInteractionValues:
         assert loaded_iv == iv  # check if loaded InteractionValues is equal to original
         loaded_iv_json = InteractionValues.from_json_file(path)
         assert loaded_iv_json == iv
+
+
+def test_from_array():
+    n_values = 100
+    rng = np.random.default_rng(seed=123)
+    values = rng.uniform(0, 1, size=(n_values,))
+
+    index = "SV"
+    baseline_value = 42
+    iv = InteractionValues.from_first_order_array(values, index, baseline_value=baseline_value)
+
+    assert iv.baseline_value == baseline_value
+    assert iv[()] == baseline_value
+    assert iv.index == index
+    assert iv.max_order == 1
+    for i in range(n_values):
+        assert iv[(i,)] == values[i]
+
+    assert np.all(iv.to_first_order_array() == values)
+
+
+def test_to_array_invalid_max_order():
+    iv = InteractionValues(
+        index="SV", min_order=0, max_order=2, values=np.array([0, 0, 0, 0]), n_players=2
+    )
+    with pytest.raises(ValueError, match="Max order must be 1"):
+        iv.to_first_order_array()
+
+
+def test_from_empty_array():
+    baseline_value = 32
+    iv = InteractionValues.from_first_order_array(np.array([]), "SV", baseline_value=baseline_value)
+    assert len(iv.interaction_lookup) == 1
+    assert iv[()] == baseline_value
+    assert iv.baseline_value == baseline_value
