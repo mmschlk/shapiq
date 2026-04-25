@@ -21,6 +21,7 @@
 - adds `InterventionalTreeExplainer` and `InterventionalGame` in `shapiq.tree.interventional`
 - fixes `InterventionalGame` for LightGBM multi-class classification
 - adds `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer` for nearest neighbor models
+- adds `shapiq.scatter_plot` for SHAP-style scatter (dependence) plots of interaction values, supporting both first-order and higher-order interactions [#516](https://github.com/mmschlk/shapiq/pull/516)
 
 #### Introducing ProxySHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
 
