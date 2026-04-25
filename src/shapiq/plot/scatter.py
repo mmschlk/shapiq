@@ -17,7 +17,7 @@ import pandas as pd
 from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 
 from .beeswarm import _get_red_blue_cmap
-from .utils import abbreviate_feature_names, format_labels
+from .utils import abbreviate_feature_names
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -269,11 +269,9 @@ def scatter_plot(
 
     ax.axhline(0, color="#999999", linestyle="-", linewidth=1, zorder=1)
     ax.set_xlabel(display_mapping[x_idx], fontsize=12)
-    if len(interaction_tuple) == 1:
-        ax.set_ylabel("SHAP value", fontsize=12)
-    else:
-        label = format_labels(display_mapping, interaction_tuple)
-        ax.set_ylabel(f"Interaction value: {label}", fontsize=12)
+    index_name = interaction_values_list[0].index
+    feature_label = ", ".join(display_mapping[f] for f in interaction_tuple)
+    ax.set_ylabel(f"{index_name}({feature_label})", fontsize=12)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 

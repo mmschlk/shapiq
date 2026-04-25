@@ -69,7 +69,7 @@ def test_scatter_plot_basic(mock_interaction_data):
     )
     assert isinstance(ax, plt.Axes)
     assert "feature" in ax.get_xlabel().lower() or "f0" in ax.get_xlabel().lower()
-    assert ax.get_ylabel() == "SHAP value"
+    assert ax.get_ylabel() == "k-SII(F0)"
     plt.close("all")
 
     ax = scatter_plot(
