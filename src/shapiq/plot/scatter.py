@@ -33,7 +33,7 @@ def _resolve_feature(
     n_players: int,
 ) -> int:
     """Resolves a feature identifier (index or name) to an integer index."""
-    if isinstance(feature, (int, np.integer)) and not isinstance(feature, bool):
+    if isinstance(feature, int | np.integer) and not isinstance(feature, bool):
         idx = int(feature)
         if not 0 <= idx < n_players:
             error_message = f"Feature index {idx} out of range [0, {n_players})."
@@ -66,13 +66,11 @@ def _resolve_interaction(
         candidates.sort(key=lambda kv: kv[1], reverse=True)
         return candidates[0][0]
 
-    if isinstance(interaction, (int, np.integer, str)):
+    if isinstance(interaction, int | np.integer | str):
         return (_resolve_feature(interaction, name_to_idx, n_players),)
 
     if isinstance(interaction, tuple):
-        resolved = tuple(
-            sorted(_resolve_feature(f, name_to_idx, n_players) for f in interaction)
-        )
+        resolved = tuple(sorted(_resolve_feature(f, name_to_idx, n_players) for f in interaction))
         if len(resolved) == 0:
             error_message = "interaction tuple must contain at least one feature."
             raise ValueError(error_message)
@@ -154,9 +152,7 @@ def scatter_plot(
         error_message = f"data must be a pandas DataFrame or a numpy array. Got: {type(data)}."
         raise TypeError(error_message)
     if len(interaction_values_list) != len(data):
-        error_message = (
-            "Length of interaction_values_list must match number of rows in data."
-        )
+        error_message = "Length of interaction_values_list must match number of rows in data."
         raise ValueError(error_message)
     if alpha <= 0 or alpha > 1:
         error_message = "alpha must be between 0 and 1."
@@ -188,14 +184,10 @@ def scatter_plot(
         interaction, interaction_values_list, name_to_idx, n_players
     )
     if interaction_tuple not in interaction_values_list[0].interaction_lookup:
-        error_message = (
-            f"Interaction {interaction_tuple} not found in InteractionValues lookup."
-        )
+        error_message = f"Interaction {interaction_tuple} not found in InteractionValues lookup."
         raise ValueError(error_message)
 
-    if len(interaction_tuple) == 1:
-        x_idx = interaction_tuple[0]
-    elif x_feature is None:
+    if len(interaction_tuple) == 1 or x_feature is None:
         x_idx = interaction_tuple[0]
     else:
         x_idx = _resolve_feature(x_feature, name_to_idx, n_players)
@@ -209,9 +201,7 @@ def scatter_plot(
     if color is not None:
         color_idx = _resolve_feature(color, name_to_idx, n_players)
 
-    x_numpy = (
-        data.to_numpy(dtype=float) if isinstance(data, pd.DataFrame) else data.astype(float)
-    )
+    x_numpy = data.to_numpy(dtype=float) if isinstance(data, pd.DataFrame) else data.astype(float)
     x_vals = x_numpy[:, x_idx]
     y_vals = np.array(
         [iv.dict_values[interaction_tuple] for iv in interaction_values_list], dtype=float
