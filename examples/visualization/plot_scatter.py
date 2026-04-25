@@ -36,14 +36,15 @@ model.fit(x_train, y_train)
 # %%
 # Compute Explanations for Multiple Instances
 # ---------------------------------------------
-# We explain 20 test instances to keep the example fast.
+# We explain 200 test instances so the scatter plots show a meaningful
+# distribution while keeping the example fast.
 
-x_explain = x_test[:20]
+x_explain = x_test[:200]
 explainer = shapiq.TabularExplainer(
     model,
     data=x_test,
     index="FSII",
-    max_order=3,
+    max_order=2,
     random_state=42,
 )
 explanations = explainer.explain_X(x_explain, budget=200)

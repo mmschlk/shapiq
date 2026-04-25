@@ -139,8 +139,8 @@ def scatter_plot(
 
     Raises:
         ValueError: If inputs are inconsistent (empty list, length mismatch, unknown feature
-            names or indices, an interaction tuple not present in the lookup, an out-of-tuple
-            ``x_feature``, or invalid numeric parameters).
+            names or indices, an interaction tuple absent from every sample's lookup, an
+            out-of-tuple ``x_feature``, or invalid numeric parameters).
         TypeError: If ``data`` is not a DataFrame or ndarray, or if a feature identifier has an
             unsupported type.
 
@@ -183,7 +183,7 @@ def scatter_plot(
     interaction_tuple = _resolve_interaction(
         interaction, interaction_values_list, name_to_idx, n_players
     )
-    if interaction_tuple not in interaction_values_list[0].interaction_lookup:
+    if not any(interaction_tuple in iv.interaction_lookup for iv in interaction_values_list):
         error_message = f"Interaction {interaction_tuple} not found in InteractionValues lookup."
         raise ValueError(error_message)
 
@@ -203,9 +203,7 @@ def scatter_plot(
 
     x_numpy = data.to_numpy(dtype=float) if isinstance(data, pd.DataFrame) else data.astype(float)
     x_vals = x_numpy[:, x_idx]
-    y_vals = np.array(
-        [iv.dict_values[interaction_tuple] for iv in interaction_values_list], dtype=float
-    )
+    y_vals = np.array([iv[interaction_tuple] for iv in interaction_values_list], dtype=float)
 
     if ax is None:
         _fig, ax = plt.subplots(figsize=(7, 5))
