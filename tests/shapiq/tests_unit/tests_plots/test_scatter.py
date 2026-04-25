@@ -377,3 +377,66 @@ def test_scatter_plot_errors(mock_interaction_data):
             jitter=-0.5,
             show=False,
         )
+
+    # interaction with unsupported type (e.g., float) -> TypeError from _resolve_interaction
+    with pytest.raises(TypeError, match="interaction must be a tuple"):
+        scatter_plot(
+            interaction_values_list,
+            feature_data_pd,
+            interaction=1.5,
+            feature_names=feature_names,
+            show=False,
+        )
+
+    # interaction with a list -> not a tuple -> TypeError
+    with pytest.raises(TypeError, match="interaction must be a tuple"):
+        scatter_plot(
+            interaction_values_list,
+            feature_data_pd,
+            interaction=[0, 1],
+            feature_names=feature_names,
+            show=False,
+        )
+
+    # empty interaction tuple -> ValueError
+    with pytest.raises(ValueError, match="must contain at least one feature"):
+        scatter_plot(
+            interaction_values_list,
+            feature_data_pd,
+            interaction=(),
+            feature_names=feature_names,
+            show=False,
+        )
+
+    # tuple of unsupported feature type -> TypeError from _resolve_feature
+    with pytest.raises(TypeError, match="Feature identifier must be int or str"):
+        scatter_plot(
+            interaction_values_list,
+            feature_data_pd,
+            interaction=(1.5,),
+            feature_names=feature_names,
+            show=False,
+        )
+
+
+def test_scatter_plot_no_non_empty_interactions():
+    """interaction=None with an InteractionValues containing only the empty key raises."""
+    n_samples = 4
+    n_players = 3
+    lookup = {(): 0}
+    rng = np.random.default_rng(0)
+    ivs = [
+        InteractionValues(
+            values=np.array([rng.random()]),
+            interaction_lookup=lookup,
+            index="k-SII",
+            min_order=0,
+            max_order=0,
+            n_players=n_players,
+            baseline_value=0.0,
+        )
+        for _ in range(n_samples)
+    ]
+    data = rng.random((n_samples, n_players))
+    with pytest.raises(ValueError, match="No non-empty interactions"):
+        scatter_plot(ivs, data, interaction=None, show=False)
