@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from typing import get_args
-
-from shapiq.typing import IndexType
-
-ALL_AVAILABLE_CONCEPTS: dict[IndexType, dict] = {
+ALL_AVAILABLE_CONCEPTS: dict[str, dict] = {
     # Base Interactions
     "SII": {
         "name": "Shapley Interaction Index",
@@ -115,9 +111,14 @@ ALL_AVAILABLE_CONCEPTS: dict[IndexType, dict] = {
         "source": "https://doi.org/10.1609/aaai.v35i6.16721",
         "generalizes": None,
     },
+    "EC": {
+        "name": "Egalitarian Core",
+        "source": "https://doi.org/10.1609/aaai.v35i6.16721",
+        "generalizes": None,
+    },
 }
 
-AllIndices: tuple[IndexType, ...] = tuple(get_args(IndexType))
+ALL_AVAILABLE_INDICES: set[str] = set(ALL_AVAILABLE_CONCEPTS.keys())
 
 
 def is_index_valid(index: str, *, raise_error: bool = False) -> bool:
@@ -148,9 +149,9 @@ def is_index_valid(index: str, *, raise_error: bool = False) -> bool:
             ...
 
     """
-    valid = index in AllIndices
+    valid = index in ALL_AVAILABLE_INDICES
     if not valid and raise_error:
-        message = f"Invalid index `{index}`. Valid indices are: {', '.join(AllIndices)}."
+        message = f"Invalid index `{index}`. Valid indices are: {', '.join(ALL_AVAILABLE_INDICES)}."
         raise ValueError(message)
     return valid
 
@@ -176,7 +177,7 @@ def index_generalizes_sv(index: str) -> bool:
 
     """
     if index in ALL_AVAILABLE_CONCEPTS:
-        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "SV"  # type: ignore[literal-required]
+        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "SV"
     return False
 
 
@@ -199,7 +200,7 @@ def index_generalizes_bv(index: str) -> bool:
 
     """
     if index in ALL_AVAILABLE_CONCEPTS:
-        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "BV"  # type: ignore[literal-required]
+        return ALL_AVAILABLE_CONCEPTS[index]["generalizes"] == "BV"
     return False
 
 
@@ -248,9 +249,9 @@ def get_index_from_computation_index(index: str, max_order: int) -> str:
 
     """
     if max_order == 1:
-        if index_generalizes_bv(index):
+        if index == "BII":
             return "BV"
-        if index_generalizes_sv(index):
+        if index in {"SII", "STII", "FSII"}:
             return "SV"
     return index
 
