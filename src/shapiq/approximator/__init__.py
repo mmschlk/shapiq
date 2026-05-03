@@ -16,6 +16,9 @@ from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
     KernelSHAPIQ,
+    LeverageSHAP,
+    OddSHAP,
+    PolySHAP,
     RegressionFBII,
     RegressionFSII,
     kADDSHAP,
@@ -35,6 +38,9 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     ProxySPEX,
     ProxySHAP,
     MSRBiased,
+    LeverageSHAP,
+    PolySHAP,
+    OddSHAP,
 ]
 
 # contains all SI approximators
@@ -119,6 +125,9 @@ __all__ = [
     "kADDSHAP",
     "SPEX",
     "UnbiasedKernelSHAP",
+    "LeverageSHAP",
+    "PolySHAP",
+    "OddSHAP",
     "SV_APPROXIMATORS",
     "SI_APPROXIMATORS",
     "SII_APPROXIMATORS",
