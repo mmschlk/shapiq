@@ -1,0 +1,11 @@
+game_name,n_players,approximator_name,index,budget,seed,metric,value,runtime_sec
+CaliforniaHousing,8,KernelSHAP-IQ,SV,100,42,MSE,0.045,1.2
+CaliforniaHousing,8,SVARM-IQ,SV,100,42,MSE,0.038,0.9
+CaliforniaHousing,8,Permutation,SV,100,42,MSE,0.112,0.5
+CaliforniaHousing,8,KernelSHAP-IQ,SV,500,42,MSE,0.012,4.8
+CaliforniaHousing,8,SVARM-IQ,SV,500,42,MSE,0.015,3.6
+CaliforniaHousing,8,Permutation,SV,500,42,MSE,0.085,2.1
+CaliforniaHousing,8,KernelSHAP-IQ,SV,1000,42,MSE,0.002,9.5
+CaliforniaHousing,8,SVARM-IQ,SV,1000,42,MSE,0.004,7.8
+CaliforniaHousing,8,Permutation,SV,1000,42,MSE,0.051,4.2
+Mutagenicity,12,KernelSHAP-IQ,SII,1000,99,MSE,0.008,15.3
