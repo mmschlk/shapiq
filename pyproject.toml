@@ -23,6 +23,8 @@ dependencies = [
     "networkx",
     "colour",
     "pillow",
+    "gradio>=6.14.0",
+    "xgboost>=3.2.0",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
