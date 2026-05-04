@@ -7,39 +7,12 @@ from shapiq.approximator import ProxySHAP
 from shapiq import ExactComputer #used to compute GT
 import numpy as np
 
-def demo():
-    print("This is a test to see how game approximation works")
-
-    #load an existing game:
-    game = SOUM(n=10, n_basis_games=20, min_interaction_size=1,
-        max_interaction_size=2,random_state=42)
-
-    #select index (certain indices like SV expect specific order(1)! )
-    index = "SII"
-
-    #load approximator:
-    approximator = ProxySHAP(n=game.n_players, index=index, max_order=2)
-
-    #set budget:
-    budget = 100
-
-    #approximate:
+def single_run(game, index, max_order, approximator, budget, seed):
     approx_values = approximator.approximate(budget, game)
-
-    #visualization of results:
-    #print(approx_values.interactions)
-    #approx_values.plot_force()
-    #approx_values.plot_waterfall()
-    #approx_values.plot_stacked_bar()
-    #approx_values.plot_network()
-    approx_values.plot_upset()
-
-    #compute Ground Truth:
+    #approx_values.plot_upset()
     exact = ExactComputer(game=game)
-    ground_truth = exact.__call__(index=index, order=2)
-    #plot ground truth
-    ground_truth.plot_upset()
-
+    ground_truth = exact.__call__(index=index, order=max_order)
+    #ground_truth.plot_upset()
     gt_dict = {}
     for interaction, pos in ground_truth.interaction_lookup.items():
         gt_dict[interaction] = ground_truth.values[pos]
@@ -59,7 +32,20 @@ def demo():
     mean_squared_error = np.mean((gt_array - approx_array) ** 2)
     print("MSE between approximation and ground truth is: " + str(mean_squared_error))
 
+
+
+def demo():
+    print("This is a test to see how game approximation works")
+
+    # Define the values
+    seed = 42
+    max_order = 2
+    # select index (certain indices like SV expect specific order(1)! )
+    index = "SII"
+    game = SOUM(n=10, n_basis_games=20, min_interaction_size=1,
+                max_interaction_size=max_order, random_state=seed)
+    approximator = ProxySHAP(n=game.n_players, index=index, max_order=max_order)
+    budget = 100
+    single_run(game, index, max_order, approximator, budget, seed)
+
 demo()
-
-
-#game = Game(n_players=5, normalize=True, normalization_value=50, verbose=True)
