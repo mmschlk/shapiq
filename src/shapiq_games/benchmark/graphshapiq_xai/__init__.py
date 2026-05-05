@@ -1,5 +1,6 @@
 """Docstring."""
 
-from .base import GraphSHAPIQXAI
+from .base import GraphGame
+from .test_models import GCN2Layer
 
-__all__ = ["GraphSHAPIQXAI"]
+__all__ = ["GraphGame", "GCN2Layer"]

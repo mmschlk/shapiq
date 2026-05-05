@@ -243,6 +243,7 @@ all_ml = [
     "tabpfn>=2.1.3",
     "torchvision",
     "torch",
+    "torch_geometric",
     "xgboost",
     "lightgbm",    # lightgbm has install problems on macOS in github actions
     "transformers",
