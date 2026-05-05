@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Literal, get_args
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 import pandas as pd
@@ -15,10 +15,9 @@ from .setup import (
     infer_data_type,
     load_from_str,
 )
-from .bench_types import BenchmarkDataset
 
 if TYPE_CHECKING:
-    from shapiq import Game, InteractionValues
+    from shapiq import InteractionValues
 
 
 class PathdependentBench(Benchmark[IndexType]):
@@ -33,7 +32,7 @@ class PathdependentBench(Benchmark[IndexType]):
         class_index: int | None = 1,
         random_state: int | None = 42,
     ) -> None:
-        """Initialize the benchmark by loading data/model and fitting the model.
+        """Initialize the Pathdependent Benchmark by loading data and model and fitting the model.
 
         Args:
             data: Dataset identifier (e.g. "adult_census") or a NumPy array containing the data.
@@ -46,17 +45,17 @@ class PathdependentBench(Benchmark[IndexType]):
             self.dataset, self.model = load_from_str(
                 data, model, benchmark_type="pathdependent", random_state=random_state
             )
-            self.x_train = self.dataset.x_train
+            self.x_train: np.ndarray = np.asarray(self.dataset.x_train)
         elif isinstance(data, np.ndarray) and not isinstance(model, str):
             self.dataset = None
-            self.x_train = data
+            self.x_train = np.asarray(data)
             self.model = model
         else:
             raise ValueError(
                 "Invalid combination of data and model arguments. Please provide either both as strings or both as objects."
             )
 
-        data_type: Literal["classification", "regression"] = None
+        data_type: Literal["classification", "regression"] | None = None
         if self.dataset:
             data_type = self.dataset.data_type
         else:
@@ -65,24 +64,38 @@ class PathdependentBench(Benchmark[IndexType]):
         if data_type == "regression":
             class_index = None
 
+        x_index = 0 if x_explain is None else x_explain
+        if not isinstance(x_index, int):
+            msg = "x_explain must be an int index."
+            raise ValueError(msg)
+
         self._game = TreeSHAPIQXAI(
-            x=(self.x_train[x_explain]),
+            x=self.x_train[x_index],
             tree_model=self.model,
             class_label=class_index,
             verbose=False,
         )
         self._computer = PathdependentComputer(self._game)
 
-    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
-        """Compute exact interaction values using the benchmark computer."""
-        return self._computer.exact_values(index=index, order=order)
+    def exact_values(
+        self, index: IndexType, order: int, budget: int | None = None
+    ) -> InteractionValues:
+        """Compute exact interaction values using the PathdependentBench computer.
+        Args:
+            index: The index for which to compute interaction values.
+            order: The order of interactions to compute.
+            budget: Optional budget for computation.
+        Returns:
+            InteractionValues: The computed interaction values.
+        """
+        return self._computer.exact_values(index=index, order=order, budget=budget)
 
     @property
     def game(self) -> TreeSHAPIQXAI:
-        """Game instance used by this benchmark."""
+        """Game instance used by the Pathdependent Benchmark."""
         return self._game
 
     @property
     def computer(self) -> PathdependentComputer[IndexType]:
-        """Ground truth computer used by this benchmark."""
+        """Ground truth computer used by the Pathdependent Benchmark."""
         return self._computer

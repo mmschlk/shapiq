@@ -71,30 +71,27 @@ class ImageBench(Benchmark[IndexType]):
         model: str | Model | Callable[[np.ndarray], np.ndarray],
         *,
         x_explain: int | str | None = 0,
-        n_superpixel_resnet: int | None,
+        n_superpixel_resnet: int = 14,
         normalize: bool = True,
         verbose: bool = False,
     ) -> None:
         """Initialize the benchmark with an image classifier game.
 
         Args:
-            data: Image dataset directory or single image path.
-            model: Image model identifier (e.g. "vit_16_patches", "resnet_18") or a
-                callable that evaluates coalitions.
-            x_explain: Index into the dataset or an image path string.
-            n_superpixel_resnet: Number of superpixels for ResNet/SqueezeNet models.
-            normalize: Whether to normalize the game values.
-            verbose: Enable verbose output in the underlying model setup.
-            random_state: Random state for dataset shuffling (unused for images).
+            data: Path to an image file or a directory containing images.
+            model: Model identifier (e.g. "resnet_18") or a fitted model object.
+            x_explain: Index of the image to explain, or a path to an image file.
+            n_superpixel_resnet: Number of superpixels for ResNet-based explanations.
+            normalize: Whether to normalize interaction values.
+            verbose: Whether to print verbose output during game initialization.
         """
         if not isinstance(data, str):
             msg = "ImageBench expects a string path for data."
             raise ValueError(msg)
-        if model== "vit_16_patches" and n_superpixel_resnet is None:
-            msg = "n_superpixel_resnet must be set when using a ViT model."
-            raise ValueError(msg)
 
-        image_paths, image_path = _resolve_x_explain_path(data, x_explain) #TODO make less complicated
+        image_paths, image_path = _resolve_x_explain_path(
+            data, x_explain
+        )  # TODO make less complicated
         self.dataset = image_paths
         self.x_train = image_paths if image_paths is not None else []
         self.model = model
@@ -108,16 +105,25 @@ class ImageBench(Benchmark[IndexType]):
         )
         self._computer = ImageComputer(self._game)
 
-    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
-        """Compute exact interaction values using the benchmark computer."""
-        return self._computer.exact_values(index=index, order=order)
+    def exact_values(
+        self, index: IndexType, order: int, budget: int | None = None
+    ) -> InteractionValues:
+        """Compute exact interaction values using the ImageBench computer.
+        Args:
+            index: The index for which to compute interaction values.
+            order: The order of interactions to compute.
+            budget: Optional budget for computation.
+        Returns:
+            InteractionValues: The computed interaction values.
+        """
+        return self._computer.exact_values(index=index, order=order, budget=budget)
 
     @property
     def game(self) -> ImageClassifier:
-        """Game instance used by this benchmark."""
+        """Game instance used by the Image Benchmark."""
         return self._game
 
     @property
     def computer(self) -> ImageComputer:
-        """Ground truth computer used by this benchmark."""
+        """Ground truth computer used by the Image Benchmark."""
         return self._computer

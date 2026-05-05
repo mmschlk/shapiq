@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-import numpy as np
+from typing import TYPE_CHECKING, cast
 
 from shapiq import ExactComputer
-from shapiq import TreeExplainer
+from shapiq.tree.explainer import TreeExplainer
 from shapiq.explainer.tabpfn import TabPFNExplainer
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
 from shapiq.tree.interventional.game import InterventionalGame
 from shapiq.typing import IndexType
+from shapiq.explainer.custom_types import ExplainerIndices
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 from shapiq_games.benchmark.local_xai.base import LocalExplanation
 from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
@@ -35,8 +34,20 @@ class InterventionalComputer(GroundTruthComputer[IndexType]):
             class_index=self.game.class_index,
         )
 
-    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
-        return self._computer.explain_function(x=self.game.target_instance[0], index=index, max_order=order,)
+    def exact_values(
+        self, index: IndexType, order: int, budget: int | None = None
+    ) -> InteractionValues:
+        """Compute exact interaction values using the InterventionalTreeExplainer.
+        Args:
+            index: The index for which to compute interaction values.
+            order: The order of interactions to compute.
+            budget: Optional budget for computation (not used in this computer).
+        Returns:
+            InteractionValues: The computed interaction values.
+        """
+        self._computer.index = index
+        self._computer.max_order = order
+        return self._computer.explain_function(x=self.game.target_instance[0])
 
 
 class PathdependentComputer(GroundTruthComputer[IndexType]):
@@ -49,8 +60,22 @@ class PathdependentComputer(GroundTruthComputer[IndexType]):
             class_index=self.game.class_label,
         )
 
-    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
-        return self._computer.explain_function(x=self.game.x_explain, index=index,max_order=order,)
+    def exact_values(
+        self, index: IndexType, order: int, budget: int | None = None
+    ) -> InteractionValues:
+        """Compute exact interaction values using the TreeExplainer.
+        Args:
+            index: The index for which to compute interaction values.
+            order: The order of interactions to compute.
+            budget: Optional budget for computation (not used in this computer).
+        Returns:
+            InteractionValues: The computed interaction values.
+        """
+        return self._computer.explain_function(
+            x=self.game.x_explain,
+            index=index,
+            max_order=order,
+        )
 
 
 class LocalXAIComputer(GroundTruthComputer[IndexType]):
@@ -62,7 +87,17 @@ class LocalXAIComputer(GroundTruthComputer[IndexType]):
             game=game, n_players=game.n_players, evaluate_game=False
         )
 
-    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
+    def exact_values(
+        self, index: IndexType, order: int, budget: int | None = None
+    ) -> InteractionValues:
+        """Compute exact interaction values using the ExactComputer.
+        Args:
+            index: The index for which to compute interaction values.
+            order: The order of interactions to compute.
+            budget: Optional budget for computation (not used in this computer).
+        Returns:
+            InteractionValues: The computed interaction values.
+        """
         return self._computer(index=index, order=order)
 
 
@@ -72,16 +107,30 @@ class TabPFNComputer(GroundTruthComputer[IndexType]):
     def __init__(self, game: TabPFNImputer) -> None:
         self.game = game
 
-    def exact_values(self, index: IndexType, order: int, budget: int) -> InteractionValues:
-        # in TabPFNComputer.exact_values
+    def exact_values(
+        self, index: IndexType, order: int, budget: int | None = None
+    ) -> InteractionValues:
+        """Compute exact interaction values using the TabPFNExplainer.
+        Args:
+            index: The index for which to compute interaction values.
+            order: The order of interactions to compute.
+            budget: Budget for computation.
+        Returns:
+            InteractionValues: The computed interaction values.
+        """
+        if budget is None:
+            msg = "budget must be provided for TabPFN explanations."
+            raise ValueError(msg)
+        explainer_index = cast(ExplainerIndices, index)
         explainer = TabPFNExplainer(
             model=self.game.model,
             data=self.game.x_train,
             labels=self.game.y_train,
-            index=index,
+            index=explainer_index,
             max_order=order,
         )
         return explainer.explain(x=self.game.x, budget=budget)
+
 
 class ImageComputer(GroundTruthComputer[IndexType]):
     """Exact computer for image classifier games using the ExactComputer."""
@@ -91,5 +140,15 @@ class ImageComputer(GroundTruthComputer[IndexType]):
             game=game, n_players=game.n_players, evaluate_game=False
         )
 
-    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
+    def exact_values(
+        self, index: IndexType, order: int, budget: int | None = None
+    ) -> InteractionValues:
+        """Compute exact interaction values using the ExactComputer.
+        Args:
+            index: The index for which to compute interaction values.
+            order: The order of interactions to compute.
+            budget: Optional budget for computation (not used in this computer).
+        Returns:
+            InteractionValues: The computed interaction values.
+        """
         return self._computer(index=index, order=order)

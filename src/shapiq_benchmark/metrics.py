@@ -5,7 +5,8 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple, cast
+from collections.abc import Mapping
 
 import numpy as np
 import pandas as pd
@@ -40,7 +41,7 @@ def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
 
 
 DIFF_METRICS = Literal["MSE", "MAE", "SSE", "SAE"]
-RANKING_METRICS = Literal["KendallTau@k", "Precision@k"]
+RANKING_METRICS = Literal["KendallTau", "KendallTau@k", "Precision@k"]
 METRICS = (
     DIFF_METRICS | RANKING_METRICS | Literal["SpearmanCorrelation", "Faithfulness"]
 )
@@ -140,7 +141,7 @@ def compute_kendall_tau(
 
 def compute_spearmans_correlation(
     ground_truth: InteractionValues, estimated: InteractionValues, k: int | None = None
-) -> float:
+) -> Metric:
     """Compute the Spearman's correlation between two interaction values.
 
     Args:
@@ -150,7 +151,7 @@ def compute_spearmans_correlation(
             interactions.
 
     Returns:
-        The Spearman's correlation between the ground truth and estimated interaction values.
+        The Spearman's correlation metric between the ground truth and estimated interaction values.
     """
     # get the interactions as a sorted array
     gt_values, estimated_values = [], []
@@ -172,11 +173,7 @@ def compute_spearmans_correlation(
     # # compute the Spearman's correlation
     # correlation = np.corrcoef(gt_indices, estimated_indices)[0, 1]
     # correlation = float(correlation)
-    return Metric(
-        metric_id="SpearmanCorrelation",
-        value=spearman_corr,
-        computed_k=k,
-    )
+    return Metric(metric_id="SpearmanCorrelation", value=spearman_corr, computed_k=k)
 
 
 def compute_precision_at_k(
@@ -199,8 +196,10 @@ def compute_precision_at_k(
     estimated_values = _remove_empty_value(estimated)
     top_k, _ = ground_truth_values.get_top_k(k=k, as_interaction_values=False)
     top_k_estimated, _ = estimated_values.get_top_k(k=k, as_interaction_values=False)
+    top_k_dict = cast(dict[tuple[int, ...], float], top_k)
+    top_k_estimated_dict = cast(dict[tuple[int, ...], float], top_k_estimated)
     precision_at_k = (
-        len(set(top_k.keys()).intersection(set(top_k_estimated.keys()))) / k
+        len(set(top_k_dict.keys()).intersection(set(top_k_estimated_dict.keys()))) / k
     )
     return Metric(
         metric_id="Precision@k",
@@ -256,6 +255,8 @@ def get_all_metrics(
     Args:
         ground_truth: The ground truth interaction values.
         estimated: The estimated interaction values.
+        estimated_game: The estimated game, used for computing the faithfulness metric.
+        save_path: The path to save the metrics as a JSON file. If `None`,
 
     Returns:
         The metrics as a dictionary.
@@ -276,7 +277,7 @@ def get_all_metrics(
 
     if save_path is not None:
 
-        metrics_dict = {
+        metrics_dict: dict[str, float] = {
             metric.metric_id: metric.value
             for metric in metrics
             if metric.computed_k is None
@@ -322,6 +323,13 @@ def save_results(results: pd.DataFrame, save_path: str) -> None:
 
 
 def _serialize_interaction_values(interaction: InteractionValues) -> dict[str, object]:
+    """Serialize the interaction values to a dictionary.
+    Args:
+        interaction: The interaction values to serialize.
+    Returns:
+        A dictionary representation of the interaction values.
+    """
+
     def _key_to_str(key: tuple[int, ...]) -> str:
         if not key:
             return "()"
@@ -341,7 +349,7 @@ def _serialize_interaction_values(interaction: InteractionValues) -> dict[str, o
     }
 
 
-def save_json_results(payload: dict[str, object], save_path: str) -> None:
+def save_json_results(payload: Mapping[str, object], save_path: str) -> None:
     """Save the results payload as a JSON file.
 
     Args:

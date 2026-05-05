@@ -1,21 +1,21 @@
 """Helpers to load datasets and models from string identifiers."""
 
 from __future__ import annotations
-from pathlib import Path
-from typing import Literal, TypeAlias, get_args
+from typing import Literal, TypeAlias, get_args, Protocol, cast
 from collections.abc import Callable
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from tabpfn import TabPFNClassifier, TabPFNRegressor
 from xgboost import XGBClassifier, XGBRegressor
+from lightgbm import LGBMClassifier, LGBMRegressor
 
 from shapiq_games.benchmark.setup import GameBenchmarkSetup
 
 from .bench_types import BenchmarkDataset
 
 AllSupportedDatasets: TypeAlias = Literal[
-    "crime",
+    "communities_and_crime",
     "california_housing",
     "tabarena_airfoil_self_noise",
     "tabarena_amazon_employee_access",
@@ -70,18 +70,37 @@ AllSupportedDatasets: TypeAlias = Literal[
     "tabarena_mic",
 ]
 
-AllSupportedModels: TypeAlias = Literal["decision_tree", "random_forest", "tabpfn", "xgboost"]
+AllSupportedModels: TypeAlias = Literal[
+    "decision_tree",
+    "random_forest",
+    "tabpfn",
+    "xgboost",
+    "lightgbm",
+    "vit_16_patches",
+    "resnet_18",
+]
 
-SupportedModelsInterventional: TypeAlias = Literal["decision_tree", "random_forest", "xgboost"]
-SupportedModelsPathdependent: TypeAlias = Literal["decision_tree", "random_forest","xgboost"]
-SupportedModelsLocalXAI: TypeAlias = Literal["decision_tree", "random_forest", "xgboost"]
+SupportedModelsInterventional: TypeAlias = Literal[
+    "decision_tree", "random_forest", "xgboost", "lightgbm"
+]
+SupportedModelsPathdependent: TypeAlias = Literal[
+    "decision_tree", "random_forest", "xgboost", "lightgbm"
+]
+SupportedModelsLocalXAI: TypeAlias = Literal[
+    "decision_tree", "random_forest", "xgboost", "lightgbm"
+]
 SupportedModelsImage: TypeAlias = Literal[
     "vit_16_patches",
     "resnet_18",
 ]
 SupportedModelsTabPFN: TypeAlias = Literal["tabpfn"]
 
-ModelBuilder = Callable[[int | None, int], object]
+
+class _FitModel(Protocol):
+    def fit(self, x: object, y: object) -> object: ...
+
+
+ModelBuilder = Callable[[int | None, int], _FitModel]
 
 
 _MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
@@ -98,10 +117,16 @@ _MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
         RandomForestRegressor(n_estimators=n_estimators, random_state=random_state)
     ),
     ("xgboost", "classification"): lambda random_state, n_estimators: (
-        XGBClassifier(n_estimators=n_estimators, random_state=random_state) 
+        XGBClassifier(n_estimators=n_estimators, random_state=random_state)
     ),
-    ("xgboost", "regression"): lambda random_state, n_estimators: ( 
+    ("xgboost", "regression"): lambda random_state, n_estimators: (
         XGBRegressor(n_estimators=n_estimators, random_state=random_state)
+    ),
+    ("lightgbm", "classification"): lambda random_state, n_estimators: (
+        LGBMClassifier(n_estimators=n_estimators, random_state=random_state)
+    ),
+    ("lightgbm", "regression"): lambda random_state, n_estimators: (
+        LGBMRegressor(n_estimators=n_estimators, random_state=random_state)
     ),
     ("tabpfn", "classification"): lambda random_state, _n_estimators: (
         TabPFNClassifier(random_state=random_state)
@@ -152,7 +177,7 @@ def load_data_from_str(
         y_train=setup.y_train,
         x_test=setup.x_test,
         y_test=setup.y_test,
-        data_type=setup.dataset_type,
+        data_type=cast(Literal["classification", "regression"], setup.dataset_type),
     )
 
 
@@ -224,8 +249,9 @@ def load_from_str(
     model = load_model_from_str(model_str, dataset, random_state=random_state)
     return dataset, model
 
-#TODO make utils.py?
+
 def infer_data_type(model: object) -> Literal["classification", "regression"]:
+    """Infer whether a model is a classifier or regressor based on its attributes."""
     if hasattr(model, "_estimator_type"):
         if model._estimator_type == "classifier":  # type: ignore[attr-defined]
             return "classification"
@@ -234,4 +260,3 @@ def infer_data_type(model: object) -> Literal["classification", "regression"]:
     if hasattr(model, "predict_proba") or hasattr(model, "classes_"):
         return "classification"
     return "regression"
-

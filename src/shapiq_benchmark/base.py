@@ -22,7 +22,9 @@ class GroundTruthComputer(Protocol[T_Index_contra]):
     interaction values for a given game and index type.
     """
 
-    def exact_values(self, index: T_Index_contra, order: int) -> InteractionValues:
+    def exact_values(
+        self, index: T_Index_contra, order: int, budget: int | None = None
+    ) -> InteractionValues:
         """Compute the exact interaction values for a given index and order.
 
         Args:
@@ -45,7 +47,9 @@ class BruteForceComputer(GroundTruthComputer[IndexType]):
             game=game, n_players=game.n_players, evaluate_game=False
         )
 
-    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
+    def exact_values(
+        self, index: IndexType, order: int, budget: int | None = None
+    ) -> InteractionValues:
         """Compute the exact values using brute force."""
         return self._computer(index=index, order=order)
 
@@ -64,6 +68,8 @@ class Benchmark(Protocol[T_Index_contra]):
         """Return the ground truth computer used by the benchmark."""
         ...
 
-    def exact_values(self, index: T_Index_contra, order: int) -> InteractionValues:
+    def exact_values(
+        self, index: T_Index_contra, order: int, budget: int | None = None
+    ) -> InteractionValues:
         """Compute exact interaction values for the given index and order."""
         ...

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Literal, get_args
+from typing import TYPE_CHECKING, Callable, Protocol, cast
 
 import numpy as np
 from shapiq.explainer.utils import get_predict_function_and_model_type
@@ -13,6 +13,7 @@ from .base import Benchmark
 from .bench_types import BenchmarkDataset
 from .computers import TabPFNComputer
 from .setup import load_from_str
+from tabpfn import TabPFNClassifier, TabPFNRegressor
 
 if TYPE_CHECKING:
     from shapiq import InteractionValues
@@ -31,22 +32,23 @@ class TabPFNBench(Benchmark[IndexType]):
         class_index: int | None = None,
         random_state: int | None = 42,
     ) -> None:
-        """Initialize the benchmark by loading data and initializing a TabPFN imputer.
+        """Initialize the benchmark by loading data and model and initializing a TabPFN imputer.
 
         Args:
-            data: Dataset identifier or a tuple ``(x_train, x_test)``.
-            model: "tabpfn" or a TabPFN model instance (classifier or regressor).
-            labels: Labels for ``data`` if ``data`` is a tuple, provided as
-                ``(y_train, y_test)``.
-            x_explain: Index or vector to explain.
-            class_index: Class index for classification models.
-            random_state: Random state for train/test split if needed.
+            data: Dataset identifier (e.g. "adult_census") or a tuple of (x_train, x_test) arrays.
+            model: Model identifier (e.g. "tabpfn_classifier") or a fitted model object.
+            labels: Optional tuple of (y_train, y_test) arrays, required if data is a tuple.
+            x_explain: Index of the instance to explain in x_train, or None to use the first instance.
+            class_index: Class index for classification models, or None for regression.
+            random_state: Random state used for data split and model initialization.
         """
         self.dataset: BenchmarkDataset | None = None
+        self.model: TabPFNClassifier | TabPFNRegressor
         if isinstance(data, str) and isinstance(model, str):
-            self.dataset, self.model = load_from_str(
+            self.dataset, model_obj = load_from_str(
                 data, model, benchmark_type="tabpfn", random_state=random_state
             )
+            self.model = cast(TabPFNClassifier | TabPFNRegressor, model_obj)
             if labels is not None:
                 msg = "Labels must not be provided when data is a dataset string."
                 raise ValueError(msg)
@@ -59,6 +61,10 @@ class TabPFNBench(Benchmark[IndexType]):
             if labels is None:
                 msg = "When data is a tuple, labels must be provided as (y_train, y_test)."
                 raise ValueError(msg)
+            if not isinstance(model, (TabPFNClassifier, TabPFNRegressor)):
+                msg = "Model must be a TabPFNClassifier or TabPFNRegressor."
+                raise ValueError(msg)
+            self.model = model
             x_train, x_test = data
             y_train, y_test = labels
             if x_train.shape[0] != y_train.shape[0]:
@@ -81,7 +87,13 @@ class TabPFNBench(Benchmark[IndexType]):
             self.model, class_index=class_index
         )
 
-        self.model._shapiq_predict_function = predict_function 
+        class _TabPFNWithPredict(Protocol):
+            _shapiq_predict_function: Callable[[np.ndarray], np.ndarray]
+
+        model_with_predict = cast(_TabPFNWithPredict, self.model)
+        model_with_predict._shapiq_predict_function = cast(
+            Callable[[np.ndarray], np.ndarray], predict_function
+        )
 
         imputer = TabPFNImputer(
             model=self.model,
@@ -94,16 +106,25 @@ class TabPFNBench(Benchmark[IndexType]):
         self._game = imputer
         self._computer = TabPFNComputer(self._game)
 
-    def exact_values(self, index: IndexType, order: int, budget: int=1000) -> InteractionValues:
-        """Compute exact interaction values using the benchmark computer."""
-        return self._computer.exact_values(index=index, order=order, budget=budget) #TODO check if others also need budget
+    def exact_values(
+        self, index: IndexType, order: int, budget: int | None = None
+    ) -> InteractionValues:
+        """Compute exact interaction values using the TabPFNComputer.
+        Args:
+            index: The index for which to compute interaction values.
+            order: The order of interactions to compute.
+            budget: Budget for computation.
+        Returns:
+            InteractionValues: The computed interaction values.
+        """
+        return self._computer.exact_values(index=index, order=order, budget=budget)
 
     @property
     def game(self) -> TabPFNImputer:
-        """Game instance used by this benchmark."""
+        """Game instance used by the TabPFN Benchmark."""
         return self._game
 
     @property
     def computer(self) -> TabPFNComputer:
-        """Ground truth computer used by this benchmark."""
+        """Ground truth computer used by the TabPFN Benchmark."""
         return self._computer
