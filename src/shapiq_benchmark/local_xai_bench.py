@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Literal, get_args
 
 import numpy as np
-from shapiq.typing import IndexType
+from shapiq.typing import IndexType, Model
 from shapiq_games.benchmark.local_xai.base import LocalExplanation
 
-from .base import Benchmark, GroundTruthComputer
+from .base import Benchmark
 from .computers import LocalXAIComputer
-from .setup import load_data_from_str, load_model_from_str
+from .setup import load_from_str, infer_data_type
 from .bench_types import BenchmarkDataset
 
 if TYPE_CHECKING:
@@ -34,58 +34,59 @@ def _build_predict_fn(
     return _predict
 
 
+
 class LocalXAIBench(Benchmark[IndexType]):
     """Benchmark for local explanation games."""
 
     def __init__(
         self,
-        data_str: str,
-        model_str: str,
+        data: str | np.ndarray,
+        model: str | Model | Callable[[np.ndarray], np.ndarray],
         *,
+        x_explain: int | None = 0,
         class_index: int | None = 1,
-        imputer: str = "marginal",
-        normalize: bool = True,
         random_state: int | None = 42,
-        test_size: float = 0.2,
-        n_estimators: int = 10,
+        imputer: str = "marginal",
     ) -> None:
         """Initialize the benchmark by loading data and model and fitting the model.
 
         Args:
-            data_str: Dataset identifier (e.g. "adult_census").
-            model_str: Model identifier (e.g. "decision_tree").
+            data: Dataset identifier (e.g. "adult_census") or a NumPy array containing the data.
+            model: Model identifier (e.g. "decision_tree") or a fitted model object.
+            x_explain: Instance to explain.
             class_index: Class index for classification models.
-            imputer: Imputer strategy used by the LocalExplanation game.
-            normalize: Whether to normalize game values.
             random_state: Random state used for data split and model init.
-            test_size: Fraction of data used for testing.
-            n_estimators: Number of estimators for random forest models.
+            imputer: Imputer strategy used by the LocalExplanation game.
         """
-        self.dataset: BenchmarkDataset = load_data_from_str(
-            data_str,
-            random_state=random_state,
-            test_size=test_size,
-        )
-        self.model = load_model_from_str(
-            model_str,
-            self.dataset,
-            random_state=random_state,
-            n_estimators=n_estimators,
-        )
-        self.model.fit(
-            self.dataset.x_train, self.dataset.y_train
-        )  
+        if isinstance(data, str) and isinstance(model, str):
+            self.dataset, self.model = load_from_str(
+                data, model, benchmark_type="local_xai", random_state=random_state
+            )
+            self.x_train = self.dataset.x_train
+        elif isinstance(data, np.ndarray) and not isinstance(model, str):
+            self.dataset = None
+            self.x_train = data
+            self.model = model
+        else:
+            raise ValueError(
+                "Invalid combination of data and model arguments. Please provide either both as strings or both as objects."
+            )
 
-        if self.dataset.data_type == "regression":
+        data_type: Literal["classification", "regression"] = None
+        if self.dataset:
+            data_type = self.dataset.data_type
+        if data_type is None:
+            data_type = infer_data_type(self.model)
+
+        if data_type == "regression":
             class_index = None
 
-        predict_fn = _build_predict_fn(self.model, self.dataset.data_type, class_index)
+        predict_fn = _build_predict_fn(self.model, data_type, class_index)
         self._game = LocalExplanation(
-            data=self.dataset.x_train,
+            data=self.x_train,
             model=predict_fn,
-            x=self.dataset.x_explain,
+            x=(self.x_train[x_explain]),
             imputer=imputer,
-            normalize=normalize,
             random_state=random_state,
             verbose=False,
         )
@@ -94,17 +95,13 @@ class LocalXAIBench(Benchmark[IndexType]):
     def exact_values(self, index: IndexType, order: int) -> InteractionValues:
         """Compute exact interaction values using the benchmark computer."""
         return self._computer.exact_values(index=index, order=order)
-    
-    def get_dataset(self) -> BenchmarkDataset:
-        """Get the dataset used in this benchmark."""
-        return self.dataset 
 
     @property
-    def game(self) -> Game:
+    def game(self) -> LocalExplanation:
         """Game instance used by this benchmark."""
         return self._game
 
     @property
-    def computer(self) -> GroundTruthComputer[IndexType]:
+    def computer(self) -> LocalXAIComputer[IndexType]:
         """Ground truth computer used by this benchmark."""
         return self._computer

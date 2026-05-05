@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Literal
 from dataclasses import dataclass
 
 import numpy as np
@@ -18,5 +19,4 @@ class BenchmarkDataset:
     y_train: NumericArray
     x_test: NumericArray
     y_test: NumericArray
-    data_type: str
-    x_explain: NumericArray
+    data_type: Literal["classification", "regression"]

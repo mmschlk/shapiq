@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import copy
+import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple
 
 import numpy as np
+import pandas as pd
 from scipy.stats import kendalltau, spearmanr
 from shapiq import powerset
 from shapiq.approximator.sampling import CoalitionSampler
@@ -38,7 +41,9 @@ def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
 
 DIFF_METRICS = Literal["MSE", "MAE", "SSE", "SAE"]
 RANKING_METRICS = Literal["KendallTau@k", "Precision@k"]
-METRICS = DIFF_METRICS | RANKING_METRICS | Literal["SpearmanCorrelation", "Faithfulness"]
+METRICS = (
+    DIFF_METRICS | RANKING_METRICS | Literal["SpearmanCorrelation", "Faithfulness"]
+)
 
 
 class Metric(NamedTuple):
@@ -113,7 +118,9 @@ def compute_kendall_tau(
     ground_truth = _remove_empty_value(ground_truth)
     estimated = _remove_empty_value(estimated)
 
-    for interaction in set(ground_truth.interactions.keys()).union(estimated.interactions.keys()):
+    for interaction in set(ground_truth.interactions.keys()).union(
+        estimated.interactions.keys()
+    ):
         gt_values.append(ground_truth[interaction])
         estimated_values.append(estimated[interaction])
     # array conversion
@@ -192,7 +199,9 @@ def compute_precision_at_k(
     estimated_values = _remove_empty_value(estimated)
     top_k, _ = ground_truth_values.get_top_k(k=k, as_interaction_values=False)
     top_k_estimated, _ = estimated_values.get_top_k(k=k, as_interaction_values=False)
-    precision_at_k = len(set(top_k.keys()).intersection(set(top_k_estimated.keys()))) / k
+    precision_at_k = (
+        len(set(top_k.keys()).intersection(set(top_k_estimated.keys()))) / k
+    )
     return Metric(
         metric_id="Precision@k",
         value=precision_at_k,
@@ -240,6 +249,7 @@ def get_all_metrics(
     ground_truth: InteractionValues,
     estimated: InteractionValues,
     estimated_game: Game,
+    save_path: str | None = None,
 ) -> list[Metric]:
     """Get all metrics for the interaction values.
 
@@ -263,4 +273,83 @@ def get_all_metrics(
         metrics.append(compute_faithullness(estimated_game, estimated))
     metrics_diff = compute_diff_metrics(ground_truth, estimated)
     metrics.extend(metrics_diff)
+
+    if save_path is not None:
+
+        metrics_dict = {
+            metric.metric_id: metric.value
+            for metric in metrics
+            if metric.computed_k is None
+        }
+        metrics_dict.update(
+            {
+                f"{metric.metric_id}@{metric.computed_k}": metric.value
+                for metric in metrics
+                if metric.computed_k is not None
+            }
+        )
+
+        payload = {
+            "metrics": metrics_dict,
+            "game": {
+                "name": estimated_game.__class__.__name__,
+                "n_players": estimated_game.n_players,
+                "normalize": getattr(estimated_game, "normalize", None),
+                "normalization_value": getattr(
+                    estimated_game, "normalization_value", None
+                ),
+            },
+            "ground_truth": _serialize_interaction_values(ground_truth),
+            "estimated": _serialize_interaction_values(estimated),
+        }
+
+        save_json_results(payload, save_path)
     return metrics
+
+
+def save_results(results: pd.DataFrame, save_path: str) -> None:
+    """Save the results of the benchmark as a JSON file.
+
+    Args:
+        results: The results of the benchmark.
+        save_path: The path to save the results as a JSON file.
+
+    """
+    # check if the directory exists
+    save_dir = Path(save_path).parent
+    save_dir.mkdir(parents=True, exist_ok=True)
+    results.to_json(save_path, orient="records")
+
+
+def _serialize_interaction_values(interaction: InteractionValues) -> dict[str, object]:
+    def _key_to_str(key: tuple[int, ...]) -> str:
+        if not key:
+            return "()"
+        return ",".join(str(item) for item in key)
+
+    values = {
+        _key_to_str(key): float(value)
+        for key, value in interaction.interactions.items()
+    }
+    return {
+        "index": interaction.index,
+        "n_players": interaction.n_players,
+        "min_order": interaction.min_order,
+        "max_order": interaction.max_order,
+        "baseline_value": float(interaction.baseline_value),
+        "values": values,
+    }
+
+
+def save_json_results(payload: dict[str, object], save_path: str) -> None:
+    """Save the results payload as a JSON file.
+
+    Args:
+        payload: The data to write.
+        save_path: The path to save the results as a JSON file.
+
+    """
+    save_dir = Path(save_path).parent
+    save_dir.mkdir(parents=True, exist_ok=True)
+    with Path(save_path).open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
