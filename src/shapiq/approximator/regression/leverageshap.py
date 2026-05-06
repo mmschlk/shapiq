@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+import scipy.special
 
 from shapiq.interaction_values import InteractionValues
 
@@ -118,7 +119,22 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             proposal_probs: Per-coalition proposal probabilities of shape ``(n_coalitions,)``,
                 used as importance weights in the regression.
         """
-        raise NotImplementedError
+        if budget < 2:
+            raise ValueError("Budget must be at least 2 to evaluate baseline and grand coalition.")
+
+        seen_coalitions = set()
+        Z_list = []
+        probs_list = []
+
+        z_empty = np.zeros(self.n, dtype=bool)
+        seen_coalitions.add(tuple(z_empty))
+        Z_list.append(z_empty)
+        probs_list.append(1.0) 
+
+        z_grand = np.ones(self.n, dtype=bool)
+        seen_coalitions.add(tuple(z_grand))
+        Z_list.append(z_grand)
+        probs_list.append(1.0)
 
     def _solve(
         self,
@@ -143,4 +159,3 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             expected by :attr:`~shapiq.approximator.base.Approximator.interaction_lookup`.
         """
         raise NotImplementedError
-
