@@ -81,17 +81,19 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         Args:
             budget: The number of game evaluations available.
             game: The game to approximate.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
 
         Returns:
             The estimated Shapley values as an :class:`~shapiq.InteractionValues` object.
         """
         # Same four-step structure as KernelSHAP (Regression.approximate in base.py),
         # but with custom sampling and regression instead of CoalitionSampler + regression_routine.
-        Z, proposal_probs = self._sample(budget)       # step 1: sample coalitions
-        game_values: FloatVector = game(Z)             # step 2: query the black-box game
+        Z, proposal_probs = self._sample(budget)  # step 1: sample coalitions
+        game_values: FloatVector = game(Z)  # step 2: query the black-box game
         v0 = float(game_values[np.sum(Z, axis=1) == 0][0])
         sv = self._solve(Z, game_values, proposal_probs, v0)  # step 3: solve for Shapley values
-        return InteractionValues(                      # step 4: package result
+        return InteractionValues(  # step 4: package result
             values=sv,
             index=self.approximation_index,
             interaction_lookup=self.interaction_lookup,
@@ -120,7 +122,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 used as importance weights in the regression.
         """
         if budget < 2:
-            raise ValueError("Budget must be at least 2 to evaluate baseline and grand coalition.")
+            msg = "Budget must be at least 2 to evaluate baseline and grand coalition."
+            raise ValueError(msg)
 
         seen_coalitions = set()
         Z_list = []
@@ -129,7 +132,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         z_empty = np.zeros(self.n, dtype=bool)
         seen_coalitions.add(tuple(z_empty))
         Z_list.append(z_empty)
-        probs_list.append(1.0) 
+        probs_list.append(1.0)
 
         z_grand = np.ones(self.n, dtype=bool)
         seen_coalitions.add(tuple(z_grand))
@@ -157,8 +160,12 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 probs_list.append(prob)
                 current_budget += 1
 
-                if self.pairing_trick and current_budget < budget:
-                    z_paired = ~z_current # The '~' operator flips all Trues to Falses and vice versa
+                # pairing_trick is inherited from the Regression base class via super().__init__;
+                # We have to use getattr to satisfy static type checkers (e.g. ruff)
+                if getattr(self, "pairing_trick", False) and current_budget < budget:
+                    z_paired = (
+                        ~z_current
+                    )  # The '~' operator flips all Trues to Falses and vice versa
                     z_paired_tuple = tuple(z_paired)
 
                     if z_paired_tuple not in seen_coalitions:
