@@ -107,8 +107,8 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     def _sample(self, budget: int) -> tuple[np.ndarray, FloatVector]:
         """Sample coalitions for the regression.
 
-        Custom sampler bypassing CoalitionSampler. 
-        Uniform size sampling over {1,...,n-1} + paired sampling (S and complement) + Bernoulli without replacement. 
+        Custom sampler bypassing CoalitionSampler.
+        Uniform size sampling over {1,...,n-1} + paired sampling (S and complement) + Bernoulli without replacement.
         Returns coalition matrix Z, counts, proposal probs.
 
         Args:
@@ -136,6 +136,44 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         Z_list.append(z_grand)
         probs_list.append(1.0)
 
+        current_budget = 2
+
+        if self.n > 2:
+            while current_budget < budget:
+                s = self._rng.integers(1, self.n)
+                active_indices = self._rng.choice(self.n, size=s, replace=False)
+
+                z_current = np.zeros(self.n, dtype=bool)
+                z_current[active_indices] = True
+                z_tuple = tuple(z_current)
+
+                if z_tuple in seen_coalitions:
+                    continue
+
+                seen_coalitions.add(z_tuple)
+                Z_list.append(z_current)
+
+                prob = 1.0 / scipy.special.binom(self.n, s)
+                probs_list.append(prob)
+                current_budget += 1
+
+                if self.pairing_trick and current_budget < budget:
+                    z_paired = ~z_current # The '~' operator flips all Trues to Falses and vice versa
+                    z_paired_tuple = tuple(z_paired)
+
+                    if z_paired_tuple not in seen_coalitions:
+                        seen_coalitions.add(z_paired_tuple)
+                        Z_list.append(z_paired)
+
+                        probs_list.append(prob)
+                        current_budget += 1
+
+        # Finally, convert our Python lists into NumPy arrays (faster) for the Solver to use
+        Z = np.array(Z_list)
+        proposal_probs = np.array(probs_list, dtype=float)
+
+        return Z, proposal_probs
+
     def _solve(
         self,
         Z: np.ndarray,
@@ -145,7 +183,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
     ) -> FloatVector:
         """Solve the weighted regression to estimate Shapley values.
 
-        Build target y (shifted by v0). Compute A=ZP via row-centering trick (avoid materializing P). 
+        Build target y (shifted by v0). Compute A=ZP via row-centering trick (avoid materializing P).
         Form b=y-Z1. Solve via np.linalg.lstsq. Apply Efficiency offset, return InteractionValues.
 
         Args:
