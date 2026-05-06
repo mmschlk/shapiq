@@ -121,46 +121,73 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             proposal_probs: Per-coalition proposal probabilities of shape ``(n_coalitions,)``,
                 used as importance weights in the regression.
         """
+        # We need at least budget 2 to include the empty and grand coalitions.
+        # Without these two, we cannot compute the baseline or the total model output.
         if budget < 2:
             msg = "Budget must be at least 2 to evaluate baseline and grand coalition."
             raise ValueError(msg)
 
+        # We use a set to keep track of the teams we have already picked to avoid duplicates (sampling without replacement).
         seen_coalitions = set()
         Z_list = []
         probs_list = []
 
+        # Manually add the empty coalition (no features active -> all False)
         z_empty = np.zeros(self.n, dtype=bool)
-        seen_coalitions.add(tuple(z_empty))
+        seen_coalitions.add(
+            tuple(z_empty)
+        )  # Convert to tuple because sets cannot store lists/arrays
         Z_list.append(z_empty)
         probs_list.append(1.0)
 
+        # Manually add the grand coalition (all features active -> all True)
         z_grand = np.ones(self.n, dtype=bool)
         seen_coalitions.add(tuple(z_grand))
         Z_list.append(z_grand)
         probs_list.append(1.0)
 
+        # We have used 2 out of our total budget so far.
         current_budget = 2
 
+        # Leverage score sampling loop: We continue sampling until we exhaust our budget.
+        # We only need to randomly sample if there are more than 2 features.
         if self.n > 2:
             while current_budget < budget:
+                # Uniformly pick a coalition size 's' (Ref: Musco & Witter (2024) Section 3.2.)
+                # To sample proportional to leverage scores, we pick a subset size uniformly at random.
                 s = self._rng.integers(1, self.n)
+
+                # Pick a random subset of size 's'
+                # We randomly select 's' indices (features) to be turned on.
+                # Note: The original repo (https://github.com/rtealwitter/leverageshap/blob/main/leverageshap/estimators/sampling.py)
+                # uses a complex _combination_generator here. Using np.random.choice is computationally simpler.
                 active_indices = self._rng.choice(self.n, size=s, replace=False)
 
+                # Create an array of all False, then flip the chosen indices to True
                 z_current = np.zeros(self.n, dtype=bool)
                 z_current[active_indices] = True
                 z_tuple = tuple(z_current)
 
+                # Bernoulli check (no duplicates) (Ref: Musco & Witter (2024) Section 1.1 / Algorithm 1)
+                # If we have already drawn this exact team before, skip the rest of this loop
+                # (= sampling without replacement) and try again without increasing the budget.
                 if z_tuple in seen_coalitions:
                     continue
 
+                # Record the successfully drawn sample
                 seen_coalitions.add(z_tuple)
                 Z_list.append(z_current)
 
+                # Leverage Score Calculation (Ref: Musco & Witter (2024) Lemma 3.2.)
+                # The mathematical leverage score for any team of size 's' is exactly 1 / binom(n, s).
                 prob = 1.0 / scipy.special.binom(self.n, s)
                 probs_list.append(prob)
                 current_budget += 1
 
-                # pairing_trick is inherited from the Regression base class via super().__init__;
+                # Paired Sampling (Yin-Yang balancing) (Ref: Musco & Witter (2024) Section 1.1 / Section 3.2)
+                # If we draw a team, we also draw its exact opposite to reduce statistical variance.
+                # This matches the 'pairing_trick' flag in the original repo's CoalitionSampler.
+                # Variable 'pairing_trick' is inherited from the Regression base class via super().__init__;
                 # We have to use getattr to satisfy static type checkers (e.g. ruff)
                 if getattr(self, "pairing_trick", False) and current_budget < budget:
                     z_paired = (
@@ -168,10 +195,14 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                     )  # The '~' operator flips all Trues to Falses and vice versa
                     z_paired_tuple = tuple(z_paired)
 
+                    # Make sure the opposite team hasn't been drawn before either
                     if z_paired_tuple not in seen_coalitions:
                         seen_coalitions.add(z_paired_tuple)
                         Z_list.append(z_paired)
 
+                        # The opposite team has size (n - s).
+                        # Mathematically, binom(n, s) is identical to binom(n, n-s).
+                        # Therefore, the probability remains exactly the same!
                         probs_list.append(prob)
                         current_budget += 1
 
