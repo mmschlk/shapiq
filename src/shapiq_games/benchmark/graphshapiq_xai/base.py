@@ -1,4 +1,4 @@
-"""This module contains the base GraphSHAP-IQ xai game."""
+"""This module contains the GraphGame for GraphSHAP-IQ."""
 
 from __future__ import annotations
 
@@ -24,20 +24,29 @@ class GraphGame(Game):
 
     def __init__(
         self,
-        model: GCN | GIN | GAT,
+        model: GCN | GIN | GAT, # Q: Können wir nicht einfach torch.nn.Module hier angeben?
         x_graph: Data,
         *,
-        class_id: int | None = None,
+        class_index: int | None = None,
         baseline_strategy: str | None = None,
         normalize: bool = True,
         verbose: bool = True,
     ) -> None:
-        """Docstring."""
+        """Initialize the GraphGame.
+
+        Args:
+            model: A GNN model (GCN, GIN, or GAT) used to compute predictions.
+            x_graph: The input graph as a torch_geometric Data object.
+            class_index: The target class index for classification. If None, the predicted class is
+                used.
+            baseline_strategy: Strategy for replacing masked node features. One of "average",
+                "min", "max", or "zeros". If None, defaults to zeros with a warning.
+            normalize: Whether to normalize the game by the empty coalition prediction.
+            verbose: Whether to show progress bars during evaluation.
+        """
         self.model = model
         self.model.eval()
         self.x_graph = x_graph.clone()
-        self.output_dim = 1
-        self.edge_index = self.x_graph.edge_index.detach().numpy()
 
         if baseline_strategy is None:
             warnings.warn(
@@ -47,19 +56,16 @@ class GraphGame(Game):
         else:
             self.baseline = self.calculate_baseline(baseline_strategy)
 
-        if class_id is None:  # explaining the predicted class
-            # eval model and find the prediction index
+        if class_index is None:
             model_output = self.model(
                 x=self.x_graph.x, edge_index=self.x_graph.edge_index, batch=self.x_graph.batch
             )
             self.y_index = int(np.argmax(model_output.detach().numpy(), axis=1)[0])
         else:
-            self.y_index = int(class_id)
+            self.y_index = int(class_index)
 
         if normalize:
-            # Compute emptyset prediction
             normalization_value = float(self.value_function(np.zeros(len(x_graph.x))))
-            # call the super constructor
             super().__init__(
                 n_players=len(x_graph.x),
                 normalize=normalize,
@@ -67,12 +73,11 @@ class GraphGame(Game):
                 verbose=verbose,
             )
         else:
-            # call the super constructor
             super().__init__(n_players=len(x_graph.x), normalize=normalize)
         self._grand_coalition_set = set(range(self.n_players))
 
-    def calculate_baseline(self, strategy: str) -> torch.tensor:
-        """Returns Tensor for replacing node features, depending on the chosen strategy."""
+    def calculate_baseline(self, strategy: str) -> torch.Tensor:
+        """Returns a tensor for replacing node features depending on the chosen strategy."""
         x = self.x_graph.clone().x
         match strategy:
             case "average":
@@ -91,12 +96,13 @@ class GraphGame(Game):
                 return torch.zeros(self.x_graph.num_node_features, dtype=torch.float32)
 
     def mask_input(self, coalition: np.ndarray) -> Data:
-        """The masking procedure for feature-removal. Masks all feature values of masked nodes.
+        """Mask inactive node features with the baseline.
 
         Args:
-            coalition: A binary numpy array containing the masking.
+            coalition: A binary numpy array where 1 = active node, 0 = inactive.
 
-        Returns: The masked x_graph for the coalition as a graph tensor.
+        Returns:
+            A cloned graph with inactive nodes replaced by the baseline features.
         """
         x_masked = self.x_graph.clone()
         x_masked.x = x_masked.x * torch.tensor(
@@ -105,6 +111,35 @@ class GraphGame(Game):
         return x_masked
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """Docstring."""
-        # TO DO
-        return coalitions
+        """Evaluate the GNN for each coalition by masking inactive node features.
+
+        Args:
+            coalitions: Binary matrix of shape (n_coalitions, n_nodes). A 1D array of shape
+                (n_nodes,) is also accepted and reshaped automatically.
+
+        Returns:
+            Array of shape (n_coalitions,) containing one model prediction per coalition.
+        """
+        if coalitions.ndim == 1:
+            coalitions = coalitions.reshape(1, -1)
+
+        coalition_values = []
+
+        for coalition in coalitions:
+            masked_graph = self.mask_input(coalition)
+
+            with torch.no_grad():
+                model_output = self.model(
+                    x=masked_graph.x,
+                    edge_index=masked_graph.edge_index,
+                    batch=getattr(masked_graph, "batch", None),
+                )
+
+            if model_output.ndim > 1:
+                coalition_value = model_output[0, self.y_index]
+            else:
+                coalition_value = model_output.squeeze()
+
+            coalition_values.append(float(coalition_value))
+
+        return np.asarray(coalition_values)
