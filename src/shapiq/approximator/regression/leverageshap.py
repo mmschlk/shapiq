@@ -89,10 +89,10 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         """
         # Same four-step structure as KernelSHAP (Regression.approximate in base.py),
         # but with custom sampling and regression instead of CoalitionSampler + regression_routine.
-        Z, proposal_probs = self._sample(budget)  # step 1: sample coalitions
+        Z, _ = self._sample(budget)  # step 1: sample coalitions; proposal_probs not needed (IS weights cancel analytically)
         game_values: FloatVector = game(Z)  # step 2: query the black-box game
         v0 = float(game_values[np.sum(Z, axis=1) == 0][0])
-        sv = self._solve(Z, game_values, proposal_probs, v0)  # step 3: solve for Shapley values
+        sv = self._solve(Z, game_values, v0)  # step 3: solve for Shapley values
         return InteractionValues(  # step 4: package result
             values=sv,
             index=self.approximation_index,
@@ -151,6 +151,9 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
 
         # Leverage score sampling loop: We continue sampling until we exhaust our budget.
         # We only need to randomly sample if there are more than 2 features.
+        # Cap budget at 2^n: once all 2^n coalitions are in seen_coalitions every draw
+        # would be rejected and the loop would spin forever.
+        budget = min(budget, 2**self.n)
         if self.n > 2:
             while current_budget < budget:
                 # Uniformly pick a coalition size 's' (Ref: Musco & Witter (2024) Section 3.2.)
@@ -216,7 +219,6 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         self,
         Z: np.ndarray,
         game_values: FloatVector,
-        proposal_probs: FloatVector,
         v0: float,
     ) -> FloatVector:
         """Solve the weighted regression to estimate Shapley values.
@@ -227,11 +229,61 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         Args:
             Z: Boolean coalition matrix of shape ``(n_coalitions, n)``.
             game_values: Game values for each coalition in ``Z``.
-            proposal_probs: Per-coalition proposal probabilities from ``_sample``.
             v0: Value of the empty coalition (baseline).
 
         Returns:
             Array of Shapley values including the empty-coalition entry, matching the shape
             expected by :attr:`~shapiq.approximator.base.Approximator.interaction_lookup`.
         """
-        raise NotImplementedError
+    
+
+        n = self.n # total number of features
+        coalition_sizes = Z.sum(axis=1) # Calculates the size of each coalitio
+
+
+        # Calculates the total payout of game (difference between model's prediction using all features and baseline prediction with no features). -> this is "efficiency gap" we need to distribute among players bc sum of all feature contributions must equal the total payout.
+        # Grand coalition value pins efficiency axiom: SUM phi = v(N) − v(sigma).
+        v_grand = float(game_values[coalition_sizes == n][0]) # Finds models prediction for grand coalition(where all features are present)
+
+        efficiency_shift = (v_grand - v0) / n # Calculates total prize of game (`v_grand - v0`) && divides it equally among all n features
+
+        # Removes the two trivial coalitions (0 < |S| < n) -> Empty and grand coalitions define v0 and v_grand are excluded ->  not regression rows.
+        interior = (coalition_sizes > 0) & (coalition_sizes < n) # Creates a boolean mask of interior coalitions
+        Z_int = Z[interior].astype(float) # selects only interior coal rows from Z
+        v_int = game_values[interior] # selects only interior coal values from game_values
+        s_int = coalition_sizes[interior] # selects only interior coal sizes from coalition_sizes
+
+        # cheks if list of interior coalitions (Z_int) is empty.
+        if len(Z_int) == 0:
+            # happens when e.g. n ≤ 2 at minimum budget -> sip main regression case because there are only 1 or two featres (v0, v_grand) in coalistions
+            return np.concatenate([[v0], np.full(n, efficiency_shift)]) # array where every feature gets same efficiency_shit value (no distingush between importanc)
+
+        # --- A = Z·P  (Lemma 3.1) ---
+        # transforms the coalition matrix Z_int into a new matrix A bc regression has efficiency contraint -> normalyl slow -> transformation allows for unconstrained regression problem -> faster solvable -> Not O(n^2) bc row-centering instead of matrix multiplication with P. 
+        A = Z_int - (s_int / n)[:, np.newaxis]  # shape (m, n)
+
+        # --- Centred target vector b ---
+        # c the input matrix `Z_int` was adjusted to get `A`, the output values (`v_int`) must be adjusted to match -> New target vector for unconstrained reg problem -> NECESSARY BC WE NEED TO SOLVE FOR THE NEW TRANSFORMED PROBLEM defined by lemma 3.1, not the original one. -> b = y - Z·1·(v(N)−v(sigma))/n, where y_j = v(z_j) − v(sigma).
+        b = (v_int - v0) - efficiency_shift * s_int  # shape (m,)
+
+        # --- Importance-sampling (IS) weights ---
+        # Now calculating weight for each coalition in regression.
+        # Trick: in KernelSHAP weights are very complex and are huge numbers -> numerically unstable
+        # bc of smart sampeling the complex terms cancle out -> simple formula with no huge binomial coefficients anywhere -> numerically stable.
+        # Leverage-score sampling draws each z with probability p = 1 / binom(n, s)
+        # (Lemma 3.2), so the IS-corrected WLS weight is  w(s) / p = 1 / (s·(n−s)). -> formula independent of the sampling probabilities
+        w_is = 1.0 / (s_int * (n - s_int))  # shape (m,)
+
+        # --- Solve  min_x ‖W^{1/2}·A·x − W^{1/2}·b‖₂²  via weighted least squares ---
+        # find best x
+        # A = Z·P always has ones in its null space (each row sums to 0, so A·1 = 0) -> Gram matrix rank-deficient (a technical property resulting from row-centering trick) -> uses np.linalg.lstsq because of this
+        W_sqrt = np.sqrt(w_is)
+        phi_perp = np.linalg.lstsq(
+            W_sqrt[:, np.newaxis] * A, W_sqrt * b, rcond=None
+        )[0]
+
+        # --- Efficiency correction  (Algorithm 1, line 13) ---
+        # takes efficiency_shift calculated in Step 1 and adds it to every value in phi_perp -> shifts the entire solution so that it now satisfies the Efficiency rule
+        sv = phi_perp + efficiency_shift
+
+        return np.concatenate([[v0], sv])
