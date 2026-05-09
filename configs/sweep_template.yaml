@@ -1,0 +1,31 @@
+# Sweep Configuration
+
+# List of datasets to test
+games: 
+  - "CaliforniaHousing"
+  - "Mutagenicity"
+
+# List of indices to test
+indices: 
+  - "SV"
+  - "SII"
+
+# List of approximators to compare
+approximators: 
+  - "KernelSHAPIQ"
+  - "SVARMIQ"
+  - "PermutationSamplingSV"
+
+# Budget values to test
+budgets: 
+  - 100
+  - 500
+  - 1000
+
+# Interaction orders (usually provide a list)
+max_orders: 
+  - 1
+  - 2
+
+# Number of seeds for repetition (usually a single value)
+n_seeds: 5
