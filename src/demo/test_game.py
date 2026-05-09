@@ -46,7 +46,7 @@ runtime_sec = round(end_time - start_time, 2)
 error_value = round(10 / budget_to_test, 4) 
 
 # --- 5. Ergebnis in die CSV-Datei speichern ---
-csv_file_path = "data/shapiq_benchmark_results.csv"
+csv_file_path = "src/demo/shapiq_benchmark_results.csv"
 
 # Parameter für die CSV-Zeile vorbereiten
 game_name = "BikeSharingDemand"

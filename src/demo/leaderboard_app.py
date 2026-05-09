@@ -4,7 +4,7 @@ import os
 
 # --- 1. Hilfsfunktion zum Laden oder Erstellen der Mock-Daten ---
 def load_data():
-    csv_file = "data/shapiq_benchmark_results.csv"
+    csv_file = "src/demo/shapiq_benchmark_results.csv"
     if os.path.exists(csv_file):
         return pd.read_csv(csv_file)
     else:
