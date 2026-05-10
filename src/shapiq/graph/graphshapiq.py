@@ -347,3 +347,8 @@ class GraphSHAPIQ:
                 incomplete_neighborhoods.add(self.neighbors[node])
 
         return moebius_interactions, incomplete_neighborhoods
+
+    @property
+    def last_n_model_calls(self) -> int | None:
+        """Get last n model calls."""
+        return self._last_n_model_calls
