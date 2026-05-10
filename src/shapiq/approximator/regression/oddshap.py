@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class OddSHAP(Approximator):
-    """ Args:
+    """ Args
 
     """
 
@@ -32,9 +32,6 @@ class OddSHAP(Approximator):
     def _init_sampling_weights_static(n: int) -> np.ndarray:
         """ Initialize OddSHAP coalition-size sampling weights.
 
-        OddSHAP uses the same size distribution as the paper reference code.
-        For coalition sizes s = 1, ..., n-1, the weight is 1/((n-1) * binom(n-2, s-1))
-        and the empty/full coaltition receive weight 0 because they are handled explicitly by CoalitionSampler.
 
         Args
 
@@ -143,10 +140,9 @@ class OddSHAP(Approximator):
         #centered_game_values = game_values - empty_set_value  # normalize response relative to empty coalition
 
         # 4. Compute how many higher-order interactions OddSHAP is allowed to consider later
-        # paper idea: singleton term always included
         n_candidate_interactions = max(0, budget // self.interaction_factor - self.n) #TODO: does paper do it with or without subtraction?
 
-        # 5. branch between: low-budget fallback and odd-regressioin path
+        # branch between: low-budget fallback and odd-regressioin path
         if budget < self.n * self.interaction_factor:
             result = self._approximate_via_fallback(
                 budget=budget,
@@ -209,7 +205,7 @@ class OddSHAP(Approximator):
         explain_end_time = time.time()
         self.runtime_last_approximate_run["fallback_explain"] = explain_end_time - explain_start_time
 
-        # 3. convert the returned explanation into OddSHAP SV vector
+        # 3. convert the returned explanation
         sv_values = np.zeros(self.n + 1, dtype=float)
         sv_values[0] = empty_set_value
 
@@ -261,7 +257,7 @@ class OddSHAP(Approximator):
         surrogate_end_time = time.time()
         self.runtime_last_approximate_run["proxy_fit"] = surrogate_end_time - surrogate_start_time
 
-        #2. detect odd higher-order interactions
+        # 2. detect odd higher-order interactions
         extraction_start_time = time.time()
         detected_interactions = self._select_odd_interactions(
             coalitions=coalitions,
@@ -407,9 +403,6 @@ class OddSHAP(Approximator):
     ) -> list[tuple[int, ...]]:
         """ Return selected higher-order odd interactions for the OddSHAP support
 
-        This method returns only higher-order interaction candidates (The empty interaction and singleton interactions are added separately
-        by `_build_odd_interaction_support(...)`. Final filtering/normalization is also handled there.
-
         Args
 
         """
@@ -449,7 +442,7 @@ class OddSHAP(Approximator):
             full_set_value: float,
             drop_boundary_rows: bool = True,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Build the weighted OddSHAP regression system (X_tilde, y_tilde).
+        """ Build the weighted OddSHAP regression system (X_tilde, y_tilde).
 
         The regression is solved for the non-empty active Fourier coefficients,
         while the empty Fourier coefficient is fixed exactly as
@@ -460,8 +453,7 @@ class OddSHAP(Approximator):
         """
         if self.n_active_interactions == 0:
             msg = (
-                "OddSHAP support has not been built yet. "
-                "Call _build_support(...) first."
+                "OddSHAP support has not been built yet. Call _build_support(...) first."
             )
             raise RuntimeError(msg)
 
@@ -499,10 +491,10 @@ class OddSHAP(Approximator):
             full_set_value: float,
             empty_set_value: float,
     ) -> tuple[float, np.ndarray, np.ndarray]:
-        """Build the exact OddSHAP Fourier constraint system.
+        """ Build the exact OddSHAP Fourier constraint system.
 
         Returns:
-            beta_empty:
+            beta_empty = (f(full) + f(empty)) / 2
                 Exact Fourier coefficient for the empty interaction.
             projection_matrix:
                 Projection onto the orthogonal complement of the all-ones vector.
@@ -516,12 +508,9 @@ class OddSHAP(Approximator):
             )
             raise RuntimeError(msg)
 
-        # Exact empty-interaction coefficient:
-        # beta_empty = (f(full) + f(empty)) / 2
         beta_empty = 0.5 * (full_set_value + empty_set_value)
 
-        # Exact sum constraint over non-empty odd coefficients:
-        # sum beta_T = -(f(full) - f(empty)) / 2
+        # non-empty odd coefficients
         b = -0.5 * (full_set_value - empty_set_value)
 
         a = np.ones(n_nonempty_terms, dtype=float)
@@ -540,7 +529,7 @@ class OddSHAP(Approximator):
             empty_set_value: float,
             full_set_value: float,
     ) -> np.ndarray:
-        """Solve the constrained OddSHAP regression in the Fourier basis.
+        """ Solve the constrained OddSHAP regression in the Fourier basis.
 
         This solves the non-empty odd coefficients under the exact sum constraint
         from the OddSHAP paper, then assembles the full coefficient vector
@@ -578,8 +567,7 @@ class OddSHAP(Approximator):
 
         The coefficient vector must follow the active support ordering:
         - position 0 corresponds to the empty interaction ()
-        - positions 1.. correspond to the active non-empty interactions in the
-          same order as self.odd_interaction_lookup
+        - positions 1.. correspond to the active non-empty interactions
 
         For OddSHAP, only odd-cardinality interactions contribute to the Shapley
         value. For each odd interaction T with coefficient beta_T, the contribution
