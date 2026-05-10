@@ -39,3 +39,26 @@ masked_graph = game.mask_input(coalition)
 logger.info("Original Graph Features:\n%s", x_graph.x)
 logger.info("Coalition (Mask Array):\n%s", coalition)
 logger.info("Masked Graph Features:\n%s", masked_graph.x)
+
+coalitions_to_test = [
+    np.array([1, 1]),
+    np.array([1, 0]),
+    np.array([0, 1]),
+    np.array([0, 0]),
+]
+
+for coalition in coalitions_to_test:
+    masked_graph = game.mask_input(coalition)
+    logger.info(f"\nCoalition: {coalition}")
+    logger.info(f"Masked Graph Features:\n{masked_graph.x}")
+
+    coalition_value = game.value_function(coalition)
+    logger.info(f"value_function Res: {coalition_value}")
+
+    with torch.no_grad():
+        model_output = game.model(
+            x=masked_graph.x,
+            edge_index=masked_graph.edge_index,
+            batch=getattr(masked_graph, "batch", None),
+        )
+    logger.info(f"Outpur (roh):\n{model_output}")
