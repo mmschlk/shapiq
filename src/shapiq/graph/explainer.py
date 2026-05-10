@@ -58,7 +58,14 @@ class GraphExplainer(Explainer):
         super().__init__(model)
         self._gnns: list[GraphModel] = validate_graph_model(model)
         self._n_gnns = len(self._gnns)
-        self.game = GraphGame(model, x_graph=x_graph)
+        self.game = GraphGame(
+            model=model,
+            x_graph=x_graph,
+            baseline_strategy="max",
+            normalize=False,
+            class_index=None,
+            verbose=True,
+        )
         self.explainer = GraphSHAPIQ(game=self.game)
 
     @override
@@ -79,12 +86,7 @@ class GraphExplainer(Explainer):
             msg = "Total budget higher than the limit."
             raise RuntimeError(msg)
 
-        moebius, _ = self.explainer.explain(
-            max_interaction_size=self.explainer.max_size_neighbors,
-            order=self.game.n_players,
-            efficiency_routine=True,
-        )
+        moebius, _ = self.explainer.explain()
         moebius.estimation_budget = self.explainer.last_n_model_calls
         moebius.estimated = False
-        moebius.sparsify(threshold=1e-8)
         return moebius

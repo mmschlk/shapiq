@@ -27,6 +27,7 @@ class GraphGame(Game):
         x_graph: Data,
         *,
         class_index: int | None = None,
+        output_dim: int = 1,
         baseline_strategy: str | None = None,
         normalize: bool = True,
         verbose: bool = True,
@@ -42,10 +43,14 @@ class GraphGame(Game):
                 "min", "max", or "zeros". If None, defaults to zeros with a warning.
             normalize: Whether to normalize the game by the empty coalition prediction.
             verbose: Whether to show progress bars during evaluation.
+            output_dim (int): size of the output dimension
         """
         self.model = model
         self.model.eval()
         self.x_graph = x_graph.clone()
+        self.edge_index = self.x_graph.edge_index.detach().numpy()  # pyright: ignore[reportOptionalMemberAccess]
+        self.max_neighborhood_size = model.num_layers
+        self.output_dim = output_dim
 
         if baseline_strategy is None:
             warnings.warn(
@@ -77,7 +82,6 @@ class GraphGame(Game):
 
     def calculate_baseline(self, strategy: str) -> torch.Tensor:
         """Returns a tensor for replacing node features depending on the chosen strategy."""
-
         # No deep copy here, since the x_graph is not modified
         x = self.x_graph.x
         match strategy:
@@ -88,17 +92,18 @@ class GraphGame(Game):
             case "max":
                 return torch.amax(x, dim=0)
             case "zeros":
-
                 # Device is needed for the zeros tensor -> possible that the device is not the same as the model
-                return torch.zeros(self.x_graph.num_node_features, dtype=torch.float32,
-                                   device=x.device)
+                return torch.zeros(
+                    self.x_graph.num_node_features, dtype=torch.float32, device=x.device
+                )
             case _:
                 warnings.warn(
                     "Unknown baseline strategy, baseline will be initialized as zero...",
                     stacklevel=2,
                 )
-                return torch.zeros(self.x_graph.num_node_features, dtype=torch.float32,
-                                   device=x.device)
+                return torch.zeros(
+                    self.x_graph.num_node_features, dtype=torch.float32, device=x.device
+                )
 
     def mask_input(self, coalition: np.ndarray) -> Data:
         """Mask inactive node features with the baseline.
@@ -109,7 +114,6 @@ class GraphGame(Game):
         Returns:
             A cloned graph with inactive nodes replaced by the baseline features.
         """
-
         # Convert coalition to boolean tensor on the same device as the model
         coalition_tensor = torch.tensor(coalition, dtype=torch.bool, device=self.x_graph.x.device)
         x_masked = self.x_graph.clone()
