@@ -24,7 +24,7 @@ class GraphGame(Game):
 
     def __init__(
         self,
-        model: GCN | GIN | GAT, # Q: Können wir nicht einfach torch.nn.Module hier angeben?
+        model: torch.nn.Module,
         x_graph: Data,
         *,
         class_index: int | None = None,
@@ -78,22 +78,24 @@ class GraphGame(Game):
 
     def calculate_baseline(self, strategy: str) -> torch.Tensor:
         """Returns a tensor for replacing node features depending on the chosen strategy."""
-        x = self.x_graph.clone().x
+        x = self.x_graph.x
         match strategy:
             case "average":
-                return x.mean(dim=0, dtype=torch.float)
+                return x.mean(dim=0)
             case "min":
-                return torch.amin(x, dim=0).to(torch.float)
+                return torch.amin(x, dim=0)
             case "max":
-                return torch.amax(x, dim=0).to(torch.float)
+                return torch.amax(x, dim=0)
             case "zeros":
-                return torch.zeros(self.x_graph.num_node_features, dtype=torch.float32)
+                return torch.zeros(self.x_graph.num_node_features, dtype=torch.float32,
+                                   device=x.device)
             case _:
                 warnings.warn(
                     "Unknown baseline strategy, baseline will be initialized as zero...",
                     stacklevel=2,
                 )
-                return torch.zeros(self.x_graph.num_node_features, dtype=torch.float32)
+                return torch.zeros(self.x_graph.num_node_features, dtype=torch.float32,
+                                   device=x.device)
 
     def mask_input(self, coalition: np.ndarray) -> Data:
         """Mask inactive node features with the baseline.
