@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import copy
 import multiprocessing as mp
-from typing import Literal
 
 import numpy as np
 
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
-
-GraphSHAPIQIndices = Literal["SV", "SII", "k-SII"]
 
 
 class GraphSHAPIQ:
