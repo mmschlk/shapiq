@@ -13,4 +13,4 @@ if TYPE_CHECKING:
 def validate_graph_model(model: torch.nn.Module) -> list[GraphModel]:
     """Docstring."""
     # TO DO
-    return []
+    return [model]
