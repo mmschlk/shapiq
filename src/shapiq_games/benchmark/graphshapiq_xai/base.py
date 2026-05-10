@@ -109,10 +109,15 @@ class GraphGame(Game):
         Returns:
             A cloned graph with inactive nodes replaced by the baseline features.
         """
+
+        # Convert coalition to boolean tensor on the same device as the model
+        coalition_tensor = torch.tensor(coalition, dtype=torch.bool, device=self.x_graph.x.device)
         x_masked = self.x_graph.clone()
-        x_masked.x = x_masked.x * torch.tensor(
-            coalition.reshape((-1, 1)), dtype=torch.float32
-        ) + self.baseline * torch.tensor((1 - coalition).reshape((-1, 1)), dtype=torch.float32)
+
+        # Reshape the baseline to match the number of features in the graph
+        baseline_reshaped = self.baseline.reshape(1, -1)
+        x_masked.x[~coalition_tensor] = baseline_reshaped
+
         return x_masked
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
