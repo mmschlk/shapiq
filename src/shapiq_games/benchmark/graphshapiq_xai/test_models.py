@@ -33,8 +33,8 @@ class GCN2Layer(GCN):
         self.fc = torch.nn.Linear(hidden_channels, out_channels, bias=graph_bias)
 
     def forward(
-        self, x: torch.tensor, edge_index: torch.tensor, batch: torch.tensor
-    ) -> torch.tensor:
+        self, x: torch.Tensor, edge_index: torch.Tensor, batch: torch.Tensor
+    ) -> torch.Tensor:
         """Forward pass."""
         # 1. Run the built-in GCN layers from the parent class
         x = super().forward(x, edge_index)
