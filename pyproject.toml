@@ -67,6 +67,10 @@ exclude_also = [
     'if TYPE_CHECKING:',
 ]
 
+[[tool.mypy.overrides]]
+module = "torch_geometric.*"
+ignore_missing_imports = true
+
 [tool.setuptools_scm]
 write_to = "src/shapiq/_version.py"
 
