@@ -78,6 +78,8 @@ class GraphGame(Game):
 
     def calculate_baseline(self, strategy: str) -> torch.Tensor:
         """Returns a tensor for replacing node features depending on the chosen strategy."""
+
+        # No deep copy here, since the x_graph is not modified
         x = self.x_graph.x
         match strategy:
             case "average":
@@ -87,6 +89,8 @@ class GraphGame(Game):
             case "max":
                 return torch.amax(x, dim=0)
             case "zeros":
+
+                # Device is needed for the zeros tensor -> possible that the device is not the same as the model
                 return torch.zeros(self.x_graph.num_node_features, dtype=torch.float32,
                                    device=x.device)
             case _:
