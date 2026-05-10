@@ -11,7 +11,9 @@ from torch_geometric.data import Data
 from shapiq_games.benchmark.graphshapiq_xai.base import GraphGame
 from shapiq_games.benchmark.graphshapiq_xai.test_models import GCN2Layer
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 x = torch.tensor([[1.0, 5.0, 3.0], [4.0, 2.0, 6.0]], dtype=torch.float)
 
@@ -27,16 +29,13 @@ game = GraphGame(
     x_graph=x_graph,
     baseline_strategy="max",
     normalize=False,
-    class_id=None,
+    class_index=None,
     verbose=True,
 )
 
 coalition = np.array([1, 0])
 masked_graph = game.mask_input(coalition)
 
-logger.log("Original Graph Features")
-logger.log(x_graph.x, "\n")
-logger.log("Coalition (Mask Array)")
-logger.log(coalition, "\n")
-logger.log("Masked Graph Features")
-logger.log(masked_graph.x)
+logger.info("Original Graph Features:\n%s", x_graph.x)
+logger.info("Coalition (Mask Array):\n%s", coalition)
+logger.info("Masked Graph Features:\n%s", masked_graph.x)

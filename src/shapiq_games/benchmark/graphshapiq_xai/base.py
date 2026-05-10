@@ -10,7 +10,6 @@ import torch
 
 if TYPE_CHECKING:
     from torch_geometric.data import Data
-    from torch_geometric.nn.models import GAT, GCN, GIN
 
 from shapiq.game import Game
 
