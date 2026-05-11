@@ -1,0 +1,9 @@
+# Default Benchmark Configuration
+# Minimal fast verification configuration provided for Runner testing
+
+game: "CaliforniaHousing"
+index: "SV"
+approximator: "KernelSHAPIQ"
+max_order: 1
+budget: 500
+n_seeds: 3
