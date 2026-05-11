@@ -1,0 +1,203 @@
+# 📄 Lastenheft (MVP)
+**Projekt:** Benchmark Leaderboard für shapiq Approximatoren  
+Research on Shapley value approximation is evolving rapidly, with new methods such as KernelSHAP, SHAP-IQ, SVARM, SPEX, and LeverageSHAP appearing frequently. 
+
+Currently, it is difficult for users of shapiq to answer a fundamental question:
+
+> "Which approximator should I use for my game, given my computational budget and interaction index?"
+
+There is no unified, up-to-date, and easily accessible system that provides a clear comparison of approximators across different games, indices, and budgets.
+
+The goal of this project is to address this gap by building a **benchmark leaderboard** that:
+
+- compares approximators across different scenarios  
+- provides interpretable performance metrics  
+- supports extensibility for new approximators and games  
+
+This project is designed as a **demo system**, with a focus on usability, clarity, and extensibility rather than full-scale production benchmarking.
+---
+
+## 1. Ziel des Projekts
+
+Der Nutzer kann **Approximatoren auf einem definierten Game vergleichen**, indem das System Ground Truth berechnet und ein **Ranking basierend auf nMSE** bereitstellt.
+
+---
+
+## 2. Zielgruppe
+
+- XAI-Forscher  
+- Entwickler, die Approximatoren evaluieren möchten  
+
+---
+
+## 3. MVP-Ziel (Scope)
+
+> Das MVP ermöglicht den Vergleich von **zwei Approximatoren** auf einem definierten Game und zeigt ein **Ranking basierend auf nMSE** an.
+
+---
+
+## 4. Nicht-Ziele (Out of Scope)
+
+- Mehrere Metriken (nur nMSE im MVP)  
+- Mehrere Game-Typen  
+- Große Benchmark-Sets  
+- Komplexe Visualisierungen  
+- Online/Cloud Deployment  
+
+---
+
+## 5. Funktionale Anforderungen
+
+### 5.1 Benchmark-Run
+
+Ein Benchmark-Run besteht aus:
+- 1 Game  
+- mindestens 2 Approximatoren  
+- definierter Config (Budget, Seed, Interaktionen)
+
+Der Run wird durch den Runner orchestriert.
+
+---
+
+### 5.2 Ground Truth
+
+- Ground Truth wird für das gegebene Game berechnet  
+- dient als Referenz für den Vergleich  
+- ist austauschbar (Strategie-Prinzip)
+
+---
+
+### 5.3 Approximatoren
+
+- mehrere Approximatoren können in einem Run ausgeführt werden  
+- jeder Approximator wird unabhängig ausgeführt  
+- Fehler einzelner Approximatoren stoppen nicht den gesamten Run  
+
+---
+
+### 5.4 Scoring (nMSE)
+
+- Berechnung von nMSE zwischen:
+  - Ground Truth  
+  - Approximator-Ergebnis  
+
+---
+
+### 5.5 Ranking
+
+- Sortierung der Approximatoren nach nMSE  
+- nur erfolgreiche Runs werden berücksichtigt  
+- fehlgeschlagene Approximatoren werden separat als „failed“ angezeigt  
+
+---
+
+### 5.6 Ergebnis-Speicherung
+
+- Ergebnisse eines Runs werden gespeichert  
+- Speicherung erfolgt im ResultStore  
+
+---
+
+## 6. Datenformat (zentrale Annahme)
+
+Alle Approximatoren und Ground-Truth-Methoden liefern ein einheitliches Format:
+
+> **Interaktion → Wert**
+
+Beispiel:
+- `{A} → 0.2`  
+- `{A,B} → 0.1`  
+
+Eigenschaften:
+- unterstützt einzelne Features und Interaktionen  
+- Grundlage für Vergleich und Metriken  
+
+---
+
+## 7. Systemübersicht
+
+Das System besteht aus folgenden Komponenten:
+
+- **Config**
+  - definiert Game, Approximatoren, Parameter  
+
+- **Runner**
+  - orchestriert den Benchmark-Run  
+  - führt Approximatoren aus  
+  - koordiniert Ground Truth und Scoring  
+
+- **Approximator**
+  - berechnet Approximationen für ein Game  
+
+- **Ground Truth / Comparator**
+  - berechnet Referenzwerte  
+
+- **Metrics / Scorer**
+  - berechnet nMSE und erstellt Ranking  
+
+- **ResultStore**
+  - speichert Ergebnisse  
+
+- **UI (optional im MVP)**
+  - zeigt Ranking und Ergebnisse  
+
+---
+
+## 8. Konfigurationsanforderungen
+
+Minimale Config enthält:
+- Game  
+- Liste von Approximatoren  
+- Budget  
+- Interaktionsdefinition  
+- Seed  
+
+Die Config steuert alle Komponenten des Runs.
+
+---
+
+## 9. Nicht-funktionale Anforderungen
+
+### 9.1 Reproduzierbarkeit
+- deterministische Runs durch festen Seed  
+- gleiche Config → gleiche Ergebnisse  
+
+---
+
+### 9.2 Erweiterbarkeit
+
+- neue Approximatoren können ohne Änderung bestehender Komponenten integriert werden  
+- Integration eines neuen Approximators soll in < 1 Stunde möglich sein  
+
+---
+
+### 9.3 Fehlertoleranz
+
+- Fehler eines Approximators stoppt nicht den gesamten Run  
+- Fehler werden protokolliert und separat angezeigt  
+
+---
+
+## 10. Abnahmekriterien (MVP)
+
+- Ein Run läuft mit definiertem Game und fixem Seed deterministisch durch  
+- Ground Truth wird korrekt berechnet  
+- nMSE wird für beide Approximatoren berechnet  
+- Ranking zeigt Approximatoren korrekt nach nMSE sortiert  
+- Fehlgeschlagene Approximatoren werden separat angezeigt  
+
+---
+
+## 11. Arbeitsweise (Team)
+
+- klare Verantwortlichkeiten pro Komponente  
+- paralleles Arbeiten durch entkoppelte Komponenten (z. B. Mock-Daten)  
+- Vorbereitung von Entscheidungen vor Meetings (z. B. Formatvorschläge)  
+
+---
+
+## 12. Offene Punkte
+
+- finales Output-Format (Detaildefinition)  
+- konkrete Ground-Truth-Strategien  
+- genaue Schnittstellen zwischen Komponenten  
