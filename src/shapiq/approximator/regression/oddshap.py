@@ -13,6 +13,10 @@ import numpy as np
 from scipy.special import binom
 
 from shapiq.approximator.base import Approximator
+from shapiq.approximator.regression._oddshap_proxyspex_adapter import (
+    lgboost_to_fourier,
+    top_k_interactions,
+)
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.explainer import TreeExplainer
 
@@ -392,28 +396,37 @@ class OddSHAP(Approximator):
         self.odd_interaction_matrix_binary = interaction_matrix_binary
         self.n_active_interactions = len(active_interactions)
 
-    # TODO: ProxySPEX adapter logic (Wu)
     def _select_odd_interactions(
             self,
             *,
             coalitions: np.ndarray,
             game_values: np.ndarray,
             n_candidate_interactions: int,
-            surrogate_model: Any | None = None, # for later usage
+            surrogate_model: Any | None = None,
     ) -> list[tuple[int, ...]]:
-        """ Return selected higher-order odd interactions for the OddSHAP support
+        """Return selected higher-order odd interactions for the OddSHAP support.
 
-        Args
-
+        Uses ProxySPEX-style screening: convert the LightGBM surrogate into its
+        sparse Fourier representation, then keep the top-k higher-order
+        odd-cardinality interactions by coefficient magnitude. Singletons and
+        the empty interaction are excluded here because _build_support adds
+        them unconditionally.
         """
-        del coalitions, game_values, surrogate_model
+        del coalitions, game_values  # already encoded in the fitted surrogate
 
-        if n_candidate_interactions <= 0:
+        if n_candidate_interactions <= 0 or surrogate_model is None:
             return []
 
-        # define the interface only
-        # The actual ProxySPEX-style adapter will be plugged in later.
-        return []
+        fourier_coeffs = lgboost_to_fourier(surrogate_model.booster_.dump_model())
+        higher_order_odd = {
+            interaction: coefficient
+            for interaction, coefficient in fourier_coeffs.items()
+            if len(interaction) >= 3 and len(interaction) % 2 == 1
+        }
+        selected = top_k_interactions(
+            higher_order_odd, k=n_candidate_interactions, odd=False,
+        )
+        return list(selected.keys())
 
 
     def _get_regression_row_weights(self) -> np.ndarray:
