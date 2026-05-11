@@ -34,17 +34,17 @@ def main() -> None:
         approximator_class=ProxySHAP,
     )
 
-    uri, db_name = load_env()
+    # uri, db_name = load_env()
 
-    db = MongoDBClient(
-        uri=uri,
-        db_name=db_name,
-    )
-
-    save_raw_results(
-        db=db,
-        raw_results=benchmark_result["raw_results"],
-    )
+    # db = MongoDBClient(
+    #     uri=uri,
+    #     db_name=db_name,
+    # )
+    #
+    # save_raw_results(
+    #     db=db,
+    #     raw_results=benchmark_result["raw_results"],
+    # )
 
     print(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
 
