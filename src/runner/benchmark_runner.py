@@ -17,7 +17,7 @@ def run_benchmark(
     budget: int,
     index: InteractionIndex,
     approximator_class: type[Approximator],
-) -> None:
+) -> dict:
 
     # Define the values
     #TODO: index approximator validation (e.g. certain indices like SV expect specific order(1)! )
@@ -51,8 +51,10 @@ def run_benchmark(
     aggregated_result = aggregate_run_records(results)
 
     #print-out
-    print("number of raw results:", len(results))
-    print("First raw run record:")
-    print(json.dumps(results[0], indent=2))
-    print("\nAggregated result:")
-    print(json.dumps(aggregated_result, indent=2))
+    # print("number of raw results:", len(results))
+    # print("First raw run record:")
+    # print(json.dumps(results[0], indent=2))
+    # print("\nAggregated result:")
+    # print(json.dumps(aggregated_result, indent=2))
+
+    return aggregated_result
