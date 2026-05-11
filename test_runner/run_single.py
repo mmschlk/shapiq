@@ -5,7 +5,7 @@ from shapiq_games.synthetic import DummyGame
 from importlib.metadata import version
 SHAPIQ_VERSION = version("shapiq")
 
-RESULTS_PATH = "results_raw.jsonl"
+RESULTS_PATH = "../ui/results_raw.jsonl"
 
 # --- Feste Parameter ---
 N_PLAYERS = 10

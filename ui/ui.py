@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 RESULTS_PATH = "results_raw.jsonl"
+LINE_STYLES = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
 
 
 def load_and_aggregate(path: str) -> pd.DataFrame:
@@ -18,6 +19,11 @@ def load_and_aggregate(path: str) -> pd.DataFrame:
         mse_mean=("mse", "mean"),
         mse_std=("mse", "std"),
         mae_mean=("mae", "mean"),
+        mae_std=("mae", "std"),
+        ground_truth_method=("ground_truth_method", "first"),
+        runtime_mean=("runtime_seconds", "mean"),
+        runtime_min=("runtime_seconds", "min"),
+        runtime_max=("runtime_seconds", "max"),
         n_seeds=("seed", "count"),
     ).reset_index()
 
@@ -30,6 +36,11 @@ def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
         mse_mean=("mse_mean", "mean"),
         mse_std=("mse_std", "mean"),
         mae_mean=("mae_mean", "mean"),
+        mae_std=("mae_std", "mean"),
+        ground_truth_method=("ground_truth_method", "first"),
+        runtime_mean=("runtime_mean", "mean"),
+        runtime_min=("runtime_min", "min"),
+        runtime_max=("runtime_max", "max"),
         n_seeds=("n_seeds", "sum"),
     ).reset_index()
 
@@ -37,13 +48,32 @@ def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
     best = best.sort_values("mse_mean")
     best = best.rename(columns={
         "approximator_name": "Approximator",
-        "budget": "Best Budget",
+        "budget": "Budget at best MSE",
         "mse_mean": "MSE (mean)",
         "mse_std": "MSE (std)",
         "mae_mean": "MAE (mean)",
+        "mae_std": "MAE (std)",
+        "ground_truth_method": "GT Method",
+        "runtime_mean": "Runtime mean (s)",
+        "runtime_min": "Runtime min (s)",
+        "runtime_max": "Runtime max (s)",
         "n_seeds": "Seeds",
     })
-    return best[["Approximator", "Best Budget", "MSE (mean)", "MSE (std)", "MAE (mean)", "Seeds"]].round(20)
+
+    runtime_cols = ["Runtime mean (s)", "Runtime min (s)", "Runtime max (s)"]
+
+    def format_value(col, x):
+        if not isinstance(x, float):
+            return x
+        if col in runtime_cols:
+            return round(x, 4)
+        return f"{x:.4e}"
+
+    df = best[["Approximator", "Budget at best MSE", "MSE (mean)", "MSE (std)", "MAE (mean)", "MAE (std)", "GT Method",
+               "Runtime mean (s)", "Runtime min (s)", "Runtime max (s)", "Seeds"]].copy()
+    for col in df.columns:
+        df[col] = df[col].apply(lambda x: format_value(col, x))
+    return df
 
 
 def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFrame:
@@ -52,32 +82,55 @@ def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFra
     best = best.sort_values("mse_mean")
     best = best.rename(columns={
         "approximator_name": "Approximator",
-        "budget": "Best Budget",
+        "budget": "Budget at best MSE",
         "mse_mean": "MSE (mean)",
         "mse_std": "MSE (std)",
         "mae_mean": "MAE (mean)",
+        "mae_std": "MAE (std)",
+        "ground_truth_method": "GT Method",
+        "runtime_mean": "Runtime mean (s)",
+        "runtime_min": "Runtime min (s)",
+        "runtime_max": "Runtime max (s)",
         "n_seeds": "Seeds",
     })
-    return best[["Approximator", "Best Budget", "MSE (mean)", "MSE (std)", "MAE (mean)", "Seeds"]].round(20)
+
+    runtime_cols = ["Runtime mean (s)", "Runtime min (s)", "Runtime max (s)"]
+
+    def format_value(col, x):
+        if not isinstance(x, float):
+            return x
+        if col in runtime_cols:
+            return round(x, 4)
+        return f"{x:.4e}"
+
+    df = best[["Approximator", "Budget at best MSE", "MSE (mean)", "MSE (std)", "MAE (mean)", "MAE (std)", "GT Method",
+               "Runtime mean (s)", "Runtime min (s)", "Runtime max (s)", "Seeds"]].copy()
+    for col in df.columns:
+        df[col] = df[col].apply(lambda x: format_value(col, x))
+    return df
 
 
-def get_plot(df_agg: pd.DataFrame, selected_game: str):
+def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse"):
     df_filtered = df_agg[df_agg["game_name"] == selected_game]
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    for approx_name, group in df_filtered.groupby("approximator_name"):
+    mean_col = f"{metric}_mean"
+    std_col = f"{metric}_std"
+
+    for i, (approx_name, group) in enumerate(df_filtered.groupby("approximator_name")):
+        style = LINE_STYLES[i % len(LINE_STYLES)]
         group = group.sort_values("budget")
-        ax.plot(group["budget"], group["mse_mean"], marker="o", label=approx_name)
+        ax.plot(group["budget"], group[mean_col], marker="o", linestyle=style, label=approx_name)
         ax.fill_between(
             group["budget"],
-            group["mse_mean"] - group["mse_std"].fillna(0),
-            group["mse_mean"] + group["mse_std"].fillna(0),
+            group[mean_col] - group[std_col].fillna(0),
+            group[mean_col] + group[std_col].fillna(0),
             alpha=0.2,
         )
 
     ax.set_xlabel("Budget (coalition evaluations)")
-    ax.set_ylabel("MSE (mean over seeds)")
-    ax.set_title("MSE vs. Budget")
+    ax.set_ylabel(f"{metric.upper()} (mean over seeds)")
+    ax.set_title(f"{metric.upper()} vs. Budget")
     ax.set_xscale("log")
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -116,19 +169,32 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         )
 
     with gr.Tab("MSE vs. Budget"):
-        game_dropdown = gr.Dropdown(
+        game_dropdown_mse = gr.Dropdown(
             choices=df_agg["game_name"].unique().tolist(),
             value=df_agg["game_name"].iloc[0],
             label="Game"
         )
 
-        plot = gr.Plot(
+        plot_mse = gr.Plot(
             value=get_plot(df_agg, df_agg["game_name"].iloc[0])  # direkt beim Start rendern
         )
-        game_dropdown.change(
-            fn=lambda g: get_plot(df_agg, g),
-            inputs=game_dropdown,
-            outputs=plot
+        game_dropdown_mse.change(
+            fn=lambda g: get_plot(df_agg, g, "mse"),
+            inputs=game_dropdown_mse,
+            outputs=plot_mse
+        )
+
+    with gr.Tab("MAE vs. Budget"):
+        game_dropdown_mae = gr.Dropdown(
+            choices=df_agg["game_name"].unique().tolist(),
+            value=df_agg["game_name"].iloc[0],
+            label="Game"
+        )
+        plot_mae = gr.Plot(value=get_plot(df_agg, df_agg["game_name"].iloc[0], "mae"))
+        game_dropdown_mae.change(
+            fn=lambda g: get_plot(df_agg, g, "mae"),
+            inputs=game_dropdown_mae,
+            outputs=plot_mae
         )
 
 demo.launch()
