@@ -18,7 +18,6 @@ from ._oddshap_proxyspex_adapter import (
     top_k_interactions,
 )
 from shapiq.interaction_values import InteractionValues
-from shapiq.tree.explainer import TreeExplainer
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -207,6 +206,11 @@ class OddSHAP(Approximator):
         self.runtime_last_approximate_run["proxy_fit"] = surrogate_end_time - surrogate_start_time
 
         # 2. explain full coalition
+        # Lazy import: top-level import of TreeExplainer creates a circular
+        # dependency once OddSHAP is registered in shapiq.approximator.regression
+        # because shapiq.tree.explainer transitively imports shapiq.explainer.
+        from shapiq.tree.explainer import TreeExplainer
+
         explain_start_time = time.time()
         tree_explainer = TreeExplainer(
             model=surrogate_model,
