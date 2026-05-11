@@ -161,3 +161,19 @@ def test_skewed_interaction_game():
 
     # dominant player (index 0) must have the highest SV
     assert result[(dominant,)] == pytest.approx(max(result.values[1:]), abs=1e-6)
+
+
+def test_reproducibility():
+    n, budget = 6, 100
+    game = DummyGame(n, interaction=(1, 2))
+
+    # Run 1
+    approx1 = LeverageSHAP(n, random_state=42)
+    res1 = approx1.approximate(budget, game)
+
+    # Run 2
+    approx2 = LeverageSHAP(n, random_state=42)
+    res2 = approx2.approximate(budget, game)
+
+    # Compare
+    np.testing.assert_array_equal(res1.values, res2.values)
