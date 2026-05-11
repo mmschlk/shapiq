@@ -1,9 +1,39 @@
 import time
-
 from approximator_runner import approximate
-from old_metrics_computer import compute_metrics
 from record_builder import create_run_record
 from metrics.evaluator import compute_all_metrics
+import numpy as np
+
+def align_interaction_values(ground_truth, approx_values):
+    gt_lookup = ground_truth.interaction_lookup
+    approx_lookup = approx_values.interaction_lookup
+
+    gt_keys = set(gt_lookup.keys())
+    approx_keys = set(approx_lookup.keys())
+
+    if gt_keys != approx_keys:
+        raise ValueError(
+            "Interaction keys do not match. "
+            f"Missing in approx: {len(gt_keys - approx_keys)}. "
+            f"Missing in ground truth: {len(approx_keys - gt_keys)}."
+        )
+
+    interactions = sorted(
+        gt_keys,
+        key=lambda interaction: (len(interaction), interaction),
+    )
+
+    gt_values = np.array(
+        [ground_truth.values[gt_lookup[interaction]] for interaction in interactions],
+        dtype=float,
+    )
+
+    approx_values_aligned = np.array(
+        [approx_values.values[approx_lookup[interaction]] for interaction in interactions],
+        dtype=float,
+    )
+
+    return gt_values, approx_values_aligned
 
 
 def run_experiment(
@@ -32,10 +62,16 @@ def run_experiment(
                 seed=approx_seed,
             )
 
+            #align interaction values
+            gt_values, approx_values_aligned = align_interaction_values(
+                ground_truth,
+                approx_values,
+            )
+
             # calculate metrics for each run
             metric_results = compute_all_metrics(
-                ground_truth=ground_truth.values,
-                estimated=approx_values.values
+                ground_truth=gt_values,
+                estimated=approx_values_aligned,
             )
 
             # metric_results: dict[str, float] = compute_metrics(

@@ -5,8 +5,6 @@ from custom_types import InteractionIndex
 from experiment_runner import run_experiment
 from ground_truth_computer import compute_ground_truth
 from shapiq.approximator import Approximator
-from shapiq_games.synthetic import SOUM
-
 
 def run_benchmark(
     *,
@@ -53,6 +51,7 @@ def run_benchmark(
     aggregated_result = aggregate_run_records(results)
 
     #print-out
+    print("number of raw results:", len(results))
     print("First raw run record:")
     print(json.dumps(results[0], indent=2))
     print("\nAggregated result:")

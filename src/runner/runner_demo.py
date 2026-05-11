@@ -23,7 +23,7 @@ def main() -> None:
         game_params=game_params,
         game_seed=game_seed,
         max_order=max_order,
-        number_of_different_approx_seeds=5,
+        number_of_different_approx_seeds=30,
         budget=100,
         index="SII",
         approximator_class=ProxySHAP,
