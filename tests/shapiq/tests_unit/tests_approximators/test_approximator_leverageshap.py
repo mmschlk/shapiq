@@ -164,6 +164,7 @@ def test_skewed_interaction_game():
 
 
 def test_reproducibility():
+    """Same seed should produce identical approximations across runs."""
     n, budget = 6, 100
 
     # Use separate game instances so access counters don't interfere
@@ -184,3 +185,19 @@ def test_reproducibility():
     # Other run metadata should match exactly
     assert res1.estimation_budget == res2.estimation_budget
     assert res1.estimated == res2.estimated
+
+
+def test_reproducibility_different_seeds():
+    """Different seeds should generally produce different approximations."""
+    n, budget = 6, 100
+
+    # Use separate game instances so access counters don't interfere
+    game1 = DummyGame(n, interaction=(1, 2))
+    game2 = DummyGame(n, interaction=(1, 2))
+
+    # use fresh game instances for independent runs
+    res_a = LeverageSHAP(n, random_state=0).approximate(budget, game1)
+    res_b = LeverageSHAP(n, random_state=1).approximate(budget, game2)
+
+    # very unlikely to be identical; assert they are not exactly equal
+    assert not np.array_equal(res_a.values, res_b.values)
