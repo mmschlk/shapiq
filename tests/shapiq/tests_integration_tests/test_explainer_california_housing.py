@@ -126,7 +126,7 @@ class TestCaliforniaHousingExactComputer:
     @pytest.mark.parametrize("index", get_args(TabularExplainerIndices))
     @pytest.mark.parametrize("order", [1, 2, 3, 4, 5, 6, 7])
     def test_with_recompute(self, california_interaction_values, index, order):
-        """Computes the ground truth on the test demo and compares it to the old ground truth."""
+        """Computes the ground truth on the test runner and compares it to the old ground truth."""
 
         _ = get_expected_index_or_skip(index, order)
 

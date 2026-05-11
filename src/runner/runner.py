@@ -1,10 +1,9 @@
 import json
 
 from aggregator import aggregate_run_records
-from custom_types import InteractionIndex, MetricFunction
+from custom_types import InteractionIndex
 from experiment_runner import run_experiment
 from ground_truth_computer import compute_ground_truth
-from old_metrics import mse_metric, mae_metric
 from shapiq.approximator import ProxySHAP, Approximator
 from shapiq_games.synthetic import SOUM
 
@@ -58,12 +57,10 @@ def runner() -> None:
     #aggregation
     aggregated_result = aggregate_run_records(results)
 
-
     print("First raw run record:")
     print(json.dumps(results[0], indent=2))
     print("\nAggregated result:")
     print(json.dumps(aggregated_result, indent=2))
-    print(json.dumps(results[0], indent=2))
 
 if __name__ == "__main__":
     runner()
