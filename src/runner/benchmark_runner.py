@@ -4,30 +4,32 @@ from aggregator import aggregate_run_records
 from custom_types import InteractionIndex
 from experiment_runner import run_experiment
 from ground_truth_computer import compute_ground_truth
-from shapiq.approximator import ProxySHAP, Approximator
+from shapiq.approximator import Approximator
 from shapiq_games.synthetic import SOUM
 
 
-
-def runner() -> None:
-    print("This is a test to see how game approximation works")
+def run_benchmark(
+    *,
+    game_seed: int,
+    max_order: int,
+    number_of_different_approx_seeds: int,
+    budget: int,
+    n_players: int,
+    n_basis_games: int,
+    min_interaction_size: int,
+    index: InteractionIndex,
+    approximator_class: type[Approximator],
+) -> None:
 
     # Define the values
-    game_seed = 42
-    max_order = 2
-    number_of_different_approx_seeds = 5
     approx_seeds = range(number_of_different_approx_seeds)
-    # select index (certain indices like SV expect specific order(1)! )
-    # We probably also need to check which approximator supports which index.
-    index : InteractionIndex = "SII"
-    game = SOUM(n=10, n_basis_games=20, min_interaction_size=1,
+    #TODO: index approximator validation (e.g. certain indices like SV expect specific order(1)! )
+    game = SOUM(n=n_players, n_basis_games=n_basis_games, min_interaction_size=min_interaction_size,
                 max_interaction_size=max_order, random_state=game_seed)
-    #We only provide the approximator class to build approximators with different seeds
-    approximator_class: type[Approximator] = ProxySHAP
-    budget = 100
 
     #Compute ground truth
     ground_truth = compute_ground_truth(game=game, index=index, max_order=max_order)
+
     # approximate values [n times]
     results = run_experiment(
         game=game,
@@ -61,7 +63,3 @@ def runner() -> None:
     print(json.dumps(results[0], indent=2))
     print("\nAggregated result:")
     print(json.dumps(aggregated_result, indent=2))
-
-if __name__ == "__main__":
-    runner()
-
