@@ -3,10 +3,45 @@ import uuid
 from datetime import datetime, timezone
 
 
+METRIC_KEYS = [
+    "mse",
+    "mae",
+    "mse_normalized",
+    "spearman",
+    "kendall_tau",
+    "precision_at_k",
+]
+
+
+def aggregate_metric_values(successful_runs: list[dict]) -> dict:
+    aggregated_metrics = {}
+
+    for metric_name in METRIC_KEYS:
+        values = []
+
+        for record in successful_runs:
+            if "metrics" not in record:
+                raise KeyError("Successful run record is missing 'metrics'.")
+
+            if record["metrics"] is None:
+                raise ValueError("Successful run record has metrics=None.")
+
+            metrics = record["metrics"]
+            value = metrics.get(metric_name)
+
+            if value is not None:
+                values.append(value)
+
+        if values:
+            aggregated_metrics[metric_name] = float(np.mean(values))
+        else:
+            aggregated_metrics[metric_name] = None
+
+    return aggregated_metrics
+
+
 def aggregate_run_records(run_records: list[dict]) -> dict:
     successful_runs = []
-    mse_values_list = []
-    mae_values_list = []
     runtime_values = []
 
     for record in run_records:
@@ -15,15 +50,7 @@ def aggregate_run_records(run_records: list[dict]) -> dict:
 
         successful_runs.append(record)
 
-        mse_value = record["metrics"]["mse"]
-        if mse_value is not None:
-            mse_values_list.append(mse_value)
-
-        mae_value = record["metrics"]["mae"]
-        if mae_value is not None:
-            mae_values_list.append(mae_value)
-
-        runtime_value = record["runtime_seconds"]
+        runtime_value = record.get("runtime_seconds")
         if runtime_value is not None:
             runtime_values.append(runtime_value)
 
@@ -31,9 +58,6 @@ def aggregate_run_records(run_records: list[dict]) -> dict:
         raise ValueError("No successful runs to aggregate.")
 
     first_record = successful_runs[0]
-
-    mse_values = np.array(mse_values_list)
-    mae_values = np.array(mae_values_list)
 
     if runtime_values:
         runtime_seconds = float(np.mean(np.array(runtime_values)))
@@ -62,14 +86,7 @@ def aggregate_run_records(run_records: list[dict]) -> dict:
         "run_failed": False,
         "error_message": None,
 
-        "metrics": {
-            "mse": float(np.mean(mse_values)) if len(mse_values) > 0 else None,
-            "mae": float(np.mean(mae_values)) if len(mae_values) > 0 else None,
-            "mse_normalized": None,
-            "spearman": None,
-            "kendall_tau": None,
-            "precision_at_k": None,
-        },
+        "metrics": aggregate_metric_values(successful_runs),
 
         "runtime_seconds": runtime_seconds,
 
