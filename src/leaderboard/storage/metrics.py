@@ -2,8 +2,8 @@ from typing import Dict, List
 from collections import defaultdict
 import numpy as np
 
-from config import RunConfig
-from database import MongoDBClient
+from leaderboard.storage.config import RunConfig
+from leaderboard.storage.database import MongoDBClient
 
 
 class MetricsLoader:

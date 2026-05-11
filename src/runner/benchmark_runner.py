@@ -57,4 +57,7 @@ def run_benchmark(
     # print("\nAggregated result:")
     # print(json.dumps(aggregated_result, indent=2))
 
-    return aggregated_result
+    return {
+        "raw_results": results,
+        "aggregated_result": aggregated_result,
+    }

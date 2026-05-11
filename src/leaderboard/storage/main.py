@@ -4,9 +4,8 @@ import os
 import json
 from dotenv import load_dotenv
 
-from database import MongoDBClient
-from config import RunConfig
-from metrics import MetricsLoader
+from leaderboard.storage.database import MongoDBClient
+from leaderboard.storage.metrics import MetricsLoader
 
 
 def load_env():

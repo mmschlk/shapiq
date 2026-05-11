@@ -87,9 +87,7 @@ def run_experiment(
                 game_name=game_name,
                 game_params=game_params,
                 approximator_class=approximator_class,
-                approximator_params={
-                    "random_state": approx_seed,
-                },
+                approximator_params={},
                 index=index,
                 max_order=max_order,
                 budget=budget,
@@ -116,9 +114,7 @@ def run_experiment(
                 game_name=game_name,
                 game_params=game_params,
                 approximator_class=approximator_class,
-                approximator_params={
-                    "random_state": approx_seed,
-                },
+                approximator_params={},
                 index=index,
                 max_order=max_order,
                 budget=budget,
