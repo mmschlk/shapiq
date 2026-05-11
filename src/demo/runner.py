@@ -4,9 +4,10 @@ from aggregator import aggregate_run_records
 from custom_types import InteractionIndex, MetricFunction
 from experiment_runner import run_experiment
 from ground_truth_computer import compute_ground_truth
-from metrics import mse_metric, mae_metric
+from old_metrics import mse_metric, mae_metric
 from shapiq.approximator import ProxySHAP, Approximator
 from shapiq_games.synthetic import SOUM
+
 
 
 def runner() -> None:
@@ -25,13 +26,6 @@ def runner() -> None:
     #We only provide the approximator class to build approximators with different seeds
     approximator_class: type[Approximator] = ProxySHAP
     budget = 100
-    #metrics are just functions for now, this should be refined into a clean easy to work with structure
-    #maybe build a metric object
-    metrics: dict[str, MetricFunction] = {
-        "mse": mse_metric,
-        "mae": mae_metric,
-    }
-
 
     #Compute ground truth
     ground_truth = compute_ground_truth(game=game, index=index, max_order=max_order)
@@ -52,8 +46,15 @@ def runner() -> None:
         max_order=max_order,
         budget=budget,
         approx_seeds=approx_seeds,
-        metrics=metrics,
     )
+
+    #debugging
+    # for record in results:
+    #     print("failed:", record["run_failed"])
+    #     print("error:", record["error_message"])
+    #     print()
+
+
     #aggregation
     aggregated_result = aggregate_run_records(results)
 

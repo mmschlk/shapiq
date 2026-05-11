@@ -1,8 +1,9 @@
 import time
 
 from approximator_runner import approximate
-from metrics_computer import compute_metrics
+from old_metrics_computer import compute_metrics
 from record_builder import create_run_record
+from metrics.evaluator import compute_all_metrics
 
 
 def run_experiment(
@@ -17,7 +18,6 @@ def run_experiment(
     max_order,
     budget,
     approx_seeds,
-    metrics,
 ) -> list[dict]:
     results = []
     for approx_seed in approx_seeds:
@@ -33,11 +33,16 @@ def run_experiment(
             )
 
             # calculate metrics for each run
-            metric_results: dict[str, float] = compute_metrics(
-                ground_truth=ground_truth,
-                approximation=approx_values,
-                metrics=metrics
+            metric_results = compute_all_metrics(
+                ground_truth=ground_truth.values,
+                estimated=approx_values.values
             )
+
+            # metric_results: dict[str, float] = compute_metrics(
+            #     ground_truth=ground_truth,
+            #     approximation=approx_values,
+            #     metrics=metrics
+            # )
 
             runtime_seconds = time.perf_counter() - start_time
 
@@ -56,10 +61,10 @@ def run_experiment(
                 metrics={
                     "mse": metric_results.get("mse"),
                     "mae": metric_results.get("mae"),
-                    "mse_normalized": None,
-                    "spearman": None,
-                    "kendall_tau": None,
-                    "precision_at_k": None,
+                    "mse_normalized": metric_results.get("mse_normalized"),
+                    "spearman": metric_results.get("spearman"),
+                    "kendall_tau": metric_results.get("kendall_tau"),
+                    "precision_at_k": metric_results.get("precision_at_k"),
                 },
                 runtime_seconds=runtime_seconds,
                 run_failed=False,
@@ -90,4 +95,4 @@ def run_experiment(
             )
 
         results.append(run_record)
-        return results
+    return results
