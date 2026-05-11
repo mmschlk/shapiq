@@ -105,9 +105,11 @@ def _tree_to_fourier(tree_info: dict[str, Any]) -> dict[tuple[int, ...], float]:
         for interaction in set(left) | set(right):
             l_val = left.get(interaction, 0.0)
             r_val = right.get(interaction, 0.0)
-            combined[interaction] = (l_val + r_val) / 2
+            #combined[interaction] = (l_val + r_val) / 2
+            combined[interaction] = combined.get(interaction, 0.0) + (l_val + r_val) / 2
             extended = tuple(sorted(set(interaction) | {feature_idx}))
-            combined[extended] = (l_val - r_val) / 2
+            #combined[extended] = (l_val - r_val) / 2
+            combined[extended] = combined.get(extended, 0.0) + (l_val - r_val) / 2
         return combined
 
     def _dfs(node: dict[str, Any]) -> dict[tuple[int, ...], float]:

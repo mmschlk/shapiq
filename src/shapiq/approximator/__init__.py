@@ -19,6 +19,7 @@ from .regression import (
     RegressionFBII,
     RegressionFSII,
     kADDSHAP,
+    OddSHAP,
 )
 from .sparse import SPEX, ProxySPEX
 
@@ -35,6 +36,7 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     ProxySPEX,
     ProxySHAP,
     MSRBiased,
+    OddSHAP,
 ]
 
 # contains all SI approximators

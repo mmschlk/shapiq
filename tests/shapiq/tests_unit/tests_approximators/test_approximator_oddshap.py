@@ -30,7 +30,7 @@ import numpy as np
 import pytest
 from scipy.special import binom
 
-from shapiq.approximator.regression.oddshap import OddSHAP
+from shapiq.approximator.regression import OddSHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import SOUM, DummyGame

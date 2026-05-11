@@ -13,7 +13,7 @@ import numpy as np
 from scipy.special import binom
 
 from shapiq.approximator.base import Approximator
-from shapiq.approximator.regression._oddshap_proxyspex_adapter import (
+from ._oddshap_proxyspex_adapter import (
     lgboost_to_fourier,
     top_k_interactions,
 )
@@ -30,7 +30,7 @@ class OddSHAP(Approximator):
 
     """
 
-    valid_indices: tuple[str, ...] = ("SV")
+    valid_indices: tuple[str, ...] = ("SV",)
 
     @staticmethod
     def _init_sampling_weights_static(n: int) -> np.ndarray:
@@ -49,7 +49,11 @@ class OddSHAP(Approximator):
                 weight_vector[coalition_size] = 1.0 / (
                         (n - 1) * binom(n - 2, coalition_size - 1)
                 )
-        return weight_vector / np.sum(weight_vector)  # breaks when dividing by 0!!!!
+        total_weight = np.sum(weight_vector)
+        if total_weight == 0:
+            raise ValueError("OddSHAP sampling weights are undefined for n <= 1.")
+        return weight_vector / total_weight
+
 
     def __init__(
             self,
@@ -83,7 +87,12 @@ class OddSHAP(Approximator):
 
         self.regression_basis = regression_basis
         self.interaction_detection = interaction_detection
-        self.odd_only = odd_only
+        #self.odd_only = odd_only
+        if not odd_only:
+            raise ValueError(
+                "This OddSHAP implementation supports only odd_only=True."
+            )
+        self.odd_only = True
         self.interaction_factor = interaction_factor
         self.tree_params = tree_params
 
@@ -144,7 +153,7 @@ class OddSHAP(Approximator):
         #centered_game_values = game_values - empty_set_value  # normalize response relative to empty coalition
 
         # 4. Compute how many higher-order interactions OddSHAP is allowed to consider later
-        n_candidate_interactions = max(0, budget // self.interaction_factor - self.n) #TODO: does paper do it with or without subtraction?
+        n_candidate_interactions = max(0, budget // self.interaction_factor - self.n)
 
         # branch between: low-budget fallback and odd-regressioin path
         if budget < self.n * self.interaction_factor:
@@ -264,6 +273,7 @@ class OddSHAP(Approximator):
         # 2. detect odd higher-order interactions
         extraction_start_time = time.time()
         detected_interactions = self._select_odd_interactions(
+            budget=budget,
             coalitions=coalitions,
             game_values=game_values,
             n_candidate_interactions=n_candidate_interactions,
@@ -299,6 +309,10 @@ class OddSHAP(Approximator):
             baseline_value=empty_set_value,
         )
 
+        interaction_lookup = {(): 0}
+        for player in range(self.n):
+            interaction_lookup[(player,)] = player + 1
+
         regression_end_time = time.time()
         self.runtime_last_approximate_run["regression"] = regression_end_time - regression_start_time
 
@@ -308,13 +322,13 @@ class OddSHAP(Approximator):
             max_order=1,
             min_order=0,
             n_players=self.n,
+            interaction_lookup=interaction_lookup,
             baseline_value=float(empty_set_value),
             estimated=not budget >= 2 ** self.n,
             estimation_budget=budget,
             target_index="SV",
         )
 
-    # TODO: adjust if necessary later on (Wu)
     def _fit_surrogate_model(
             self,
             coalitions: np.ndarray,
@@ -399,6 +413,7 @@ class OddSHAP(Approximator):
     def _select_odd_interactions(
             self,
             *,
+            budget: int,
             coalitions: np.ndarray,
             game_values: np.ndarray,
             n_candidate_interactions: int,
@@ -412,10 +427,13 @@ class OddSHAP(Approximator):
         the empty interaction are excluded here because _build_support adds
         them unconditionally.
         """
-        del coalitions, game_values  # already encoded in the fitted surrogate
+        del coalitions, game_values
 
-        if n_candidate_interactions <= 0 or surrogate_model is None:
+        if surrogate_model is None:
             return []
+
+        #if n_candidate_interactions <= 0 or surrogate_model is None:
+            #return []
 
         fourier_coeffs = lgboost_to_fourier(surrogate_model.booster_.dump_model())
         higher_order_odd = {
@@ -423,8 +441,17 @@ class OddSHAP(Approximator):
             for interaction, coefficient in fourier_coeffs.items()
             if len(interaction) >= 3 and len(interaction) % 2 == 1
         }
+        # Full-budget mode: do not truncate the odd support
+        if budget >= 2 ** self.n:
+            return list(higher_order_odd.keys())
+
+        if n_candidate_interactions <= 0:
+            return []
+
         selected = top_k_interactions(
-            higher_order_odd, k=n_candidate_interactions, odd=False,
+            higher_order_odd,
+            k=n_candidate_interactions,
+            odd=False,  # already filtered to higher-order odd interactions above
         )
         return list(selected.keys())
 
