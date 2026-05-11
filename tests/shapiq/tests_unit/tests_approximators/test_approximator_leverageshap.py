@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from shapiq.approximator.regression import LeverageSHAP
+from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
 
@@ -201,3 +202,31 @@ def test_reproducibility_different_seeds():
 
     # very unlikely to be identical; assert they are not exactly equal
     assert not np.array_equal(res_a.values, res_b.values)
+
+
+def test_empirical_convergence_rate():
+    """The approximation error (w.r.t. ExactComputer) should decrease when the budget increases.
+
+    Use averaging across a few seeds to reduce stochastic noise in the test.
+    """
+
+    n = 6
+    seeds = [0, 1, 2, 3]
+
+    def game_factory():
+        return DummyGame(n, interaction=(0, 2))
+
+    # ground truth (ExactComputer expects (game, n_players))
+    exact = ExactComputer(game_factory(), n)
+    exact_sv = exact("SV").values[1:]
+
+    def mean_error(budget: int) -> float:
+        errs = []
+        for s in seeds:
+            res = LeverageSHAP(n, random_state=s).approximate(budget, game_factory())
+            errs.append(np.linalg.norm(exact_sv - res.values[1:]))
+        return float(np.mean(errs))
+
+    err_small = mean_error(20)
+    err_large = mean_error(200)
+    assert err_large < err_small
