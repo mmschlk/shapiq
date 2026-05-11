@@ -1,0 +1,66 @@
+import numpy as np
+
+from shapiq.approximator.regression.polyshap.polyshap import PolySHAP
+from shapiq.utils.sets import powerset
+
+
+class PolySHAPPartial(PolySHAP):
+    """PolySHAP with a randomly-extended *partial* explanation frontier.
+
+    The frontier always contains every singleton, then greedily adds
+    higher-order interactions (in a randomly shuffled order) until
+    ``n_explanation_terms`` terms have been selected.  This is useful when
+    a full *k*-additive frontier would be too large.
+
+    Args:
+        n: The number of players.
+        n_explanation_terms: Total number of frontier terms (including
+            singletons and the empty coalition).
+        sizes_to_exclude: Coalition sizes to skip when extending the
+            frontier beyond singletons. Defaults to ``None``.
+        pairing_trick: If ``True``, the pairing trick is applied. Defaults to ``False``.
+        sampling_weights: Optional sampling weights of shape ``(n + 1,)``.
+        replacement: Whether to sample with replacement. Defaults to ``True``.
+        random_state: Random state used to shuffle interaction candidates
+            and, via the parent, for coalition sampling. Defaults to ``None``.
+    """
+
+    def __init__(
+        self,
+        n: int,
+        n_explanation_terms: int,
+        sizes_to_exclude: set[int] | None = None,
+        pairing_trick: bool = False,
+        sampling_weights: np.ndarray | None = None,
+        random_state: int | None = None,
+    ):
+        N = set(range(n))
+        explanation_frontier: dict[tuple, int] = {}
+        pos = 0
+
+        # Always include all singletons first.
+        for S in powerset(N, max_size=1):
+            explanation_frontier[S] = pos
+            pos += 1
+
+        # Extend with higher-order interactions in a reproducible random order.
+        if random_state is not None:
+            np.random.seed(random_state)
+        perm = list(N)
+        np.random.shuffle(perm)
+
+        for S in powerset(N, min_size=2):
+            if sizes_to_exclude is not None and len(S) in sizes_to_exclude:
+                continue
+            if pos >= n_explanation_terms:
+                break
+            explanation_frontier[tuple(sorted(perm[i] for i in S))] = pos
+            pos += 1
+
+        super().__init__(
+            n=n,
+            explanation_frontier=explanation_frontier,
+            pairing_trick=pairing_trick,
+            sampling_weights=sampling_weights,
+            random_state=random_state,
+        )

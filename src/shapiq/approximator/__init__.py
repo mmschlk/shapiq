@@ -19,10 +19,12 @@ from .regression import (
     RegressionFBII,
     RegressionFSII,
     kADDSHAP,
-    PolySHAP,
+    PolySHAPKAdd,
+    PolySHAPPartial,
+    PolySHAPPrior,
 )
 from .sparse import SPEX, ProxySPEX
-from .regression.polyshap import ExplanationFrontierGenerator
+
 
 # contains all SV approximators
 SV_APPROXIMATORS: list[Approximator.__class__] = [
@@ -37,7 +39,9 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     ProxySPEX,
     ProxySHAP,
     MSRBiased,
-    PolySHAP,
+    PolySHAPKAdd,
+    PolySHAPPartial,
+    PolySHAPPrior,
 ]
 
 # contains all SI approximators
@@ -128,5 +132,7 @@ __all__ = [
     "STII_APPROXIMATORS",
     "FSII_APPROXIMATORS",
     "FBII_APPROXIMATORS",
-    "PolySHAP",
+    "PolySHAPKAdd",
+    "PolySHAPPrior",
+    "PolySHAPPartial",
 ]
