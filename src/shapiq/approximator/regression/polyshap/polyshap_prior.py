@@ -16,7 +16,6 @@ class PolySHAPPrior(PolySHAP):
             and its column ordering.
         pairing_trick: If ``True``, the pairing trick is applied. Defaults to ``False``.
         sampling_weights: Optional sampling weights of shape ``(n + 1,)``.
-        replacement: Whether to sample with replacement. Defaults to ``True``.
         random_state: Random state for reproducibility. Defaults to ``None``.
     """
 

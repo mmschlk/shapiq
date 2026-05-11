@@ -20,7 +20,6 @@ class PolySHAPPartial(PolySHAP):
             frontier beyond singletons. Defaults to ``None``.
         pairing_trick: If ``True``, the pairing trick is applied. Defaults to ``False``.
         sampling_weights: Optional sampling weights of shape ``(n + 1,)``.
-        replacement: Whether to sample with replacement. Defaults to ``True``.
         random_state: Random state used to shuffle interaction candidates
             and, via the parent, for coalition sampling. Defaults to ``None``.
     """
