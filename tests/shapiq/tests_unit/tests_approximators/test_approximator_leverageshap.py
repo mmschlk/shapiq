@@ -165,15 +165,22 @@ def test_skewed_interaction_game():
 
 def test_reproducibility():
     n, budget = 6, 100
-    game = DummyGame(n, interaction=(1, 2))
+
+    # Use separate game instances so access counters don't interfere
+    game1 = DummyGame(n, interaction=(1, 2))
+    game2 = DummyGame(n, interaction=(1, 2))
 
     # Run 1
     approx1 = LeverageSHAP(n, random_state=42)
-    res1 = approx1.approximate(budget, game)
+    res1 = approx1.approximate(budget, game1)
 
     # Run 2
     approx2 = LeverageSHAP(n, random_state=42)
-    res2 = approx2.approximate(budget, game)
+    res2 = approx2.approximate(budget, game2)
 
-    # Compare
+    # Values should be identical
     np.testing.assert_array_equal(res1.values, res2.values)
+
+    # Other run metadata should match exactly
+    assert res1.estimation_budget == res2.estimation_budget
+    assert res1.estimated == res2.estimated
