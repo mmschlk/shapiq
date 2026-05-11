@@ -20,6 +20,8 @@ def main() -> None:
 
     # uri, db_name = load_env()
     # db = MongoDBClient(uri=uri, db_name=db_name)
+    # # db.client.admin.command("ping")
+    # # print("MongoDB connection successful.")
 
     for run_config in run_configs:
         print("Running benchmark config:")
