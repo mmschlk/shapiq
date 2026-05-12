@@ -18,10 +18,10 @@ def main() -> None:
     config = load_yaml_config(config_path)
     run_configs = expand_config(config)
 
-    # uri, db_name = load_env()
-    # db = MongoDBClient(uri=uri, db_name=db_name)
-    # # db.client.admin.command("ping")
-    # # print("MongoDB connection successful.")
+    uri, db_name = load_env()
+    db = MongoDBClient(uri=uri, db_name=db_name)
+    db.client.admin.command("ping")
+    print("MongoDB connection successful.")
 
     for run_config in run_configs:
         print("Running benchmark config:")
@@ -48,10 +48,10 @@ def main() -> None:
             approximator_class=approximator_class,
         )
 
-        # save_raw_results(
-        #     db=db,
-        #     raw_results=benchmark_result["raw_results"],
-        # )
+        save_raw_results(
+            db=db,
+            raw_results=benchmark_result["raw_results"],
+        )
 
         print("Stored raw results:")
         print(len(benchmark_result["raw_results"]))

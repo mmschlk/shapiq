@@ -12,6 +12,19 @@ def approximate(
         budget: int,
         seed: int
 ) -> InteractionValues:
+    """Approximate interaction values for a game using the given approximator.
+
+    Args:
+        game: The game for which interaction values are approximated.
+        index: The interaction index to approximate.
+        max_order: The maximum interaction order to compute.
+        approximator_class: The approximator class used for the approximation.
+        budget: The evaluation budget available to the approximator.
+        seed: The random seed used for reproducibility.
+
+    Returns:
+        The approximated interaction values.
+    """
     approximator: Approximator = approximator_class(n=game.n_players,
                                       index=index,
                                       max_order=max_order,

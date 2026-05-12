@@ -14,6 +14,20 @@ METRIC_KEYS = [
 
 
 def aggregate_metric_values(successful_runs: list[dict]) -> dict:
+    """Aggregates metric values for all metrics across all successful runs
+
+    Args:
+        successful_runs: The list of runs
+
+    Returns:
+        A dictionary mapping each metric name to its mean value across all successful runs.
+        Metrics without values are mapped to ``None``.
+
+    Raises:
+        KeyError: If a metrics entry is missing in the run
+        ValueError: If metrics=None
+    """
+
     aggregated_metrics = {}
 
     for metric_name in METRIC_KEYS:
@@ -41,6 +55,19 @@ def aggregate_metric_values(successful_runs: list[dict]) -> dict:
 
 
 def aggregate_run_records(run_records: list[dict]) -> dict:
+    """Aggregates a list of run records into a single record
+
+    Args:
+        run_records: the list of runs
+
+    Returns:
+        A single run_record with aggregated values.
+        For values that are constant across runs the first instance is taken.
+        The resulting run also represents runtime and hardware information
+
+    Raises:
+        ValueError: If no successful run records are available for aggregation.
+    """
     successful_runs = []
     runtime_values = []
 

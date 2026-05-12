@@ -8,6 +8,18 @@ APPROXIMATOR_REGISTRY = {
 
 
 def get_approximator_class(name: str):
+    """
+    Return the approximator class registered under the given name.
+
+    Args:
+        name: the name of the approximator.
+
+    Returns:
+        the approximator class associated with the name.
+
+    Raises:
+        ValueError: If there is no registered approximator corresponding to the name.
+    """
     try:
         return APPROXIMATOR_REGISTRY[name]
     except KeyError:
