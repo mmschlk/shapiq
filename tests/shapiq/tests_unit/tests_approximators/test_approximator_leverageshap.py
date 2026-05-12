@@ -143,18 +143,29 @@ def test_skewed_interaction_game():
     would be squared and the solver would lose ~6 digits of precision.
     LeverageSHAP's lstsq-based WLS must still satisfy efficiency and rank player 0 highest.
     """
+    # Use a moderately sized game so the approximation has enough structure to expose
+    # numerical issues while still being small enough for a fast regression test.
     n = 7
+    # The first player is the special one whose presence changes the payoff scale.
     dominant = 0
 
     def skewed_game(Z):
+        # Give every coalition containing the dominant player a huge payoff multiplier,
+        # and every coalition without it a tiny multiplier, to create extreme imbalance.
         scale = np.where(Z[:, dominant], 1000.0, 0.001)
+        # Sum the contributions of all non-dominant players for each coalition row.
         other_sum = Z[:, 1:].astype(float).sum(axis=1)
+        # Return the scaled coalition value that depends strongly on whether player 0 is present.
         return scale * other_sum
 
+    # Compute the grand-coalition value, which is the reference value for the efficiency check.
     v_grand = skewed_game(np.ones((1, n)))[0]
+    # The empty coalition has no included players, so its value is set to zero explicitly.
     v_empty = 0.0
 
+    # Build the LeverageSHAP approximator with a fixed seed so the test is deterministic.
     approximator = LeverageSHAP(n, random_state=42)
+    # Approximate Shapley values under the skewed payoff function using the chosen budget.
     result = approximator.approximate(budget=300, game=skewed_game)
 
     # efficiency must hold despite extreme scale differences
