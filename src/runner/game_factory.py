@@ -1,9 +1,32 @@
 from typing import Any
 
+from shapiq import Game
 from shapiq_games.benchmark.local_xai.benchmark_tabular import CaliforniaHousing
+from shapiq_games.synthetic import SOUM
 
 
-def create_game_from_config(run_config: dict[str, Any], base_config: dict[str, Any]):
+def create_game_from_config(
+    run_config: dict[str, Any],
+    base_config: dict[str, Any],
+) -> tuple[Game, dict[str, Any]]:
+    """Create a game instance from benchmark configuration dictionaries.
+
+    The function reads the selected game from ""run_config"" and uses
+    ""base_config"" to override default game parameters if "game_params" is
+    provided.
+
+    Args:
+        run_config: The concrete run configuration.
+        base_config: The original benchmark configuration.
+
+    Returns:
+        A tuple containing the created game instance and the game parameters
+        used to initialize it.
+
+    Raises:
+        KeyError: If required entries are missing.
+        ValueError: If the configured game is unknown.
+    """
     game_name = run_config["game"]
     game_seed = run_config["game_seed"]
     max_order = run_config["max_order"]
@@ -19,6 +42,9 @@ def create_game_from_config(run_config: dict[str, Any], base_config: dict[str, A
                 "random_state": game_seed,
             },
         )
+
+        game = SOUM(**game_params)
+        return game, game_params
     elif game_name == "CaliforniaHousing":
         game_params = base_config.get(
             "game_params",

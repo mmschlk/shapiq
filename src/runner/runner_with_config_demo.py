@@ -12,6 +12,7 @@ from pathlib import Path
 
 
 def main() -> None:
+    """Run benchmarks from a YAML config and store raw results in MongoDB."""
     project_root = Path(__file__).resolve().parents[2]
     config_path = project_root / "configs" / "default_run.yaml"
 

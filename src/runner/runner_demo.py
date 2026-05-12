@@ -9,6 +9,7 @@ from leaderboard.storage.main import load_env
 
 
 def main() -> None:
+    """Run a local SOUM benchmark example."""
     game_seed = 42
     max_order = 2
 
