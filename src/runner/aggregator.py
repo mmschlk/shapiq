@@ -1,6 +1,7 @@
 import numpy as np
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 
 METRIC_KEYS = [
@@ -13,8 +14,9 @@ METRIC_KEYS = [
 ]
 
 
-def aggregate_metric_values(successful_runs: list[dict]) -> dict:
-    """Aggregates metric values for all metrics across all successful runs
+def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, float | None]:
+    """
+    Aggregates metric values for all metrics across all successful runs
 
     Args:
         successful_runs: The list of runs
@@ -54,8 +56,9 @@ def aggregate_metric_values(successful_runs: list[dict]) -> dict:
     return aggregated_metrics
 
 
-def aggregate_run_records(run_records: list[dict]) -> dict:
-    """Aggregates a list of run records into a single record
+def aggregate_run_records(run_records: list[dict[str, Any]]) -> dict[str, Any]:
+    """
+    Aggregates a list of run records into a single record
 
     Args:
         run_records: the list of runs

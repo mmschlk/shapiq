@@ -2,9 +2,35 @@ import time
 from approximator_runner import approximate
 from record_builder import create_run_record
 from metrics.evaluator import compute_all_metrics
+from collections.abc import Iterable
+from typing import Any
 import numpy as np
 
-def align_interaction_values(ground_truth, approx_values):
+from shapiq import InteractionValues, Game
+from shapiq.approximator import Approximator
+
+
+def align_interaction_values(
+    ground_truth: InteractionValues,
+    approx_values: InteractionValues,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Align ground truth and approximated interaction values.
+
+    The function verifies that both "InteractionValues" objects contain the
+    same interaction keys and returns two arrays ordered by interaction size and
+    interaction tuple.
+
+    Args:
+        ground_truth: The exact interaction values.
+        approx_values: The approximated interaction values.
+
+    Returns:
+        A tuple containing the aligned ground truth values and approximated
+        values as numpy arrays.
+
+    Raises:
+        ValueError: If the interaction keys of both inputs do not match.
+    """
     gt_lookup = ground_truth.interaction_lookup
     approx_lookup = approx_values.interaction_lookup
 
@@ -38,17 +64,38 @@ def align_interaction_values(ground_truth, approx_values):
 
 def run_experiment(
     *,
-    game,
+    game: Game,
     game_name: str,
-    game_params: dict,
-    game_seed,
-    ground_truth,
-    approximator_class,
-    index,
-    max_order,
-    budget,
-    approx_seeds,
-) -> list[dict]:
+    game_params: dict[str, Any],
+    game_seed: int,
+    ground_truth: InteractionValues,
+    approximator_class: type[Approximator],
+    index: str,
+    max_order: int,
+    budget: int,
+    approx_seeds: Iterable[int],
+) -> list[dict[str, Any]]:
+    """Run approximation experiments for multiple approximation seeds.
+
+    For each seed, the function runs the approximator, aligns the resulting
+    interaction values with the ground truth, computes metrics, and stores the
+    outcome as a run record. Failed runs are marked and are also stored.
+
+    Args:
+        game: The game for which interaction values are approximated.
+        game_name: The name of the game.
+        game_params: The parameters used to initialize the game.
+        game_seed: The random seed used to initialize the game.
+        ground_truth: The exact interaction values used as reference.
+        approximator_class: The approximator class used for the experiment.
+        index: The interaction index to approximate.
+        max_order: The maximum interaction order to compute.
+        budget: The evaluation budget available to the approximator.
+        approx_seeds: The approximation seeds to evaluate.
+
+    Returns:
+        A list of run records, one for each approximation seed.
+    """
     results = []
     for approx_seed in approx_seeds:
         start_time = time.perf_counter()

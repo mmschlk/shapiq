@@ -1,4 +1,5 @@
 from shapiq.approximator import ProxySHAP, KernelSHAPIQ
+from shapiq.approximator import Approximator
 
 
 APPROXIMATOR_REGISTRY = {
@@ -7,7 +8,7 @@ APPROXIMATOR_REGISTRY = {
 }
 
 
-def get_approximator_class(name: str):
+def get_approximator_class(name: str) -> type[Approximator]:
     """
     Return the approximator class registered under the given name.
 

@@ -4,6 +4,19 @@ from typing import Any
 
 
 def load_yaml_config(path: str | Path) -> dict[str, Any]:
+    """
+    Load a benchmark configuration from a YAML file.
+
+    Args:
+        path: The path to the YAML configuration file.
+
+    Returns:
+        The loaded configuration dictionary.
+
+    Raises:
+        ValueError: If the YAML file does not contain a dictionary/object at the
+            top level.
+    """
     with open(path, "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
 
@@ -14,6 +27,14 @@ def load_yaml_config(path: str | Path) -> dict[str, Any]:
 
 
 def as_list(value: Any) -> list[Any]:
+    """Wrap a value inside a list if it is not already a list.
+
+        Args:
+            value: The value to convert to a list.
+
+        Returns:
+            "value" if it is already a list, otherwise "[value]".
+        """
     if isinstance(value, list):
         return value
     return [value]
@@ -21,15 +42,23 @@ def as_list(value: Any) -> list[Any]:
 
 def expand_config(config: dict[str, Any]) -> list[dict[str, Any]]:
     """
-    Expands a YAML config into concrete benchmark configurations.
+    A YAML config is expanded into a concrete benchmark config.
 
-    Supports both:
-        approximator: "ProxySHAP"
-        budget: 100
+    The configuration may use either singular fields such as "approximator"
+    and "budget" or plural fields such as "approximators" and
+    "budgets". Plural fields are expanded into all combinations of
+    approximators and budgets.
 
-    and:
-        approximators: ["ProxySHAP", "KernelSHAPIQ"]
-        budgets: [100, 500, 1000]
+    Args:
+        config: The loaded benchmark configuration.
+
+    Returns:
+        A list of concrete run configurations, one for each approximator-budget
+        combination.
+
+    Raises:
+        KeyError: If a required configuration entry is missing.
+        ValueError: If no approximators or budgets are provided.
     """
 
     game = config["game"]

@@ -19,7 +19,7 @@ def create_game_from_config(run_config: dict[str, Any], base_config: dict[str, A
                 "random_state": game_seed,
             },
         )
-    if game_name == "CaliforniaHousing":
+    elif game_name == "CaliforniaHousing":
         game_params = base_config.get(
             "game_params",
             {

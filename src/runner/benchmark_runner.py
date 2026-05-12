@@ -5,19 +5,21 @@ from custom_types import InteractionIndex
 from experiment_runner import run_experiment
 from ground_truth_computer import compute_ground_truth
 from shapiq.approximator import Approximator
+from typing import Any
+from shapiq.game import Game
 
 def run_benchmark(
     *,
-    game,
+    game: Game,
     game_name: str,
-    game_params: dict,
+    game_params: dict[str, Any],
     game_seed: int,
     max_order: int,
     number_of_different_approx_seeds: int,
     budget: int,
     index: InteractionIndex,
     approximator_class: type[Approximator],
-) -> dict:
+) -> dict[str, Any]:
     """Run a complete benchmark for one defined setup.
 
         The benchmark computes the ground truth interaction values, runs the given
