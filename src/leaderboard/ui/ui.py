@@ -2,11 +2,82 @@ import gradio as gr
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from storage.database import MongoDBClient
+from storage.metrics import MetricsLoader
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 RESULTS_PATH = "results_raw.jsonl"
 LINE_STYLES = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
 
+def load_and_aggregate(path: str, method: str = "local") -> pd.DataFrame:
+    if method == "local":
+        return _local_load_and_aggregate(path)
+    elif method == "mongodb":
+        # Create a client and load data from MongoDB
+        uri = os.getenv("MONGODB_URI")
+        db_name = os.getenv("MONGODB_DB", "shapiq-leaderboard")
+        mongoDBClient = MongoDBClient(uri=uri, db_name=db_name)
 
-def load_and_aggregate(path: str) -> pd.DataFrame:
+        # Check if we can connect to the database
+        try:
+            mongoDBClient.db.list_collection_names()
+        except Exception as e:
+            raise ConnectionError(f"Failed to connect to MongoDB: {e}")
+        
+        return _mongodb_load_and_aggregate(mongoDBClient, path)
+    else:
+        raise ValueError(f"Unknown loading method: {method}")
+
+
+
+
+def _mongodb_load_and_aggregate(db: MongoDBClient, path: str) -> pd.DataFrame:
+    """
+    Loads all runs from MongoDB and aggregates them into the format used 
+    by the implementation of the leaderboard ui and logic.
+
+    Returns a DataFrame with columns:
+        game_name, approximator_name, budget,
+        mse_mean, mse_std, mae_mean, mae_std,
+        ground_truth_method,
+        runtime_mean, runtime_min, runtime_max,
+        n_seeds
+    """
+    # Fetch all raw runs from the database
+    raw_runs = db.get_all_runs() 
+
+    if not raw_runs:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(raw_runs)
+
+    # Drop failed runs, matching the original filter
+    df = df[df["run_failed"] == False]
+
+    # Flatten the nested metrics dict (same as pd.json_normalize in original)
+    metrics_df = pd.json_normalize(df["metrics"])
+    df = pd.concat([df.drop(columns=["metrics"]), metrics_df], axis=1)
+
+    # Aggregate over seeds — identical groupby/agg as the original
+    agg = df.groupby(["game_name", "approximator_name", "budget"]).agg(
+        mse_mean=("mse", "mean"),
+        mse_std=("mse", "std"),
+        mae_mean=("mae", "mean"),
+        mae_std=("mae", "std"),
+        ground_truth_method=("ground_truth_method", "first"),
+        runtime_mean=("runtime_seconds", "mean"),
+        runtime_min=("runtime_seconds", "min"),
+        runtime_max=("runtime_seconds", "max"),
+        n_seeds=("seed", "count"),
+    ).reset_index()
+
+    return agg
+
+def _local_load_and_aggregate(path: str) -> pd.DataFrame:
     df = pd.read_json(path, lines=True)
     df = df[df["run_failed"] == False]
 

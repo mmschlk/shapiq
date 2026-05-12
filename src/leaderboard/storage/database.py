@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 from pymongo import MongoClient
-from config import RunConfig
+from storage.config import RunConfig
 
 
 class MongoDBClient:
