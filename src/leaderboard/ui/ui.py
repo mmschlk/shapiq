@@ -2,8 +2,7 @@ import gradio as gr
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from storage.database import MongoDBClient
-from storage.metrics import MetricsLoader
+from storage.connection.client import MongoDBClient
 
 from dotenv import load_dotenv
 import os
@@ -12,8 +11,9 @@ load_dotenv()
 
 RESULTS_PATH = "results_raw.jsonl"
 LINE_STYLES = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
+LOADING_METHOD = "mongodb"  # "local" or "mongodb"
 
-def load_and_aggregate(path: str, method: str = "local") -> pd.DataFrame:
+def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.DataFrame: 
     if method == "local":
         return _local_load_and_aggregate(path)
     elif method == "mongodb":
@@ -23,19 +23,17 @@ def load_and_aggregate(path: str, method: str = "local") -> pd.DataFrame:
         mongoDBClient = MongoDBClient(uri=uri, db_name=db_name)
 
         # Check if we can connect to the database
-        try:
-            mongoDBClient.db.list_collection_names()
-        except Exception as e:
-            raise ConnectionError(f"Failed to connect to MongoDB: {e}")
-        
-        return _mongodb_load_and_aggregate(mongoDBClient, path)
+        if not mongoDBClient.check_connection():
+            raise ConnectionError("Unable to connect to MongoDB.")
+
+        return _mongodb_load_and_aggregate(mongoDBClient)
     else:
         raise ValueError(f"Unknown loading method: {method}")
 
 
 
 
-def _mongodb_load_and_aggregate(db: MongoDBClient, path: str) -> pd.DataFrame:
+def _mongodb_load_and_aggregate(mongoDBClient: MongoDBClient) -> pd.DataFrame:
     """
     Loads all runs from MongoDB and aggregates them into the format used 
     by the implementation of the leaderboard ui and logic.
@@ -48,7 +46,7 @@ def _mongodb_load_and_aggregate(db: MongoDBClient, path: str) -> pd.DataFrame:
         n_seeds
     """
     # Fetch all raw runs from the database
-    raw_runs = db.get_all_runs() 
+    raw_runs = mongoDBClient.get_all()
 
     if not raw_runs:
         return pd.DataFrame()
@@ -210,7 +208,7 @@ def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse"):
 
 
 # --- Daten laden ---
-df_agg = load_and_aggregate(RESULTS_PATH)
+df_agg = load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH)
 
 # --- Gradio App ---
 with gr.Blocks(title="shapiq Leaderboard") as demo:
