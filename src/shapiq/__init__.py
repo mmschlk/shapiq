@@ -63,6 +63,7 @@ from .plot import (
     beeswarm_plot,
     force_plot,
     network_plot,
+    scatter_plot,
     sentence_plot,
     si_graph_plot,
     stacked_bar_plot,
@@ -125,6 +126,7 @@ __all__ = [
     "sentence_plot",
     "upset_plot",
     "beeswarm_plot",
+    "scatter_plot",
     # public utils
     "powerset",
     "get_explicit_subsets",
