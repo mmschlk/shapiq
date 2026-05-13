@@ -1,0 +1,33 @@
+# =====================================================================
+# shapiq Benchmark Runner - Configuration Template
+# This is a configuration template. Please copy this file and modify parameters before running.
+# =====================================================================
+
+# 1. Target Dataset/Game Model
+# [Whitelist options]: "CaliforniaHousing", "Mutagenicity", "BikeSharingDemand"
+game: "CaliforniaHousing"
+
+# 2. Game-theoretic Index to Compute (Interaction Index)
+# [Whitelist options]: "SV", "BV", "SII", "BII", "k-SII", "STII", "FBII", "FSII", "kADD-SHAP", "CHII"
+index: "SV"
+
+# 3. Approximator Algorithm to Use
+# Note: Please ensure the selected approximator supports the index configured above.
+# [Common options for SV]: "KernelSHAPIQ", "SHAPIQ", "SVARMIQ", "ProxySHAP", "StratifiedSamplingSV", "PermutationSamplingSV"
+# [Common options for SII]: "KernelSHAPIQ", "SHAPIQ", "SVARMIQ", "ProxySHAP", "PermutationSamplingSII"
+approximator: "KernelSHAPIQ"
+
+# 4. Maximum Order of Interactions (Max Order)
+# Rule Constraints:
+# - If index is "SV" (single feature contribution), max_order must be set to 1.
+# - If index is "SII" or other interaction indices, max_order must be >= 2.
+max_order: 1
+
+# 5. Computational Budget
+# Meaning: Maximum number of times the algorithm can call the model for predictions. Larger values are more accurate but take longer.
+# Recommended values: 100, 500, 1000, 2048, 5000
+budget: 1000
+
+# 6. Number of Random Seeds for Repeated Experiments
+# Meaning: To eliminate randomness, the same configuration will be run n_seeds times with different random seeds and results will be averaged.
+n_seeds: 5
