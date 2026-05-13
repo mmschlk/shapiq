@@ -452,9 +452,9 @@ def load_independentlinear60() -> tuple[pd.DataFrame, pd.Series]:
     beta[0:30:3] = 1
 
     # Make sure the sample correlation is a perfect match
-    X_start = rng.randn(N, M)
+    X_start = rng.standard_normal((N, M))
     X = X_start - X_start.mean(0)
-    y = np.matmul(X, beta) + rng.randn(N) * 1e-2
+    y = np.matmul(X, beta) + rng.standard_normal(N) * 1e-2
 
     return pd.DataFrame(X), pd.Series(y, name="target")
 
@@ -495,7 +495,7 @@ def load_corrgroups60() -> tuple[pd.DataFrame, pd.Series]:
         C[i + 1, i + 2] = C[i + 2, i + 1] = 0.99
 
     # Make sure the sample correlation is a perfect match
-    X_start = rng.randn(N, M)
+    X_start = rng.standard_normal((N, M))
     X_centered = X_start - X_start.mean(0)
     Sigma = np.matmul(X_centered.T, X_centered) / X_centered.shape[0]
     W = np.linalg.cholesky(np.linalg.inv(Sigma)).T
@@ -504,7 +504,7 @@ def load_corrgroups60() -> tuple[pd.DataFrame, pd.Series]:
     # create the final data
     X_final = np.matmul(X_white, np.linalg.cholesky(C).T)
     X = X_final
-    y = np.matmul(X, beta) + rng.randn(N) * 1e-2
+    y = np.matmul(X, beta) + rng.standard_normal(N) * 1e-2
 
     return pd.DataFrame(X), pd.Series(y, name="target")
 
@@ -972,7 +972,7 @@ def _impute(X: pd.DataFrame) -> pd.DataFrame:
     """
     for col in X.columns:
         if X[col].isna().any():
-            if X[col].dtype == object:
+            if not pd.api.types.is_numeric_dtype(X[col]):
                 X[col] = X[col].fillna(X[col].mode()[0])
             else:
                 X[col] = X[col].fillna(X[col].median())
@@ -1251,3 +1251,378 @@ def load_zoo() -> tuple[pd.DataFrame, pd.Series]:
     y = data["target"]
     y = pd.Series(LabelEncoder().fit_transform(y.astype(str)), name="target")
     return X, y
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TabArena OpenML loaders — 51 datasets from TabARENA-v0.1 (OpenML Study 457)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Maps Python-safe name → TabARENA OpenML dataset ID
+_TABARENA_DATASETS: dict[str, int] = {
+    "airfoil_self_noise": 46904,
+    "amazon_employee_access": 46905,
+    "anneal": 46906,
+    "fiat_500": 46907,
+    "aps_failure": 46908,
+    "bank_marketing": 46910,
+    "bank_customer_churn": 46911,
+    "bioresponse": 46912,
+    "blood_transfusion": 46913,
+    "churn": 46915,
+    "coil2000": 46916,
+    "concrete_strength": 46917,
+    "credit_g": 46918,
+    "credit_card_default": 46919,
+    "airline_satisfaction": 46920,
+    "diabetes": 46921,
+    "diabetes130us": 46922,
+    "diamonds": 46923,
+    "ecommerce_shipping": 46924,
+    "fitness_club": 46927,
+    "food_delivery": 46928,
+    "give_me_credit": 46929,
+    "hazelnut": 46930,
+    "health_insurance": 46931,
+    "heloc": 46932,
+    "hiva_agnostic": 46933,
+    "houses": 46934,
+    "hr_analytics": 46935,
+    "coupon_recommendation": 46937,
+    "good_customer": 46938,
+    "kddcup09": 46939,
+    "marketing_campaign": 46940,
+    "maternal_health": 46941,
+    "miami_housing": 46942,
+    "online_shoppers": 46947,
+    "protein": 46949,
+    "bankruptcy": 46950,
+    "qsar_biodeg": 46952,
+    "qsar_tid11": 46953,
+    "qsar_fish_toxicity": 46954,
+    "sdss17": 46955,
+    "seismic_bumps": 46956,
+    "splice": 46958,
+    "students_dropout": 46960,
+    "superconductivity": 46961,
+    "taiwanese_bankruptcy": 46962,
+    "website_phishing": 46963,
+    "wine_quality": 46964,
+    "naticusdroid": 46969,
+    "jm1": 46979,
+    "mic": 46980,
+}
+
+
+def _load_tabarena_from_cache(csv_name: str) -> tuple[pd.DataFrame, pd.Series]:
+    """Load a cached TabArena dataset from a local CSV file.
+
+    Args:
+        csv_name: The CSV filename (relative to SHAPIQ_DATASETS_FOLDER).
+
+    Returns:
+        A tuple (X, y) read from the cache file.
+
+    Raises:
+        FileNotFoundError: If the file does not exist yet.
+
+    """
+    _create_folder()
+    path = SHAPIQ_DATASETS_FOLDER / csv_name
+    if not path.exists():
+        raise FileNotFoundError(csv_name)
+    data = pd.read_csv(path)
+    y = data.pop("__target__")
+    return data, pd.Series(y.values, name="target")
+
+
+def _load_tabarena_dataset(name: str, openml_id: int) -> tuple[pd.DataFrame, pd.Series]:
+    """Generic loader for a TabArena dataset via OpenML (cached locally as CSV).
+
+    Automatically detects regression vs. classification from the target dtype:
+    numeric targets are kept as-is; string/categorical targets are label-encoded.
+
+    Args:
+        name: Python-safe dataset name (used for the cache filename).
+        openml_id: TabARENA OpenML dataset ID.
+
+    Returns:
+        A tuple ``(X, y)`` as pandas objects.
+
+    """
+    csv_name = f"tabarena_{name}.csv"
+    try:
+        return _load_tabarena_from_cache(csv_name)
+    except FileNotFoundError:
+        pass
+    import openml
+
+    dataset = openml.datasets.get_dataset(openml_id, download_data=True)
+    X, y, _, _ = dataset.get_data(
+        target=dataset.default_target_attribute, dataset_format="dataframe"
+    )
+    X = _encode_categorical(X)
+    X = _impute(X)
+    if not pd.api.types.is_numeric_dtype(y):
+        y_out = pd.Series(LabelEncoder().fit_transform(y), name="target")
+    else:
+        y_out = pd.Series(y.values, name="target")
+    dataset = X.copy()
+    dataset["__target__"] = y_out
+    _create_folder()
+    dataset.to_csv(SHAPIQ_DATASETS_FOLDER / csv_name, index=False)
+    return X, y_out
+
+
+def load_tabarena_airfoil_self_noise() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena airfoil_self_noise dataset (OpenML ID 46904)."""
+    return _load_tabarena_dataset("airfoil_self_noise", 46904)
+
+
+def load_tabarena_amazon_employee_access() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena amazon_employee_access dataset (OpenML ID 46905)."""
+    return _load_tabarena_dataset("amazon_employee_access", 46905)
+
+
+def load_tabarena_anneal() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena anneal dataset (OpenML ID 46906)."""
+    return _load_tabarena_dataset("anneal", 46906)
+
+
+def load_tabarena_fiat_500() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena fiat_500 dataset (OpenML ID 46907)."""
+    return _load_tabarena_dataset("fiat_500", 46907)
+
+
+def load_tabarena_aps_failure() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena aps_failure dataset (OpenML ID 46908)."""
+    return _load_tabarena_dataset("aps_failure", 46908)
+
+
+def load_tabarena_bank_marketing() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena bank_marketing dataset (OpenML ID 46910)."""
+    return _load_tabarena_dataset("bank_marketing", 46910)
+
+
+def load_tabarena_bank_customer_churn() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena bank_customer_churn dataset (OpenML ID 46911)."""
+    return _load_tabarena_dataset("bank_customer_churn", 46911)
+
+
+def load_tabarena_bioresponse() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena bioresponse dataset (OpenML ID 46912)."""
+    return _load_tabarena_dataset("bioresponse", 46912)
+
+
+def load_tabarena_blood_transfusion() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena blood_transfusion dataset (OpenML ID 46913)."""
+    return _load_tabarena_dataset("blood_transfusion", 46913)
+
+
+def load_tabarena_churn() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena churn dataset (OpenML ID 46915)."""
+    return _load_tabarena_dataset("churn", 46915)
+
+
+def load_tabarena_coil2000() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena coil2000 dataset (OpenML ID 46916)."""
+    return _load_tabarena_dataset("coil2000", 46916)
+
+
+def load_tabarena_concrete_strength() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena concrete_strength dataset (OpenML ID 46917)."""
+    return _load_tabarena_dataset("concrete_strength", 46917)
+
+
+def load_tabarena_credit_g() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena credit_g dataset (OpenML ID 46918)."""
+    return _load_tabarena_dataset("credit_g", 46918)
+
+
+def load_tabarena_credit_card_default() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena credit_card_default dataset (OpenML ID 46919)."""
+    return _load_tabarena_dataset("credit_card_default", 46919)
+
+
+def load_tabarena_airline_satisfaction() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena airline_satisfaction dataset (OpenML ID 46920)."""
+    return _load_tabarena_dataset("airline_satisfaction", 46920)
+
+
+def load_tabarena_diabetes() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena diabetes dataset (OpenML ID 46921)."""
+    return _load_tabarena_dataset("diabetes", 46921)
+
+
+def load_tabarena_diabetes130us() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena diabetes130us dataset (OpenML ID 46922)."""
+    return _load_tabarena_dataset("diabetes130us", 46922)
+
+
+def load_tabarena_diamonds() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena diamonds dataset (OpenML ID 46923)."""
+    return _load_tabarena_dataset("diamonds", 46923)
+
+
+def load_tabarena_ecommerce_shipping() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena ecommerce_shipping dataset (OpenML ID 46924)."""
+    return _load_tabarena_dataset("ecommerce_shipping", 46924)
+
+
+def load_tabarena_fitness_club() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena fitness_club dataset (OpenML ID 46927)."""
+    return _load_tabarena_dataset("fitness_club", 46927)
+
+
+def load_tabarena_food_delivery() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena food_delivery dataset (OpenML ID 46928)."""
+    return _load_tabarena_dataset("food_delivery", 46928)
+
+
+def load_tabarena_give_me_credit() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena give_me_credit dataset (OpenML ID 46929)."""
+    return _load_tabarena_dataset("give_me_credit", 46929)
+
+
+def load_tabarena_hazelnut() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena hazelnut dataset (OpenML ID 46930)."""
+    return _load_tabarena_dataset("hazelnut", 46930)
+
+
+def load_tabarena_health_insurance() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena health_insurance dataset (OpenML ID 46931)."""
+    return _load_tabarena_dataset("health_insurance", 46931)
+
+
+def load_tabarena_heloc() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena heloc dataset (OpenML ID 46932)."""
+    return _load_tabarena_dataset("heloc", 46932)
+
+
+def load_tabarena_hiva_agnostic() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena hiva_agnostic dataset (OpenML ID 46933)."""
+    return _load_tabarena_dataset("hiva_agnostic", 46933)
+
+
+def load_tabarena_houses() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena houses dataset (OpenML ID 46934)."""
+    return _load_tabarena_dataset("houses", 46934)
+
+
+def load_tabarena_hr_analytics() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena hr_analytics dataset (OpenML ID 46935)."""
+    return _load_tabarena_dataset("hr_analytics", 46935)
+
+
+def load_tabarena_coupon_recommendation() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena coupon_recommendation dataset (OpenML ID 46937)."""
+    return _load_tabarena_dataset("coupon_recommendation", 46937)
+
+
+def load_tabarena_good_customer() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena good_customer dataset (OpenML ID 46938)."""
+    return _load_tabarena_dataset("good_customer", 46938)
+
+
+def load_tabarena_kddcup09() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena kddcup09 dataset (OpenML ID 46939)."""
+    return _load_tabarena_dataset("kddcup09", 46939)
+
+
+def load_tabarena_marketing_campaign() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena marketing_campaign dataset (OpenML ID 46940)."""
+    return _load_tabarena_dataset("marketing_campaign", 46940)
+
+
+def load_tabarena_maternal_health() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena maternal_health dataset (OpenML ID 46941)."""
+    return _load_tabarena_dataset("maternal_health", 46941)
+
+
+def load_tabarena_miami_housing() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena miami_housing dataset (OpenML ID 46942)."""
+    return _load_tabarena_dataset("miami_housing", 46942)
+
+
+def load_tabarena_online_shoppers() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena online_shoppers dataset (OpenML ID 46947)."""
+    return _load_tabarena_dataset("online_shoppers", 46947)
+
+
+def load_tabarena_protein() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena protein dataset (OpenML ID 46949)."""
+    return _load_tabarena_dataset("protein", 46949)
+
+
+def load_tabarena_bankruptcy() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena bankruptcy dataset (OpenML ID 46950)."""
+    return _load_tabarena_dataset("bankruptcy", 46950)
+
+
+def load_tabarena_qsar_biodeg() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena qsar_biodeg dataset (OpenML ID 46952)."""
+    return _load_tabarena_dataset("qsar_biodeg", 46952)
+
+
+def load_tabarena_qsar_tid11() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena qsar_tid11 dataset (OpenML ID 46953)."""
+    return _load_tabarena_dataset("qsar_tid11", 46953)
+
+
+def load_tabarena_qsar_fish_toxicity() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena qsar_fish_toxicity dataset (OpenML ID 46954)."""
+    return _load_tabarena_dataset("qsar_fish_toxicity", 46954)
+
+
+def load_tabarena_sdss17() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena sdss17 dataset (OpenML ID 46955)."""
+    return _load_tabarena_dataset("sdss17", 46955)
+
+
+def load_tabarena_seismic_bumps() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena seismic_bumps dataset (OpenML ID 46956)."""
+    return _load_tabarena_dataset("seismic_bumps", 46956)
+
+
+def load_tabarena_splice() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena splice dataset (OpenML ID 46958)."""
+    return _load_tabarena_dataset("splice", 46958)
+
+
+def load_tabarena_students_dropout() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena students_dropout dataset (OpenML ID 46960)."""
+    return _load_tabarena_dataset("students_dropout", 46960)
+
+
+def load_tabarena_superconductivity() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena superconductivity dataset (OpenML ID 46961)."""
+    return _load_tabarena_dataset("superconductivity", 46961)
+
+
+def load_tabarena_taiwanese_bankruptcy() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena taiwanese_bankruptcy dataset (OpenML ID 46962)."""
+    return _load_tabarena_dataset("taiwanese_bankruptcy", 46962)
+
+
+def load_tabarena_website_phishing() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena website_phishing dataset (OpenML ID 46963)."""
+    return _load_tabarena_dataset("website_phishing", 46963)
+
+
+def load_tabarena_wine_quality() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena wine_quality dataset (OpenML ID 46964)."""
+    return _load_tabarena_dataset("wine_quality", 46964)
+
+
+def load_tabarena_naticusdroid() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena naticusdroid dataset (OpenML ID 46969)."""
+    return _load_tabarena_dataset("naticusdroid", 46969)
+
+
+def load_tabarena_jm1() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena jm1 dataset (OpenML ID 46979)."""
+    return _load_tabarena_dataset("jm1", 46979)
+
+
+def load_tabarena_mic() -> tuple[pd.DataFrame, pd.Series]:
+    """Load the TabArena mic dataset (OpenML ID 46980)."""
+    return _load_tabarena_dataset("mic", 46980)
