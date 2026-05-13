@@ -26,6 +26,9 @@ recovery method — so the convergence test is marked xfail(strict=False).
 
 from __future__ import annotations
 
+import math
+import sys
+
 import numpy as np
 import pytest
 from scipy.special import binom
@@ -34,7 +37,7 @@ from shapiq.approximator.regression import OddSHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import SOUM, DummyGame
-
+import shapiq.approximator as approximator_module
 
 # -----------------------------------------------------------------------------
 # Initialization
@@ -76,6 +79,18 @@ def test_init_rejects_odd_only_false():
     """The current implementation supports only the odd_only=True branch."""
     with pytest.raises(ValueError, match="only odd_only=True"):
         OddSHAP(n=8, odd_only=False)
+
+
+def test_init_requires_lightgbm(monkeypatch):
+    monkeypatch.setitem(sys.modules, "lightgbm", None)
+
+    with pytest.raises(ImportError, match="The 'lightgbm' package is required for OddSHAP"):
+        OddSHAP(n=8)
+
+
+def test_public_approximator_exports_include_oddshap():
+    assert "OddSHAP" in approximator_module.__all__
+    assert OddSHAP in approximator_module.SV_APPROXIMATORS
 
 
 # -----------------------------------------------------------------------------
@@ -246,6 +261,32 @@ def test_low_budget_takes_fallback_path():
     rt = approx.runtime_last_approximate_run
     assert "fallback_explain" in rt
     assert "extraction" not in rt
+
+
+def test_candidate_interaction_count_matches_paper(monkeypatch):
+    n = 8
+    approx = OddSHAP(n=n, random_state=0)
+    budget = n * approx.interaction_factor + 1
+    captured = {}
+
+    def additive_game(coalitions):
+        return coalitions.astype(float).sum(axis=1)
+
+    def fake_fit_surrogate_model(*, coalitions, game_values):
+        return object()
+
+    def fake_select_odd_interactions(**kwargs):
+        captured["n_candidate_interactions"] = kwargs["n_candidate_interactions"]
+        return []
+
+    monkeypatch.setattr(approx, "_fit_surrogate_model", fake_fit_surrogate_model)
+    monkeypatch.setattr(approx, "_select_odd_interactions", fake_select_odd_interactions)
+
+    approx.approximate(budget, additive_game)
+
+    assert captured["n_candidate_interactions"] == math.ceil(
+        budget / approx.interaction_factor
+    )
 
 
 # -----------------------------------------------------------------------------

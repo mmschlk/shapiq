@@ -115,6 +115,7 @@ __all__ = [
     "ProxySPEX",
     "ProxySHAP",
     "MSRBiased",
+    "OddSHAP",
     "SHAPIQ",
     "SVARM",
     "SVARMIQ",

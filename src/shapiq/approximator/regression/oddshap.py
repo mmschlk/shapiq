@@ -4,24 +4,40 @@ OddSHAP is a value estimator based on paired sampling, odd-only Fourier regressi
 """
 
 from __future__ import annotations
-import lightgbm as lgb
-import time
 
+import math
+import time
+from importlib import import_module
+from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.special import binom
 
 from shapiq.approximator.base import Approximator
+from shapiq.interaction_values import InteractionValues
+
 from ._oddshap_proxyspex_adapter import (
     lgboost_to_fourier,
     top_k_interactions,
 )
-from shapiq.interaction_values import InteractionValues
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
     from shapiq.game import Game
+
+
+def _import_lightgbm() -> ModuleType:
+    try:
+        lightgbm = import_module("lightgbm")
+    except ImportError as err:
+        msg = (
+            "The 'lightgbm' package is required for OddSHAP but it is not installed. "
+            "Please install lightgbm to use this approximator."
+        )
+        raise ImportError(msg) from err
+    return lightgbm
 
 
 class OddSHAP(Approximator):
@@ -68,6 +84,8 @@ class OddSHAP(Approximator):
             tree_params: dict[str, Any] | None = None,
             **kwargs: Any
     ) -> None:
+        _import_lightgbm()
+
         # OddSHAP uses its own coalition-size distribution.
         # Compute here before calling the base class, because base class creates the sampler during super().__init__()
         if sampling_weights is None:
@@ -151,8 +169,9 @@ class OddSHAP(Approximator):
 
         #centered_game_values = game_values - empty_set_value  # normalize response relative to empty coalition
 
-        # 4. Compute how many higher-order interactions OddSHAP is allowed to consider later
-        n_candidate_interactions = max(0, budget // self.interaction_factor - self.n)
+        # 4. Compute how many higher-order interactions OddSHAP is allowed to consider later.
+        # The paper defines |T_odd| = ceil(m / eta); singletons are added separately.
+        n_candidate_interactions = max(0, math.ceil(budget / self.interaction_factor))
 
         # branch between: low-budget fallback and odd-regressioin path
         if budget < self.n * self.interaction_factor:
@@ -337,12 +356,14 @@ class OddSHAP(Approximator):
             self,
             coalitions: np.ndarray,
             game_values: np.ndarray,
-    ) -> lgb.LGBMRegressor:
+    ) -> Any:
         """ Fit the LightGBM surrogate used by the OddSHAP fallback branch.
 
         Args
 
         """
+        lgb = _import_lightgbm()
+
         if self.tree_params is None:
             surrogate_model = lgb.LGBMRegressor(
                 verbose=-1,
