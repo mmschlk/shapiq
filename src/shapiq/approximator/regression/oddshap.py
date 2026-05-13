@@ -523,7 +523,9 @@ class OddSHAP(Approximator):
         interaction_masks_int = interaction_masks.astype(np.uint8)
 
         parity_matrix = (coalitions_int @ interaction_masks_int.T) % 2
-        design_matrix = 1 - 2 * parity_matrix
+        # Cast before the Fourier sign transform: uint8 would underflow
+        # 1 - 2 * 1 to 255 instead of -1.
+        design_matrix = 1.0 - 2.0 * parity_matrix.astype(float)
         X_tilde = design_matrix.astype(float) * row_weights_used[:, np.newaxis]
         y_tilde = centered_values * row_weights_used
 

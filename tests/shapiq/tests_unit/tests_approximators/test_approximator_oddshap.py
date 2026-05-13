@@ -237,13 +237,6 @@ def test_high_budget_takes_regression_path():
     assert "fallback_explain" not in rt
 
 
-@pytest.mark.xfail(
-    reason="Fallback path crashes inside shapiq.tree.explainer "
-    "(IndexError on a constant LightGBM surrogate). Tracked separately "
-    "from OddSHAP itself.",
-    strict=False,
-    raises=IndexError,
-)
 def test_low_budget_takes_fallback_path():
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
@@ -409,17 +402,10 @@ def test_dummy_game_singleton_attribution(n):
 
 
 # -----------------------------------------------------------------------------
-# Convergence vs ExactComputer (sparse-recovery method, so xfail-tolerant)
+# Convergence vs ExactComputer
 # -----------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    reason="OddSHAP is a sparse-recovery method — full convergence on dense "
-    "SOUM games is not guaranteed by construction. Tightens once the "
-    "paired-sampling invariance (SG-41) lands and on games with truly "
-    "sparse odd Fourier support.",
-    strict=False,
-)
 @pytest.mark.parametrize("n", [6, 8])
 def test_convergence_vs_exact_at_full_budget(n):
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
