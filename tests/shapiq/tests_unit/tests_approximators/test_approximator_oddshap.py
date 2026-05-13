@@ -33,11 +33,11 @@ import numpy as np
 import pytest
 from scipy.special import binom
 
+import shapiq.approximator as approximator_module
 from shapiq.approximator.regression import OddSHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import SOUM, DummyGame
-import shapiq.approximator as approximator_module
 
 # -----------------------------------------------------------------------------
 # Initialization
@@ -261,6 +261,34 @@ def test_low_budget_takes_fallback_path():
     rt = approx.runtime_last_approximate_run
     assert "fallback_explain" in rt
     assert "extraction" not in rt
+
+
+def test_boundary_budget_takes_regression_path_with_paper_candidate_count(monkeypatch):
+    n = 8
+    approx = OddSHAP(n=n, random_state=0)
+    budget = n * approx.interaction_factor
+    captured = {}
+
+    def additive_game(coalitions):
+        return coalitions.astype(float).sum(axis=1)
+
+    def fake_fit_surrogate_model(*, coalitions, game_values):
+        return object()
+
+    def fake_select_odd_interactions(**kwargs):
+        captured["n_candidate_interactions"] = kwargs["n_candidate_interactions"]
+        return []
+
+    monkeypatch.setattr(approx, "_fit_surrogate_model", fake_fit_surrogate_model)
+    monkeypatch.setattr(approx, "_select_odd_interactions", fake_select_odd_interactions)
+
+    approx.approximate(budget, additive_game)
+
+    assert "extraction" in approx.runtime_last_approximate_run
+    assert "fallback_explain" not in approx.runtime_last_approximate_run
+    assert captured["n_candidate_interactions"] == math.ceil(
+        budget / approx.interaction_factor
+    )
 
 
 def test_candidate_interaction_count_matches_paper(monkeypatch):

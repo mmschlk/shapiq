@@ -1,4 +1,4 @@
-""" This module contains the OddSHAP approximator for estimating Shapley values.
+"""This module contains the OddSHAP approximator for estimating Shapley values.
 
 OddSHAP is a value estimator based on paired sampling, odd-only Fourier regression, and sparse odd interaction detection as introduced in Fumagalli et al. (2026) :cite:t:`Fumagalli.2026`
 """
@@ -8,7 +8,6 @@ from __future__ import annotations
 import math
 import time
 from importlib import import_module
-from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -24,6 +23,7 @@ from ._oddshap_proxyspex_adapter import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from types import ModuleType
 
     from shapiq.game import Game
 
@@ -41,24 +41,17 @@ def _import_lightgbm() -> ModuleType:
 
 
 class OddSHAP(Approximator):
-    """ Args
-
-    """
+    """OddSHAP approximator for first-order Shapley values."""
 
     valid_indices: tuple[str, ...] = ("SV",)
 
     @staticmethod
     def _init_sampling_weights_static(n: int) -> np.ndarray:
-        """ Initialize OddSHAP coalition-size sampling weights.
-
-
-        Args
-
-        """
+        """Initialize OddSHAP coalition-size sampling weights."""
         weight_vector = np.zeros(n + 1, dtype=float)
 
         for coalition_size in range(n + 1):
-            if coalition_size == 0 or coalition_size == n:
+            if coalition_size in (0, n):
                 weight_vector[coalition_size] = 0.0  # zero for empty and full coalition
             else:
                 weight_vector[coalition_size] = 1.0 / (
@@ -66,9 +59,9 @@ class OddSHAP(Approximator):
                 )
         total_weight = np.sum(weight_vector)
         if total_weight == 0:
-            raise ValueError("OddSHAP sampling weights are undefined for n <= 1.")
+            msg = "OddSHAP sampling weights are undefined for n <= 1."
+            raise ValueError(msg)
         return weight_vector / total_weight
-
 
     def __init__(
             self,
@@ -84,6 +77,8 @@ class OddSHAP(Approximator):
             tree_params: dict[str, Any] | None = None,
             **kwargs: Any
     ) -> None:
+        """Initialize the OddSHAP approximator."""
+        del kwargs
         _import_lightgbm()
 
         # OddSHAP uses its own coalition-size distribution.
@@ -104,11 +99,9 @@ class OddSHAP(Approximator):
 
         self.regression_basis = regression_basis
         self.interaction_detection = interaction_detection
-        #self.odd_only = odd_only
         if not odd_only:
-            raise ValueError(
-                "This OddSHAP implementation supports only odd_only=True."
-            )
+            msg = "This OddSHAP implementation supports only odd_only=True."
+            raise ValueError(msg)
         self.odd_only = True
         self.interaction_factor = interaction_factor
         self.tree_params = tree_params
@@ -126,7 +119,7 @@ class OddSHAP(Approximator):
             game: Game | Callable[[np.ndarray], np.ndarray],
             **kwargs: Any
     ) -> InteractionValues:
-        """ Approximate first-order Shapley values
+        """Approximate first-order Shapley values.
 
         main control flow: (Alg. 1 of OddSHAP paper)
         1. sample coalitions using the inherited CoalitionSampler
@@ -134,9 +127,12 @@ class OddSHAP(Approximator):
         3. extract empty and grand coalition values
         4. decide between fallback mode and odd-regression mode
 
-        Args
-
+        Args:
+            budget: Number of game evaluations available to the approximator.
+            game: Game or callable that evaluates coalition matrices.
+            **kwargs: Additional keyword arguments kept for API compatibility.
         """
+        del kwargs
         start_time = time.time()
 
         # 1. Sample coalitions
@@ -167,8 +163,6 @@ class OddSHAP(Approximator):
 
         full_set_value = float(game_values[np.where(full_mask)[0][0]])
 
-        #centered_game_values = game_values - empty_set_value  # normalize response relative to empty coalition
-
         # 4. Compute how many higher-order interactions OddSHAP is allowed to consider later.
         # The paper defines |T_odd| = ceil(m / eta); singletons are added separately.
         n_candidate_interactions = max(0, math.ceil(budget / self.interaction_factor))
@@ -179,7 +173,6 @@ class OddSHAP(Approximator):
                 budget=budget,
                 coalitions=coalitions,
                 game_values=game_values,
-                #centered_game_values=centered_game_values,
                 empty_set_value=empty_set_value,
                 full_set_value=full_set_value,
             )
@@ -188,7 +181,6 @@ class OddSHAP(Approximator):
                 budget=budget,
                 coalitions=coalitions,
                 game_values=game_values,
-                #centered_game_values=centered_game_values,
                 empty_set_value=empty_set_value,
                 full_set_value=full_set_value,
                 n_candidate_interactions=n_candidate_interactions,
@@ -205,18 +197,15 @@ class OddSHAP(Approximator):
             budget: int,
             coalitions: np.ndarray,
             game_values: np.ndarray,
-            #centered_game_values: np.ndarray,
             empty_set_value: float,
             full_set_value: float,
     ) -> InteractionValues:
-        """ low-budget OddSHAP fallback branch
+        """Run the low-budget OddSHAP fallback branch.
 
         When the budget is too small to stably fit the odd-regression problem, OddSHAP falls back to explaining a fitted tree surrogate.
         (fit a LightGBM surrogate on sampled coalitions and return its first-order Shapley values for the full coalition.
-
-        Args
-
         """
+        del full_set_value
 
         # 1. fit tree surrogate on sampled coalitions
         surrogate_start_time = time.time()
@@ -228,7 +217,7 @@ class OddSHAP(Approximator):
         # Lazy import: top-level import of TreeExplainer creates a circular
         # dependency once OddSHAP is registered in shapiq.approximator.regression
         # because shapiq.tree.explainer transitively imports shapiq.explainer.
-        from shapiq.tree.explainer import TreeExplainer
+        from shapiq.tree.explainer import TreeExplainer  # noqa: PLC0415
 
         explain_start_time = time.time()
         tree_explainer = TreeExplainer(
@@ -271,7 +260,6 @@ class OddSHAP(Approximator):
             budget: int,
             coalitions: np.ndarray,
             game_values: np.ndarray,
-            #centered_game_values: np.ndarray,
             empty_set_value: float,
             full_set_value: float,
             n_candidate_interactions: int,
@@ -286,7 +274,6 @@ class OddSHAP(Approximator):
         5. solves the constrained odd regression
         6. transforms the fitted coefficients into Shapley values
         """
-
         # 1. fit surrogate model
         surrogate_start_time = time.time()
         surrogate_model = self._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
@@ -356,12 +343,8 @@ class OddSHAP(Approximator):
             self,
             coalitions: np.ndarray,
             game_values: np.ndarray,
-    ) -> Any:
-        """ Fit the LightGBM surrogate used by the OddSHAP fallback branch.
-
-        Args
-
-        """
+    ) -> object:
+        """Fit the LightGBM surrogate used by the OddSHAP fallback branch."""
         lgb = _import_lightgbm()
 
         if self.tree_params is None:
@@ -442,7 +425,7 @@ class OddSHAP(Approximator):
             coalitions: np.ndarray,
             game_values: np.ndarray,
             n_candidate_interactions: int,
-            surrogate_model: Any | None = None,
+            surrogate_model: object | None = None,
     ) -> list[tuple[int, ...]]:
         """Return selected higher-order odd interactions for the OddSHAP support.
 
@@ -456,9 +439,6 @@ class OddSHAP(Approximator):
 
         if surrogate_model is None:
             return []
-
-        #if n_candidate_interactions <= 0 or surrogate_model is None:
-            #return []
 
         fourier_coeffs = lgboost_to_fourier(surrogate_model.booster_.dump_model())
         higher_order_odd = {
@@ -480,9 +460,8 @@ class OddSHAP(Approximator):
         )
         return list(selected.keys())
 
-
     def _get_regression_row_weights(self) -> np.ndarray:
-        """ Return square-root row weights for the OddSHAP regression problem
+        """Return square-root row weights for the OddSHAP regression problem.
 
         The weights combine:
         - OddSHAP coalition-size kernel weights
@@ -507,7 +486,7 @@ class OddSHAP(Approximator):
             full_set_value: float,
             drop_boundary_rows: bool = True,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """ Build the weighted OddSHAP regression system (X_tilde, y_tilde).
+        """Build the weighted OddSHAP regression system (X_tilde, y_tilde).
 
         The regression is solved for the non-empty active Fourier coefficients,
         while the empty Fourier coefficient is fixed exactly as
@@ -558,7 +537,7 @@ class OddSHAP(Approximator):
             full_set_value: float,
             empty_set_value: float,
     ) -> tuple[float, np.ndarray, np.ndarray]:
-        """ Build the exact OddSHAP Fourier constraint system.
+        """Build the exact OddSHAP Fourier constraint system.
 
         Returns:
             beta_empty = (f(full) + f(empty)) / 2
@@ -596,7 +575,7 @@ class OddSHAP(Approximator):
             empty_set_value: float,
             full_set_value: float,
     ) -> np.ndarray:
-        """ Solve the constrained OddSHAP regression in the Fourier basis.
+        """Solve the constrained OddSHAP regression in the Fourier basis.
 
         This solves the non-empty odd coefficients under the exact sum constraint
         from the OddSHAP paper, then assembles the full coefficient vector
@@ -630,7 +609,7 @@ class OddSHAP(Approximator):
             *,
             baseline_value: float,
     ) -> np.ndarray:
-        """ Transform fitted odd Fourier coefficients into first-order Shapley values.
+        """Transform fitted odd Fourier coefficients into first-order Shapley values.
 
         The coefficient vector must follow the active support ordering:
         - position 0 corresponds to the empty interaction ()
@@ -643,8 +622,9 @@ class OddSHAP(Approximator):
 
             phi_i = -2 * sum_{T: i in T, |T| odd} beta_T / |T|
 
-        Args
-
+        Args:
+            odd_fourier_coefficients: Fitted odd Fourier coefficients in active support order.
+            baseline_value: Baseline value assigned to the empty coalition.
         """
         if odd_fourier_coefficients.shape[0] != self.n_active_interactions:
             msg = (
