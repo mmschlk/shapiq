@@ -6,7 +6,6 @@ OddSHAP is a value estimator based on paired sampling, odd-only Fourier regressi
 from __future__ import annotations
 
 import math
-from collections import defaultdict
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
@@ -15,6 +14,7 @@ from scipy.special import binom
 
 from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues
+from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -77,10 +77,11 @@ class OddSHAP(Approximator):
             sampling_weights: np.ndarray | None = None,
             random_state: int | None = None,
             regression_basis: str = "Fourier",  # isolate odd terms
-            interaction_detection: str = "Fourier",  # screening sparse odd interactions
+            interaction_detection: str = "ProxySHAP",  # screening sparse odd interactions
             odd_only: bool = True,
             interaction_factor: int = 10,  # standard setting according to paper
             tree_params: dict[str, Any] | None = None,
+            proxy_max_order: int | None = None,
             **kwargs: Any
     ) -> None:
         """Initialize the OddSHAP approximator."""
@@ -115,6 +116,7 @@ class OddSHAP(Approximator):
         self.odd_interaction_lookup: dict[tuple[int, ...], int] = {}
         self.odd_interaction_matrix_binary = np.zeros((0, self.n), dtype=bool)
         self.n_active_interactions: int = 0
+        self.proxy_max_order = self.n if proxy_max_order is None else proxy_max_order
 
     def approximate(
             self,
@@ -352,38 +354,40 @@ class OddSHAP(Approximator):
             n_candidate_interactions: int,
             surrogate_model: object | None = None,
     ) -> list[tuple[int, ...]]:
-        """Return selected higher-order odd interactions for the OddSHAP support.
+        """Return selected higher-order odd interactions using ProxySHAP's proxy-tree screening step."""
+        del budget, coalitions, game_values
 
-        Uses Fourier-based screening: convert the LightGBM surrogate into its
-        sparse Fourier representation, then keep the top-k higher-order
-        odd-cardinality interactions by coefficient magnitude. Singletons and
-        the empty interaction are excluded here because _build_support adds
-        them unconditionally.
-        """
-        del coalitions, game_values
-
-        if surrogate_model is None:
+        if surrogate_model is None or n_candidate_interactions <= 0:
             return []
 
-        fourier_coeffs = _lgboost_to_fourier(surrogate_model.booster_.dump_model())
-        higher_order_odd = {
-            interaction: coefficient
-            for interaction, coefficient in fourier_coeffs.items()
-            if len(interaction) >= 3 and len(interaction) % 2 == 1
-        }
-        # Full-budget mode: do not truncate the odd support
-        if budget >= 2 ** self.n:
-            return list(higher_order_odd.keys())
-
-        if n_candidate_interactions <= 0:
-            return []
-
-        selected = _top_k_interactions(
-            higher_order_odd,
-            k=n_candidate_interactions,
-            odd=False,  # already filtered to higher-order odd interactions above
+        # ProxySHAP-style tree interaction computation
+        explainer = InterventionalTreeExplainer(
+            surrogate_model,
+            data=np.zeros((1, self.n)),
+            class_index=None,
+            index="SII",
+            max_order=self.proxy_max_order,
+            bool_tree=True,
         )
-        return list(selected.keys())
+
+        proxy_values = explainer.explain_function(np.ones((1, self.n)))
+        proxy_interactions = proxy_values.interactions
+
+        higher_order_odd: dict[tuple[int, ...], float] = {}
+
+        for interaction, value in proxy_interactions.items():
+            interaction = tuple(sorted(interaction))
+
+            if len(interaction) >= 3 and len(interaction) % 2 == 1:
+                higher_order_odd[interaction] = float(value)
+
+        selected = sorted(
+            higher_order_odd.items(),
+            key=lambda kv: abs(kv[1]),
+            reverse=True,
+        )[:n_candidate_interactions]
+
+        return [interaction for interaction, _ in selected]
 
     def _get_regression_row_weights(self) -> np.ndarray:
         """Return square-root row weights for the OddSHAP regression problem.
@@ -581,90 +585,3 @@ class OddSHAP(Approximator):
         sv_values[1:] *= -2.0
 
         return sv_values
-
-
-def _lgboost_to_fourier(
-        model_dict: dict[str, Any],
-) -> dict[tuple[int, ...], float]:
-    """Convert a fitted LightGBM model to its aggregated Fourier representation.
-
-    Args:
-        model_dict: The output of ``model.booster_.dump_model()`` for a fitted
-            LightGBM regressor or classifier.
-
-    Returns:
-        Dictionary mapping interaction tuples (sorted feature indices) to their
-        aggregated Fourier coefficients summed across all trees in the
-        ensemble. Zero-valued coefficients are dropped.
-    """
-    aggregated: dict[tuple[int, ...], float] = defaultdict(float)
-    for tree_info in model_dict["tree_info"]:
-        for interaction, value in _tree_to_fourier(tree_info).items():
-            aggregated[interaction] += value
-    return {k: v for k, v in aggregated.items() if v != 0.0}
-
-
-def _top_k_interactions(
-        fourier_coeffs: dict[tuple[int, ...], float],
-        k: int,
-        *,
-        odd: bool = True,
-) -> dict[tuple[int, ...], float]:
-    """Select the top-k interactions by Fourier coefficient magnitude.
-
-    Args:
-        fourier_coeffs: Output of :func:`_lgboost_to_fourier`.
-        k: Maximum number of interactions to retain.
-        odd: If True (default), restrict to interactions of odd cardinality —
-            matches the OddSHAP paper's restriction since by Theorem 3.2 the
-            Shapley value depends only on the odd component of the set
-            function.
-
-    Returns:
-        Sub-dictionary of ``fourier_coeffs`` containing the top-k entries by
-        absolute coefficient magnitude. If fewer than ``k`` qualifying entries
-        exist, all of them are returned.
-    """
-    if odd:
-        candidates = {t: v for t, v in fourier_coeffs.items() if len(t) % 2 == 1}
-    else:
-        candidates = dict(fourier_coeffs)
-
-    sorted_items = sorted(candidates.items(), key=lambda kv: abs(kv[1]), reverse=True)
-    return dict(sorted_items[:k])
-
-def _tree_to_fourier(tree_info: dict[str, Any]) -> dict[tuple[int, ...], float]:
-    """Compute Fourier coefficients for a single LightGBM tree via DFS.
-
-    Args:
-        tree_info: A single ``tree_info`` entry from
-            ``model.booster_.dump_model()``.
-
-    Returns:
-        Dictionary mapping interaction tuples to per-tree Fourier coefficients.
-    """
-
-    def _combine(
-            left: dict[tuple[int, ...], float],
-            right: dict[tuple[int, ...], float],
-            feature_idx: int,
-    ) -> dict[tuple[int, ...], float]:
-        combined: dict[tuple[int, ...], float] = {}
-        for interaction in set(left) | set(right):
-            l_val = left.get(interaction, 0.0)
-            r_val = right.get(interaction, 0.0)
-            # combined[interaction] = (l_val + r_val) / 2
-            combined[interaction] = combined.get(interaction, 0.0) + (l_val + r_val) / 2
-            extended = tuple(sorted(set(interaction) | {feature_idx}))
-            # combined[extended] = (l_val - r_val) / 2
-            combined[extended] = combined.get(extended, 0.0) + (l_val - r_val) / 2
-        return combined
-
-    def _dfs(node: dict[str, Any]) -> dict[tuple[int, ...], float]:
-        if "leaf_value" in node:
-            return {(): node["leaf_value"]}
-        left_coeffs = _dfs(node["left_child"])
-        right_coeffs = _dfs(node["right_child"])
-        return _combine(left_coeffs, right_coeffs, node["split_feature"])
-
-    return _dfs(tree_info["tree_structure"])
