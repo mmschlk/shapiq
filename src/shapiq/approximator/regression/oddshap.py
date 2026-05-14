@@ -6,7 +6,6 @@ OddSHAP is a value estimator based on paired sampling, odd-only Fourier regressi
 from __future__ import annotations
 
 import math
-import time
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
@@ -133,20 +132,15 @@ class OddSHAP(Approximator):
             **kwargs: Additional keyword arguments kept for API compatibility.
         """
         del kwargs
-        start_time = time.time()
 
         # 1. Sample coalitions
         # use coalition sampler initialized in base class
         self._sampler.sample(budget)
-        sampling_end_time = time.time()
-        self.runtime_last_approximate_run["sampling"] = sampling_end_time - start_time
 
         coalitions = self._sampler.coalitions_matrix
 
         # 2. Evaluate game on all sampled coalitions
         game_values = np.asarray(game(coalitions), dtype=float)
-        evaluation_end_time = time.time()
-        self.runtime_last_approximate_run["evaluations"] = evaluation_end_time - sampling_end_time
 
         # 3. Extract empty and grand coalition values (CoalitionSampler ensures both are present)
         empty_idx = self._sampler.empty_coalition_index
@@ -186,8 +180,6 @@ class OddSHAP(Approximator):
                 n_candidate_interactions=n_candidate_interactions,
             )
 
-        end_time = time.time()
-        self.runtime_last_approximate_run["total"] = end_time - start_time
         return result
 
     # if budget too small to fit odd regression
@@ -208,10 +200,7 @@ class OddSHAP(Approximator):
         del full_set_value
 
         # 1. fit tree surrogate on sampled coalitions
-        surrogate_start_time = time.time()
         surrogate_model = self._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
-        surrogate_end_time = time.time()
-        self.runtime_last_approximate_run["proxy_fit"] = surrogate_end_time - surrogate_start_time
 
         # 2. explain full coalition
         # Lazy import: top-level import of TreeExplainer creates a circular
@@ -219,7 +208,6 @@ class OddSHAP(Approximator):
         # because shapiq.tree.explainer transitively imports shapiq.explainer.
         from shapiq.tree.explainer import TreeExplainer  # noqa: PLC0415
 
-        explain_start_time = time.time()
         tree_explainer = TreeExplainer(
             model=surrogate_model,
             max_order=1,
@@ -227,8 +215,6 @@ class OddSHAP(Approximator):
             index="SV",
         )
         surrogate_explanation = tree_explainer.explain_function(np.ones(self.n, dtype=float))
-        explain_end_time = time.time()
-        self.runtime_last_approximate_run["fallback_explain"] = explain_end_time - explain_start_time
 
         # 3. convert the returned explanation
         sv_values = np.zeros(self.n + 1, dtype=float)
@@ -275,13 +261,9 @@ class OddSHAP(Approximator):
         6. transforms the fitted coefficients into Shapley values
         """
         # 1. fit surrogate model
-        surrogate_start_time = time.time()
         surrogate_model = self._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
-        surrogate_end_time = time.time()
-        self.runtime_last_approximate_run["proxy_fit"] = surrogate_end_time - surrogate_start_time
 
         # 2. detect odd higher-order interactions
-        extraction_start_time = time.time()
         detected_interactions = self._select_odd_interactions(
             budget=budget,
             coalitions=coalitions,
@@ -289,14 +271,11 @@ class OddSHAP(Approximator):
             n_candidate_interactions=n_candidate_interactions,
             surrogate_model=surrogate_model,
         )
-        extraction_end_time = time.time()
-        self.runtime_last_approximate_run["extraction"] = extraction_end_time - extraction_start_time
 
         # 3. build active support
         self._build_support(detected_interactions)
 
         # 4. build weighted regression objects
-        regression_start_time = time.time()
         X_tilde, y_tilde = self._build_weighted_system(
             coalitions=coalitions,
             game_values=game_values,
@@ -323,8 +302,6 @@ class OddSHAP(Approximator):
         for player in range(self.n):
             interaction_lookup[(player,)] = player + 1
 
-        regression_end_time = time.time()
-        self.runtime_last_approximate_run["regression"] = regression_end_time - regression_start_time
 
         return InteractionValues(
             values=sv_values,
