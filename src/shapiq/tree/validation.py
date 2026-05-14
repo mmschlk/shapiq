@@ -30,6 +30,9 @@ SUPPORTED_MODELS = {
     "lightgbm.basic.Booster",
     "xgboost.sklearn.XGBRegressor",
     "xgboost.sklearn.XGBClassifier",
+    "catboost.core.CatBoost",
+    "catboost.core.CatBoostRegressor",
+    "catboost.core.CatBoostClassifier",
 }
 
 
@@ -37,17 +40,23 @@ def validate_tree_model(
     model: Model,
     class_label: int | None = None,
 ) -> list[TreeModel]:
-    """Validate the model.
+    """Validate the model and return its trees in the unified internal format.
+
+    Accepts a single :class:`~shapiq.tree.base.TreeModel`, a list of ``TreeModel`` objects, a
+    raw ``dict`` matching the ``TreeModel`` constructor, or any library-native model supported by
+    :func:`~shapiq.tree.conversion.convert_tree_model` (scikit-learn, XGBoost, LightGBM, CatBoost).
 
     Args:
         model: The model to validate.
         class_label: The class label of the model to explain. Only used for classification models.
 
     Returns:
-        The validated model and the model function.
+        The validated trees as a list of :class:`~shapiq.tree.base.TreeModel` instances. Single-tree
+        inputs are normalized to a one-item list.
 
     Raises:
-        NotImplementedError: If the model type is not supported.
+        TypeError: If the model type is not supported (raised from the underlying
+            ``NotImplementedError`` of :func:`~shapiq.tree.conversion.convert_tree_model`).
     """
     tree_model = []
     # direct returns for base tree models and dict as model

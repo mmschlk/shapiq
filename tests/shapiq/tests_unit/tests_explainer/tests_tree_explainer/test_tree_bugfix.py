@@ -8,6 +8,57 @@ import pytest
 from shapiq.tree import TreeExplainer, TreeModel, TreeSHAPIQ
 
 
+def test_constant_tree_model_initializes_and_explains():
+    """Test that a single-node constant tree contributes only to the baseline."""
+    tree = TreeModel(
+        children_left=np.asarray([-1]),
+        children_right=np.asarray([-1]),
+        children_missing=np.asarray([-1]),
+        features=np.asarray([-2]),
+        thresholds=np.asarray([np.nan]),
+        values=np.asarray([3.5]),
+        node_sample_weight=np.asarray([10.0]),
+    )
+
+    explainer = TreeExplainer(model=[tree], max_order=1, min_order=1, index="SV")
+    explanation = explainer.explain(np.asarray([1.0, 2.0]))
+
+    assert explainer.baseline_value == 3.5
+    assert explanation.values.size == 0
+    assert explanation.baseline_value == 3.5
+
+
+def test_xgboost_ensemble_with_constant_trees_initializes():
+    """Test boosted ensembles with late constant trees do not fail edge-tree creation."""
+    xgboost = pytest.importorskip("xgboost")
+    from sklearn.datasets import make_regression
+
+    X, y = make_regression(
+        n_samples=1200,
+        n_features=20,
+        n_informative=12,
+        noise=0.1,
+        random_state=42,
+    )
+    X = X.astype(np.float32)
+    y = y.astype(np.float32)
+    model = xgboost.XGBRegressor(
+        n_estimators=200,
+        max_depth=8,
+        objective="reg:squarederror",
+        tree_method="hist",
+        n_jobs=1,
+        random_state=42,
+    )
+    model.fit(X, y)
+
+    explainer = TreeExplainer(model=model, max_order=1, min_order=1, index="SV")
+    explanation = explainer.explain(X[0])
+
+    assert any(tree.n_features_in_tree == 0 for tree in explainer._trees)
+    assert np.all(np.isfinite(explanation.values))
+
+
 def test_bike_bug():
     """A test for the bug denoted in GH #118. Should be fixed."""
     children_left = [

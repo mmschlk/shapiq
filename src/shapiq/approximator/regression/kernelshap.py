@@ -22,7 +22,7 @@ class KernelSHAP(Regression[ValidRegressionKernelSHAIndices]):
     regression problem, where the Shapley values are the coefficients of the regression problem.
 
     Example:
-        >>> from shapiq_games.benchmark import DummyGame
+        >>> from shapiq_games.synthetic import DummyGame
         >>> from shapiq.approximator import KernelSHAP
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = KernelSHAP(n=5)

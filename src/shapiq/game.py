@@ -483,7 +483,7 @@ class Game:
                 coalitions will be used.
 
         Examples:
-            >>> from shapiq_games.benchmark import DummyGame
+            >>> from shapiq_games.synthetic import DummyGame
             >>> game = DummyGame(4, interaction=(1, 2))
             >>> game.precomputed, game.n_values_stored
             False, 0
@@ -554,7 +554,7 @@ class Game:
             This method does not change the state of the game and does not normalize the values.
 
         Examples:
-            >>> from shapiq_games.benchmark import DummyGame
+            >>> from shapiq_games.synthetic import DummyGame
             >>> game = DummyGame(4, interaction=(1, 2))
             >>> game.compute(np.array([[0, 1, 0, 0], [0, 1, 1, 0]], dtype=bool))
             (array([0.25, 1.5]), {(1): 0, (1, 2): 1.5}, 0.0)

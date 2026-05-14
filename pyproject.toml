@@ -245,6 +245,7 @@ all_ml = [
     "torch",
     "xgboost",
     "lightgbm",    # lightgbm has install problems on macOS in github actions
+    "catboost",
     "transformers",
     "scikit-image",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12

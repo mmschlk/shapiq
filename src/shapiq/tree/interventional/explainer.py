@@ -2,19 +2,34 @@
 
 from __future__ import annotations
 
+from math import comb
 from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.special import binom
 
+from shapiq.game_theory.indices import get_computation_index
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.validation import validate_tree_model
-from shapiq.utils.modules import safe_isinstance
 
 from .cext import (
     compute_interactions_batched_sparse,  # ty: ignore[unresolved-import]
     compute_interactions_flatten,  # ty: ignore[unresolved-import]
+    preprocess_boolean_trees,  # ty: ignore[unresolved-import]
 )
+
+# The dense `compute_interactions_flatten` path allocates a result buffer of
+# sum(C(n, k) for k in 1..max_order) doubles, plus one such buffer per OpenMP
+# thread inside the order-2/3 leaf-parallel kernels. Above this threshold we
+# redirect to the sparse `compute_interactions_batched_sparse` path, which only
+# materializes interactions actually touched by tree paths. 1_000_000 entries
+# = 8 MB per thread — comfortably below typical RAM budgets.
+_DENSE_FLATTEN_MAX_RESULT_SIZE = 1_000_000
+
+
+def _dense_flatten_result_size(n_features: int, max_order: int) -> int:
+    return sum(comb(n_features, k) for k in range(1, max_order + 1))
+
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -34,7 +49,6 @@ INDICES_C_IMPLEMENTATION_CAPABLE = [
     "STII",
     "CUSTOM",
 ]
-INDICES_CII_IMPLEMENTATION_CAPABLE = ["WBII", *INDICES_C_IMPLEMENTATION_CAPABLE]
 
 
 def obtain_E_R_values(tree: TreeModel) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
@@ -114,16 +128,43 @@ def obtain_E_R_values_point(
 
 
 class InterventionalTreeExplainer:
-    """Interventional Tree Shap explainer for a single decision tree.
+    """Any-order interventional Shapley-interaction explainer for tree models.
 
-    This class implements the interventional TreeSHAP algorithm for a single
-    sklearn DecisionTreeClassifier or DecisionTreeRegressor.
+    Extends interventional TreeSHAP to compute exact Shapley interactions of
+    arbitrary order over a single decision tree or a tree ensemble (as
+    validated by :func:`shapiq.tree.validation.validate_tree_model`). Each
+    coalition's contribution is decomposed against a reference background
+    dataset using the ``E``/``R`` partition (features fixed by the explained
+    point vs. by the reference), and the recursion is offloaded to one of two
+    C++ kernels:
+
+    * **Dense flatten path** — :func:`compute_interactions_flatten` for
+      ``max_order <= 3`` when the dense buffer fits within
+      :data:`_DENSE_FLATTEN_MAX_RESULT_SIZE`.
+    * **Sparse path** — :func:`compute_interactions_batched_sparse` for
+      higher orders or wide-feature trees.
+
+    Indices supported via the C path are listed in
+    :data:`INDICES_C_IMPLEMENTATION_CAPABLE`. Custom weight functions are
+    accepted via ``weight_fn`` and routed through a precomputed lookup table.
+
+    The baseline value is computed from the validated trees by summing per-tree
+    predictions over the reference data. ``validate_tree_model`` already scales
+    sklearn ensemble trees by ``1/n_estimators`` and extracts class-specific raw
+    scores for XGBoost / LightGBM classifiers, so this single path lands on the
+    same scale as the kernel for every supported model.
 
     Attributes:
-        tree: Validated tree structure returned by validate_tree_model for the fitted
-            sklearn tree.
-        data: Background dataset used to compute the reference point.
-        reference_point: The baseline/reference feature values (mean over the background data).
+        tree: Validated tree (or list of trees) from
+            :func:`validate_tree_model`.
+        reference_data: Background dataset (shape ``(n_ref, n_features)``)
+            used to define interventional baselines, cast to ``float32``.
+        baseline_value: Mean tree-prediction over ``reference_data`` (scalar);
+            written as the order-0 entry of the returned interactions.
+        max_order: Maximum interaction order computed.
+        index: Interaction index (e.g. ``"SII"``); replaced with ``"CUSTOM"``
+            when ``weight_fn`` is supplied.
+        n_players: Number of features.
     """
 
     def __init__(
@@ -139,22 +180,34 @@ class InterventionalTreeExplainer:
         bool_tree: bool = False,
         weight_fn: Callable[[int, int, int], float] | None = None,
     ) -> None:
-        """Initialize the InterventionalTreeExplainer.
+        r"""Initialize the InterventionalTreeExplainer.
 
         Args:
-            model: The tree model to explain.
-            data: Background dataset used to compute reference points.
-            class_index: Class index for classification models. Defaults to ``None``.
-            debug: Whether to print debug information. Defaults to ``False``.
-            max_order: Maximum order of interactions. Defaults to ``2``.
-            index: The interaction index to use. Defaults to ``"SII"``.
-            index_func: Custom index function. Defaults to ``None``.
-            p: Probability parameter for WBII index. Defaults to ``0.5``.
-            bool_tree: Whether to use boolean tree mode. Defaults to ``False``.
-            weight_fn: Custom weight callable with signature
-                ``weight_fn(coalition_size, interaction_size, n_players) -> float``.
-                When provided, overrides ``index`` and uses a precomputed lookup table.
+            model: A fitted tree or tree ensemble compatible with
+                :func:`shapiq.tree.validation.validate_tree_model` (sklearn,
+                XGBoost, LightGBM, or a precomputed leaf-matrix list).
+            data: Background dataset of shape ``(n_ref, n_features)`` defining
+                the interventional baseline.
+            class_index: Class index for classifiers. For binary
+                ``predict_proba`` models, defaults to ``1`` if left as
+                ``None``. Ignored for regressors.
+            debug: If ``True``, the C++ kernel prints debug information.
+                Defaults to ``False``.
+            max_order: Maximum interaction order to compute. Defaults to ``2``.
+            index: Interaction index; one of
+                :data:`INDICES_C_IMPLEMENTATION_CAPABLE`. Replaced with
+                ``"CUSTOM"`` when ``weight_fn`` is supplied. Defaults to
+                ``"SII"``.
+            index_func: Reserved for a Python-side custom index function.
                 Defaults to ``None``.
+            bool_tree: If ``True``, the tree is treated as boolean (coalitions
+                in :math:`\\{0, 1\\}^n`) and preprocessed once with the
+                BitSet DFS C++ helper instead of per-explanation. Used by
+                :class:`~proxyshap.proxyshap.ProxySHAP`. Defaults to ``False``.
+            weight_fn: Optional custom weight callable with signature
+                ``weight_fn(coalition_size, interaction_size, n_players) -> float``.
+                When supplied, overrides ``index`` and triggers building a
+                precomputed lookup table. Defaults to ``None``.
         """
         # If Classification model and class_index is None, set to 1
         if class_index is None and hasattr(model, "predict_proba"):
@@ -173,52 +226,29 @@ class InterventionalTreeExplainer:
             self.weight_fn = weight_fn
             self.index = "CUSTOM"
             self.look_up_table = self._build_custom_weight_table()
-        if class_index is not None:
-            # If XGBoost model, use DMatrix to obtain logits
-            if safe_isinstance(model, "xgboost.sklearn.XGBClassifier"):
-                import xgboost as xgb
+        # Compute the interventional baseline directly from the validated trees.
+        per_sample_predictions = np.array(
+            [sum(t.predict_one(ref) for t in self.tree) for ref in self.reference_data],
+            dtype=np.float64,
+        )
+        self.baseline_value = float(per_sample_predictions.mean())
 
-                dmatrix_data = xgb.DMatrix(self.reference_data)
-                booster = model.get_booster()  # ty: ignore[unresolved-attribute]
-                logits = booster.predict(dmatrix_data, output_margin=True)
-                if logits.ndim == 1:
-                    # Binary classification case
-                    if class_index == 1:
-                        self.baseline_value = np.mean(logits).astype(np.float64)
-                    else:
-                        self.baseline_value = np.mean(-logits).astype(np.float64)
-                else:
-                    self.baseline_value = np.mean(logits[:, class_index]).astype(np.float64)
-            elif safe_isinstance(model, "lightgbm.LGBMClassifier"):
-                raw_scores = model.predict(  # ty: ignore[unresolved-attribute]
-                    self.reference_data, raw_score=True
-                )
-                if raw_scores.ndim == 1:
-                    self.baseline_value = (
-                        np.mean(raw_scores) if class_index == 1 else np.mean(-raw_scores)
-                    ).astype(np.float64)
-                else:
-                    self.baseline_value = np.mean(raw_scores[:, class_index]).astype(np.float64)
-            else:
-                proba = model.predict_proba(self.reference_data)  # ty: ignore[unresolved-attribute]
-                self.baseline_value = np.mean(proba[:, class_index]).astype(np.float64)
-        # Check if we have the case of a leaf_matrix directly provided
-        elif isinstance(model, list):
-            self.baseline_value = model[0][-1]  # ty: ignore[not-subscriptable]
-        else:
-            prediction = model.predict(self.reference_data)  # ty: ignore[unresolved-attribute]
-            self.baseline_value = np.mean(prediction).astype(np.float64)
-
-        if self.max_order > 2:
-            self._preprocess_tree_higher_order()
+        # The sparse C path needs the per-tree flattened arrays. Populate them
+        # whenever we'll route there: max_order > 3 (always sparse) or when the
+        # dense flatten path's result buffer would exceed our memory budget.
+        n_features_hint = int(self.reference_data.shape[1])
+        self._use_sparse_path = (
+            self.max_order > 3
+            or _dense_flatten_result_size(n_features_hint, self.max_order)
+            > _DENSE_FLATTEN_MAX_RESULT_SIZE
+        )
+        if self._use_sparse_path:
+            self._preprocess_tree_sparse_path()
         if self.bool_tree:
             self._preprocess_boolean_tree()
 
-    def _preprocess_tree_higher_order(self) -> None:
-        """Preprocess the tree to gather necessary information for higher-order interactions.
-
-        This method gather the arrays from the tree's as a list to give them to the C implementation for higher-order interactions.
-        """
+    def _preprocess_tree_sparse_path(self) -> None:
+        """Flatten per-tree arrays into the layout expected by the sparse C kernel."""
         self.values_list = [tree.values.astype(np.float32).flatten() for tree in self.tree]
         self.threshold_list = [tree.thresholds.astype(np.float32).flatten() for tree in self.tree]
         self.features_list = [tree.features.astype(np.int64).flatten() for tree in self.tree]
@@ -233,54 +263,32 @@ class InterventionalTreeExplainer:
         ]
 
     def _preprocess_boolean_tree(self) -> None:
-        """Gather E and R statistics for boolean tree mode."""
+        """Gather E and R statistics for boolean tree mode using C++ BitSet DFS."""
         self.n_features = self.reference_data.shape[1]
-        E_list: list[np.ndarray] = []
-        R_list: list[np.ndarray] = []
-        leaf_vals_list: list[float] = []
 
-        for tree in self.tree:
-            E, R, leaf_vals = obtain_E_R_values(tree)
-            E_list.extend(E)
-            R_list.extend(R)
-            leaf_vals_list.extend(leaf_vals)
+        # Prepare tree arrays for C++
+        values_list = [tree.values.astype(np.float32).flatten() for tree in self.tree]
+        features_list = [tree.features.astype(np.int64).flatten() for tree in self.tree]
+        children_left_list = [tree.children_left.astype(np.int64).flatten() for tree in self.tree]
+        children_right_list = [tree.children_right.astype(np.int64).flatten() for tree in self.tree]
 
-        self.E_list = E_list
-        self.R_list = R_list
-        self.leaf_vals = np.array(leaf_vals_list, dtype=np.float32)
-        n_leafs = len(E_list)
+        (
+            self.E_R_flatten,
+            self.leaf_vals_flatten,
+            self.e_size_flatten,
+            self.r_size_flatten,
+            self.feature_in_E,
+            self.leaf_id,
+        ) = preprocess_boolean_trees(
+            values_list,
+            features_list,
+            children_left_list,
+            children_right_list,
+            self.n_features,
+        )
 
-        # Per-leaf sizes — computed once and reused for all flattened arrays.
-        e_sizes = np.array([len(e) for e in E_list], dtype=np.int64)
-        r_sizes = np.array([len(r) for r in R_list], dtype=np.int64)
-        er_sizes = e_sizes + r_sizes
-
-        self.n_features_e = e_sizes
-        self.n_features_r = r_sizes
-
-        # Build flatten numpy arrays
-        if n_leafs > 0:
-            self.E_R_flatten = np.concatenate(
-                [np.concatenate([e, r]) for e, r in zip(E_list, R_list, strict=False)]
-            ).astype(np.int64)
-            self.feature_in_E = np.concatenate(
-                [
-                    np.concatenate(
-                        [np.ones(int(e), dtype=np.int64), np.zeros(int(r), dtype=np.int64)]
-                    )
-                    for e, r in zip(e_sizes, r_sizes, strict=False)
-                ]
-            )
-        else:
-            self.E_R_flatten = np.array([], dtype=np.int64)
-            self.feature_in_E = np.array([], dtype=np.int64)
-
-        self.leaf_id = np.repeat(np.arange(n_leafs, dtype=np.int64), er_sizes)
-        self.leaf_vals_flatten = np.repeat(self.leaf_vals, er_sizes)
-        self.e_size_flatten = np.repeat(e_sizes, er_sizes)
-        self.r_size_flatten = np.repeat(r_sizes, er_sizes)
         self.e_length = len(self.E_R_flatten)
-        self.n_leafs = n_leafs
+        self.n_leafs = int(self.leaf_id[-1]) + 1 if len(self.leaf_id) > 0 else 0
 
     def _preprocess_tree(self, explain_point: np.ndarray) -> None:
         """Gather E and R statistics for the given explain point.
@@ -371,13 +379,14 @@ class InterventionalTreeExplainer:
         coalition_size: int,
         interaction_size: int,
     ) -> float:
-        """Convert a discrete weight function to a Möbius weight function.
+        """Convert a discrete-derivative weight to its Möbius counterpart.
 
         Args:
-            weight_func: A callable with signature ``weight_func(coalition_size, interaction_size, n_players) -> float`` that returns the weight for a given coalition size and interaction size. This weight represents the "discrete derivative" weight.
+            weight_func: Callable
+                ``weight_func(coalition_size, interaction_size, n_players) -> float``
+                returning the discrete-derivative weight.
             coalition_size: Size of the coalition.
             interaction_size: Size of the interaction.
-            n_players: Total number of players.
 
         Returns:
             The corresponding Möbius weight.
@@ -422,22 +431,35 @@ class InterventionalTreeExplainer:
         x: np.ndarray,
         **_: dict,
     ) -> InteractionValues:
-        """Computes the CII values for a single instance using interventional approach with a pure C++ implementation.
+        """Compute interaction values for a single instance.
+
+        Routes to the dense flatten C kernel for low-order, narrow-feature
+        cases and to the sparse batched C kernel otherwise (see the class
+        docstring). The empty interaction ``()`` is always populated with
+        ``self.baseline_value`` before constructing the result.
 
         Args:
-            x: The instance to explain as a 1-dimensional array.
+            x: The instance to explain, as a 1-D array of length
+                ``self.n_players``.
 
         Returns:
-            InteractionValues object containing the computed interaction values.
+            :class:`~shapiq.interaction_values.InteractionValues` carrying the
+            requested interaction ``index``, ``max_order=self.max_order``, and
+            ``min_order=1`` as the declared lower bound on computed orders.
+            Note that the underlying interactions dict still contains the
+            empty-set entry ``()`` set to ``self.baseline_value``, even though
+            ``min_order`` reports ``1``.
         """
-        if not self.bool_tree:
+        if not self.bool_tree and not self._use_sparse_path:
             self._preprocess_tree(x)
-
-        # Build (and cache) the custom weight table once if using a custom weight function.
-
+        computation_index = get_computation_index(self.index)
         interactions = {}
-        # For higher order interactions we need to use the sparse implementation as the flatten one is only optimized for main effects and pairwise interactions. For main effects and pairwise interactions we can use the flatten implementation which is faster.
-        if self.max_order > 2:
+        # For higher order interactions we need to use the sparse implementation as the flatten one is only optimized for main effects, pairwise, and triple interactions.
+        # For orders up to 3, we can use the flatten implementation which is faster.
+        # We also redirect to sparse for orders <= 3 when n_features is large
+        # enough that the dense flatten buffer would blow memory (see
+        # _DENSE_FLATTEN_MAX_RESULT_SIZE). _use_sparse_path is set in __init__.
+        if self._use_sparse_path:
             interactions = compute_interactions_batched_sparse(
                 self.values_list,
                 self.threshold_list,
@@ -448,7 +470,7 @@ class InterventionalTreeExplainer:
                 self.reference_data.astype(np.float32),
                 x.astype(np.float32).flatten(),
                 self.tree[0].decision_type,
-                self.index,
+                computation_index,
                 self.max_order,
                 self.debug,  # whether to print debug information
                 self.look_up_table,  # optional custom weight table (None → built-in index)
@@ -461,7 +483,7 @@ class InterventionalTreeExplainer:
                 self.r_size_flatten,
                 self.feature_in_E,
                 self.leaf_id,
-                self.index,
+                computation_index,
                 len(self.leaf_vals_flatten),
                 self.n_features,
                 self.e_length,
@@ -472,12 +494,14 @@ class InterventionalTreeExplainer:
                 ),  # number of reference samples for scaling the results
                 self.look_up_table,  # optional custom weight table (None → built-in index)
             )
+
         interactions[()] = self.baseline_value
         return InteractionValues(
             interactions,
             max_order=self.max_order,
             min_order=1,
-            index=self.index,
+            index=computation_index,
             n_players=self.n_players,
             baseline_value=self.baseline_value,
+            target_index=self.index,
         )

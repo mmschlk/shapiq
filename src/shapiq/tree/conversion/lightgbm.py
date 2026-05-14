@@ -1,44 +1,21 @@
-"""Conversion utilities for XGBoost and LightGBM models to the unified internal tree format."""
+"""Conversion utilities for LightGBM models to the unified internal tree format."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lightgbm import LGBMClassifier, LGBMRegressor
+from lightgbm.basic import Booster as LightGBMBooster
+
 from .cext import (
     parse_lightgbm_string_treemodels,  # ty: ignore[unresolved-import]
-    parse_xgboost_ubjson_treemodels,  # ty: ignore[unresolved-import]
 )
 from .common import register
 
 if TYPE_CHECKING:
-    from lightgbm import LGBMClassifier, LGBMRegressor
-    from lightgbm.basic import Booster as LightGBMBooster
-    from xgboost import XGBClassifier, XGBRegressor
-
     from shapiq.tree.base import TreeModel
 
     type LightGBMModel = LGBMRegressor | LGBMClassifier | LightGBMBooster
-
-
-def convert_xgboost_model(
-    model: XGBRegressor | XGBClassifier, class_label: int | None = None
-) -> list[TreeModel]:
-    """Convert an XGBoost model to the unified internal tree format used by shapiq.
-
-    For multiclass models, only the trees for ``class_label`` are returned (round-robin
-    index ``i % num_class == class_label``). For binary/regression models all trees are
-    returned unchanged.
-
-    Args:
-        model: The XGBoost regressor or classifier to convert.
-        class_label: For multiclass classifiers, the class index to extract trees for.
-            Pass ``None`` to return all trees (regression / binary).
-
-    Returns:
-        A list of ``TreeModel`` instances, one per boosting round for the selected class.
-    """
-    byte_array = model.get_booster().save_raw()
-    return parse_xgboost_ubjson_treemodels(byte_array, -1 if class_label is None else class_label)
 
 
 def _lightgbm_model_to_bytes(model: LightGBMModel) -> bytes:
@@ -56,7 +33,7 @@ def _lightgbm_model_to_bytes(model: LightGBMModel) -> bytes:
     if hasattr(model, "get_booster"):
         booster = model.get_booster()  # ty: ignore[call-non-callable]
         if hasattr(booster, "model_to_string"):
-            return booster.model_to_string().encode("utf-8")  # ty: ignore[call-non-callable]
+            return booster.model_to_string().encode("utf-8")
 
     if hasattr(model, "booster_") and hasattr(model.booster_, "model_to_string"):
         return model.booster_.model_to_string().encode("utf-8")  # ty: ignore[call-non-callable]
@@ -88,20 +65,6 @@ def convert_lightgbm_model(model: LightGBMModel, class_label: int | None = None)
     return parse_lightgbm_string_treemodels(byte_array, -1 if class_label is None else class_label)
 
 
-try:
-    from xgboost import XGBClassifier, XGBRegressor
-
-    register(XGBRegressor, convert_xgboost_model)
-    register(XGBClassifier, convert_xgboost_model)
-except ImportError:
-    pass
-
-try:
-    from lightgbm import LGBMClassifier, LGBMRegressor
-    from lightgbm.basic import Booster as LightGBMBooster
-
-    register(LGBMRegressor, convert_lightgbm_model)
-    register(LGBMClassifier, convert_lightgbm_model)
-    register(LightGBMBooster, convert_lightgbm_model)
-except ImportError:
-    pass
+register(LGBMRegressor, convert_lightgbm_model)
+register(LGBMClassifier, convert_lightgbm_model)
+register(LightGBMBooster, convert_lightgbm_model)

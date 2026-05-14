@@ -59,14 +59,14 @@ def convert_tree_model(model: object, class_label: int | None = None) -> list[Tr
     :func:`conversion_generator`.
 
     Args:
-        model: The tree-based model to convert.  Supported types include scikit-learn decision
-            trees and random forests, XGBoost models, and LightGBM models.
-        class_label: The class label to explain. Only relevant for multi-class classification
-            models.
+        model: The tree-based model to convert. Supported types include scikit-learn decision
+            trees and random forests, XGBoost models, LightGBM models, and CatBoost models.
+        class_label: The class label to explain for multiclass gradient-boosted models.
+            ``None`` is passed to backend converters as their default class selection.
 
     Returns:
-        A single ``TreeModel`` for single-tree models, or a ``list[TreeModel]`` for ensemble
-        models (one entry per tree).
+        A list of ``TreeModel`` objects. Single-tree converters are normalized to a one-item
+        list by their handlers; ensemble converters return one entry per selected tree.
 
     Raises:
         NotImplementedError: If no conversion handler has been registered for ``type(model)``.

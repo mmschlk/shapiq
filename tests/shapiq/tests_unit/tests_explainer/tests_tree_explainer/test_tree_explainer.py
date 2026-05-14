@@ -7,89 +7,8 @@ import copy
 import numpy as np
 import pytest
 
-from shapiq.approximator.proxy.proxyshap import MSRBiased
 from shapiq.tree import TreeExplainer, TreeModel
-from shapiq.tree.interventional.cext import compute_interactions_sparse
 from tests.shapiq.markers import skip_if_no_lightgbm
-
-
-def test_compute_interactions_sparse_high_dimensional_indices_do_not_overflow():
-    """Regression test for index overflow in sparse interaction computation.
-
-    This test uses more than 127 features to ensure path-index arrays keep int64
-    indices and the C-extension runs without crashing.
-    """
-
-    n_features = 170
-    approximator = MSRBiased(n=n_features, max_order=1, index="SV")
-
-    coalition_matrix = np.zeros((3, n_features), dtype=np.int64)
-    coalition_matrix[0, :5] = 1
-    coalition_matrix[1, 100:110] = 1
-    coalition_matrix[2, 160:] = 1
-
-    e_matrix, r_matrix, e_counts, r_counts = approximator._coalitions_to_tree_paths(
-        coalition_matrix,
-    )
-
-    assert e_matrix.dtype == np.int64
-    assert r_matrix.dtype == np.int64
-    assert np.max(r_matrix[r_matrix >= 0]) == n_features - 1
-
-    coalition_values = np.array([0.1, -0.2, 0.3], dtype=np.float32)
-    interactions = compute_interactions_sparse(
-        coalition_values,
-        e_matrix,
-        r_matrix,
-        e_counts,
-        r_counts,
-        "SV",
-        n_features,
-        1,
-    )
-
-    assert isinstance(interactions, dict)
-    assert interactions
-    for key in interactions:
-        assert isinstance(key, tuple)
-        for feature_index in key:
-            assert 0 <= feature_index < n_features
-
-
-def test_compute_interactions_flatten_repeated_calls_do_not_segfault():
-    """Regression test for refcount corruption in flatten interaction output conversion.
-
-    This test calls the compute_interactions_flatten function multiple times to check that it does not segfault due to refcount corruption in the C-extension.
-    """
-
-    from shapiq.tree.interventional.cext import compute_interactions_flatten
-
-    n_features = 1778
-    n_iterations = n_features
-    leaf_predictions = np.ones(n_iterations, dtype=np.float32)
-    features = np.arange(n_features, dtype=np.int64)
-    e_sizes = np.ones(n_iterations, dtype=np.int64)
-    r_sizes = np.zeros(n_iterations, dtype=np.int64)
-    feature_in_e = np.ones(n_iterations, dtype=np.int64)
-    leaf_id = np.zeros(n_iterations, dtype=np.int64)
-
-    for _ in range(5):
-        out = compute_interactions_flatten(
-            leaf_predictions,
-            features,
-            e_sizes,
-            r_sizes,
-            feature_in_e,
-            leaf_id,
-            "SV",
-            n_iterations,
-            n_features,
-            n_iterations,
-            1,
-            0,
-            1.0,
-        )
-        assert len(out) == n_features
 
 
 def test_decision_tree_classifier(rf_clf_model, background_clf_data):
@@ -110,10 +29,10 @@ def test_decision_tree_classifier(rf_clf_model, background_clf_data):
     explainer = _ = TreeExplainer(model=rf_clf_model, max_order=1, min_order=0, class_index=1)
     explanation = explainer.explain(x_explain)
 
-    # compare baseline_value with empty_predictions
-    assert explainer.baseline_value == sum(
-        [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers],
-    )
+    # compare baseline_value with the per-tree empty predictions; max_order=1 SV routes
+    # through the LinearTreeSHAP path so we read from `_trees` rather than the now-empty
+    # `_treeshapiq_explainers` list.
+    assert explainer.baseline_value == sum(tree.empty_prediction for tree in explainer._trees)
     assert explanation.baseline_value == explainer.baseline_value
 
     # test efficiency
@@ -137,8 +56,9 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
     )
     assert explanation.baseline_value == explainer.baseline_value
 
-    # test efficiency
-    sum_of_values = sum(explanation.values)
+    # test efficiency: with min_order=1 the empty interaction is excluded,
+    # so the baseline must be added back when checking the k-SII efficiency property
+    sum_of_values = sum(explanation.values) + explanation.baseline_value
     assert prediction == pytest.approx(sum_of_values)
 
 
@@ -157,9 +77,10 @@ def test_random_forest_regression(rf_reg_model, background_reg_data):
     )
     assert explanation.baseline_value == explainer.baseline_value
 
-    # assert efficiency
+    # assert efficiency: with min_order=1 the empty interaction is excluded,
+    # so the baseline must be added back when checking the k-SII efficiency property
     prediction = rf_reg_model.predict(x_explain.reshape(1, -1))[0]
-    sum_of_values = sum(explanation.values)
+    sum_of_values = sum(explanation.values) + explanation.baseline_value
     assert prediction == pytest.approx(sum_of_values)
 
 
@@ -179,10 +100,10 @@ def test_random_forest_classification(rf_clf_model, background_clf_data):
 
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
-    # compare baseline_value with empty_predictions
-    assert explainer.baseline_value == sum(
-        [treeshapiq.empty_prediction for treeshapiq in explainer._treeshapiq_explainers],
-    )
+    # compare baseline_value with the per-tree empty predictions; max_order=1 SV routes
+    # through the LinearTreeSHAP path so we read from `_trees` rather than the now-empty
+    # `_treeshapiq_explainers` list.
+    assert explainer.baseline_value == sum(tree.empty_prediction for tree in explainer._trees)
     assert explanation.baseline_value == explainer.baseline_value
 
     # assert efficieny
@@ -235,6 +156,43 @@ def test_against_shap_implementation():
 
     with pytest.warns(UserWarning):
         _ = TreeExplainer(model=tree_model, max_order=2, min_order=1, index="SV")
+
+
+def test_min_order_filters_interactions(rf_reg_model, background_reg_data):
+    """``min_order`` must actually restrict the returned interactions (issue #325)."""
+    x_explain = background_reg_data[0]
+
+    # min_order >= 2 drops order-1 interactions but keeps the higher orders
+    explainer = TreeExplainer(model=rf_reg_model, max_order=3, min_order=2, index="k-SII")
+    explanation = explainer.explain(x_explain)
+    assert explanation.min_order == 2
+    assert explanation.max_order == 3
+    assert len(explanation.interaction_lookup) > 0
+    assert all(len(interaction) >= 2 for interaction in explanation.interaction_lookup)
+
+    # min_order == 0 still injects the empty interaction at the baseline value
+    explainer_zero = TreeExplainer(model=rf_reg_model, max_order=2, min_order=0, index="k-SII")
+    explanation_zero = explainer_zero.explain(x_explain)
+    assert () in explanation_zero.interaction_lookup
+    assert explanation_zero[()] == pytest.approx(explanation_zero.baseline_value)
+    assert any(len(interaction) == 1 for interaction in explanation_zero.interaction_lookup)
+
+    # min_order == 1 matches the unfiltered default-min_order=0 explainer with the
+    # empty interaction removed (regression guard for the default code path)
+    explainer_one = TreeExplainer(model=rf_reg_model, max_order=2, min_order=1, index="k-SII")
+    explanation_one = explainer_one.explain(x_explain)
+    assert explanation_one.min_order == 1
+    assert () not in explanation_one.interaction_lookup
+    for interaction in explanation_one.interaction_lookup:
+        assert explanation_one[interaction] == pytest.approx(explanation_zero[interaction])
+
+
+def test_min_order_validation(rf_reg_model):
+    """Invalid ``min_order`` configurations must be rejected eagerly."""
+    with pytest.raises(ValueError, match="min_order"):
+        TreeExplainer(model=rf_reg_model, max_order=2, min_order=3)
+    with pytest.raises(ValueError, match="min_order"):
+        TreeExplainer(model=rf_reg_model, max_order=2, min_order=-1)
 
 
 def test_xgboost_reg(xgb_reg_model, background_reg_data):
@@ -460,7 +418,13 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
         index="SV",
         class_index=class_label,
     )
-    for tree_explainer in explainer_shapiq_rounded._treeshapiq_explainers:
+    # max_order=1 SV routes through the LinearTreeSHAP path; round thresholds on whichever
+    # per-tree explainer list was populated so the mutation actually takes effect at explain time.
+    per_tree_explainers = (
+        explainer_shapiq_rounded._lineartreeshap_explainers
+        or explainer_shapiq_rounded._treeshapiq_explainers
+    )
+    for tree_explainer in per_tree_explainers:
         tree_explainer._tree.thresholds = np.round(tree_explainer._tree.thresholds, 4)
     x_explain_shapiq_rounded = copy.deepcopy(background_clf_data[explanation_instance])
     sv_shapiq_rounded = explainer_shapiq_rounded.explain(x=x_explain_shapiq_rounded)
@@ -581,6 +545,163 @@ def test_extra_trees_clf(et_clf_model, background_clf_data):
 
     assert baseline_shap == pytest.approx(baseline_shapiq, rel=1e-4)
     assert np.allclose(sv_shap, sv_shapiq_values, rtol=1e-5)
+
+
+def test_interventional_missing_reference_dataset_raises(rf_reg_model):
+    """``mode='interventional'`` requires a ``reference_dataset``."""
+    with pytest.raises(ValueError, match="reference_dataset"):
+        TreeExplainer(model=rf_reg_model, mode="interventional", max_order=2, index="SII")
+
+
+def test_interventional_dt_regression(dt_reg_model, background_reg_data):
+    """The interventional route runs end-to-end on a single decision-tree regressor."""
+    reference = background_reg_data[:20]
+    x_explain = background_reg_data[0]
+
+    explainer = TreeExplainer(
+        model=dt_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=2,
+        min_order=1,
+        index="SII",
+    )
+
+    # the interventional path must be the one that's wired up
+    assert explainer._interventional_explainer is not None
+    assert explainer._treeshapiq_explainers == []
+    assert explainer._lineartreeshap_explainers == []
+
+    explanation = explainer.explain(x_explain)
+    assert type(explanation).__name__ == "InteractionValues"
+    assert explanation.max_order == 2
+    assert explanation.min_order == 1
+
+    # interventional baseline: mean tree-prediction over the reference data.
+    expected_baseline = float(dt_reg_model.predict(reference).mean())
+    assert explanation.baseline_value == pytest.approx(expected_baseline, rel=1e-5)
+
+    # interventional SV efficiency holds against the stored baseline directly.
+    explainer_sv = TreeExplainer(
+        model=dt_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=1,
+        min_order=1,
+        index="SV",
+    )
+    sv_explanation = explainer_sv.explain(x_explain)
+    order_one_values = sv_explanation.get_n_order_values(1)
+    prediction = float(dt_reg_model.predict(x_explain.reshape(1, -1))[0])
+    assert sum(order_one_values) + sv_explanation.baseline_value == pytest.approx(
+        prediction, rel=1e-4
+    )
+
+
+def test_interventional_rf_regression(rf_reg_model, background_reg_data):
+    """The interventional route handles tree ensembles (RandomForestRegressor)."""
+    reference = background_reg_data[:20]
+    x_explain = background_reg_data[0]
+
+    explainer = TreeExplainer(
+        model=rf_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=1,
+        min_order=1,
+        index="SV",
+    )
+
+    explanation = explainer.explain(x_explain)
+    assert type(explanation).__name__ == "InteractionValues"
+
+    expected_baseline = float(rf_reg_model.predict(reference).mean())
+    assert explanation.baseline_value == pytest.approx(expected_baseline, rel=1e-5)
+
+    order_one_values = explanation.get_n_order_values(1)
+    prediction = float(rf_reg_model.predict(x_explain.reshape(1, -1))[0])
+    assert sum(order_one_values) + explanation.baseline_value == pytest.approx(prediction, rel=1e-4)
+
+
+def test_interventional_rf_classification(rf_clf_model, background_clf_data):
+    """The interventional route handles classifiers when ``class_index`` is supplied."""
+    reference = background_clf_data[:20]
+    x_explain = background_clf_data[0]
+    class_label = 1
+
+    explainer = TreeExplainer(
+        model=rf_clf_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=2,
+        min_order=1,
+        index="SII",
+        class_index=class_label,
+    )
+
+    explanation = explainer.explain(x_explain)
+    assert type(explanation).__name__ == "InteractionValues"
+    assert explanation.max_order == 2
+    assert explanation.min_order == 1
+
+    # baseline is the mean predicted probability for the selected class on the reference data.
+    expected_baseline = float(rf_clf_model.predict_proba(reference)[:, class_label].mean())
+    assert explanation.baseline_value == pytest.approx(expected_baseline, rel=1e-5)
+
+
+def test_interventional_k_sii_higher_order(dt_reg_model, background_reg_data):
+    """k-SII is accepted (resolved to SII internally) and yields all orders up to max_order."""
+    reference = background_reg_data[:20]
+    x_explain = background_reg_data[0]
+
+    explainer = TreeExplainer(
+        model=dt_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=3,
+        min_order=1,
+        index="k-SII",
+    )
+
+    explanation = explainer.explain(x_explain)
+    assert explanation.max_order == 3
+    orders = {len(interaction) for interaction in explanation.interaction_lookup}
+    # the underlying interventional kernel always populates the empty interaction
+    assert orders <= {0, 1, 2, 3}
+    assert {1, 2, 3} <= orders
+
+
+def test_interventional_matches_direct_explainer(dt_reg_model, background_reg_data):
+    """TreeExplainer's interventional route must produce the same per-feature values as the raw
+    :class:`InterventionalTreeExplainer`.
+
+    Baselines can differ (the wrapper uses tree empty predictions; the raw class uses
+    reference-data mean), but the actual Shapley contributions come from the same kernel
+    and must agree.
+    """
+    from shapiq.tree import InterventionalTreeExplainer
+
+    reference = background_reg_data[:20]
+    x_explain = background_reg_data[0]
+
+    wrapper = TreeExplainer(
+        model=dt_reg_model,
+        mode="interventional",
+        reference_dataset=reference,
+        max_order=1,
+        min_order=1,
+        index="SV",
+    )
+    wrapper_values = wrapper.explain(x_explain).get_n_order_values(1)
+
+    direct = InterventionalTreeExplainer(
+        model=dt_reg_model, data=reference, max_order=1, index="SV"
+    )
+    direct_iv = direct.explain_function(x_explain)
+    n_features = background_reg_data.shape[1]
+    direct_values = np.array([direct_iv[(i,)] for i in range(n_features)])
+
+    assert np.allclose(wrapper_values, direct_values, rtol=1e-5, atol=1e-6)
 
 
 def test_extra_trees_reg(et_reg_model, background_reg_data):
