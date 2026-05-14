@@ -6,6 +6,7 @@ OddSHAP is a value estimator based on paired sampling, odd-only Fourier regressi
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
@@ -14,11 +15,6 @@ from scipy.special import binom
 
 from shapiq.approximator.base import Approximator
 from shapiq.interaction_values import InteractionValues
-
-from ._oddshap_proxyspex_adapter import (
-    lgboost_to_fourier,
-    top_k_interactions,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -46,21 +42,32 @@ class OddSHAP(Approximator):
 
     @staticmethod
     def _init_sampling_weights_static(n: int) -> np.ndarray:
-        """Initialize OddSHAP coalition-size sampling weights."""
-        weight_vector = np.zeros(n + 1, dtype=float)
+        """Initialize OddSHAP coalition-size sampling weights.
 
-        for coalition_size in range(n + 1):
-            if coalition_size in (0, n):
-                weight_vector[coalition_size] = 0.0  # zero for empty and full coalition
-            else:
-                weight_vector[coalition_size] = 1.0 / (
-                        (n - 1) * binom(n - 2, coalition_size - 1)
-                )
-        total_weight = np.sum(weight_vector)
-        if total_weight == 0:
+        OddSHAP samples uniformly over non-boundary coalition sizes.
+        Empty and full coalitions are handled separately by the sampler.
+        """
+        if n <= 1:
             msg = "OddSHAP sampling weights are undefined for n <= 1."
             raise ValueError(msg)
-        return weight_vector / total_weight
+
+        weight_vector = np.zeros(n + 1, dtype=float)
+        weight_vector[1:n] = 1.0
+        return weight_vector / np.sum(weight_vector)
+
+    @staticmethod
+    def _init_regression_kernel_weights_static(n: int) -> np.ndarray:
+        """Initialize OddSHAP weighted least-squares kernel weights."""
+        if n <= 1:
+            msg = "OddSHAP regression weights are undefined for n <= 1."
+            raise ValueError(msg)
+
+        weight_vector = np.zeros(n + 1, dtype=float)
+        for coalition_size in range(1, n):
+            weight_vector[coalition_size] = 1.0 / (
+                    coalition_size * (n - coalition_size) * binom(n, coalition_size)
+            )
+        return weight_vector
 
     def __init__(
             self,
@@ -70,7 +77,7 @@ class OddSHAP(Approximator):
             sampling_weights: np.ndarray | None = None,
             random_state: int | None = None,
             regression_basis: str = "Fourier",  # isolate odd terms
-            interaction_detection: str = "ProxySPEX",  # screening sparse odd interactions
+            interaction_detection: str = "Fourier",  # screening sparse odd interactions
             odd_only: bool = True,
             interaction_factor: int = 10,  # standard setting according to paper
             tree_params: dict[str, Any] | None = None,
@@ -109,9 +116,6 @@ class OddSHAP(Approximator):
         self.odd_interaction_matrix_binary = np.zeros((0, self.n), dtype=bool)
         self.n_active_interactions: int = 0
 
-        # init runtime dict of type float
-        self.runtime_last_approximate_run: dict[str, float] = {}
-
     def approximate(
             self,
             budget: int,
@@ -120,16 +124,21 @@ class OddSHAP(Approximator):
     ) -> InteractionValues:
         """Approximate first-order Shapley values.
 
-        main control flow: (Alg. 1 of OddSHAP paper)
-        1. sample coalitions using the inherited CoalitionSampler
-        2. evaluate the game on sampled coalitions
-        3. extract empty and grand coalition values
-        4. decide between fallback mode and odd-regression mode
+        The method samples coalitions, evaluates the game, detects sparse odd
+        interactions, solves the constrained odd Fourier regression problem, and
+        transforms the fitted coefficients into Shapley values.
 
         Args:
             budget: Number of game evaluations available to the approximator.
             game: Game or callable that evaluates coalition matrices.
             **kwargs: Additional keyword arguments kept for API compatibility.
+
+        Returns:
+            Estimated first-order Shapley values.
+
+        Raises:
+            ValueError: If the budget is too small for the OddSHAP regression.
+            RuntimeError: If the sampled coalitions do not contain the empty or grand coalition.
         """
         del kwargs
 
@@ -162,7 +171,7 @@ class OddSHAP(Approximator):
         n_candidate_interactions = max(0, math.ceil(budget / self.interaction_factor))
 
         minimum_budget = self.n * self.interaction_factor
-        # if budget too small raise ValueError
+        # Require enough samples to fit the OddSHAP odd-regression problem
         if budget < minimum_budget:
             msg = (
                 "The budget is too small for OddSHAP. "
@@ -190,7 +199,7 @@ class OddSHAP(Approximator):
             full_set_value: float,
             n_candidate_interactions: int,
     ) -> InteractionValues:
-        """OddSHAP high-budget branch.
+        """Run the OddSHAP odd-regression approximation.
 
         This branch:
         1. fits the tree surrogate
@@ -260,7 +269,7 @@ class OddSHAP(Approximator):
             coalitions: np.ndarray,
             game_values: np.ndarray,
     ) -> object:
-        """Fit the LightGBM surrogate used by the OddSHAP fallback branch."""
+        """Fit the LightGBM surrogate used for sparse odd-interaction detection."""
         lgb = _import_lightgbm()
 
         if self.tree_params is None:
@@ -345,7 +354,7 @@ class OddSHAP(Approximator):
     ) -> list[tuple[int, ...]]:
         """Return selected higher-order odd interactions for the OddSHAP support.
 
-        Uses ProxySPEX-style screening: convert the LightGBM surrogate into its
+        Uses Fourier-based screening: convert the LightGBM surrogate into its
         sparse Fourier representation, then keep the top-k higher-order
         odd-cardinality interactions by coefficient magnitude. Singletons and
         the empty interaction are excluded here because _build_support adds
@@ -356,7 +365,7 @@ class OddSHAP(Approximator):
         if surrogate_model is None:
             return []
 
-        fourier_coeffs = lgboost_to_fourier(surrogate_model.booster_.dump_model())
+        fourier_coeffs = _lgboost_to_fourier(surrogate_model.booster_.dump_model())
         higher_order_odd = {
             interaction: coefficient
             for interaction, coefficient in fourier_coeffs.items()
@@ -369,7 +378,7 @@ class OddSHAP(Approximator):
         if n_candidate_interactions <= 0:
             return []
 
-        selected = top_k_interactions(
+        selected = _top_k_interactions(
             higher_order_odd,
             k=n_candidate_interactions,
             odd=False,  # already filtered to higher-order odd interactions above
@@ -384,7 +393,8 @@ class OddSHAP(Approximator):
         - sampling adjustment weights from the CoalitionSampler
 
         """
-        kernel_weights = self._init_sampling_weights_static(self.n)
+        #kernel_weights = self._init_sampling_weights_static(self.n)
+        kernel_weights = self._init_regression_kernel_weights_static(self.n)
         coalition_sizes = self._sampler.coalitions_size
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
 
@@ -571,3 +581,90 @@ class OddSHAP(Approximator):
         sv_values[1:] *= -2.0
 
         return sv_values
+
+
+def _lgboost_to_fourier(
+        model_dict: dict[str, Any],
+) -> dict[tuple[int, ...], float]:
+    """Convert a fitted LightGBM model to its aggregated Fourier representation.
+
+    Args:
+        model_dict: The output of ``model.booster_.dump_model()`` for a fitted
+            LightGBM regressor or classifier.
+
+    Returns:
+        Dictionary mapping interaction tuples (sorted feature indices) to their
+        aggregated Fourier coefficients summed across all trees in the
+        ensemble. Zero-valued coefficients are dropped.
+    """
+    aggregated: dict[tuple[int, ...], float] = defaultdict(float)
+    for tree_info in model_dict["tree_info"]:
+        for interaction, value in _tree_to_fourier(tree_info).items():
+            aggregated[interaction] += value
+    return {k: v for k, v in aggregated.items() if v != 0.0}
+
+
+def _top_k_interactions(
+        fourier_coeffs: dict[tuple[int, ...], float],
+        k: int,
+        *,
+        odd: bool = True,
+) -> dict[tuple[int, ...], float]:
+    """Select the top-k interactions by Fourier coefficient magnitude.
+
+    Args:
+        fourier_coeffs: Output of :func:`_lgboost_to_fourier`.
+        k: Maximum number of interactions to retain.
+        odd: If True (default), restrict to interactions of odd cardinality —
+            matches the OddSHAP paper's restriction since by Theorem 3.2 the
+            Shapley value depends only on the odd component of the set
+            function.
+
+    Returns:
+        Sub-dictionary of ``fourier_coeffs`` containing the top-k entries by
+        absolute coefficient magnitude. If fewer than ``k`` qualifying entries
+        exist, all of them are returned.
+    """
+    if odd:
+        candidates = {t: v for t, v in fourier_coeffs.items() if len(t) % 2 == 1}
+    else:
+        candidates = dict(fourier_coeffs)
+
+    sorted_items = sorted(candidates.items(), key=lambda kv: abs(kv[1]), reverse=True)
+    return dict(sorted_items[:k])
+
+def _tree_to_fourier(tree_info: dict[str, Any]) -> dict[tuple[int, ...], float]:
+    """Compute Fourier coefficients for a single LightGBM tree via DFS.
+
+    Args:
+        tree_info: A single ``tree_info`` entry from
+            ``model.booster_.dump_model()``.
+
+    Returns:
+        Dictionary mapping interaction tuples to per-tree Fourier coefficients.
+    """
+
+    def _combine(
+            left: dict[tuple[int, ...], float],
+            right: dict[tuple[int, ...], float],
+            feature_idx: int,
+    ) -> dict[tuple[int, ...], float]:
+        combined: dict[tuple[int, ...], float] = {}
+        for interaction in set(left) | set(right):
+            l_val = left.get(interaction, 0.0)
+            r_val = right.get(interaction, 0.0)
+            # combined[interaction] = (l_val + r_val) / 2
+            combined[interaction] = combined.get(interaction, 0.0) + (l_val + r_val) / 2
+            extended = tuple(sorted(set(interaction) | {feature_idx}))
+            # combined[extended] = (l_val - r_val) / 2
+            combined[extended] = combined.get(extended, 0.0) + (l_val - r_val) / 2
+        return combined
+
+    def _dfs(node: dict[str, Any]) -> dict[tuple[int, ...], float]:
+        if "leaf_value" in node:
+            return {(): node["leaf_value"]}
+        left_coeffs = _dfs(node["left_child"])
+        right_coeffs = _dfs(node["right_child"])
+        return _combine(left_coeffs, right_coeffs, node["split_feature"])
+
+    return _dfs(tree_info["tree_structure"])
