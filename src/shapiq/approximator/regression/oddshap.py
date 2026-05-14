@@ -161,83 +161,23 @@ class OddSHAP(Approximator):
         # The paper defines |T_odd| = ceil(m / eta); singletons are added separately.
         n_candidate_interactions = max(0, math.ceil(budget / self.interaction_factor))
 
-        # branch between: low-budget fallback and odd-regressioin path
-        if budget < self.n * self.interaction_factor:
-            result = self._approximate_via_fallback(
-                budget=budget,
-                coalitions=coalitions,
-                game_values=game_values,
-                empty_set_value=empty_set_value,
-                full_set_value=full_set_value,
+        minimum_budget = self.n * self.interaction_factor
+        # if budget too small raise ValueError
+        if budget < minimum_budget:
+            msg = (
+                "The budget is too small for OddSHAP. "
+                f"Received budget={budget}, but at least {minimum_budget} evaluations are required. "
+                "Please increase the budget."
             )
-        else:
-            result = self._approximate_via_odd_regression(
-                budget=budget,
-                coalitions=coalitions,
-                game_values=game_values,
-                empty_set_value=empty_set_value,
-                full_set_value=full_set_value,
-                n_candidate_interactions=n_candidate_interactions,
-            )
+            raise ValueError(msg)
 
-        return result
-
-    # if budget too small to fit odd regression
-    def _approximate_via_fallback(
-            self,
-            *,
-            budget: int,
-            coalitions: np.ndarray,
-            game_values: np.ndarray,
-            empty_set_value: float,
-            full_set_value: float,
-    ) -> InteractionValues:
-        """Run the low-budget OddSHAP fallback branch.
-
-        When the budget is too small to stably fit the odd-regression problem, OddSHAP falls back to explaining a fitted tree surrogate.
-        (fit a LightGBM surrogate on sampled coalitions and return its first-order Shapley values for the full coalition.
-        """
-        del full_set_value
-
-        # 1. fit tree surrogate on sampled coalitions
-        surrogate_model = self._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
-
-        # 2. explain full coalition
-        # Lazy import: top-level import of TreeExplainer creates a circular
-        # dependency once OddSHAP is registered in shapiq.approximator.regression
-        # because shapiq.tree.explainer transitively imports shapiq.explainer.
-        from shapiq.tree.explainer import TreeExplainer  # noqa: PLC0415
-
-        tree_explainer = TreeExplainer(
-            model=surrogate_model,
-            max_order=1,
-            min_order=0,
-            index="SV",
-        )
-        surrogate_explanation = tree_explainer.explain_function(np.ones(self.n, dtype=float))
-
-        # 3. convert the returned explanation
-        sv_values = np.zeros(self.n + 1, dtype=float)
-        sv_values[0] = empty_set_value
-
-        for player in range(self.n):
-            sv_values[player + 1] = surrogate_explanation[(player,)]
-
-        interaction_lookup = {(): 0}
-        for player in range(self.n):
-            interaction_lookup[(player,)] = player + 1
-
-        return InteractionValues(
-            values=sv_values,
-            index="SV",
-            max_order=1,
-            min_order=0,
-            n_players=self.n,
-            interaction_lookup=interaction_lookup,
-            baseline_value=float(empty_set_value),
-            estimated=not budget >= 2 ** self.n,
-            estimation_budget=budget,
-            target_index="SV",
+        return self._approximate_via_odd_regression(
+            budget=budget,
+            coalitions=coalitions,
+            game_values=game_values,
+            empty_set_value=empty_set_value,
+            full_set_value=full_set_value,
+            n_candidate_interactions=n_candidate_interactions,
         )
 
     def _approximate_via_odd_regression(
@@ -301,7 +241,6 @@ class OddSHAP(Approximator):
         interaction_lookup = {(): 0}
         for player in range(self.n):
             interaction_lookup[(player,)] = player + 1
-
 
         return InteractionValues(
             values=sv_values,
