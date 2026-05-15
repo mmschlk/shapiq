@@ -9,7 +9,7 @@ import scipy.special
 
 from shapiq.interaction_values import InteractionValues
 
-from .base import Regression
+from .base import Regression, solve_regression
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -284,11 +284,12 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         # --- Solve  min_x ‖W^{1/2}·A·x - W^{1/2}·b‖₂²  via weighted least squares ---
         # find best x
         # A = Z·P always has ones in its null space (each row sums to 0, so A·1 = 0) -> Gram matrix rank-deficient (a technical property resulting from row-centering trick) -> uses np.linalg.lstsq because of this
-        W_sqrt = np.sqrt(w_is)
-        phi_perp = np.linalg.lstsq(W_sqrt[:, np.newaxis] * A, W_sqrt * b, rcond=None)[0]
+        phi_perp = solve_regression(A, b, w_is)
 
         # --- Efficiency correction  (Algorithm 1, line 13) ---
         # takes efficiency_shift calculated in Step 1 and adds it to every value in phi_perp -> shifts the entire solution so that it now satisfies the Efficiency rule
         sv = phi_perp + efficiency_shift
 
         return np.concatenate([[v0], sv])
+
+        ### min budget -> underdefined linear problem -> value error
