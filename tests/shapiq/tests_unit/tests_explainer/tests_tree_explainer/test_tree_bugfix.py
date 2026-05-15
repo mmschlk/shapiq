@@ -736,7 +736,7 @@ def test_xgb_ubjson_valid_parse():
     from shapiq.tree.conversion.cext import parse_xgboost_ubjson
 
     buf = _build_xgb_ubjson(3)
-    result = parse_xgboost_ubjson(buf, -1)
+    result = parse_xgboost_ubjson(buf, -1, 0.0)
     assert len(result) == 8, "Expected 8-tuple of arrays"
     node_ids, feature_ids, thresholds, values, left, right, default_, weights = result
     assert len(node_ids) == 1, "Expected 1 tree"
@@ -764,8 +764,8 @@ def test_xgb_ubjson_truncated_double_array_raises():
     # Keep only 1 data byte of the base_weights float64 array (need 3*8 = 24).
     hdr_idx = buf.index(b"[$D#")  # position of base_weights typed-array header
     truncated = buf[: hdr_idx + 6 + 1]  # 6-byte header + 1 data byte
-    with pytest.raises(RuntimeError, match="End of stream"):
-        parse_xgboost_ubjson(truncated, -1)
+    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+        parse_xgboost_ubjson(truncated, -1, 0.0)
 
 
 def test_xgb_ubjson_truncated_int32_array_raises():
@@ -781,8 +781,8 @@ def test_xgb_ubjson_truncated_int32_array_raises():
     # The first [$l# header in the buffer is default_left (first int32 typed array).
     hdr_idx = buf.index(b"[$l#")
     truncated = buf[: hdr_idx + 6 + 1]  # 6-byte header + 1 data byte instead of 12
-    with pytest.raises(RuntimeError, match="End of stream"):
-        parse_xgboost_ubjson(truncated, -1)
+    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+        parse_xgboost_ubjson(truncated, -1, 0.0)
 
 
 def test_xgb_ubjson_skip_typed_array_truncated_raises():
@@ -800,8 +800,8 @@ def test_xgb_ubjson_skip_typed_array_truncated_raises():
     # that declares 5 elements but supplies zero data bytes.
     empty_idx = buf.index(b"[$i#U\x00")
     truncated = buf[:empty_idx] + b"[$i#i\x05"  # 5 elements declared, 0 bytes supplied
-    with pytest.raises(RuntimeError, match="End of stream"):
-        parse_xgboost_ubjson(truncated, -1)
+    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+        parse_xgboost_ubjson(truncated, -1, 0.0)
 
 
 def test_xgb_ubjson_skip_single_value_truncated_raises():
@@ -820,5 +820,5 @@ def test_xgb_ubjson_skip_single_value_truncated_raises():
     # ([#i\x01) containing one float64 element whose 8 data bytes are absent.
     empty_idx = buf.index(b"[$i#U\x00")
     truncated = buf[:empty_idx] + b"[#i\x01D"  # count=1, type='D', no payload bytes
-    with pytest.raises(RuntimeError, match="End of stream"):
-        parse_xgboost_ubjson(truncated, -1)
+    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+        parse_xgboost_ubjson(truncated, -1, 0.0)
