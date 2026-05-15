@@ -8,6 +8,10 @@
 #include <omp.h>
 #include <chrono>
 
+#ifdef _MSC_VER
+#define __restrict__ __restrict
+#endif
+
 using namespace std;
 // PyObject *self is not used in this function, but it is required by the Python C API for defining module methods.
 // It represents the module object itself when the function is called as a method of a module, but since we are defining a standalone function, we can ignore it in our implementation.
