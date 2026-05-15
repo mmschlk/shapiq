@@ -27,6 +27,15 @@ public:
 
     // Byte-swap helpers for converting UBJSON big-endian integers to host order.
     // UBJSON is always big-endian; x86 and Apple-silicon macOS are little-endian.
+    // Portable bit-shift implementations are used instead of compiler built-ins
+    // (__builtin_bswap* / _byteswap_*) because std::byteswap is only available in
+    // C++23 and using intrinsics would require the same #ifdef _WIN32 split already
+    // present for locale code.  Modern compilers optimise these patterns to a single
+    // native bswap instruction, so there is no runtime cost.
+    static uint16_t bswap16(uint16_t v) noexcept
+    {
+        return static_cast<uint16_t>((v << 8) | (v >> 8));
+    }
     static uint32_t bswap32(uint32_t v) noexcept
     {
         return ((v & 0x000000FFu) << 24) | ((v & 0x0000FF00u) << 8) | ((v & 0x00FF0000u) >> 8) | ((v & 0xFF000000u) >> 24);
@@ -105,7 +114,7 @@ public:
         requireAvailable(2);
         uint16_t v = (static_cast<uint16_t>(data[pos]) << 8) | static_cast<uint16_t>(data[pos + 1]);
         pos += 2;
-        return static_cast<int16_t>(v);
+        return static_cast<int16_t>(bswap16(v));
     }
     int32_t readInt32()
     {
@@ -839,24 +848,27 @@ public:
             return; // no payload
         case 'i':
         case 'U':
-            pos += 1;
-            return; // 1-byte payload
+            readByte(); // 1-byte payload — readByte() includes bounds check
+            return;
         case 'I':
-            pos += 2;
-            return; // 2-byte payload
+            readByte(); readByte(); // 2-byte payload
+            return;
         case 'l':
         case 'd':
-            pos += 4;
-            return; // 4-byte payload
+            readByte(); readByte(); readByte(); readByte(); // 4-byte payload
+            return;
         case 'L':
         case 'D':
-            pos += 8;
-            return; // 8-byte payload
+            readByte(); readByte(); readByte(); readByte();
+            readByte(); readByte(); readByte(); readByte(); // 8-byte payload
+            return;
         case 'S':
         case 'H':
         {
             uint8_t lm = readByte();
             uint64_t len = readNonNegativeIntByMarker(lm);
+            if (pos + len > size)
+                throw std::runtime_error("End of stream in string payload");
             pos += len;
             return;
         }
@@ -886,7 +898,12 @@ public:
             pos++; // consume '#'
             uint8_t count_marker = readByte();
             uint64_t count = readNonNegativeIntByMarker(count_marker);
-            pos += count * typedElementSize(type_marker);
+            uint64_t byte_count = count * typedElementSize(type_marker);
+            if (count > 0 && byte_count / count != typedElementSize(type_marker))
+                throw std::runtime_error("Typed array element count overflow");
+            if (pos + byte_count > size)
+                throw std::runtime_error("End of stream in typed array skip");
+            pos += byte_count;
         }
         else if (data[pos] == '#')
         {
