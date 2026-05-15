@@ -1,16 +1,16 @@
 """
-MSRBiased
-=========
+RegressionMSR
+=============
 
-Model-specific residual bias approximator using
-:class:`~shapiq.approximator.proxy.proxyshap.MSRBiased`.
+Proxy model-based Shapley value approximation using
+:class:`~shapiq.approximator.proxy.regressionmsr.RegressionMSR`.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from shapiq.approximator import MSRBiased
+from shapiq.approximator import RegressionMSR
 
 N_PLAYERS = 8
 BUDGET = 200
@@ -25,10 +25,10 @@ def game_fun(coalitions: np.ndarray) -> np.ndarray:
 
 
 # %%
-# Approximate interaction values
-# ------------------------------
+# Approximate Shapley values
+# --------------------------
 
-approximator = MSRBiased(n=N_PLAYERS, max_order=2, random_state=42)
+approximator = RegressionMSR(n=N_PLAYERS, index="SV", random_state=42)
 iv = approximator.approximate(BUDGET, game_fun)
 print(iv)
 
@@ -39,7 +39,7 @@ print(iv)
 iv.plot_force(feature_names=feature_names)
 
 # %%
-# Network plot
-# ------------
+# Stacked bar plot
+# ----------------
 
-iv.plot_network(feature_names=feature_names)
+iv.plot_stacked_bar(feature_names=feature_names)

@@ -16,6 +16,57 @@ _LIGHTGBM_UBUNTU_BYTES_FILE = (
 )
 
 
+def test_constant_tree_model_initializes_and_explains():
+    """Test that a single-node constant tree contributes only to the baseline."""
+    tree = TreeModel(
+        children_left=np.asarray([-1]),
+        children_right=np.asarray([-1]),
+        children_missing=np.asarray([-1]),
+        features=np.asarray([-2]),
+        thresholds=np.asarray([np.nan]),
+        values=np.asarray([3.5]),
+        node_sample_weight=np.asarray([10.0]),
+    )
+
+    explainer = TreeExplainer(model=[tree], max_order=1, min_order=1, index="SV")
+    explanation = explainer.explain(np.asarray([1.0, 2.0]))
+
+    assert explainer.baseline_value == 3.5
+    assert explanation.values.size == 0
+    assert explanation.baseline_value == 3.5
+
+
+def test_xgboost_ensemble_with_constant_trees_initializes():
+    """Test boosted ensembles with late constant trees do not fail edge-tree creation."""
+    xgboost = pytest.importorskip("xgboost")
+    from sklearn.datasets import make_regression
+
+    X, y = make_regression(
+        n_samples=1200,
+        n_features=20,
+        n_informative=12,
+        noise=0.1,
+        random_state=42,
+    )
+    X = X.astype(np.float32)
+    y = y.astype(np.float32)
+    model = xgboost.XGBRegressor(
+        n_estimators=200,
+        max_depth=8,
+        objective="reg:squarederror",
+        tree_method="hist",
+        n_jobs=1,
+        random_state=42,
+    )
+    model.fit(X, y)
+
+    explainer = TreeExplainer(model=model, max_order=1, min_order=1, index="SV")
+    explanation = explainer.explain(X[0])
+
+    assert any(tree.n_features_in_tree == 0 for tree in explainer._trees)
+    assert np.all(np.isfinite(explanation.values))
+
+
 def test_bike_bug():
     """A test for the bug denoted in GH #118. Should be fixed."""
     children_left = [
@@ -685,7 +736,7 @@ def test_xgb_ubjson_valid_parse():
     from shapiq.tree.conversion.cext import parse_xgboost_ubjson
 
     buf = _build_xgb_ubjson(3)
-    result = parse_xgboost_ubjson(buf, -1)
+    result = parse_xgboost_ubjson(buf, -1, 0.0)
     assert len(result) == 8, "Expected 8-tuple of arrays"
     node_ids, feature_ids, thresholds, values, left, right, default_, weights = result
     assert len(node_ids) == 1, "Expected 1 tree"
@@ -713,8 +764,8 @@ def test_xgb_ubjson_truncated_double_array_raises():
     # Keep only 1 data byte of the base_weights float64 array (need 3*8 = 24).
     hdr_idx = buf.index(b"[$D#")  # position of base_weights typed-array header
     truncated = buf[: hdr_idx + 6 + 1]  # 6-byte header + 1 data byte
-    with pytest.raises(RuntimeError, match="End of stream"):
-        parse_xgboost_ubjson(truncated, -1)
+    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+        parse_xgboost_ubjson(truncated, -1, 0.0)
 
 
 def test_xgb_ubjson_truncated_int32_array_raises():
@@ -730,8 +781,8 @@ def test_xgb_ubjson_truncated_int32_array_raises():
     # The first [$l# header in the buffer is default_left (first int32 typed array).
     hdr_idx = buf.index(b"[$l#")
     truncated = buf[: hdr_idx + 6 + 1]  # 6-byte header + 1 data byte instead of 12
-    with pytest.raises(RuntimeError, match="End of stream"):
-        parse_xgboost_ubjson(truncated, -1)
+    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+        parse_xgboost_ubjson(truncated, -1, 0.0)
 
 
 def test_xgb_ubjson_skip_typed_array_truncated_raises():
@@ -749,8 +800,8 @@ def test_xgb_ubjson_skip_typed_array_truncated_raises():
     # that declares 5 elements but supplies zero data bytes.
     empty_idx = buf.index(b"[$i#U\x00")
     truncated = buf[:empty_idx] + b"[$i#i\x05"  # 5 elements declared, 0 bytes supplied
-    with pytest.raises(RuntimeError, match="End of stream"):
-        parse_xgboost_ubjson(truncated, -1)
+    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+        parse_xgboost_ubjson(truncated, -1, 0.0)
 
 
 def test_xgb_ubjson_skip_single_value_truncated_raises():
@@ -769,5 +820,5 @@ def test_xgb_ubjson_skip_single_value_truncated_raises():
     # ([#i\x01) containing one float64 element whose 8 data bytes are absent.
     empty_idx = buf.index(b"[$i#U\x00")
     truncated = buf[:empty_idx] + b"[#i\x01D"  # count=1, type='D', no payload bytes
-    with pytest.raises(RuntimeError, match="End of stream"):
-        parse_xgboost_ubjson(truncated, -1)
+    with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
+        parse_xgboost_ubjson(truncated, -1, 0.0)

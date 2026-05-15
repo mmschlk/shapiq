@@ -73,6 +73,9 @@ ext_modules = [
         "shapiq.tree.conversion.cext",
         sources=[
             "src/shapiq/tree/conversion/cext/cext.cc",
+            "src/shapiq/tree/conversion/cext/xgboost_ubjson.cc",
+            "src/shapiq/tree/conversion/cext/lightgbm_text.cc",
+            "src/shapiq/tree/conversion/cext/catboost_json.cc",
         ],
         language="c++",
         **get_openmp_flags(),

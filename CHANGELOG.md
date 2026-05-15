@@ -2,6 +2,10 @@
 
 ## v1.5.0 (unreleased)
 
+### Extending shapiq-games [#476](https://github.com/mmschlk/shapiq/issues/476)
+- adds standard SHAP datasets for benchmarking in `shapiq_games.benchmark.local_xai`.
+- adds **all** TabArena datasets for benchmarking in `shapiq_games.benchmark.local_xai`.
+
 ### Python Version [#497](https://github.com/mmschlk/shapiq/pull/497)
 
 - adds support for Python 3.14 making the package compatible with the latest Python version.
@@ -15,7 +19,7 @@
 ### List of All New Features
 
 - adds `ProxySHAP` approximator in `shapiq.approximator.proxy` for proxy-model-accelerated interaction estimation
-- adds `MSRBiased` approximator for biased multilinear-extension sampling regression
+- adds `RegressionMSR` approximator in `shapiq.approximator.proxy` for proxy-model accelerated value estimation
 - adds `LinearTreeSHAP` in `shapiq.tree.linear` for fast first-order Shapley value computation
 - refactors `shapiq.tree` into submodules: `conversion/`, `linear/`, `interventional/`
 - adds `InterventionalTreeExplainer` and `InterventionalGame` in `shapiq.tree.interventional`
@@ -25,14 +29,13 @@
 #### Introducing ProxySHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
 
 Adds [`ProxySHAP`](src/shapiq/approximator/proxy/proxyshap.py) as a new approximator that accelerates Shapley interaction estimation by fitting a lightweight **proxy tree model** (XGBoost by default) on sampled coalitions, computing _exact_ interactions for the proxy via the `InterventionalTreeExplainer`, and then optionally correcting for the approximation error on the true model.
+Adds [`RegressionMSR`](srd/shapiq/approximator/proxy/regressionmsr.py) as a new approximator that accelerates Shapley value estimation by fitting a lightweight **proxy tree model** (XGBoost by default) on sampled coalitions, computing _exact_ interactions for the proxy via the `InterventionalTreeExplainer`, and then optionally correcting for the approximation error on the true model.
 
 Four adjustment strategies are supported:
 
 - **`"none"`**: use proxy interactions directly (fastest, least accurate)
-- **`"msr-b"`** _(default)_: biased MSR adjustment using the new `MSRBiased` approximator
-- **`"shapiq"`** / **`"svarm"`** / **`"kernel"`**: unbiased adjustments via established estimators
+- **`"msr"`** / **`"svarm"`** / **`"kernel"`**: unbiased adjustments via established estimators
 
-The internal `MSRBiased` approximator is also exposed for use as a standalone estimator.
 This implementation relies on C-extension routines (`compute_interactions_sparse`) for high-throughput coalition evaluation.
 
 #### Introducing LinearTreeSHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
@@ -57,10 +60,17 @@ shapiq/tree/
 └── interventional/      — InterventionalTreeExplainer and InterventionalGame
 ```
 
+The conversion of the tree methods has been moved to C++ giving at least 2x up to 6x times speeup over shap tree conversion.
+
 #### Introducing Explainers for Nearest Neighbor Models
 
 Adds three new explainers, namely `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer`, which efficiently compute explanations for nearest neighbor models from the [scikit-learn](https://scikit-learn.org/stable/) library.
 One application of these explainers is Data Valuation, i.e. the task of evaluating the usefulness of training data points for training models.
+
+### Bugfix
+
+- fixes a bug in tree conversion, such that tree models with no splits are still correctly parsed. [#370](https://github.com/mmschlk/shapiq/issues/370)
+- fixes `min_order` in `TreeExplainer` so that it now actually restricts the returned `InteractionValues` to interactions of order ``min_order..max_order`` (``min_order=0`` continues to include the empty interaction at the baseline value); invalid values now raise a clear `ValueError`. [#325](https://github.com/mmschlk/shapiq/issues/325)
 
 ## v1.4.1 (2025-11-10)
 

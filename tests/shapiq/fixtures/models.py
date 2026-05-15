@@ -59,6 +59,8 @@ TREE_MODEL_FIXTURES = [
     ("lightgbm_reg_model", "lightgbm.sklearn.LGBMRegressor"),
     ("lightgbm_clf_model", "lightgbm.sklearn.LGBMClassifier"),
     ("lightgbm_basic", "lightgbm.basic.Booster"),
+    ("catboost_reg_model", "catboost.core.CatBoostRegressor"),
+    ("catboost_clf_model", "catboost.core.CatBoostClassifier"),
     ("rf_reg_model", "sklearn.ensemble.RandomForestRegressor"),
     ("rf_clf_model", "sklearn.ensemble.RandomForestClassifier"),
     ("dt_clf_model", "sklearn.tree.DecisionTreeClassifier"),
@@ -311,6 +313,40 @@ def lightgbm_clf_model(background_clf_dataset) -> Model:
 
     X, y = background_clf_dataset
     model = lightgbm.LGBMClassifier(random_state=RANDOM_SEED_MODELS, n_estimators=3)
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def catboost_reg_model(background_reg_dataset) -> Model:
+    """Return a simple catboost regression model."""
+    catboost = pytest.importorskip("catboost")
+
+    X, y = background_reg_dataset
+    model = catboost.CatBoostRegressor(
+        random_seed=RANDOM_SEED_MODELS,
+        iterations=3,
+        depth=3,
+        allow_writing_files=False,
+        verbose=False,
+    )
+    model.fit(X, y)
+    return model
+
+
+@pytest.fixture
+def catboost_clf_model(background_clf_dataset) -> Model:
+    """Return a simple catboost classification model."""
+    catboost = pytest.importorskip("catboost")
+
+    X, y = background_clf_dataset
+    model = catboost.CatBoostClassifier(
+        random_seed=RANDOM_SEED_MODELS,
+        iterations=3,
+        depth=3,
+        allow_writing_files=False,
+        verbose=False,
+    )
     model.fit(X, y)
     return model
 

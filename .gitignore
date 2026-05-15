@@ -177,8 +177,8 @@ cython_debug/
 
 illustration_sources/
 
-# remove the files that will be downloaded
-shapiq/datasets/data
+# cached TabArena datasets — regenerated on demand by the loaders from OpenML
+src/shapiq_games/datasets/data/tabarena_*.csv
 
 shapiq/games/benchmark/precomputed/
 precomputed.zip

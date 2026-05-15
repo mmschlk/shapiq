@@ -8,6 +8,10 @@
 #include <omp.h>
 #include <chrono>
 
+#ifdef _MSC_VER
+#define __restrict__ __restrict
+#endif
+
 using namespace std;
 // PyObject *self is not used in this function, but it is required by the Python C API for defining module methods.
 // It represents the module object itself when the function is called as a method of a module, but since we are defining a standalone function, we can ignore it in our implementation.
@@ -17,6 +21,7 @@ static PyObject *compute_interactions_batched(PyObject *self, PyObject *args);
 static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *args);
 static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args);
 static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args);
+static PyObject *preprocess_boolean_trees(PyObject *self, PyObject *args);
 
 static PyMethodDef module_methods[] = {
     {"compute_interactions", compute_interactions, METH_VARARGS, "Compute feature interactions using the interventional algorithm."},
@@ -24,6 +29,7 @@ static PyMethodDef module_methods[] = {
     {"compute_interactions_batched_sparse", compute_interactions_batched_sparse, METH_VARARGS, "Compute sparse feature interactions in batches using the interventional algorithm."},
     {"compute_interactions_flatten", compute_interactions_flatten, METH_VARARGS, "Compute feature interactions with flattened input."},
     {"compute_interactions_sparse", compute_interactions_sparse, METH_VARARGS, "Compute sparse feature interactions using the interventional algorithm."},
+    {"preprocess_boolean_trees", preprocess_boolean_trees, METH_VARARGS, "Preprocess boolean trees: DFS traversal to produce flattened E/R arrays."},
     {NULL, NULL, 0, NULL}};
 /** Define the Python Module for both Python 3 and Python 2 Version.
  * This code is mostly copied from https://github.com/yupbank/linear_tree_shap/blob/main/linear_tree_shap/cext/_cext.cc
@@ -968,6 +974,432 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
     return output;
 }
 
+// === Optimized helpers for compute_interactions_flatten ===
+
+// Compute signed weight matching the original per-index logic, for table precomputation.
+static inline double compute_signed_weight_for_table(
+    IndexType index_type, int n_features, int e, int r,
+    int s_cap_e, int s_cap_r, int s, int max_order)
+{
+    int sign = (s_cap_r % 2 == 0) ? 1 : -1;
+    switch (index_type)
+    {
+    case IndexType::SII:
+        return sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
+    case IndexType::BII:
+        return sign * inter_weights::banzhaf_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
+    case IndexType::CHII:
+        return sign * inter_weights::chaining_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
+    case IndexType::FBII:
+        return inter_weights::fbii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
+    case IndexType::FSII:
+        return inter_weights::fsii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
+    default:
+        return sign * inter_weights::general_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order, index_type);
+    }
+}
+
+// Precompute weight lookup tables.
+// table_s1: indexed by [s_cap_e * stride^2 + e * stride + r], s_cap_e in {0,1}
+// table_s2: indexed by [s_cap_e_combined * stride^2 + e * stride + r], s_cap_e_combined in {0,1,2}
+// table_s3: indexed by [s_cap_e_combined * stride^2 + e * stride + r], s_cap_e_combined in {0,1,2,3}
+static void precompute_weight_tables(
+    IndexType index_type, int n_features, int max_order,
+    float *table_s1, float *table_s2, float *table_s3, int table_stride)
+{
+    // table_stride should be max(max_e, max_r) + 1, not n_features + 1.
+    // This avoids O(n^3) precomputation when n_features is large but actual e/r values are small.
+    int max_val = table_stride - 1;
+    for (int s_cap_e = 0; s_cap_e <= 1; s_cap_e++)
+    {
+        int s_cap_r = 1 - s_cap_e;
+        for (int e = 0; e <= max_val; e++)
+        {
+            for (int r = 0; r <= max_val; r++)
+            {
+                double w = compute_signed_weight_for_table(
+                    index_type, n_features, e, r, s_cap_e, s_cap_r, 1, max_order);
+                table_s1[s_cap_e * table_stride * table_stride + e * table_stride + r] = (float)w;
+            }
+        }
+    }
+    if (max_order >= 2 && table_s2)
+    {
+        for (int s_cap_e_c = 0; s_cap_e_c <= 2; s_cap_e_c++)
+        {
+            int s_cap_r_c = 2 - s_cap_e_c;
+            for (int e = 0; e <= max_val; e++)
+            {
+                for (int r = 0; r <= max_val; r++)
+                {
+                    double w = compute_signed_weight_for_table(
+                        index_type, n_features, e, r, s_cap_e_c, s_cap_r_c, 2, max_order);
+                    table_s2[s_cap_e_c * table_stride * table_stride + e * table_stride + r] = (float)w;
+                }
+            }
+        }
+    }
+    if (max_order >= 3 && table_s3)
+    {
+        for (int s_cap_e_c = 0; s_cap_e_c <= 3; s_cap_e_c++)
+        {
+            int s_cap_r_c = 3 - s_cap_e_c;
+            for (int e = 0; e <= max_val; e++)
+            {
+                for (int r = 0; r <= max_val; r++)
+                {
+                    double w = compute_signed_weight_for_table(
+                        index_type, n_features, e, r, s_cap_e_c, s_cap_r_c, 3, max_order);
+                    table_s3[s_cap_e_c * table_stride * table_stride + e * table_stride + r] = (float)w;
+                }
+            }
+        }
+    }
+}
+
+// Compact index for order-3 triple (i < j < k):
+//   base = n + n*(n-1)/2
+//   offset = i + j*(j-1)/2 + k*(k-1)*(k-2)/6
+static inline int index3(int i, int j, int k, int n)
+{
+    // Ensure i < j < k
+    if (i > j) { int t = i; i = j; j = t; }
+    if (j > k) { int t = j; j = k; k = t; }
+    if (i > j) { int t = i; i = j; j = t; }
+    int base = n + n * (n - 1) / 2;
+    return base + i + j * (j - 1) / 2 + k * (k - 1) * (k - 2) / 6;
+}
+
+// Template: order-1 two-pass computation (vectorized multiply + OpenMP scatter)
+template <IndexType IT>
+static void compute_order1_twopass(
+    const float *__restrict__ leaf_pred,
+    const int32_t *__restrict__ feat32,
+    const int32_t *__restrict__ e32,
+    const int32_t *__restrict__ r32,
+    const int32_t *__restrict__ fie32,
+    const float *__restrict__ e_f32,
+    const float *__restrict__ r_f32,
+    const float *__restrict__ fie_f32,
+    int n_iterations,
+    int n_features,
+    float inv_scaling,
+    const float *__restrict__ table_s1,
+    int table_stride,
+    inter_weights::WeightCache &weight_cache,
+    int max_order,
+    double *__restrict__ result)
+{
+    float *contrib = new float[n_iterations];
+
+    if constexpr (IT == IndexType::BII)
+    {
+        for (int i = 0; i < n_iterations; i++)
+        {
+            float sign = 1.0f - 2.0f * (1.0f - fie_f32[i]);
+            float w = exp2f(-(e_f32[i] + r_f32[i] - 1.0f));
+            contrib[i] = leaf_pred[i] * sign * w * inv_scaling;
+        }
+    }
+    else if constexpr (IT == IndexType::CUSTOM)
+    {
+        for (int i = 0; i < n_iterations; i++)
+        {
+            float w = (float)weight_cache.get_weight(
+                n_features, e32[i], r32[i], fie32[i], 1 - fie32[i], 1, IT, max_order);
+            contrib[i] = leaf_pred[i] * w * inv_scaling;
+        }
+    }
+    else
+    {
+        float *weights = new float[n_iterations];
+        for (int i = 0; i < n_iterations; i++)
+        {
+            weights[i] = table_s1[fie32[i] * table_stride * table_stride + e32[i] * table_stride + r32[i]];
+        }
+        for (int i = 0; i < n_iterations; i++)
+        {
+            contrib[i] = leaf_pred[i] * weights[i] * inv_scaling;
+        }
+        delete[] weights;
+    }
+
+    // Pass 2: parallel scatter-add with thread-local result arrays
+    #pragma omp parallel
+    {
+        double *local_result = new double[n_features]();
+        #pragma omp for schedule(static)
+        for (int i = 0; i < n_iterations; i++)
+        {
+            local_result[feat32[i]] += (double)contrib[i];
+        }
+        #pragma omp critical
+        {
+            for (int k = 0; k < n_features; k++)
+                result[k] += local_result[k];
+        }
+        delete[] local_result;
+    }
+
+    delete[] contrib;
+}
+
+// Template: order-2 computation parallelized over leaves
+template <IndexType IT>
+static void compute_order2_leafparallel(
+    const float *__restrict__ leaf_pred,
+    const int32_t *__restrict__ feat32,
+    const int32_t *__restrict__ e32,
+    const int32_t *__restrict__ r32,
+    const int32_t *__restrict__ fie32,
+    const int32_t *__restrict__ lid32,
+    const float *__restrict__ e_f32,
+    const float *__restrict__ r_f32,
+    const float *__restrict__ fie_f32,
+    int n_iterations,
+    int n_features,
+    float inv_scaling,
+    const float *__restrict__ table_s1,
+    const float *__restrict__ table_s2,
+    int table_stride,
+    inter_weights::WeightCache &weight_cache,
+    int max_order,
+    int result_size,
+    double *__restrict__ result)
+{
+    // Step 1: find leaf boundaries
+    std::vector<int> leaf_start;
+    leaf_start.reserve(n_iterations / 4);
+    leaf_start.push_back(0);
+    for (int i = 1; i < n_iterations; i++)
+    {
+        if (lid32[i] != lid32[i - 1])
+            leaf_start.push_back(i);
+    }
+    leaf_start.push_back(n_iterations);
+    int n_leaves = (int)leaf_start.size() - 1;
+
+    // Step 2: parallel over leaves with thread-local result arrays
+    #pragma omp parallel
+    {
+        double *local_result = new double[result_size]();
+        #pragma omp for schedule(dynamic, 16)
+        for (int leaf = 0; leaf < n_leaves; leaf++)
+        {
+            int start = leaf_start[leaf];
+            int end = leaf_start[leaf + 1];
+
+            for (int i = start; i < end; i++)
+            {
+                // Order-1 contribution
+                float w1;
+                if constexpr (IT == IndexType::BII)
+                {
+                    float sign = 1.0f - 2.0f * (1.0f - fie_f32[i]);
+                    w1 = sign * exp2f(-(e_f32[i] + r_f32[i] - 1.0f));
+                }
+                else if constexpr (IT == IndexType::CUSTOM)
+                {
+                    w1 = (float)weight_cache.get_weight(
+                        n_features, e32[i], r32[i], fie32[i], 1 - fie32[i], 1, IT, max_order);
+                }
+                else
+                {
+                    w1 = table_s1[fie32[i] * table_stride * table_stride + e32[i] * table_stride + r32[i]];
+                }
+                local_result[feat32[i]] += (double)(leaf_pred[i] * w1 * inv_scaling);
+
+                // Order-2: pairwise interactions within the same leaf
+                for (int j = i + 1; j < end; j++)
+                {
+                    int s_cap_e_c = fie32[i] + fie32[j];
+                    float w2;
+                    if constexpr (IT == IndexType::BII)
+                    {
+                        int s_cap_r_c = 2 - s_cap_e_c;
+                        float sign_c = (s_cap_r_c % 2 == 0) ? 1.0f : -1.0f;
+                        w2 = sign_c * exp2f(-(e_f32[i] + r_f32[i] - 2.0f));
+                    }
+                    else if constexpr (IT == IndexType::CUSTOM)
+                    {
+                        int s_cap_r_c = 2 - s_cap_e_c;
+                        w2 = (float)weight_cache.get_weight(
+                            n_features, e32[i], r32[i], s_cap_e_c, s_cap_r_c, 2, IT, max_order);
+                    }
+                    else
+                    {
+                        w2 = table_s2[s_cap_e_c * table_stride * table_stride + e32[i] * table_stride + r32[i]];
+                    }
+                    // Inline interaction index computation (avoids O(n²) precomputed table)
+                    int fi = feat32[i], fj = feat32[j];
+                    if (fi > fj) std::swap(fi, fj);
+                    int idx = (fi == fj) ? fi : n_features + (fi * n_features - fi * (fi + 1) / 2) + (fj - fi - 1);
+                    local_result[idx] += (double)(leaf_pred[i] * w2 * inv_scaling);
+                }
+            }
+        }
+        // Merge thread-local results
+        #pragma omp critical
+        {
+            for (int k = 0; k < result_size; k++)
+                result[k] += local_result[k];
+        }
+        delete[] local_result;
+    }
+}
+
+// Template: order-3 computation parallelized over leaves
+template <IndexType IT>
+static void compute_order3_leafparallel(
+    const float *__restrict__ leaf_pred,
+    const int32_t *__restrict__ feat32,
+    const int32_t *__restrict__ e32,
+    const int32_t *__restrict__ r32,
+    const int32_t *__restrict__ fie32,
+    const int32_t *__restrict__ lid32,
+    const float *__restrict__ e_f32,
+    const float *__restrict__ r_f32,
+    const float *__restrict__ fie_f32,
+    int n_iterations,
+    int n_features,
+    float inv_scaling,
+    const float *__restrict__ table_s1,
+    const float *__restrict__ table_s2,
+    const float *__restrict__ table_s3,
+    int table_stride,
+    inter_weights::WeightCache &weight_cache,
+    int max_order,
+    int result_size,
+    double *__restrict__ result)
+{
+    // Step 1: find leaf boundaries
+    std::vector<int> leaf_start;
+    leaf_start.reserve(n_iterations / 4);
+    leaf_start.push_back(0);
+    for (int i = 1; i < n_iterations; i++)
+    {
+        if (lid32[i] != lid32[i - 1])
+            leaf_start.push_back(i);
+    }
+    leaf_start.push_back(n_iterations);
+    int n_leaves = (int)leaf_start.size() - 1;
+
+    // Step 2: parallel over leaves with thread-local result arrays
+    #pragma omp parallel
+    {
+        double *local_result = new double[result_size]();
+        #pragma omp for schedule(dynamic, 16)
+        for (int leaf = 0; leaf < n_leaves; leaf++)
+        {
+            int start = leaf_start[leaf];
+            int end = leaf_start[leaf + 1];
+
+            for (int i = start; i < end; i++)
+            {
+                int fi = feat32[i];
+                int ei = e32[i], ri = r32[i], fiei = fie32[i];
+                float lp = leaf_pred[i] * inv_scaling;
+
+                // Order-1 contribution
+                float w1;
+                if constexpr (IT == IndexType::BII)
+                {
+                    float sign = 1.0f - 2.0f * (1.0f - fie_f32[i]);
+                    w1 = sign * exp2f(-(e_f32[i] + r_f32[i] - 1.0f));
+                }
+                else if constexpr (IT == IndexType::CUSTOM)
+                {
+                    w1 = (float)weight_cache.get_weight(
+                        n_features, ei, ri, fiei, 1 - fiei, 1, IT, max_order);
+                }
+                else
+                {
+                    w1 = table_s1[fiei * table_stride * table_stride + ei * table_stride + ri];
+                }
+                local_result[fi] += (double)(lp * w1);
+
+                // Order-2 and order-3: interactions within the same leaf
+                for (int j = i + 1; j < end; j++)
+                {
+                    int fj = feat32[j];
+                    int s_cap_e_2 = fiei + fie32[j];
+                    float w2;
+                    if constexpr (IT == IndexType::BII)
+                    {
+                        int s_cap_r_c = 2 - s_cap_e_2;
+                        float sign_c = (s_cap_r_c % 2 == 0) ? 1.0f : -1.0f;
+                        w2 = sign_c * exp2f(-(e_f32[i] + r_f32[i] - 2.0f));
+                    }
+                    else if constexpr (IT == IndexType::CUSTOM)
+                    {
+                        int s_cap_r_c = 2 - s_cap_e_2;
+                        w2 = (float)weight_cache.get_weight(
+                            n_features, ei, ri, s_cap_e_2, s_cap_r_c, 2, IT, max_order);
+                    }
+                    else
+                    {
+                        w2 = table_s2[s_cap_e_2 * table_stride * table_stride + ei * table_stride + ri];
+                    }
+                    // Compute order-2 index (compact upper-triangle without diagonal)
+                    int fi2 = fi, fj2 = fj;
+                    if (fi2 > fj2) { int t = fi2; fi2 = fj2; fj2 = t; }
+                    int idx2 = (fi2 == fj2) ? fi2 : n_features + (fi2 * n_features - fi2 * (fi2 + 1) / 2) + (fj2 - fi2 - 1);
+                    local_result[idx2] += (double)(lp * w2);
+
+                    // Order-3
+                    for (int k = j + 1; k < end; k++)
+                    {
+                        int fk = feat32[k];
+                        int s_cap_e_3 = s_cap_e_2 + fie32[k];
+                        float w3;
+                        if constexpr (IT == IndexType::BII)
+                        {
+                            int s_cap_r_3 = 3 - s_cap_e_3;
+                            float sign_3 = (s_cap_r_3 % 2 == 0) ? 1.0f : -1.0f;
+                            w3 = sign_3 * exp2f(-(e_f32[i] + r_f32[i] - 3.0f));
+                        }
+                        else if constexpr (IT == IndexType::CUSTOM)
+                        {
+                            int s_cap_r_3 = 3 - s_cap_e_3;
+                            w3 = (float)weight_cache.get_weight(
+                                n_features, ei, ri, s_cap_e_3, s_cap_r_3, 3, IT, max_order);
+                        }
+                        else
+                        {
+                            w3 = table_s3[s_cap_e_3 * table_stride * table_stride + ei * table_stride + ri];
+                        }
+                        int idx3 = index3(fi, fj, fk, n_features);
+                        local_result[idx3] += (double)(lp * w3);
+                    }
+                }
+            }
+        }
+        // Merge thread-local results
+        #pragma omp critical
+        {
+            for (int k = 0; k < result_size; k++)
+                result[k] += local_result[k];
+        }
+        delete[] local_result;
+    }
+}
+
+// Dispatch macro to instantiate templates for all index types
+#define DISPATCH_INDEX_TYPE(FUNC, index_type, ...) \
+    do { \
+        switch (index_type) { \
+        case IndexType::SII:  FUNC<IndexType::SII>(__VA_ARGS__); break; \
+        case IndexType::BII:  FUNC<IndexType::BII>(__VA_ARGS__); break; \
+        case IndexType::CHII: FUNC<IndexType::CHII>(__VA_ARGS__); break; \
+        case IndexType::FBII: FUNC<IndexType::FBII>(__VA_ARGS__); break; \
+        case IndexType::FSII: FUNC<IndexType::FSII>(__VA_ARGS__); break; \
+        case IndexType::STII: FUNC<IndexType::STII>(__VA_ARGS__); break; \
+        case IndexType::CUSTOM: FUNC<IndexType::CUSTOM>(__VA_ARGS__); break; \
+        } \
+    } while(0)
+
+// === End optimized helpers ===
+
 static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
 {
     /**
@@ -1066,217 +1498,187 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
         custom_N = (int64_t)n_features + 1;
         custom_K = (int64_t)max_order + 1;
     }
+    // Weight cache (only needed for CUSTOM index type in the hot path)
     inter_weights::WeightCache weight_cache = (custom_table != nullptr)
                                                   ? inter_weights::WeightCache((uint64_t)(3 * n_features), custom_table, custom_N, custom_K)
                                                   : inter_weights::WeightCache((uint64_t)(3 * n_features));
 
-    chrono::steady_clock::time_point start_time = chrono::steady_clock::now();
-
-    if (max_order <= 2)
+    if (max_order <= 3)
     {
+        // --- Phase 0: Convert int64 inputs to int32 + float32 for SIMD-friendly processing ---
+        int32_t *feat32 = new int32_t[n_iterations];
+        int32_t *e32 = new int32_t[n_iterations];
+        int32_t *r32 = new int32_t[n_iterations];
+        int32_t *fie32 = new int32_t[n_iterations];
+        int32_t *lid32 = new int32_t[n_iterations];
+        float *e_f32 = new float[n_iterations];
+        float *r_f32 = new float[n_iterations];
+        float *fie_f32 = new float[n_iterations];
+        for (int i = 0; i < n_iterations; i++)
+        {
+            feat32[i] = (int32_t)features[i];
+            e32[i] = (int32_t)e_sizes_data[i];
+            r32[i] = (int32_t)r_sizes_data[i];
+            fie32[i] = (int32_t)feature_in_e_data[i];
+            lid32[i] = (int32_t)leaf_id_data[i];
+            e_f32[i] = (float)e_sizes_data[i];
+            r_f32[i] = (float)r_sizes_data[i];
+            fie_f32[i] = (float)feature_in_e_data[i];
+        }
 
+        float inv_scaling = 1.0f / scaling_factor;
+
+        // --- Phase 1: Precompute weight lookup tables ---
+        // Scan actual e/r bounds — table only needs to cover values that appear in data,
+        // not all of [0, n_features]. For boolean trees with depth ~7, max e/r ≈ 7.
+        int max_e = 0, max_r = 0;
+        for (int i = 0; i < n_iterations; i++)
+        {
+            if (e32[i] > max_e) max_e = e32[i];
+            if (r32[i] > max_r) max_r = r32[i];
+        }
+        int table_stride = std::max(max_e, max_r) + 1;
+
+        float *table_s1 = nullptr;
+        float *table_s2 = nullptr;
+        float *table_s3 = nullptr;
+        if (index_type != IndexType::CUSTOM)
+        {
+            table_s1 = new float[2 * table_stride * table_stride];
+            if (max_order >= 2)
+                table_s2 = new float[3 * table_stride * table_stride];
+            if (max_order >= 3)
+                table_s3 = new float[4 * table_stride * table_stride];
+            precompute_weight_tables(index_type, n_features, max_order, table_s1, table_s2, table_s3, table_stride);
+        }
+
+        // --- Phase 2: Compute result ---
         int result_size = 0;
         for (int order = 1; order <= max_order; order++)
         {
             result_size += static_cast<int>(inter_weights::binom(n_features, order));
         }
+        double *result = new double[result_size]();
 
-        double *result = new double[result_size];
-        for (int i = 0; i < result_size; i++)
-        {
-            result[i] = 0.0;
-        }
+        Py_BEGIN_ALLOW_THREADS
+
         if (max_order == 1)
         {
-            for (int i = 0; i < n_iterations; i++)
-            {
-                int feature = static_cast<int>(features[i]);
-                double leaf_val = leaf_predictions[i];
-                int e = static_cast<int>(e_sizes_data[i]);
-                int r = static_cast<int>(r_sizes_data[i]);
-                int s_cap_e = static_cast<int>(feature_in_e_data[i]);
-                int s_cap_r = 1 - s_cap_e;
-                int s = 1;
-                int sign = (s_cap_r % 2 == 0) ? 1 : -1;
-                double weight = 0;
-                if (index_type == IndexType::CUSTOM)
-                {
-                    weight = weight_cache.get_weight(n_features, e, r, s_cap_e, s_cap_r, s, index_type, max_order);
-                }
-                else if (index_type == IndexType::SII)
-                {
-                    weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-                }
-                else if (index_type == IndexType::BII)
-                {
-                    weight = sign * inter_weights::banzhaf_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-                }
-                else if (index_type == IndexType::CHII)
-                {
-                    weight = sign * inter_weights::chaining_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-                }
-                else if (index_type == IndexType::FBII)
-                {
-                    weight = inter_weights::fbii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-                }
-                else if (index_type == IndexType::FSII)
-                {
-                    weight = inter_weights::fsii_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order);
-                }
-                else
-                {
-                    weight = sign * inter_weights::general_weight(n_features, e, r, s_cap_e, s_cap_r, s, max_order, index_type);
-                    // throw std::invalid_argument("Unsupported index type: " + std::to_string(static_cast<int>(index)));
-                }
-                result[feature] += leaf_val * weight / scaling_factor;
-            }
+            DISPATCH_INDEX_TYPE(compute_order1_twopass, index_type,
+                leaf_predictions, feat32, e32, r32, fie32,
+                e_f32, r_f32, fie_f32,
+                n_iterations, n_features, inv_scaling,
+                table_s1, table_stride, weight_cache, max_order, result);
         }
-        if (max_order == 2)
+        else if (max_order == 2)
         {
-            for (int i = 0; i < n_iterations; i++)
-            {
-                int feature = static_cast<int>(features[i]);
-                double leaf_val = leaf_predictions[i];
-                int e = static_cast<int>(e_sizes_data[i]);
-                int r = static_cast<int>(r_sizes_data[i]);
-                int s_cap_e_i = static_cast<int>(feature_in_e_data[i]);
-                int s_cap_r_i = 1 - s_cap_e_i;
-                int s = 1;
-                int sign = (s_cap_r_i % 2 == 0) ? 1 : -1;
-                double weight = 0;
-                if (index_type == IndexType::CUSTOM)
-                {
-                    weight = weight_cache.get_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, index_type, max_order);
-                }
-                else if (index_type == IndexType::SII)
-                {
-                    weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
-                }
-                else if (index_type == IndexType::BII)
-                {
-                    weight = sign * inter_weights::banzhaf_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
-                }
-                else if (index_type == IndexType::CHII)
-                {
-                    weight = sign * inter_weights::chaining_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
-                }
-                else if (index_type == IndexType::FBII)
-                {
-                    weight = inter_weights::fbii_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
-                }
-                else if (index_type == IndexType::FSII)
-                {
-                    weight = inter_weights::fsii_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order);
-                }
-                else
-                {
-                    weight = sign * inter_weights::general_weight(n_features, e, r, s_cap_e_i, s_cap_r_i, s, max_order, index_type);
-                }
-                result[feature] += leaf_val * weight / scaling_factor;
-
-                // Compute pairwise interactions with other features in the same leaf
-                for (int j = i + 1; j < n_iterations; j++)
-                {
-                    if (leaf_id_data[j] != leaf_id_data[i])
-                    {
-                        // Features belong to different leafs, stop checking pairs with i
-                        break;
-                    }
-
-                    int feature_j = static_cast<int>(features[j]);
-                    int s_cap_e_j = static_cast<int>(feature_in_e_data[j]);
-                    int s_cap_r_j = 1 - s_cap_e_j;
-
-                    // Combined counts for the pair (i, j)
-                    int s_cap_e_combined = s_cap_e_i + s_cap_e_j;
-                    int s_cap_r_combined = s_cap_r_i + s_cap_r_j;
-                    s = 2;
-                    sign = (s_cap_r_combined % 2 == 0) ? 1 : -1;
-
-                    if (index_type == IndexType::CUSTOM)
-                    {
-                        weight = weight_cache.get_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, index_type, max_order);
-                    }
-                    else if (index_type == IndexType::SII)
-                    {
-                        weight = sign * inter_weights::shapley_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
-                    }
-                    else if (index_type == IndexType::BII)
-                    {
-                        weight = sign * inter_weights::banzhaf_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
-                    }
-                    else if (index_type == IndexType::CHII)
-                    {
-                        weight = sign * inter_weights::chaining_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
-                    }
-                    else if (index_type == IndexType::FBII)
-                    {
-                        weight = inter_weights::fbii_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
-                    }
-                    else if (index_type == IndexType::FSII)
-                    {
-                        weight = inter_weights::fsii_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order);
-                    }
-                    else
-                    {
-                        weight = sign * inter_weights::general_weight(n_features, e, r, s_cap_e_combined, s_cap_r_combined, s, max_order, index_type);
-                    }
-
-                    int idx = algorithms::get_interaction_index(feature, feature_j, n_features, max_order);
-                    result[idx] += leaf_val * weight / scaling_factor;
-                }
-            }
+            DISPATCH_INDEX_TYPE(compute_order2_leafparallel, index_type,
+                leaf_predictions, feat32, e32, r32, fie32, lid32,
+                e_f32, r_f32, fie_f32,
+                n_iterations, n_features, inv_scaling,
+                table_s1, table_s2, table_stride,
+                weight_cache, max_order, result_size, result);
         }
-        chrono::steady_clock::time_point end_time = chrono::steady_clock::now();
-        chrono::duration<double> elapsed_seconds = end_time - start_time;
+        else if (max_order == 3)
+        {
+            DISPATCH_INDEX_TYPE(compute_order3_leafparallel, index_type,
+                leaf_predictions, feat32, e32, r32, fie32, lid32,
+                e_f32, r_f32, fie_f32,
+                n_iterations, n_features, inv_scaling,
+                table_s1, table_s2, table_s3, table_stride,
+                weight_cache, max_order, result_size, result);
+        }
 
-        // Step convert output directly to dict
-        start_time = chrono::steady_clock::now();
+        Py_END_ALLOW_THREADS
+
+        // --- Phase 3: Convert output to dict (sparse — skip zero entries) ---
         PyObject *output = PyDict_New();
         if (max_order == 1)
         {
             for (int i = 0; i < n_features; i++)
             {
+                if (result[i] == 0.0) continue;
                 PyObject *key = PyTuple_New(1);
-                PyObject *key_item = PyLong_FromLong(i);
-                PyTuple_SetItem(key, 0, key_item);
+                PyTuple_SetItem(key, 0, PyLong_FromLong(i));
                 PyObject *value = PyFloat_FromDouble(result[i]);
                 PyDict_SetItem(output, key, value);
                 Py_DECREF(key);
                 Py_DECREF(value);
             }
         }
-        if (max_order == 2)
+        if (max_order >= 2)
         {
+            // Main effects
             for (int i = 0; i < n_features; i++)
             {
+                if (result[i] == 0.0) continue;
                 PyObject *key = PyTuple_New(1);
-                PyObject *key_item = PyLong_FromLong(i);
-                PyTuple_SetItem(key, 0, key_item);
+                PyTuple_SetItem(key, 0, PyLong_FromLong(i));
                 PyObject *value = PyFloat_FromDouble(result[i]);
                 PyDict_SetItem(output, key, value);
                 Py_DECREF(key);
                 Py_DECREF(value);
-                for (int j = i + 1; j < n_features; j++)
+            }
+            // Pairwise interactions — forward iteration avoids while-loop reverse mapping
+            {
+                int pair_offset = 0;
+                for (int pi = 0; pi < n_features; pi++)
                 {
-                    key = PyTuple_New(2);
-                    PyObject *key_item1 = PyLong_FromLong(i);
-                    PyObject *key_item2 = PyLong_FromLong(j);
-                    PyTuple_SetItem(key, 0, key_item1);
-                    PyTuple_SetItem(key, 1, key_item2);
-                    int idx = algorithms::get_interaction_index(i, j, n_features, max_order);
-                    value = PyFloat_FromDouble(result[idx]);
-                    PyDict_SetItem(output, key, value);
-                    Py_DECREF(key);
-                    Py_DECREF(value);
+                    for (int pj = pi + 1; pj < n_features; pj++)
+                    {
+                        double v = result[n_features + pair_offset++];
+                        if (v == 0.0) continue;
+                        PyObject *key = PyTuple_New(2);
+                        PyTuple_SET_ITEM(key, 0, PyLong_FromLong(pi));
+                        PyTuple_SET_ITEM(key, 1, PyLong_FromLong(pj));
+                        PyObject *value = PyFloat_FromDouble(v);
+                        PyDict_SetItem(output, key, value);
+                        Py_DECREF(key);
+                        Py_DECREF(value);
+                    }
+                }
+            }
+        }
+        if (max_order >= 3)
+        {
+            // Triple interactions — forward (kk,jj,ii) iteration avoids while-loop reverse mapping.
+            // Compact layout: offset = ii + jj*(jj-1)/2 + kk*(kk-1)*(kk-2)/6, 0 <= ii < jj < kk.
+            int base3 = n_features + n_features * (n_features - 1) / 2;
+            int offset3 = 0;
+            for (int kk = 2; kk < n_features; kk++)
+            {
+                for (int jj = 1; jj < kk; jj++)
+                {
+                    for (int ii = 0; ii < jj; ii++)
+                    {
+                        double v = result[base3 + offset3++];
+                        if (v == 0.0) continue;
+                        PyObject *key = PyTuple_New(3);
+                        PyTuple_SET_ITEM(key, 0, PyLong_FromLong(ii));
+                        PyTuple_SET_ITEM(key, 1, PyLong_FromLong(jj));
+                        PyTuple_SET_ITEM(key, 2, PyLong_FromLong(kk));
+                        PyObject *value = PyFloat_FromDouble(v);
+                        PyDict_SetItem(output, key, value);
+                        Py_DECREF(key);
+                        Py_DECREF(value);
+                    }
                 }
             }
         }
 
-        end_time = chrono::steady_clock::now();
-        elapsed_seconds = end_time - start_time;
-
-        delete[] result; // Free memory allocated for the result array
+        // --- Cleanup ---
+        delete[] result;
+        delete[] feat32;
+        delete[] e32;
+        delete[] r32;
+        delete[] fie32;
+        delete[] lid32;
+        delete[] e_f32;
+        delete[] r_f32;
+        delete[] fie_f32;
+        delete[] table_s1;
+        delete[] table_s2;
+        delete[] table_s3;
 
         Py_XDECREF(leaf_predictions_array);
         Py_XDECREF(features_array);
@@ -1288,6 +1690,226 @@ static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args)
 
         return output;
     }
+    // max_order > 3 not supported by this function
+    PyErr_SetString(PyExc_ValueError, "compute_interactions_flatten only supports max_order <= 3");
+    Py_XDECREF(leaf_predictions_array);
+    Py_XDECREF(features_array);
+    Py_XDECREF(e_sizes_array);
+    Py_XDECREF(r_sizes_array);
+    Py_XDECREF(feature_in_e_array);
+    Py_XDECREF(leaf_id_array);
+    Py_XDECREF(weight_table_array);
+    return NULL;
+}
+
+// === preprocess_boolean_trees ===
+// DFS traversal of boolean trees using C++ BitSets.
+// Produces the 6 flat numpy arrays needed by compute_interactions_flatten.
+static PyObject *preprocess_boolean_trees(PyObject *self, PyObject *args)
+{
+    PyObject *values_list_obj;
+    PyObject *features_list_obj;
+    PyObject *children_left_list_obj;
+    PyObject *children_right_list_obj;
+    int n_features;
+
+    if (!PyArg_ParseTuple(args, "OOOOi",
+                          &values_list_obj, &features_list_obj,
+                          &children_left_list_obj, &children_right_list_obj,
+                          &n_features))
+    {
+        return NULL;
+    }
+
+    if (!PyList_Check(values_list_obj) || !PyList_Check(features_list_obj) ||
+        !PyList_Check(children_left_list_obj) || !PyList_Check(children_right_list_obj))
+    {
+        PyErr_SetString(PyExc_TypeError, "All tree inputs must be lists of numpy arrays");
+        return NULL;
+    }
+
+    Py_ssize_t num_trees = PyList_Size(values_list_obj);
+    if (num_trees != PyList_Size(features_list_obj) ||
+        num_trees != PyList_Size(children_left_list_obj) ||
+        num_trees != PyList_Size(children_right_list_obj))
+    {
+        PyErr_SetString(PyExc_ValueError, "All tree lists must have the same length");
+        return NULL;
+    }
+
+    // Output buffers (grow dynamically during DFS)
+    std::vector<int64_t> features_out;
+    std::vector<float> leaf_vals_out;
+    std::vector<int64_t> e_sizes_out;
+    std::vector<int64_t> r_sizes_out;
+    std::vector<int64_t> fie_out;
+    std::vector<int64_t> lid_out;
+
+    // Reserve estimated space: ~64 leaves/tree × avg 6 features/leaf × num_trees
+    size_t est = static_cast<size_t>(num_trees) * 64 * 6;
+    features_out.reserve(est);
+    leaf_vals_out.reserve(est);
+    e_sizes_out.reserve(est);
+    r_sizes_out.reserve(est);
+    fie_out.reserve(est);
+    lid_out.reserve(est);
+
+    int64_t leaf_counter = 0;
+
+    // Store converted arrays for cleanup
+    std::vector<std::tuple<PyArrayObject *, PyArrayObject *, PyArrayObject *, PyArrayObject *>> arrays_for_decref;
+
+    for (Py_ssize_t t = 0; t < num_trees; t++)
+    {
+        PyArrayObject *vals_arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(values_list_obj, t), NPY_FLOAT32, NPY_ARRAY_IN_ARRAY);
+        PyArrayObject *feat_arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(features_list_obj, t), NPY_INT64, NPY_ARRAY_IN_ARRAY);
+        PyArrayObject *cl_arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(children_left_list_obj, t), NPY_INT64, NPY_ARRAY_IN_ARRAY);
+        PyArrayObject *cr_arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(children_right_list_obj, t), NPY_INT64, NPY_ARRAY_IN_ARRAY);
+
+        if (!vals_arr || !feat_arr || !cl_arr || !cr_arr)
+        {
+            Py_XDECREF(vals_arr);
+            Py_XDECREF(feat_arr);
+            Py_XDECREF(cl_arr);
+            Py_XDECREF(cr_arr);
+            for (auto &arr_tuple : arrays_for_decref)
+            {
+                Py_XDECREF(std::get<0>(arr_tuple));
+                Py_XDECREF(std::get<1>(arr_tuple));
+                Py_XDECREF(std::get<2>(arr_tuple));
+                Py_XDECREF(std::get<3>(arr_tuple));
+            }
+            PyErr_SetString(PyExc_TypeError, "Failed to convert tree arrays");
+            return NULL;
+        }
+        arrays_for_decref.push_back(std::make_tuple(vals_arr, feat_arr, cl_arr, cr_arr));
+
+        float *values = (float *)PyArray_DATA(vals_arr);
+        int64_t *features = (int64_t *)PyArray_DATA(feat_arr);
+        int64_t *children_left = (int64_t *)PyArray_DATA(cl_arr);
+        int64_t *children_right = (int64_t *)PyArray_DATA(cr_arr);
+
+        // DFS with BitSets
+        // Stack entries: (node_id, E, R)
+        std::vector<StackFrame> stack;
+        stack.reserve(256);
+        stack.push_back(StackFrame(0, BitSet(n_features), BitSet(n_features), 0, 0));
+
+        while (!stack.empty())
+        {
+            StackFrame frame = std::move(stack.back());
+            stack.pop_back();
+            int64_t node_id = frame.node_id;
+
+            bool is_leaf = (children_left[node_id] == children_right[node_id]);
+            if (is_leaf)
+            {
+                float leaf_val = values[node_id];
+                int64_t e_size = static_cast<int64_t>(frame.E.num_bits());
+                int64_t r_size = static_cast<int64_t>(frame.R.num_bits());
+
+                // Append E features (feature_in_E = 1)
+                frame.E.for_each_set_bit([&](uint64_t feat)
+                {
+                    features_out.push_back(static_cast<int64_t>(feat));
+                    leaf_vals_out.push_back(leaf_val);
+                    e_sizes_out.push_back(e_size);
+                    r_sizes_out.push_back(r_size);
+                    fie_out.push_back(1);
+                    lid_out.push_back(leaf_counter);
+                });
+                // Append R features (feature_in_E = 0)
+                frame.R.for_each_set_bit([&](uint64_t feat)
+                {
+                    features_out.push_back(static_cast<int64_t>(feat));
+                    leaf_vals_out.push_back(leaf_val);
+                    e_sizes_out.push_back(e_size);
+                    r_sizes_out.push_back(r_size);
+                    fie_out.push_back(0);
+                    lid_out.push_back(leaf_counter);
+                });
+                leaf_counter++;
+                continue;
+            }
+
+            int64_t feature = features[node_id];
+
+            // Go left: feature → R (unless already in E)
+            if (!frame.E.contains(feature))
+            {
+                BitSet next_R = frame.R;
+                next_R.add(feature);
+                stack.push_back(StackFrame(
+                    children_left[node_id], frame.E, next_R,
+                    frame.e, frame.r + 1));
+            }
+            // Go right: feature → E (unless already in R)
+            if (!frame.R.contains(feature))
+            {
+                BitSet next_E = frame.E;
+                next_E.add(feature);
+                stack.push_back(StackFrame(
+                    children_right[node_id], next_E, frame.R,
+                    frame.e + 1, frame.r));
+            }
+        }
+    }
+
+    // Cleanup tree arrays
+    for (auto &arr_tuple : arrays_for_decref)
+    {
+        Py_XDECREF(std::get<0>(arr_tuple));
+        Py_XDECREF(std::get<1>(arr_tuple));
+        Py_XDECREF(std::get<2>(arr_tuple));
+        Py_XDECREF(std::get<3>(arr_tuple));
+    }
+
+    // Convert output vectors to numpy arrays
+    npy_intp n_total = static_cast<npy_intp>(features_out.size());
+
+    PyObject *np_features = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_leaf_vals = PyArray_SimpleNew(1, &n_total, NPY_FLOAT32);
+    PyObject *np_e_sizes = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_r_sizes = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_fie = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_lid = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+
+    if (!np_features || !np_leaf_vals || !np_e_sizes || !np_r_sizes || !np_fie || !np_lid)
+    {
+        Py_XDECREF(np_features);
+        Py_XDECREF(np_leaf_vals);
+        Py_XDECREF(np_e_sizes);
+        Py_XDECREF(np_r_sizes);
+        Py_XDECREF(np_fie);
+        Py_XDECREF(np_lid);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output arrays");
+        return NULL;
+    }
+
+    if (n_total > 0)
+    {
+        memcpy(PyArray_DATA((PyArrayObject *)np_features), features_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_leaf_vals), leaf_vals_out.data(), n_total * sizeof(float));
+        memcpy(PyArray_DATA((PyArrayObject *)np_e_sizes), e_sizes_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_r_sizes), r_sizes_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_fie), fie_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_lid), lid_out.data(), n_total * sizeof(int64_t));
+    }
+
+    // Return tuple of 6 arrays
+    PyObject *result = PyTuple_New(6);
+    PyTuple_SetItem(result, 0, np_features);     // E_R_flatten
+    PyTuple_SetItem(result, 1, np_leaf_vals);     // leaf_vals_flatten
+    PyTuple_SetItem(result, 2, np_e_sizes);       // e_size_flatten
+    PyTuple_SetItem(result, 3, np_r_sizes);       // r_size_flatten
+    PyTuple_SetItem(result, 4, np_fie);           // feature_in_E
+    PyTuple_SetItem(result, 5, np_lid);           // leaf_id
+
+    return result;
 }
 
 static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)

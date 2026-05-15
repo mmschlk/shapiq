@@ -1,9 +1,19 @@
+#include <string>
 #include <vector>
 
 // MSVC uses __restrict instead of __restrict__
 #ifdef _MSC_VER
   #define __restrict__ __restrict
 #endif
+
+// Split comparison convention of the converted model. Mirrors the enum used by
+// the interventional kernel (utils.cpp): XGBoost-style trees route with the
+// strict ``x < threshold`` rule, every other supported family with ``x <= threshold``.
+enum DecisionType
+{
+    LESS_EQUAL = 0,
+    LESS_THAN = 1
+};
 
 struct Tree
 {
@@ -17,17 +27,32 @@ struct Tree
     int *children_right;
     int max_depth;
     int num_nodes;
+    DecisionType decision_type;
 
     Tree(double *weights, double *leaf_predictions, double *thresholds,
          int *parents, int *edge_heights,
-         int *features, int *children_left, int *children_right, int max_depth, int num_nodes) : weights(weights), leaf_predictions(leaf_predictions), thresholds(thresholds),
-                                                                                                 parents(parents), edge_heights(edge_heights),
-                                                                                                 features(features), children_left(children_left),
-                                                                                                 children_right(children_right), max_depth(max_depth), num_nodes(num_nodes) {};
+         int *features, int *children_left, int *children_right, int max_depth, int num_nodes,
+         const std::string &decision_type) : weights(weights), leaf_predictions(leaf_predictions), thresholds(thresholds),
+                                             parents(parents), edge_heights(edge_heights),
+                                             features(features), children_left(children_left),
+                                             children_right(children_right), max_depth(max_depth), num_nodes(num_nodes),
+                                             decision_type(decision_type == "<=" ? LESS_EQUAL : LESS_THAN) {};
 
     bool is_internal(int pos) const
     {
         return children_left[pos] >= 0;
+    }
+
+    // Route ``feature_value`` at ``node`` honouring the model's split convention.
+    // Must match ``TreeModel.predict_one``; otherwise instances lying exactly on a
+    // split threshold are sent to the wrong leaf and Shapley efficiency breaks.
+    bool goes_left(double feature_value, int node) const
+    {
+        if (decision_type == LESS_THAN)
+        {
+            return feature_value < thresholds[node];
+        }
+        return feature_value <= thresholds[node];
     }
 };
 
@@ -135,7 +160,7 @@ inline void inference_v2_iterative(
 
             if (left >= 0)
             { // Internal node
-                if (x[tree.features[node]] <= tree.thresholds[node])
+                if (tree.goes_left(x[tree.features[node]], node))
                 {
                     activation[left] = true;
                     activation[right] = false;

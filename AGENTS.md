@@ -4,6 +4,12 @@ This role of this file is to describe common mistakes and confusion points that 
 
 ## Commands to interact with the codebase which you should run:
 
+## Conversion package note
+
+Boosting converters live in separate modules such as `xgboost.py`,
+`lightgbm.py`, and `catboost.py`, and are hooked up through lazy registrations in
+`src/shapiq/tree/conversion/__init__.py`.
+
 ### Build Docs (only use this command verbatim from the project root)
 
 ```bash

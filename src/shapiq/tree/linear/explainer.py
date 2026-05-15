@@ -44,14 +44,23 @@ def get_N_v2(D: np.ndarray) -> np.ndarray:
 
 
 class LinearTreeSHAP:
-    """Linear TreeShap Explainer for DecisionTree models.
+    """Linear TreeSHAP explainer for first-order Shapley values on tree-based models.
 
-    This class computes Shapley values for tree-based models using a linear approximation.
-    It supports both iterative and C++ implementations for efficient computation.
+    Implements the Linear TreeSHAP algorithm of `Yu et al. (2022)
+    <https://openreview.net/forum?id=OzbkiUo24g>`_ for exact ``order=1`` Shapley value
+    computation on a single decision tree. The heavy lifting is delegated to a C++ kernel
+    (``linear_tree_shap_iterative``), which is faster than the any-order
+    :class:`~shapiq.tree.treeshapiq.TreeSHAPIQ` algorithm when only Shapley values are
+    needed.
 
     Attributes:
-        clf: The tree-based model to explain.
-        edge_tree: Edge-based representation of the tree for efficient traversal.
+        clf: The original tree-based model passed by the user.
+        edge_tree: Edge-based representation of the tree (:class:`~shapiq.tree.base.EdgeTree`)
+            used by the C++ kernel for efficient traversal.
+        N: The :math:`N'` matrix used by Linear TreeSHAP (see :func:`get_N_prime`).
+        Base: The Chebyshev (or user-supplied) interpolation base of length ``max_depth``.
+        Offset: The Vandermonde-style power cache of ``Base + 1``.
+        N_v2: The interpolation N matrix evaluated at ``Base`` (see :func:`get_N_v2`).
     """
 
     def __init__(
@@ -60,7 +69,14 @@ class LinearTreeSHAP:
         *,
         base_func: Callable[[int], np.ndarray] = np.polynomial.chebyshev.chebpts2,
     ) -> None:
-        """Initialize the LinearTreeExplainer."""
+        """Initialize the :class:`LinearTreeSHAP` explainer.
+
+        Args:
+            model: A fitted single-tree model accepted by
+                :func:`~shapiq.tree.validation.validate_tree_model`.
+            base_func: Callable ``int -> np.ndarray`` returning the interpolation base for the
+                given depth. Defaults to :func:`numpy.polynomial.chebyshev.chebpts2`.
+        """
         self.clf = model
         self._tree = validate_tree_model(model, class_label=None)[0]
         self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
@@ -187,6 +203,13 @@ class LinearTreeSHAP:
             dtype=np.int32,
         )
         weights = 1 / self.edge_tree.p_e_values
+
+        # The kernel routes ``x`` honouring the model's split convention (passed as the
+        # ``decision_type`` string, same as :class:`InterventionalTreeExplainer`):
+        # XGBoost-style trees use strict ``x < threshold``, every other supported family
+        # ``x <= threshold``. This must match ``TreeModel.predict_one`` exactly, otherwise
+        # instances lying on a split threshold are routed to the wrong leaf and the
+        # Shapley efficiency property breaks.
         linear_tree_shap_iterative(
             np.ascontiguousarray(weights, dtype=np.float64),
             np.ascontiguousarray(self.edge_tree.empty_predictions, dtype=np.float64),
@@ -201,8 +224,9 @@ class LinearTreeSHAP:
             self.Base,
             np.ascontiguousarray(self.Offset, dtype=np.float64),
             np.ascontiguousarray(self.N_v2, dtype=np.float64),
-            X.astype(np.float32),
+            np.ascontiguousarray(X, dtype=np.float64),
             V,
+            self._tree.decision_type,
         )
         return V
 
@@ -215,24 +239,22 @@ class LinearTreeSHAP:
         Returns:
             The interaction values for the instance.
         """
-        if len(x.shape) != 1:
-            x = x.flatten()
-            msg = "explain expects a single instance, not a batch."
-            raise TypeError(msg)
         shap_values = self.shap_values_cpp_iterative(x.reshape(1, -1)).flatten()
         shap_interactions: dict[tuple[int, ...], float] = {
             (feature,): float(shap_values[feature])
-            for feature in range(x.shape[0])  # One entry per feature present in the tree
+            for feature in range(x.shape[0])  # one entry per input feature, zero outside the tree
         }
+        # n_players matches the user-facing feature space (``x.shape[0]``); the tree's reduced
+        # feature count would underreport players and break downstream ``get_n_order_values``.
         return InteractionValues(
             values=shap_interactions,
             baseline_value=(
                 self._tree.empty_prediction
                 if self._tree.empty_prediction is not None
-                else np.sum(self.edge_tree.empty_predictions)
+                else float(np.sum(self.edge_tree.empty_predictions))
             ),
             min_order=0,
             max_order=1,
             index="SV",
-            n_players=self._n_features_in_tree,
+            n_players=int(x.shape[0]),
         )

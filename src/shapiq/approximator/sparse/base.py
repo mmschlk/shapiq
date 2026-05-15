@@ -203,7 +203,7 @@ class Sparse(Approximator[ValidSparseIndices]):
             )
             train_y = game(self._uniform_sampler.coalitions_matrix)
 
-            base_model = lgb.LGBMRegressor(verbose=-1, n_jobs=1, random_state=self._random_state)
+            base_model = lgb.LGBMRegressor(verbose=-1, n_jobs=1, random_state=self._random_state)  # type: ignore[attr-defined]
 
             # Set up GridSearchCV with cross-validation
             grid_search = GridSearchCV(

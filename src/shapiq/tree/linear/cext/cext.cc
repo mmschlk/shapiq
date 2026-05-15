@@ -85,10 +85,11 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
     PyObject *norm_obj;
     PyObject *X_obj;
     PyObject *out_contribs_obj;
+    const char *decision_type_cptr;
 
     /* Parse the input tuple */
     if (!PyArg_ParseTuple(
-            args, "OOOOOOOOiiOOOOO",
+            args, "OOOOOOOOiiOOOOOs",
             &weights_obj,
             &leaf_predictions_obj,
             &thresholds_obj,
@@ -103,7 +104,8 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
             &offset_obj,
             &norm_obj,
             &X_obj,
-            &out_contribs_obj))
+            &out_contribs_obj,
+            &decision_type_cptr))
         return NULL;
 
     /* Interpret the input objects as numpy arrays. */
@@ -166,7 +168,8 @@ static PyObject *linear_tree_shap_iterative(PyObject *self, PyObject *args)
         parents, edge_heights,
         features,
         children_left, children_right,
-        max_depth, num_nodes);
+        max_depth, num_nodes,
+        std::string(decision_type_cptr));
 
     const int row_x = (int)PyArray_DIM(X_array, 0);
     const int col_x = (int)PyArray_DIM(X_array, 1);
