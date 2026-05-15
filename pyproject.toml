@@ -71,6 +71,10 @@ exclude_also = [
 module = "torch_geometric.*"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["scipy", "scipy.*"]
+ignore_missing_imports = true
+
 [tool.setuptools_scm]
 write_to = "src/shapiq/_version.py"
 
