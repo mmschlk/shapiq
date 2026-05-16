@@ -2,7 +2,7 @@ import numpy as np
 
 from .base import Metric
 from .result import MetricResult
-
+from .utils import remove_empty_value
 
 class MSEMetric(Metric):
     name = "mse"
