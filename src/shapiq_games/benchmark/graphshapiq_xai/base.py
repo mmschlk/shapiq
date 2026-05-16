@@ -50,6 +50,9 @@ class GraphGame(Game):
         self.x_graph = x_graph.clone()
         self.edge_index = self.x_graph.edge_index.detach().numpy()  # pyright: ignore[reportOptionalMemberAccess]
         self.max_neighborhood_size = model.num_layers
+        self.grand_coalition_set = set(
+            range(x_graph.x.shape[0])
+        )  # NOTE: Check if this works when batching
         self.output_dim = output_dim
 
         if baseline_strategy is None:
