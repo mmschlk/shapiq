@@ -37,10 +37,10 @@ class GroundTruthComputer(Protocol[T_Index_contra]):
         ...
 
 
-class BruteForceComputer(GroundTruthComputer[IndexType]):
+class BruteForceComputer[In:Game, IndexT:IndexType](GroundTruthComputer[IndexT]):
     """A brute force computer for exact computation of interaction values."""
 
-    def __init__(self, game: Game) -> None:
+    def __init__(self, game: In) -> None:
         """Initialize a BruteForceComputer instance."""
         self.game = game
         self._computer = ExactComputer(
@@ -48,7 +48,7 @@ class BruteForceComputer(GroundTruthComputer[IndexType]):
         )
 
     def exact_values(
-        self, index: IndexType, order: int, budget: int | None = None
+        self, index: IndexT, order: int, budget: int | None = None
     ) -> InteractionValues:
         """Compute the exact values using brute force."""
         return self._computer(index=index, order=order)

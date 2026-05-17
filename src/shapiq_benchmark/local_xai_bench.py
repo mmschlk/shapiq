@@ -57,6 +57,7 @@ class LocalXAIBench(Benchmark[IndexType]):
         class_index: int | None = 1,
         random_state: int | None = 42,
         imputer: str = "marginal",
+        **kwargs
     ) -> None:
         """Initialize the benchmark by loading data and model and fitting the model.
 
@@ -67,15 +68,16 @@ class LocalXAIBench(Benchmark[IndexType]):
             class_index: Class index for classification models.
             random_state: Random state used for data split and model init.
             imputer: Imputation method to use in the LocalExplanation game.
+            **kwargs: Additional keyword arguments for model building.
         """
         if isinstance(data, str) and isinstance(model, str):
             self.dataset, self.model = load_from_str(
-                data, model, benchmark_type="local_xai", random_state=random_state
+                data, model, benchmark_type="local_xai", random_state=random_state, **kwargs
             )
-            self.x_train: np.ndarray = np.asarray(self.dataset.x_train)
+            self.data: np.ndarray = np.asarray(self.dataset.x_test) # TODO use test data for explanations?
         elif isinstance(data, np.ndarray) and not isinstance(model, str):
             self.dataset = None
-            self.x_train = np.asarray(data)
+            self.data = np.asarray(data)
             self.model = model
         else:
             raise ValueError(
@@ -97,9 +99,9 @@ class LocalXAIBench(Benchmark[IndexType]):
             msg = "x_explain must be an int index."
             raise ValueError(msg)
         self._game = LocalExplanation(
-            data=self.x_train,
+            data=self.data,
             model=predict_fn,
-            x=self.x_train[x_index],
+            x=self.data[x_index],  
             imputer=imputer,
             random_state=random_state,
             verbose=False,

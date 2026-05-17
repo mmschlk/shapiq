@@ -31,6 +31,7 @@ class PathdependentBench(Benchmark[IndexType]):
         x_explain: int | None = 0,
         class_index: int | None = 1,
         random_state: int | None = 42,
+        **kwargs
     ) -> None:
         """Initialize the Pathdependent Benchmark by loading data and model and fitting the model.
 
@@ -40,15 +41,16 @@ class PathdependentBench(Benchmark[IndexType]):
             x_explain: Instance to explain.
             class_index: Class index for classification models.
             random_state: Random state used for data split and model init.
+            **kwargs: Additional keyword arguments for model building.
         """
         if isinstance(data, str) and isinstance(model, str):
             self.dataset, self.model = load_from_str(
-                data, model, benchmark_type="pathdependent", random_state=random_state
+                data, model, benchmark_type="pathdependent", random_state=random_state, **kwargs
             )
-            self.x_train: np.ndarray = np.asarray(self.dataset.x_train)
+            self.data: np.ndarray = np.asarray(self.dataset.x_test)
         elif isinstance(data, np.ndarray) and not isinstance(model, str):
             self.dataset = None
-            self.x_train = np.asarray(data)
+            self.data = np.asarray(data)
             self.model = model
         else:
             raise ValueError(
@@ -70,7 +72,7 @@ class PathdependentBench(Benchmark[IndexType]):
             raise ValueError(msg)
 
         self._game = TreeSHAPIQXAI(
-            x=self.x_train[x_index],
+            x=self.data[x_index],
             tree_model=self.model,
             class_label=class_index,
             verbose=False,

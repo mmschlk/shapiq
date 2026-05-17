@@ -10,7 +10,7 @@ import numpy as np
 from shapiq.typing import IndexType, Model
 from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
 
-from .base import Benchmark
+from .base import Benchmark, BruteForceComputer
 from .computers import ImageComputer
 
 if TYPE_CHECKING:
@@ -91,9 +91,9 @@ class ImageBench(Benchmark[IndexType]):
 
         image_paths, image_path = _resolve_x_explain_path(
             data, x_explain
-        )  # TODO make less complicated
+        )  # TODO make less complicated?
         self.dataset = image_paths
-        self.x_train = image_paths if image_paths is not None else []
+        self.data = image_paths if image_paths is not None else []
         self.model = model
 
         self._game = ImageClassifier(
@@ -103,7 +103,7 @@ class ImageBench(Benchmark[IndexType]):
             normalize=normalize,
             verbose=verbose,
         )
-        self._computer = ImageComputer(self._game)
+        self._computer: ImageComputer = BruteForceComputer(self._game)
 
     def exact_values(
         self, index: IndexType, order: int, budget: int | None = None

@@ -5,6 +5,7 @@ from typing import Literal, TypeAlias, get_args, Protocol, cast
 from collections.abc import Callable
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from tabpfn import TabPFNClassifier, TabPFNRegressor
 from xgboost import XGBClassifier, XGBRegressor
@@ -76,6 +77,7 @@ AllSupportedModels: TypeAlias = Literal[
     "tabpfn",
     "xgboost",
     "lightgbm",
+    "mlp",
     "vit_16_patches",
     "resnet_18",
 ]
@@ -87,7 +89,7 @@ SupportedModelsPathdependent: TypeAlias = Literal[
     "decision_tree", "random_forest", "xgboost", "lightgbm"
 ]
 SupportedModelsLocalXAI: TypeAlias = Literal[
-    "decision_tree", "random_forest", "xgboost", "lightgbm"
+    "decision_tree", "random_forest", "xgboost", "lightgbm", "mlp"
 ]
 SupportedModelsImage: TypeAlias = Literal[
     "vit_16_patches",
@@ -104,36 +106,22 @@ ModelBuilder = Callable[[int | None, int], _FitModel]
 
 
 _MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
-    ("decision_tree", "classification"): lambda random_state, _n_estimators: (
-        DecisionTreeClassifier(random_state=random_state)
+    ("decision_tree", "classification"): lambda **kwargs: (
+        DecisionTreeClassifier(**kwargs)
     ),
-    ("decision_tree", "regression"): lambda random_state, _n_estimators: (
-        DecisionTreeRegressor(random_state=random_state)
+    ("decision_tree", "regression"): lambda **kwargs: (DecisionTreeRegressor(**kwargs)),
+    ("random_forest", "classification"): lambda **kwargs: (
+        RandomForestClassifier(**kwargs)
     ),
-    ("random_forest", "classification"): lambda random_state, n_estimators: (
-        RandomForestClassifier(n_estimators=n_estimators, random_state=random_state)
-    ),
-    ("random_forest", "regression"): lambda random_state, n_estimators: (
-        RandomForestRegressor(n_estimators=n_estimators, random_state=random_state)
-    ),
-    ("xgboost", "classification"): lambda random_state, n_estimators: (
-        XGBClassifier(n_estimators=n_estimators, random_state=random_state)
-    ),
-    ("xgboost", "regression"): lambda random_state, n_estimators: (
-        XGBRegressor(n_estimators=n_estimators, random_state=random_state)
-    ),
-    ("lightgbm", "classification"): lambda random_state, n_estimators: (
-        LGBMClassifier(n_estimators=n_estimators, random_state=random_state)
-    ),
-    ("lightgbm", "regression"): lambda random_state, n_estimators: (
-        LGBMRegressor(n_estimators=n_estimators, random_state=random_state)
-    ),
-    ("tabpfn", "classification"): lambda random_state, _n_estimators: (
-        TabPFNClassifier(random_state=random_state)
-    ),
-    ("tabpfn", "regression"): lambda random_state, _n_estimators: (
-        TabPFNRegressor(random_state=random_state)
-    ),
+    ("random_forest", "regression"): lambda **kwargs: (RandomForestRegressor(**kwargs)),
+    ("xgboost", "classification"): lambda **kwargs: (XGBClassifier(**kwargs)),
+    ("xgboost", "regression"): lambda **kwargs: (XGBRegressor(**kwargs)),
+    ("lightgbm", "classification"): lambda **kwargs: (LGBMClassifier(**kwargs)),
+    ("lightgbm", "regression"): lambda **kwargs: (LGBMRegressor(**kwargs)),
+    ("tabpfn", "classification"): lambda **kwargs: (TabPFNClassifier(**kwargs)),
+    ("tabpfn", "regression"): lambda **kwargs: (TabPFNRegressor(**kwargs)),
+    ("mlp", "classification"): lambda **kwargs: (MLPClassifier(**kwargs)),
+    ("mlp", "regression"): lambda **kwargs: (MLPRegressor(**kwargs)),
 }
 
 
@@ -184,9 +172,7 @@ def load_data_from_str(
 def load_model_from_str(
     model_str: str,
     dataset: BenchmarkDataset,
-    *,
-    random_state: int | None = 42,
-    n_estimators: int = 10,  # TODO this somewhere else
+    **kwargs,
 ) -> object:
     """Create an unfitted model from a string identifier.
 
@@ -208,7 +194,7 @@ def load_model_from_str(
         )
         raise ValueError(msg)
 
-    model = _MODEL_BUILDERS[key](random_state, n_estimators)
+    model = _MODEL_BUILDERS[key](**kwargs)
     return model.fit(dataset.x_train, dataset.y_train)
 
 
@@ -216,8 +202,8 @@ def load_from_str(
     data_str: str,
     model_str: str,
     benchmark_type: str,
-    *,
     random_state: int | None = 42,
+    **kwargs,
 ) -> tuple[BenchmarkDataset, object]:
     """Convenience function to load both dataset and model from string identifiers."""
     allowed_data = get_args(AllSupportedDatasets)
@@ -246,7 +232,7 @@ def load_from_str(
         )
         raise ValueError(msg)
     dataset = load_data_from_str(data_str, random_state=random_state)
-    model = load_model_from_str(model_str, dataset, random_state=random_state)
+    model = load_model_from_str(model_str, dataset, **kwargs)
     return dataset, model
 
 
