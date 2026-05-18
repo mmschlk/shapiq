@@ -82,7 +82,7 @@ def main(argsv=None) -> None:
         print(f"Using config file: {argsv[1]}")
         config_path = Path(argsv[1])
     else:
-        project_root = Path(__file__).resolve().parents[2]
+        project_root = Path(__file__).resolve().parents[3]
         config_path = project_root / "configs" / "default_run.yaml"
 
     # Load and validate config using config_manager interface
