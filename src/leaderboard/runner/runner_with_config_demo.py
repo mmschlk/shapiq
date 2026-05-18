@@ -16,6 +16,9 @@ from leaderboard.runner.game_factory import create_game_from_config
 from leaderboard.runner.runner_storage_adapter import save_raw_results
 from leaderboard.storage.connection import MongoDBClient
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 class ExpandedRunConfig(TypedDict):
     """Run configuration expanded from validated MVP config."""
@@ -41,21 +44,21 @@ def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]
     n_seeds = len(config_obj.seeds)
     game_seed = 42
 
-    run_configs: list[ExpandedRunConfig] = []
-    for approximator in config_obj.approximators:
-        for budget in config_obj.budgets:
-            run_configs.append(
-                {
-                    "game": config_obj.game,
-                    "index": config_obj.index,
-                    "approximator": approximator,
-                    "max_order": config_obj.max_order,
-                    "budget": budget,
-                    "n_seeds": n_seeds,
-                    "game_seed": game_seed,
-                }
-            )
-    return run_configs
+
+    return [
+        [
+            {
+                "game": config_obj.game, 
+                "index": config_obj.index, 
+                "approximator": approx, 
+                "max_order": config_obj.max_order, 
+                "budget": budget, 
+                "n_seeds": n_seeds, 
+                "game_seed": game_seed
+            } 
+        for approx in config_obj.approximators] 
+    for budget in config_obj.budgets]
+
 
 
 def load_raw_config(path: Path) -> dict[str, Any]:
@@ -67,15 +70,15 @@ def load_raw_config(path: Path) -> dict[str, Any]:
     Returns:
         Parsed YAML data as dictionary.
     """
-    with open(path, encoding="utf-8") as file:
+    with Path.open(path, encoding="utf-8") as file:
         data = yaml.safe_load(file)
     return data if isinstance(data, dict) else {}
 
 
-def main(argsv=None) -> None:
+def main(argsv: list[str]=None) -> None:
     """Run benchmarks from a YAML config and store raw results in MongoDB."""
     if len(argsv) > 1:
-        print(f"Using config file: {argsv[1]}")
+        logging.info(f"Using config file: {argsv[1]}")
         config_path = Path(argsv[1])
     else:
         project_root = Path(__file__).resolve().parents[3]
@@ -84,7 +87,7 @@ def main(argsv=None) -> None:
     # Load and validate config using config_manager interface
     config_obj = load_and_validate_config(config_path)
     if config_obj is None:
-        raise ValueError(f"Invalid config file: {config_path}")
+        raise FileNotFoundError from None
 
     # Expand validated config to concrete run configurations
     run_configs = expand_validated_config(config_obj)
@@ -101,8 +104,8 @@ def main(argsv=None) -> None:
 
     # Run benchmarks for each expanded run configuration
     for run_config in run_configs:
-        print("Running benchmark config:")
-        print(json.dumps(run_config, indent=2, default=str))
+        logging.info("Running benchmark config:")
+        logging.info(json.dumps(run_config, indent=2, default=str))
 
         approximator_class = get_approximator_class(run_config["approximator"])
 
@@ -128,10 +131,10 @@ def main(argsv=None) -> None:
             raw_results=benchmark_result["raw_results"],
         )
 
-        print("Stored raw results:")
-        print(len(benchmark_result["raw_results"]))
-        print("First raw result:")
-        print(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
+        logging.info("Stored raw results:")
+        logging.info(len(benchmark_result["raw_results"]))
+        logging.info("First raw result:")
+        logging.info(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
 
 
 if __name__ == "__main__":

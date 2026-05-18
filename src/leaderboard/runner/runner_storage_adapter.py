@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from leaderboard.storage.connection import MongoDBClient
+if TYPE_CHECKING:
+    from leaderboard.storage.connection import MongoDBClient
 
 
 def save_raw_results(db: MongoDBClient, raw_results: list[dict[str, Any]]) -> None:

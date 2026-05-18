@@ -5,12 +5,14 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from importlib.metadata import version
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from leaderboard.runner.custom_types import InteractionIndex
 from leaderboard.runner.environment_info import get_hardware_info
-from shapiq.approximator import Approximator
-from shapiq.game import Game
+
+if TYPE_CHECKING:
+    from shapiq.game import Game
+    from shapiq.approximator import Approximator
+    from leaderboard.runner.custom_types import InteractionIndex
 
 
 def create_run_record(
@@ -66,7 +68,7 @@ def create_run_record(
         "max_order": max_order,
         "budget": budget,
         "approx_seed": approx_seed,
-        "ground_truth_method": "ExactComputer",  # TODO: this needs to be determined during the process
+        "ground_truth_method": "ExactComputer",  # TO DO: this needs to be determined during the process
         "run_failed": run_failed,
         "error_message": error_message,
         "metrics": metrics

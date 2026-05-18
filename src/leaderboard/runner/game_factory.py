@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from leaderboard.runner.runner_exceptions import UnknownGameError
 from shapiq_games.benchmark.local_xai.benchmark_tabular import CaliforniaHousing
 from shapiq_games.synthetic import SOUM
 
@@ -67,4 +68,4 @@ def create_game_from_config(
         game = CaliforniaHousing(**game_params)
         return game, game_params
 
-    raise ValueError(f"Unknown game: {game_name}")
+    raise UnknownGameError(game_name) from None

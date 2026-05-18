@@ -11,6 +11,8 @@ from leaderboard.runner.approximator_runner import approximate
 from leaderboard.runner.record_builder import create_run_record
 from metrics.evaluator import compute_all_metrics
 
+from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, UnknownGameError
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -46,11 +48,7 @@ def align_interaction_values(
     approx_keys = set(approx_lookup.keys())
 
     if gt_keys != approx_keys:
-        raise ValueError(
-            "Interaction keys do not match. "
-            f"Missing in approx: {len(gt_keys - approx_keys)}. "
-            f"Missing in ground truth: {len(approx_keys - gt_keys)}."
-        )
+        raise InteractionKeyMismatchError(gt_keys, approx_keys) from None
 
     interactions = sorted(
         gt_keys,
@@ -129,12 +127,6 @@ def run_experiment(
                 estimated=approx_values_aligned,
             )
 
-            # metric_results: dict[str, float] = compute_metrics(
-            #     ground_truth=ground_truth,
-            #     approximation=approx_values,
-            #     metrics=metrics
-            # )
-
             runtime_seconds = time.perf_counter() - start_time
 
             run_record = create_run_record(
@@ -161,7 +153,8 @@ def run_experiment(
                 notes="",
             )
 
-        except Exception as error:
+        except (NotImplementedError, ValueError, TypeError, RuntimeError,
+                InteractionKeyMismatchError, UnknownGameError) as error:
             runtime_seconds = time.perf_counter() - start_time
 
             run_record = create_run_record(
