@@ -1,0 +1,7 @@
+game_name,n_players,approximator_name,index,budget,seed,metric,value,runtime_sec
+BikeSharingDemand,8,ProxySHAP,SII,2048,42,MSE,0.0049,0.06
+BikeSharingDemand,8,ProxySHAP,SII,2048,42,MSE,0.0049,0.07
+BikeSharingDemand,8,ProxySHAP,SII,2048,42,MSE,0.0049,0.16
+BikeSharingDemand,8,ProxySHAP,SII,2048,42,MSE,0.0049,0.06
+BikeSharingDemand,8,ProxySHAP,SII,2048,42,MSE,0.0049,0.04
+BikeSharingDemand,8,ProxySHAP,SII,2048,42,MSE,0.0049,0.06
