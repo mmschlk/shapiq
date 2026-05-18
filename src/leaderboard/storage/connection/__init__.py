@@ -1,5 +1,10 @@
 """This module provides the MongoDBClient class for connecting to a MongoDB database."""
 
 from .client import MongoDBClient
+from .connection_exceptions import MissingMongoURIError, MongoDBClientError
 
-__all__ = ["MongoDBClient"]
+__all__ = [
+    "MongoDBClient", 
+    "MissingMongoURIError",
+    "MongoDBClientError"
+]

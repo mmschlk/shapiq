@@ -1,27 +1,29 @@
-"""This module defines the MongoDBClient class, which provides a convenient interface for connecting to a MongoDB database and performing read/write operations related to shapiq experiment results. It handles connection management, error handling, and exposes methods for inserting, querying, and deleting run records based on their configurations.
-"""
+"""This module defines the MongoDBClient class, which provides a convenient interface for connecting to a MongoDB database and performing read/write operations related to shapiq experiment results. It handles connection management, error handling, and exposes methods for inserting, querying, and deleting run records based on their configurations."""
 
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any, Self
 
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from pymongo.collection import Collection
 from pymongo.database import Database
+from pymongo.errors import OperationFailure
 
-from leaderboard.storage.data_classes import RunConfig
+from .connection_exceptions import MissingMongoURIError
+
+if TYPE_CHECKING:
+    from leaderboard.storage.data_classes import RunConfig
+    from pymongo.collection import Collection
 
 
 def load_env() -> tuple[str, str]:
     """Load MongoDB connection parameters from environment variables."""
-
     load_dotenv()
     uri = os.getenv("MONGODB_URI")
     db_name = os.getenv("MONGODB_DB", "shapiq-leaderboard")
     if not uri:
-        raise ValueError("MONGODB_URI is not set in the environment.")
+        raise MissingMongoURIError from None
     return uri, db_name
 
 
@@ -42,15 +44,16 @@ class MongoDBClient:
     """
 
     def __init__(self, uri: str, db_name: str = "shapiq", collection_name: str = "runs") -> None:
+        """Initialize the MongoDB client and connect to the specified database and collection."""
+
         self._client: MongoClient = MongoClient(uri)
         self._db: Database = self._client[db_name]
         self.collection: Collection = self._db[collection_name]
 
     @classmethod
     def from_env(cls) -> MongoDBClient:
-        """
-        Create a MongoDBClient instance using connection parameters from environment variables.
-        
+        """Create a MongoDBClient instance using connection parameters from environment variables.
+
         Returns: MongoDBClient.
         """
         uri, db_name = load_env()
@@ -60,9 +63,10 @@ class MongoDBClient:
         """Test the connection to MongoDB by sending a ping command."""
         try:
             self._client.admin.command("ping")
-            return True
-        except ConnectionError:
+        except (ConnectionError, OperationFailure):
             return False
+        else:
+            return True
 
     # Connection Handling
 
@@ -70,10 +74,12 @@ class MongoDBClient:
         """Close the underlying MongoDB connection."""
         self._client.close()
 
-    def __enter__(self) -> MongoDBClient:
+    def __enter__(self) -> Self:
+        """Enable use as a context manager (with statement)."""
         return self
 
     def __exit__(self, *_: object) -> None:
+        """Ensure the connection is closed when exiting a context."""
         self.close()
 
     def check_connection(self) -> bool:
@@ -81,7 +87,7 @@ class MongoDBClient:
         try:
             self._client.admin.command("ping")
             return True
-        except Exception:
+        except ConnectionError:
             return False
 
     # Write

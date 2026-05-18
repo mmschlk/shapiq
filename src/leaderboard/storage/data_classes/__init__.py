@@ -1,5 +1,4 @@
-"""
-This module defines data classes and enums used for representing run configurations, statuses, and types in the leaderboard storage system.
+"""This module defines data classes and enums used for representing run configurations, statuses, and types in the leaderboard storage system.
 
 Includes:
 - RunConfig: A data class representing the configuration of a benchmark run, including game, index

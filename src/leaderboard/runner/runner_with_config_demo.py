@@ -61,7 +61,7 @@ def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]
         for budget in config_obj.budgets
     ]
 
-    logging.info(f"Expanded %s run configurations from validated config.", len(run_configs))
+    logging.info("Expanded %s run configurations from validated config.", len(run_configs))
 
     return run_configs
 
@@ -86,7 +86,7 @@ def main() -> None:
     argsv = sys.argv
 
     if len(argsv) > 1:
-        logging.info(f"Using config file: {argsv[1]}")
+        logging.info("Using config file: %s", argsv[1])
         config_path = Path(argsv[1])
     else:
         project_root = Path(__file__).resolve().parents[3]

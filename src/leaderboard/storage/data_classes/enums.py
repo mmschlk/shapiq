@@ -1,5 +1,4 @@
-"""Module defining enums for run status, approximator types, and ground truth methods used in the leaderboard storage data classes.
-"""
+"""Module defining enums for run status, approximator types, and ground truth methods used in the leaderboard storage data classes."""
 
 from __future__ import annotations
 
