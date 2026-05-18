@@ -1,5 +1,4 @@
-"""Custom types for the leaderboard runner.
-"""
+"""Custom types for the leaderboard runner."""
 
 from typing import Callable, Literal
 from shapiq import InteractionValues

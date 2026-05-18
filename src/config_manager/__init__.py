@@ -12,13 +12,9 @@ Public API:
   - Custom exceptions in config_exceptions.py for specific validation errors.
 """
 
-from .config import (
-    ALL_SUPPORTED_APPROXIMATORS,
-    GroundTruthConfig,
-    MVPRunConfig,
-    VALID_INDICES,
-    load_and_validate_config,
-)
+from .constants import VALID_INDICES, ALL_SUPPORTED_APPROXIMATORS
+from .models import GroundTruthConfig, MVPRunConfig
+from .loader import load_and_validate_config
 
 from .config_exceptions import (
     ApproximatorIndexIncompatibleError,

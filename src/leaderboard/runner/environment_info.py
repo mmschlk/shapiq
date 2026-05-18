@@ -1,5 +1,4 @@
-"""Environment information retrieval for the leaderboard runner.
-"""
+"""Environment information retrieval for the leaderboard runner."""
 
 import platform
 

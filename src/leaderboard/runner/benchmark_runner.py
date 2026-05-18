@@ -1,5 +1,4 @@
-"""Benchmark runner for the leaderboard.
-"""
+"""Benchmark runner for the leaderboard."""
 
 from __future__ import annotations
 
@@ -82,14 +81,14 @@ def run_benchmark(
 
     # debugging
     for record in results:
-        logging.debug("failed:", record["run_failed"])
-        logging.debug("error:", record["error_message"], "\n")
+        logging.debug("failed: %s", record["run_failed"])
+        logging.debug("error: %s\n", record["error_message"])
 
     #aggregation
     aggregated_result = aggregate_run_records(results)
 
     # print-out
-    logging.info("number of raw results:", len(results))
+    logging.info("number of raw results: %d", len(results))
     logging.info("First raw run record:")
     logging.info(json.dumps(results[0], indent=2))
     logging.info("\nAggregated result:")

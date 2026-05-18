@@ -1,18 +1,22 @@
-"""Config loader for the leaderboard runner.
-"""
+"""Config loader for the leaderboard runner."""
 
 from __future__ import annotations
 
 import yaml
 from typing import TYPE_CHECKING, TypeVar, Any
 
-from config_manager.config_exceptions import (
+from config_manager import (
     InvalidYAMLTypeError, 
     InvalidConfigMissingApproximatorsError, InvalidConfigMissingBudgetsError
 )
 
+from pathlib import Path
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 if TYPE_CHECKING:
-    from pathlib import Path
+    pass
 
 T = TypeVar("T")
 
@@ -33,7 +37,7 @@ def load_yaml_config(path: str | Path) -> dict[str, Any]:
         config = yaml.safe_load(file)
 
     if not isinstance(config, dict):
-        raise InvalidYAMLTypeError() from None
+        raise InvalidYAMLTypeError from None
 
 
     return config
@@ -89,10 +93,10 @@ def expand_config(config: dict[str, Any]) -> list[dict[str, Any]]:
     )
 
     if approximators == [None]:
-        raise InvalidConfigMissingApproximatorsError() from None
+        raise InvalidConfigMissingApproximatorsError from None
 
     if budgets == [None]:
-        raise InvalidConfigMissingBudgetsError() from None
+        raise InvalidConfigMissingBudgetsError from None
 
     run_configs = [
         {
@@ -107,5 +111,7 @@ def expand_config(config: dict[str, Any]) -> list[dict[str, Any]]:
         for approximator in approximators
         for budget in budgets
     ]
+
+    logging.info("Expanded configuration into %d run configs", len(run_configs))
 
     return run_configs

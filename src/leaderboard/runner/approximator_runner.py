@@ -1,5 +1,4 @@
-"""Approximator runner for the leaderboard.
-"""
+"""Approximator runner for the leaderboard."""
 
 from __future__ import annotations
 from typing import TYPE_CHECKING

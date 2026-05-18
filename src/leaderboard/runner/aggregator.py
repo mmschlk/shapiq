@@ -50,10 +50,10 @@ def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, 
 
         for record in successful_runs:
             if "metrics" not in record:
-                raise MissingMetricsKeyError() from None
+                raise MissingMetricsKeyError from None
 
             if record["metrics"] is None:
-                raise NullMetricsError() from None
+                raise NullMetricsError from None
 
             metrics = record["metrics"]
             value = metrics.get(metric_name)
@@ -98,7 +98,7 @@ def aggregate_run_records(run_records: list[dict[str, Any]]) -> dict[str, Any]:
             runtime_values.append(runtime_value)
 
     if not successful_runs:
-        raise NoSuccessfulRunsError() from None
+        raise NoSuccessfulRunsError from None
 
     first_record = successful_runs[0]
 

@@ -1,6 +1,4 @@
-"""
-Game factory for the leaderboard runner.
-"""
+"""Game factory for the leaderboard runner."""
 
 from typing import Any
 

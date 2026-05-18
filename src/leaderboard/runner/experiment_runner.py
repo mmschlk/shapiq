@@ -1,5 +1,4 @@
-"""Experiment runner for the leaderboard.
-"""
+"""Experiment runner for the leaderboard."""
 
 from __future__ import annotations
 
