@@ -46,7 +46,7 @@ class InterventionalBench(Benchmark[IndexType]):
             self.dataset, self.model = load_from_str(
                 data, model, benchmark_type="interventional", random_state=random_state, **kwargs
             )
-            self.data: np.ndarray = np.asarray(self.dataset.x_test) # TODO use test data for explanations?
+            self.data: np.ndarray = np.asarray(self.dataset.x_test) 
 
         elif isinstance(data, np.ndarray) and not isinstance(model, str):
             self.dataset = None

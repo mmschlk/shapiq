@@ -238,7 +238,8 @@ def load_from_str(
     dataset = load_data_from_str(data_str, random_state=random_state)
 
     best_params = check_for_known_combination(data_str, model_str) or {}
-    model = load_model_from_str(model_str, dataset, **best_params, **kwargs)
+    model_params = {**best_params, **kwargs}
+    model = load_model_from_str(model_str, dataset, **model_params)
     return dataset, model
 
 

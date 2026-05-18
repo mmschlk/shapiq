@@ -91,7 +91,7 @@ class ImageBench(Benchmark[IndexType]):
 
         image_paths, image_path = _resolve_x_explain_path(
             data, x_explain
-        )  # TODO make less complicated?
+        ) 
         self.dataset = image_paths
         self.data = image_paths if image_paths is not None else []
         self.model = model
