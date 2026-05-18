@@ -14,12 +14,14 @@ LINE_STYLES = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
 LOADING_METHOD = "mongodb"  # "local" or "mongodb"
 
 # Temporary seed determination
-SEED_ID = "approx_seed"
+SEED_IDs = ["approx_seed", "seed"]  # List of possible seed identifier columns in the raw data
 
+def reload_data():
+    return load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH)
 
 def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.DataFrame: 
     if method == "local":
-        df = _local_load_and_aggregate(path)
+        df = _local_load(path)
     elif method == "mongodb":
         # Create a client and load data from MongoDB
         mongoDBClient = MongoDBClient.from_env()
@@ -28,15 +30,41 @@ def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.
         if not mongoDBClient.check_connection():
             raise ConnectionError("Unable to connect to MongoDB.")
 
-        df = _mongodb_load_and_aggregate(mongoDBClient)
+        df = _mongodb_load(mongoDBClient)
     else:
         raise ValueError(f"Unknown loading method: {method}")
 
-    return df
+    # If df is empty - populate it with a dummy entry to aboid errors
+    if df.empty:
+        df = pd.DataFrame([{
+            "game_name": "N/A",
+            "approximator_name": "N/A",
+            "budget": 0,
+            "mse": 0,
+            "mae": 0,
+            "ground_truth_method": "N/A",
+            "runtime_seconds": 0,
+            "approx_seed": 0
+        }])
+
+
+    # Rename "seed" column to "approx_seed" if it exists, for consistency
+    if "seed" in df.columns and "approx_seed" not in df.columns:
+        df = df.rename(columns={"seed": "approx_seed"})
+
+    # If now there is both a seed column and an approx_seed column, drop the "seed" column
+    # Copy seed values to approx_seed if they exist, to avoid losing data
+    if "seed" in df.columns and "approx_seed" in df.columns:
+        df["approx_seed"] = df["approx_seed"].combine_first(df["seed"])
+        df = df.drop(columns=["seed"])
+
+    df_agg = _aggregate(df)
+
+    return df_agg
 
 
 
-def _mongodb_load_and_aggregate(mongoDBClient: MongoDBClient) -> pd.DataFrame:
+def _mongodb_load(mongoDBClient: MongoDBClient) -> pd.DataFrame:
     """
     Loads all runs from MongoDB and aggregates them into the format used 
     by the implementation of the leaderboard ui and logic.
@@ -63,22 +91,9 @@ def _mongodb_load_and_aggregate(mongoDBClient: MongoDBClient) -> pd.DataFrame:
     metrics_df = pd.json_normalize(df["metrics"])
     df = pd.concat([df.drop(columns=["metrics"]), metrics_df], axis=1)
 
-    # Aggregate over seeds — identical groupby/agg as the original
-    agg = df.groupby(["game_name", "approximator_name", "budget"]).agg(
-        mse_mean=("mse", "mean"),
-        mse_std=("mse", "std"),
-        mae_mean=("mae", "mean"),
-        mae_std=("mae", "std"),
-        ground_truth_method=("ground_truth_method", "first"),
-        runtime_mean=("runtime_seconds", "mean"),
-        runtime_min=("runtime_seconds", "min"),
-        runtime_max=("runtime_seconds", "max"),
-        n_seeds=(SEED_ID, "count"),
-    ).reset_index()
+    return df
 
-    return agg
-
-def _local_load_and_aggregate(path: str) -> pd.DataFrame:
+def _local_load(path: str) -> pd.DataFrame:
     df = pd.read_json(path, lines=True)
     df = df[df["run_failed"] == False]
 
@@ -86,7 +101,10 @@ def _local_load_and_aggregate(path: str) -> pd.DataFrame:
     metrics_df = pd.json_normalize(df["metrics"])
     df = pd.concat([df.drop("metrics", axis=1), metrics_df], axis=1)
 
-    # Aggregieren über Seeds
+    return df
+
+def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
+    # Aggregieren over seeds
     agg = df.groupby(["game_name", "approximator_name", "budget"]).agg(
         mse_mean=("mse", "mean"),
         mse_std=("mse", "std"),
@@ -96,13 +114,10 @@ def _local_load_and_aggregate(path: str) -> pd.DataFrame:
         runtime_mean=("runtime_seconds", "mean"),
         runtime_min=("runtime_seconds", "min"),
         runtime_max=("runtime_seconds", "max"),
-        n_seeds=(SEED_ID, "count"),
+        n_seeds=("approx_seed", "count"),
     ).reset_index()
 
-
-
     return agg
-
 
 def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
     # Über alle Games aggregieren
@@ -234,9 +249,16 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
     Comparison of Shapley value approximators across games, budgets, and seeds.
     """)
 
+    # Store df in gradio state to allow reloading
+    df_state = gr.State(value=df_agg)
+
+    with gr.Row():
+        reload_btn = gr.Button("Reload Data", variant="secondary", scale=0)
+
+
     with gr.Tab("Leaderboard"):
         gr.Markdown("## Global Leaderboard (all games)")
-        gr.Dataframe(value=get_leaderboard_global(df_agg), interactive=False)
+        global_leaderboard = gr.Dataframe(value=get_leaderboard_global(df_agg), interactive=False)
 
         gr.Markdown("## Per-Game Leaderboard")
         game_dropdown_lb = gr.Dropdown(
@@ -249,8 +271,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             interactive=False
         )
         game_dropdown_lb.change(
-            fn=lambda g: get_leaderboard_game(df_agg, g),
-            inputs=game_dropdown_lb,
+            fn=lambda g, df: get_leaderboard_game(df, g),
+            inputs=[game_dropdown_lb, df_state],
             outputs=game_leaderboard
         )
 
@@ -265,8 +287,8 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             value=get_plot(df_agg, df_agg["game_name"].iloc[0])  # direkt beim Start rendern
         )
         game_dropdown_mse.change(
-            fn=lambda g: get_plot(df_agg, g, "mse"),
-            inputs=game_dropdown_mse,
+            fn=lambda g, df: get_plot(df, g, "mse"),
+            inputs=[game_dropdown_mse, df_state],
             outputs=plot_mse
         )
 
@@ -278,9 +300,40 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         )
         plot_mae = gr.Plot(value=get_plot(df_agg, df_agg["game_name"].iloc[0], "mae"))
         game_dropdown_mae.change(
-            fn=lambda g: get_plot(df_agg, g, "mae"),
-            inputs=game_dropdown_mae,
+            fn=lambda g, df: get_plot(df, g, "mae"),
+            inputs=[game_dropdown_mae, df_state],
             outputs=plot_mae
         )
+
+    def on_reload():
+        new_df = reload_data()
+        games = new_df["game_name"].unique().tolist()
+        first_game = games[0]
+        return (
+            new_df,
+            get_leaderboard_global(new_df),
+            gr.Dropdown(choices=games, value=first_game),
+            get_leaderboard_game(new_df, first_game),
+            gr.Dropdown(choices=games, value=first_game),
+            get_plot(new_df, first_game, "mse"),
+            gr.Dropdown(choices=games, value=first_game),
+            get_plot(new_df, first_game, "mae")
+        )
+
+    reload_btn.click(
+        fn=on_reload,
+        inputs=[],
+        outputs=[
+            df_state,
+            global_leaderboard,   # gr.Dataframe for global leaderboard
+            game_dropdown_lb,
+            game_leaderboard,
+            game_dropdown_mse,
+            plot_mse,
+            game_dropdown_mae,
+            plot_mae
+        ]
+    )
+
 
 demo.launch()
