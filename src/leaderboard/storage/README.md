@@ -31,7 +31,7 @@ Summary (of the instructions)
 Usage examples
 --------------
 # Upload runs from a JSONL file
-python3 -m leaderboard.storage.entry upload --file data/results_raw_60.jsonl
+python3 -m leaderboard.storage.entry upload --file leaderboard/data/results_raw_60.jsonl
 
 # List all unique configurations
 python3 -m leaderboard.storage.entry configs

@@ -3,7 +3,7 @@ import yaml
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
-from leaderboard.storage.connection import MongoDBClient, load_env
+from leaderboard.storage.connection import MongoDBClient
 from leaderboard.runner.approximator_registry import get_approximator_class
 from leaderboard.runner.benchmark_runner import run_benchmark
 from config_manager import load_and_validate_config, MVPRunConfig

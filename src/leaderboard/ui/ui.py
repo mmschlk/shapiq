@@ -2,7 +2,7 @@ import gradio as gr
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from storage.connection.client import MongoDBClient
+from leaderboard.storage.connection.client import MongoDBClient
 
 from dotenv import load_dotenv
 import os
@@ -13,23 +13,26 @@ RESULTS_PATH = "results_raw.jsonl"
 LINE_STYLES = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
 LOADING_METHOD = "mongodb"  # "local" or "mongodb"
 
+# Temporary seed determination
+SEED_ID = "approx_seed"
+
+
 def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.DataFrame: 
     if method == "local":
-        return _local_load_and_aggregate(path)
+        df = _local_load_and_aggregate(path)
     elif method == "mongodb":
         # Create a client and load data from MongoDB
-        uri = os.getenv("MONGODB_URI")
-        db_name = os.getenv("MONGODB_DB", "shapiq-leaderboard")
-        mongoDBClient = MongoDBClient(uri=uri, db_name=db_name)
+        mongoDBClient = MongoDBClient.from_env()
 
         # Check if we can connect to the database
         if not mongoDBClient.check_connection():
             raise ConnectionError("Unable to connect to MongoDB.")
 
-        return _mongodb_load_and_aggregate(mongoDBClient)
+        df = _mongodb_load_and_aggregate(mongoDBClient)
     else:
         raise ValueError(f"Unknown loading method: {method}")
 
+    return df
 
 
 
@@ -70,7 +73,7 @@ def _mongodb_load_and_aggregate(mongoDBClient: MongoDBClient) -> pd.DataFrame:
         runtime_mean=("runtime_seconds", "mean"),
         runtime_min=("runtime_seconds", "min"),
         runtime_max=("runtime_seconds", "max"),
-        n_seeds=("seed", "count"),
+        n_seeds=(SEED_ID, "count"),
     ).reset_index()
 
     return agg
@@ -93,8 +96,10 @@ def _local_load_and_aggregate(path: str) -> pd.DataFrame:
         runtime_mean=("runtime_seconds", "mean"),
         runtime_min=("runtime_seconds", "min"),
         runtime_max=("runtime_seconds", "max"),
-        n_seeds=("seed", "count"),
+        n_seeds=(SEED_ID, "count"),
     ).reset_index()
+
+
 
     return agg
 
@@ -185,6 +190,18 @@ def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse"):
 
     mean_col = f"{metric}_mean"
     std_col = f"{metric}_std"
+
+    # Force numeric
+    df_filtered["budget"] = pd.to_numeric(df_filtered["budget"], errors="coerce")
+    df_filtered[mean_col] = pd.to_numeric(df_filtered[mean_col], errors="coerce")
+    df_filtered[std_col] = pd.to_numeric(df_filtered[std_col], errors="coerce")
+
+
+    # Check if the required columns have valid numeric data - if there are NaNs - replace them with 0
+    if df_filtered[mean_col].isnull().any():
+        df_filtered[mean_col] = df_filtered[mean_col].fillna(0)
+    if df_filtered[std_col].isnull().any():
+        df_filtered[std_col] = df_filtered[std_col].fillna(0)
 
     for i, (approx_name, group) in enumerate(df_filtered.groupby("approximator_name")):
         style = LINE_STYLES[i % len(LINE_STYLES)]

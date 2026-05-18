@@ -1,7 +1,6 @@
-from .client import MongoDBClient, load_env
+from .client import MongoDBClient
 
 
 __all__ = [
-    "MongoDBClient",
-    "load_env"
+    "MongoDBClient"
 ]

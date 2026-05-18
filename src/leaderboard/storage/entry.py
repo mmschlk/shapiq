@@ -8,7 +8,7 @@ from typing import List
 
 from dotenv import load_dotenv
 
-from leaderboard.storage.connection import MongoDBClient, load_env
+from leaderboard.storage.connection import MongoDBClient
 from leaderboard.storage.data_classes import RunConfig
 from leaderboard.storage.metrics import MetricsLoader
 
@@ -143,8 +143,8 @@ _COMMANDS = {
 
 def main() -> None:
     args = _build_parser().parse_args()
-    uri, db_name = load_env()
-    with MongoDBClient(uri=uri, db_name=db_name) as db:
+    mongoDBClient = MongoDBClient.from_env()
+    with mongoDBClient as db:
         _COMMANDS[args.command](db, args)
 
 
