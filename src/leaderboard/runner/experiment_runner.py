@@ -72,7 +72,7 @@ def run_experiment(
     game: Game,
     game_name: str,
     game_params: dict[str, Any],
-    game_seed: int,
+    # game_seed: int,
     ground_truth: InteractionValues,
     approximator_class: type[Approximator],
     index: str,
