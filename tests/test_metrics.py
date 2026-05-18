@@ -13,7 +13,6 @@ class MetricsTestCase(unittest.TestCase):
         estimated = np.array([1.0, 2.0, 3.0])
 
         metric = METRICS["mse"]
-        score = metric.compute(ground_truth, estimated)
 
         result = metric.compute(ground_truth, estimated)
 
@@ -26,8 +25,6 @@ class MetricsTestCase(unittest.TestCase):
         estimated = np.array([1.0, 2.0, 3.0])
 
         metric = METRICS["normalized_mse"]
-
-        score = metric.compute(self, ground_truth, estimated)
 
         result = metric.compute(ground_truth, estimated)
 

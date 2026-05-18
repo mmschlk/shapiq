@@ -76,8 +76,7 @@ def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.
 
 
 def _mongodb_load(mongoDBClient: MongoDBClient) -> pd.DataFrame:
-    """Loads all runs from MongoDB and aggregates them into the format used
-    by the implementation of the leaderboard ui and logic.
+    """Loads all runs from MongoDB and aggregates them into the format used by the implementation of the leaderboard ui and logic.
 
     Returns a DataFrame with columns:
         game_name, approximator_name, budget,
@@ -210,6 +209,7 @@ def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
 
 def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFrame:
     """Computes the leaderboard for a specific game by finding the best (lowest) MSE for each approximator across all budgets for that game.
+    
     Returns: per game aggregated DataFrame.
     """
     df_filtered = df_agg[df_agg["game_name"] == selected_game]
