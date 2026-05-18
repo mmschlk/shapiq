@@ -38,8 +38,12 @@ def load_and_validate_config(yaml_path: Union[str, Path]) -> Union[MVPRunConfig,
         with Path(yaml_path).open("r", encoding="utf-8") as file:
             data = yaml.safe_load(file)
         config = MVPRunConfig(**data)
-        logging.info(f"✅ Configuration '{yaml_path}' loaded successfully.")
-        return config
     except (OSError, yaml.YAMLError, TypeError, ValueError) as e:
-        logging.error(f"❌ Configuration Validation Error:\n{e}")
-        return None
+        logging.exception(f"Configuration Validation Error")
+        raise
+    else:
+        logging.info(
+            "Configuration '%s' loaded successfully.",
+            yaml_path,
+        )
+        return config

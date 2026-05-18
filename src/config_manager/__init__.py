@@ -1,5 +1,5 @@
 """
-Config Manager Package
+Config Manager Package.
 
 Configuration management for the shapiq benchmark leaderboard.
 
@@ -22,7 +22,7 @@ from .config import (
 __all__ = [
     "ALL_SUPPORTED_APPROXIMATORS",
     "GroundTruthConfig",
+    "load_and_validate_config",
     "MVPRunConfig",
     "VALID_INDICES",
-    "load_and_validate_config",
 ]
