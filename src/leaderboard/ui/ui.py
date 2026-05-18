@@ -1,11 +1,18 @@
+"""UI components for the leaderboard."""
+
 from __future__ import annotations
+
+import logging
 
 import gradio as gr
 import matplotlib.pyplot as plt
 import pandas as pd
 from dotenv import load_dotenv
 
-from leaderboard.storage.connection.client import MongoDBClient
+from leaderboard.storage.connection import MongoDBClient, MongoDBConnectionError
+from leaderboard.ui.ui_exceptions import UnknownDataLoadingMethodException
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 load_dotenv()
 
@@ -17,28 +24,30 @@ LOADING_METHOD = "mongodb"  # "local" or "mongodb"
 SEED_IDs = ["approx_seed", "seed"]  # List of possible seed identifier columns in the raw data
 
 
-def reload_data():
+def reload_data() -> pd.DataFrame:
+    """Reloads the raw data and re-aggregates it, returning the updated aggregated DataFrame."""
     return load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH)
 
 
 def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.DataFrame:
+    """Loads raw run data from the specified source, processes it, and returns an aggregated DataFrame."""
     if method == "local":
-        df = _local_load(path)
+        runs_df = _local_load(path)
     elif method == "mongodb":
         # Create a client and load data from MongoDB
         mongoDBClient = MongoDBClient.from_env()
 
         # Check if we can connect to the database
-        if not mongoDBClient.check_connection():
-            raise ConnectionError("Unable to connect to MongoDB.")
+        if not mongoDBClient.test_connection():
+            raise MongoDBConnectionError from None
 
-        df = _mongodb_load(mongoDBClient)
+        runs_df = _mongodb_load(mongoDBClient)
     else:
-        raise ValueError(f"Unknown loading method: {method}")
+        raise UnknownDataLoadingMethodException(method)
 
-    # If df is empty - populate it with a dummy entry to aboid errors
-    if df.empty:
-        df = pd.DataFrame(
+    # If runs_df is empty - populate it with a dummy entry to avoid errors
+    if runs_df.empty:
+        runs_df = pd.DataFrame(
             [
                 {
                     "game_name": "N/A",
@@ -54,18 +63,16 @@ def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.
         )
 
     # Rename "seed" column to "approx_seed" if it exists, for consistency
-    if "seed" in df.columns and "approx_seed" not in df.columns:
-        df = df.rename(columns={"seed": "approx_seed"})
+    if "seed" in runs_df.columns and "approx_seed" not in runs_df.columns:
+        runs_df = runs_df.rename(columns={"seed": "approx_seed"})
 
     # If now there is both a seed column and an approx_seed column, drop the "seed" column
     # Copy seed values to approx_seed if they exist, to avoid losing data
-    if "seed" in df.columns and "approx_seed" in df.columns:
-        df["approx_seed"] = df["approx_seed"].combine_first(df["seed"])
-        df = df.drop(columns=["seed"])
+    if "seed" in runs_df.columns and "approx_seed" in runs_df.columns:
+        runs_df["approx_seed"] = runs_df["approx_seed"].combine_first(runs_df["seed"])
+        runs_df = runs_df.drop(columns=["seed"])
 
-    df_agg = _aggregate(df)
-
-    return df_agg
+    return _aggregate(runs_df)
 
 
 def _mongodb_load(mongoDBClient: MongoDBClient) -> pd.DataFrame:
@@ -85,30 +92,30 @@ def _mongodb_load(mongoDBClient: MongoDBClient) -> pd.DataFrame:
     if not raw_runs:
         return pd.DataFrame()
 
-    df = pd.DataFrame(raw_runs)
+    raw_runs_df = pd.DataFrame(raw_runs)
 
     # Drop failed runs, matching the original filter
-    df = df[df["run_failed"] == False]
+    raw_runs_df = raw_runs_df[~raw_runs_df["run_failed"]]
 
     # Flatten the nested metrics dict (same as pd.json_normalize in original)
-    metrics_df = pd.json_normalize(df["metrics"])
-    df = pd.concat([df.drop(columns=["metrics"]), metrics_df], axis=1)
+    metrics_df = pd.json_normalize(raw_runs_df["metrics"])
 
-    return df
+    return pd.concat([raw_runs_df.drop(columns=["metrics"]), metrics_df], axis=1)
 
 
 def _local_load(path: str) -> pd.DataFrame:
-    df = pd.read_json(path, lines=True)
-    df = df[df["run_failed"] == False]
+    """Loads raw run data from a local JSONL file, filters out failed runs, and flattens the metrics dict."""
+    runs_df = pd.read_json(path, lines=True)
+    runs_df = runs_df[~runs_df["run_failed"]]
 
     # metrics-Dict auseinandernehmen
-    metrics_df = pd.json_normalize(df["metrics"])
-    df = pd.concat([df.drop("metrics", axis=1), metrics_df], axis=1)
+    metrics_df = pd.json_normalize(runs_df["metrics"])
 
-    return df
+    return pd.concat([runs_df.drop(columns=["metrics"]), metrics_df], axis=1)
 
 
 def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregates the raw run data by game_name, approximator_name, and budget, computing mean and std for mse and mae."""
     # Aggregieren over seeds
     agg = (
         df.groupby(["game_name", "approximator_name", "budget"])
@@ -126,10 +133,16 @@ def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
 
+    logging.info("Aggregated data shape: %s", agg.shape)
+
     return agg
 
 
 def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
+    """Computes the global leaderboard by finding the best (lowest) MSE for each approximator across all games and budgets.
+
+    Returns: per game aggregated DataFrame.
+    """
     # Über alle Games aggregieren
     global_agg = (
         df_agg.groupby(["approximator_name", "budget"])
@@ -167,14 +180,14 @@ def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
 
     runtime_cols = ["Runtime mean (s)", "Runtime min (s)", "Runtime max (s)"]
 
-    def format_value(col, x):
+    def format_value(col: str, x: float) -> str:
         if not isinstance(x, float):
             return x
         if col in runtime_cols:
             return round(x, 4)
         return f"{x:.4e}"
 
-    df = best[
+    leaderboard_df = best[
         [
             "Approximator",
             "Budget at best MSE",
@@ -189,12 +202,16 @@ def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
             "Seeds",
         ]
     ].copy()
-    for col in df.columns:
-        df[col] = df[col].apply(lambda x: format_value(col, x))
-    return df
+    for col in leaderboard_df.columns:
+        leaderboard_df[col] = leaderboard_df[col].apply(lambda x, col=col: format_value(col, x))
+
+    return leaderboard_df
 
 
 def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFrame:
+    """Computes the leaderboard for a specific game by finding the best (lowest) MSE for each approximator across all budgets for that game.
+    Returns: per game aggregated DataFrame.
+    """
     df_filtered = df_agg[df_agg["game_name"] == selected_game]
     best = df_filtered.loc[df_filtered.groupby("approximator_name")["mse_mean"].idxmin()]
     best = best.sort_values("mse_mean")
@@ -216,14 +233,14 @@ def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFra
 
     runtime_cols = ["Runtime mean (s)", "Runtime min (s)", "Runtime max (s)"]
 
-    def format_value(col, x):
+    def format_value(col: str, x: float) -> str:
         if not isinstance(x, float):
             return x
         if col in runtime_cols:
             return round(x, 4)
         return f"{x:.4e}"
 
-    df = best[
+    leaderboard_df = best[
         [
             "Approximator",
             "Budget at best MSE",
@@ -238,12 +255,15 @@ def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFra
             "Seeds",
         ]
     ].copy()
-    for col in df.columns:
-        df[col] = df[col].apply(lambda x: format_value(col, x))
-    return df
+
+    for col in leaderboard_df.columns:
+        leaderboard_df[col] = leaderboard_df[col].apply(lambda x, col=col: format_value(col, x))
+
+    return leaderboard_df
 
 
-def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse"):
+def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse") -> plt.Figure:
+    """Generates a line plot of the specified metric (MSE or MAE) vs. budget for the selected game, with separate lines for each approximator and shaded areas representing standard deviation across seeds."""
     df_filtered = df_agg[df_agg["game_name"] == selected_game]
     fig, ax = plt.subplots(figsize=(8, 5))
 
@@ -256,9 +276,9 @@ def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse"):
     df_filtered[std_col] = pd.to_numeric(df_filtered[std_col], errors="coerce")
 
     # Check if the required columns have valid numeric data - if there are NaNs - replace them with 0
-    if df_filtered[mean_col].isnull().any():
+    if df_filtered[mean_col].isna().any():
         df_filtered[mean_col] = df_filtered[mean_col].fillna(0)
-    if df_filtered[std_col].isnull().any():
+    if df_filtered[std_col].isna().any():
         df_filtered[std_col] = df_filtered[std_col].fillna(0)
 
     for i, (approx_name, group) in enumerate(df_filtered.groupby("approximator_name")):
@@ -347,6 +367,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         )
 
     def on_reload():
+        """Reloads the raw data, re-aggregates it, and updates all components with the new data."""
         new_df = reload_data()
         games = new_df["game_name"].unique().tolist()
         first_game = games[0]
