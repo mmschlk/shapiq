@@ -9,4 +9,4 @@ def save_raw_results(db: MongoDBClient, raw_results: list[dict[str, Any]]) -> No
         raw_results: The raw run records to insert.
     """
     for run_record in raw_results:
-        db.insert_run(run_record)
+        db.insert_one(run_record)

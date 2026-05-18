@@ -1,4 +1,4 @@
-from storage.connection.client import MongoDBClient, load_env
+from .client import MongoDBClient, load_env
 
 
 __all__ = [

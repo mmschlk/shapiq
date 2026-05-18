@@ -1,6 +1,6 @@
-from storage.connection import MongoDBClient, load_env
-from storage.data_classes import ApproximatorType, GroundTruthMethod, RunConfig, RunStatus
-from storage.metrics.metrics import MetricsLoader
+from .connection import MongoDBClient, load_env
+from .data_classes import ApproximatorType, GroundTruthMethod, RunConfig, RunStatus
+from .metrics.metrics import MetricsLoader
  
 __all__ = [
     "MongoDBClient",

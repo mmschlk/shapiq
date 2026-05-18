@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Any, TypedDict, cast
 
 from leaderboard.storage.connection import MongoDBClient, load_env
-from approximator_registry import get_approximator_class
-from benchmark_runner import run_benchmark
+from leaderboard.runner.approximator_registry import get_approximator_class
+from leaderboard.runner.benchmark_runner import run_benchmark
 from config_manager import load_and_validate_config, MVPRunConfig
-from custom_types import InteractionIndex
-from game_factory import create_game_from_config
-from runner_storage_adapter import save_raw_results
+from leaderboard.runner.custom_types import InteractionIndex
+from leaderboard.runner.game_factory import create_game_from_config
+from leaderboard.runner.runner_storage_adapter import save_raw_results
 
 
 class ExpandedRunConfig(TypedDict):
@@ -71,10 +71,15 @@ def load_raw_config(path: Path) -> dict[str, Any]:
 
 
 
-def main() -> None:
+def main(argsv=None) -> None:
     """Run benchmarks from a YAML config and store raw results in MongoDB."""
-    project_root = Path(__file__).resolve().parents[2]
-    config_path = project_root / "configs" / "default_run.yaml"
+
+    if len(argsv) > 1:
+        print(f"Using config file: {argsv[1]}")
+        config_path = Path(argsv[1])
+    else:
+        project_root = Path(__file__).resolve().parents[2]
+        config_path = project_root / "configs" / "default_run.yaml"
 
     # Load and validate config using config_manager interface
     config_obj = load_and_validate_config(config_path)
@@ -90,7 +95,7 @@ def main() -> None:
     # Connect to MongoDB
     uri, db_name = load_env()
     db = MongoDBClient(uri=uri, db_name=db_name)
-    db.client.admin.command("ping")
+    db._client.admin.command("ping")
     print("MongoDB connection successful.")
 
     # Run benchmarks for each expanded run configuration
@@ -129,4 +134,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # Note: We pass sys.argv to main() to allow config file path specification.
+    main(argsv=__import__("sys").argv)

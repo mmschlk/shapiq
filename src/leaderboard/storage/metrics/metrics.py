@@ -5,8 +5,8 @@ from typing import Dict, List
 
 import numpy as np
 
-from storage.connection import MongoDBClient
-from storage.data_classes import RunConfig
+from leaderboard.storage.connection import MongoDBClient
+from leaderboard.storage.data_classes import RunConfig
 
 
 class MetricsLoader:

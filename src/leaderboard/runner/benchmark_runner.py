@@ -1,9 +1,9 @@
 import json
 
-from aggregator import aggregate_run_records
-from custom_types import InteractionIndex
-from experiment_runner import run_experiment
-from ground_truth_computer import compute_ground_truth
+from leaderboard.runner.aggregator import aggregate_run_records
+from leaderboard.runner.custom_types import InteractionIndex
+from leaderboard.runner.experiment_runner import run_experiment
+from leaderboard.runner.ground_truth_computer import compute_ground_truth
 from shapiq.approximator import Approximator
 from typing import Any
 from shapiq.game import Game

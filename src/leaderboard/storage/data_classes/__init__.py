@@ -1,5 +1,5 @@
-from storage.data_classes.enums import ApproximatorType, GroundTruthMethod, RunStatus
-from storage.data_classes.run_config import RunConfig
+from .enums import ApproximatorType, GroundTruthMethod, RunStatus
+from .run_config import RunConfig
 
 __all__ = [
     "RunConfig",

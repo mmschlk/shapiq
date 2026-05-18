@@ -8,9 +8,9 @@ from typing import List
 
 from dotenv import load_dotenv
 
-from storage.connection import MongoDBClient, load_env
-from storage.data_classes import RunConfig
-from storage.metrics import MetricsLoader
+from leaderboard.storage.connection import MongoDBClient, load_env
+from leaderboard.storage.data_classes import RunConfig
+from leaderboard.storage.metrics import MetricsLoader
 
 
 

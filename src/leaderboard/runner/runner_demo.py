@@ -1,8 +1,8 @@
 from leaderboard.storage.connection import MongoDBClient, load_env
 from shapiq.approximator import ProxySHAP
 from shapiq_games.synthetic import SOUM
-from benchmark_runner import run_benchmark
-from runner_storage_adapter import save_raw_results
+from leaderboard.runner.benchmark_runner import run_benchmark
+from leaderboard.runner.runner_storage_adapter import save_raw_results
 import json
 
 

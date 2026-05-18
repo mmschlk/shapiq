@@ -9,7 +9,7 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 
-from storage.data_classes import RunConfig
+from leaderboard.storage.data_classes import RunConfig
 
 
 def load_env() -> tuple[str, str]:
