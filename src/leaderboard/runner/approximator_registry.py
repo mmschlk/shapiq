@@ -1,5 +1,4 @@
-"""
-Approximator registry for the leaderboard runner.
+"""Approximator registry for the leaderboard runner.
 """
 
 from shapiq.approximator import (
@@ -7,6 +6,12 @@ from shapiq.approximator import (
     KernelSHAPIQ,
     PermutationSamplingSV,
     ProxySHAP,
+)
+
+from config_manager.config_exceptions import (
+    ApproximatorIndexIncompatibleError,
+    ApproximatorNotFoundError,
+    UnsupportedApproximatorError,
 )
 
 
@@ -33,7 +38,5 @@ def get_approximator_class(name: str) -> type[Approximator]:
     try:
         return APPROXIMATOR_REGISTRY[name]
     except KeyError:
-        available = ", ".join(APPROXIMATOR_REGISTRY.keys())
-        raise ValueError(
-            f"Unknown approximator '{name}'. Available: {available}"
-        )
+        available = APPROXIMATOR_REGISTRY.keys()
+        raise UnsupportedApproximatorError(name, list(available)) from None

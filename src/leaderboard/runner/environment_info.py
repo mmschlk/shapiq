@@ -1,10 +1,9 @@
-"""
-Environment information retrieval for the leaderboard runner.
+"""Environment information retrieval for the leaderboard runner.
 """
 
 import platform
 
-#TODO: Placeholder-implementation
+#TO DO: Placeholder-implementation
 def get_hardware_info() -> dict:
     """Return basic hardware and Python runtime information.
 

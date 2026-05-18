@@ -1,16 +1,23 @@
+"""Benchmark runner for the leaderboard.
 """
-Benchmark runner for the leaderboard.
-"""
+
+from __future__ import annotations
 
 import json
 
 from leaderboard.runner.aggregator import aggregate_run_records
-from leaderboard.runner.custom_types import InteractionIndex
 from leaderboard.runner.experiment_runner import run_experiment
 from leaderboard.runner.ground_truth_computer import compute_ground_truth
-from shapiq.approximator import Approximator
-from typing import Any
-from shapiq.game import Game
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from leaderboard.runner.custom_types import InteractionIndex
+    from shapiq.approximator import Approximator
+    from shapiq.game import Game
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 def run_benchmark(
     *,
@@ -53,7 +60,7 @@ def run_benchmark(
         """
 
     # Define the values
-    #TODO: index approximator validation (e.g. certain indices like SV expect specific order(1)! )
+    # TO DO: Index approximator validation (e.g. certain indices like SV expect specific order(1)! )
     approx_seeds = range(number_of_different_approx_seeds)
 
     #Compute ground truth
@@ -73,22 +80,20 @@ def run_benchmark(
         approx_seeds=approx_seeds,
     )
 
-    #debugging
-    # for record in results:
-    #     print("failed:", record["run_failed"])
-    #     print("error:", record["error_message"])
-    #     print()
-
+    # debugging
+    for record in results:
+        logging.debug("failed:", record["run_failed"])
+        logging.debug("error:", record["error_message"], "\n")
 
     #aggregation
     aggregated_result = aggregate_run_records(results)
 
-    #print-out
-    # print("number of raw results:", len(results))
-    # print("First raw run record:")
-    # print(json.dumps(results[0], indent=2))
-    # print("\nAggregated result:")
-    # print(json.dumps(aggregated_result, indent=2))
+    # print-out
+    logging.info("number of raw results:", len(results))
+    logging.info("First raw run record:")
+    logging.info(json.dumps(results[0], indent=2))
+    logging.info("\nAggregated result:")
+    logging.info(json.dumps(aggregated_result, indent=2))
 
     return {
         "raw_results": results,

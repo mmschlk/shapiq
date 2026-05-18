@@ -1,17 +1,19 @@
+"""Experiment runner for the leaderboard.
 """
-Experiment runner for the leaderboard.
-"""
+
+from __future__ import annotations
 
 import time
 from leaderboard.runner.approximator_runner import approximate
 from leaderboard.runner.record_builder import create_run_record
 from metrics.evaluator import compute_all_metrics
-from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import numpy as np
 
-from shapiq import InteractionValues, Game
-from shapiq.approximator import Approximator
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from shapiq import InteractionValues, Game
+    from shapiq.approximator import Approximator
 
 
 def align_interaction_values(

@@ -1,11 +1,20 @@
+"""Config loader for the leaderboard runner.
 """
-Config loader for the leaderboard runner.
-"""
+
+from __future__ import annotations
 
 import yaml
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, TypeVar, Any
 
+from config_manager.config_exceptions import (
+    InvalidYAMLTypeError, 
+    InvalidConfigMissingApproximatorsError, InvalidConfigMissingBudgetsError
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+T = TypeVar("T")
 
 def load_yaml_config(path: str | Path) -> dict[str, Any]:
     """
@@ -18,18 +27,19 @@ def load_yaml_config(path: str | Path) -> dict[str, Any]:
         The loaded configuration dictionary.
 
     Raises:
-        ValueError: If the YAML file does not contain a dictionary/object at the top level.
+        InvalidYAMLTypeError: If the YAML file does not contain a dictionary/object at the top level.
     """
-    with open(path, "r", encoding="utf-8") as file:
+    with Path.open(path, "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
 
     if not isinstance(config, dict):
-        raise ValueError("YAML config must contain a dictionary/object at the top level.")
+        raise InvalidYAMLTypeError() from None
+
 
     return config
 
 
-def as_list(value: Any) -> list[Any]:
+def as_list(value: T | list[T]) -> list[T]:
     """Wrap a value inside a list if it is not already a list.
 
         Args:
@@ -79,25 +89,23 @@ def expand_config(config: dict[str, Any]) -> list[dict[str, Any]]:
     )
 
     if approximators == [None]:
-        raise ValueError("Config must contain 'approximator' or 'approximators'.")
+        raise InvalidConfigMissingApproximatorsError() from None
 
     if budgets == [None]:
-        raise ValueError("Config must contain 'budget' or 'budgets'.")
+        raise InvalidConfigMissingBudgetsError() from None
 
-    run_configs = []
-
-    for approximator in approximators:
-        for budget in budgets:
-            run_configs.append(
-                {
-                    "game": game,
-                    "index": index,
-                    "approximator": approximator,
-                    "max_order": max_order,
-                    "budget": budget,
-                    "n_seeds": n_seeds,
-                    "game_seed": game_seed,
-                }
-            )
+    run_configs = [
+        {
+            "game": game,
+            "index": index,
+            "approximator": approximator,
+            "max_order": max_order,
+            "budget": budget,
+            "n_seeds": n_seeds,
+            "game_seed": game_seed,
+        }
+        for approximator in approximators
+        for budget in budgets
+    ]
 
     return run_configs

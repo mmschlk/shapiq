@@ -53,3 +53,31 @@ class InvalidOrderForIndexError(ValueError):
             super().__init__(
                 f"When computing interaction index {index}, max_order must be at least 2"
             )
+
+class InvalidYAMLTypeError(TypeError):
+    """Raised when the loaded YAML config is not a dictionary/object at the top level."""
+
+    def __init__(self) -> None:
+        """Initialize with a message about the expected YAML structure."""
+        super().__init__("YAML config must contain a dictionary/object at the top level.")
+
+class InvalidConfigMissingFieldsError(ValueError):
+    """Raised when a benchmark configuration is missing one of more required fields."""
+
+    def __init__(self) -> None:
+        """Initialize with a message describing the configuration error."""
+        super().__init__(f"Invalid benchmark configuration")
+
+class InvalidConfigMissingApproximatorsError(InvalidConfigMissingFieldsError):
+    """Raised when a benchmark configuration is missing the 'approximator(s)' field."""
+
+    def __init__(self) -> None:
+        """Initialize with a message about the missing 'approximator(s)' field."""
+        super().__init__("Benchmark configuration must include 'approximator' or 'approximators' field.")
+
+class InvalidConfigMissingBudgetsError(InvalidConfigMissingFieldsError):
+    """Raised when a benchmark configuration is missing the 'budget(s)' field."""
+
+    def __init__(self) -> None:
+        """Initialize with a message about the missing 'budget(s)' field."""
+        super().__init__("Benchmark configuration must include 'budget' or 'budgets' field.")

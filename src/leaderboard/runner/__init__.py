@@ -1,3 +1,1 @@
-"""
-Runner Module Package.
-"""
+"""Runner Module Package."""

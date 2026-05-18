@@ -14,6 +14,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from .runner_exceptions import MissingMetricsKeyError, NullMetricsError, NoSuccessfulRunsError
+
 
 METRIC_KEYS = [
     "mse",
@@ -48,10 +50,10 @@ def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, 
 
         for record in successful_runs:
             if "metrics" not in record:
-                raise KeyError("Successful run record is missing 'metrics'.")
+                raise MissingMetricsKeyError() from None
 
             if record["metrics"] is None:
-                raise ValueError("Successful run record has metrics=None.")
+                raise NullMetricsError() from None
 
             metrics = record["metrics"]
             value = metrics.get(metric_name)
@@ -96,14 +98,11 @@ def aggregate_run_records(run_records: list[dict[str, Any]]) -> dict[str, Any]:
             runtime_values.append(runtime_value)
 
     if not successful_runs:
-        raise ValueError("No successful runs to aggregate.")
+        raise NoSuccessfulRunsError() from None
 
     first_record = successful_runs[0]
 
-    if runtime_values:
-        runtime_seconds = float(np.mean(np.array(runtime_values)))
-    else:
-        runtime_seconds = None
+    runtime_seconds = float(np.mean(np.array(runtime_values))) if runtime_values else None
 
     return {
         "run_id": str(uuid.uuid4()),

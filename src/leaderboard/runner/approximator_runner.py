@@ -1,12 +1,14 @@
-"""
-Approximator runner for the leaderboard.
+"""Approximator runner for the leaderboard.
 """
 
-from leaderboard.runner.custom_types import InteractionIndex
-from shapiq import InteractionValues
-from shapiq.approximator import Approximator
-from shapiq.game import Game
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from shapiq import InteractionValues
+    from leaderboard.runner.custom_types import InteractionIndex
+    from shapiq.approximator import Approximator
+    from shapiq.game import Game
 
 def approximate(
         game: Game,
@@ -33,9 +35,8 @@ def approximate(
                                       index=index,
                                       max_order=max_order,
                                       random_state=seed)
-    approx_values = approximator.approximate(budget, game)
-    #approx_values.plot_upset()
-    return approx_values
+
+    return approximator.approximate(budget, game)
 
 
 
