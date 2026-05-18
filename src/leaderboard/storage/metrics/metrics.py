@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from leaderboard.storage.connection import MongoDBClient
-from leaderboard.storage.data_classes import RunConfig
+if TYPE_CHECKING:
+    from leaderboard.storage.connection import MongoDBClient
+    from leaderboard.storage.data_classes import RunConfig
 
 
 class MetricsLoader:

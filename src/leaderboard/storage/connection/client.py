@@ -1,5 +1,4 @@
-"""
-This module defines the MongoDBClient class.
+"""This module defines the MongoDBClient class.
 
 Provides functionality for:
 - Connecting to a MongoDB database using parameters from environment variables.
@@ -13,14 +12,15 @@ from typing import TYPE_CHECKING, Any, Self
 
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from pymongo.database import Database
 from pymongo.errors import OperationFailure
+
+from leaderboard.storage.data_classes import RunConfig
 
 from .connection_exceptions import MissingMongoURIError
 
 if TYPE_CHECKING:
-    from leaderboard.storage.data_classes import RunConfig
     from pymongo.collection import Collection
+    from pymongo.database import Database
 
 
 def load_env() -> tuple[str, str]:
@@ -51,7 +51,6 @@ class MongoDBClient:
 
     def __init__(self, uri: str, db_name: str = "shapiq", collection_name: str = "runs") -> None:
         """Initialize the MongoDB client and connect to the specified database and collection."""
-
         self._client: MongoClient = MongoClient(uri)
         self._db: Database = self._client[db_name]
         self.collection: Collection = self._db[collection_name]
@@ -87,14 +86,6 @@ class MongoDBClient:
     def __exit__(self, *_: object) -> None:
         """Ensure the connection is closed when exiting a context."""
         self.close()
-
-    def check_connection(self) -> bool:
-        """Check if the connection to MongoDB is alive."""
-        try:
-            self._client.admin.command("ping")
-            return True
-        except ConnectionError:
-            return False
 
     # Write
 

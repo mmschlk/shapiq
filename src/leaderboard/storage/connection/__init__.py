@@ -3,8 +3,4 @@
 from .client import MongoDBClient
 from .connection_exceptions import MissingMongoURIError, MongoDBClientError
 
-__all__ = [
-    "MongoDBClient", 
-    "MissingMongoURIError",
-    "MongoDBClientError"
-]
+__all__ = ["MongoDBClient", "MissingMongoURIError", "MongoDBClientError"]

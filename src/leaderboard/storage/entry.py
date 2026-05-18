@@ -5,12 +5,16 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from leaderboard.storage.connection import MongoDBClient
-from leaderboard.storage.data_classes import RunConfig
 from leaderboard.storage.metrics import MetricsLoader
+
+if TYPE_CHECKING:
+    from leaderboard.storage.data_classes import RunConfig
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -34,18 +38,18 @@ def _get_config(db: MongoDBClient, idx: int) -> RunConfig:
 
 def cmd_upload(db: MongoDBClient, args: argparse.Namespace) -> None:
     """Upload runs from a JSONL file, where each line is a JSON object representing a run document to be inserted into MongoDB."""
-    if not os.path.exists(args.file):
+    if not Path(args.file).exists():
         logging.error("File not found: %s", args.file)
         sys.exit(1)
 
     entries, skipped = [], 0
-    with open(args.file, encoding="utf-8") as fh:
+    with Path.open(args.file, encoding="utf-8") as fh:
         for lineno, raw in enumerate(fh, start=1):
-            raw = raw.strip()
-            if not raw:
+            raw_stripped = raw.strip()
+            if not raw_stripped:
                 continue
             try:
-                entries.append(json.loads(raw))
+                entries.append(json.loads(raw_stripped))
             except json.JSONDecodeError as exc:
                 logging.warning("Skipping line %s — %s", lineno, exc)
                 skipped += 1
