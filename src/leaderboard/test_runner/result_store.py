@@ -1,9 +1,12 @@
-import json
-import hashlib
+from __future__ import annotations
+
 import datetime
+import hashlib
+import json
 import platform
-import psutil
 import subprocess
+
+import psutil
 
 # Gesamter RAM in GB (gerundet)
 total_ram = round(psutil.virtual_memory().total / (1024**3), 2)
@@ -12,7 +15,9 @@ total_ram = round(psutil.virtual_memory().total / (1024**3), 2)
 def get_cpu_name():
     # Versucht den exakten Namen unter Windows auszulesen
     try:
-        return subprocess.check_output(["wmic", "cpu", "get", "name"]).decode().split('\n')[1].strip()
+        return (
+            subprocess.check_output(["wmic", "cpu", "get", "name"]).decode().split("\n")[1].strip()
+        )
     except:
         return platform.processor()
 
@@ -34,11 +39,21 @@ def write_record(path: str, record: dict):
 
 
 def make_record(
-    game_name, game_params, n_players,
-    approximator_name, approximator_params,
-    shapiq_version, index, max_order, budget, seed,
-    ground_truth_method, metrics,
-    runtime_seconds, run_failed=False, error_message=None
+    game_name,
+    game_params,
+    n_players,
+    approximator_name,
+    approximator_params,
+    shapiq_version,
+    index,
+    max_order,
+    budget,
+    seed,
+    ground_truth_method,
+    metrics,
+    runtime_seconds,
+    run_failed=False,
+    error_message=None,
 ) -> dict:
     return {
         "run_id": make_run_id(game_name, approximator_name, budget, seed, index),

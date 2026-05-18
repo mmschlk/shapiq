@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 
 from .base import Metric
@@ -13,7 +15,7 @@ class MSEMetric(Metric):
 
         return MetricResult(
             metric_name=self.name,
-            value=float(np.mean(difference ** 2)),
+            value=float(np.mean(difference**2)),
             higher_is_better=self.higher_is_better,
         )
 
@@ -24,7 +26,7 @@ class NormalizedMSEMetric(Metric):
 
     def compute(self, ground_truth, estimated) -> MetricResult:
         difference = ground_truth - estimated
-        mse = np.mean(difference ** 2)
+        mse = np.mean(difference**2)
         variance = np.var(ground_truth)
 
         if variance == 0:

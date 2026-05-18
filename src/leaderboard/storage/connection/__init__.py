@@ -1,6 +1,3 @@
 from .client import MongoDBClient
 
-
-__all__ = [
-    "MongoDBClient"
-]
+__all__ = ["MongoDBClient"]

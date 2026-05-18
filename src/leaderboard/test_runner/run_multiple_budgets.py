@@ -1,14 +1,15 @@
+from __future__ import annotations
+
 import time
 from importlib.metadata import version
 from typing import cast
 
-from shapiq_games.synthetic import DummyGame
-from shapiq_games.synthetic import SOUM
+from result_store import make_record, write_record
+
+from shapiq.approximator import SHAPIQ, SVARM, KernelSHAP, OwenSamplingSV, PermutationSamplingSV
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.typing import IndexType
-from shapiq.approximator import KernelSHAP, PermutationSamplingSV, OwenSamplingSV, SVARM, SHAPIQ
-
-from result_store import make_record, write_record
+from shapiq_games.synthetic import SOUM, DummyGame
 
 RESULTS_PATH = "../ui/results_raw.jsonl"
 
@@ -26,7 +27,7 @@ APPROXIMATOR_CLASSES = {
     "PermutationSamplingSV": PermutationSamplingSV,
     "OwenSamplingSV": OwenSamplingSV,
     "SVARM": SVARM,
-    "SHAPIQ": SHAPIQ
+    "SHAPIQ": SHAPIQ,
 }
 
 # --- Sweep ---
@@ -42,7 +43,7 @@ for game_name in GAMES:
     gt = exact(index="SV", order=MAX_ORDER)
 
     for approx_name, approx_class in APPROXIMATOR_CLASSES.items():
-        print(f"Start sweep for Approximator \"" + approx_name + "\" in Game \"" + game_name + "\"")
+        print('Start sweep for Approximator "' + approx_name + '" in Game "' + game_name + '"')
         for budget in BUDGETS:
             for seed in SEEDS:
                 approximator = approx_class(n=N_PLAYERS, max_order=MAX_ORDER, random_state=seed)

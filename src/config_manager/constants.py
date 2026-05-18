@@ -1,8 +1,9 @@
-"""
-Configuration Constants and Whitelists.
+"""Configuration Constants and Whitelists.
 
 This module contains all hardcoded whitelists and type definitions for the benchmark configuration system.
 """
+
+from __future__ import annotations
 
 from typing import Literal
 

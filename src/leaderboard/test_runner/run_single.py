@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import time
-import shapiq
-from result_store import make_record, write_record
-from shapiq_games.synthetic import DummyGame
 from importlib.metadata import version
+
+from result_store import make_record, write_record
+
+import shapiq
+from shapiq_games.synthetic import DummyGame
+
 SHAPIQ_VERSION = version("shapiq")
 
 RESULTS_PATH = "../ui/results_raw.jsonl"
@@ -23,11 +28,7 @@ exact = shapiq.ExactComputer(game=game)
 gt = exact(index="SV", order=MAX_ORDER)  # gibt InteractionValues zurück
 
 # --- Approximator ---
-approximator = shapiq.approximator.KernelSHAP(
-    n=N_PLAYERS,
-    max_order=MAX_ORDER,
-    random_state=SEED
-)
+approximator = shapiq.approximator.KernelSHAP(n=N_PLAYERS, max_order=MAX_ORDER, random_state=SEED)
 
 try:
     t0 = time.time()

@@ -1,18 +1,16 @@
 """Approximator registry for the leaderboard runner."""
 
+from __future__ import annotations
+
+from config_manager.config_exceptions import (
+    UnsupportedApproximatorError,
+)
 from shapiq.approximator import (
     Approximator,
     KernelSHAPIQ,
     PermutationSamplingSV,
     ProxySHAP,
 )
-
-from config_manager.config_exceptions import (
-    ApproximatorIndexIncompatibleError,
-    ApproximatorNotFoundError,
-    UnsupportedApproximatorError,
-)
-
 
 APPROXIMATOR_REGISTRY = {
     "ProxySHAP": ProxySHAP,
@@ -22,8 +20,7 @@ APPROXIMATOR_REGISTRY = {
 
 
 def get_approximator_class(name: str) -> type[Approximator]:
-    """
-    Return the approximator class registered under the given name.
+    """Return the approximator class registered under the given name.
 
     Args:
         name: the name of the approximator.

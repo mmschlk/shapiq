@@ -1,13 +1,12 @@
-"""
-Runner demo for the leaderboard.
-"""
+"""Runner demo for the leaderboard."""
 
-from leaderboard.storage.connection import MongoDBClient
+from __future__ import annotations
+
+import json
+
+from leaderboard.runner.benchmark_runner import run_benchmark
 from shapiq.approximator import ProxySHAP
 from shapiq_games.synthetic import SOUM
-from leaderboard.runner.benchmark_runner import run_benchmark
-from leaderboard.runner.runner_storage_adapter import save_raw_results
-import json
 
 
 def main() -> None:

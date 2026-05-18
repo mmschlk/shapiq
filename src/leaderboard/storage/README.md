@@ -1,6 +1,6 @@
 # MongoDB Storage
 
-This module connects to a MongoDB database and provides functions to store and retrieve data related to the leaderboard, such as run results, approximator types, and ground truth methods. 
+This module connects to a MongoDB database and provides functions to store and retrieve data related to the leaderboard, such as run results, approximator types, and ground truth methods.
 
 It uses the `pymongo` library for database interactions and `dotenv` for managing environment variables (database login credentials). Using `Python 3.12.3`, but code should still be compatible with newer versions of Python.
 
@@ -10,9 +10,9 @@ To install the required dependencies, run:
 
 ```bash
 pip install -r requirements.txt
-``` 
+```
 
-Or 
+Or
 ```bash
 pip install numpy dotenv pymongo
 ```

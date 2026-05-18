@@ -1,19 +1,20 @@
-"""
-Runner with config demo for the leaderboard.
-"""
+"""Runner with config demo for the leaderboard."""
+
+from __future__ import annotations
 
 import json
-import yaml
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
-from leaderboard.storage.connection import MongoDBClient
+import yaml
+
+from config_manager import MVPRunConfig, load_and_validate_config
 from leaderboard.runner.approximator_registry import get_approximator_class
 from leaderboard.runner.benchmark_runner import run_benchmark
-from config_manager import load_and_validate_config, MVPRunConfig
 from leaderboard.runner.custom_types import InteractionIndex
 from leaderboard.runner.game_factory import create_game_from_config
 from leaderboard.runner.runner_storage_adapter import save_raw_results
+from leaderboard.storage.connection import MongoDBClient
 
 
 class ExpandedRunConfig(TypedDict):
@@ -29,8 +30,7 @@ class ExpandedRunConfig(TypedDict):
 
 
 def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]:
-    """
-    Expand validated MVP config to concrete run configs for the runner.
+    """Expand validated MVP config to concrete run configs for the runner.
 
     Args:
         config_obj: Validated MVPRunConfig object from config_manager.
@@ -59,8 +59,7 @@ def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]
 
 
 def load_raw_config(path: Path) -> dict[str, Any]:
-    """
-    Read raw YAML to preserve optional fields like game_params.
+    """Read raw YAML to preserve optional fields like game_params.
 
     Args:
         path: Path to YAML configuration file.
@@ -68,16 +67,13 @@ def load_raw_config(path: Path) -> dict[str, Any]:
     Returns:
         Parsed YAML data as dictionary.
     """
-    with open(path, "r", encoding="utf-8") as file:
+    with open(path, encoding="utf-8") as file:
         data = yaml.safe_load(file)
     return data if isinstance(data, dict) else {}
 
 
-
-
 def main(argsv=None) -> None:
     """Run benchmarks from a YAML config and store raw results in MongoDB."""
-
     if len(argsv) > 1:
         print(f"Using config file: {argsv[1]}")
         config_path = Path(argsv[1])

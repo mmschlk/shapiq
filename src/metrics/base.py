@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+
 from .result import MetricResult
 
-class Metric(ABC):
 
+class Metric(ABC):
     name = "base"
     higher_is_better = False
 

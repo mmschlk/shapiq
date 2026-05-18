@@ -1,5 +1,4 @@
-"""
-Aggregator Module for the ShapIQ Living Benchmark Leaderboard.
+"""Aggregator Module for the ShapIQ Living Benchmark Leaderboard.
 
 This module provides functionality to aggregate multiple run records into a single representative record.
 The aggregation process includes:
@@ -9,13 +8,15 @@ The aggregation process includes:
 - Generating a new unique run ID and timestamp for the aggregated record.
 """
 
-import numpy as np
+from __future__ import annotations
+
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from .runner_exceptions import MissingMetricsKeyError, NullMetricsError, NoSuccessfulRunsError
+import numpy as np
 
+from .runner_exceptions import MissingMetricsKeyError, NoSuccessfulRunsError, NullMetricsError
 
 METRIC_KEYS = [
     "mse",
@@ -28,8 +29,7 @@ METRIC_KEYS = [
 
 
 def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, float | None]:
-    """
-    Aggregates metric values for all metrics across all successful runs.
+    """Aggregates metric values for all metrics across all successful runs.
 
     Args:
         successful_runs: The list of runs
@@ -42,7 +42,6 @@ def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, 
         KeyError: If a metrics entry is missing in the run.
         ValueError: If metrics = None.
     """
-
     aggregated_metrics = {}
 
     for metric_name in METRIC_KEYS:
@@ -70,8 +69,7 @@ def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, 
 
 
 def aggregate_run_records(run_records: list[dict[str, Any]]) -> dict[str, Any]:
-    """
-    Aggregates a list of run records into a single record.
+    """Aggregates a list of run records into a single record.
 
     Args:
         run_records: the list of runs
@@ -106,31 +104,23 @@ def aggregate_run_records(run_records: list[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "run_id": str(uuid.uuid4()),
-
         "game_name": first_record["game_name"],
         "game_id": first_record["game_id"],
         "game_params": first_record["game_params"],
         "n_players": first_record["n_players"],
-
         "approximator_name": first_record["approximator_name"],
         "approximator_params": first_record["approximator_params"],
         "shapiq_version": first_record["shapiq_version"],
-
         "index": first_record["index"],
         "max_order": first_record["max_order"],
         "budget": first_record["budget"],
         "approx_seed": None,
-
         "ground_truth_method": first_record["ground_truth_method"],
-
         "run_failed": False,
         "error_message": None,
-
         "metrics": aggregate_metric_values(successful_runs),
-
         "runtime_seconds": runtime_seconds,
-
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "hardware": first_record["hardware"],
         "notes": "",
     }

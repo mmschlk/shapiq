@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 
 
@@ -9,11 +11,13 @@ class RunStatus(str, Enum):
     USER_INPUT_MISCONFIGURED = "USER_INPUT_MISCONFIGURED"
 
     @classmethod
-    def from_str(cls, status_str: str) -> "RunStatus":
+    def from_str(cls, status_str: str) -> RunStatus:
         try:
             return cls(status_str)
         except ValueError:
-            raise ValueError(f"Invalid RunStatus: {status_str!r}. Valid values: {[e.value for e in cls]}")
+            raise ValueError(
+                f"Invalid RunStatus: {status_str!r}. Valid values: {[e.value for e in cls]}"
+            )
 
 
 class ApproximatorType(str, Enum):
@@ -25,11 +29,13 @@ class ApproximatorType(str, Enum):
     EXACT = "Exact"
 
     @classmethod
-    def from_str(cls, approximator_str: str) -> "ApproximatorType":
+    def from_str(cls, approximator_str: str) -> ApproximatorType:
         try:
             return cls(approximator_str)
         except ValueError:
-            raise ValueError(f"Invalid ApproximatorType: {approximator_str!r}. Valid values: {[e.value for e in cls]}")
+            raise ValueError(
+                f"Invalid ApproximatorType: {approximator_str!r}. Valid values: {[e.value for e in cls]}"
+            )
 
 
 class GroundTruthMethod(str, Enum):
@@ -39,8 +45,10 @@ class GroundTruthMethod(str, Enum):
     MONTE_CARLO = "MonteCarlo"
 
     @classmethod
-    def from_str(cls, method_str: str) -> "GroundTruthMethod":
+    def from_str(cls, method_str: str) -> GroundTruthMethod:
         try:
             return cls(method_str)
         except ValueError:
-            raise ValueError(f"Invalid GroundTruthMethod: {method_str!r}. Valid values: {[e.value for e in cls]}")
+            raise ValueError(
+                f"Invalid GroundTruthMethod: {method_str!r}. Valid values: {[e.value for e in cls]}"
+            )

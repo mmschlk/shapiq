@@ -4,14 +4,10 @@ import argparse
 import json
 import os
 import sys
-from typing import List
-
-from dotenv import load_dotenv
 
 from leaderboard.storage.connection import MongoDBClient
 from leaderboard.storage.data_classes import RunConfig
 from leaderboard.storage.metrics import MetricsLoader
-
 
 
 def _get_config(db: MongoDBClient, idx: int) -> RunConfig:
@@ -29,13 +25,14 @@ def _get_config(db: MongoDBClient, idx: int) -> RunConfig:
 # Sub-commands
 # ---------------------------------------------------------------------------
 
+
 def cmd_upload(db: MongoDBClient, args: argparse.Namespace) -> None:
     if not os.path.exists(args.file):
         print(f"ERROR: File not found: {args.file}", file=sys.stderr)
         sys.exit(1)
 
     entries, skipped = [], 0
-    with open(args.file, "r", encoding="utf-8") as fh:
+    with open(args.file, encoding="utf-8") as fh:
         for lineno, raw in enumerate(fh, start=1):
             raw = raw.strip()
             if not raw:
@@ -102,8 +99,11 @@ def cmd_delete_config(db: MongoDBClient, args: argparse.Namespace) -> None:
 # Argument parsing
 # ---------------------------------------------------------------------------
 
+
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="entry.py", description="CLI for the shapiq MongoDB storage module.")
+    parser = argparse.ArgumentParser(
+        prog="entry.py", description="CLI for the shapiq MongoDB storage module."
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("upload", help="Upload runs from a JSONL file.")

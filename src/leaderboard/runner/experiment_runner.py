@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import time
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+
 from leaderboard.runner.approximator_runner import approximate
 from leaderboard.runner.record_builder import create_run_record
 from metrics.evaluator import compute_all_metrics
-from typing import TYPE_CHECKING, Any
-import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from shapiq import InteractionValues, Game
+
+    from shapiq import Game, InteractionValues
     from shapiq.approximator import Approximator
 
 
@@ -114,7 +117,7 @@ def run_experiment(
                 seed=approx_seed,
             )
 
-            #align interaction values
+            # align interaction values
             gt_values, approx_values_aligned = align_interaction_values(
                 ground_truth,
                 approx_values,

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, List
 
 import numpy as np
 
@@ -10,8 +9,7 @@ from leaderboard.storage.data_classes import RunConfig
 
 
 class MetricsLoader:
-    """
-    Collects and aggregates the ``metrics`` sub-document across runs.
+    """Collects and aggregates the ``metrics`` sub-document across runs.
 
     Parameters
     ----------
@@ -22,17 +20,16 @@ class MetricsLoader:
     def __init__(self, db: MongoDBClient) -> None:
         self.db = db
 
-    def load_for_config(self, config: RunConfig) -> Dict[str, List[float]]:
-        """
-        Return raw metric values for every successful run matching *config*.
+    def load_for_config(self, config: RunConfig) -> dict[str, list[float]]:
+        """Return raw metric values for every successful run matching *config*.
 
-        Returns
+        Returns:
         -------
         dict
             ``{metric_name: [value_seed_1, value_seed_2, ...]}``.
         """
         runs = self.db.get_by_config(config)
-        metrics: Dict[str, List[float]] = defaultdict(list)
+        metrics: dict[str, list[float]] = defaultdict(list)
 
         for run in runs:
             if run.get("run_failed", False):
@@ -42,11 +39,10 @@ class MetricsLoader:
 
         return dict(metrics)
 
-    def aggregate(self, config: RunConfig) -> Dict[str, Dict[str, float]]:
-        """
-        Compute summary statistics for each metric over all seeds.
+    def aggregate(self, config: RunConfig) -> dict[str, dict[str, float]]:
+        """Compute summary statistics for each metric over all seeds.
 
-        Returns
+        Returns:
         -------
         dict
             ``{metric_name: {"mean": …, "std": …, "min": …, "max": …, "count": …}}``.

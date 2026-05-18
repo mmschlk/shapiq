@@ -1,21 +1,23 @@
 """Approximator runner for the leaderboard."""
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from shapiq import InteractionValues
     from leaderboard.runner.custom_types import InteractionIndex
+    from shapiq import InteractionValues
     from shapiq.approximator import Approximator
     from shapiq.game import Game
 
+
 def approximate(
-        game: Game,
-        index: InteractionIndex,
-        max_order: int,
-        approximator_class: type[Approximator],
-        budget: int,
-        seed: int
+    game: Game,
+    index: InteractionIndex,
+    max_order: int,
+    approximator_class: type[Approximator],
+    budget: int,
+    seed: int,
 ) -> InteractionValues:
     """Approximate interaction values for a game using the given approximator.
 
@@ -30,12 +32,8 @@ def approximate(
     Returns:
         The approximated interaction values.
     """
-    approximator: Approximator = approximator_class(n=game.n_players,
-                                      index=index,
-                                      max_order=max_order,
-                                      random_state=seed)
+    approximator: Approximator = approximator_class(
+        n=game.n_players, index=index, max_order=max_order, random_state=seed
+    )
 
     return approximator.approximate(budget, game)
-
-
-

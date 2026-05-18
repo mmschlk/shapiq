@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass(frozen=True)
 class RunConfig:
-    """
-    Immutable configuration that uniquely identifies a family of runs.
+    """Immutable configuration that uniquely identifies a family of runs.
 
     Two runs sharing the same ``RunConfig`` differ only in their random seed
     (or other non-config factors) and are aggregated together for metric
@@ -19,12 +20,11 @@ class RunConfig:
     max_order: int
     budget: int
     ground_truth_method: str
-    game_params: Dict[str, Any] = field(default_factory=dict)
-    approximator_params: Dict[str, Any] = field(default_factory=dict)
+    game_params: dict[str, Any] = field(default_factory=dict)
+    approximator_params: dict[str, Any] = field(default_factory=dict)
 
-
-    # Serialisation 
-    def to_dict(self) -> Dict[str, Any]:
+    # Serialisation
+    def to_dict(self) -> dict[str, Any]:
         """Convert config to a plain dict (usable as a MongoDB query)."""
         return {
             "game_name": self.game_name,
@@ -39,7 +39,7 @@ class RunConfig:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RunConfig":
+    def from_dict(cls, data: dict[str, Any]) -> RunConfig:
         """Construct a ``RunConfig`` from a plain dictionary."""
         return cls(
             game_name=data["game_name"],
@@ -52,7 +52,6 @@ class RunConfig:
             game_params=data.get("game_params", {}),
             approximator_params=data.get("approximator_params", {}),
         )
-
 
     # Overwrite default string representation for better readability in logs
     def __repr__(self) -> str:  # noqa: D105

@@ -1,10 +1,14 @@
 """Game factory for the leaderboard runner."""
 
-from typing import Any
+from __future__ import annotations
 
-from shapiq import Game
+from typing import TYPE_CHECKING, Any
+
 from shapiq_games.benchmark.local_xai.benchmark_tabular import CaliforniaHousing
 from shapiq_games.synthetic import SOUM
+
+if TYPE_CHECKING:
+    from shapiq import Game
 
 
 def create_game_from_config(
@@ -47,7 +51,7 @@ def create_game_from_config(
 
         game = SOUM(**game_params)
         return game, game_params
-    elif game_name == "CaliforniaHousing":
+    if game_name == "CaliforniaHousing":
         game_params = base_config.get(
             "game_params",
             {

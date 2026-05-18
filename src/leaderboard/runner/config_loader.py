@@ -2,27 +2,26 @@
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+from typing import Any, TypeVar
+
 import yaml
-from typing import TYPE_CHECKING, TypeVar, Any
 
 from config_manager import (
-    InvalidYAMLTypeError, 
-    InvalidConfigMissingApproximatorsError, InvalidConfigMissingBudgetsError
+    InvalidConfigMissingApproximatorsError,
+    InvalidConfigMissingBudgetsError,
+    InvalidYAMLTypeError,
 )
-
-from pathlib import Path
-import logging
 
 logging.basicConfig(level=logging.INFO)
 
-if TYPE_CHECKING:
-    pass
 
 T = TypeVar("T")
 
+
 def load_yaml_config(path: str | Path) -> dict[str, Any]:
-    """
-    Load a benchmark configuration from a YAML file.
+    """Load a benchmark configuration from a YAML file.
 
     Args:
         path: The path to the YAML configuration file.
@@ -39,27 +38,25 @@ def load_yaml_config(path: str | Path) -> dict[str, Any]:
     if not isinstance(config, dict):
         raise InvalidYAMLTypeError from None
 
-
     return config
 
 
 def as_list(value: T | list[T]) -> list[T]:
     """Wrap a value inside a list if it is not already a list.
 
-        Args:
-            value: The value to convert to a list.
+    Args:
+        value: The value to convert to a list.
 
-        Returns:
-            "value" if it is already a list, otherwise "[value]".
-        """
+    Returns:
+        "value" if it is already a list, otherwise "[value]".
+    """
     if isinstance(value, list):
         return value
     return [value]
 
 
 def expand_config(config: dict[str, Any]) -> list[dict[str, Any]]:
-    """
-    A YAML config is expanded into a concrete benchmark config.
+    """A YAML config is expanded into a concrete benchmark config.
 
     The configuration may use either singular fields such as "approximator"
     and "budget" or plural fields such as "approximators" and
@@ -77,20 +74,15 @@ def expand_config(config: dict[str, Any]) -> list[dict[str, Any]]:
         KeyError: If a required configuration entry is missing.
         ValueError: If no approximators or budgets are provided.
     """
-
     game = config["game"]
     index = config["index"]
     max_order = config["max_order"]
     n_seeds = config.get("n_seeds", 1)
     game_seed = config.get("game_seed", 42)
 
-    approximators = as_list(
-        config.get("approximators", config.get("approximator"))
-    )
+    approximators = as_list(config.get("approximators", config.get("approximator")))
 
-    budgets = as_list(
-        config.get("budgets", config.get("budget"))
-    )
+    budgets = as_list(config.get("budgets", config.get("budget")))
 
     if approximators == [None]:
         raise InvalidConfigMissingApproximatorsError from None

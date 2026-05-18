@@ -1,9 +1,11 @@
-"""
-Runner storage adapter for the leaderboard.
-"""
+"""Runner storage adapter for the leaderboard."""
+
+from __future__ import annotations
 
 from typing import Any
+
 from leaderboard.storage.connection import MongoDBClient
+
 
 def save_raw_results(db: MongoDBClient, raw_results: list[dict[str, Any]]) -> None:
     """Store raw benchmark run records in the database.
