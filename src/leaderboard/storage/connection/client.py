@@ -48,6 +48,15 @@ class MongoDBClient:
         self._db: Database = self._client[db_name]
         self.collection: Collection = self._db[collection_name]
 
+    @classmethod
+    def from_env(cls) -> MongoDBClient:
+        """
+        Create a MongoDBClient instance using connection parameters from environment variables.
+        Returns: MongoDBClient
+        """
+        
+        uri, db_name = load_env()
+        return cls(uri=uri, db_name=db_name)
 
     # Connection Handling
 

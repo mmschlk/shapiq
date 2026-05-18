@@ -93,8 +93,9 @@ def main(argsv=None) -> None:
     base_config = load_raw_config(config_path)
 
     # Connect to MongoDB
-    uri, db_name = load_env()
-    db = MongoDBClient(uri=uri, db_name=db_name)
+    db = MongoDBClient.from_env()
+
+    # Test connection
     db._client.admin.command("ping")
     print("MongoDB connection successful.")
 

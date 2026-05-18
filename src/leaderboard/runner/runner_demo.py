@@ -1,4 +1,4 @@
-from leaderboard.storage.connection import MongoDBClient, load_env
+from leaderboard.storage.connection import MongoDBClient
 from shapiq.approximator import ProxySHAP
 from shapiq_games.synthetic import SOUM
 from leaderboard.runner.benchmark_runner import run_benchmark
@@ -33,12 +33,7 @@ def main() -> None:
         approximator_class=ProxySHAP,
     )
 
-    # uri, db_name = load_env()
-
-    # db = MongoDBClient(
-    #     uri=uri,
-    #     db_name=db_name,
-    # )
+    # db = MongoDBClient.from_env()
     #
     # save_raw_results(
     #     db=db,
