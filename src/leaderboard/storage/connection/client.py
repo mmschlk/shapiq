@@ -50,6 +50,14 @@ class MongoDBClient:
         uri, db_name = load_env()
         return cls(uri=uri, db_name=db_name)
 
+    def test_connection(self) -> bool:
+        """Test the connection to MongoDB by sending a ping command."""
+        try:
+            self._client.admin.command("ping")
+            return True
+        except ConnectionError:
+            return False
+
     # Connection Handling
 
     def close(self) -> None:

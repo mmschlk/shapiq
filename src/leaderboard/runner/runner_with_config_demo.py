@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import sys
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
@@ -16,9 +18,8 @@ from leaderboard.runner.game_factory import create_game_from_config
 from leaderboard.runner.runner_storage_adapter import save_raw_results
 from leaderboard.storage.connection import MongoDBClient
 
-import logging
-
 logging.basicConfig(level=logging.INFO)
+
 
 class ExpandedRunConfig(TypedDict):
     """Run configuration expanded from validated MVP config."""
@@ -44,21 +45,25 @@ def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]
     n_seeds = len(config_obj.seeds)
     game_seed = 42
 
-
-    return [
-        [
+    run_configs = [
+        ExpandedRunConfig(
             {
-                "game": config_obj.game, 
-                "index": config_obj.index, 
-                "approximator": approx, 
-                "max_order": config_obj.max_order, 
-                "budget": budget, 
-                "n_seeds": n_seeds, 
-                "game_seed": game_seed
-            } 
-        for approx in config_obj.approximators] 
-    for budget in config_obj.budgets]
+                "game": config_obj.game,
+                "index": config_obj.index,
+                "approximator": approx,
+                "max_order": config_obj.max_order,
+                "budget": budget,
+                "n_seeds": n_seeds,
+                "game_seed": game_seed,
+            }
+        )
+        for approx in config_obj.approximators
+        for budget in config_obj.budgets
+    ]
 
+    logging.info(f"Expanded %s run configurations from validated config.", len(run_configs))
+
+    return run_configs
 
 
 def load_raw_config(path: Path) -> dict[str, Any]:
@@ -75,8 +80,11 @@ def load_raw_config(path: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def main(argsv: list[str]=None) -> None:
+def main() -> None:
     """Run benchmarks from a YAML config and store raw results in MongoDB."""
+    # Read system args
+    argsv = sys.argv
+
     if len(argsv) > 1:
         logging.info(f"Using config file: {argsv[1]}")
         config_path = Path(argsv[1])
@@ -99,8 +107,9 @@ def main(argsv: list[str]=None) -> None:
     db = MongoDBClient.from_env()
 
     # Test connection
-    db._client.admin.command("ping")
-    print("MongoDB connection successful.")
+    if not db.test_connection():
+        raise ConnectionError from None
+    logging.info("MongoDB connection successful.")
 
     # Run benchmarks for each expanded run configuration
     for run_config in run_configs:
@@ -139,4 +148,4 @@ def main(argsv: list[str]=None) -> None:
 
 if __name__ == "__main__":
     # Note: We pass sys.argv to main() to allow config file path specification.
-    main(argsv=__import__("sys").argv)
+    main()

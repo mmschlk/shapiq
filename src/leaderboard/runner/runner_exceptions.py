@@ -41,6 +41,7 @@ class InteractionKeyMismatchError(ValueError):
             f"Missing in ground truth: {len(missing_in_gt)}."
         )
 
+
 class UnknownGameError(ValueError):
     """Raised when the configured game is unknown."""
 

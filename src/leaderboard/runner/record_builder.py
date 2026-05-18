@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Any
 from leaderboard.runner.environment_info import get_hardware_info
 
 if TYPE_CHECKING:
-    from shapiq.game import Game
-    from shapiq.approximator import Approximator
     from leaderboard.runner.custom_types import InteractionIndex
+    from shapiq.approximator import Approximator
+    from shapiq.game import Game
 
 
 def create_run_record(
@@ -56,7 +56,7 @@ def create_run_record(
         information, environment information, and failure status.
     """
     return {
-        "run_id": str(uuid.uuid4()),  # TODO: needs to be checked
+        "run_id": str(uuid.uuid4()),  # TO DO: needs to be checked
         "game_name": game_name,
         "game_id": game.game_id,
         "game_params": game_params,

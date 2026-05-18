@@ -9,9 +9,8 @@ import numpy as np
 
 from leaderboard.runner.approximator_runner import approximate
 from leaderboard.runner.record_builder import create_run_record
-from metrics.evaluator import compute_all_metrics
-
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, UnknownGameError
+from metrics.evaluator import compute_all_metrics
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -153,8 +152,14 @@ def run_experiment(
                 notes="",
             )
 
-        except (NotImplementedError, ValueError, TypeError, RuntimeError,
-                InteractionKeyMismatchError, UnknownGameError) as error:
+        except (
+            NotImplementedError,
+            ValueError,
+            TypeError,
+            RuntimeError,
+            InteractionKeyMismatchError,
+            UnknownGameError,
+        ) as error:
             runtime_seconds = time.perf_counter() - start_time
 
             run_record = create_run_record(

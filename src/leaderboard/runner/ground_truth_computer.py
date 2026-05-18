@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from shapiq import ExactComputer
-
 from typing import TYPE_CHECKING
 
+from shapiq import ExactComputer
+
 if TYPE_CHECKING:
+    from leaderboard.runner.custom_types import InteractionIndex
     from shapiq import InteractionValues
     from shapiq.game import Game
-    from leaderboard.runner.custom_types import InteractionIndex
 
 
 def compute_ground_truth(
@@ -28,5 +28,5 @@ def compute_ground_truth(
         The exact interaction values.
     """
     exact = ExactComputer(game=game)
-    
+
     return exact(index=index, order=max_order)
