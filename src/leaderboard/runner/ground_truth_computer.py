@@ -1,6 +1,6 @@
 from shapiq import ExactComputer, InteractionValues
 from shapiq.game import Game
-from custom_types import InteractionIndex
+from leaderboard.runner.custom_types import InteractionIndex
 
 def compute_ground_truth(
     game: Game,

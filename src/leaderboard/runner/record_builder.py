@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 from importlib.metadata import version
 from shapiq.approximator import Approximator
 from shapiq.game import Game
-from environment_info import get_hardware_info
+from leaderboard.runner.environment_info import get_hardware_info
 from typing import Any
-from custom_types import InteractionIndex
+from leaderboard.runner.custom_types import InteractionIndex
 
 def create_run_record(
     *,

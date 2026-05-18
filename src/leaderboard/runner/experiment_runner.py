@@ -1,6 +1,6 @@
 import time
-from approximator_runner import approximate
-from record_builder import create_run_record
+from leaderboard.runner.approximator_runner import approximate
+from leaderboard.runner.record_builder import create_run_record
 from metrics.evaluator import compute_all_metrics
 from collections.abc import Iterable
 from typing import Any

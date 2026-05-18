@@ -1,4 +1,4 @@
-from custom_types import InteractionIndex
+from leaderboard.runner.custom_types import InteractionIndex
 from shapiq import InteractionValues
 from shapiq.approximator import Approximator
 from shapiq.game import Game
