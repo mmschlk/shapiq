@@ -57,6 +57,8 @@ class RunConfig:
 
     # Overwrite default string representation for better readability in logs
     def __repr__(self) -> str:  # noqa: D105
+        """Provide a concise and informative string representation of the RunConfig for debugging and logging purposes."""
+        
         return (
             f"RunConfig("
             f"game={self.game_name!r}, "

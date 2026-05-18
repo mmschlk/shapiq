@@ -20,6 +20,7 @@ class MetricsLoader:
     """
 
     def __init__(self, db: MongoDBClient) -> None:
+        """Initialize the MetricsLoader with a MongoDBClient instance for database access."""
         self.db = db
 
     def load_for_config(self, config: RunConfig) -> dict[str, list[float]]:

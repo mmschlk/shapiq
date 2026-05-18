@@ -1,4 +1,10 @@
-"""This module defines the MongoDBClient class, which provides a convenient interface for connecting to a MongoDB database and performing read/write operations related to shapiq experiment results. It handles connection management, error handling, and exposes methods for inserting, querying, and deleting run records based on their configurations."""
+"""
+This module defines the MongoDBClient class.
+
+Provides functionality for:
+- Connecting to a MongoDB database using parameters from environment variables.
+- Inserting, querying, and deleting run records in the database.
+"""
 
 from __future__ import annotations
 
