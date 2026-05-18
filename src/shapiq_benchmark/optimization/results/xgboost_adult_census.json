@@ -1,0 +1,18 @@
+{
+  "dataset": "adult_census",
+  "model": "xgboost",
+  "metric": "accuracy",
+  "cv_folds": 5,
+  "n_trials": 50,
+  "best_accuracy": 0.8700868994503793,
+  "best_params": {
+    "n_estimators": 123,
+    "max_depth": 5,
+    "learning_rate": 0.18043561943195366,
+    "subsample": 0.9085787661658077,
+    "colsample_bytree": 0.6887648967210234,
+    "min_child_weight": 2.7918525297388306,
+    "reg_alpha": 0.0003945389391237688,
+    "reg_lambda": 0.00010284791765246808
+  }
+}

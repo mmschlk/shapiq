@@ -1,0 +1,16 @@
+{
+  "dataset": "adult_census",
+  "model": "random_forest",
+  "metric": "accuracy",
+  "cv_folds": 5,
+  "n_trials": 50,
+  "best_accuracy": 0.8619051979601341,
+  "best_params": {
+    "n_estimators": 891,
+    "max_depth": 18,
+    "min_samples_split": 8,
+    "min_samples_leaf": 2,
+    "max_features": 0.34835985964965094,
+    "bootstrap": true
+  }
+}

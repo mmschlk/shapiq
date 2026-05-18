@@ -1,6 +1,8 @@
 """Helpers to load datasets and models from string identifiers."""
 
 from __future__ import annotations
+import json
+from pathlib import Path
 from typing import Literal, TypeAlias, get_args, Protocol, cast
 from collections.abc import Callable
 
@@ -18,6 +20,7 @@ from .bench_types import BenchmarkDataset
 AllSupportedDatasets: TypeAlias = Literal[
     "communities_and_crime",
     "california_housing",
+    "adult_census",
     "tabarena_airfoil_self_noise",
     "tabarena_amazon_employee_access",
     "tabarena_anneal",
@@ -102,7 +105,7 @@ class _FitModel(Protocol):
     def fit(self, x: object, y: object) -> object: ...
 
 
-ModelBuilder = Callable[[int | None, int], _FitModel]
+ModelBuilder = Callable[..., _FitModel]
 
 
 _MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
@@ -231,8 +234,11 @@ def load_from_str(
             f"Supported models: {', '.join(allowed_models)}"
         )
         raise ValueError(msg)
+
     dataset = load_data_from_str(data_str, random_state=random_state)
-    model = load_model_from_str(model_str, dataset, **kwargs)
+
+    best_params = check_for_known_combination(data_str, model_str) or {}
+    model = load_model_from_str(model_str, dataset, **best_params, **kwargs)
     return dataset, model
 
 
@@ -246,3 +252,27 @@ def infer_data_type(model: object) -> Literal["classification", "regression"]:
     if hasattr(model, "predict_proba") or hasattr(model, "classes_"):
         return "classification"
     return "regression"
+
+
+def check_for_known_combination(
+    data_str: str,
+    model_str: str,
+) -> dict[str, object] | None:
+    """Return best parameters for a known dataset/model pair if available."""
+    results_dir = Path(__file__).resolve().parent / "optimization" / "results"
+    if not results_dir.exists():
+        return None
+
+    for result_file in results_dir.glob("*.json"):
+        try:
+            payload = json.loads(result_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if (
+            payload.get("dataset") == data_str
+            and payload.get("model") == model_str
+            and isinstance(payload.get("best_params"), dict)
+        ):
+            return payload["best_params"]
+
+    return None

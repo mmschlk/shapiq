@@ -9,7 +9,7 @@ from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 from shapiq.typing import IndexType, Model
 
-from .base import Benchmark, BruteForceComputer
+from .base import Benchmark, BruteForceComputer, GroundTruthComputer
 from .bench_types import BenchmarkDataset
 from .computers import TabPFNComputer
 from .setup import load_from_str
@@ -31,7 +31,7 @@ class TabPFNBench(Benchmark[IndexType]):
         x_explain: int | None = 0,
         class_index: int | None = None,
         random_state: int | None = 42,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Initialize the benchmark by loading data and model and initializing a TabPFN imputer.
 
@@ -48,7 +48,11 @@ class TabPFNBench(Benchmark[IndexType]):
         self.model: TabPFNClassifier | TabPFNRegressor
         if isinstance(data, str) and isinstance(model, str):
             self.dataset, model_obj = load_from_str(
-                data, model, benchmark_type="tabpfn", random_state=random_state, **kwargs
+                data,
+                model,
+                benchmark_type="tabpfn",
+                random_state=random_state,
+                **kwargs,
             )
             self.model = cast(TabPFNClassifier | TabPFNRegressor, model_obj)
             if labels is not None:
@@ -106,7 +110,7 @@ class TabPFNBench(Benchmark[IndexType]):
         imputer.fit(np.asarray(x_train[x_explain]))
 
         self._game = imputer
-        self._computer: TabPFNComputer = BruteForceComputer(self._game)
+        self._computer: GroundTruthComputer[IndexType] = BruteForceComputer(self._game)
 
     def exact_values(
         self, index: IndexType, order: int, budget: int | None = None
@@ -127,6 +131,6 @@ class TabPFNBench(Benchmark[IndexType]):
         return self._game
 
     @property
-    def computer(self) -> TabPFNComputer:
+    def computer(self) -> GroundTruthComputer[IndexType]:
         """Ground truth computer used by the TabPFN Benchmark."""
         return self._computer

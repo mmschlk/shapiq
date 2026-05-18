@@ -10,7 +10,7 @@ import numpy as np
 from shapiq.typing import IndexType, Model
 from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
 
-from .base import Benchmark, BruteForceComputer
+from .base import Benchmark, BruteForceComputer, GroundTruthComputer
 from .computers import ImageComputer
 
 if TYPE_CHECKING:
@@ -103,7 +103,7 @@ class ImageBench(Benchmark[IndexType]):
             normalize=normalize,
             verbose=verbose,
         )
-        self._computer: ImageComputer = BruteForceComputer(self._game)
+        self._computer: GroundTruthComputer[IndexType] = BruteForceComputer(self._game)
 
     def exact_values(
         self, index: IndexType, order: int, budget: int | None = None
@@ -124,6 +124,6 @@ class ImageBench(Benchmark[IndexType]):
         return self._game
 
     @property
-    def computer(self) -> ImageComputer:
+    def computer(self) -> GroundTruthComputer[IndexType]:
         """Ground truth computer used by the Image Benchmark."""
         return self._computer
