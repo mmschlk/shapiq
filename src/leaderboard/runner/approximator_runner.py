@@ -1,3 +1,7 @@
+"""
+Approximator runner for the leaderboard.
+"""
+
 from leaderboard.runner.custom_types import InteractionIndex
 from shapiq import InteractionValues
 from shapiq.approximator import Approximator

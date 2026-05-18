@@ -1,3 +1,7 @@
+"""
+Experiment runner for the leaderboard.
+"""
+
 import time
 from leaderboard.runner.approximator_runner import approximate
 from leaderboard.runner.record_builder import create_run_record

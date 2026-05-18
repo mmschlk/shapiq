@@ -1,3 +1,7 @@
+"""
+Game factory for the leaderboard runner.
+"""
+
 from typing import Any
 
 from shapiq import Game

@@ -1,3 +1,7 @@
+"""
+Ground truth computer for the leaderboard runner.
+"""
+
 from shapiq import ExactComputer, InteractionValues
 from shapiq.game import Game
 from leaderboard.runner.custom_types import InteractionIndex

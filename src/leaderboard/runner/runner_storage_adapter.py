@@ -1,3 +1,7 @@
+"""
+Runner storage adapter for the leaderboard.
+"""
+
 from typing import Any
 from leaderboard.storage.connection import MongoDBClient
 

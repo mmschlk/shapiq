@@ -1,3 +1,7 @@
+"""
+Record builder for the leaderboard runner.
+"""
+
 import uuid
 from datetime import datetime, timezone
 from importlib.metadata import version

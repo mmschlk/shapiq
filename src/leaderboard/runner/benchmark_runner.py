@@ -1,3 +1,7 @@
+"""
+Benchmark runner for the leaderboard.
+"""
+
 import json
 
 from leaderboard.runner.aggregator import aggregate_run_records

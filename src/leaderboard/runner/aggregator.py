@@ -1,3 +1,14 @@
+"""
+Aggregator Module for the ShapIQ Living Benchmark Leaderboard.
+
+This module provides functionality to aggregate multiple run records into a single representative record.
+The aggregation process includes:
+- Averaging metric values across successful runs;
+- Averaging runtime values across successful runs;
+- Retaining constant values from the first successful run (e.g., game parameters, hardware information);
+- Generating a new unique run ID and timestamp for the aggregated record.
+"""
+
 import numpy as np
 import uuid
 from datetime import datetime, timezone
@@ -16,7 +27,7 @@ METRIC_KEYS = [
 
 def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, float | None]:
     """
-    Aggregates metric values for all metrics across all successful runs
+    Aggregates metric values for all metrics across all successful runs.
 
     Args:
         successful_runs: The list of runs
@@ -26,8 +37,8 @@ def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, 
         Metrics without values are mapped to ``None``.
 
     Raises:
-        KeyError: If a metrics entry is missing in the run
-        ValueError: If metrics=None
+        KeyError: If a metrics entry is missing in the run.
+        ValueError: If metrics = None.
     """
 
     aggregated_metrics = {}
@@ -58,7 +69,7 @@ def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, 
 
 def aggregate_run_records(run_records: list[dict[str, Any]]) -> dict[str, Any]:
     """
-    Aggregates a list of run records into a single record
+    Aggregates a list of run records into a single record.
 
     Args:
         run_records: the list of runs

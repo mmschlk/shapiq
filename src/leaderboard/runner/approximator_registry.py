@@ -1,3 +1,7 @@
+"""
+Approximator registry for the leaderboard runner.
+"""
+
 from shapiq.approximator import (
     Approximator,
     KernelSHAPIQ,

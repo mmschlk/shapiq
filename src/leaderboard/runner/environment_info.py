@@ -1,3 +1,7 @@
+"""
+Environment information retrieval for the leaderboard runner.
+"""
+
 import platform
 
 #TODO: Placeholder-implementation

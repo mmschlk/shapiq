@@ -1,3 +1,7 @@
+"""
+Runner demo for the leaderboard.
+"""
+
 from leaderboard.storage.connection import MongoDBClient
 from shapiq.approximator import ProxySHAP
 from shapiq_games.synthetic import SOUM

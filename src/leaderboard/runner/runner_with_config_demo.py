@@ -1,3 +1,7 @@
+"""
+Runner with config demo for the leaderboard.
+"""
+
 import json
 import yaml
 from pathlib import Path

@@ -1,3 +1,7 @@
+"""
+Config loader for the leaderboard runner.
+"""
+
 import yaml
 from pathlib import Path
 from typing import Any
@@ -14,8 +18,7 @@ def load_yaml_config(path: str | Path) -> dict[str, Any]:
         The loaded configuration dictionary.
 
     Raises:
-        ValueError: If the YAML file does not contain a dictionary/object at the
-            top level.
+        ValueError: If the YAML file does not contain a dictionary/object at the top level.
     """
     with open(path, "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)

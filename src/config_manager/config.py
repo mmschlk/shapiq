@@ -1,8 +1,7 @@
 """
-Configuration Module - Public API
+Configuration Module - Public API.
 
-This module provides a clean public interface for configuration management
-by re-exporting from internal modules:
+This module provides a clean public interface for configuration management by re-exporting from internal modules:
   - constants: Configuration constants and whitelists
   - models: Data models and validators
   - loader: Configuration loading and validation
