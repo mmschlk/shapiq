@@ -1,10 +1,15 @@
-from shapiq.approximator import ProxySHAP, KernelSHAPIQ
-from shapiq.approximator import Approximator
+from shapiq.approximator import (
+    Approximator,
+    KernelSHAPIQ,
+    PermutationSamplingSV,
+    ProxySHAP,
+)
 
 
 APPROXIMATOR_REGISTRY = {
     "ProxySHAP": ProxySHAP,
     "KernelSHAPIQ": KernelSHAPIQ,
+    "PermutationSamplingSV": PermutationSamplingSV,
 }
 
 
