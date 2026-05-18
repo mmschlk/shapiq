@@ -1,3 +1,5 @@
+"""Module defining the RunConfig data class, which represents the immutable configuration of a run in the leaderboard storage system."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

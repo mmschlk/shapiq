@@ -1,3 +1,6 @@
+"""This module defines the MongoDBClient class, which provides a convenient interface for connecting to a MongoDB database and performing read/write operations related to shapiq experiment results. It handles connection management, error handling, and exposes methods for inserting, querying, and deleting run records based on their configurations.
+"""
+
 from __future__ import annotations
 
 import os
@@ -13,6 +16,7 @@ from leaderboard.storage.data_classes import RunConfig
 
 def load_env() -> tuple[str, str]:
     """Load MongoDB connection parameters from environment variables."""
+
     load_dotenv()
     uri = os.getenv("MONGODB_URI")
     db_name = os.getenv("MONGODB_DB", "shapiq-leaderboard")
@@ -44,8 +48,10 @@ class MongoDBClient:
 
     @classmethod
     def from_env(cls) -> MongoDBClient:
-        """Create a MongoDBClient instance using connection parameters from environment variables.
-        Returns: MongoDBClient
+        """
+        Create a MongoDBClient instance using connection parameters from environment variables.
+        
+        Returns: MongoDBClient.
         """
         uri, db_name = load_env()
         return cls(uri=uri, db_name=db_name)

@@ -1,3 +1,5 @@
+"""Defines the MetricsLoader class for loading and aggregating metrics from the leaderboard storage system."""
+
 from __future__ import annotations
 
 from collections import defaultdict
