@@ -23,5 +23,5 @@ class MongoDBConnectionError(MongoDBClientError):
     """Raised when the MongoDB client fails to connect to the database."""
 
     def __init__(self) -> None:
-        """Initialize with a message indicating a connection failure"""
+        """Initialize with a message indicating a connection failure."""
         super().__init__("Failed to connect to MongoDB")

@@ -10,7 +10,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from leaderboard.storage.connection import MongoDBClient, MongoDBConnectionError
-from leaderboard.ui.ui_exceptions import UnknownDataLoadingMethodException
+from leaderboard.ui.ui_exceptions import UnknownDataLoadingMethodError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -43,7 +43,7 @@ def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.
 
         runs_df = _mongodb_load(mongoDBClient)
     else:
-        raise UnknownDataLoadingMethodException(method)
+        raise UnknownDataLoadingMethodError(method)
 
     # If runs_df is empty - populate it with a dummy entry to avoid errors
     if runs_df.empty:
@@ -283,12 +283,19 @@ def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse") -> p
 
     for i, (approx_name, group) in enumerate(df_filtered.groupby("approximator_name")):
         style = LINE_STYLES[i % len(LINE_STYLES)]
-        group = group.sort_values("budget")
-        ax.plot(group["budget"], group[mean_col], marker="o", linestyle=style, label=approx_name)
+        sorted_group = group.sort_values("budget")
+
+        ax.plot(
+            sorted_group["budget"],
+            sorted_group[mean_col],
+            marker="o",
+            linestyle=style,
+            label=approx_name,
+        )
         ax.fill_between(
-            group["budget"],
-            group[mean_col] - group[std_col].fillna(0),
-            group[mean_col] + group[std_col].fillna(0),
+            sorted_group["budget"],
+            sorted_group[mean_col] - sorted_group[std_col].fillna(0),
+            sorted_group[mean_col] + sorted_group[std_col].fillna(0),
             alpha=0.2,
         )
 
@@ -297,7 +304,7 @@ def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse") -> p
     ax.set_title(f"{metric.upper()} vs. Budget")
     ax.set_xscale("log")
     ax.legend()
-    ax.grid(True, alpha=0.3)
+    ax.grid(visible=True, alpha=0.3)
     plt.tight_layout()
     return fig
 
@@ -366,7 +373,16 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             outputs=plot_mae,
         )
 
-    def on_reload():
+    def on_reload() -> tuple[
+        pd.DataFrame,
+        pd.DataFrame,
+        gr.Dropdown,
+        pd.DataFrame,
+        gr.Dropdown,
+        plt.Figure,
+        gr.Dropdown,
+        plt.Figure,
+    ]:
         """Reloads the raw data, re-aggregates it, and updates all components with the new data."""
         new_df = reload_data()
         games = new_df["game_name"].unique().tolist()
