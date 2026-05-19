@@ -88,7 +88,10 @@ tracker = "https://github.com/mmschlk/shapiq/issues"
 changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = [
+  "tests/shapiq",
+  "tests/shapiq_games"
+]
 pythonpath = ["src"]
 minversion = "8.0"
 norecursedirs = [".*", "*.md"]
