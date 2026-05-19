@@ -380,10 +380,10 @@ class GameBenchmarkSetup:
             _loader = getattr(_tabarena_datasets_module, f"load_{dataset_name}")
             x_data, y_data = _loader()
             self.feature_names: list = list(x_data.columns)
-            import pandas as _pd
+            import pandas as pd
 
             self.dataset_type = (
-                "regression" if _pd.api.types.is_float_dtype(y_data) else "classification"
+                "regression" if pd.api.types.is_float_dtype(y_data) else "classification"
             )
         else:
             available_datasets = ", ".join(f"'{name}'" for name in AVAILABLE_DATASETS)
@@ -395,7 +395,7 @@ class GameBenchmarkSetup:
         self.dataset_name: str = dataset_name
 
         # prepare the data
-        x_data, y_data = x_data.values, y_data.values
+        x_data, y_data = x_data.to_numpy(), y_data.to_numpy()
         x_data, y_data = shuffle_data(x_data, y_data, random_state=random_state)
         self.x_data: np.ndarray = x_data
         self.y_data: np.ndarray = y_data
