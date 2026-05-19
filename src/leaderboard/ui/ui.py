@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 
 import gradio as gr
-import matplotlib.pyplot as plt
+import numpy as np
+import plotly.graph_objects as go
 import pandas as pd
 from dotenv import load_dotenv
 
@@ -17,7 +18,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 load_dotenv()
 
 RESULTS_PATH = "results_raw.jsonl"
-LINE_STYLES = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
+ZERO_THRESHOLD = 1e-7
+DASH_STYLES = ["solid", "dash", "dot", "dashdot", "longdash"]
 LOADING_METHOD = "mongodb"  # "local" or "mongodb"
 
 # Temporary seed determination
@@ -115,7 +117,7 @@ def _local_load(path: str) -> pd.DataFrame:
 
 def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
     """Aggregates the raw run data by game_name, approximator_name, and budget, computing mean and std for mse and mae."""
-    # Aggregieren over seeds
+    # Aggregate over seeds
     agg = (
         df.groupby(["game_name", "approximator_name", "budget"])
         .agg(
@@ -136,13 +138,37 @@ def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
 
     return agg
 
+def format_value(col, x, runtime_cols):
+    if not isinstance(x, float):
+        return x
+    if isinstance(x, float) and abs(x) < ZERO_THRESHOLD and col not in runtime_cols:
+        return "0"
+    if col in runtime_cols:
+        return round(x, 4)
+    return f"{x:.4e}"
+
+def compute_yranges(g, a1, a2, a3):
+    df_filtered = df_agg[
+        (df_agg["game_name"] == g) &
+        (df_agg["approximator_name"].isin([a1, a2, a3]))
+    ]
+    y_min_mse = max(df_filtered["mse_mean"].min(), 1e-300)
+    y_max_mse = df_filtered["mse_mean"].max()
+    yrange_mse = [np.log10(y_min_mse) - 0.5, np.log10(y_max_mse) + 0.5]
+
+    y_min_mae = max(df_filtered["mae_mean"].min(), 1e-300)
+    y_max_mae = df_filtered["mae_mean"].max()
+    yrange_mae = [np.log10(y_min_mae) - 0.5, np.log10(y_max_mae) + 0.5]
+
+    return yrange_mse, yrange_mae
+
 
 def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
     """Computes the global leaderboard by finding the best (lowest) MSE for each approximator across all games and budgets.
 
     Returns: per game aggregated DataFrame.
     """
-    # Über alle Games aggregieren
+    # Aggregate over all games
     global_agg = (
         df_agg.groupby(["approximator_name", "budget"])
         .agg(
@@ -179,13 +205,6 @@ def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
 
     runtime_cols = ["Runtime mean (s)", "Runtime min (s)", "Runtime max (s)"]
 
-    def format_value(col: str, x: float) -> str:
-        if not isinstance(x, float):
-            return x
-        if col in runtime_cols:
-            return round(x, 4)
-        return f"{x:.4e}"
-
     leaderboard_df = best[
         [
             "Approximator",
@@ -202,7 +221,7 @@ def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
         ]
     ].copy()
     for col in leaderboard_df.columns:
-        leaderboard_df[col] = leaderboard_df[col].apply(lambda x, col=col: format_value(col, x))
+        leaderboard_df[col] = leaderboard_df[col].apply(lambda x, col=col: format_value(col, x, runtime_cols))
 
     return leaderboard_df
 
@@ -233,12 +252,6 @@ def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFra
 
     runtime_cols = ["Runtime mean (s)", "Runtime min (s)", "Runtime max (s)"]
 
-    def format_value(col: str, x: float) -> str:
-        if not isinstance(x, float):
-            return x
-        if col in runtime_cols:
-            return round(x, 4)
-        return f"{x:.4e}"
 
     leaderboard_df = best[
         [
@@ -257,15 +270,18 @@ def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFra
     ].copy()
 
     for col in leaderboard_df.columns:
-        leaderboard_df[col] = leaderboard_df[col].apply(lambda x, col=col: format_value(col, x))
+        leaderboard_df[col] = leaderboard_df[col].apply(lambda x, col=col: format_value(col, x, runtime_cols))
 
     return leaderboard_df
 
 
-def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse") -> plt.Figure:
+def get_plot(df_agg: pd.DataFrame, selected_game: str, metric, selected_approximators, yaxis_range=None) -> go.Figure:
     """Generates a line plot of the specified metric (MSE or MAE) vs. budget for the selected game, with separate lines for each approximator and shaded areas representing standard deviation across seeds."""
-    df_filtered = df_agg[df_agg["game_name"] == selected_game]
-    fig, ax = plt.subplots(figsize=(8, 5))
+    df_filtered = df_agg[
+        (df_agg["game_name"] == selected_game) &
+        (df_agg["approximator_name"].isin(selected_approximators))
+    ]
+    fig = go.Figure()
 
     mean_col = f"{metric}_mean"
     std_col = f"{metric}_std"
@@ -282,31 +298,49 @@ def get_plot(df_agg: pd.DataFrame, selected_game: str, metric: str = "mse") -> p
         df_filtered[std_col] = df_filtered[std_col].fillna(0)
 
     for i, (approx_name, group) in enumerate(df_filtered.groupby("approximator_name")):
-        style = LINE_STYLES[i % len(LINE_STYLES)]
+        dash = DASH_STYLES[i % len(DASH_STYLES)]
         sorted_group = group.sort_values("budget")
 
-        ax.plot(
-            sorted_group["budget"],
-            sorted_group[mean_col],
-            marker="o",
-            linestyle=style,
-            label=approx_name,
-        )
-        ax.fill_between(
-            sorted_group["budget"],
-            sorted_group[mean_col] - sorted_group[std_col].fillna(0),
-            sorted_group[mean_col] + sorted_group[std_col].fillna(0),
-            alpha=0.2,
-        )
+        # Linie
+        fig.add_trace(go.Scatter(
+            x=sorted_group["budget"],
+            y=sorted_group[mean_col],
+            mode="lines+markers",
+            name=approx_name,
+            line=dict(dash=dash),
+        ))
 
-    ax.set_xlabel("Budget (coalition evaluations)")
-    ax.set_ylabel(f"{metric.upper()} (mean over seeds)")
-    ax.set_title(f"{metric.upper()} vs. Budget")
-    ax.set_xscale("log")
-    ax.legend()
-    ax.grid(visible=True, alpha=0.3)
-    plt.tight_layout()
+        # Fehlerband
+        fig.add_trace(go.Scatter(
+            x=pd.concat([sorted_group["budget"], sorted_group["budget"].iloc[::-1]]),
+            y=pd.concat([
+                sorted_group[mean_col] + sorted_group[std_col].fillna(0),
+                (sorted_group[mean_col] - sorted_group[std_col]).fillna(0).iloc[::-1]
+            ]),
+            fill="toself",
+            fillcolor="rgba(0,100,255,0.1)",
+            line=dict(color="rgba(255,255,255,0)"),
+            showlegend=False,
+            hoverinfo="skip",
+            name=approx_name,
+        ))
+
+    fig.update_layout(
+        title=f"{metric.upper()} vs. Budget - {selected_game}",
+        xaxis_title="Budget (coalition evaluations)",
+        yaxis_title=f"{metric.upper()} (mean over seeds)",
+        yaxis=dict(
+            type="log",
+            range=yaxis_range,
+        ),
+        legend_title="Approximator",
+        hovermode="x unified",
+    )
+
     return fig
+
+def get_plot_single(df_agg, selected_game, metric, approximator, yaxis_range=None):
+    return get_plot(df_agg, selected_game, metric, [approximator], yaxis_range)
 
 
 # --- Daten laden ---
@@ -351,14 +385,22 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             label="Game",
         )
 
+        approx_checkboxes_mse = gr.CheckboxGroup(
+            choices=df_agg["approximator_name"].unique().tolist(),
+            value=df_agg["approximator_name"].unique().tolist(),  # alle standardmäßig an
+            label="Approximatoren"
+        )
+
         plot_mse = gr.Plot(
-            value=get_plot(df_agg, df_agg["game_name"].iloc[0])  # direkt beim Start rendern
+            value=get_plot(df_agg, df_agg["game_name"].iloc[0], "mse", df_agg["approximator_name"].unique().tolist())  # direkt beim Start rendern
         )
-        game_dropdown_mse.change(
-            fn=lambda g, df: get_plot(df, g, "mse"),
-            inputs=[game_dropdown_mse, df_state],
-            outputs=plot_mse,
-        )
+
+        for component in [game_dropdown_mse, approx_checkboxes_mse]:
+            component.change(
+                fn=lambda g, df, a: get_plot(df, g, "mse", a),
+                inputs=[game_dropdown_mse, df_state, approx_checkboxes_mse],
+                outputs=plot_mse
+            )
 
     with gr.Tab("MAE vs. Budget"):
         game_dropdown_mae = gr.Dropdown(
@@ -366,26 +408,108 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             value=df_agg["game_name"].iloc[0],
             label="Game",
         )
-        plot_mae = gr.Plot(value=get_plot(df_agg, df_agg["game_name"].iloc[0], "mae"))
-        game_dropdown_mae.change(
-            fn=lambda g, df: get_plot(df, g, "mae"),
-            inputs=[game_dropdown_mae, df_state],
-            outputs=plot_mae,
+
+        approx_checkboxes_mae = gr.CheckboxGroup(
+            choices=df_agg["approximator_name"].unique().tolist(),
+            value=df_agg["approximator_name"].unique().tolist(),  # alle standardmäßig an
+            label="Approximatoren"
         )
 
-    def on_reload() -> tuple[
+        plot_mae = gr.Plot(
+            value=get_plot(df_agg, df_agg["game_name"].iloc[0], "mae", df_agg["approximator_name"].unique().tolist())
+        )
+
+        for component in [game_dropdown_mae, approx_checkboxes_mae]:
+            component.change(
+                fn=lambda g, df, a: get_plot(df, g, "mae", a),
+                inputs=[game_dropdown_mae, df_state, approx_checkboxes_mae],
+                outputs=plot_mae
+            )
+
+    with gr.Tab("Compare Approximators"):
+        gr.Markdown("## Side-by-side Approximator Comparison")
+
+        with gr.Row():
+            compare_game_dropdown = gr.Dropdown(
+                choices=df_agg["game_name"].unique().tolist(),
+                value=df_agg["game_name"].iloc[0],
+                label="Game"
+            )
+
+        with gr.Row():
+            compare_approx_1 = gr.Dropdown(
+                choices=df_agg["approximator_name"].unique().tolist(),
+                value=df_agg["approximator_name"].unique().tolist()[0],
+                label="Approximator 1"
+            )
+            compare_approx_2 = gr.Dropdown(
+                choices=df_agg["approximator_name"].unique().tolist(),
+                value=df_agg["approximator_name"].unique().tolist()[1],
+                label="Approximator 2"
+            )
+            compare_approx_3 = gr.Dropdown(
+                choices=df_agg["approximator_name"].unique().tolist(),
+                value=df_agg["approximator_name"].unique().tolist()[2],
+                label="Approximator 3"
+            )
+
+        # --- Range beim Start berechnen ---
+        _first_game = df_agg["game_name"].iloc[0]
+        _approxs = df_agg["approximator_name"].unique().tolist()
+        _a1, _a2, _a3 = _approxs[0], _approxs[1], _approxs[2]
+        _yrange_mse, _yrange_mae = compute_yranges(_first_game, _a1, _a2, _a3)
+
+        gr.Markdown("### MSE vs. Budget")
+        with gr.Row():
+            compare_plot_mse_1 = gr.Plot(value=get_plot_single(df_agg, _first_game, "mse", _a1, _yrange_mse))
+            compare_plot_mse_2 = gr.Plot(value=get_plot_single(df_agg, _first_game, "mse", _a2, _yrange_mse))
+            compare_plot_mse_3 = gr.Plot(value=get_plot_single(df_agg, _first_game, "mse", _a3, _yrange_mse))
+
+        gr.Markdown("### MAE vs. Budget")
+        with gr.Row():
+            compare_plot_mae_1 = gr.Plot(value=get_plot_single(df_agg, _first_game, "mae", _a1, _yrange_mae))
+            compare_plot_mae_2 = gr.Plot(value=get_plot_single(df_agg, _first_game, "mae", _a2, _yrange_mae))
+            compare_plot_mae_3 = gr.Plot(value=get_plot_single(df_agg, _first_game, "mae", _a3, _yrange_mae))
+
+        compare_inputs = [compare_game_dropdown, compare_approx_1, compare_approx_2, compare_approx_3]
+
+
+        def update_compare_plots(g, a1, a2, a3):
+            yrange_mse, yrange_mae = compute_yranges(g, a1, a2, a3)
+            return (
+                get_plot_single(df_agg, g, "mse", a1, yrange_mse),
+                get_plot_single(df_agg, g, "mse", a2, yrange_mse),
+                get_plot_single(df_agg, g, "mse", a3, yrange_mse),
+                get_plot_single(df_agg, g, "mae", a1, yrange_mae),
+                get_plot_single(df_agg, g, "mae", a2, yrange_mae),
+                get_plot_single(df_agg, g, "mae", a3, yrange_mae),
+            )
+
+        for component in compare_inputs:
+            component.change(
+                fn=update_compare_plots,
+                inputs=compare_inputs,
+                # inputs=[*compare_inputs, df_state],
+                outputs=[compare_plot_mse_1, compare_plot_mse_2, compare_plot_mse_3,
+                         compare_plot_mae_1, compare_plot_mae_2, compare_plot_mae_3]
+            )
+
+    def on_reload(selected_approx_mse, selected_approx_mae) -> tuple[
         pd.DataFrame,
         pd.DataFrame,
         gr.Dropdown,
         pd.DataFrame,
         gr.Dropdown,
-        plt.Figure,
+        gr.CheckboxGroup,
+        go.Figure,
         gr.Dropdown,
-        plt.Figure,
+        gr.CheckboxGroup,
+        go.Figure,
     ]:
         """Reloads the raw data, re-aggregates it, and updates all components with the new data."""
         new_df = reload_data()
         games = new_df["game_name"].unique().tolist()
+        approxs = new_df["approximator_name"].unique().tolist()
         first_game = games[0]
         return (
             new_df,
@@ -393,24 +517,28 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             gr.Dropdown(choices=games, value=first_game),
             get_leaderboard_game(new_df, first_game),
             gr.Dropdown(choices=games, value=first_game),
-            get_plot(new_df, first_game, "mse"),
+            gr.CheckboxGroup(choices=approxs, value=approxs),
+            get_plot(new_df, first_game, "mse", selected_approx_mse),
             gr.Dropdown(choices=games, value=first_game),
-            get_plot(new_df, first_game, "mae"),
+            gr.CheckboxGroup(choices=approxs, value=approxs),
+            get_plot(new_df, first_game, "mae", selected_approx_mae),
         )
 
     reload_btn.click(
         fn=on_reload,
-        inputs=[],
+        inputs=[approx_checkboxes_mse, approx_checkboxes_mae],
         outputs=[
             df_state,
             global_leaderboard,  # gr.Dataframe for global leaderboard
             game_dropdown_lb,
             game_leaderboard,
             game_dropdown_mse,
+            approx_checkboxes_mse,
             plot_mse,
             game_dropdown_mae,
+            approx_checkboxes_mae,
             plot_mae,
-        ],
+        ]
     )
 
 
