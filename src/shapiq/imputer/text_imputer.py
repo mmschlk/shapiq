@@ -25,7 +25,7 @@ class TextImputer:
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
         text: str,
-        class_idx: int = 0,
+        class_idx: int = 1,
         batch_size: int = 16,
         device: str | None = None,
         output_type: str = "logit",
@@ -59,7 +59,7 @@ class TextImputer:
 
 
         self.device = device
-        self.model = self.model.to(self.device) # noqa: PGH003
+        self.model = self.model.to(self.device)
         self.model.eval()
 
         self.words = self.text.split()

@@ -15,7 +15,7 @@ from shapiq.imputer.text_imputer import TextImputer
 
 @pytest.mark.integration
 def test_text_imputer_negation_interaction_distilbert() -> None:
-    """Test word-level interaction detection with DistilBERT sentiment model."""
+    """Test word-level interaction detection with DistilBERT."""
 
     model_name = "distilbert-base-uncased-finetuned-sst-2-english"
 
