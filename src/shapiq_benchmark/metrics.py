@@ -6,17 +6,20 @@ import copy
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple, cast
-from collections.abc import Mapping
 
 import numpy as np
-import pandas as pd
 from scipy.stats import kendalltau, spearmanr
+from sklearn.metrics import r2_score
+
 from shapiq import powerset
 from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.utils.sets import count_interactions
-from sklearn.metrics import r2_score
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    import pandas as pd
+
     from shapiq.game import Game
     from shapiq.interaction_values import InteractionValues
 
@@ -42,9 +45,7 @@ def _remove_empty_value(interaction: InteractionValues) -> InteractionValues:
 
 DIFF_METRICS = Literal["MSE", "MAE", "SSE", "SAE"]
 RANKING_METRICS = Literal["KendallTau", "KendallTau@k", "Precision@k"]
-METRICS = (
-    DIFF_METRICS | RANKING_METRICS | Literal["SpearmanCorrelation", "Faithfulness"]
-)
+METRICS = DIFF_METRICS | RANKING_METRICS | Literal["SpearmanCorrelation", "Faithfulness"]
 
 
 class Metric(NamedTuple):
@@ -83,7 +84,7 @@ def compute_diff_metrics(
 
     """
     difference = ground_truth - estimated
-    diff_values = _remove_empty_value(difference).values
+    diff_values = _remove_empty_value(difference).values  # noqa: PD011
     n_values = count_interactions(
         ground_truth.n_players,
         ground_truth.max_order,
@@ -119,9 +120,7 @@ def compute_kendall_tau(
     ground_truth = _remove_empty_value(ground_truth)
     estimated = _remove_empty_value(estimated)
 
-    for interaction in set(ground_truth.interactions.keys()).union(
-        estimated.interactions.keys()
-    ):
+    for interaction in set(ground_truth.interactions.keys()).union(estimated.interactions.keys()):
         gt_values.append(ground_truth[interaction])
         estimated_values.append(estimated[interaction])
     # array conversion
@@ -163,16 +162,7 @@ def compute_spearmans_correlation(
         gt_values.append(ground_truth[interaction])
         estimated_values.append(estimated[interaction])
 
-    spearman_corr, pval = spearmanr(gt_values, estimated_values)
-    # # array conversion
-    # gt_values, estimated_values = np.array(gt_values), np.array(estimated_values)
-    # # sort the values
-    # gt_indices, estimated_indices = np.argsort(gt_values), np.argsort(estimated_values)
-    # if k is not None:
-    #     gt_indices, estimated_indices = gt_indices[:k], estimated_indices[:k]
-    # # compute the Spearman's correlation
-    # correlation = np.corrcoef(gt_indices, estimated_indices)[0, 1]
-    # correlation = float(correlation)
+    spearman_corr, _pval = spearmanr(gt_values, estimated_values)
     return Metric(metric_id="SpearmanCorrelation", value=spearman_corr, computed_k=k)
 
 
@@ -196,11 +186,9 @@ def compute_precision_at_k(
     estimated_values = _remove_empty_value(estimated)
     top_k, _ = ground_truth_values.get_top_k(k=k, as_interaction_values=False)
     top_k_estimated, _ = estimated_values.get_top_k(k=k, as_interaction_values=False)
-    top_k_dict = cast(dict[tuple[int, ...], float], top_k)
-    top_k_estimated_dict = cast(dict[tuple[int, ...], float], top_k_estimated)
-    precision_at_k = (
-        len(set(top_k_dict.keys()).intersection(set(top_k_estimated_dict.keys()))) / k
-    )
+    top_k_dict = cast("dict[tuple[int, ...], float]", top_k)
+    top_k_estimated_dict = cast("dict[tuple[int, ...], float]", top_k_estimated)
+    precision_at_k = len(set(top_k_dict.keys()).intersection(set(top_k_estimated_dict.keys()))) / k
     return Metric(
         metric_id="Precision@k",
         value=precision_at_k,
@@ -210,6 +198,7 @@ def compute_precision_at_k(
 
 def compute_faithullness(estimated_game: Game, estimated: InteractionValues) -> Metric:
     """Compute the Faithullness between two interaction values.
+
     Sample coaltions and sum the banzhaf interactions in both ground truth and estimated, which are contained in the sampleed coalitions.
     Then compute the R^2 between the two sums.
 
@@ -276,11 +265,8 @@ def get_all_metrics(
     metrics.extend(metrics_diff)
 
     if save_path is not None:
-
         metrics_dict: dict[str, float] = {
-            metric.metric_id: metric.value
-            for metric in metrics
-            if metric.computed_k is None
+            metric.metric_id: metric.value for metric in metrics if metric.computed_k is None
         }
         metrics_dict.update(
             {
@@ -296,9 +282,7 @@ def get_all_metrics(
                 "name": estimated_game.__class__.__name__,
                 "n_players": estimated_game.n_players,
                 "normalize": getattr(estimated_game, "normalize", None),
-                "normalization_value": getattr(
-                    estimated_game, "normalization_value", None
-                ),
+                "normalization_value": getattr(estimated_game, "normalization_value", None),
             },
             "ground_truth": _serialize_interaction_values(ground_truth),
             "estimated": _serialize_interaction_values(estimated),
@@ -324,8 +308,10 @@ def save_results(results: pd.DataFrame, save_path: str) -> None:
 
 def _serialize_interaction_values(interaction: InteractionValues) -> dict[str, object]:
     """Serialize the interaction values to a dictionary.
+
     Args:
         interaction: The interaction values to serialize.
+
     Returns:
         A dictionary representation of the interaction values.
     """
@@ -335,10 +321,7 @@ def _serialize_interaction_values(interaction: InteractionValues) -> dict[str, o
             return "()"
         return ",".join(str(item) for item in key)
 
-    values = {
-        _key_to_str(key): float(value)
-        for key, value in interaction.interactions.items()
-    }
+    values = {_key_to_str(key): float(value) for key, value in interaction.interactions.items()}
     return {
         "index": interaction.index,
         "n_players": interaction.n_players,

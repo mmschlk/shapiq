@@ -2,20 +2,23 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
-from shapiq.typing import IndexType, Model
+
 from shapiq.tree.interventional.game import InterventionalGame
+from shapiq.typing import IndexType, Model
 
 from .base import Benchmark
 from .computers import InterventionalComputer
 from .setup import (
-    load_from_str,
     infer_data_type,
+    load_from_str,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from shapiq import InteractionValues
 
 
@@ -30,7 +33,7 @@ class InterventionalBench(Benchmark[IndexType]):
         x_explain: int | None = 0,
         class_index: int | None = 1,
         random_state: int | None = 42,
-        **kwargs,
+        **kwargs: object,
     ) -> None:
         """Initialize the benchmark by loading data and model and fitting the model.
 
@@ -44,24 +47,28 @@ class InterventionalBench(Benchmark[IndexType]):
         """
         if isinstance(data, str) and isinstance(model, str):
             self.dataset, self.model = load_from_str(
-                data, model, benchmark_type="interventional", random_state=random_state, **kwargs
+                data,
+                model,
+                benchmark_type="interventional",
+                random_state=random_state,
+                **kwargs,
             )
-            self.data: np.ndarray = np.asarray(self.dataset.x_test) 
+            self.data: np.ndarray = np.asarray(self.dataset.x_test)
 
         elif isinstance(data, np.ndarray) and not isinstance(model, str):
             self.dataset = None
             self.data = np.asarray(data)
             self.model = model
         else:
-            raise ValueError(
-                "Invalid combination of data and model arguments. Please provide either both as strings or both as objects."
+            msg = (
+                "Invalid combination of data and model arguments. "
+                "Please provide either both as strings or both as objects."
             )
+            raise TypeError(msg)
 
-        data_type: Literal["classification", "regression"] | None = None
-        if self.dataset:
-            data_type = self.dataset.data_type
-        else:
-            data_type = infer_data_type(self.model)
+        data_type: Literal["classification", "regression"] | None = (
+            self.dataset.data_type if self.dataset else infer_data_type(self.model)
+        )
 
         if data_type == "regression":
             class_index = None
@@ -69,7 +76,7 @@ class InterventionalBench(Benchmark[IndexType]):
         x_index = 0 if x_explain is None else x_explain
         if not isinstance(x_index, int):
             msg = "x_explain must be an int index."
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         self._game = InterventionalGame(
             model=self.model,
@@ -83,10 +90,12 @@ class InterventionalBench(Benchmark[IndexType]):
         self, index: IndexType, order: int, budget: int | None = None
     ) -> InteractionValues:
         """Compute exact interaction values using the InterventionalBench computer.
+
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
             budget: Optional Budget for computation.
+
         Returns:
             InteractionValues: The computed interaction values.
         """

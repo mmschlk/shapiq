@@ -1,23 +1,24 @@
 """Helpers to load datasets and models from string identifiers."""
 
 from __future__ import annotations
-import json
-from pathlib import Path
-from typing import Literal, TypeAlias, get_args, Protocol, cast
-from collections.abc import Callable
 
+import json
+from collections.abc import Callable
+from pathlib import Path
+from typing import Literal, Protocol, cast, get_args
+
+from lightgbm import LGBMClassifier, LGBMRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from tabpfn import TabPFNClassifier, TabPFNRegressor
 from xgboost import XGBClassifier, XGBRegressor
-from lightgbm import LGBMClassifier, LGBMRegressor
 
 from shapiq_games.benchmark.setup import GameBenchmarkSetup
 
 from .bench_types import BenchmarkDataset
 
-AllSupportedDatasets: TypeAlias = Literal[
+type AllSupportedDatasets = Literal[
     "communities_and_crime",
     "california_housing",
     "adult_census",
@@ -74,7 +75,7 @@ AllSupportedDatasets: TypeAlias = Literal[
     "tabarena_mic",
 ]
 
-AllSupportedModels: TypeAlias = Literal[
+type AllSupportedModels = Literal[
     "decision_tree",
     "random_forest",
     "tabpfn",
@@ -85,20 +86,18 @@ AllSupportedModels: TypeAlias = Literal[
     "resnet_18",
 ]
 
-SupportedModelsInterventional: TypeAlias = Literal[
+type SupportedModelsInterventional = Literal[
     "decision_tree", "random_forest", "xgboost", "lightgbm"
 ]
-SupportedModelsPathdependent: TypeAlias = Literal[
-    "decision_tree", "random_forest", "xgboost", "lightgbm"
-]
-SupportedModelsLocalXAI: TypeAlias = Literal[
+type SupportedModelsPathdependent = Literal["decision_tree", "random_forest", "xgboost", "lightgbm"]
+type SupportedModelsLocalXAI = Literal[
     "decision_tree", "random_forest", "xgboost", "lightgbm", "mlp"
 ]
-SupportedModelsImage: TypeAlias = Literal[
+type SupportedModelsImage = Literal[
     "vit_16_patches",
     "resnet_18",
 ]
-SupportedModelsTabPFN: TypeAlias = Literal["tabpfn"]
+type SupportedModelsTabPFN = Literal["tabpfn"]
 
 
 class _FitModel(Protocol):
@@ -109,28 +108,22 @@ ModelBuilder = Callable[..., _FitModel]
 
 
 _MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
-    ("decision_tree", "classification"): lambda **kwargs: (
-        DecisionTreeClassifier(**kwargs)
-    ),
-    ("decision_tree", "regression"): lambda **kwargs: (DecisionTreeRegressor(**kwargs)),
-    ("random_forest", "classification"): lambda **kwargs: (
-        RandomForestClassifier(**kwargs)
-    ),
-    ("random_forest", "regression"): lambda **kwargs: (RandomForestRegressor(**kwargs)),
-    ("xgboost", "classification"): lambda **kwargs: (XGBClassifier(**kwargs)),
-    ("xgboost", "regression"): lambda **kwargs: (XGBRegressor(**kwargs)),
-    ("lightgbm", "classification"): lambda **kwargs: (LGBMClassifier(**kwargs)),
-    ("lightgbm", "regression"): lambda **kwargs: (LGBMRegressor(**kwargs)),
-    ("tabpfn", "classification"): lambda **kwargs: (TabPFNClassifier(**kwargs)),
-    ("tabpfn", "regression"): lambda **kwargs: (TabPFNRegressor(**kwargs)),
-    ("mlp", "classification"): lambda **kwargs: (MLPClassifier(**kwargs)),
-    ("mlp", "regression"): lambda **kwargs: (MLPRegressor(**kwargs)),
+    ("decision_tree", "classification"): DecisionTreeClassifier,
+    ("decision_tree", "regression"): DecisionTreeRegressor,
+    ("random_forest", "classification"): RandomForestClassifier,
+    ("random_forest", "regression"): RandomForestRegressor,
+    ("xgboost", "classification"): XGBClassifier,
+    ("xgboost", "regression"): XGBRegressor,
+    ("lightgbm", "classification"): LGBMClassifier,
+    ("lightgbm", "regression"): LGBMRegressor,
+    ("tabpfn", "classification"): TabPFNClassifier,
+    ("tabpfn", "regression"): TabPFNRegressor,
+    ("mlp", "classification"): MLPClassifier,
+    ("mlp", "regression"): MLPRegressor,
 }
 
 
-def register_model_builder(
-    model_name: str, data_type: str, builder: ModelBuilder
-) -> None:
+def register_model_builder(model_name: str, data_type: str, builder: ModelBuilder) -> None:
     """Register a new model builder for future extensions."""
     key = (model_name.lower(), data_type.lower())
     if key in _MODEL_BUILDERS:
@@ -168,14 +161,14 @@ def load_data_from_str(
         y_train=setup.y_train,
         x_test=setup.x_test,
         y_test=setup.y_test,
-        data_type=cast(Literal["classification", "regression"], setup.dataset_type),
+        data_type=cast("Literal['classification', 'regression']", setup.dataset_type),
     )
 
 
 def load_model_from_str(
     model_str: str,
     dataset: BenchmarkDataset,
-    **kwargs,
+    **kwargs: object,
 ) -> object:
     """Create an unfitted model from a string identifier.
 
@@ -184,6 +177,7 @@ def load_model_from_str(
             dataset: Dataset metadata used to choose classifier vs regressor.
             random_state: Random state for the model.
             n_estimators: Number of estimators for random forest models.
+            **kwargs: Additional keyword arguments passed to the model constructor.
 
     Returns:
             A fitted model instance.
@@ -206,7 +200,7 @@ def load_from_str(
     model_str: str,
     benchmark_type: str,
     random_state: int | None = 42,
-    **kwargs,
+    **kwargs: object,
 ) -> tuple[BenchmarkDataset, object]:
     """Convenience function to load both dataset and model from string identifiers."""
     allowed_data = get_args(AllSupportedDatasets)
@@ -245,11 +239,11 @@ def load_from_str(
 
 def infer_data_type(model: object) -> Literal["classification", "regression"]:
     """Infer whether a model is a classifier or regressor based on its attributes."""
-    if hasattr(model, "_estimator_type"):
-        if model._estimator_type == "classifier":  # type: ignore[attr-defined]
-            return "classification"
-        if model._estimator_type == "regressor":  # type: ignore[attr-defined]
-            return "regression"
+    estimator_type = getattr(model, "_estimator_type", None)
+    if estimator_type == "classifier":
+        return "classification"
+    if estimator_type == "regressor":
+        return "regression"
     if hasattr(model, "predict_proba") or hasattr(model, "classes_"):
         return "classification"
     return "regression"

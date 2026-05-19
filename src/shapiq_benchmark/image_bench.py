@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
-
-import numpy as np
+from typing import TYPE_CHECKING
 
 from shapiq.typing import IndexType, Model
 from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
 
 from .base import Benchmark, BruteForceComputer, GroundTruthComputer
-from .computers import ImageComputer
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import numpy as np
+
     from shapiq import InteractionValues
 
 
@@ -28,9 +29,7 @@ def _collect_image_paths(root: Path) -> list[str]:
         msg = f"Image data path does not exist: {root}"
         raise ValueError(msg)
     image_paths = [
-        str(path)
-        for path in sorted(root.rglob("*"))
-        if path.suffix.lower() in _IMAGE_EXTENSIONS
+        str(path) for path in sorted(root.rglob("*")) if path.suffix.lower() in _IMAGE_EXTENSIONS
     ]
     if not image_paths:
         msg = f"No image files found under {root}."
@@ -55,7 +54,7 @@ def _resolve_x_explain_path(
     index = 0 if x_explain is None else x_explain
     if not isinstance(index, int):
         msg = "x_explain must be an int index or an image path string."
-        raise ValueError(msg)
+        raise TypeError(msg)
     if index < 0 or index >= len(image_paths):
         msg = f"x_explain index {index} is out of range for {len(image_paths)} images."
         raise ValueError(msg)
@@ -87,11 +86,9 @@ class ImageBench(Benchmark[IndexType]):
         """
         if not isinstance(data, str):
             msg = "ImageBench expects a string path for data."
-            raise ValueError(msg)
+            raise TypeError(msg)
 
-        image_paths, image_path = _resolve_x_explain_path(
-            data, x_explain
-        ) 
+        image_paths, image_path = _resolve_x_explain_path(data, x_explain)
         self.dataset = image_paths
         self.data = image_paths if image_paths is not None else []
         self.model = model
@@ -109,10 +106,12 @@ class ImageBench(Benchmark[IndexType]):
         self, index: IndexType, order: int, budget: int | None = None
     ) -> InteractionValues:
         """Compute exact interaction values using the ImageBench computer.
+
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
             budget: Optional budget for computation.
+
         Returns:
             InteractionValues: The computed interaction values.
         """

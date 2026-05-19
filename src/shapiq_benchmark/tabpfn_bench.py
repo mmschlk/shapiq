@@ -2,21 +2,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 import numpy as np
+from tabpfn import TabPFNClassifier, TabPFNRegressor
+
 from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 from shapiq.typing import IndexType, Model
 
 from .base import Benchmark, BruteForceComputer, GroundTruthComputer
-from .bench_types import BenchmarkDataset
-from .computers import TabPFNComputer
 from .setup import load_from_str
-from tabpfn import TabPFNClassifier, TabPFNRegressor
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from shapiq import InteractionValues
+
+    from .bench_types import BenchmarkDataset
 
 
 class TabPFNBench(Benchmark[IndexType]):
@@ -31,7 +34,7 @@ class TabPFNBench(Benchmark[IndexType]):
         x_explain: int | None = 0,
         class_index: int | None = None,
         random_state: int | None = 42,
-        **kwargs,
+        **kwargs: object,
     ) -> None:
         """Initialize the benchmark by loading data and model and initializing a TabPFN imputer.
 
@@ -54,7 +57,7 @@ class TabPFNBench(Benchmark[IndexType]):
                 random_state=random_state,
                 **kwargs,
             )
-            self.model = cast(TabPFNClassifier | TabPFNRegressor, model_obj)
+            self.model = cast("TabPFNClassifier | TabPFNRegressor", model_obj)
             if labels is not None:
                 msg = "Labels must not be provided when data is a dataset string."
                 raise ValueError(msg)
@@ -69,7 +72,7 @@ class TabPFNBench(Benchmark[IndexType]):
                 raise ValueError(msg)
             if not isinstance(model, (TabPFNClassifier, TabPFNRegressor)):
                 msg = "Model must be a TabPFNClassifier or TabPFNRegressor."
-                raise ValueError(msg)
+                raise TypeError(msg)
             self.model = model
             x_train, x_test = data
             y_train, y_test = labels
@@ -87,19 +90,17 @@ class TabPFNBench(Benchmark[IndexType]):
                 "Invalid combination of data and model arguments. "
                 "Please provide either both as strings or both as objects."
             )
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         predict_function, _ = get_predict_function_and_model_type(
             self.model, class_index=class_index
         )
 
         class _TabPFNWithPredict(Protocol):
-            _shapiq_predict_function: Callable[[np.ndarray], np.ndarray]
+            shapiq_predict_function: Callable[[np.ndarray], np.ndarray]
 
-        model_with_predict = cast(_TabPFNWithPredict, self.model)
-        model_with_predict._shapiq_predict_function = cast(
-            Callable[[np.ndarray], np.ndarray], predict_function
-        )
+        model_with_predict = cast("_TabPFNWithPredict", self.model)
+        model_with_predict.shapiq_predict_function = cast("Callable[[np.ndarray], np.ndarray]", predict_function)
 
         imputer = TabPFNImputer(
             model=self.model,
@@ -116,10 +117,12 @@ class TabPFNBench(Benchmark[IndexType]):
         self, index: IndexType, order: int, budget: int | None = None
     ) -> InteractionValues:
         """Compute exact interaction values using the TabPFNComputer.
+
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
             budget: Budget for computation.
+
         Returns:
             InteractionValues: The computed interaction values.
         """

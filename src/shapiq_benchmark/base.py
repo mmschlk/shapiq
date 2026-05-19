@@ -30,6 +30,7 @@ class GroundTruthComputer(Protocol[T_Index_contra]):
         Args:
             index: The index type for which to compute the interaction values.
             order: The order of interactions to compute.
+            budget: Optional budget for computation.
 
         Returns:
             InteractionValues: The computed interaction values for the specified index and order.
@@ -37,20 +38,20 @@ class GroundTruthComputer(Protocol[T_Index_contra]):
         ...
 
 
-class BruteForceComputer[In:Game, IndexT:IndexType](GroundTruthComputer[IndexT]):
+class BruteForceComputer[In: Game, IndexT: IndexType](GroundTruthComputer[IndexT]):
     """A brute force computer for exact computation of interaction values."""
 
     def __init__(self, game: In) -> None:
         """Initialize a BruteForceComputer instance."""
         self.game = game
-        self._computer = ExactComputer(
-            game=game, n_players=game.n_players, evaluate_game=False
-        )
+        self._computer = ExactComputer(game=game, n_players=game.n_players, evaluate_game=False)
 
     def exact_values(
         self, index: IndexT, order: int, budget: int | None = None
     ) -> InteractionValues:
         """Compute the exact values using brute force."""
+        if budget is not None:
+            _ = budget
         return self._computer(index=index, order=order)
 
 
