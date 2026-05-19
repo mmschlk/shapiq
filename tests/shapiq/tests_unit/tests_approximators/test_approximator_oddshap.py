@@ -55,8 +55,10 @@ def test_init_defaults(n):
     assert approx.interaction_factor == 10
     assert approx.odd_only is True
     assert approx.regression_basis == "Fourier"
-    assert approx.interaction_detection == "ProxySPEX"
-    assert approx.runtime_last_approximate_run == {}
+    # Default detection backend now uses tree interaction values
+    # (ProxySHAP-style InterventionalTreeExplainer), not the bespoke
+    # lgboost-Fourier adapter.
+    assert approx.interaction_detection == "ProxySHAP"
 
 
 def test_init_custom_kwargs():
@@ -122,14 +124,35 @@ def test_sampling_weights_symmetric(n):
         )
 
 
-@pytest.mark.parametrize("n", [4, 6, 8])
-def test_sampling_weights_match_paper_formula(n):
+@pytest.mark.parametrize("n", [4, 6, 8, 10])
+def test_sampling_weights_uniform_over_non_boundary_sizes(n):
+    """Sampling weights are uniform over non-boundary coalition sizes.
+
+    The paper's `1/((n-1)·C(n-2,k-1))` formula is the *regression kernel*
+    weight (now in `_init_regression_kernel_weights_static`), not the
+    sampling distribution. The coalition sampler uses uniform sampling.
+    """
     w = OddSHAP._init_sampling_weights_static(n)
-    unnormalized = np.zeros(n + 1, dtype=float)
+    # All non-boundary sizes share the same weight.
+    expected_non_boundary = 1.0 / (n - 1)
     for k in range(1, n):
-        unnormalized[k] = 1.0 / ((n - 1) * binom(n - 2, k - 1))
-    expected = unnormalized / unnormalized.sum()
-    np.testing.assert_allclose(w, expected)
+        assert w[k] == pytest.approx(expected_non_boundary)
+
+
+@pytest.mark.parametrize("n", [4, 6, 8])
+def test_regression_kernel_weights_match_paper_formula(n):
+    """Regression LSQ kernel weights follow the paper's `1/((n-1)·C(n-2,k-1))` up
+    to a global scale — equivalent to the KernelSHAP weighting scheme.
+    """
+    w = OddSHAP._init_regression_kernel_weights_static(n)
+    expected = np.zeros(n + 1, dtype=float)
+    for k in range(1, n):
+        expected[k] = 1.0 / ((n - 1) * binom(n - 2, k - 1))
+    # Both arrays should be proportional with zero boundaries.
+    assert w[0] == 0.0
+    assert w[n] == 0.0
+    ratios = w[1:n] / expected[1:n]
+    np.testing.assert_allclose(ratios, ratios[0])  # constant ratio
 
 
 # -----------------------------------------------------------------------------
@@ -237,33 +260,29 @@ def test_different_seed_differs():
 
 
 # -----------------------------------------------------------------------------
-# Branch logic via runtime_last_approximate_run keys
+# Budget validation
+#
+# Sara replaced the low-budget TreeExplainer fallback with an explicit
+# ValueError per Max's feedback. The regression branch is now the only
+# code path; verify that the budget threshold is enforced.
 # -----------------------------------------------------------------------------
 
 
-def test_high_budget_takes_regression_path():
-    approx, game, budget = _regression_path_setup(n=8)
-    approx.approximate(budget, game)
-    rt = approx.runtime_last_approximate_run
-    # regression-branch instrumentation keys are present
-    assert "extraction" in rt
-    assert "regression" in rt
-    # fallback-only key should be absent
-    assert "fallback_explain" not in rt
-
-
-def test_low_budget_takes_fallback_path():
+def test_low_budget_raises_value_error():
+    """budget < n * interaction_factor must raise ValueError, not silently fall back."""
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    budget = n * approx.interaction_factor - 1  # forces fallback
-    approx.approximate(budget, game)
-    rt = approx.runtime_last_approximate_run
-    assert "fallback_explain" in rt
-    assert "extraction" not in rt
+    budget = n * approx.interaction_factor - 1
+    with pytest.raises(ValueError, match="too small"):
+        approx.approximate(budget, game)
 
 
-def test_boundary_budget_takes_regression_path_with_paper_candidate_count(monkeypatch):
+def test_boundary_budget_uses_paper_candidate_count(monkeypatch):
+    """At budget = n * interaction_factor (the minimum permitted),
+    `_select_odd_interactions` should be called with the paper's
+    candidate count `ceil(budget / interaction_factor)`.
+    """
     n = 8
     approx = OddSHAP(n=n, random_state=0)
     budget = n * approx.interaction_factor
@@ -284,8 +303,6 @@ def test_boundary_budget_takes_regression_path_with_paper_candidate_count(monkey
 
     approx.approximate(budget, additive_game)
 
-    assert "extraction" in approx.runtime_last_approximate_run
-    assert "fallback_explain" not in approx.runtime_last_approximate_run
     assert captured["n_candidate_interactions"] == math.ceil(
         budget / approx.interaction_factor
     )
