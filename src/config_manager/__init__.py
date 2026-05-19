@@ -1,28 +1,44 @@
-"""
-Config Manager Package
+"""Config Manager Package.
 
 Configuration management for the shapiq benchmark leaderboard.
 
 Public API:
-  - MVPRunConfig: Main configuration model
-  - GroundTruthConfig: Ground truth configuration
-  - load_and_validate_config(): Load and validate YAML configs
-  - VALID_INDICES: Type hint for valid index types
-  - ALL_SUPPORTED_APPROXIMATORS: List of supported approximators
+  - MVPRunConfig: Main configuration model;
+  - GroundTruthConfig: Ground truth configuration;
+  - load_and_validate_config(): Load and validate YAML configs;
+  - VALID_INDICES: Type hint for valid index types;
+  - ALL_SUPPORTED_APPROXIMATORS: List of supported approximators.
+  - Custom exceptions in config_exceptions.py for specific validation errors.
 """
 
-from .config import (
-    VALID_INDICES,
-    ALL_SUPPORTED_APPROXIMATORS,
-    GroundTruthConfig,
-    MVPRunConfig,
-    load_and_validate_config,
+from .config_exceptions import (
+    ApproximatorIndexIncompatibleError,
+    ApproximatorNotFoundError,
+    InvalidBudgetError,
+    InvalidConfigMissingApproximatorsError,
+    InvalidConfigMissingBudgetsError,
+    InvalidConfigMissingFieldsError,
+    InvalidOrderForIndexError,
+    InvalidYAMLTypeError,
+    UnsupportedApproximatorError,
 )
+from .constants import ALL_SUPPORTED_APPROXIMATORS, VALID_INDICES
+from .loader import load_and_validate_config
+from .models import GroundTruthConfig, MVPRunConfig
 
 __all__ = [
-    "VALID_INDICES",
     "ALL_SUPPORTED_APPROXIMATORS",
     "GroundTruthConfig",
-    "MVPRunConfig",
     "load_and_validate_config",
+    "MVPRunConfig",
+    "VALID_INDICES",
+    "InvalidBudgetError",
+    "InvalidConfigMissingFieldsError",
+    "InvalidConfigMissingApproximatorsError",
+    "InvalidConfigMissingBudgetsError",
+    "InvalidOrderForIndexError",
+    "InvalidYAMLTypeError",
+    "ApproximatorIndexIncompatibleError",
+    "ApproximatorNotFoundError",
+    "UnsupportedApproximatorError",
 ]

@@ -1,8 +1,15 @@
-from typing import Any
+"""Game factory for the leaderboard runner."""
 
-from shapiq import Game
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from leaderboard.runner.runner_exceptions import UnknownGameError
 from shapiq_games.benchmark.local_xai.benchmark_tabular import CaliforniaHousing
 from shapiq_games.synthetic import SOUM
+
+if TYPE_CHECKING:
+    from shapiq import Game
 
 
 def create_game_from_config(
@@ -45,7 +52,7 @@ def create_game_from_config(
 
         game = SOUM(**game_params)
         return game, game_params
-    elif game_name == "CaliforniaHousing":
+    if game_name == "CaliforniaHousing":
         game_params = base_config.get(
             "game_params",
             {
@@ -61,4 +68,4 @@ def create_game_from_config(
         game = CaliforniaHousing(**game_params)
         return game, game_params
 
-    raise ValueError(f"Unknown game: {game_name}")
+    raise UnknownGameError(game_name) from None

@@ -1,4 +1,10 @@
-from typing import Callable, Literal
+"""Custom types for the leaderboard runner."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Literal
+
 from shapiq import InteractionValues
 
 InteractionIndex = Literal[

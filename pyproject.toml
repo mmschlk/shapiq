@@ -94,6 +94,7 @@ testpaths = [
 ]
 pythonpath = ["src"]
 minversion = "8.0"
+norecursedirs = [".*", "*.md"]
 
 [tool.ruff]
 line-length = 100

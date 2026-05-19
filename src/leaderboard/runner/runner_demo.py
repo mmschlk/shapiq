@@ -1,9 +1,17 @@
-from leaderboard.storage.connection import MongoDBClient
-from shapiq.approximator import ProxySHAP
-from shapiq_games.synthetic import SOUM
+"""Runner demo for the leaderboard."""
+
+from __future__ import annotations
+
+import json
+import logging
+
 from leaderboard.runner.benchmark_runner import run_benchmark
 from leaderboard.runner.runner_storage_adapter import save_raw_results
-import json
+from leaderboard.storage.connection.client import MongoDBClient
+from shapiq.approximator import ProxySHAP
+from shapiq_games.synthetic import SOUM
+
+logging.basicConfig(level=logging.INFO)
 
 
 def main() -> None:
@@ -33,14 +41,14 @@ def main() -> None:
         approximator_class=ProxySHAP,
     )
 
-    # db = MongoDBClient.from_env()
-    #
-    # save_raw_results(
-    #     db=db,
-    #     raw_results=benchmark_result["raw_results"],
-    # )
+    db = MongoDBClient.from_env()
 
-    print(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
+    save_raw_results(
+        db=db,
+        raw_results=benchmark_result["raw_results"],
+    )
+
+    logging.info(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
 
 
 if __name__ == "__main__":

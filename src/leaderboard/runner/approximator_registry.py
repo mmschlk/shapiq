@@ -1,10 +1,16 @@
+"""Approximator registry for the leaderboard runner."""
+
+from __future__ import annotations
+
+from config_manager.config_exceptions import (
+    UnsupportedApproximatorError,
+)
 from shapiq.approximator import (
     Approximator,
     KernelSHAPIQ,
     PermutationSamplingSV,
     ProxySHAP,
 )
-
 
 APPROXIMATOR_REGISTRY = {
     "ProxySHAP": ProxySHAP,
@@ -14,8 +20,7 @@ APPROXIMATOR_REGISTRY = {
 
 
 def get_approximator_class(name: str) -> type[Approximator]:
-    """
-    Return the approximator class registered under the given name.
+    """Return the approximator class registered under the given name.
 
     Args:
         name: the name of the approximator.
@@ -29,7 +34,5 @@ def get_approximator_class(name: str) -> type[Approximator]:
     try:
         return APPROXIMATOR_REGISTRY[name]
     except KeyError:
-        available = ", ".join(APPROXIMATOR_REGISTRY.keys())
-        raise ValueError(
-            f"Unknown approximator '{name}'. Available: {available}"
-        )
+        available = APPROXIMATOR_REGISTRY.keys()
+        raise UnsupportedApproximatorError(name, list(available)) from None

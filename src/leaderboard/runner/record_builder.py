@@ -1,11 +1,19 @@
+"""Record builder for the leaderboard runner."""
+
+from __future__ import annotations
+
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib.metadata import version
-from shapiq.approximator import Approximator
-from shapiq.game import Game
+from typing import TYPE_CHECKING, Any
+
 from leaderboard.runner.environment_info import get_hardware_info
-from typing import Any
-from leaderboard.runner.custom_types import InteractionIndex
+
+if TYPE_CHECKING:
+    from leaderboard.runner.custom_types import InteractionIndex
+    from shapiq.approximator import Approximator
+    from shapiq.game import Game
+
 
 def create_run_record(
     *,
@@ -48,28 +56,24 @@ def create_run_record(
         information, environment information, and failure status.
     """
     return {
-        "run_id": str(uuid.uuid4()), #TODO: needs to be checked
-
+        "run_id": str(uuid.uuid4()),  # TO DO: needs to be checked
         "game_name": game_name,
         "game_id": game.game_id,
         "game_params": game_params,
         "n_players": game.n_players,
-
         "approximator_name": approximator_class.__name__,
         "approximator_params": approximator_params,
         "shapiq_version": version("shapiq"),
-
         "index": index,
         "max_order": max_order,
         "budget": budget,
         "approx_seed": approx_seed,
-
-        "ground_truth_method": "ExactComputer", #TODO: this needs to be determined during the process
-
+        "ground_truth_method": "ExactComputer",  # TO DO: this needs to be determined during the process
         "run_failed": run_failed,
         "error_message": error_message,
-
-        "metrics": metrics if metrics is not None else {
+        "metrics": metrics
+        if metrics is not None
+        else {
             "mse": None,
             "mae": None,
             "mse_normalized": None,
@@ -77,9 +81,8 @@ def create_run_record(
             "kendall_tau": None,
             "precision_at_k": None,
         },
-
         "runtime_seconds": runtime_seconds,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "hardware": get_hardware_info(),
         "notes": notes,
     }

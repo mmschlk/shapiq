@@ -1,14 +1,23 @@
-from shapiq import ExactComputer, InteractionValues
-from shapiq.game import Game
-from leaderboard.runner.custom_types import InteractionIndex
+"""Ground truth computer for the leaderboard runner."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from shapiq import ExactComputer
+
+if TYPE_CHECKING:
+    from leaderboard.runner.custom_types import InteractionIndex
+    from shapiq import InteractionValues
+    from shapiq.game import Game
+
 
 def compute_ground_truth(
     game: Game,
     index: InteractionIndex,
     max_order: int,
 ) -> InteractionValues:
-    """
-    Compute exact interaction values for a game.
+    """Compute exact interaction values for a game.
 
     Args:
         game: The game for which exact interaction values are computed.
@@ -19,5 +28,5 @@ def compute_ground_truth(
         The exact interaction values.
     """
     exact = ExactComputer(game=game)
+
     return exact(index=index, order=max_order)
-    #ground_truth.plot_upset()

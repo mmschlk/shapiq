@@ -20,7 +20,7 @@ max_order: 1
 # 4. Ground Truth Settings
 ground_truth:
   # strategy: "compute" (compute on-the-fly) or "lookup" (read from JSON cache)
-  strategy: "compute" 
+  strategy: "compute"
   # method: "ExactComputer", "TreeExplainer", or "InterventionalTreeExplainer"
   method: "ExactComputer"
   storage_path: "data/gt_cache.json"
@@ -30,18 +30,18 @@ ground_truth:
 # [SV only/common]: "KernelSHAP", "SVARM", "UnbiasedKernelSHAP", "StratifiedSamplingSV", "PermutationSamplingSV", "OwenSamplingSV", "kADDSHAP"
 # [Versatile (SV, SII, STII, FSII)]: "KernelSHAPIQ", "SVARMIQ", "SHAPIQ", "ProxySHAP", "SPEX", "ProxySPEX", "MSRBiased", "InconsistentKernelSHAPIQ"
 # [Interaction only]: "PermutationSamplingSII", "PermutationSamplingSTII", "RegressionFSII", "RegressionFBII"
-approximators: 
+approximators:
   - "KernelSHAPIQ"
   - "ProxySHAP"
 
 # 6. Computational Budgets (List)
-budgets: 
+budgets:
   - 100
   - 500
   - 1000
 
 # 7. Random Seeds (List)
-seeds: 
+seeds:
   - 0
   - 1
   - 2

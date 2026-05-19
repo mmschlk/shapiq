@@ -1,20 +1,35 @@
+"""Ranking-based metrics for evaluating the performance of models."""
+
+from __future__ import annotations
+
+from typing import TypeVar
+
+import numpy as np
 from scipy.stats import spearmanr
 
 from .base import Metric
 from .result import MetricResult
 
+T = TypeVar("T")
+
+
 class SpearmanMetric(Metric):
-        name = "spearman"
-        higher_is_better = True
+    """Spearman's rank correlation coefficient metric for evaluating the performance of models."""
 
-        def compute(self, ground_truth, estimated) -> MetricResult:
-            correlation, _ = spearmanr(ground_truth, estimated)
+    def __init__(self) -> None:
+        """Initialize the Spearman metric with its name and whether higher values are better."""
+        self.name = "spearman"
+        self.higher_is_better = True
 
-            if correlation != correlation:  # NaN
-                correlation = 0.0
+    def compute(self, ground_truth: T | list[T], estimated: T | list[T]) -> MetricResult:
+        """Compute the Spearman correlation value given ground truth and estimated values."""
+        correlation, _ = spearmanr(ground_truth, estimated)
 
-            return MetricResult(
-                metric_name=self.name,
-                value=float(correlation),
-                higher_is_better=self.higher_is_better,
-            )
+        if np.isnan(correlation):
+            correlation = 0.0
+
+        return MetricResult(
+            metric_name=self.name,
+            value=float(correlation),
+            higher_is_better=self.higher_is_better,
+        )
