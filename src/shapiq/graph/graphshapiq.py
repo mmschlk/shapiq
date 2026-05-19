@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-import multiprocessing as mp
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -11,11 +11,14 @@ from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
+if TYPE_CHECKING:
+    from shapiq_games.benchmark.graphshapiq_xai.base import GraphGame
+
 
 class GraphSHAPIQ:
     """Graph shapiq."""
 
-    def __init__(self, game, *, verbose: bool = False) -> None:  # noqa: ANN001
+    def __init__(self, game: GraphGame, *, verbose: bool = False) -> None:
         """Initialize GraphSHAPIQ class."""
         self._last_n_model_calls: int | None = None
         self.edge_index = game.edge_index
@@ -23,7 +26,6 @@ class GraphSHAPIQ:
         self.sparsify_threshold = 10e-10
         self.max_neighborhood_size = game.max_neighborhood_size
         self._grand_coalition_set = game._grand_coalition_set  # noqa: SLF001
-        self.n_jobs = mp.cpu_count() - 1
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
         if verbose:
             print(f"Max size neighbors: {self.max_size_neighbors}")  # noqa: T201
@@ -60,12 +62,9 @@ class GraphSHAPIQ:
         """
         neighbors = {}
         max_size_neighbors = 0
-        with mp.Pool(self.n_jobs) as pool:
-            neighbors_list = list(
-                pool.starmap(
-                    self._get_k_neighborhood, [(node_id,) for node_id in self._grand_coalition_set]
-                )
-            )
+        neighbors_list = [
+            self._get_k_neighborhood(node_id) for node_id in self._grand_coalition_set
+        ]
 
         for neighbor_id, neighbor_list in enumerate(neighbors_list):
             max_size_neighbors = max(max_size_neighbors, len(neighbor_list))
@@ -73,7 +72,7 @@ class GraphSHAPIQ:
 
         return neighbors, max_size_neighbors
 
-    def _get_k_neighborhood(self, node) -> tuple:  # noqa: ANN001
+    def _get_k_neighborhood(self, node: int) -> tuple[int, ...]:
         neighbors = set()
         queue = [(node, 0)]
         visited = {node}
@@ -124,24 +123,22 @@ class GraphSHAPIQ:
         coalition_matrix = np.zeros((len(coalitions), self.n_players))
         coalition_lookup = {}
 
-        if type(coalitions) is set:
-            for i, S in enumerate(coalitions):
-                coalition_matrix[i, S] = 1
-                coalition_lookup[S] = lookup_shift + i
-        if type(coalitions) is dict:
-            for i, (_, S) in enumerate(coalitions.items()):
-                coalition_matrix[i, S] = 1
-                coalition_lookup[S] = lookup_shift + i
+        items = coalitions.values() if isinstance(coalitions, dict) else coalitions
+
+        for i, S in enumerate(items):
+            coalition_matrix[i, S] = 1
+            coalition_lookup[S] = lookup_shift + i
+
         return coalition_matrix, coalition_lookup
 
     def _efficiency_routine(
         self,
-        masked_predictions,  # noqa: ANN001
-        moebius_coefficients,  # noqa: ANN001
-        incomplete_neighborhoods,  # noqa: ANN001
-        incomplete_neighborhoods_lookup,  # noqa: ANN001
-        max_interaction_size,  # noqa: ANN001
-        _grand_coalition_prediction_node,  # noqa: ANN001
+        masked_predictions: np.ndarray,
+        moebius_coefficients: InteractionValues,
+        incomplete_neighborhoods: set[tuple[int, ...]],
+        incomplete_neighborhoods_lookup: dict[tuple[int, ...], int],
+        max_interaction_size: int,
+        _grand_coalition_prediction_node: np.ndarray,
     ) -> InteractionValues:
         # Add neighborhood interactions
         incomplete_neighborhoods_sorted = sorted(incomplete_neighborhoods, key=len)
@@ -270,16 +267,16 @@ class GraphSHAPIQ:
 
     def _grapshapiq_routine(
         self,
-        moebius_interactions,  # noqa: ANN001
-        masked_predictions,  # noqa: ANN001
-        moebius_coalition_lookup,  # noqa: ANN001
+        moebius_interactions: set[tuple[int, ...]],
+        masked_predictions: np.ndarray,
+        moebius_coalition_lookup: dict[tuple[int, ...], int],
         efficiency_routine,  # noqa: ANN001
-        incomplete_neighborhoods,  # noqa: ANN001
-        incomplete_neighborhoods_lookup,  # noqa: ANN001
-        max_interaction_size,  # noqa: ANN001
-        order,  # noqa: ANN001
-        _grand_coalition_prediction_node,  # noqa: ANN001
-    ) -> tuple:
+        incomplete_neighborhoods: set[tuple[int, ...]],
+        incomplete_neighborhoods_lookup: dict[tuple[int, ...], int],
+        max_interaction_size: int,
+        order: int,
+        _grand_coalition_prediction_node: np.ndarray,
+    ) -> tuple[InteractionValues, InteractionValues]:
         """Run graphshapiq routine."""
         # Compute the Möbius transform
         moebius_coefficients = self.compute_moebius_transform(
