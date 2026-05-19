@@ -91,6 +91,7 @@ changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 testpaths = ["tests"]
 pythonpath = ["src"]
 minversion = "8.0"
+norecursedirs = [".*", "*.md"]
 
 [tool.ruff]
 line-length = 100
