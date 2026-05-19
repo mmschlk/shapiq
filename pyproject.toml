@@ -89,8 +89,8 @@ changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 testpaths = [
-  "tests/shapiq",
-  "tests/shapiq_games"
+  "tests/shapiq/tests_unit",
+  "tests/shapiq/tests_integration_tests"
 ]
 pythonpath = ["src"]
 minversion = "8.0"
