@@ -209,7 +209,7 @@ def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
 
 def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFrame:
     """Computes the leaderboard for a specific game by finding the best (lowest) MSE for each approximator across all budgets for that game.
-    
+
     Returns: per game aggregated DataFrame.
     """
     df_filtered = df_agg[df_agg["game_name"] == selected_game]
