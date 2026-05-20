@@ -70,7 +70,7 @@ class TabPFNBench(Benchmark[IndexType]):
             if labels is None:
                 msg = "When data is a tuple, labels must be provided as (y_train, y_test)."
                 raise ValueError(msg)
-            if not isinstance(model, TabPFNClassifier| TabPFNRegressor):
+            if not isinstance(model, TabPFNClassifier | TabPFNRegressor):
                 msg = "Model must be a TabPFNClassifier or TabPFNRegressor."
                 raise TypeError(msg)
             self.model = model
