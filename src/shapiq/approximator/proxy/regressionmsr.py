@@ -16,6 +16,7 @@ class RegressionMSR(ProxySHAP):
     """RegressionMSR is a proxy-based approximator that uses a regression model to approximate the value function and applies the MSR adjustment method.
 
     The regression model is trained on a subset of the coalitions, and its predictions are adjusted using the MSR method to better match the true value function.
+    The method was proposed by Witter et al. (2025) :cite:t:`Witter.2025` and is designed to provide more accurate approximations of the Shapley values, especially in cases where the value function is complex and non-linea
 
     Example:
         >>> from shapiq_games.synthetic import DummyGame
