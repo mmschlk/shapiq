@@ -27,9 +27,13 @@ BUDGET_NR_FEATURES = 2**NR_FEATURES
 NR_FEATURES_COALITIONS = 5
 
 # small datasets
-NR_FEATURES_SMALL = 3
-NR_FEATURES_SMALL_INFORMATIVE = 2
-BUDGET_NR_FEATURES_SMALL = 2**NR_FEATURES_SMALL
+NR_FEATURES_SMALL = 4
+NR_FEATURES_SMALL_INFORMATIVE = 3
+
+# small binary datasets
+NR_FEATURES_SMALL_BINARY = 3
+NR_FEATURES_SMALL_BINARY_INFORMATIVE = 2
+BUDGET_NR_FEATURES_SMALL = 2**NR_FEATURES_SMALL_BINARY
 
 DATASETS_RANDOM_STATE = 42
 
@@ -94,6 +98,21 @@ def background_clf_data(background_clf_dataset) -> np.ndarray:
 
 
 @pytest.fixture
+def background_clf_dataset_small() -> tuple[np.ndarray, np.ndarray]:
+    """Return a simple, small background dataset for multi-class classification."""
+    X, y = make_classification(
+        n_samples=10,
+        n_features=NR_FEATURES_SMALL,
+        random_state=DATASETS_RANDOM_STATE,
+        n_classes=3,
+        n_informative=NR_FEATURES_SMALL_INFORMATIVE,
+        n_repeated=0,
+        n_redundant=NR_FEATURES_SMALL - NR_FEATURES_SMALL_INFORMATIVE,
+    )
+    return copy.deepcopy(X), copy.deepcopy(y)
+
+
+@pytest.fixture
 def cls_data(background_clf_dataset) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Return a multiclass classification dataset split into (X_train, X_test, y_train, y_test)."""
     X, y = background_clf_dataset
@@ -129,12 +148,12 @@ def background_clf_dataset_binary_small() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple background dataset."""
     X, y = make_classification(
         n_samples=10,
-        n_features=NR_FEATURES_SMALL,
+        n_features=NR_FEATURES_SMALL_BINARY,
         random_state=DATASETS_RANDOM_STATE,
         n_classes=2,
-        n_informative=NR_FEATURES_SMALL_INFORMATIVE,
+        n_informative=NR_FEATURES_SMALL_BINARY_INFORMATIVE,
         n_repeated=0,
-        n_redundant=NR_FEATURES_SMALL - NR_FEATURES_SMALL_INFORMATIVE,
+        n_redundant=NR_FEATURES_SMALL_BINARY - NR_FEATURES_SMALL_BINARY_INFORMATIVE,
     )
     return copy.deepcopy(X), copy.deepcopy(y)
 
@@ -143,7 +162,7 @@ def background_clf_dataset_binary_small() -> tuple[np.ndarray, np.ndarray]:
 def background_reg_dataset_small() -> tuple[np.ndarray, np.ndarray]:
     """Return a simple background dataset."""
     X, y = make_regression(
-        n_samples=10, n_features=NR_FEATURES_SMALL, random_state=DATASETS_RANDOM_STATE
+        n_samples=10, n_features=NR_FEATURES_SMALL_BINARY, random_state=DATASETS_RANDOM_STATE
     )
     return copy.deepcopy(X), copy.deepcopy(y)
 

@@ -79,23 +79,19 @@ class TabularExplainer(Explainer):
             approximator: An :class:`~shapiq.approximator.Approximator` object to use for the
                 explainer or a literal string from
                 ``["auto", "spex", "montecarlo", "svarm", "permutation"]``. Defaults to ``"auto"``
-                which will automatically choose the approximator based on the number of features and
-                the desired index.
-                    - for index ``"SV"``: :class:`~shapiq.approximator.KernelSHAP`
-                    - for index ``"SII"`` or ``"k-SII"``: :class:`~shapiq.approximator.KernelSHAPIQ`
-                    - for index ``"FSII"``: :class:`~shapiq.approximator.RegressionFSII`
-                    - for index ``"FBII"``: :class:`~shapiq.approximator.RegressionFBII`
-                    - for index ``"STII"``: :class:`~shapiq.approximator.SVARMIQ`
+                which automatically selects: :class:`~shapiq.approximator.KernelSHAP` for ``"SV"``,
+                :class:`~shapiq.approximator.KernelSHAPIQ` for ``"SII"``/``"k-SII"``,
+                :class:`~shapiq.approximator.RegressionFSII` for ``"FSII"``,
+                :class:`~shapiq.approximator.RegressionFBII` for ``"FBII"``, and
+                :class:`~shapiq.approximator.SVARMIQ` for ``"STII"``.
 
             index: The index to explain the model with. Defaults to ``"k-SII"`` which computes the
                 k-Shapley Interaction Index. If ``max_order`` is set to 1, this corresponds to the
-                Shapley value (``index="SV"``). Options are:
-                    - ``"SV"``: Shapley value
-                    - ``"k-SII"``: k-Shapley Interaction Index
-                    - ``"FSII"``: Faithful Shapley Interaction Index
-                    - ``"FBII"``: Faithful Banzhaf Interaction Index (becomes ``BV`` for order 1)
-                    - ``"STII"``: Shapley Taylor Interaction Index
-                    - ``"SII"``: Shapley Interaction Index
+                Shapley value (``index="SV"``). Options: ``"SV"`` (Shapley value), ``"k-SII"``
+                (k-Shapley Interaction Index), ``"FSII"`` (Faithful Shapley Interaction Index),
+                ``"FBII"`` (Faithful Banzhaf Interaction Index, becomes ``BV`` for order 1),
+                ``"STII"`` (Shapley Taylor Interaction Index), ``"SII"`` (Shapley Interaction
+                Index).
 
             max_order: The maximum interaction order to be computed. Defaults to ``2``. Set to
                 ``1`` for no interactions (single feature importance).

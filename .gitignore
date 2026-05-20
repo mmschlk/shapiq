@@ -75,7 +75,8 @@ instance/
 
 # Sphinx documentation
 docs/_build/docs/build/
-docs/source/api/
+docs/source/api/shapiq*
+docs/source/api/*/
 
 # PyBuilder
 .pybuilder/
@@ -83,6 +84,9 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# TabPFN checkpoints
+tabpfn-*.ckpt
 
 # IPython
 profile_default/
@@ -192,5 +196,6 @@ src/shapiq/_version.py
 # Documentation build artifacts
 docs/source/auto_examples/
 docs/source/sg_execution_times.rst
+docs/source/generated/
 
 .claude

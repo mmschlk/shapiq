@@ -3,33 +3,47 @@
 ## v1.5.0 (unreleased)
 
 ### Python Version [#497](https://github.com/mmschlk/shapiq/pull/497)
+
 - adds support for Python 3.14 making the package compatible with the latest Python version.
 - drops support for Python 3.10 and 3.11. The minimum supported Python version is now 3.12.
 
 ### Removed Deprecated Features
+
 - removes `path_to_values` parameter from `shapiq.Game`, which was previously deprecated. Use `shapiq.Game.load()` instead. [#496](https://github.com/mmschlk/shapiq/pull/496)
 - removes pickle support from `shapiq.InteractionValues`. JSON is now the only supported file format. Use `InteractionValues.save()` and `InteractionValues.load()` with JSON files. [#496](https://github.com/mmschlk/shapiq/pull/496)
 
-### Introducing ProxySHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
-Adds [`ProxySHAP`](src/shapiq/approximator/proxy/proxyshap.py) — a new approximator that accelerates Shapley interaction estimation by fitting a lightweight **proxy tree model** (XGBoost by default) on sampled coalitions, computing *exact* interactions for the proxy via the `InterventionalTreeExplainer`, and then optionally correcting for the approximation error on the true model.
+### List of All New Features
+
+- adds `ProxySHAP` approximator in `shapiq.approximator.proxy` for proxy-model-accelerated interaction estimation
+- adds `MSRBiased` approximator for biased multilinear-extension sampling regression
+- adds `LinearTreeSHAP` in `shapiq.tree.linear` for fast first-order Shapley value computation
+- refactors `shapiq.tree` into submodules: `conversion/`, `linear/`, `interventional/`
+- adds `InterventionalTreeExplainer` and `InterventionalGame` in `shapiq.tree.interventional`
+- fixes `InterventionalGame` for LightGBM multi-class classification
+- adds `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer` for nearest neighbor models
+
+#### Introducing ProxySHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
+
+Adds [`ProxySHAP`](src/shapiq/approximator/proxy/proxyshap.py) as a new approximator that accelerates Shapley interaction estimation by fitting a lightweight **proxy tree model** (XGBoost by default) on sampled coalitions, computing _exact_ interactions for the proxy via the `InterventionalTreeExplainer`, and then optionally correcting for the approximation error on the true model.
 
 Four adjustment strategies are supported:
-- **`"none"`** — use proxy interactions directly (fastest, least accurate)
-- **`"msr-b"`** *(default)* — biased MSR adjustment using the new `MSRBiased` approximator
-- **`"shapiq"`** / **`"svarm"`** / **`"kernel"`** — unbiased adjustments via established estimators
+
+- **`"none"`**: use proxy interactions directly (fastest, least accurate)
+- **`"msr-b"`** _(default)_: biased MSR adjustment using the new `MSRBiased` approximator
+- **`"shapiq"`** / **`"svarm"`** / **`"kernel"`**: unbiased adjustments via established estimators
 
 The internal `MSRBiased` approximator is also exposed for use as a standalone estimator.
 This implementation relies on C-extension routines (`compute_interactions_sparse`) for high-throughput coalition evaluation.
 
-### Introducing LinearTreeSHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
+#### Introducing LinearTreeSHAP [#501](https://github.com/mmschlk/shapiq/pull/501)
+
 Adds [`LinearTreeSHAP`](src/shapiq/tree/linear/explainer.py) — an efficient implementation of the **Linear TreeSHAP** algorithm (Yu et al., 2022) for computing first-order Shapley values on tree-based models.
-Unlike `TreeSHAPIQ`, which supports any-order interactions, `LinearTreeSHAP` is optimised exclusively for Shapley values (`index="SV"`) and achieves higher throughput by using a dedicated C++ extension (`linear_tree_shap_iterative`).
-It is exported from `shapiq.tree.LinearTreeSHAP`.
+Unlike `TreeSHAPIQ`, which supports any-order interactions, `LinearTreeSHAP` is optimized exclusively for Shapley values (`index="SV"`) and achieves higher throughput by using a dedicated C++ extension (`linear_tree_shap_iterative`).
+It is exported from `shapiq.tree.LinearTreeSHAP`. For further details we refer to the paper: Yu, S., Zheng, S., Chen, H., & Li, J. (2022). Linear TreeSHAP. _NeurIPS 2022_.
 
-For further details we refer to the paper: Yu, S., Zheng, S., Chen, H., & Li, J. (2022). Linear TreeSHAP. *NeurIPS 2022*.
+#### Complete Refactor of the `shapiq.tree` Module [#501](https://github.com/mmschlk/shapiq/pull/501)
 
-### Complete Refactor of the `shapiq.tree` Module [#501](https://github.com/mmschlk/shapiq/pull/501)
-The internal tree infrastructure has been fully reorganised into a clean subpackage layout:
+The internal tree infrastructure has been fully reorganized into a clean subpackage layout:
 
 ```
 shapiq/tree/
@@ -43,30 +57,22 @@ shapiq/tree/
 └── interventional/      — InterventionalTreeExplainer and InterventionalGame
 ```
 
-Key improvements:
-- **Cleaner separation of concerns** — conversion, explanation, and validation are now independent submodules.
-- **Multi-class LightGBM support** — `InterventionalGame` now correctly handles LightGBM multi-class classification.
-- **C-extension powered** — `InterventionalTreeExplainer` uses batched sparse C-extensions (`compute_interactions_batched_sparse`) for faster tree traversal.
-- **Expanded model support** — `IsolationForest` added alongside `DecisionTree`, `RandomForest`, `ExtraTree`, `XGBRegressor/Classifier`, and `LGBMRegressor/Classifier/Booster`.
+#### Introducing Explainers for Nearest Neighbor Models
 
-### List of All New Features (tree_refactor)
-- adds `ProxySHAP` approximator in `shapiq.approximator.proxy` for proxy-model-accelerated interaction estimation
-- adds `MSRBiased` approximator for biased multilinear-extension sampling regression
-- adds `LinearTreeSHAP` in `shapiq.tree.linear` for fast first-order Shapley value computation
-- refactors `shapiq.tree` into submodules: `conversion/`, `linear/`, `interventional/`
-- adds `InterventionalTreeExplainer` and `InterventionalGame` in `shapiq.tree.interventional`
-- fixes `InterventionalGame` for LightGBM multi-class classification
-- adds `IsolationForest` to the list of supported sklearn tree models
+Adds three new explainers, namely `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer`, which efficiently compute explanations for nearest neighbor models from the [scikit-learn](https://scikit-learn.org/stable/) library.
+One application of these explainers is Data Valuation, i.e. the task of evaluating the usefulness of training data points for training models.
 
 ## v1.4.1 (2025-11-10)
 
 ### Bugfix
+
 - fixes a bug in `ProxySPEX` where the `baseline_value` was set to a wrong id and not the correct score of the empty coalition. [#469](https://github.com/mmschlk/shapiq/issues/469)
 - fixes the build process of `shapiq` to correctly exclude all test/benchmark/docs/etc. files from the built package. [#464](https://github.com/mmschlk/shapiq/issues/464)
 
 ## v1.4.0 (2025-10-31)
 
 ### Introducing ProxySPEX [#442](https://github.com/mmschlk/shapiq/pull/442)
+
 Adds the [`ProxySPEX`](https://arxiv.org/pdf/2505.17495) [approximator](https://github.com/mmschlk/shapiq/blob/main/src/shapiq/approximator/sparse/proxyspex.py) for efficient computation of sparse interaction values using the new ProxySPEX algorithm.
 ProxySPEX is a direct extension of the [SPEX](https://openreview.net/pdf?id=UQpYmaBGwB) algorithm, which uses clever fourier representations of the value function and analysis to identify the most relevant interactions (in terms of `Moebius` coefficients) and transforms them into summary scores (Shapley interactions).
 One of the key innovations of ProxySPEX compared to SPEX is the use of a proxy model that approximates the original value function (uses a LightGBM model internally).
@@ -74,22 +80,26 @@ One of the key innovations of ProxySPEX compared to SPEX is the use of a proxy m
 For further details we refer to the paper, which will be presented at NeurIPS'2025: Butler, L., Kang, J.S., Agarwal, A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs. [arxiv](https://arxiv.org/pdf/2505.17495)
 
 ### Introducing ProductKernelExplainer [#431](https://github.com/mmschlk/shapiq/pull/431)
+
 The `ProductKernelExplainer` is a new model-specific explanation method for machine learning models that utilize Product Kernels, such as Gaussian Processes and Support Vector Machines.
 Similar to the TreeExplainer, it uses a specific computation scheme that leverages the structure of the underlying product kernels to efficiently compute exact Shapley values.
 **Note**, this explainer is only able to compute Shapley values (not higher-order interactions yet).
 For further details we refer to the paper: Mohammadi, M., Chau, S.-L., Muandet, K. Computing Exact Shapley Values in Polynomial Time for Product-Kernel Methods. [arxiv](https://arxiv.org/abs/2505.16516)
 
 ### New Conditional Imputation Methods [#435](https://github.com/mmschlk/shapiq/pull/435)
+
 Based on traditional statistical methods, we implemented two new conditional imputation methods named `GaussianImputer` and `GaussianCopulaImputer` within the `shapiq.imputer` module.
 Both imputation methods are designed to handle missing feature imputation in a way that respects the underlying data distribution with the assumption that the data follows a multivariate Gaussian distribution (`GaussianImputer`) or can be represented with Gaussian copulas (`GaussianCopulaImputer`).
 In practice, this assumption may often be violated, but these methods can still provide reasonable imputations in many scenarios and serve as a useful benchmark enabling easier research in the field of conditional imputation for Shapley value explanations.
 
 ### Shapiq Statically Typechecked [#430](https://github.com/mmschlk/shapiq/pull/430)
+
 We have introduced static type checking to `shapiq` using [Pyright](https://github.com/microsoft/pyright), and integrated it into our `pre-commit` hooks.
 This ensures that type inconsistencies are caught early during development, improving code quality and maintainability.
 Developers will now benefit from immediate feedback on type errors, making the codebase more robust and reliable as it evolves.
 
 ### Separation of `shapiq` into `shapiq`, `shapiq_games`, and `shapiq-benchmark` [#459](https://github.com/mmschlk/shapiq/issues/459)
+
 We have begun the process of modularizing the `shapiq` package by splitting it into three distinct packages: `shapiq`, `shapiq_games`, and `shapiq-benchmark`.
 
 - The `shapiq` package now serves as the core library. It contains the main functionality, including approximators, explainers, computation routines, interaction value logic, and plotting utilities.
@@ -99,6 +109,7 @@ We have begun the process of modularizing the `shapiq` package by splitting it i
 This restructuring aims to improve maintainability and development scalability. The core `shapiq` package will continue to receive the majority of updates and enhancements, and keeping it streamlined ensures better focus and usability. Meanwhile, separating games and benchmarking functionality allows these components to evolve more independently while maintaining compatibility through clearly defined dependencies.
 
 ### List of All New Features
+
 - adds the ProxySPEX (Proxy Sparse Explanation) module in `approximator.sparse` for even more efficient computation of sparse interaction values [#442](https://github.com/mmschlk/shapiq/pull/442)
 - uses `predict_logits` method of sklearn-like classifiers if available in favor of `predict_proba` to support models that also offer logit outputs like TabPFNClassifier for better interpretability of the explanations [#426](https://github.com/mmschlk/shapiq/issues/426)
 - adds the `shapiq.explainer.ProductKernelExplainer` for model-specific explanation of Product Kernel based models like Gaussian Processes and Support Vector Machines. [#431](https://github.com/mmschlk/shapiq/pull/431)
@@ -107,77 +118,90 @@ This restructuring aims to improve maintainability and development scalability. 
 - makes `n_players` argument of `shapiq.ExactComputer` optional when a `shapiq.Game` object is passed [#388](https://github.com/mmschlk/shapiq/issues/388)
 
 ### Removed Features and Breaking Changes
+
 - removes the ability to load `InteractionValues` from pickle files. This is now deprecated and will be removed in the next release. Use `InteractionValues.save(..., as_json=True)` to save interaction values as JSON files instead. [#413](https://github.com/mmschlk/shapiq/issues/413)
 - removes `coalition_lookup` and `value_storage` properties from `shapiq.Game` since the seperated view on game values and coalitions they belong to is now outdated. Use the `shapiq.Game.game_values` dictionary instead. [#430](https://github.com/mmschlk/shapiq/pull/430)
 - reorders the arguments of `shapiq.ExactComputer`'s constructor to have `n_players` be optional if a `shapiq.Game` object is passed. [#388](https://github.com/mmschlk/shapiq/issues/388)
 
 ### Bugfixes
+
 - fixes a bug where RegressionFBII approximator was throwing an error when the index was `'BV'` or `'FBII'`.[#420](https://github.com/mmschlk/shapiq/pull/420)
 - allows subtraction and addition of `InteractionValues` objects with different `index` attributes by ignoring and raising a warning instead of an error. The resulting `InteractionValues` object will have the `index` of the first object. [#423](https://github.com/mmschlk/shapiq/pull/423)
 
 ### Maintenance and Development
+
 - refactored the `shapiq.Games` and `shapiq.InteractionValues` API by adding an interactions and game_values dictionary as the main data structure to store the interaction scores and game values. This allows for more efficient storage and retrieval of interaction values and game values, as well as easier manipulation of the data. [#419](https://github.com/mmschlk/shapiq/pull/419)
 - addition and subtraction of InteractionValues objects (via `shapiq.InteractionValues.__add__`) now also works for different indices, which will raise a warning and will return a new InteractionValues object with the index set of the first. [#422](https://github.com/mmschlk/shapiq/pull/422)
 - refactors the `shapiq.ExactComputer` to allow for initialization without passing n_players when a `shapiq.Game` object is passed [#388](https://github.com/mmschlk/shapiq/issues/388). Also introduces a tighter type hinting for the `index` parameter using `Literal` types. [#450](https://github.com/mmschlk/shapiq/pull/450)
 - removes zeros from the `InteractionValues.coalition_lookup` from the `MoebiusConverter` for better memory efficiency. [#369](https://github.com/mmschlk/shapiq/issues/369)
 
 ### Docs
-- added an example notebook for `InteractionValues`, highlighting *Initialization*, *Modification*, *Visualization* and *Save and Loading*.
+
+- added an example notebook for `InteractionValues`, highlighting _Initialization_, _Modification_, _Visualization_ and _Save and Loading_.
 - makes API reference docs more consistent by adding missing docstrings and improving existing ones across the package. [#420](https://github.com/mmschlk/shapiq/pull/420), [#437](https://github.com/mmschlk/shapiq/issues/437), [#452](https://github.com/mmschlk/shapiq/issues/452) among others.
 
 ## v1.3.2 (2025-10-14)
 
 ### Hotfix
+
 Removes `overrides` import in tabular explainer, which is not part of the package dependencies resulting in an ImportError when importing `shapiq`. [#436](https://github.com/mmschlk/shapiq/issues/436)
 
 ## v1.3.1 (2025-07-11)
 
 ### New Features
+
 - adds the `shapiq.plot.beesvarm_plot()` function to shapiq. The beeswarm plot was extended to also support interactions of features. Beeswarm plots are useful in visualizing dependencies between feature values. The beeswarm plot was adapted from the SHAP library by sub-dividing the y-axis for each interaction term. [#399](https://github.com/mmschlk/shapiq/issues/399)
 - adds JSON support to `InteractionValues` and `Game` objects, allowing for easy serialization and deserialization of interaction values and game objects [#412](https://github.com/mmschlk/shapiq/pull/412) usage of `pickle` is now deprecated. This change allows us to revamp the data structures in the future and offers more flexibility.
 
 ### Testing, Code-Quality and Documentation
+
 - adds a testing suite for testing deprecations in `tests/tests_deprecations/` which allows for easier deprecation managment and tracking of deprecated features [#412](https://github.com/mmschlk/shapiq/pull/412)
 
 ## Deprecated
+
 - The `Game(path_to_values=...)` constructor is now deprecated and will be removed in version 1.4.0. Use `Game.load(...)` or `Game().load_values(...)` instead.
 - Saving and loading `InteactionValues` via `InteractionValues.save(..., as_pickle=True)` and `InteractionValues.save(..., as_npz=True)` is now deprecated and will be removed in version 1.4.0. Use `InteractionValues.save(...)` to save as json.
 
 ## v1.3.0 (2025-06-17)
 
 ### Highlights
+
 - `shapiq.SPEX` (Sparse Exact) approximator for efficient computation of sparse interaction values for really large models and games. Paper: [SPEX: Scaling Feature Interaction Explanations for LLMs](https://arxiv.org/abs/2502.13870)
 - `shapiq.AgnosticExplainer` a generic explainer that works for any value function or `shapiq.Game` object, allowing for more flexibility in explainers.
 - prettier graph-based plots via `shapiq.si_graph_plot()` and `shapiq.network_plot()`, which now use the same backend for more flexibility and easier maintenance.
 
 ### New Features
+
 - adds the SPEX (Sparse Exact) module in `approximator.sparse` for efficient computation of sparse interaction values [#379](https://github.com/mmschlk/shapiq/pull/379)
 - adds `shapiq.AgnosticExplainer` which is a generic explainer that can be used for any value function or `shapiq.Game` object. This allows for more flexibility in the explainers. [#100](https://github.com/mmschlk/shapiq/issues/100), [#395](https://github.com/mmschlk/shapiq/pull/395)
 - changes `budget` to be a mandatory parameter given to the `TabularExplainer.explain()` method [#355](https://github.com/mmschlk/shapiq/pull/356)
 - changes logic of `InteractionValues.get_n_order()` function to be callable with **either** the `order: int` parameter and optional assignment of `min_order: int` and `max_order: int` parameters **or** with the min/max order parameters [#372](https://github.com/mmschlk/shapiq/pull/372)
 - renamed `min_percentage` parameter in the force plot to `contribution_threshold` to better reflect its purpose [#391](https://github.com/mmschlk/shapiq/pull/391)
-- adds ``verbose`` parameter to the ``Explainer``'s ``explain_X()`` method to control weather a progress bar is shown or not which is defaulted to ``False``. [#391](https://github.com/mmschlk/shapiq/pull/391)
+- adds `verbose` parameter to the `Explainer`'s `explain_X()` method to control weather a progress bar is shown or not which is defaulted to `False`. [#391](https://github.com/mmschlk/shapiq/pull/391)
 - made `InteractionValues.get_n_order()` and `InteractionValues.get_n_order_values()` function more efficient by iterating over the stored interactions and not over the powerset of all potential interactions, which made the function not usable for higher player counts (models with many features, and results obtained from `TreeExplainer`). Note, this change does not really help `get_n_order_values()` as it still needs to create a numpy array of shape `n_players` times `order` [#372](https://github.com/mmschlk/shapiq/pull/372)
-- streamlined the ``network_plot()`` plot function to use the ``si_graph_plot()`` as its backend function. This allows for more flexibility in the plot function and makes it easier to use the same code for different purposes. In addition, the ``si_graph_plot`` was modified to make plotting more easy and allow for more flexibility with new parameters. [#349](https://github.com/mmschlk/shapiq/pull/349)
+- streamlined the `network_plot()` plot function to use the `si_graph_plot()` as its backend function. This allows for more flexibility in the plot function and makes it easier to use the same code for different purposes. In addition, the `si_graph_plot` was modified to make plotting more easy and allow for more flexibility with new parameters. [#349](https://github.com/mmschlk/shapiq/pull/349)
 - adds `Game.compute()` method to the `shapiq.Game` class to compute game values without changing the state of the game object. The compute method also introduces a `shapiq.utils.sets.generate_interaction_lookup_from_coalitions()` utility method which creates an interaction lookup dict from an array of coalitions. [#397](https://github.com/mmschlk/shapiq/pull/397)
 - streamlines the creation of network plots and graph plots which now uses the same backend. The network plot via `shapiq.network_plot()` or `InteractionValues.plot_network()` is now a special case of the `shapiq.si_graph_plot()` and `InteractionValues.plot_si_graph()`. This allows to create more beautiful plots and easier maintenance in the future. [#349](https://github.com/mmschlk/shapiq/pull/349)
 
 ### Testing, Code-Quality and Documentation
-- activates ``"ALL"`` rules in ``ruff-format`` configuration to enforce stricter code quality checks and addressed around 500 (not automatically solvable) issues in the code base. [#391](https://github.com/mmschlk/shapiq/pull/391)
-- improved the testing environment by adding a new fixture module containing mock `InteractionValues` objects to be used in the tests. This allows for more efficient and cleaner tests, as well as easier debugging of the tests  [#372](https://github.com/mmschlk/shapiq/pull/372)
-- removed check and error message if the ``index`` parameter is not in the list of available indices in the ``TabularExplainer`` since the type hints were replaced by Literals [#391](https://github.com/mmschlk/shapiq/pull/391)
-- removed multiple instances where ``shapiq`` tests if some approximators/explainers can be instantiated with certain indices or not in favor of using Literals in the ``__init__`` method of the approximator classes. This allows for better type hinting and IDE support, as well as cleaner code. [#391](https://github.com/mmschlk/shapiq/pull/391)
+
+- activates `"ALL"` rules in `ruff-format` configuration to enforce stricter code quality checks and addressed around 500 (not automatically solvable) issues in the code base. [#391](https://github.com/mmschlk/shapiq/pull/391)
+- improved the testing environment by adding a new fixture module containing mock `InteractionValues` objects to be used in the tests. This allows for more efficient and cleaner tests, as well as easier debugging of the tests [#372](https://github.com/mmschlk/shapiq/pull/372)
+- removed check and error message if the `index` parameter is not in the list of available indices in the `TabularExplainer` since the type hints were replaced by Literals [#391](https://github.com/mmschlk/shapiq/pull/391)
+- removed multiple instances where `shapiq` tests if some approximators/explainers can be instantiated with certain indices or not in favor of using Literals in the `__init__` method of the approximator classes. This allows for better type hinting and IDE support, as well as cleaner code. [#391](https://github.com/mmschlk/shapiq/pull/391)
 - Added documentation for all public modules, classes, and functions in the code base to improve the documentation quality and make it easier to understand how to use the package. [#391](https://github.com/mmschlk/shapiq/pull/391)
-- suppress a ``RuntimeWarning`` in ``Regression`` approximators ``solve_regression()``method when the solver is not able to find good interim solutions for the regression problem.
-- refactors the tests into ``tests_unit/`` and ``tests_integration/`` to better separate unit tests from integration tests. [#395](https://github.com/mmschlk/shapiq/pull/395)
-- adds new integration tests in ``tests/tests_integration/test_explainer_california_housing`` which compares the different explainers against ground-truth interaction values computed by ``shapiq.ExactComputer`` and interaction values stored on [disk](https://github.com/mmschlk/shapiq/tree/main/tests/data/interaction_values/california_housing) as a form of regression test. This test should help finding bugs in the future when the approximators, explainers, or exact computation are changed. [#395](https://github.com/mmschlk/shapiq/pull/395)
+- suppress a `RuntimeWarning` in `Regression` approximators `solve_regression()`method when the solver is not able to find good interim solutions for the regression problem.
+- refactors the tests into `tests_unit/` and `tests_integration/` to better separate unit tests from integration tests. [#395](https://github.com/mmschlk/shapiq/pull/395)
+- adds new integration tests in `tests/tests_integration/test_explainer_california_housing` which compares the different explainers against ground-truth interaction values computed by `shapiq.ExactComputer` and interaction values stored on [disk](https://github.com/mmschlk/shapiq/tree/main/tests/data/interaction_values/california_housing) as a form of regression test. This test should help finding bugs in the future when the approximators, explainers, or exact computation are changed. [#395](https://github.com/mmschlk/shapiq/pull/395)
 
 ### Bug Fixes
+
 - fixed a bug in the `shapiq.waterfall_plot` function that caused the plot to not display correctly resulting in cutoff y_ticks. Additionally, the file was renamed from `watefall.py` to `waterfall.py` to match the function name [#377](https://github.com/mmschlk/shapiq/pull/377)
 - fixes a bug with `TabPFNExplainer`, where the model was not able to be used for predictions after it was explained. This was due to the model being fitted on a subset of features, which caused inconsistencies in the model's predictions after explanation. The fix includes that after each call to the `TabPFNImputer.value_function`, the tabpfn model is fitted on the whole dataset (without omitting features). This means that the original model can be used for predictions after it has been explained. [#396](https://github.com/mmschlk/shapiq/issues/396).
 - fixed a bug in computing `BII` or `BV` indices with `shapiq.approximator.MonteCarlo` approximators (affecting `SHAP-IQ`, `SVARM` and `SVARM-IQ`). All orders of BII should now be computed correctly. [#395](https://github.com/mmschlk/shapiq/pull/395)
 
 ## v1.2.3 (2025-03-24)
+
 - substantially improves the runtime of all `Regression` approximators by a) a faster pre-computation of the regression matrices and b) a faster computation of the weighted least squares regression [#340](https://github.com/mmschlk/shapiq/issues/340)
 - removes `sample_replacements` parameter from `MarginalImputer` and removes the DeprecationWarning for it
 - adds a trivial computation to `TreeSHAP-IQ` for trees that use only one feature in the tree (this works for decision stumps or trees splitting on only one feature multiple times). In such trees, the computation is trivial as the whole effect of $\nu(N) - \nu(\emptyset)$ is all on the main effect of the single feature and there is no interaction effect. This expands on the fix in v1.2.1 [#286](https://github.com/mmschlk/shapiq/issues/286).
@@ -189,21 +213,24 @@ Removes `overrides` import in tabular explainer, which is not part of the packag
 - adds a `RandomGame` class as part of `shapiq.games.benchmark` which always returns a random vector of integers between 0 and 100.
 
 ## v1.2.2 (2025-03-11)
+
 - changes python support to 3.10-3.13 [#318](https://github.com/mmschlk/shapiq/pull/318)
 - fixes a bug that prohibited importing shapiq in environments without write access [#326](https://github.com/mmschlk/shapiq/issues/326)
 - adds `ExtraTreeRegressors` to supported models [#309](https://github.com/mmschlk/shapiq/pull/309)
 
 ## v1.2.1 (2025-02-17)
+
 - fixes bugs regarding plotting [#315](https://github.com/mmschlk/shapiq/issues/315) and [#316](https://github.com/mmschlk/shapiq/issues/316)
 - fixes a bug with TreeExplainer and Trees that consist of only one feature [#286](https://github.com/mmschlk/shapiq/issues/286)
 - fixes SV init with explainer for permutation, svarm, kernelshap, and unbiased kernelshap [#319](https://github.com/mmschlk/shapiq/issues/319)
 - adds a progress bar to `explain_X()` [#324](https://github.com/mmschlk/shapiq/issues/324)
 
 ## v1.2.0 (2025-01-15)
-- adds ``shapiq.TabPFNExplainer`` as a specialized version of the ``shapiq.TabularExplainer`` which offers a streamlined variant of the explainer for the TabPFN model [#301](https://github.com/mmschlk/shapiq/issues/301)
-- handles ``explainer.explain()`` now through a common interface for all explainer classes which now need to implement a ``explain_function()`` method
-- adds the baseline_value into the InteractionValues object's value storage for the ``()`` interaction if ``min_order=0`` (default usually) for all indices that are not ``SII```(SII has another baseline value) such that the values are efficient (sum up to the model prediction) without the awkward handling of the baseline_value attribute
-- renames ``game_fun`` parameter in ``shapiq.ExactComputer`` to ``game`` [#297](https://github.com/mmschlk/shapiq/issues/297)
+
+- adds `shapiq.TabPFNExplainer` as a specialized version of the `shapiq.TabularExplainer` which offers a streamlined variant of the explainer for the TabPFN model [#301](https://github.com/mmschlk/shapiq/issues/301)
+- handles `explainer.explain()` now through a common interface for all explainer classes which now need to implement a `explain_function()` method
+- adds the baseline_value into the InteractionValues object's value storage for the `()` interaction if `min_order=0` (default usually) for all indices that are not ``SII```(SII has another baseline value) such that the values are efficient (sum up to the model prediction) without the awkward handling of the baseline_value attribute
+- renames `game_fun` parameter in `shapiq.ExactComputer` to `game` [#297](https://github.com/mmschlk/shapiq/issues/297)
 - adds a TabPFN example notebook to the documentation
 - removes warning when class_index is not provided in explainers [#298](https://github.com/mmschlk/shapiq/issues/298)
 - adds the `sentence_plot` function to the `plot` module to visualize the contributions of words to a language model prediction in a sentence-like format
@@ -217,17 +244,20 @@ Removes `overrides` import in tabular explainer, which is not part of the packag
 ## v1.1.1 (2024-11-13)
 
 ### Improvements and Ease of Use
+
 - adds a `class_index` parameter to `TabularExplainer` and `Explainer` to specify the class index to be explained for classification models [#271](https://github.com/mmschlk/shapiq/issues/271) (renames `class_label` parameter in TreeExplainer to `class_index`)
 - adds support for `PyTorch` models to `Explainer` [#272](https://github.com/mmschlk/shapiq/issues/272)
 - adds new tests comparing `shapiq` outputs for SVs with alues computed with `shap`
 - adds new tests for checking `shapiq` explainers with different types of models
 
 ### Bug Fixes
+
 - fixes a bug that `RandomForestClassifier` models were not working with the `TreeExplainer` [#273](https://github.com/mmschlk/shapiq/issues/273)
 
 ## v1.1.0 (2024-11-07)
 
 ### New Features and Improvements
+
 - adds computation of the Egalitarian Core (`EC`) and Egalitarian Least-Core (`ELC`) to the `ExactComputer` [#182](https://github.com/mmschlk/shapiq/issues/182)
 - adds `waterfall_plot` [#34](https://github.com/mmschlk/shapiq/issues/34) that visualizes the contributions of features to the model prediction
 - adds `BaselineImputer` [#107](https://github.com/mmschlk/shapiq/issues/107) which is now responsible for handling the `sample_replacements` parameter. Added a DeprecationWarning for the parameter in `MarginalImputer`, which will be removed in the next release.
@@ -241,6 +271,7 @@ Removes `overrides` import in tabular explainer, which is not part of the packag
 - improve tests across the package
 
 ### Documentation
+
 - adds a notebook showing how to use custom tree models with the `TreeExplainer` [#66](https://github.com/mmschlk/shapiq/issues/66)
 - adds a notebook show how to use the `shapiq.Game` API to create custom games [#184](https://github.com/mmschlk/shapiq/issues/184)
 - adds a notebook showing hot to visualize interactions [#252](https://github.com/mmschlk/shapiq/issues/252)
@@ -249,6 +280,7 @@ Removes `overrides` import in tabular explainer, which is not part of the packag
 - adds a notebook showcasing introducing the Core and how to compute it with `shapiq` [#191](https://github.com/mmschlk/shapiq/issues/191)
 
 ### Bug Fixes
+
 - fixes a bug with SIs not adding up to the model prediction because of wrong values in the empty set [#264](https://github.com/mmschlk/shapiq/issues/264)
 - fixes a bug that `TreeExplainer` did not have the correct baseline_value when using XGBoost models [#250](https://github.com/mmschlk/shapiq/issues/250)
 - fixes the force plot not showing and its baseline value

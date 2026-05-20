@@ -14,16 +14,12 @@ TIndices = TypeVar("TIndices", bound=ValidMonteCarloIndices)
 
 
 class SVARMIQ(MonteCarlo[ValidMonteCarloIndices]):
-    """The SVARM-IQ [Kol24a]_ approximator for Shapley interactions.
+    """The SVARM-IQ approximator for Shapley interactions.
 
     SVARM-IQ utilizes MonteCarlo approximation with two stratification strategies. SVARM-IQ is a
-    generalization of the SVARM algorithm [Kol24b]_ and can approximate any-order Shapley interactions
-    efficiently. For details about the algorithm see the original paper by Kolpaczki et al.
-    (2024) [Kol24a]_.
-
-    References:
-        .. [Kol24a] Kolpaczki, P., Muschalik M., Fumagalli, F., Hammer, B., and Hüllermeier, E., (2024). SVARM-IQ: Efficient Approximation of Any-order Shapley Interactions through Stratification. Proceedings of The 27th International Conference on Artificial Intelligence and Statistics, PMLR 238:3520-3528. url: https://proceedings.mlr.press/v238/kolpaczki24a
-        .. [Kol24b] Kolpaczki, P., Bengs, V., Muschalik, M., & Hüllermeier, E. (2024). Approximating the Shapley Value without Marginal Contributions. Proceedings of the AAAI Conference on Artificial Intelligence, 38(12), 13246-13255. https://doi.org/10.1609/aaai.v38i12.29225
+    generalization of the SVARM algorithm :cite:p:`Kolpaczki.2024a` and can approximate
+    any-order Shapley interactions efficiently. For details about the algorithm see the original
+    paper by :cite:t:`Kolpaczki.2024b`.
 
     """
 
@@ -77,13 +73,14 @@ ValidIndicesSVARM = Literal["SV", "BV"]
 
 
 class SVARM(MonteCarlo[ValidIndicesSVARM]):
-    """The SVARM [Kol24]_ approximator for estimating the Shapley value (SV).
+    """The SVARM approximator for estimating the Shapley value (SV).
 
     SVARM is a MonteCarlo approximation algorithm that estimates the Shapley value. For details
-    about the algorithm see the original paper by Kolpaczki et al. (2024) [Kol24]_.
+    about the algorithm see the original paper by Kolpaczki et al. (2024)
+    :footcite:t:`Kolpaczki.2024a`.
 
     References:
-        .. [Kol24] Kolpaczki, P., Bengs, V., Muschalik, M., & Hüllermeier, E. (2024). Approximating the Shapley Value without Marginal Contributions. Proceedings of the AAAI Conference on Artificial Intelligence, 38(12), 13246-13255. https://doi.org/10.1609/aaai.v38i12.29225
+        .. footbibliography::
 
     """
 

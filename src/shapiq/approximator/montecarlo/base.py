@@ -29,7 +29,7 @@ class MonteCarlo(Approximator[TIndices]):
     sum over discrete derivatives. The sum is re-written and approximated using Monte Carlo
     sampling. The sum may be stratified by coalition size or by the intersection size of the
     coalition and the interaction. The standard form for approximation is based on Theorem 1 by
-    `Fumagalli et al. (2023) <https://doi.org/10.48550/arXiv.2303.01179>`_.
+    :cite:t:`Fumagalli.2023`.
     """
 
     valid_indices: tuple[TIndices, ...] = tuple(get_args(ValidMonteCarloIndices))

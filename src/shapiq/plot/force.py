@@ -650,9 +650,6 @@ def force_plot(
     Returns:
         plt.Figure: The figure of the plot
 
-    References:
-        .. [1] SHAP is available at https://github.com/shap/shap
-
     """
     if feature_names is None:
         feature_names = [str(i) for i in range(interaction_values.n_players)]

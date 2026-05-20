@@ -31,6 +31,9 @@ class GaussianImputer(Imputer):
 
     Note that only continuous features are supported, meaning that this imputer can't be used for datasets containing
     categorical or binary features.
+
+    References:
+        .. [Aas21] Aas, K., Jullum, M., and Løland, A. (2021). Explaining individual predictions when features are dependent: More accurate approximations to Shapley values. Artificial Intelligence 298, 103502. doi: https://doi.org/10.1016/j.artint.2021.103502
     """
 
     def __init__(

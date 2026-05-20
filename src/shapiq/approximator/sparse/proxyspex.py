@@ -9,11 +9,7 @@ class ProxySPEX(Sparse):
     """ProxySPEX (SParse EXplainer) via Fourier transform sampling.
 
     An approximator for cardinal interaction indices using Fourier transform sampling to efficiently
-    compute sparse higher-order interactions. ProxySPEX is presented in [But25]_.
-
-
-    References:
-        .. [But25] Butler, L., Kang, J.S., Agarwal. A., Erginbas, Y.E., Yu, Bin, Ramchandran, K. (2025). ProxySPEX: Inference-Efficient Interpretability via Sparse Feature Interactions in LLMs https://arxiv.org/pdf/2505.17495
+    compute sparse higher-order interactions. ProxySPEX is presented in :cite:t:`Butler.2025`.
     """
 
     def __init__(

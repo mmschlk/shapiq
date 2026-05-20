@@ -6,13 +6,7 @@ the well established Shapley value and its generalization to interaction.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from types import ModuleType
-
 # approximator classes
-from ._deprecated_redirects import try_import_deprecated
 from .approximator import (
     SHAPIQ,
     SPEX,
@@ -141,12 +135,3 @@ __all__ = [
     "load_adult_census",
     "load_california_housing",
 ]
-
-
-def __getattr__(name: str) -> ModuleType:
-    """Redirect deprecated imports to the new module."""
-    result = try_import_deprecated(name)
-    if result is None:
-        msg = f"module 'shapiq' has no attribute {name!r}"
-        raise AttributeError(msg)
-    return result

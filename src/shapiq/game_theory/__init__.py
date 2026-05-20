@@ -1,7 +1,8 @@
-"""Game theory module of ``shapiq``.
+"""Game-theoretic concepts and algorithms.
 
-This module contains the implementation of various game-theoretic concepts and algorithms.
-
+This module provides exact computation of interaction indices via :class:`ExactComputer`,
+Moebius transforms via :class:`MoebiusConverter`, and utility functions for working with
+the various interaction index types defined in the shapiq framework.
 """
 
 from .aggregation import aggregate_base_interaction

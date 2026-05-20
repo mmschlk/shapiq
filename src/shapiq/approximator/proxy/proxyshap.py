@@ -96,7 +96,7 @@ class MSRBiased(Approximator):
         e_counts = mask.sum(axis=1, dtype=np.int64)
         r_counts = n_features - e_counts
         e_matrix = np.full((n_samples, n_features), -1, dtype=np.int64)
-        r_matrix = np.full((n_samples, n_features), -1, dtype=np.int8)
+        r_matrix = np.full((n_samples, n_features), -1, dtype=np.int64)
         # Included features (mask == True)
         e_pos = np.cumsum(mask, axis=1) - 1
         rows_e, cols_e = np.nonzero(mask)

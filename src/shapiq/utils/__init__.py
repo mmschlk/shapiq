@@ -1,4 +1,4 @@
-"""Utility functions for the shapiq package."""
+"""Low-level utility functions for working with subsets, coalitions, and modules."""
 
 from .datasets import shuffle_data
 from .errors import raise_deprecation_warning

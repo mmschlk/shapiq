@@ -57,7 +57,7 @@ Striking the right balance between depth and simplicity depends on your goals.
 
 If you're curious about how to compute these decompositions or visualize them, check out our shapiq package for an easy way to explore Shapley interactions and uncover new insights!
 Currently, we offer a range of model-agnostic and model-specific explainers and computation methods, which you can use to calculate Shapley interactions and Shapley values for all data types and model kinds.
-Check out the tutorial notebooks on how to use it for your task.
+Check out the examples and tutorials on how to use it for your task.
 
 <div style="text-align:center">
 <img src="../_static/images/package_overview_paper.png" width="800">

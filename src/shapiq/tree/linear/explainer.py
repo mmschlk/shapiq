@@ -49,23 +49,9 @@ class LinearTreeSHAP:
     This class computes Shapley values for tree-based models using a linear approximation.
     It supports both iterative and C++ implementations for efficient computation.
 
-    Attributes.
-    ----------
-    clf : Model
-        The tree-based model to explain.
-    _tree : Tree
-        Internal validated tree structure.
-    _relevant_features : np.ndarray
-        Array of relevant feature indices.
-    edge_tree : EdgeTree
-        Edge-based representation of the tree for efficient traversal.
-    N, Base, Offset, N_v2 : np.ndarray
-        Precomputed matrices for Shapley value calculation.
-
-    Methods.
-    -------
-    shap_values_cpp_iterative(X)
-        Compute Shapley values for input data X using the C++ iterative implementation.
+    Attributes:
+        clf: The tree-based model to explain.
+        edge_tree: Edge-based representation of the tree for efficient traversal.
     """
 
     def __init__(

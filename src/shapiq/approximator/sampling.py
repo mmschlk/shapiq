@@ -23,21 +23,22 @@ class CoalitionSampler:
     The empty and grand coalition are always prioritized, and sampling budget is required ``>=2``.
     All variables are stored in the sampler, no objects are returned. The following variables
     are computed:
-        - ``sampled_coalitions_matrix``: A binary matrix that consists of one row for each sampled
-            coalition. Each row is a binary vector that indicates the players in the coalition.
-            The matrix is of shape ``(n_coalitions, n_players)``.
-        - ``sampled_coalitions_counter``: An array with the number of occurrences of the coalitions
-            in the sampling process. The array is of shape ``(n_coalitions,)``.
-        - ``sampled_coalitions_probability``: An array with the coalition probabilities according to
-            the sampling procedure (i.e., the sampling weights). The array is of shape
-            ``(n_coalitions,)``.
-        - ``coalitions_per_size``: An array with the number of sampled coalitions per size
-            (including the empty and full set). The array is of shape ``(n_players + 1,)``.
-        - ``is_coalition_size_sampled``: An array that contains True, if the coalition size was
-            sampled and False (computed exactly) otherwise. The array is of shape
-            ``(n_players + 1,)``.
-        - ``sampled_coalitions_dict``:`` A dictionary containing all sampled coalitions mapping to
-            their number of occurrences. The dictionary is of type ``dict[tuple[int, ...], int]``.
+
+    - ``sampled_coalitions_matrix``: A binary matrix that consists of one row for each sampled
+      coalition. Each row is a binary vector that indicates the players in the coalition.
+      The matrix is of shape ``(n_coalitions, n_players)``.
+    - ``sampled_coalitions_counter``: An array with the number of occurrences of the coalitions
+      in the sampling process. The array is of shape ``(n_coalitions,)``.
+    - ``sampled_coalitions_probability``: An array with the coalition probabilities according to
+      the sampling procedure (i.e., the sampling weights). The array is of shape
+      ``(n_coalitions,)``.
+    - ``coalitions_per_size``: An array with the number of sampled coalitions per size
+      (including the empty and full set). The array is of shape ``(n_players + 1,)``.
+    - ``is_coalition_size_sampled``: An array that contains True, if the coalition size was
+      sampled and False (computed exactly) otherwise. The array is of shape
+      ``(n_players + 1,)``.
+    - ``sampled_coalitions_dict``: A dictionary containing all sampled coalitions mapping to
+      their number of occurrences. The dictionary is of type ``dict[tuple[int, ...], int]``.
 
     Attributes:
         n: The number of players in the game.
@@ -59,8 +60,8 @@ class CoalitionSampler:
         coalitions_counter: The number of occurrences of the coalitions. The array is of shape
             ``(n_coalitions,)``.
 
-        coalitions_probability: The coalition probabilities according to the sampling procedure. The
-             array is of shape ``(n_coalitions,)``.
+        coalitions_probability: The coalition probabilities according to the sampling procedure.
+            The array is of shape ``(n_coalitions,)``.
 
         coalitions_size_probability: The coalitions size probabilities according to the sampling
             procedure. The array is of shape ``(n_coalitions,)``.

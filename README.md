@@ -181,13 +181,13 @@ fsii_values.plot_force()               # plot the force plot
 ```
 
 <p align="center">
-  <img width="800px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/fsii_tabpfn_force_plot_example.png" alt="Force Plot of FSII values as derived from the example tabpfn notebook">
+  <img width="800px" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/images/fsii_tabpfn_force_plot_example.png" alt="Force Plot of FSII values">
 </p>
 
 
 ## 📖 Documentation with tutorials
 The documentation of ``shapiq`` can be found at https://shapiq.readthedocs.io.
-If you are new to Shapley values or Shapley interactions, we recommend starting with the [introduction](https://shapiq.readthedocs.io/en/latest/introduction/) and the [basic tutorials](https://shapiq.readthedocs.io/en/latest/notebooks/basics.html).
+If you are new to Shapley values or Shapley interactions, we recommend starting with the [introduction](https://shapiq.readthedocs.io/en/latest/introduction/) and the [examples & tutorials](https://shapiq.readthedocs.io/en/latest/auto_examples/index.html).
 There is a lot of great resources available to get you started with Shapley values and interactions.
 
 ## 💬 Citation

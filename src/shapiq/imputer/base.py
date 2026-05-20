@@ -14,23 +14,22 @@ TModel = TypeVar("TModel")
 
 
 class Imputer(Game, Generic[TModel]):
-    """Base class for Imputers.
-
-    Attributes:
-        n_features: The number of features in the data (equals the number of players in the game).
-        data: The background data to use for the imputer.
-        model: The model to impute missing values for as a callable function.
-        sample_size: The number of samples to draw from the background data.
-        random_state: The random state to use for sampling.
-        empty_prediction: The model's prediction on an empty data point (all features missing).
-
-    Properties:
-        x: The explanation point to use the imputer on.
-
-    """
+    """Base class for Imputers."""
 
     model: TModel
     """The model to impute missing values for."""
+
+    empty_prediction: float
+    """The model's prediction on an empty data point (all features missing)."""
+
+    n_features: int
+    """The number of features in the data (equals the number of players in the game)."""
+
+    data: np.ndarray
+    """The background data to use for the imputer."""
+
+    random_state: int | None
+    """The random state to use for sampling."""
 
     @abstractmethod
     def __init__(
@@ -84,7 +83,7 @@ class Imputer(Game, Generic[TModel]):
             data = data.reshape(1, data.shape[0])
         self.data = data
         self._sample_size = sample_size
-        self.empty_prediction: float = 0.0  # will be overwritten in the subclasses
+        self.empty_prediction = 0.0
         self.n_features = self.data.shape[1]
         self._cat_features: list = [] if categorical_features is None else categorical_features
         self.random_state = random_state
