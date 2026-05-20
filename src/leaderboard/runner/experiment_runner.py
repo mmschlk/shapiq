@@ -6,11 +6,11 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from metrics.evaluator import compute_all_metrics
 
 from leaderboard.runner.approximator_runner import approximate
 from leaderboard.runner.record_builder import create_run_record
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, UnknownGameError
-from metrics.evaluator import compute_all_metrics
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
