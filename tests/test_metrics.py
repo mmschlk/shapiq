@@ -5,7 +5,6 @@ import unittest
 
 import numpy as np
 from metrics import METRIC_KEYS, METRICS, Scorer
-
 from runner.aggregator import aggregate_metric_values, aggregate_run_records
 
 
