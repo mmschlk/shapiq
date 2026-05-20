@@ -26,7 +26,7 @@ class MSEMetric(Metric):
 
         return MetricResult(
             metric_name=self.name,
-            value=float(np.mean(difference**2)),
+            value=float(np.mean(difference ** 2)),
             higher_is_better=self.higher_is_better,
         )
 
