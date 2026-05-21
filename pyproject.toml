@@ -1,0 +1,273 @@
+[build-system]
+requires = ["setuptools>=69", "wheel", "setuptools_scm>=8", "numpy"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shapiq"
+dynamic = ["readme", "version"]
+description = "Shapley Interactions for Machine Learning"
+requires-python = ">=3.13"
+dependencies = [
+    # core
+    "numpy",
+    "array-api-compat>=1.14.0",
+    "jax>=0.10.1",
+    # plotting
+    "matplotlib",
+    "colour",
+
+]
+authors = [
+    {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
+    {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
+    {name = "Hubert Baniecki"},
+    {name = "Fabian Fumagalli"},
+]
+maintainers = [
+    {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
+    {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
+]
+license = "MIT"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: Unix',
+    'Operating System :: MacOS',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+]
+keywords = [
+    "python",
+    "machine learning",
+    "interpretable machine learning",
+    "shap",
+    "xai",
+    "explainable ai",
+    "interaction",
+    "shapley interactions",
+    "shapley values",
+    "feature interaction",
+]
+[tool.coverage.report]
+exclude_also = [
+    'if TYPE_CHECKING:',
+]
+
+[tool.setuptools_scm]
+write_to = "src/shapiq/_version.py"
+
+[tool.setuptools.packages.find]
+where = ["./src"]
+include = ["shapiq*", "lazy_dispatch"]
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
+
+[project.urls]
+documentation = "https://shapiq.readthedocs.io"
+source = "https://github.com/mmschlk/shapiq"
+tracker = "https://github.com/mmschlk/shapiq/issues"
+changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
+
+[tool.pytest.ini_options]
+testpaths = [
+  "tests/shapiq"
+]
+pythonpath = ["src"]
+minversion = "8.0"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["tests", "src", "docs"]
+
+[tool.ruff.lint]
+# we allow star arguments to be of type Any e.g. def func(*args: Any, **kwargs: Any) -> None: is ok
+flake8-annotations.allow-star-arg-any = true
+select = ["ALL"]
+ignore = [
+    "E501",  # Line too long
+    "N803",  # Variable X in function should be lowercase
+    "N806",  # Variable X in function should be lowercase
+    "COM812",  # this is redundant with the formatter which anyways does this (must be excluded) in the future # TODO: add remove pickle calls and remove this exclusion
+    "FIX002",  # we use TODOs atm to track potential code improvements  # TODO: add this in the future
+    "PLR0913",  # Too many arguments are passed to function
+    "PLR0915", # Too many statements in function
+    "PLR0912",  # Too many branches in function
+    "PLR2004",  # Magic values in comparison ... this gets flaged with all checks for two-way interactions
+    "C901",  # Too complex functions
+    "PLR0911",  # too many return statements in function
+    "N802",  # Function name should be lowercase
+]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "docs/build",
+]
+
+# Exclude a variety of commonly ignored directories.
+# Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
+[tool.ruff.lint.per-file-ignores]
+"src/shapiq/typing.py" = [
+    "A005",  # we want to be similar to other libraries that also shadow typing
+    "D102",  # we don't need docstrings for protocol stubs
+    "ANN401",  # any return type is okay in typing.py for protocol subts
+]
+"tests/*.py" = [
+    # "ALL",
+    "S101", # we need asserts in tests
+    "D",    # test docstrings don't matter too much
+    "E501", # line too long
+    "ANN",  # type annotations
+    "ARG",  # some functions are not used
+    "INP",  # inports can be different
+    "N",  # type hints are excludes in tests
+    "PTH",  # we can use os for now
+    "S",  # in tests we can use some security issues for now
+    "PT", # we can use print statements in tests
+    "NPY",
+    "SLF",  # private members are okay in tests
+    "TRY",
+]
+"examples/**/*.py" = [
+    "E402",  # Module level import not at top of file
+    "T20",  # examples can have print statements
+    "I002",  # examples do not have to import required modules
+    "D",  # docstrings are not required in examples
+    "SLF001",  # private members are okay in examples
+    "ANN001",  # type annotations are not required in examples
+    "INP",  # examples are an implicit namespace package
+]
+"docs/source/*.py" = [
+    "A001",  # some conf.py variables shadow builtins which is okay here
+    "ANN001",  # some magic functions I don't want to annotate
+    "INP",  # docs can be an implicit package (does not need to be imported)
+    "I002",  # benchmark code does not have to import required modules
+]
+"benchmark/*.py" = [
+    "INP", # imports can be different here
+    "I002",  # benchmark code does not have to import required modules
+    "PTH"  # in benchmark code we use a lot of os, which is okay
+]
+"__init__.py" = [
+    "I002", # __init__.py does not have to import required modules
+    "RUF022",  # we can have unsorted imports in __init__.py
+    "FA",
+]
+"scripts/*.py" = [
+    "INP", # imports can be different here
+    "I002",  # script code does not have to import required modules
+    "PTH",  # in script code we use a lot of os, which is okay
+    "T201",  # scripts can have print statements
+    "BLE001",  # scripts can have bare excepts
+    "TRY"
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ty.src]
+include = ["src/shapiq"]
+exclude = ["tests", "docs", "src/shapiq_games"]
+
+[tool.ty.environment]
+python-version = "3.13"
+python = "./.venv"
+python-platform = "linux"
+
+[tool.cibuildwheel]
+build = ["cp313-*", "cp314-*"]
+skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
+build-frontend = "uv"
+test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; print('C extensions OK')\""
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.macos]
+before-build = "brew install libomp || true"
+
+[tool.cibuildwheel.windows]
+# MSVC ships OpenMP runtime (vcomp140.dll) with Visual C++ Redistributable
+# No extra setup needed; /openmp flag in setup.py handles everything
+
+[tool.ruff.lint.isort]
+known-first-party = ["shapiq"]
+extra-standard-library = ["typing_extensions"]
+combine-as-imports = true
+force-wrap-aliases = true
+no-lines-before = ["future"]
+required-imports = ["from __future__ import annotations"]
+
+
+[dependency-groups]
+all_ml = [
+    "tabpfn>=2.1.3",
+    "torchvision",
+    "torch",
+    "xgboost",
+    "lightgbm",    # lightgbm has install problems on macOS in github actions
+    "transformers",
+    "scikit-image",
+    "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
+    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
+]
+test = [
+    "pytest>=9.0.2",        # for running tests
+    "pytest-cov>=7.0.0",    # for coverage
+    "pytest-xdist>=3.8.0",  # for parallel test execution
+    "packaging",            # for version parsing in tests
+]
+lint = [
+    "ruff>=0.14.1",       # for linting
+    "pre-commit>=4.3.0",  # for running the linters pre-commit hooks
+    "ty>=0.0.21",         # for type checking
+]
+docs = [
+    "sphinx>=9.1.0",            # documentation generator
+    "furo",                     # beautiful sphinx theme
+    "myst-parser",              # Markdown support for Sphinx
+    "sphinx-copybutton",        # copy button for code blocks
+    "sphinx-autodoc-typehints", # include typehints in docs
+    "sphinxcontrib-bibtex",     # references based on bibtex
+    "ipython>=9.0.0",           # for code execution in sphinx-gallery
+    "sphinx-gallery",           # gallery of examples from Python scripts
+    "matplotlib",               # required for sphinx-gallery thumbnails
+    {include-group = "all_ml"}
+]
+dev = [
+    "notebook>=7.3.3",
+    "ipywidgets",
+    {include-group = "test"},
+    {include-group = "lint"},
+    {include-group = "all_ml"},
+]
