@@ -7,6 +7,7 @@ import importlib.util
 import pytest
 
 __all__ = [
+    "skip_if_no_catboost",
     "skip_if_no_keras",
     "skip_if_no_lightgbm",
     "skip_if_no_tabpfn",
@@ -33,6 +34,11 @@ skip_if_no_tensorflow = pytest.mark.skipif(
 skip_if_no_xgboost = pytest.mark.skipif(
     not is_installed("xgboost"),
     reason="xgboost is not installed",
+)
+
+skip_if_no_catboost = pytest.mark.skipif(
+    not is_installed("catboost"),
+    reason="catboost is not installed",
 )
 
 skip_if_no_keras = pytest.mark.skipif(not is_installed("keras"), reason="keras is not installed")

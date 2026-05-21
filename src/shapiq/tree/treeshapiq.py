@@ -68,8 +68,8 @@ class TreeSHAPIQ:
                 corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
                 interaction values up to that order. Defaults to ``2``.
 
-            min_order: The minimum interaction order to be computed. Defaults to ``1``. Note that
-                setting min_order currently does not have any effect on the computation.
+            min_order: The minimum interaction order to be computed. Must be ``>= 1``. Defaults
+                to ``1``.
 
             index: The type of interaction to be computed.
 
@@ -95,12 +95,18 @@ class TreeSHAPIQ:
         validated_model = validate_tree_model(model)  # the parsed and validated model
         # TODO(mmshlk): add support for other sample weights https://github.com/mmschlk/shapiq/issues/99
         self._tree: TreeModel = copy.deepcopy(validated_model)[0]
+        # Routing convention of the converted model. XGBoost trees split with ``x < thr``
+        # (decision_type "<"); LightGBM/CatBoost/sklearn use ``x <= thr``. ``predict_one``
+        # honours this, so the explainer must too — otherwise instances that sit exactly
+        # on a split threshold are routed to the wrong leaf and efficiency breaks.
+        self._strict_lt: bool = self._tree.decision_type == "<"
         self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes
         self._n_features_in_tree: int = self._tree.n_features_in_tree
         self._max_feature_id: int = self._tree.max_feature_id
         self._feature_ids: set = self._tree.feature_ids
+        self._trivial_computation = self._n_features_in_tree == 0
 
         # precompute interaction lookup tables
         self._interactions_lookup_relevant: dict[tuple, int] = generate_interaction_lookup(
@@ -144,14 +150,14 @@ class TreeSHAPIQ:
         self.n_interpolation_size = self._n_features_in_tree
         if self._index in ("SV", "SII", "k-SII"):  # SP is of order at most d_max
             self.n_interpolation_size = min(self._edge_tree.max_depth, self._n_features_in_tree)
-        try:
-            self._init_summary_polynomials()
-            self._trivial_computation = False
-        except ValueError:
-            if self._n_features_in_tree == 1:
-                self._trivial_computation = True  # for one feature the computation is trivial
-            else:
-                raise
+        if self._n_features_in_tree > 0:
+            try:
+                self._init_summary_polynomials()
+            except ValueError:
+                if self._n_features_in_tree == 1:
+                    self._trivial_computation = True  # for one feature the computation is trivial
+                else:
+                    raise
 
         # stores the nodes that are active in the tree for a given instance (new for each instance)
         self._activations: np.ndarray = np.zeros(self._n_nodes, dtype=bool)
@@ -176,7 +182,9 @@ class TreeSHAPIQ:
         x_relevant = x[self._relevant_features]
         n_players = max(x.shape[0], self._n_features_in_tree)
 
-        if self._trivial_computation:
+        if self._n_features_in_tree == 0:
+            interactions = np.zeros(0, dtype=float)
+        elif self._trivial_computation:
             interactions = self._compute_trivial_shapley_interaction_values(x)
         else:
             # compute the Shapley Interaction values
@@ -309,7 +317,12 @@ class TreeSHAPIQ:
 
         # if node is not a leaf -> set activations for children nodes accordingly
         if not is_leaf:
-            if x[child_edge_feature] <= feature_threshold:
+            go_left = (
+                x[child_edge_feature] < feature_threshold
+                if self._strict_lt
+                else x[child_edge_feature] <= feature_threshold
+            )
+            if go_left:
                 activations[left_child], activations[right_child] = True, False
             else:
                 activations[left_child], activations[right_child] = False, True
