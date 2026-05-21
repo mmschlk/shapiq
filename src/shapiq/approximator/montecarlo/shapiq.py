@@ -29,7 +29,7 @@ class SHAPIQ(MonteCarlo[TIndices]):
     KernelSHAP method :cite:t:`Covert.2021` for any-order Shapley interactions.
 
     Examples:
-        >>> from shapiq_games.benchmark import DummyGame
+        >>> from shapiq_games.synthetic import DummyGame
         >>> from shapiq import SHAPIQ
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = SHAPIQ(game.n_players, max_order=2, index="k-SII")
@@ -107,7 +107,7 @@ class UnbiasedKernelSHAP(SHAPIQ[ValidUnbiasedKernelSHAPIndices]):
     of the SHAP-IQ approximation method (Theorem 4.5).
 
     Example:
-        >>> from shapiq_games.benchmark import DummyGame
+        >>> from shapiq_games.synthetic import DummyGame
         >>> from shapiq.approximator import UnbiasedKernelSHAP
         >>> game = DummyGame(n=5, interaction=(1, 2))
         >>> approximator = UnbiasedKernelSHAP(n=5)

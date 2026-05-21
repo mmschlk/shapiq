@@ -8,6 +8,8 @@ import pytest
 from shapiq import TreeExplainer
 from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.tree.base import TreeModel
+from shapiq.tree.conversion import convert_tree_model
+from shapiq.tree.conversion.catboost import parse_catboost_json_model
 from shapiq.tree.conversion.edges import create_edge_tree
 from shapiq.tree.conversion.sklearn import (
     convert_isolation_forest_tree,
@@ -17,6 +19,15 @@ from shapiq.tree.conversion.sklearn import (
 from shapiq.tree.validation import SUPPORTED_MODELS
 from shapiq.utils import safe_isinstance
 from tests.shapiq.conftest import TREE_MODEL_FIXTURES
+from tests.shapiq.tests_unit.tests_explainer.tests_tree_explainer.conversion_reference import (
+    create_edge_tree_python,
+    parse_catboost_json_model_python,
+)
+
+
+def _predict_tree_ensemble(tree_model: list[TreeModel], data: np.ndarray) -> np.ndarray:
+    """Predict raw outputs from a converted tree ensemble."""
+    return np.asarray([sum(tree.predict_one(x) for tree in tree_model) for x in data])
 
 
 def test_tree_model_init():
@@ -140,6 +151,365 @@ def test_sklearn_if_conversion(if_clf_model):
     assert isinstance(tree_model, list)
     assert safe_isinstance(tree_model[0], tree_model_class_path_str)
     assert tree_model[0].empty_prediction is not None
+
+
+def test_cpp_edge_tree_matches_python_edge_tree():
+    """Test C++ edge conversion parity with the Python reference implementation."""
+    children_left = np.asarray([1, 3, 5, -1, -1, -1, -1])
+    children_right = np.asarray([2, 4, 6, -1, -1, -1, -1])
+    features = np.asarray([0, 0, 1, -2, -2, -2, -2])
+    node_sample_weight = np.asarray([10.0, 6.0, 4.0, 2.0, 4.0, 1.0, 3.0])
+    values = np.asarray([0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+    subset_updates_pos_store = {
+        1: {0: np.asarray([0]), 1: np.asarray([1])},
+        2: {0: np.asarray([0]), 1: np.asarray([0])},
+    }
+
+    python_tree = create_edge_tree_python(
+        children_left=children_left,
+        children_right=children_right,
+        features=features,
+        node_sample_weight=node_sample_weight,
+        values=values,
+        n_nodes=7,
+        n_features=2,
+        max_interaction=2,
+        subset_updates_pos_store=subset_updates_pos_store,
+    )
+    cpp_tree = create_edge_tree(
+        children_left=children_left,
+        children_right=children_right,
+        features=features,
+        node_sample_weight=node_sample_weight,
+        values=values,
+        n_nodes=7,
+        n_features=2,
+        max_interaction=2,
+        subset_updates_pos_store=subset_updates_pos_store,
+    )
+
+    np.testing.assert_array_equal(cpp_tree.parents, python_tree.parents)
+    np.testing.assert_array_equal(cpp_tree.ancestors, python_tree.ancestors)
+    np.testing.assert_allclose(cpp_tree.p_e_values, python_tree.p_e_values)
+    np.testing.assert_allclose(cpp_tree.p_e_storages, python_tree.p_e_storages)
+    np.testing.assert_allclose(cpp_tree.split_weights, python_tree.split_weights)
+    np.testing.assert_allclose(cpp_tree.empty_predictions, python_tree.empty_predictions)
+    np.testing.assert_array_equal(cpp_tree.edge_heights, python_tree.edge_heights)
+    np.testing.assert_array_equal(
+        cpp_tree.last_feature_node_in_path,
+        python_tree.last_feature_node_in_path,
+    )
+    assert cpp_tree.max_depth == python_tree.max_depth
+    assert set(cpp_tree.ancestor_nodes) == set(range(1, len(children_left)))
+    for node_id in python_tree.ancestor_nodes:
+        np.testing.assert_array_equal(
+            cpp_tree.ancestor_nodes[node_id],
+            python_tree.ancestor_nodes[node_id],
+        )
+    for order in python_tree.interaction_height_store:
+        np.testing.assert_array_equal(
+            cpp_tree.interaction_height_store[order],
+            python_tree.interaction_height_store[order],
+        )
+
+
+def test_catboost_json_oblivious_tree_conversion():
+    """Test expansion of a CatBoost JSON oblivious tree into a TreeModel."""
+    model_json = {
+        "features_info": {
+            "float_features": [
+                {"feature_index": 0, "nan_value_treatment": "AsIs"},
+                {"feature_index": 1, "nan_value_treatment": "AsIs"},
+            ],
+        },
+        "oblivious_trees": [
+            {
+                "splits": [
+                    {"split_type": "FloatFeature", "float_feature_index": 0, "border": 1.0},
+                    {"split_type": "FloatFeature", "float_feature_index": 1, "border": 2.0},
+                ],
+                "leaf_values": [10.0, 20.0, 30.0, 40.0],
+                "leaf_weights": [1.0, 2.0, 3.0, 4.0],
+            },
+        ],
+    }
+
+    tree_model = parse_catboost_json_model(model_json)[0]
+    python_tree_model = parse_catboost_json_model_python(model_json)[0]
+
+    assert safe_isinstance(tree_model, ["shapiq.tree.base.TreeModel"])
+    assert tree_model.n_nodes == 7
+    assert tree_model.predict_one(np.asarray([0.0, 0.0])) == 10.0
+    assert tree_model.predict_one(np.asarray([2.0, 0.0])) == 20.0
+    assert tree_model.predict_one(np.asarray([0.0, 3.0])) == 30.0
+    assert tree_model.predict_one(np.asarray([2.0, 3.0])) == 40.0
+    assert tree_model.node_sample_weight[0] == 10.0
+    np.testing.assert_array_equal(tree_model.children_left, python_tree_model.children_left)
+    np.testing.assert_array_equal(tree_model.children_right, python_tree_model.children_right)
+    np.testing.assert_array_equal(tree_model.children_missing, python_tree_model.children_missing)
+    np.testing.assert_array_equal(tree_model.features, python_tree_model.features)
+    np.testing.assert_allclose(tree_model.thresholds, python_tree_model.thresholds)
+    np.testing.assert_allclose(tree_model.values, python_tree_model.values)
+    np.testing.assert_allclose(tree_model.node_sample_weight, python_tree_model.node_sample_weight)
+
+
+def test_catboost_json_multiclass_defaults_to_class_one():
+    """Test extraction of one class from CatBoost multiclass leaf values."""
+    model_json = {
+        "features_info": {"float_features": [{"feature_index": 0, "nan_value_treatment": "AsIs"}]},
+        "oblivious_trees": [
+            {
+                "splits": [
+                    {"split_type": "FloatFeature", "float_feature_index": 0, "border": 1.0},
+                ],
+                "leaf_values": [1.0, 2.0, 10.0, 20.0],
+                "leaf_weights": [3.0, 4.0],
+            },
+        ],
+        "scale_and_bias": [2.0, [100.0, 200.0]],
+    }
+
+    tree_model = parse_catboost_json_model(model_json)[0]
+    assert tree_model.predict_one(np.asarray([0.0])) == 204.0
+    assert tree_model.predict_one(np.asarray([2.0])) == 240.0
+
+    tree_model = parse_catboost_json_model(model_json, class_label=0)[0]
+    assert tree_model.predict_one(np.asarray([0.0])) == 102.0
+    assert tree_model.predict_one(np.asarray([2.0])) == 120.0
+
+
+def test_catboost_json_missing_value_routing():
+    """Test CatBoost's exported NaN treatment is translated to children_missing."""
+    model_json = {
+        "features_info": {
+            "float_features": [{"feature_index": 0, "nan_value_treatment": "AsTrue"}],
+        },
+        "oblivious_trees": [
+            {
+                "splits": [
+                    {"split_type": "FloatFeature", "float_feature_index": 0, "border": 1.0},
+                ],
+                "leaf_values": [1.0, 2.0],
+                "leaf_weights": [3.0, 4.0],
+            },
+        ],
+    }
+
+    tree_model = parse_catboost_json_model(model_json)[0]
+
+    assert tree_model.children_missing[0] == tree_model.children_right[0]
+    assert tree_model.predict_one(np.asarray([np.nan])) == 2.0
+
+
+def test_catboost_json_unsupported_split_type_raises_clear_error():
+    """Test unsupported CatBoost split formats fail loudly."""
+    model_json = {
+        "oblivious_trees": [
+            {
+                "splits": [
+                    {"split_type": "OneHotFeature", "cat_feature_index": 0, "value": 1},
+                ],
+                "leaf_values": [1.0, 2.0],
+                "leaf_weights": [1.0, 1.0],
+            },
+        ],
+    }
+
+    with pytest.raises(RuntimeError, match="FloatFeature"):
+        parse_catboost_json_model(model_json)
+
+
+def test_xgboost_regressor_and_booster_conversion_predict_raw_margin():
+    """Test XGBoost sklearn and native Booster conversions against raw model margins."""
+    xgboost = pytest.importorskip("xgboost")
+    from sklearn.datasets import make_regression
+
+    X, y = make_regression(random_state=42, n_samples=80, n_features=5)
+    model = xgboost.XGBRegressor(
+        random_state=42,
+        n_estimators=5,
+        max_depth=2,
+        objective="reg:squarederror",
+    )
+    model.fit(X, y)
+
+    expected = model.predict(X[:10], output_margin=True)
+    converted_model = convert_tree_model(model)
+    converted_booster = convert_tree_model(model.get_booster())
+
+    assert converted_model[0].thresholds.dtype == np.float32
+    assert converted_model[0].values.dtype == np.float32
+    assert converted_model[0].node_sample_weight.dtype == np.float32
+    np.testing.assert_allclose(_predict_tree_ensemble(converted_model, X[:10]), expected, rtol=1e-5)
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted_booster, X[:10]), expected, rtol=1e-5
+    )
+
+
+def test_xgboost_multiclass_conversion_selects_requested_class():
+    """Test XGBoost multiclass conversion filters the requested class trees."""
+    xgboost = pytest.importorskip("xgboost")
+    from sklearn.datasets import make_classification
+
+    X, y = make_classification(
+        random_state=42,
+        n_samples=120,
+        n_features=6,
+        n_informative=6,
+        n_redundant=0,
+        n_classes=3,
+    )
+    model = xgboost.XGBClassifier(
+        random_state=42,
+        n_estimators=4,
+        max_depth=2,
+        objective="multi:softprob",
+        num_class=3,
+    )
+    model.fit(X, y)
+    expected = model.predict(X[:10], output_margin=True)
+
+    for class_label in range(3):
+        converted = convert_tree_model(model, class_label=class_label)
+        assert len(converted) == model.n_estimators
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted, X[:10]),
+            expected[:, class_label],
+            rtol=1e-5,
+            atol=1e-5,
+        )
+
+
+def test_lightgbm_regressor_and_booster_conversion_predict_raw_score():
+    """Test LightGBM sklearn and native Booster conversions against raw scores."""
+    lightgbm = pytest.importorskip("lightgbm")
+    from sklearn.datasets import make_regression
+
+    X, y = make_regression(random_state=42, n_samples=80, n_features=5)
+    model = lightgbm.LGBMRegressor(
+        random_state=42,
+        n_estimators=5,
+        max_depth=2,
+        min_child_samples=1,
+        verbose=-1,
+    )
+    model.fit(X, y)
+    booster = lightgbm.train(
+        params={"objective": "regression", "verbose": -1, "min_data_in_leaf": 1},
+        train_set=lightgbm.Dataset(X, label=y),
+        num_boost_round=5,
+    )
+    converted_model = convert_tree_model(model)
+    converted_booster = convert_tree_model(booster)
+
+    assert converted_model[0].thresholds.dtype == np.float64
+    assert converted_model[0].values.dtype == np.float64
+    assert converted_model[0].node_sample_weight.dtype == np.float64
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted_model, X[:10]),
+        model.predict(X[:10], raw_score=True),
+        rtol=1e-5,
+    )
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted_booster, X[:10]),
+        booster.predict(X[:10], raw_score=True),
+        rtol=1e-5,
+    )
+
+
+def test_lightgbm_multiclass_conversion_selects_requested_class():
+    """Test LightGBM multiclass conversion filters the requested class trees."""
+    lightgbm = pytest.importorskip("lightgbm")
+    from sklearn.datasets import make_classification
+
+    X, y = make_classification(
+        random_state=42,
+        n_samples=120,
+        n_features=6,
+        n_informative=6,
+        n_redundant=0,
+        n_classes=3,
+    )
+    model = lightgbm.LGBMClassifier(
+        random_state=42,
+        n_estimators=4,
+        max_depth=2,
+        min_child_samples=1,
+        verbose=-1,
+    )
+    model.fit(X, y)
+    expected = model.predict(X[:10], raw_score=True)
+
+    for class_label in range(3):
+        converted = convert_tree_model(model, class_label=class_label)
+        assert len(converted) == model.n_estimators_
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted, X[:10]),
+            expected[:, class_label],
+            rtol=1e-5,
+            atol=1e-5,
+        )
+
+
+def test_catboost_regressor_conversion_predicts_raw_formula_with_bias():
+    """Test CatBoost conversion includes scale_and_bias from the JSON model."""
+    catboost = pytest.importorskip("catboost")
+    from sklearn.datasets import make_regression
+
+    X, y = make_regression(random_state=42, n_samples=80, n_features=5)
+    model = catboost.CatBoostRegressor(
+        random_seed=42,
+        iterations=5,
+        depth=2,
+        allow_writing_files=False,
+        verbose=False,
+    )
+    model.fit(X, y)
+    converted_model = convert_tree_model(model)
+
+    assert converted_model[0].thresholds.dtype == np.float64
+    assert converted_model[0].values.dtype == np.float64
+    assert converted_model[0].node_sample_weight.dtype == np.float64
+    np.testing.assert_allclose(
+        _predict_tree_ensemble(converted_model, X[:10]),
+        model.predict(X[:10], prediction_type="RawFormulaVal"),
+        rtol=1e-5,
+    )
+
+
+def test_catboost_multiclass_conversion_selects_requested_class():
+    """Test CatBoost multiclass conversion extracts class-specific leaf values and bias."""
+    catboost = pytest.importorskip("catboost")
+    from sklearn.datasets import make_classification
+
+    X, y = make_classification(
+        random_state=42,
+        n_samples=120,
+        n_features=6,
+        n_informative=6,
+        n_redundant=0,
+        n_classes=3,
+    )
+    model = catboost.CatBoostClassifier(
+        random_seed=42,
+        iterations=4,
+        depth=2,
+        loss_function="MultiClass",
+        allow_writing_files=False,
+        verbose=False,
+    )
+    model.fit(X, y)
+    expected = model.predict(X[:10], prediction_type="RawFormulaVal")
+
+    for class_label in range(3):
+        converted = convert_tree_model(model, class_label=class_label)
+        assert len(converted) == model.tree_count_
+        np.testing.assert_allclose(
+            _predict_tree_ensemble(converted, X[:10]),
+            expected[:, class_label],
+            rtol=1e-5,
+            atol=1e-5,
+        )
 
 
 @pytest.mark.external_libraries

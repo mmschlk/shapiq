@@ -13,46 +13,45 @@ if TYPE_CHECKING:
 
 
 class TreeModel:
-    """A dataclass for storing the information of a tree model.
+    """Internal representation of a single tree used by the shapiq tree explainers.
 
-    The dataclass stores the information of a tree model in a way that is easy to access and
-    manipulate. The dataclass is used to convert tree models from different libraries to a common
-    format.
+    Each library-specific converter (scikit-learn, XGBoost, LightGBM, CatBoost) targets this
+    common format so that the downstream algorithms (TreeSHAP-IQ, LinearTreeSHAP,
+    InterventionalTreeSHAP) only need to understand one node-array layout.
+
+    Constructor arguments that fall back to a computed default when ``None`` is passed are
+    documented on :meth:`__init__`. The attributes below describe what is available on a fully
+    initialized instance.
 
     Attributes:
         children_left: The left children of each node in a tree. Leaf nodes are ``-1``.
         children_right: The right children of each node in a tree. Leaf nodes are ``-1``.
         children_missing: The child each node routes missing-value samples to. Used together with
-            ``children_left`` to derive ``children_left_default`` in ``__post_init__``.
-        features: The feature indices of the decision nodes in a tree. Leaf nodes are assumed to be
-            ``-2`` but no check is performed.
-        thresholds: The thresholds of the decision nodes in a tree. Leaf nodes are set to ``np.nan``.
-        values: The values of the leaf nodes in a tree.
+            ``children_left`` to derive ``children_left_default`` during ``__init__``.
+        children_left_default: Boolean mask. ``True`` at index ``i`` if missing-value samples at
+            node ``i`` are routed to ``children_left[i]``. Derived from ``children_missing``.
+        features: The feature indices of the decision nodes in a tree. Leaf nodes are ``-2``.
+        thresholds: The thresholds of the decision nodes in a tree. Leaf nodes are ``np.nan``.
+        values: The leaf-node values, flattened to a 1-D array. Non-leaf nodes are set to ``0``.
         node_sample_weight: The sample weights of the nodes in a tree.
-        empty_prediction: The empty prediction of the tree model. The default value is ``None``. Then
-            the empty prediction is computed from the leaf values and the sample weights.
-        leaf_mask: The boolean mask of the leaf nodes in a tree. The default value is ``None``. Then the
-            leaf mask is computed from the children left and right arrays.
-        n_features_in_tree: The number of features in the tree model. The default value is ``None``.
-            Then the number of features in the tree model is computed from the unique feature
-            indices in the features array.
-        max_feature_id: The maximum feature index in the tree model. The default value is ``None``. Then
-            the maximum feature index in the tree model is computed from the features array.
-        feature_ids: The feature indices of the decision nodes in the tree model. The default value
-            is ``None``. Then the feature indices of the decision nodes in the tree model are computed
-            from the unique feature indices in the features array.
-        root_node_id: The root node id of the tree model. The default value is ``None``. Then the root
-            node id of the tree model is set to ``0``.
-        n_nodes: The number of nodes in the tree model. The default value is ``None``. Then the number
-            of nodes in the tree model is computed from the children left array.
-        nodes: The node ids of the tree model. The default value is ``None``. Then the node ids of the
-            tree model are computed from the number of nodes in the tree model.
-        feature_map_original_internal: A mapping of feature indices from the original feature
+        empty_prediction: The empty prediction of the tree model (weighted mean of leaf values).
+        leaf_mask: The boolean mask of the leaf nodes in a tree.
+        n_features_in_tree: The number of distinct features actually used by decision nodes.
+        max_feature_id: The maximum feature index used by any decision node (or ``0`` if none).
+        feature_ids: The set of feature indices used by decision nodes.
+        root_node_id: The root node id of the tree model. Defaults to ``0``.
+        n_nodes: The number of nodes in the tree model.
+        decision_type: The split comparison used by :meth:`decision_function`. Either ``"<="``
+            (default) or ``"<"``.
+        nodes: The node ids of the tree model as ``np.arange(n_nodes)``.
+        feature_map_original_internal: Mapping of feature indices from the original feature
             indices (as in the model) to the internal feature indices (as in the tree model).
-        feature_map_internal_original: A mapping of feature indices from the internal feature
+        feature_map_internal_original: Mapping of feature indices from the internal feature
             indices (as in the tree model) to the original feature indices (as in the model).
-        original_output_type: The original output type of the tree model. The default value is
-            ``"raw"``.
+        original_output_type: The original output type of the tree model. Defaults to ``"raw"``.
+            Currently not used by downstream algorithms.
+        intercepts: Per-leaf intercept terms for linear-leaf tree models. Currently unused.
+        coeffs: Per-leaf coefficient vectors for linear-leaf tree models. Currently unused.
 
     """
 
@@ -103,7 +102,42 @@ class TreeModel:
         intercepts: NDArray[np.floating] | None = None,  # noqa: ARG002
         coeffs: NDArray[np.floating] | None = None,  # noqa: ARG002
     ) -> None:
-        """Initialize the TreeModel."""
+        """Initialize the :class:`TreeModel`.
+
+        All numpy-array arguments must share a common node ordering. Arguments listed as
+        ``None``-able fall back to a value computed from the mandatory arrays.
+
+        Args:
+            children_left: Left-child node ids; ``-1`` denotes a leaf.
+            children_right: Right-child node ids; ``-1`` denotes a leaf.
+            children_missing: Node id to which missing-value samples are routed.
+            features: Decision-node feature indices. Leaf positions are sanitized to ``-2``.
+            thresholds: Decision-node thresholds. Leaf positions are sanitized to ``np.nan``.
+            values: Leaf-node values. Higher-dim arrays are flattened to 1-D; non-leaf positions
+                are forced to ``0``.
+            node_sample_weight: Per-node sample weights. ``NaN`` at leaves is replaced with ``1``.
+            empty_prediction: Pre-computed empty prediction. ``None`` triggers
+                :meth:`compute_empty_prediction`.
+            leaf_mask: Boolean mask of leaf nodes. ``None`` derives it from ``children_left == -1``.
+            n_features_in_tree: Number of distinct features used by decision nodes. ``None``
+                derives it from the unique values in ``features`` (excluding ``-2``).
+            max_feature_id: Largest feature index used. ``None`` derives it from ``features``.
+            feature_ids: Set of feature indices used by decision nodes. ``None`` derives it
+                from ``features``.
+            root_node_id: Root node id. ``None`` defaults to ``0``.
+            n_nodes: Number of nodes. ``None`` derives it from ``len(children_left)``.
+            nodes: Node-id array. ``None`` defaults to ``np.arange(n_nodes)``.
+            decision_type: Split comparison used by :meth:`decision_function` (``"<="`` or ``"<"``).
+                ``None`` defaults to ``"<="``.
+            feature_map_original_internal: Mapping from original to internal feature indices.
+                ``None`` defaults to the identity mapping on ``feature_ids``.
+            feature_map_internal_original: Mapping from internal to original feature indices.
+                ``None`` defaults to the identity mapping on ``feature_ids``.
+            original_output_type: Currently unused; accepted for forward compatibility.
+            intercepts: Currently unused; accepted for forward compatibility with linear-leaf
+                trees.
+            coeffs: Currently unused; accepted for forward compatibility with linear-leaf trees.
+        """
         self.children_left = children_left
         self.children_right = children_right
         self.children_missing = children_missing
@@ -225,9 +259,10 @@ class TreeModel:
             raise ValueError(msg) from e
 
     def __post_init__(self) -> None:
-        """Clean-up after the initialization of the TreeModel dataclass.
+        """No-op hook retained for forward compatibility.
 
-        The method sets up the tree model with the information provided in the constructor.
+        Kept so existing callers (e.g. dataclass-aware subclasses) can still invoke it; all
+        initialization happens in :meth:`__init__`.
         """
 
     def reduce_feature_complexity(self) -> None:
@@ -293,10 +328,28 @@ class TreeModel:
 
 
 class EdgeTree:
-    """A dataclass for storing the information of an edge representation of the tree.
+    """Edge-based representation of a tree used by the TreeSHAP-IQ algorithm.
 
-    The dataclass stores the information of an edge representation of the tree in a way that is easy
-    to access and manipulate for the TreeSHAP-IQ algorithm.
+    Built from a :class:`TreeModel` via :func:`~shapiq.tree.conversion.edges.create_edge_tree`,
+    this structure pre-computes the per-edge quantities that TreeSHAP-IQ needs to traverse the
+    tree only once per explained instance.
+
+    Attributes:
+        parents: Parent node id for each node (root parent is ``-1``).
+        ancestors: For each node, the id of the closest ancestor that splits on the same feature
+            (``-1`` if no such ancestor exists).
+        ancestor_nodes: Mapping ``node_id -> per-feature ancestor id array`` for non-root nodes.
+        p_e_values: Per-edge probability factors used by the summary polynomial.
+        p_e_storages: Cached storage of ``p_e`` values along each path.
+        split_weights: Per-edge split weights (fraction of samples taking each branch).
+        empty_predictions: Per-leaf contribution to the empty prediction.
+        edge_heights: Per-node edge height used by the Chebyshev interpolation.
+        max_depth: Maximum depth of the tree.
+        last_feature_node_in_path: Per-node id of the last decision node along the path that
+            split on the same feature.
+        interaction_height_store: Mapping ``order -> per-node interaction-height array`` used to
+            decide which interactions a node contributes to.
+        has_ancestors: Boolean mask; ``True`` at node ``i`` if ``ancestors[i] != -1``.
     """
 
     parents: np.ndarray
@@ -328,7 +381,11 @@ class EdgeTree:
         *,
         has_ancestors: np.ndarray | None = None,
     ) -> None:
-        """Initializes the EdgeTree dataclass."""
+        """Initialize an :class:`EdgeTree` from pre-computed per-node / per-edge arrays.
+
+        See the class docstring for the meaning of each attribute. ``has_ancestors`` is derived
+        from ``ancestors > -1`` when not supplied.
+        """
         self.parents = parents
         self.ancestors = ancestors
         self.ancestor_nodes = ancestor_nodes
