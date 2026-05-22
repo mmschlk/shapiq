@@ -247,20 +247,60 @@ def test_reproducibility():
     assert res1.estimated == res2.estimated
 
 
-def test_reproducibility_different_seeds():
-    """Different seeds should generally produce different approximations."""
-    n, budget = 6, 100
+def test_exact_regime_seed_independence():
+    """When the budget covers the full coalition space, results must be seed-independent.
 
-    # Use separate game instances so access counters don't interfere
-    game1 = DummyGame(n, interaction=(1, 2))
-    game2 = DummyGame(n, interaction=(1, 2))
+    LeverageSHAP caps the budget at 2**n and switches to an exact/deterministic
+    computation when the estimator can enumerate all coalitions. In that mode the
+    random seed must not affect the output. This test asserts that behavior.
+    """
+    n = 6
+    budget = 2**n
 
-    # use fresh game instances for independent runs
-    res_a = LeverageSHAP(n, random_state=0).approximate(budget, game1)
-    res_b = LeverageSHAP(n, random_state=1).approximate(budget, game2)
+    game_a = DummyGame(n, interaction=(1, 2))
+    game_b = DummyGame(n, interaction=(1, 2))
 
-    # very unlikely to be identical; assert they are not exactly equal
-    assert not np.array_equal(res_a.values, res_b.values)
+    # Use two different seeds to ensure seed has no effect in exact regime
+    res_a = LeverageSHAP(n, random_state=0).approximate(budget, game_a)
+    res_b = LeverageSHAP(n, random_state=1).approximate(budget, game_b)
+
+    # Exact regime: outputs must be identical (bitwise for the arrays)
+    np.testing.assert_array_equal(res_a.values, res_b.values)
+    assert res_a.estimation_budget == res_b.estimation_budget
+    assert res_a.estimated == res_b.estimated
+
+
+def test_stochastic_regime_seed_variability():
+    """In the sampling regime, different seeds should usually produce different estimates.
+
+    This test is conservative and robust: it runs multiple seeds and asserts that at
+    least one pair of resulting value vectors differs by more than a small numerical
+    tolerance. We avoid asserting that *all* seeds must differ because low budgets can
+    coincidentally yield identical samples; instead we require that variability is
+    observable across several independent seeds.
+    """
+    n = 6
+    budget = 20  # ensure budget < 2**n so sampling occurs
+
+    def make_game():
+        return DummyGame(n, interaction=(1, 2))
+
+    seeds = [0, 1, 2, 3, 4]
+    results = [
+        LeverageSHAP(n, random_state=s).approximate(budget, make_game()).values for s in seeds
+    ]
+
+    atol = 1e-8
+    found_diff = False
+    for i in range(len(results)):
+        for j in range(i + 1, len(results)):
+            if not np.allclose(results[i], results[j], atol=atol, rtol=0.0):
+                found_diff = True
+                break
+        if found_diff:
+            break
+
+    assert found_diff, "No observable variability between seeds in stochastic regime"
 
 
 def test_empirical_convergence_rate():
@@ -270,7 +310,7 @@ def test_empirical_convergence_rate():
     """
 
     n = 6
-    seeds = [0, 1, 2, 3]
+    seeds = [0, 1, 2, 3, 4, 5]
 
     def game_factory():
         return DummyGame(n, interaction=(0, 2))
@@ -286,6 +326,8 @@ def test_empirical_convergence_rate():
             errs.append(np.linalg.norm(exact_sv - res.values[1:]))
         return float(np.mean(errs))
 
-    err_small = mean_error(20)
-    err_large = mean_error(200)
-    assert err_large < err_small
+    err_small = mean_error(12)
+    err_medium = mean_error(24)
+    err_large = mean_error(48)
+
+    assert err_large < err_medium < err_small
