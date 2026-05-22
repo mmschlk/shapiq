@@ -26,13 +26,13 @@ dependencies = [
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
-    {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
-    {name = "Hubert Baniecki"},
-    {name = "Fabian Fumagalli"},
+    {name = "Santo M. A. R. Thies", email = "Santo.Thies@lmu.de"},
+    {name = "Hubert Baniecki", email = "h.baniecki@uw.edu.pl"},
+    {name = "Fabian Fumagalli", email = "ffumagalli@techfak.de"},
 ]
 maintainers = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
-    {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
+    {name = "Santo M. A. R. Thies", email = "Santo.Thies@lmu.de"},
 ]
 license = "MIT"
 classifiers = [
