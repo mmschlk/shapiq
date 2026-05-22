@@ -6,6 +6,11 @@ the well established Shapley value and its generalization to interaction.
 
 from __future__ import annotations
 
+try:
+    from ._version import __version__
+except ImportError:  # pragma: no cover - _version.py is generated at build time
+    __version__ = "0.0.0"
+
 # approximator classes
 from .approximator import (
     SHAPIQ,
@@ -80,6 +85,8 @@ from .utils import (  # sets.py  # tree.py
 )
 
 __all__ = [
+    # version
+    "__version__",
     # base
     "InteractionValues",
     "ExactComputer",
