@@ -380,11 +380,15 @@ class GameBenchmarkSetup:
             _loader = getattr(_tabarena_datasets_module, f"load_{dataset_name}")
             x_data, y_data = _loader()
             self.feature_names: list = list(x_data.columns)
-            import pandas as pd
-
-            self.dataset_type = (
-                "regression" if pd.api.types.is_float_dtype(y_data) else "classification"
+            _y_arr = np.asarray(y_data)
+            _y_unique = np.unique(_y_arr)
+            _is_compact_int_labels = (
+                np.issubdtype(_y_arr.dtype, np.integer)
+                and len(_y_unique) > 0
+                and _y_unique[0] == 0
+                and np.array_equal(_y_unique, np.arange(len(_y_unique)))
             )
+            self.dataset_type = "classification" if _is_compact_int_labels else "regression"
         else:
             available_datasets = ", ".join(f"'{name}'" for name in AVAILABLE_DATASETS)
             msg = (
@@ -401,7 +405,15 @@ class GameBenchmarkSetup:
         self.y_data: np.ndarray = y_data
         self.n_data: int = self.x_data.shape[0]
         self.n_features: int = len(self.feature_names)
-        self.n_test = int(test_size * self.n_data)
+        min_test_samples = 30
+        self.n_test = max(int(test_size * self.n_data), min_test_samples)
+        if self.n_test >= self.n_data:
+            msg = (
+                f"Dataset {dataset_name} has only {self.n_data} samples, but the benchmark "
+                f"requires at least {min_test_samples + 1} samples to keep x_test >= "
+                f"{min_test_samples} and still have training data."
+            )
+            raise ValueError(msg)
         self.n_train = self.n_data - self.n_test
         self.x_train: np.ndarray = copy.deepcopy(x_data[: self.n_train])
         self.y_train: np.ndarray = copy.deepcopy(y_data[: self.n_train])
@@ -425,6 +437,8 @@ class GameBenchmarkSetup:
                     self.init_random_forest_classifier()
                 case "gradient_boosting":
                     self.init_gradient_boosting_classifier()
+                case "lightgbm":
+                    self.init_lightgbm_classifier()
         elif self.dataset_type == "regression":
             match model_name:
                 case "decision_tree":
@@ -433,6 +447,8 @@ class GameBenchmarkSetup:
                     self.init_random_forest_regressor()
                 case "gradient_boosting":
                     self.init_gradient_boosting_regressor()
+                case "lightgbm":
+                    self.init_lightgbm_regressor()
                 case "neural_network":
                     if dataset_name != "california_housing":
                         msg = f"The neural network model is only available for the california_housing dataset, not {dataset_name}."
@@ -498,6 +514,20 @@ class GameBenchmarkSetup:
         from xgboost import XGBClassifier
 
         self.model = XGBClassifier(random_state=self.random_state, n_jobs=1)
+        self.model.fit(self.x_train, self.y_train)
+
+    def init_lightgbm_classifier(self) -> None:
+        """Initializes and trains a lightgbm model for a classification dataset."""
+        from lightgbm import LGBMClassifier
+
+        self.model = LGBMClassifier(random_state=self.random_state, n_jobs=1, verbose=-1)
+        self.model.fit(self.x_train, self.y_train)
+
+    def init_lightgbm_regressor(self) -> None:
+        """Initializes and trains a lightgbm model for a regression dataset."""
+        from lightgbm import LGBMRegressor
+
+        self.model = LGBMRegressor(random_state=self.random_state, n_jobs=1, verbose=-1)
         self.model.fit(self.x_train, self.y_train)
 
     def init_decision_tree_regressor(self) -> None:

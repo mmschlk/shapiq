@@ -1366,10 +1366,10 @@ def _load_tabarena_dataset(name: str, openml_id: int) -> tuple[pd.DataFrame, pd.
         y_out = pd.Series(LabelEncoder().fit_transform(y), name="target")
     else:
         y_out = pd.Series(y.values, name="target")
-    x_copied = X.copy()
-    x_copied["__target__"] = y_out
+    dataset = X.copy()
+    dataset["__target__"] = y_out
     _create_folder()
-    x_copied.to_csv(SHAPIQ_DATASETS_FOLDER / csv_name, index=False)
+    dataset.to_csv(SHAPIQ_DATASETS_FOLDER / csv_name, index=False)
     return X, y_out
 
 
