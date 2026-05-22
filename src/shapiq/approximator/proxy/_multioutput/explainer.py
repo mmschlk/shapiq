@@ -92,14 +92,23 @@ def build_offset_to_tuple_map(n_features: int, max_order: int) -> list[tuple[int
     if max_order >= 2:
         offset_to_tuple.extend((i, j) for i in range(n_features) for j in range(i + 1, n_features))
 
-    # order 3: unordered triples (i, j, k), i < j < k, compact index3 order
+    # order 3: unordered triples (i, j, k), i < j < k, in the compact ``index3``
+    # order of the fused C kernel. The kernel does NOT lay triples out
+    # lexicographically -- it places triple (i, j, k) at the dense offset
+    # ``i + j*(j-1)//2 + k*(k-1)*(k-2)//6`` (the same formula used by
+    # ``_dict_to_dense`` in the Phase 2 kernel test). The triples must therefore
+    # be emitted sorted by that offset, not by plain nested iteration.
     if max_order >= 3:
-        offset_to_tuple.extend(
+        triples = [
             (i, j, k)
             for i in range(n_features)
             for j in range(i + 1, n_features)
             for k in range(j + 1, n_features)
+        ]
+        triples.sort(
+            key=lambda t: t[0] + t[1] * (t[1] - 1) // 2 + t[2] * (t[2] - 1) * (t[2] - 2) // 6
         )
+        offset_to_tuple.extend(triples)
 
     expected = sum(comb(n_features, k) for k in range(1, max_order + 1))
     if len(offset_to_tuple) != expected:  # pragma: no cover - defensive
