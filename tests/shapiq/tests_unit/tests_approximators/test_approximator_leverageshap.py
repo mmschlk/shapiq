@@ -52,6 +52,54 @@ def test_approximate(n, budget):
     assert efficiency == pytest.approx(v_grand - v_empty, abs=1e-6)
 
 
+def test_exact_matches_exactcomputer_on_small_game():
+    """With a full budget, LeverageSHAP should match ExactComputer on a small game."""
+    n = 6
+    budget = 2**n
+    game = DummyGame(n, interaction=(0, 2))
+
+    # Use ExactComputer here as the ground-truth reference.
+    # The point of the test is to check that LeverageSHAP reaches the exact answer
+    # once the budget covers the full coalition space.
+    exact = ExactComputer(game, n)
+    exact_sv = exact("SV")
+
+    approximator = LeverageSHAP(n, random_state=42)
+    result = approximator.approximate(budget=budget, game=game)
+
+    # NumPy arrays need elementwise comparison, and floating-point code may differ by
+    # tiny rounding noise, so assert_allclose is the right check here.
+    # The results below should be exactly equal, but we allow for a tiny absolute tolerance
+    # to account for any minor floating-point discrepancies that may arise from different
+    # computational paths in the two methods.
+    np.testing.assert_allclose(result.values, exact_sv.values, atol=1e-8, rtol=0.0)
+
+    # With a full budget, the approximation is exact, so estimated should be False. The parameter 'estimated' indicates whether the result is an estimate (True) or exact (False). Since we are using a full budget that covers all coalitions, LeverageSHAP should be able to compute the exact Shapley values, and thus estimated should be False.
+    assert result.estimated is False
+    assert (
+        result.estimation_budget == budget
+    )  # The estimation budget should match the full budget used for approximation.
+
+
+def test_tiny_n_budget_two_symmetric_game():
+    """Tiny-n edge case: with n=2 and the minimum valid budget, the solver should still work."""
+    n = 2
+
+    def symmetric_game(Z):
+        return Z.astype(float).sum(axis=1)
+
+    # This is the smallest valid setting for LeverageSHAP.
+    # It checks that the solver still returns a sensible result when there are no
+    # interior coalition sizes to learn from.
+    approximator = LeverageSHAP(n, random_state=0)
+    result = approximator.approximate(budget=2, game=symmetric_game)
+
+    # The game is perfectly symmetric, so the two players should receive the same SV.
+    assert result.estimated is True
+    np.testing.assert_allclose(result.values[1:], np.array([1.0, 1.0]), atol=1e-12, rtol=0.0)
+    assert result.values[1:].sum() == pytest.approx(2.0, abs=1e-12)
+
+
 def test_exact_recovery_additive_game():
     """With budget == 2^n, LeverageSHAP should recover exact SVs on an additive game."""
     n = 5
