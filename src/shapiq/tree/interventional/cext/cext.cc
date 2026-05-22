@@ -22,6 +22,8 @@ static PyObject *compute_interactions_batched_sparse(PyObject *self, PyObject *a
 static PyObject *compute_interactions_flatten(PyObject *self, PyObject *args);
 static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args);
 static PyObject *preprocess_boolean_trees(PyObject *self, PyObject *args);
+static PyObject *preprocess_boolean_trees_multi(PyObject *self, PyObject *args);
+static PyObject *compute_interactions_flatten_multi(PyObject *self, PyObject *args);
 
 static PyMethodDef module_methods[] = {
     {"compute_interactions", compute_interactions, METH_VARARGS, "Compute feature interactions using the interventional algorithm."},
@@ -30,6 +32,8 @@ static PyMethodDef module_methods[] = {
     {"compute_interactions_flatten", compute_interactions_flatten, METH_VARARGS, "Compute feature interactions with flattened input."},
     {"compute_interactions_sparse", compute_interactions_sparse, METH_VARARGS, "Compute sparse feature interactions using the interventional algorithm."},
     {"preprocess_boolean_trees", preprocess_boolean_trees, METH_VARARGS, "Preprocess boolean trees: DFS traversal to produce flattened E/R arrays."},
+    {"preprocess_boolean_trees_multi", preprocess_boolean_trees_multi, METH_VARARGS, "Preprocess multi-output boolean trees: value-independent structural arrays + compact (n_leaves, n_outputs) leaf-value matrix."},
+    {"compute_interactions_flatten_multi", compute_interactions_flatten_multi, METH_VARARGS, "Fused multi-output flatten interaction kernel: one traversal for all outputs."},
     {NULL, NULL, 0, NULL}};
 /** Define the Python Module for both Python 3 and Python 2 Version.
  * This code is mostly copied from https://github.com/yupbank/linear_tree_shap/blob/main/linear_tree_shap/cext/_cext.cc
@@ -1910,6 +1914,784 @@ static PyObject *preprocess_boolean_trees(PyObject *self, PyObject *args)
     PyTuple_SetItem(result, 5, np_lid);           // leaf_id
 
     return result;
+}
+
+// ============================================================================
+// Multi-output fused kernel (additive extension; does not touch existing code).
+//
+// preprocess_boolean_trees_multi mirrors preprocess_boolean_trees but each tree's
+// value array is 2-D (n_nodes, n_outputs). It returns the value-independent
+// structural arrays (E_R_flatten, e_size_flatten, r_size_flatten, feature_in_E,
+// leaf_id) plus a compact (n_leaves, n_outputs) leaf-value matrix in leaf_id order.
+//
+// compute_interactions_flatten_multi is the fused kernel: it performs the
+// structural work (weight lookups + interaction-index computation) ONCE per
+// (leaf, feature-combination), and only the leaf-value multiply + scatter-add is
+// repeated per output. The result has shape (n_outputs, result_size), row-major.
+// ============================================================================
+
+// A single structural contribution: scatter `weight` (times the per-output leaf
+// value) into result column `idx`. Computed once, reused across all outputs.
+struct MultiContribution
+{
+    int idx;
+    float weight;
+};
+
+// Fused order-1 kernel. Structural work (weight) computed once per iteration,
+// then scattered for every output. `result` is (n_outputs, result_size) row-major.
+template <IndexType IT>
+static void compute_order1_multi(
+    const float *__restrict__ leaf_value_matrix, // (n_leaves, n_outputs)
+    int n_outputs,
+    const int32_t *__restrict__ feat32,
+    const int32_t *__restrict__ e32,
+    const int32_t *__restrict__ r32,
+    const int32_t *__restrict__ fie32,
+    const int32_t *__restrict__ lid32,
+    const float *__restrict__ e_f32,
+    const float *__restrict__ r_f32,
+    const float *__restrict__ fie_f32,
+    int n_iterations,
+    int n_features,
+    float inv_scaling,
+    const float *__restrict__ table_s1,
+    int table_stride,
+    inter_weights::WeightCache &weight_cache,
+    int max_order,
+    int result_size,
+    double *__restrict__ result)
+{
+    #pragma omp parallel
+    {
+        double *local_result = new double[(size_t)n_outputs * result_size]();
+        #pragma omp for schedule(static)
+        for (int i = 0; i < n_iterations; i++)
+        {
+            // --- structural work: computed ONCE, independent of output ---
+            float w1;
+            if constexpr (IT == IndexType::BII)
+            {
+                float sign = 1.0f - 2.0f * (1.0f - fie_f32[i]);
+                w1 = sign * exp2f(-(e_f32[i] + r_f32[i] - 1.0f));
+            }
+            else if constexpr (IT == IndexType::CUSTOM)
+            {
+                w1 = (float)weight_cache.get_weight(
+                    n_features, e32[i], r32[i], fie32[i], 1 - fie32[i], 1, IT, max_order);
+            }
+            else
+            {
+                w1 = table_s1[fie32[i] * table_stride * table_stride + e32[i] * table_stride + r32[i]];
+            }
+            float weight = w1 * inv_scaling;
+            int idx = feat32[i];
+            const float *leaf_vals = leaf_value_matrix + (size_t)lid32[i] * n_outputs;
+            // --- per-output multiply + scatter (the only output-dependent part) ---
+            for (int o = 0; o < n_outputs; o++)
+            {
+                local_result[(size_t)o * result_size + idx] += (double)(leaf_vals[o] * weight);
+            }
+        }
+        #pragma omp critical
+        {
+            for (size_t k = 0; k < (size_t)n_outputs * result_size; k++)
+                result[k] += local_result[k];
+        }
+        delete[] local_result;
+    }
+}
+
+// Fused order-2 / order-3 kernel, parallel over leaves. For each leaf the full
+// list of structural contributions (interaction-index + weight) is built ONCE,
+// then scattered for all outputs.
+template <IndexType IT, int MAXORD>
+static void compute_orderN_multi(
+    const float *__restrict__ leaf_value_matrix, // (n_leaves, n_outputs)
+    int n_outputs,
+    const int32_t *__restrict__ feat32,
+    const int32_t *__restrict__ e32,
+    const int32_t *__restrict__ r32,
+    const int32_t *__restrict__ fie32,
+    const int32_t *__restrict__ lid32,
+    const float *__restrict__ e_f32,
+    const float *__restrict__ r_f32,
+    const float *__restrict__ fie_f32,
+    int n_iterations,
+    int n_features,
+    float inv_scaling,
+    const float *__restrict__ table_s1,
+    const float *__restrict__ table_s2,
+    const float *__restrict__ table_s3,
+    int table_stride,
+    inter_weights::WeightCache &weight_cache,
+    int max_order,
+    int result_size,
+    double *__restrict__ result)
+{
+    // Find leaf boundaries (one entry per leaf in the flattened arrays).
+    std::vector<int> leaf_start;
+    leaf_start.reserve(n_iterations / 4 + 1);
+    leaf_start.push_back(0);
+    for (int i = 1; i < n_iterations; i++)
+    {
+        if (lid32[i] != lid32[i - 1])
+            leaf_start.push_back(i);
+    }
+    leaf_start.push_back(n_iterations);
+    int n_leaves = (int)leaf_start.size() - 1;
+
+    #pragma omp parallel
+    {
+        double *local_result = new double[(size_t)n_outputs * result_size]();
+        std::vector<MultiContribution> contribs;
+        contribs.reserve(256);
+        #pragma omp for schedule(dynamic, 16)
+        for (int leaf = 0; leaf < n_leaves; leaf++)
+        {
+            int start = leaf_start[leaf];
+            int end = leaf_start[leaf + 1];
+            // All iterations of one leaf share the same leaf-value row.
+            const float *leaf_vals = leaf_value_matrix + (size_t)lid32[start] * n_outputs;
+
+            // --- structural work: build the contribution list ONCE ---
+            contribs.clear();
+            for (int i = start; i < end; i++)
+            {
+                int fi = feat32[i];
+                int ei = e32[i], ri = r32[i], fiei = fie32[i];
+
+                // order-1
+                float w1;
+                if constexpr (IT == IndexType::BII)
+                {
+                    float sign = 1.0f - 2.0f * (1.0f - fie_f32[i]);
+                    w1 = sign * exp2f(-(e_f32[i] + r_f32[i] - 1.0f));
+                }
+                else if constexpr (IT == IndexType::CUSTOM)
+                {
+                    w1 = (float)weight_cache.get_weight(
+                        n_features, ei, ri, fiei, 1 - fiei, 1, IT, max_order);
+                }
+                else
+                {
+                    w1 = table_s1[fiei * table_stride * table_stride + ei * table_stride + ri];
+                }
+                contribs.push_back({fi, w1 * inv_scaling});
+
+                for (int j = i + 1; j < end; j++)
+                {
+                    int fj = feat32[j];
+                    int s_cap_e_2 = fiei + fie32[j];
+                    float w2;
+                    if constexpr (IT == IndexType::BII)
+                    {
+                        int s_cap_r_c = 2 - s_cap_e_2;
+                        float sign_c = (s_cap_r_c % 2 == 0) ? 1.0f : -1.0f;
+                        w2 = sign_c * exp2f(-(e_f32[i] + r_f32[i] - 2.0f));
+                    }
+                    else if constexpr (IT == IndexType::CUSTOM)
+                    {
+                        int s_cap_r_c = 2 - s_cap_e_2;
+                        w2 = (float)weight_cache.get_weight(
+                            n_features, ei, ri, s_cap_e_2, s_cap_r_c, 2, IT, max_order);
+                    }
+                    else
+                    {
+                        w2 = table_s2[s_cap_e_2 * table_stride * table_stride + ei * table_stride + ri];
+                    }
+                    int fi2 = fi, fj2 = fj;
+                    if (fi2 > fj2) { int t = fi2; fi2 = fj2; fj2 = t; }
+                    int idx2 = (fi2 == fj2) ? fi2
+                        : n_features + (fi2 * n_features - fi2 * (fi2 + 1) / 2) + (fj2 - fi2 - 1);
+                    contribs.push_back({idx2, w2 * inv_scaling});
+
+                    if constexpr (MAXORD >= 3)
+                    {
+                        for (int k = j + 1; k < end; k++)
+                        {
+                            int fk = feat32[k];
+                            int s_cap_e_3 = s_cap_e_2 + fie32[k];
+                            float w3;
+                            if constexpr (IT == IndexType::BII)
+                            {
+                                int s_cap_r_3 = 3 - s_cap_e_3;
+                                float sign_3 = (s_cap_r_3 % 2 == 0) ? 1.0f : -1.0f;
+                                w3 = sign_3 * exp2f(-(e_f32[i] + r_f32[i] - 3.0f));
+                            }
+                            else if constexpr (IT == IndexType::CUSTOM)
+                            {
+                                int s_cap_r_3 = 3 - s_cap_e_3;
+                                w3 = (float)weight_cache.get_weight(
+                                    n_features, ei, ri, s_cap_e_3, s_cap_r_3, 3, IT, max_order);
+                            }
+                            else
+                            {
+                                w3 = table_s3[s_cap_e_3 * table_stride * table_stride + ei * table_stride + ri];
+                            }
+                            int idx3 = index3(fi, fj, fk, n_features);
+                            contribs.push_back({idx3, w3 * inv_scaling});
+                        }
+                    }
+                }
+            }
+
+            // --- per-output multiply + scatter (only output-dependent part) ---
+            for (int o = 0; o < n_outputs; o++)
+            {
+                double *row = local_result + (size_t)o * result_size;
+                float lv = leaf_vals[o];
+                for (const MultiContribution &c : contribs)
+                {
+                    row[c.idx] += (double)(lv * c.weight);
+                }
+            }
+        }
+        #pragma omp critical
+        {
+            for (size_t k = 0; k < (size_t)n_outputs * result_size; k++)
+                result[k] += local_result[k];
+        }
+        delete[] local_result;
+    }
+}
+
+#define DISPATCH_INDEX_TYPE_MULTI(FUNC, index_type, ...) \
+    do { \
+        switch (index_type) { \
+        case IndexType::SII:  FUNC<IndexType::SII>(__VA_ARGS__); break; \
+        case IndexType::BII:  FUNC<IndexType::BII>(__VA_ARGS__); break; \
+        case IndexType::CHII: FUNC<IndexType::CHII>(__VA_ARGS__); break; \
+        case IndexType::FBII: FUNC<IndexType::FBII>(__VA_ARGS__); break; \
+        case IndexType::FSII: FUNC<IndexType::FSII>(__VA_ARGS__); break; \
+        case IndexType::STII: FUNC<IndexType::STII>(__VA_ARGS__); break; \
+        case IndexType::CUSTOM: FUNC<IndexType::CUSTOM>(__VA_ARGS__); break; \
+        } \
+    } while(0)
+
+#define DISPATCH_INDEX_TYPE_MULTI_ORD(FUNC, ORD, index_type, ...) \
+    do { \
+        switch (index_type) { \
+        case IndexType::SII:  FUNC<IndexType::SII, ORD>(__VA_ARGS__); break; \
+        case IndexType::BII:  FUNC<IndexType::BII, ORD>(__VA_ARGS__); break; \
+        case IndexType::CHII: FUNC<IndexType::CHII, ORD>(__VA_ARGS__); break; \
+        case IndexType::FBII: FUNC<IndexType::FBII, ORD>(__VA_ARGS__); break; \
+        case IndexType::FSII: FUNC<IndexType::FSII, ORD>(__VA_ARGS__); break; \
+        case IndexType::STII: FUNC<IndexType::STII, ORD>(__VA_ARGS__); break; \
+        case IndexType::CUSTOM: FUNC<IndexType::CUSTOM, ORD>(__VA_ARGS__); break; \
+        } \
+    } while(0)
+
+// preprocess_boolean_trees_multi: DFS over multi-output boolean trees.
+// Args (in order):
+//   values_list           : list of (n_nodes, n_outputs) float64 numpy arrays
+//   features_list         : list of (n_nodes,) int64 numpy arrays
+//   children_left_list    : list of (n_nodes,) int64 numpy arrays
+//   children_right_list   : list of (n_nodes,) int64 numpy arrays
+//   n_features            : int
+// Returns a tuple of 6 numpy arrays:
+//   E_R_flatten     (n_total,)             int64
+//   e_size_flatten  (n_total,)             int64
+//   r_size_flatten  (n_total,)             int64
+//   feature_in_E    (n_total,)             int64
+//   leaf_id         (n_total,)             int64
+//   leaf_values     (n_leaves, n_outputs)  float32   (one row per leaf, leaf_id order)
+static PyObject *preprocess_boolean_trees_multi(PyObject *self, PyObject *args)
+{
+    PyObject *values_list_obj;
+    PyObject *features_list_obj;
+    PyObject *children_left_list_obj;
+    PyObject *children_right_list_obj;
+    int n_features;
+
+    if (!PyArg_ParseTuple(args, "OOOOi",
+                          &values_list_obj, &features_list_obj,
+                          &children_left_list_obj, &children_right_list_obj,
+                          &n_features))
+    {
+        return NULL;
+    }
+
+    if (!PyList_Check(values_list_obj) || !PyList_Check(features_list_obj) ||
+        !PyList_Check(children_left_list_obj) || !PyList_Check(children_right_list_obj))
+    {
+        PyErr_SetString(PyExc_TypeError, "All tree inputs must be lists of numpy arrays");
+        return NULL;
+    }
+
+    Py_ssize_t num_trees = PyList_Size(values_list_obj);
+    if (num_trees != PyList_Size(features_list_obj) ||
+        num_trees != PyList_Size(children_left_list_obj) ||
+        num_trees != PyList_Size(children_right_list_obj))
+    {
+        PyErr_SetString(PyExc_ValueError, "All tree lists must have the same length");
+        return NULL;
+    }
+    if (num_trees == 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "Tree lists must not be empty");
+        return NULL;
+    }
+
+    // Structural output buffers (value-independent).
+    std::vector<int64_t> features_out;
+    std::vector<int64_t> e_sizes_out;
+    std::vector<int64_t> r_sizes_out;
+    std::vector<int64_t> fie_out;
+    std::vector<int64_t> lid_out;
+    // Compact leaf-value matrix, appended one c-vector per leaf.
+    std::vector<float> leaf_values_out;
+
+    size_t est = static_cast<size_t>(num_trees) * 64 * 6;
+    features_out.reserve(est);
+    e_sizes_out.reserve(est);
+    r_sizes_out.reserve(est);
+    fie_out.reserve(est);
+    lid_out.reserve(est);
+
+    int64_t leaf_counter = 0;
+    int n_outputs = -1; // discovered from the first tree's value array
+
+    std::vector<std::tuple<PyArrayObject *, PyArrayObject *, PyArrayObject *, PyArrayObject *>> arrays_for_decref;
+
+    for (Py_ssize_t t = 0; t < num_trees; t++)
+    {
+        PyArrayObject *vals_arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(values_list_obj, t), NPY_FLOAT32, NPY_ARRAY_IN_ARRAY);
+        PyArrayObject *feat_arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(features_list_obj, t), NPY_INT64, NPY_ARRAY_IN_ARRAY);
+        PyArrayObject *cl_arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(children_left_list_obj, t), NPY_INT64, NPY_ARRAY_IN_ARRAY);
+        PyArrayObject *cr_arr = (PyArrayObject *)PyArray_FROM_OTF(
+            PyList_GetItem(children_right_list_obj, t), NPY_INT64, NPY_ARRAY_IN_ARRAY);
+
+        if (!vals_arr || !feat_arr || !cl_arr || !cr_arr)
+        {
+            Py_XDECREF(vals_arr);
+            Py_XDECREF(feat_arr);
+            Py_XDECREF(cl_arr);
+            Py_XDECREF(cr_arr);
+            for (auto &arr_tuple : arrays_for_decref)
+            {
+                Py_XDECREF(std::get<0>(arr_tuple));
+                Py_XDECREF(std::get<1>(arr_tuple));
+                Py_XDECREF(std::get<2>(arr_tuple));
+                Py_XDECREF(std::get<3>(arr_tuple));
+            }
+            PyErr_SetString(PyExc_TypeError, "Failed to convert tree arrays");
+            return NULL;
+        }
+        arrays_for_decref.push_back(std::make_tuple(vals_arr, feat_arr, cl_arr, cr_arr));
+
+        if (PyArray_NDIM(vals_arr) != 2)
+        {
+            for (auto &arr_tuple : arrays_for_decref)
+            {
+                Py_XDECREF(std::get<0>(arr_tuple));
+                Py_XDECREF(std::get<1>(arr_tuple));
+                Py_XDECREF(std::get<2>(arr_tuple));
+                Py_XDECREF(std::get<3>(arr_tuple));
+            }
+            PyErr_SetString(PyExc_ValueError, "Each value array must be 2-D (n_nodes, n_outputs)");
+            return NULL;
+        }
+        int tree_n_outputs = static_cast<int>(PyArray_DIM(vals_arr, 1));
+        if (n_outputs < 0)
+        {
+            n_outputs = tree_n_outputs;
+        }
+        else if (n_outputs != tree_n_outputs)
+        {
+            for (auto &arr_tuple : arrays_for_decref)
+            {
+                Py_XDECREF(std::get<0>(arr_tuple));
+                Py_XDECREF(std::get<1>(arr_tuple));
+                Py_XDECREF(std::get<2>(arr_tuple));
+                Py_XDECREF(std::get<3>(arr_tuple));
+            }
+            PyErr_SetString(PyExc_ValueError, "All trees must share the same n_outputs");
+            return NULL;
+        }
+
+        float *values = (float *)PyArray_DATA(vals_arr); // (n_nodes, n_outputs) row-major
+        int64_t *features = (int64_t *)PyArray_DATA(feat_arr);
+        int64_t *children_left = (int64_t *)PyArray_DATA(cl_arr);
+        int64_t *children_right = (int64_t *)PyArray_DATA(cr_arr);
+
+        std::vector<StackFrame> stack;
+        stack.reserve(256);
+        stack.push_back(StackFrame(0, BitSet(n_features), BitSet(n_features), 0, 0));
+
+        while (!stack.empty())
+        {
+            StackFrame frame = std::move(stack.back());
+            stack.pop_back();
+            int64_t node_id = frame.node_id;
+
+            bool is_leaf = (children_left[node_id] == children_right[node_id]);
+            if (is_leaf)
+            {
+                int64_t e_size = static_cast<int64_t>(frame.E.num_bits());
+                int64_t r_size = static_cast<int64_t>(frame.R.num_bits());
+
+                // Append this leaf's c-vector to the compact leaf-value matrix.
+                const float *node_vals = values + (size_t)node_id * n_outputs;
+                for (int o = 0; o < n_outputs; o++)
+                {
+                    leaf_values_out.push_back(node_vals[o]);
+                }
+
+                frame.E.for_each_set_bit([&](uint64_t feat)
+                {
+                    features_out.push_back(static_cast<int64_t>(feat));
+                    e_sizes_out.push_back(e_size);
+                    r_sizes_out.push_back(r_size);
+                    fie_out.push_back(1);
+                    lid_out.push_back(leaf_counter);
+                });
+                frame.R.for_each_set_bit([&](uint64_t feat)
+                {
+                    features_out.push_back(static_cast<int64_t>(feat));
+                    e_sizes_out.push_back(e_size);
+                    r_sizes_out.push_back(r_size);
+                    fie_out.push_back(0);
+                    lid_out.push_back(leaf_counter);
+                });
+                leaf_counter++;
+                continue;
+            }
+
+            int64_t feature = features[node_id];
+
+            if (!frame.E.contains(feature))
+            {
+                BitSet next_R = frame.R;
+                next_R.add(feature);
+                stack.push_back(StackFrame(
+                    children_left[node_id], frame.E, next_R,
+                    frame.e, frame.r + 1));
+            }
+            if (!frame.R.contains(feature))
+            {
+                BitSet next_E = frame.E;
+                next_E.add(feature);
+                stack.push_back(StackFrame(
+                    children_right[node_id], next_E, frame.R,
+                    frame.e + 1, frame.r));
+            }
+        }
+    }
+
+    for (auto &arr_tuple : arrays_for_decref)
+    {
+        Py_XDECREF(std::get<0>(arr_tuple));
+        Py_XDECREF(std::get<1>(arr_tuple));
+        Py_XDECREF(std::get<2>(arr_tuple));
+        Py_XDECREF(std::get<3>(arr_tuple));
+    }
+
+    npy_intp n_total = static_cast<npy_intp>(features_out.size());
+
+    PyObject *np_features = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_e_sizes = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_r_sizes = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_fie = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+    PyObject *np_lid = PyArray_SimpleNew(1, &n_total, NPY_INT64);
+
+    npy_intp leaf_dims[2] = {(npy_intp)leaf_counter, (npy_intp)(n_outputs < 0 ? 0 : n_outputs)};
+    PyObject *np_leaf_values = PyArray_SimpleNew(2, leaf_dims, NPY_FLOAT32);
+
+    if (!np_features || !np_e_sizes || !np_r_sizes || !np_fie || !np_lid || !np_leaf_values)
+    {
+        Py_XDECREF(np_features);
+        Py_XDECREF(np_e_sizes);
+        Py_XDECREF(np_r_sizes);
+        Py_XDECREF(np_fie);
+        Py_XDECREF(np_lid);
+        Py_XDECREF(np_leaf_values);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output arrays");
+        return NULL;
+    }
+
+    if (n_total > 0)
+    {
+        memcpy(PyArray_DATA((PyArrayObject *)np_features), features_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_e_sizes), e_sizes_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_r_sizes), r_sizes_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_fie), fie_out.data(), n_total * sizeof(int64_t));
+        memcpy(PyArray_DATA((PyArrayObject *)np_lid), lid_out.data(), n_total * sizeof(int64_t));
+    }
+    if (!leaf_values_out.empty())
+    {
+        memcpy(PyArray_DATA((PyArrayObject *)np_leaf_values), leaf_values_out.data(),
+               leaf_values_out.size() * sizeof(float));
+    }
+
+    PyObject *result = PyTuple_New(6);
+    PyTuple_SetItem(result, 0, np_features);     // E_R_flatten
+    PyTuple_SetItem(result, 1, np_e_sizes);      // e_size_flatten
+    PyTuple_SetItem(result, 2, np_r_sizes);      // r_size_flatten
+    PyTuple_SetItem(result, 3, np_fie);          // feature_in_E
+    PyTuple_SetItem(result, 4, np_lid);          // leaf_id
+    PyTuple_SetItem(result, 5, np_leaf_values);  // leaf_values (n_leaves, n_outputs)
+
+    return result;
+}
+
+// compute_interactions_flatten_multi: fused multi-output flatten kernel.
+// Args (in order):
+//   leaf_value_matrix : (n_leaves, n_outputs) float32 numpy array (preprocess output)
+//   E_R_flatten       : (n_total,) int64
+//   e_size_flatten    : (n_total,) int64
+//   r_size_flatten    : (n_total,) int64
+//   feature_in_E      : (n_total,) int64
+//   leaf_id           : (n_total,) int64
+//   index             : str  (e.g. "SII")
+//   n_iterations      : int  (== n_total, length of the flattened arrays)
+//   n_features        : int
+//   max_order         : int  (1, 2, or 3)
+//   verbose           : int
+//   scaling_factor    : float
+//   weight_table      : optional float64 numpy array (None -> built-in index)
+// Returns a (n_outputs, result_size) float64 numpy array, row-major, where
+// result_size = sum(C(n_features, k) for k in 1..max_order).
+static PyObject *compute_interactions_flatten_multi(PyObject *self, PyObject *args)
+{
+    PyObject *leaf_value_matrix_obj;
+    PyObject *features_obj;
+    PyObject *e_sizes_obj;
+    PyObject *r_sizes_obj;
+    PyObject *feature_in_e_obj;
+    PyObject *leaf_id_obj;
+    const char *index_cptr;
+    int n_iterations;
+    int n_features;
+    int max_order;
+    int verbose;
+    float scaling_factor = 1.0f;
+    PyObject *weight_table_obj = Py_None;
+    IndexType index_type;
+
+    if (!PyArg_ParseTuple(args, "OOOOOOsiiiif|O",
+                          &leaf_value_matrix_obj, &features_obj, &e_sizes_obj, &r_sizes_obj,
+                          &feature_in_e_obj, &leaf_id_obj, &index_cptr,
+                          &n_iterations, &n_features, &max_order, &verbose,
+                          &scaling_factor, &weight_table_obj))
+    {
+        return NULL;
+    }
+    if (!PyArray_Check(leaf_value_matrix_obj) || !PyArray_Check(features_obj) ||
+        !PyArray_Check(e_sizes_obj) || !PyArray_Check(r_sizes_obj) ||
+        !PyArray_Check(feature_in_e_obj) || !PyArray_Check(leaf_id_obj))
+    {
+        PyErr_SetString(PyExc_TypeError, "Input data must be numpy arrays");
+        return NULL;
+    }
+    if (max_order < 1 || max_order > 3)
+    {
+        PyErr_SetString(PyExc_ValueError, "compute_interactions_flatten_multi only supports max_order in {1,2,3}");
+        return NULL;
+    }
+
+    PyArrayObject *leaf_value_matrix_array = (PyArrayObject *)PyArray_FROM_OTF(leaf_value_matrix_obj, NPY_FLOAT32, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *features_array = (PyArrayObject *)PyArray_FROM_OTF(features_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *e_sizes_array = (PyArrayObject *)PyArray_FROM_OTF(e_sizes_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *r_sizes_array = (PyArrayObject *)PyArray_FROM_OTF(r_sizes_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *feature_in_e_array = (PyArrayObject *)PyArray_FROM_OTF(feature_in_e_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *leaf_id_array = (PyArrayObject *)PyArray_FROM_OTF(leaf_id_obj, NPY_INT64, NPY_ARRAY_IN_ARRAY);
+
+    if (!leaf_value_matrix_array || !features_array || !e_sizes_array || !r_sizes_array ||
+        !feature_in_e_array || !leaf_id_array)
+    {
+        Py_XDECREF(leaf_value_matrix_array);
+        Py_XDECREF(features_array);
+        Py_XDECREF(e_sizes_array);
+        Py_XDECREF(r_sizes_array);
+        Py_XDECREF(feature_in_e_array);
+        Py_XDECREF(leaf_id_array);
+        PyErr_SetString(PyExc_TypeError, "Failed to convert input to numpy arrays");
+        return NULL;
+    }
+    if (PyArray_NDIM(leaf_value_matrix_array) != 2)
+    {
+        Py_XDECREF(leaf_value_matrix_array);
+        Py_XDECREF(features_array);
+        Py_XDECREF(e_sizes_array);
+        Py_XDECREF(r_sizes_array);
+        Py_XDECREF(feature_in_e_array);
+        Py_XDECREF(leaf_id_array);
+        PyErr_SetString(PyExc_ValueError, "leaf_value_matrix must be 2-D (n_leaves, n_outputs)");
+        return NULL;
+    }
+
+    int n_leaves = static_cast<int>(PyArray_DIM(leaf_value_matrix_array, 0));
+    int n_outputs = static_cast<int>(PyArray_DIM(leaf_value_matrix_array, 1));
+
+    if (!parse_index_type(std::string(index_cptr), index_type))
+    {
+        Py_XDECREF(leaf_value_matrix_array);
+        Py_XDECREF(features_array);
+        Py_XDECREF(e_sizes_array);
+        Py_XDECREF(r_sizes_array);
+        Py_XDECREF(feature_in_e_array);
+        Py_XDECREF(leaf_id_array);
+        PyErr_SetString(PyExc_ValueError, ("Unsupported index type: " + std::string(index_cptr)).c_str());
+        return NULL;
+    }
+
+    const float *leaf_value_matrix = (const float *)PyArray_DATA(leaf_value_matrix_array);
+    int64_t *features = (int64_t *)PyArray_DATA(features_array);
+    int64_t *e_sizes_data = (int64_t *)PyArray_DATA(e_sizes_array);
+    int64_t *r_sizes_data = (int64_t *)PyArray_DATA(r_sizes_array);
+    int64_t *feature_in_e_data = (int64_t *)PyArray_DATA(feature_in_e_array);
+    int64_t *leaf_id_data = (int64_t *)PyArray_DATA(leaf_id_array);
+
+    // Optional custom weight table.
+    const double *custom_table = nullptr;
+    int64_t custom_N = 0, custom_K = 0;
+    PyArrayObject *weight_table_array = nullptr;
+    if (weight_table_obj != Py_None)
+    {
+        weight_table_array = (PyArrayObject *)PyArray_FROM_OTF(weight_table_obj, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+        if (!weight_table_array)
+        {
+            Py_XDECREF(leaf_value_matrix_array);
+            Py_XDECREF(features_array);
+            Py_XDECREF(e_sizes_array);
+            Py_XDECREF(r_sizes_array);
+            Py_XDECREF(feature_in_e_array);
+            Py_XDECREF(leaf_id_array);
+            PyErr_SetString(PyExc_TypeError, "weight_table must be a float64 numpy array");
+            return NULL;
+        }
+        custom_table = (const double *)PyArray_DATA(weight_table_array);
+        custom_N = (int64_t)n_features + 1;
+        custom_K = (int64_t)max_order + 1;
+    }
+    inter_weights::WeightCache weight_cache = (custom_table != nullptr)
+        ? inter_weights::WeightCache((uint64_t)(3 * n_features), custom_table, custom_N, custom_K)
+        : inter_weights::WeightCache((uint64_t)(3 * n_features));
+
+    // --- Phase 0: int64 -> int32 / float32 conversion (structural, output-independent) ---
+    int32_t *feat32 = new int32_t[n_iterations];
+    int32_t *e32 = new int32_t[n_iterations];
+    int32_t *r32 = new int32_t[n_iterations];
+    int32_t *fie32 = new int32_t[n_iterations];
+    int32_t *lid32 = new int32_t[n_iterations];
+    float *e_f32 = new float[n_iterations];
+    float *r_f32 = new float[n_iterations];
+    float *fie_f32 = new float[n_iterations];
+    for (int i = 0; i < n_iterations; i++)
+    {
+        feat32[i] = (int32_t)features[i];
+        e32[i] = (int32_t)e_sizes_data[i];
+        r32[i] = (int32_t)r_sizes_data[i];
+        fie32[i] = (int32_t)feature_in_e_data[i];
+        lid32[i] = (int32_t)leaf_id_data[i];
+        e_f32[i] = (float)e_sizes_data[i];
+        r_f32[i] = (float)r_sizes_data[i];
+        fie_f32[i] = (float)feature_in_e_data[i];
+    }
+    float inv_scaling = 1.0f / scaling_factor;
+
+    // --- Phase 1: weight tables (computed ONCE, shared across all outputs) ---
+    int max_e = 0, max_r = 0;
+    for (int i = 0; i < n_iterations; i++)
+    {
+        if (e32[i] > max_e) max_e = e32[i];
+        if (r32[i] > max_r) max_r = r32[i];
+    }
+    int table_stride = std::max(max_e, max_r) + 1;
+
+    float *table_s1 = nullptr;
+    float *table_s2 = nullptr;
+    float *table_s3 = nullptr;
+    if (index_type != IndexType::CUSTOM)
+    {
+        table_s1 = new float[2 * table_stride * table_stride];
+        if (max_order >= 2)
+            table_s2 = new float[3 * table_stride * table_stride];
+        if (max_order >= 3)
+            table_s3 = new float[4 * table_stride * table_stride];
+        precompute_weight_tables(index_type, n_features, max_order, table_s1, table_s2, table_s3, table_stride);
+    }
+
+    // --- Phase 2: fused compute. result is (n_outputs, result_size) row-major. ---
+    int result_size = 0;
+    for (int order = 1; order <= max_order; order++)
+    {
+        result_size += static_cast<int>(inter_weights::binom(n_features, order));
+    }
+    double *result = new double[(size_t)n_outputs * result_size]();
+
+    Py_BEGIN_ALLOW_THREADS
+
+    if (max_order == 1)
+    {
+        DISPATCH_INDEX_TYPE_MULTI(compute_order1_multi, index_type,
+            leaf_value_matrix, n_outputs, feat32, e32, r32, fie32, lid32,
+            e_f32, r_f32, fie_f32,
+            n_iterations, n_features, inv_scaling,
+            table_s1, table_stride, weight_cache, max_order, result_size, result);
+    }
+    else if (max_order == 2)
+    {
+        DISPATCH_INDEX_TYPE_MULTI_ORD(compute_orderN_multi, 2, index_type,
+            leaf_value_matrix, n_outputs, feat32, e32, r32, fie32, lid32,
+            e_f32, r_f32, fie_f32,
+            n_iterations, n_features, inv_scaling,
+            table_s1, table_s2, table_s3, table_stride,
+            weight_cache, max_order, result_size, result);
+    }
+    else // max_order == 3
+    {
+        DISPATCH_INDEX_TYPE_MULTI_ORD(compute_orderN_multi, 3, index_type,
+            leaf_value_matrix, n_outputs, feat32, e32, r32, fie32, lid32,
+            e_f32, r_f32, fie_f32,
+            n_iterations, n_features, inv_scaling,
+            table_s1, table_s2, table_s3, table_stride,
+            weight_cache, max_order, result_size, result);
+    }
+
+    Py_END_ALLOW_THREADS
+
+    // --- Phase 3: build (n_outputs, result_size) numpy output ---
+    npy_intp out_dims[2] = {(npy_intp)n_outputs, (npy_intp)result_size};
+    PyObject *output = PyArray_SimpleNew(2, out_dims, NPY_FLOAT64);
+    if (output)
+    {
+        memcpy(PyArray_DATA((PyArrayObject *)output), result,
+               (size_t)n_outputs * result_size * sizeof(double));
+    }
+
+    delete[] result;
+    delete[] feat32;
+    delete[] e32;
+    delete[] r32;
+    delete[] fie32;
+    delete[] lid32;
+    delete[] e_f32;
+    delete[] r_f32;
+    delete[] fie_f32;
+    delete[] table_s1;
+    delete[] table_s2;
+    delete[] table_s3;
+
+    Py_XDECREF(leaf_value_matrix_array);
+    Py_XDECREF(features_array);
+    Py_XDECREF(e_sizes_array);
+    Py_XDECREF(r_sizes_array);
+    Py_XDECREF(feature_in_e_array);
+    Py_XDECREF(leaf_id_array);
+    Py_XDECREF(weight_table_array);
+
+    if (!output)
+    {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output array");
+        return NULL;
+    }
+    (void)n_leaves;
+    return output;
 }
 
 static PyObject *compute_interactions_sparse(PyObject *self, PyObject *args)
