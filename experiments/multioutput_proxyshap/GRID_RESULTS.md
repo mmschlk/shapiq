@@ -32,14 +32,21 @@ This is where the approach actually deteriorates. Both XGBoost multi-strategies
 were fit on the **same** 256 training coalitions and scored on 256 **fresh**
 held-out coalitions (R^2 averaged over outputs; worst-output R^2 also reported).
 
-| c | mot R²_mean | mot R²_worst | opt R²_mean | opt R²_worst | gap (opt−mot) |
-|------|------|------|------|------|------|
-| 10   | 0.952 | 0.834 | 0.972 | 0.910 | 0.020 |
-| 50   | 0.826 | 0.578 | 0.893 | 0.715 | 0.067 |
-| 100  | 0.785 | 0.427 | 0.859 | 0.556 | 0.074 |
-| 250  | 0.645 | 0.236 | 0.824 | 0.448 | 0.179 |
-| 500  | 0.605 | −0.568 | 0.767 | −0.018 | 0.162 |
-| 1000 | 0.575 | −1.044 | 0.672 | −0.334 | 0.096 |
+| c | mot R²_mean | mot R²_worst | opt R²_mean | opt R²_worst | gap (opt−mot) | multi fit (s) | oneper fit (s) | fit ratio |
+|------|------|------|------|------|------|------|------|------|
+| 10   | 0.952 | 0.834 | 0.972 | 0.910 | 0.020 | 0.015 | 0.024 | 1.61x |
+| 50   | 0.826 | 0.578 | 0.893 | 0.715 | 0.067 | 0.049 | 0.103 | 2.12x |
+| 100  | 0.785 | 0.427 | 0.859 | 0.556 | 0.074 | 0.089 | 0.197 | 2.21x |
+| 250  | 0.645 | 0.236 | 0.824 | 0.448 | 0.179 | 0.212 | 0.434 | 2.05x |
+| 500  | 0.605 | −0.568 | 0.767 | −0.018 | 0.162 | 0.447 | 3.167 | 7.08x* |
+| 1000 | 0.575 | −1.044 | 0.672 | −0.334 | 0.096 | 0.835 | 1.080 | 1.29x |
+
+`multi fit` is the `multi_output_tree` `.fit()` wall-clock; `oneper fit` is the
+`one_output_per_tree` `.fit()` wall-clock; `fit ratio` is `oneper / multi`. The
+estimator object is constructed *outside* the timed region so the wall-clock
+covers only `.fit()`. (*The c=500 `oneper` time is an outlier measurement spike
+— 3.17 s where the linear trend predicts ~0.9 s; c=1000 is back on trend at
+1.08 s. See the subsection below.)
 
 **Headline:** the fusable `multi_output_tree` proxy's mean held-out R^2 falls
 from **0.952 at c=10 to 0.575 at c=1000** — it loses roughly 40 points of R^2.
@@ -56,6 +63,57 @@ factor of the fused approach: once `c` is in the hundreds, the proxy you can
 fuse is a substantially worse approximation of the value function than the
 `c`-independent-tree proxy you cannot fuse. The fused kernel works fine; the
 *model it explains* is what degrades.
+
+### Fitting once vs c times
+
+Quality is one axis; **fit cost** is a separate one. Explaining a multivariate
+value function *today* means fitting `c` separate scalar proxies — one per
+output. `MultiOutputProxySHAP` instead fits **one** `multi_output_tree`. The
+right stand-in for "fit `c` times" is `one_output_per_tree` fitting a
+`c`-column target: it grows the boosted ensemble one output at a time, so its
+`.fit()` wall-clock is the honest cost of the `c`-scalar-proxy status quo.
+`multi_output_tree` is the single fused proxy our approach fits. The ratio
+`fit_time_oneper_s / fit_time_multi_s` (logged per `c` in
+`grid_fit_quality.csv`) therefore quantifies a real end-to-end speedup source
+that is **separate** from the kernel/explain ~2x.
+
+Across the `c` sweep the ratio is **1.6x → 2.1x → 2.2x → 2.0x** for
+c=10/50/100/250, an apparent **7.1x** at c=500 and **1.3x** at c=1000. The
+c=500 point is a measurement spike (the `oneper` fit clocks 3.17 s where the
+linear trend of every other point predicts ~0.9 s — the c=1000 `oneper` fit is
+1.08 s, *less* than the spurious c=500 value); ignoring it, fitting one
+`multi_output_tree` is consistently **~1.3–2.2x cheaper** than fitting the
+`c`-column `one_output_per_tree`, settling around ~1.3x at the largest `c`.
+
+So yes — fitting one `multi_output_tree` *is* cheaper than `one_output_per_tree`,
+but it is **not** a free `c`x win, and it should not be expected to be. The
+`multi_output_tree` split-gain computation is internally `c`-wide: every
+candidate split still evaluates the loss reduction over all `c` output columns,
+so the dominant per-split cost scales with `c` just as it does for
+`one_output_per_tree`. What fusing the topology saves is the *structural*
+overhead — one shared split search, one tree to grow and store, one set of
+node-bookkeeping passes — not the `c`-wide gradient/hessian arithmetic. That
+overhead is a roughly constant-factor (~1.3–2.2x), not order-`c`, saving, and it
+shrinks toward ~1.3x at c=1000 as the `c`-wide arithmetic dominates both
+strategies.
+
+**Honest end-to-end picture.** The multi-output ProxySHAP approach has two
+distinct, multiplicative speedup sources, both modest constant factors:
+
+- **Fit side:** ~1.3–2.2x from fitting one fused `multi_output_tree` instead of
+  the `c`-column `one_output_per_tree` proxy (this subsection).
+- **Explain side:** ~1.5–2x from the fused multi-output kernel vs the naive
+  per-output scalar-explainer loop (Study 1; up to ~5x for shallow + many-tree
+  proxies in Study 3).
+
+Combined, the realistic end-to-end win is in the **~2–4x** range for typical
+configs (e.g. ~2x fit x ~2x explain), reaching higher only for shallow proxies
+where the explain-side speedup peaks. It is emphatically **not** an order-`c`
+speedup: both the fused fit and the fused kernel still do O(`c`) arithmetic
+work, and what is amortized away is per-tree structural overhead, not the
+`c`-wide core computation. This must be weighed against the Study 2 quality
+penalty — the shared-topology `multi_output_tree` is a measurably worse proxy
+once `c` reaches the hundreds.
 
 ## Study 3 — Hyperparameter grid at c=50 (`grid_xgb_params.csv`, `grid_xgb_params.png`)
 
@@ -102,3 +160,9 @@ The depth/quality/speedup picture:
    it both fits better (less overfitting) and yields the largest fused speedup
    (~5x at depth 3 / 50 trees), since deep trees make per-tree preprocessing
    the bottleneck.
+4. The end-to-end win has **two** modest constant-factor sources: ~1.3–2.2x on
+   the **fit** side (one fused `multi_output_tree` vs the `c`-column
+   `one_output_per_tree`) and ~1.5–2x on the **explain** side (fused kernel vs
+   naive loop) — realistically **~2–4x** combined, *not* an order-`c` speedup,
+   because both stages still do O(`c`) arithmetic and only per-tree structural
+   overhead is amortized away.

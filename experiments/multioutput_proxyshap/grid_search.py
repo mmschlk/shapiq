@@ -358,7 +358,7 @@ def run_study1() -> list[dict[str, object]]:
                 f"naive={naive_total * 1e3:9.1f}ms  speedup={speedup:5.2f}x  "
                 f"dense_entries={dense_entries}  [{row['status']}]"
             )
-        except (Exception, MemoryError) as exc:  # noqa: BLE001
+        except (Exception, MemoryError) as exc:
             row["status"] = "FAILED"
             row["error"] = f"{type(exc).__name__}: {exc}"
             print(f"    FAILED: {row['error']}")
@@ -400,8 +400,10 @@ def run_study2() -> list[dict[str, object]]:
             x_eval, y_eval, _ = _sample_coalition_values(c, EVAL_BUDGET, seed=RANDOM_STATE + 1000)
 
             for strategy in ("multi_output_tree", "one_output_per_tree"):
-                t0 = time.perf_counter()
+                # Build the (unfitted) estimator OUTSIDE the timed region so the
+                # measured wall-clock covers only the ``.fit()`` call itself.
                 proxy = _build_proxy(strategy, n_estimators=DEFAULT_N_ESTIMATORS, max_depth=None)
+                t0 = time.perf_counter()
                 proxy.fit(x_train, y_train)
                 fit_time = time.perf_counter() - t0
 
@@ -415,16 +417,32 @@ def run_study2() -> list[dict[str, object]]:
                 row[f"{tag}_mse"] = mse
 
             row["r2_gap"] = row["opt_r2_mean"] - row["mot_r2_mean"]  # type: ignore[operator]
+            # Explicit ``.fit()`` wall-clock columns. ``one_output_per_tree``
+            # fitting a c-column target is the right stand-in for "fit c
+            # separate scalar proxies" (the cost of explaining a multivariate
+            # value function today); ``multi_output_tree`` is the single fused
+            # proxy that MultiOutputProxySHAP fits. The ratio quantifies the
+            # fit-side speedup, which is SEPARATE from the kernel/explain ~2x.
+            row["fit_time_multi_s"] = row["mot_fit_time_s"]
+            row["fit_time_oneper_s"] = row["opt_fit_time_s"]
+            row["fit_time_ratio_oneper_over_multi"] = (
+                row["opt_fit_time_s"] / row["mot_fit_time_s"]  # type: ignore[operator]
+                if row["mot_fit_time_s"]  # type: ignore[truthy-bool]
+                else float("nan")
+            )
             print(
                 f"    multi_output_tree : R2_mean={row['mot_r2_mean']:.4f}  "
-                f"R2_worst={row['mot_r2_worst']:.4f}  fit={row['mot_fit_time_s']:.2f}s"
+                f"R2_worst={row['mot_r2_worst']:.4f}  fit={row['mot_fit_time_s']:.4f}s"
             )
             print(
                 f"    one_output_per_tree: R2_mean={row['opt_r2_mean']:.4f}  "
-                f"R2_worst={row['opt_r2_worst']:.4f}  fit={row['opt_fit_time_s']:.2f}s"
+                f"R2_worst={row['opt_r2_worst']:.4f}  fit={row['opt_fit_time_s']:.4f}s"
             )
-            print(f"    R2 gap (opt - mot) = {row['r2_gap']:.4f}")
-        except (Exception, MemoryError) as exc:  # noqa: BLE001
+            print(
+                f"    R2 gap (opt - mot) = {row['r2_gap']:.4f}   "
+                f"fit ratio (oneper/multi) = {row['fit_time_ratio_oneper_over_multi']:.2f}x"
+            )
+        except (Exception, MemoryError) as exc:
             row["status"] = "FAILED"
             row["error"] = f"{type(exc).__name__}: {exc}"
             print(f"    FAILED: {row['error']}")
@@ -501,7 +519,7 @@ def run_study3() -> list[dict[str, object]]:
                     f"ker={fused_ker * 1e3:.1f})  naive={naive_total * 1e3:8.1f}ms  "
                     f"speedup={speedup:5.2f}x  [{row['status']}]"
                 )
-            except (Exception, MemoryError) as exc:  # noqa: BLE001
+            except (Exception, MemoryError) as exc:
                 row["status"] = "FAILED"
                 row["error"] = f"{type(exc).__name__}: {exc}"
                 print(f"    FAILED: {row['error']}")
@@ -547,7 +565,7 @@ def _make_plots(
         s3: Study 3 rows (speedup vs max_depth).
     """
     matplotlib.use("Agg")
-    import matplotlib.pyplot as plt  # noqa: PLC0415
+    import matplotlib.pyplot as plt
 
     # (a) Study 1: fit time + speedup vs c.
     ok1 = [r for r in s1 if r["status"] != "FAILED"]
@@ -572,11 +590,11 @@ def _make_plots(
         plt.close(fig)
         print(f"wrote {HERE / 'grid_c_scaling.png'}")
 
-    # (b) Study 2: held-out R^2 vs c for both multi-strategies.
+    # (b) Study 2: held-out R^2 + fit time vs c for both multi-strategies.
     ok2 = [r for r in s2 if r["status"] != "FAILED"]
     if ok2:
         cs = [r["n_classes"] for r in ok2]
-        fig, ax = plt.subplots(figsize=(6.5, 4))
+        fig, (ax, axf) = plt.subplots(1, 2, figsize=(11.5, 4))
         ax.plot(
             cs,
             [r["mot_r2_mean"] for r in ok2],
@@ -612,6 +630,42 @@ def _make_plots(
         ax.set_xscale("log")
         ax.set_title("Study 2: proxy fit quality vs c")
         ax.legend(fontsize=8)
+
+        # Fit-time panel: fit-once (multi_output_tree) vs fit-c-times
+        # (one_output_per_tree) wall-clock, plus the ratio on a twin axis.
+        axf.plot(
+            cs,
+            [r["fit_time_multi_s"] for r in ok2],
+            "o-",
+            color="tab:red",
+            label="multi_output_tree fit (fit once)",
+        )
+        axf.plot(
+            cs,
+            [r["fit_time_oneper_s"] for r in ok2],
+            "s-",
+            color="tab:green",
+            label="one_output_per_tree fit (proxy for fit c times)",
+        )
+        axf.set_xlabel("number of outputs c")
+        axf.set_ylabel("proxy .fit() wall-clock (s)")
+        axf.set_xscale("log")
+        axf.set_title("Study 2: fitting once vs c times")
+        axf2 = axf.twinx()
+        axf2.plot(
+            cs,
+            [r["fit_time_ratio_oneper_over_multi"] for r in ok2],
+            "^--",
+            color="tab:blue",
+            label="ratio oneper / multi",
+        )
+        axf2.axhline(1.0, color="grey", linestyle=":", linewidth=1)
+        axf2.set_ylabel("fit-time ratio (oneper / multi)", color="tab:blue")
+        axf2.tick_params(axis="y", labelcolor="tab:blue")
+        lines_f, labels_f = axf.get_legend_handles_labels()
+        lines_r, labels_r = axf2.get_legend_handles_labels()
+        axf.legend(lines_f + lines_r, labels_f + labels_r, fontsize=8)
+
         fig.tight_layout()
         fig.savefig(HERE / "grid_fit_quality.png", dpi=150)
         plt.close(fig)
