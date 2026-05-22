@@ -225,7 +225,7 @@ def test_skewed_interaction_game():
 
 def test_reproducibility():
     """Same seed should produce identical approximations across runs."""
-    n, budget = 6, 100
+    n, budget = 6, 20
 
     # Use separate game instances so access counters don't interfere
     game1 = DummyGame(n, interaction=(1, 2))
