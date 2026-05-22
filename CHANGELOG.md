@@ -10,6 +10,7 @@
 
 - adds support for Python 3.14 making the package compatible with the latest Python version.
 - drops support for Python 3.10 and 3.11. The minimum supported Python version is now 3.12.
+- drops support for Intel (x86_64) macOS. No pre-built wheels are shipped for Intel-based Macs because `numba` and `llvmlite` (transitive dependencies via `galois`) no longer publish x86_64 macOS wheels. Apple Silicon (arm64) macOS, Linux, and Windows are unaffected.
 
 ### Removed Deprecated Features
 
