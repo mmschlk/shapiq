@@ -187,6 +187,13 @@ exclude = [
     "I002",  # benchmark code does not have to import required modules
     "PTH"  # in benchmark code we use a lot of os, which is okay
 ]
+"experiments/**/*.py" = [
+    "INP",  # experiment scripts are an implicit namespace package
+    "I002",  # experiment code does not have to import required modules
+    "T201",  # experiment scripts can have print statements
+    "ICN001",  # local matplotlib import alias is fine in experiment scripts
+    "SLF001",  # private members are okay in experiment scripts
+]
 "__init__.py" = [
     "I002", # __init__.py does not have to import required modules
     "RUF022",  # we can have unsorted imports in __init__.py
