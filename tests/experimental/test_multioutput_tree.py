@@ -13,7 +13,7 @@ from sklearn.datasets import make_classification
 
 xgboost = pytest.importorskip("xgboost")
 
-from shapiq.approximator.proxy._multioutput.tree import (
+from shapiq.approximator.proxy._multioutput.tree import (  # noqa: E402
     MultiOutputTreeModel,
     convert_multioutput_xgboost,
     convert_multioutput_xgboost_with_base_score,

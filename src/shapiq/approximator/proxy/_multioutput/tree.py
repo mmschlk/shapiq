@@ -228,7 +228,7 @@ def _parse_tree(tree_json: dict) -> MultiOutputTreeModel:
     )
 
 
-def convert_multioutput_xgboost(model: Any) -> list[MultiOutputTreeModel]:
+def convert_multioutput_xgboost(model: Any) -> list[MultiOutputTreeModel]:  # noqa: ANN401
     """Convert a fitted multi-output XGBoost regressor into multi-output trees.
 
     The model must be a fitted ``XGBRegressor`` (or ``Booster``) trained with
@@ -254,7 +254,7 @@ def convert_multioutput_xgboost(model: Any) -> list[MultiOutputTreeModel]:
 
 
 def convert_multioutput_xgboost_with_base_score(
-    model: Any,
+    model: Any,  # noqa: ANN401
 ) -> tuple[list[MultiOutputTreeModel], NDArray[np.float64]]:
     """Convert a multi-output XGBoost model and also return its base score.
 
@@ -281,7 +281,7 @@ def convert_multioutput_xgboost_with_base_score(
 
 
 def predict_multioutput(
-    model: Any,
+    model: Any,  # noqa: ANN401
     X: NDArray[np.floating],
 ) -> NDArray[np.float64]:
     """Convert ``model`` and predict ``X``, reproducing ``model.predict``.
