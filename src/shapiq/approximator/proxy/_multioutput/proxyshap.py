@@ -193,6 +193,7 @@ class MultiOutputProxySHAP(ProxySHAP):
             proxy_model,
             index=self.index,
             max_order=self.max_order,
+            n_players=self.n,
         )
         proxy_values = explainer.explain()
 

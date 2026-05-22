@@ -141,6 +141,7 @@ class MultiOutputInterventionalTreeExplainer:
         *,
         index: str = "SII",
         max_order: int = 2,
+        n_players: int | None = None,
         verbose: bool = False,
     ) -> None:
         """Initialize the multi-output interventional tree explainer.
@@ -153,6 +154,9 @@ class MultiOutputInterventionalTreeExplainer:
                 and ``"SII"``. Defaults to ``"SII"``.
             max_order: Maximum interaction order; one of ``{1, 2, 3}``. Defaults
                 to ``2``.
+            n_players: Number of features ``n``. If ``None``, inferred from the
+                highest split-feature index, which undercounts when the proxy
+                never splits on a trailing feature. Defaults to ``None``.
             verbose: If ``True``, the fused C kernel prints debug information.
                 Defaults to ``False``.
         """
@@ -173,9 +177,14 @@ class MultiOutputInterventionalTreeExplainer:
         self.max_order = max_order
         self.verbose = verbose
         self.n_outputs: int = int(self.trees[0].n_outputs)
-        self.n_players: int = int(self.trees[0].features.shape[0]) and int(
-            max(int(t.features.max(initial=-1)) for t in self.trees) + 1
-        )
+        # When n_players is not given explicitly it is inferred from the highest
+        # split-feature index. That undercounts whenever the proxy never splits on
+        # a (trailing) feature, so callers that know n -- e.g. MultiOutputProxySHAP
+        # -- should pass it explicitly.
+        if n_players is not None:
+            self.n_players: int = int(n_players)
+        else:
+            self.n_players = int(max(int(t.features.max(initial=-1)) for t in self.trees) + 1)
 
         # Build the boolean-tree structural arrays once.
         self._preprocess_boolean_trees()
