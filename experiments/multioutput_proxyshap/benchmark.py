@@ -69,7 +69,7 @@ REPEATS = 5  # measured repeats (median reported)
 # Independent sweeps. To keep order-3 dense result sizes (sum C(n, k)) and the
 # total runtime reasonable, order-3 runs are capped to n_features <= ORDER3_NMAX.
 N_FEATURES_SWEEP = (8, 12, 16, 20)
-N_CLASSES_SWEEP = (3, 5, 10, 20)
+N_CLASSES_SWEEP = (3, 5, 10, 20, 30, 40, 100)
 ORDER3_NMAX = 12  # cap on n_features for the (SII, 3) configs
 
 # index / max_order pairs probed by this experiment.
