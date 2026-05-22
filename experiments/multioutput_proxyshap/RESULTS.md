@@ -123,8 +123,10 @@ rather than deep-traversal-dominated; the amortization is still real and clearly
 
 ## Caveats
 
-- Proxies are shallow (XGBoost defaults at `budget=256`); deeper proxies would
-  shift more cost into traversal and likely raise the ceiling.
+- Proxies are shallow (XGBoost defaults at `budget=256`). The grid search
+  (`GRID_RESULTS.md`) shows deeper proxies do *not* raise the ceiling -- the
+  amortizable structural preprocessing is O(tree size), so deeper trees inflate
+  the fused total too; more *estimators* (not more depth) is what lifts speedup.
 - Absolute times are small, so the low-`c` rows carry visible timing noise; the
   `c` trend is the trustworthy signal, the `n_features` trend at `c=5` is noisy.
 - Order-3 is capped at `n_features <= 12` (dense result size); the order-3 trend
