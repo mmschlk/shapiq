@@ -3697,6 +3697,7 @@ dependencies = [
     { name = "sparse-transform" },
     { name = "torch-geometric" },
     { name = "tqdm" },
+    { name = "types-networkx" },
 ]
 
 [package.dev-dependencies]
@@ -3707,6 +3708,7 @@ all-ml = [
     { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "torch" },
+    { name = "torch-geometric" },
     { name = "torchvision" },
     { name = "transformers" },
     { name = "xgboost" },
@@ -3726,6 +3728,7 @@ dev = [
     { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "torch" },
+    { name = "torch-geometric" },
     { name = "torchvision" },
     { name = "transformers" },
     { name = "ty" },
@@ -3747,6 +3750,7 @@ docs = [
     { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "torch" },
+    { name = "torch-geometric" },
     { name = "torchvision" },
     { name = "transformers" },
     { name = "xgboost" },
@@ -3779,6 +3783,7 @@ requires-dist = [
     { name = "sparse-transform" },
     { name = "torch-geometric", specifier = ">=2.7.0" },
     { name = "tqdm" },
+    { name = "types-networkx", specifier = ">=3.6.1.20260518" },
 ]
 
 [package.metadata.requires-dev]
@@ -3789,6 +3794,7 @@ all-ml = [
     { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "torch" },
+    { name = "torch-geometric" },
     { name = "torchvision" },
     { name = "transformers" },
     { name = "xgboost" },
@@ -3808,6 +3814,7 @@ dev = [
     { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "torch" },
+    { name = "torch-geometric" },
     { name = "torchvision" },
     { name = "transformers" },
     { name = "ty", specifier = ">=0.0.21" },
@@ -3829,6 +3836,7 @@ docs = [
     { name = "tensorflow", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "tf-keras", marker = "python_full_version < '3.13' and sys_platform != 'win32'" },
     { name = "torch" },
+    { name = "torch-geometric" },
     { name = "torchvision" },
     { name = "transformers" },
     { name = "xgboost" },
@@ -4460,6 +4468,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f5/24/cb09efec5cc954f7f9b930bf8279447d24618bb6758d4f6adf2574c41780/typer-0.24.1.tar.gz", hash = "sha256:e39b4732d65fbdcde189ae76cf7cd48aeae72919dea1fdfc16593be016256b45", size = 118613, upload-time = "2026-02-21T16:54:40.609Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4a/91/48db081e7a63bb37284f9fbcefda7c44c277b18b0e13fbc36ea2335b71e6/typer-0.24.1-py3-none-any.whl", hash = "sha256:112c1f0ce578bfb4cab9ffdabc68f031416ebcc216536611ba21f04e9aa84c9e", size = 56085, upload-time = "2026-02-21T16:54:41.616Z" },
+]
+
+[[package]]
+name = "types-networkx"
+version = "3.6.1.20260518"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f9/9f/e6fe2543aecbfe4d67fe86f280afae1e6d532c49755c5fb6c1f05f8af91e/types_networkx-3.6.1.20260518.tar.gz", hash = "sha256:af3ab153815b366c3695a0015cc75aece9b3eb0e5df56bb60ffee0b7cec8f630", size = 73977, upload-time = "2026-05-18T06:06:05.573Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1f/4f/422a91e9fa008b804746fc2ce4da5bcb7eca4bfb45c31e8282fbb3664601/types_networkx-3.6.1.20260518-py3-none-any.whl", hash = "sha256:574304deea33828fb32cdca757af84f79b67bd80164aa1725c52a95d4a9347e6", size = 162454, upload-time = "2026-05-18T06:06:04.417Z" },
 ]
 
 [[package]]
