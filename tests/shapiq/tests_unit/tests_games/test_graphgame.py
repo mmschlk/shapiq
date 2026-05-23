@@ -112,3 +112,17 @@ def test_mask_input_with_different_baselines():
     masked_graph_max = game_max.mask_input(coalition)
     assert torch.allclose(masked_graph_max.x[1], torch.amax(x_graph.x, dim=0))
     assert torch.allclose(masked_graph_max.x[3], torch.amax(x_graph.x, dim=0))
+
+#Perfomance test
+def test_mask_input_device_consistency():
+    """Test for device consistency of masked graph and baseline."""
+    model = SimpleGNN(num_node_features=3)
+    x_graph = create_test_graph()
+    if torch.cuda.is_available():
+        x_graph = x_graph.to('cuda')
+        model = model.to('cuda')
+    game = GraphGame(model, x_graph, baseline_strategy="zeros")
+    coalition = np.array([1, 0, 1, 0, 1])
+    masked_graph = game.mask_input(coalition)
+    assert masked_graph.x.device == x_graph.x.device
+    assert game.baseline.device == x_graph.x.device
