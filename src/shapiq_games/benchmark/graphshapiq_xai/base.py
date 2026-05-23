@@ -57,6 +57,7 @@ class GraphGame(Game):
         self.edge_index = self.x_graph.edge_index.detach().numpy()  # pyright: ignore[reportOptionalMemberAccess]
         self.max_neighborhood_size = model.num_layers
         self.output_dim = output_dim
+        self.grand_coalition_set = set(range(x_graph.x.shape[0]))
 
         # Initialize baseline for masking
         if baseline_strategy is None:
@@ -102,7 +103,7 @@ class GraphGame(Game):
             # Extract the scalar value (assuming empty_coalition_value is a 1D array with one element)
             self.normalization_value = float(empty_coalition_value[0])
 
-    #TODO: only used because of the normalize property doesnt get updated after assignment
+    # TODO: only used because of the normalize property doesnt get updated after assignment
     @property
     def normalize(self) -> bool:
         """Override the normalize property to return the actual normalize flag.
