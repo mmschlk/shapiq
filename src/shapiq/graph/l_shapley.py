@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import multiprocessing as mp
 from typing import TYPE_CHECKING
 
+import networkx as nx
 import numpy as np
 from scipy.special import binom
 
@@ -16,13 +16,7 @@ if TYPE_CHECKING:
 
 
 class LShapley:
-    """L-Shapley approximation of Shapley values for graph-structured games.
-
-    Attributes:
-        last_n_model_calls: Number of model calls used in the last call to :meth:`explain`.
-        max_size_neighbors: The maximum neighborhood size found across all nodes, set after
-            calling :meth:`explain`.
-    """
+    """L-Shapley approximation of Shapley values for graph-structured games."""
 
     def __init__(self, game: GraphGame, max_budget: int) -> None:
         """Initialise LShapley.
@@ -30,29 +24,27 @@ class LShapley:
         Args:
             game: The graph game to explain.
             max_budget: Maximum number of model calls allowed before the budget is considered
-                exceeded.
+                        exceeded.
         """
         self.last_n_model_calls: int = 0
         self.max_size_neighbors: int = 0
-
-        self.edge_index = game.edge_index
-        self.n_players = game.n_players
-        self._grand_coalition_set = game.grand_coalition_set
-        self.n_jobs = mp.cpu_count() - 1
-        self.output_dim = game.output_dim
-        self.game = game
-        self._grand_coalition_prediction = game(np.ones(self.game.n_players, dtype=bool))
-        self.max_budget = max_budget
-
+        self.max_budget: int = max_budget
         self.max_neighborhood_size: int = 0
         self.neighbors: dict = {}
+
+        self.game: GraphGame = game
+        self.edge_index: np.ndarray = game.edge_index
+        self.n_players: int = game.n_players
+        self._grand_coalition_set: set[int] = game.grand_coalition_set
+
+        self._graph: nx.Graph = self._build_graph()
 
     def _get_neighborhoods(self) -> tuple[dict, int]:
         """Compute the k-hop neighborhoods of every node.
 
         Returns:
             neighbors: Mapping from node id to a sorted tuple of neighbor ids (including the
-                node itself).
+                       node itself).
             max_size_neighbors: Size of the largest neighborhood found.
         """
         neighbors: dict = {}
@@ -63,26 +55,27 @@ class LShapley:
             neighbors[neighbor_id] = neighbor_list
         return neighbors, max_size_neighbors
 
-    def _get_k_neighborhood(self, node: int) -> tuple:
-        """Return the k-hop neighborhood of *node* as a sorted tuple.
+    def _build_graph(self) -> nx.Graph:
+        """Convert edge_index to an nx.Graph."""
+        G: nx.Graph = nx.Graph()
+        G.add_edges_from(self.edge_index.T.tolist())
+        return G
 
-        The hop limit k is taken from ``self.max_neighborhood_size``, which is set by
-        :meth:`explain` before this method is called.
-        """
-        neighbors: set[int] = set()
-        queue: list[tuple[int, int]] = [(node, 0)]
-        visited: set[int] = {node}
-        while queue:
-            curr_node, dist = queue.pop(0)
-            if dist > self.max_neighborhood_size:
-                continue
-            neighbors.add(curr_node)
-            if dist < self.max_neighborhood_size:
-                for edge in self.edge_index.T:
-                    if edge[0] == curr_node and edge[1] not in visited:
-                        queue.append((edge[1], dist + 1))
-                        visited.add(edge[1])
-        return tuple(sorted(neighbors))
+    def _get_k_neighborhood(self, node: int) -> tuple:
+        """Get the k-hop neighborhood of a node."""
+        reachable = nx.single_source_shortest_path_length(
+            self._graph, node, cutoff=self.max_neighborhood_size
+        )
+        return tuple(sorted(reachable.keys()))
+
+    def _check_budget(self, n_coalitions: int, *, break_on_exceeding: bool) -> bool:
+        """Check if number of coalitions is within max_budget."""
+        if n_coalitions <= self.max_budget:
+            return False
+        if break_on_exceeding:
+            err_msg = f"Budget exceeded: {n_coalitions} coalitions required, but max_budget is {self.max_budget}."
+            raise ValueError(err_msg)
+        return True
 
     def _convert_to_coalition_matrix(
         self, coalitions: set | dict, lookup_shift: int = 0
@@ -91,12 +84,12 @@ class LShapley:
 
         Args:
             coalitions: Either a :class:`set` of coalition tuples or a :class:`dict` whose
-                *values* are coalition tuples.
+                values are coalition tuples.
             lookup_shift: Offset added to every row index stored in the lookup dict (useful when
                 the matrix is later concatenated with another one).
 
         Returns:
-            coalition_matrix: Binary (n_coalitions × n_players) array.
+            coalition_matrix: Binary (n_coalitions, n_players) array.
             coalition_lookup: Mapping from coalition tuple → row index in the matrix.
         """
         coalition_matrix = np.zeros((len(coalitions), self.n_players))
@@ -126,7 +119,6 @@ class LShapley:
             Set of coalition tuples (each element is a sorted tuple of player indices).
         """
         moebius_interactions: set = set()
-        # Always include the empty coalition for the baseline value
         moebius_interactions.add(())
 
         for node in self.neighbors:
@@ -135,40 +127,32 @@ class LShapley:
 
         return moebius_interactions
 
+    def _shapley_weight(self, neighborhood_size: int, subset_size: int) -> float:
+        return float(binom(neighborhood_size - 1, subset_size - 1) ** -1) / neighborhood_size
+
     def _l_shapley_routine(
         self,
         neighborhood_of_i: tuple,
-        player_i: tuple,
+        node_id: int,
         masked_predictions: np.ndarray,
         coalition_lookup: dict,
         max_interaction_size: int,
     ) -> float:
-        """Compute the L-Shapley value for a single player.
-
-        Args:
-            neighborhood_of_i: Sorted tuple of node ids in the neighborhood of the player.
-            player_i: Single-element tuple containing the player's node id.
-            masked_predictions: Array of game evaluations indexed via *coalition_lookup*.
-            coalition_lookup: Mapping from coalition tuple → row index in *masked_predictions*.
-            max_interaction_size: Maximum subset size considered.
-
-        Returns:
-            The L-Shapley value for *player_i*.
-        """
         shapley_value: float = 0.0
-        size_neighborhood = len(neighborhood_of_i)
+        neighborhood_size = len(neighborhood_of_i)
+        player_set = {node_id}
 
         for subset in powerset(neighborhood_of_i, max_size=max_interaction_size):
-            if set(player_i).issubset(set(subset)):
-                no_player_i = tuple(sorted(set(subset) - set(player_i)))
-                marginal_contribution = (
-                    masked_predictions[coalition_lookup[subset]]
-                    - masked_predictions[coalition_lookup[no_player_i]]
-                )
-                weight = binom(size_neighborhood - 1, len(subset) - 1) ** (-1)
-                shapley_value += weight * marginal_contribution
+            if not player_set.issubset(set(subset)):
+                continue
+            subset_without_player = tuple(sorted(set(subset) - player_set))
+            marginal_contribution = (
+                masked_predictions[coalition_lookup[subset]]
+                - masked_predictions[coalition_lookup[subset_without_player]]
+            )
+            weight = self._shapley_weight(neighborhood_size, len(subset))
+            shapley_value += float(weight * marginal_contribution)
 
-        shapley_value /= size_neighborhood
         return shapley_value
 
     def explain(
@@ -182,51 +166,43 @@ class LShapley:
         Args:
             max_interaction_size: Maximum k-hop neighborhood size (controls how many coalition
                 subsets are enumerated per player).
-            break_on_exceeding_budget: If *True*, raise a :class:`ValueError` when the number of
-                required model evaluations exceeds ``self.max_budget``; if *False*, set the
+            break_on_exceeding_budget: If True, raise a :class:`ValueError` when the number of
+                required model evaluations exceeds ``self.max_budget``; if False, set the
                 ``exceeded_budget`` flag and continue.
 
         Returns:
-            A tuple ``(interaction_values, exceeded_budget)`` where *interaction_values* is the
+            A tuple ``(interaction_values, exceeded_budget)`` where interaction_values is the
             resulting :class:`~shapiq.interaction_values.InteractionValues` object and
-            *exceeded_budget* is a boolean flag.
+            exceeded_budget is a boolean flag.
 
         Raises:
-            ValueError: If *break_on_exceeding_budget* is *True* and the budget is exceeded.
+            ValueError: If break_on_exceeding_budget is True and the budget is exceeded.
         """
         self.max_neighborhood_size = max_interaction_size
-
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
         max_interaction_size = min(self.max_size_neighbors, max_interaction_size)
 
         coalitions = self._get_all_coalitions(max_interaction_size)
-
-        exceeded_budget = False
-        if len(coalitions) > self.max_budget:
-            exceeded_budget = True
-            if break_on_exceeding_budget:
-                msg = "Exceeded budget."
-                raise ValueError(msg)
+        exceeded_budget = self._check_budget(
+            len(coalitions), break_on_exceeding=break_on_exceeding_budget
+        )
 
         coalition_matrix, coalition_lookup = self._convert_to_coalition_matrix(coalitions)
         masked_predictions = self.game(coalition_matrix)
+        self.last_n_model_calls = int(coalition_matrix.shape[0])
 
-        self.last_n_model_calls = int(np.shape(coalition_matrix)[0])
-
-        # Compute L-Shapley values for every player
         shapley_values = np.zeros(self.n_players)
         shapley_values_lookup: dict = {}
 
-        for player_i in self._grand_coalition_set:
-            neighborhood_of_i = self.neighbors[player_i]
-            player_i_tuple = (player_i,)
-            shapley_values_lookup[player_i_tuple] = player_i
-            shapley_values[player_i] = self._l_shapley_routine(
-                neighborhood_of_i,
-                player_i_tuple,
-                masked_predictions,
-                coalition_lookup,
-                max_interaction_size,
+        for node_id in self._grand_coalition_set:
+            player_tuple = (node_id,)
+            shapley_values_lookup[player_tuple] = node_id
+            shapley_values[node_id] = self._l_shapley_routine(
+                neighborhood_of_i=self.neighbors[node_id],
+                node_id=node_id,
+                masked_predictions=masked_predictions,
+                coalition_lookup=coalition_lookup,
+                max_interaction_size=max_interaction_size,
             )
 
         baseline_value = float(masked_predictions[coalition_lookup[()]])
