@@ -38,50 +38,79 @@ class GraphGame(Game):
             model: A GNN model (GCN, GIN, or GAT) used to compute predictions.
             x_graph: The input graph as a torch_geometric Data object.
             class_index: The target class index for classification. If None, the predicted class is
-                used.
+                used (based on the model's output for the full graph).
             baseline_strategy: Strategy for replacing masked node features. One of "average",
                 "min", "max", or "zeros". If None, defaults to zeros with a warning.
             normalize: Whether to normalize the game by the empty coalition prediction.
+                If True, the game values are centered such that the empty coalition has a value of 0.
             verbose: Whether to show progress bars during evaluation.
-            output_dim (int): size of the output dimension
+            output_dim: Size of the output dimension of the model.
         """
+        self._normalize = normalize
+
+        # Set model to evaluation mode
         self.model = model
         self.model.eval()
+
+        # Clone the input graph to avoid modifying the original
         self.x_graph = x_graph.clone()
         self.edge_index = self.x_graph.edge_index.detach().numpy()  # pyright: ignore[reportOptionalMemberAccess]
         self.max_neighborhood_size = model.num_layers
-        self.grand_coalition_set = set(
-            range(x_graph.x.shape[0])
-        )  # NOTE: Check if this works when batching
         self.output_dim = output_dim
 
+        # Initialize baseline for masking
         if baseline_strategy is None:
             warnings.warn(
-                "Baseline is not provided, baseline will be initialized as zero...", stacklevel=2
+                "Baseline is not provided, baseline will be initialized as zero...",
+                stacklevel=2,
             )
-            self.baseline = torch.zeros(x_graph.num_node_features, dtype=torch.float32)
+            self.baseline = torch.zeros(
+                x_graph.num_node_features,
+                dtype=torch.float32,
+                device=x_graph.x.device,  # Ensure baseline is on the same device as the graph
+            )
         else:
             self.baseline = self.calculate_baseline(baseline_strategy)
 
+        # Determine the target class index
         if class_index is None:
-            model_output = self.model(
-                x=self.x_graph.x, edge_index=self.x_graph.edge_index, batch=self.x_graph.batch
-            )
-            self.y_index = int(np.argmax(model_output.detach().numpy(), axis=1)[0])
+            with torch.no_grad():
+                model_output = self.model(
+                    x=self.x_graph.x,
+                    edge_index=self.x_graph.edge_index,
+                    batch=getattr(self.x_graph, "batch", None),
+                )
+            self.y_index = int(np.argmax(model_output.detach().cpu().numpy(), axis=1)[0])
         else:
             self.y_index = int(class_index)
 
-        if normalize:
-            normalization_value = float(self.value_function(np.zeros(len(x_graph.x))))
-            super().__init__(
-                n_players=len(x_graph.x),
-                normalize=normalize,
-                normalization_value=normalization_value,
-                verbose=verbose,
-            )
-        else:
-            super().__init__(n_players=len(x_graph.x), normalize=normalize)
+        # Initialize the base Game class
+        super().__init__(
+            n_players=len(x_graph.x),
+            normalize=normalize,
+            normalization_value=0.0,  # Temporary value, updated below if normalize=True
+            verbose=verbose,
+        )
+
+        # Set the grand coalition set
         self._grand_coalition_set = set(range(self.n_players))
+
+        # Update normalization_value if normalize=True
+        if normalize:
+            # Compute the value for the empty coalition (all nodes masked)
+            empty_coalition_value = self.value_function(np.zeros(len(x_graph.x)))
+            # Extract the scalar value (assuming empty_coalition_value is a 1D array with one element)
+            self.normalization_value = float(empty_coalition_value[0])
+
+    #TODO: only used because of the normalize property doesnt get updated after assignment
+    @property
+    def normalize(self) -> bool:
+        """Override the normalize property to return the actual normalize flag.
+
+        Returns:
+            bool: True if the game is normalized, False otherwise.
+        """
+        return self._normalize
 
     def calculate_baseline(self, strategy: str) -> torch.Tensor:
         """Returns a tensor for replacing node features depending on the chosen strategy."""
