@@ -309,7 +309,7 @@ def test_empirical_convergence_rate():
     Use averaging across a few seeds to reduce stochastic noise in the test.
     """
 
-    n = 6
+    n = 8
     seeds = [0, 1, 2, 3, 4, 5]
 
     def game_factory():
