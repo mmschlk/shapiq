@@ -147,16 +147,33 @@ class GraphSHAPIQ:
             baseline_value=float(moebius_values[moebius_lookup[()]]),
         )
 
-    def _convert_to_coalition_matrix(self, coalitions: set | dict, lookup_shift: int = 0) -> tuple:
-        """Convert to coalition matrix."""
-        coalition_matrix = np.zeros((len(coalitions), self.n_players))
-        coalition_lookup = {}
+    def _convert_to_coalition_matrix(
+        self,
+        coalitions: Union[Set[Tuple[int, ...]], Dict[Any, Tuple[int, ...]]],
+        lookup_shift: int = 0,
+    ) -> Tuple[NDArray[np.floating], Dict[Tuple[int, ...], int]]:
+        """Convert a set or dict of coalitions to a binary matrix and lookup dict.
 
-        items = coalitions.values() if isinstance(coalitions, dict) else coalitions
+        Args:
+            coalitions: Set or dict of coalitions.
+            lookup_shift: Offset to add to the lookup indices.
 
-        for i, S in enumerate(items):
-            coalition_matrix[i, S] = 1
-            coalition_lookup[S] = lookup_shift + i
+        Returns:
+            Tuple of (coalition_matrix, coalition_lookup), where:
+                - coalition_matrix: Binary matrix of shape (n_coalitions, n_players).
+                - coalition_lookup: Mapping from coalition tuples to row indices.
+        """
+        coalition_matrix = np.zeros((len(coalitions), self.n_players), dtype=float)
+        coalition_lookup: Dict[Tuple[int, ...], int] = {}
+
+        if isinstance(coalitions, set):
+            for i, coalition in enumerate(coalitions):
+                coalition_matrix[i, list(coalition)] = 1
+                coalition_lookup[coalition] = lookup_shift + i
+        elif isinstance(coalitions, dict):
+            for i, (_, coalition) in enumerate(coalitions.items()):
+                coalition_matrix[i, list(coalition)] = 1
+                coalition_lookup[coalition] = lookup_shift + i
 
         return coalition_matrix, coalition_lookup
 
