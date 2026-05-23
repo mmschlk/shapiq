@@ -126,3 +126,13 @@ def test_mask_input_device_consistency():
     masked_graph = game.mask_input(coalition)
     assert masked_graph.x.device == x_graph.x.device
     assert game.baseline.device == x_graph.x.device
+
+def test_value_function_single_coalition():
+    """Test for the value function of a single coalition."""
+    model = SimpleGNN(num_node_features=3)
+    x_graph = create_test_graph()
+    game = GraphGame(model, x_graph)
+    coalition = np.array([1, 0, 1, 0, 1])
+    values = game.value_function(coalition)
+    assert values.shape == (1,)
+    assert isinstance(values[0], float)
