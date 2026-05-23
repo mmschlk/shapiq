@@ -160,3 +160,19 @@ def test_value_function_empty_coalition():
     values = game.value_function(coalition)
     assert values.shape == (1,)
     assert isinstance(values[0], float)
+
+def test_value_function_full_coalition():
+    """Test value function for a full coalition."""
+    model = SimpleGNN(num_node_features=3)
+    x_graph = create_test_graph()
+    game = GraphGame(model, x_graph)
+    coalition = np.ones(5, dtype=int)
+    values = game.value_function(coalition)
+    assert values.shape == (1,)
+    with torch.no_grad():
+        expected = model(
+            x=x_graph.x,
+            edge_index=x_graph.edge_index,
+            batch=getattr(x_graph, "batch", None),
+        )[0, game.y_index]
+    assert np.isclose(values[0], float(expected))
