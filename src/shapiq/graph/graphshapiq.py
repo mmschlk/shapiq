@@ -3,52 +3,73 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING
+import logging
+import multiprocessing as mp
+from typing import TYPE_CHECKING, Any, Dict, Set, Tuple, Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
 if TYPE_CHECKING:
-    from shapiq_games.benchmark.graphshapiq_xai.base import GraphGame
+    from shapiq.games import Game  # noqa: F401
 
+logger = logging.getLogger(__name__)
 
 class GraphSHAPIQ:
-    """Graph shapiq."""
+    """A class for computing Shapley interactions on graph-structured data using the Möbius transform.
 
-    def __init__(self, game: GraphGame, *, verbose: bool = False) -> None:
-        """Initialize GraphSHAPIQ class."""
+    Attributes:
+        edge_index: The edge index of the graph.
+        n_players: Number of players (nodes) in the graph.
+        max_neighborhood_size: Maximum size of neighborhoods to consider.
+        neighbors: Dictionary mapping each node to its neighborhood.
+        max_size_neighbors: Maximum size of any neighborhood in the graph.
+        total_budget: Total number of coalitions to evaluate (or upper bound).
+        budget_estimated: Whether the budget was estimated or computed exactly.
+    """
+
+    def __init__(self, game: Game, *, verbose: bool = False) -> None:
+        """Initialize the GraphSHAPIQ class.
+
+        Args:
+            game: The game object representing the graph and prediction function.
+            verbose: If True, prints debug information.
+        """
         self._last_n_model_calls: int | None = None
         self.edge_index = game.edge_index
         self.n_players = game.n_players
-        self.sparsify_threshold = 10e-10
+        self.sparsify_threshold = 1e-10
         self.max_neighborhood_size = game.max_neighborhood_size
         self._grand_coalition_set = game._grand_coalition_set  # noqa: SLF001
+        self.n_jobs = max(1, mp.cpu_count() - 1)  # Ensure at least 1 job
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
-        if verbose:
-            print(f"Max size neighbors: {self.max_size_neighbors}")  # noqa: T201
         self.output_dim = game.output_dim
         self.game = game
-        self._grand_coalition_prediction = game(np.ones(self.game.n_players))
-        # This is optional and only for experiments - computes total budget for that graph
+        self._grand_coalition_prediction = game(np.ones(self.n_players, dtype=float))
+        self.verbose = verbose
+
+        # Compute or estimate total budget
         if self.max_size_neighbors <= 22:
             moebius_interactions, _ = self._get_all_coalitions(
-                max_interaction_size=self.max_size_neighbors, efficiency_routine=False
+                max_interaction_size=self.max_size_neighbors,
+                efficiency_routine=False,
             )
             self.total_budget = len(moebius_interactions)
             self.budget_estimated = False
         else:
-            # or estimates it using an upper bound
             self.total_budget = 0
             for node in self.neighbors:
-                self.total_budget += 2 ** (len(self.neighbors[node]))
-                self.budget_estimated = True
-            self.total_budget = int(min(2**self.n_players, self.total_budget))
+                self.total_budget += 2 ** len(self.neighbors[node])
+            self.total_budget = min(2 ** self.n_players, self.total_budget)
+            self.budget_estimated = True
+
         if verbose:
-            print(f"Total budget: {self.total_budget}")  # noqa: T201
-        self.verbose = verbose
+            logger.info("Max size neighbors: %d", self.max_size_neighbors)
+            logger.info("Total budget: %d", self.total_budget)
 
     def _get_neighborhoods(self) -> tuple:
         """Computes the neighborhoods of each node and caps the max_interaction_size.
