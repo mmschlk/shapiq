@@ -606,18 +606,16 @@ def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: FloatVector) 
         The solution to the regression problem.
 
     """
-    W_sqrt = np.sqrt(kernel_weights)
-    WX = kernel_weights[:, np.newaxis] * X
-    gram = X.T @ WX
-    # np.linalg.solve does not raise LinAlgError for rank-deficient matrices (e.g. when
-    # LeverageSHAP's projected design matrix A = ZP has a null space)
-    # -> condition-number check and fall back to lstsq for ill-conditioned or singular cases
-    ill_conditioned = np.linalg.cond(gram) > 1.0 / np.finfo(float).eps
-    if not ill_conditioned:
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", category=RuntimeWarning)
-                return np.linalg.solve(gram, WX.T @ y)
-        except np.linalg.LinAlgError:
-            pass
-    return np.linalg.lstsq(W_sqrt[:, np.newaxis] * X, W_sqrt * y, rcond=None)[0]
+    try:
+        # try solving via solve function
+        WX = kernel_weights[:, np.newaxis] * X
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            phi = np.linalg.solve(X.T @ WX, WX.T @ y)
+    except np.linalg.LinAlgError:
+        # solve WLSQ via lstsq function and throw warning
+        W_sqrt = np.sqrt(kernel_weights)
+        X = W_sqrt[:, np.newaxis] * X
+        y = W_sqrt * y
+        phi = np.linalg.lstsq(X, y, rcond=None)[0]
+    return phi

@@ -1,15 +1,16 @@
-"""This module contains the LeverageSHAP regression approximator for estimating the SV."""
+"""LeverageSHAP regression approximator (Algorithm 1 of Musco & Witter, 2024)."""
 
 from __future__ import annotations
 
+import math
+import random as _py_random
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-import scipy.special
 
 from shapiq.interaction_values import InteractionValues
 
-from .base import Regression, solve_regression
+from .base import Regression
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,16 +22,28 @@ ValidRegressionLeverageSHAPIndices = Literal["SV"]
 
 
 class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
-    """The LeverageSHAP regression approximator for estimating the Shapley values.
+    """The LeverageSHAP regression approximator for estimating Shapley values.
 
-    LeverageSHAP improves on KernelSHAP by using leverage scores of the regression design matrix
-    to guide coalition sampling. Coalitions with high leverage scores are more influential for
-    estimating the Shapley values and are prioritized during sampling, yielding lower-variance
-    estimates for the same evaluation budget.
+    Faithful implementation of Algorithm 1 from Musco & Witter (2024). The algorithm:
 
-    See Also:
-        - :class:`~shapiq.approximator.regression.kernelshap.KernelSHAP`: The standard KernelSHAP
-            approximator for the Shapley value.
+    1. Finds an oversampling parameter ``c`` via binary search such that
+       ``m - 2 = sum_{s=1}^{n-1} min(C(n,s), 2c)`` (Equation 12).
+    2. Draws coalition pairs ``(z, z̄)`` via Bernoulli sampling without replacement
+       (Algorithm 2): for each size ``s``, ``m_s ~ Binomial(C(n,s), min(1, 2c/C(n,s)))``
+       pairs are included. Subsets of small sizes (where ``C(n,s) <= 2c``) are
+       included deterministically; only larger sizes are subsampled.
+    3. Reweights each row by ``w(||z||) / min(1, 2c·ℓ_z)`` where
+       ``w(s) = (s-1)!(n-s-1)!/n!`` is the Shapley kernel weight and
+       ``ℓ_z = 1/C(n,s)`` is its leverage score.
+    4. Solves the unconstrained centered regression (Lemma 3.1) and adds the
+       efficiency offset.
+
+    Note:
+        The number of game evaluations is a random variable concentrated around
+        ``budget``; small overshoots and undershoots are expected. The paper notes
+        a deterministic variant (``m_s := E[Binomial(...)]``) is also valid; this
+        implementation uses the random Binomial form to match the paper's main
+        figures.
 
     """
 
@@ -40,7 +53,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         self,
         n: int,
         *,
-        pairing_trick: bool = False,
+        pairing_trick: bool = True,
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
         **kwargs: Any,  # noqa: ARG002
@@ -50,11 +63,11 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         Args:
             n: The number of players.
 
-            pairing_trick: Not used. LeverageSHAP uses its own sampling scheme via
-                :meth:`_sample`. Kept for interface compatibility.
+            pairing_trick: Kept for interface compatibility. Algorithm 1 always
+                samples pairs ``(z, z̄)`` together.
 
-            sampling_weights: Not used. LeverageSHAP uses its own sampling scheme via
-                :meth:`_sample`. Kept for interface compatibility.
+            sampling_weights: Kept for interface compatibility. LeverageSHAP uses
+                its own leverage-score-based sampling scheme.
 
             random_state: The random state of the estimator. Defaults to ``None``.
 
@@ -76,26 +89,22 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         *args: Any,  # noqa: ARG002
         **kwargs: Any,  # noqa: ARG002
     ) -> InteractionValues:
-        """Approximate the Shapley values using leverage-score-guided coalition sampling.
+        """Approximate the Shapley values via leverage-score-guided sampling.
 
         Args:
-            budget: The number of game evaluations available.
+            budget: Target number of game evaluations (Algorithm 1 input ``m``).
             game: The game to approximate.
-            *args: Additional positional arguments.
-            **kwargs: Additional keyword arguments.
+            *args: Additional positional arguments (unused).
+            **kwargs: Additional keyword arguments (unused).
 
         Returns:
             The estimated Shapley values as an :class:`~shapiq.InteractionValues` object.
         """
-        # Same four-step structure as KernelSHAP (Regression.approximate in base.py),
-        # but with custom sampling and regression instead of CoalitionSampler + regression_routine.
-        Z, _ = self._sample(
-            budget
-        )  # step 1: sample coalitions; proposal_probs not needed (IS weights cancel analytically) (Ref: Musco & Witter (2024) Lemma 3.2.)
-        game_values: FloatVector = game(Z)  # step 2: query the black-box game
+        Z, weights = self._sample(budget)
+        game_values: FloatVector = game(Z)
         v0 = float(game_values[np.sum(Z, axis=1) == 0][0])
-        sv = self._solve(Z, game_values, v0)  # step 3: solve for Shapley values
-        return InteractionValues(  # step 4: package result
+        sv = self._solve(Z, game_values, v0, weights)
+        return InteractionValues(
             values=sv,
             index=self.approximation_index,
             interaction_lookup=self.interaction_lookup,
@@ -108,188 +117,263 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             target_index=self.index,
         )
 
-    def _sample(self, budget: int) -> tuple[np.ndarray, FloatVector]:
-        """Sample coalitions for the regression.
-
-        Custom sampler bypassing CoalitionSampler.
-        Uniform size sampling over {1,...,n-1} + paired sampling (S and complement) + Bernoulli without replacement.
-        Returns coalition matrix Z, counts, proposal probs.
+    def _sample(self, budget: int) -> tuple[np.ndarray, np.ndarray]:
+        """Algorithm 1, lines 1-7: BernoulliSample plus IS reweighting.
 
         Args:
-            budget: The number of game evaluations available.
+            budget: Target number of evaluations ``m``.
 
         Returns:
-            Z: Boolean coalition matrix of shape ``(n_coalitions, n)``.
-            proposal_probs: Per-coalition proposal probabilities of shape ``(n_coalitions,)``,
-                used as importance weights in the regression.
+            Z: Boolean coalition matrix of shape ``(n_coalitions, n)`` containing
+                the empty coalition, the grand coalition, and the BernoulliSample
+                pairs.
+            weights: Per-coalition IS weights ``w(s) / min(1, 2c·ℓ_z)`` with
+                arbitrary positive scale (only relative weights matter for lstsq).
+                Empty/grand coalitions get weight 0 (they enter via the efficiency
+                shift, not the regression).
         """
-        # We need at least budget 2 to include the empty and grand coalitions.
-        # Without these two, we cannot compute the baseline or the total model output.
-        if budget < 2:
+        if budget < 2:  # need at least empty + grand coalition
             msg = "Budget must be at least 2 to evaluate baseline and grand coalition."
             raise ValueError(msg)
 
-        # We use a set to keep track of the teams we have already picked to avoid duplicates (sampling without replacement).
-        seen_coalitions = set()
-        Z_list = []
-        probs_list = []
+        n = self.n  # number of players
+        m = min(budget, 2**n)  # cap budget at full enumeration (2^n)
 
-        # Manually add the empty coalition (no features active -> all False)
-        z_empty = np.zeros(self.n, dtype=bool)
-        seen_coalitions.add(
-            tuple(z_empty)
-        )  # Convert to tuple because sets cannot store lists/arrays
-        Z_list.append(z_empty)
-        probs_list.append(1.0)
+        z_empty = np.zeros(n, dtype=bool)  # empty coalition (no players)
+        z_grand = np.ones(n, dtype=bool)  # grand coalition (all players)
 
-        # Manually add the grand coalition (all features active -> all True)
-        z_grand = np.ones(self.n, dtype=bool)
-        seen_coalitions.add(tuple(z_grand))
-        Z_list.append(z_grand)
-        probs_list.append(1.0)
+        c = self._find_c(n, m)  # oversampling parameter from Eq. 12 of paper
 
-        # We have used 2 out of our total budget so far.
-        current_budget = 2
+        Z_pairs, sizes = self._bernoulli_sample(n, c)  # draw the (z, z̄) coalition pairs
 
-        # Leverage score sampling loop: We continue sampling until we exhaust our budget.
-        # We only need to randomly sample if there are more than 2 features.
-        # Cap budget at 2^n: once all 2^n coalitions are in seen_coalitions every draw
-        # would be rejected and the loop would spin forever.
-        budget = min(budget, 2**self.n)
-        if self.n > 2:
-            while current_budget < budget:
-                # Uniformly pick a coalition size 's' (Ref: Musco & Witter (2024) Section 3.2.)
-                # To sample proportional to leverage scores, we pick a subset size uniformly at random.
-                s = self._rng.integers(1, self.n)
+        # IS weights (Algorithm 1 line 7) computed in log space to stay numerically
+        # stable for large n where C(n, n/2) easily exceeds 1e300.
+        if Z_pairs.shape[0] > 0:  # if any pairs were sampled
+            log_2c = math.log(2.0 * c) if c > 0 else -math.inf  # log(2c) for log-space math
+            log_weights = np.empty(Z_pairs.shape[0], dtype=float)  # buffer for log IS weights
+            for i, s in enumerate(sizes):  # for each sampled coalition of size s
+                log_w = (
+                    math.lgamma(s) + math.lgamma(n - s) - math.lgamma(n + 1)
+                )  # log Shapley kernel w(s)
+                log_C = (
+                    math.lgamma(n + 1) - math.lgamma(s + 1) - math.lgamma(n - s + 1)
+                )  # log C(n,s)
+                log_p = log_2c - log_C  # log(2c · ℓ_z) = log(2c / C(n,s))
+                log_min_p = min(0.0, log_p)  # cap probability at 1 (log 1 = 0)
+                log_weights[i] = log_w - log_min_p  # IS weight = w(s) / min(1, 2c·ℓ_z)
+            log_weights -= log_weights.max()  # shift so exp doesn't overflow
+            weights_pairs = np.exp(log_weights)  # back to linear space
+            Z = np.vstack(
+                [z_empty[None, :], z_grand[None, :], Z_pairs]
+            )  # stack empty + grand + pairs
+        else:
+            weights_pairs = np.empty(0, dtype=float)  # no pairs → no weights
+            Z = np.vstack([z_empty[None, :], z_grand[None, :]])  # only empty + grand
 
-                # Pick a random subset of size 's'
-                # We randomly select 's' indices (features) to be turned on.
-                # Note: The original repo (https://github.com/rtealwitter/leverageshap/blob/main/leverageshap/estimators/sampling.py)
-                # uses a complex _combination_generator here. Using np.random.choice is computationally simpler.
-                active_indices = self._rng.choice(self.n, size=s, replace=False)
+        weights = np.concatenate(
+            [[0.0, 0.0], weights_pairs]
+        )  # empty/grand get weight 0 (excluded from lstsq)
+        return Z, weights
 
-                # Create an array of all False, then flip the chosen indices to True
-                z_current = np.zeros(self.n, dtype=bool)
-                z_current[active_indices] = True
-                z_tuple = tuple(z_current)
+    @staticmethod
+    def _find_c(n: int, m: int) -> float:
+        """Algorithm 1, line 2: binary search for ``c`` solving Eq. 12.
 
-                # Bernoulli check (no duplicates) (Ref: Musco & Witter (2024) Section 1.1 / Algorithm 1)
-                # If we have already drawn this exact team before, skip the rest of this loop
-                # (= sampling without replacement) and try again without increasing the budget.
-                if z_tuple in seen_coalitions:
-                    continue
+        ``m - 2 = sum_{s=1}^{n-1} min(C(n,s), 2c)``.
+        """
+        if n < 2:
+            return 0.0  # trivial case: nothing to sample
+        target = m - 2  # budget minus empty + grand
+        if target <= 0:
+            return 0.0  # nothing left to sample beyond empty + grand
 
-                # Record the successfully drawn sample
-                seen_coalitions.add(z_tuple)
-                Z_list.append(z_current)
+        binoms = [float(math.comb(n, s)) for s in range(1, n)]  # C(n,s) for each interior size
+        max_binom = max(binoms)  # largest binomial coefficient (≈ middle size)
 
-                # Leverage Score Calculation (Ref: Musco & Witter (2024) Lemma 3.2.)
-                # The mathematical leverage score for any team of size 's' is exactly 1 / binom(n, s).
-                prob = 1.0 / scipy.special.binom(self.n, s)
-                probs_list.append(prob)
-                current_budget += 1
+        def total(c_: float) -> float:  # expected sample count for a given c
+            two_c = 2.0 * c_
+            return sum(min(b, two_c) for b in binoms)  # sum of min(C(n,s), 2c)
 
-                # Paired Sampling (Yin-Yang balancing) (Ref: Musco & Witter (2024) Section 1.1 / Section 3.2)
-                # If we draw a team, we also draw its exact opposite to reduce statistical variance.
-                # This matches the 'pairing_trick' flag in the original repo's CoalitionSampler.
-                # Variable 'pairing_trick' is inherited from the Regression base class via super().__init__;
-                # We have to use getattr to satisfy static type checkers (e.g. ruff)
-                if getattr(self, "pairing_trick", False) and current_budget < budget:
-                    z_paired = (
-                        ~z_current
-                    )  # The '~' operator flips all Trues to Falses and vice versa
-                    z_paired_tuple = tuple(z_paired)
+        # Upper bound: 2c >= max_binom guarantees full inclusion of every size.
+        hi = max_binom / 2.0 + 1.0  # upper bound: covers every size fully
+        if total(hi) < target:
+            return hi  # even max c can't reach target → return it
+        lo = 0.0  # lower bound for binary search
+        for _ in range(200):  # bisect up to 200 iterations
+            mid = 0.5 * (lo + hi)  # midpoint
+            if total(mid) >= target:
+                hi = mid  # too big, shrink upper bound
+            else:
+                lo = mid  # too small, raise lower bound
+            if hi - lo < 1e-12 * max(1.0, hi):
+                break  # converged
+        return 0.5 * (lo + hi)  # final c estimate
 
-                    # Make sure the opposite team hasn't been drawn before either
-                    if z_paired_tuple not in seen_coalitions:
-                        seen_coalitions.add(z_paired_tuple)
-                        Z_list.append(z_paired)
+    def _bernoulli_sample(self, n: int, c: float) -> tuple[np.ndarray, np.ndarray]:
+        """Algorithm 2 (BernoulliSample) of Musco & Witter (2024).
 
-                        # The opposite team has size (n - s).
-                        # Mathematically, binom(n, s) is identical to binom(n, n-s).
-                        # Therefore, the probability remains exactly the same!
-                        probs_list.append(prob)
-                        current_budget += 1
+        For each size ``s in {1, ..., floor(n/2)}`` draws ``m_s ~ Binomial`` pairs
+        ``(z, z̄)`` without replacement. The middle size (when ``n`` is even and
+        ``s = n/2``) is partitioned by fixing ``z_n = 1`` so each unordered pair
+        is sampled at most once.
 
-        # Finally, convert our Python lists into NumPy arrays (faster) for the Solver to use
-        Z = np.array(Z_list)
-        proposal_probs = np.array(probs_list, dtype=float)
+        Returns:
+            Z_pairs: Boolean coalition matrix with both ``z`` and ``z̄`` appended
+                consecutively for each pair.
+            sizes: Cardinality of each row of ``Z_pairs``.
+        """
+        if n < 2 or c <= 0.0:
+            return np.zeros((0, n), dtype=bool), np.zeros(0, dtype=int)  # nothing to sample
 
-        return Z, proposal_probs
+        z_list: list[np.ndarray] = []  # collected coalition vectors
+        sizes_list: list[int] = []  # their sizes
+
+        # Convert numpy seed to a Python random seed so randrange supports
+        # arbitrary-precision integers (needed for large n where C(n, n/2) overflows int64).
+        py_seed = int(self._rng.integers(0, 2**32))  # reproducible seed for python RNG
+        py_rng = _py_random.Random(py_seed)  # python RNG (handles big ints)
+
+        two_c = 2.0 * c  # cached for the loop
+        for s in range(1, n // 2 + 1):  # iterate sizes 1..⌊n/2⌋ (rest covered via complement z̄)
+            is_middle = (n % 2 == 0) and (s == n // 2)  # special case: pair would self-complement
+            full_count = math.comb(n, s)  # C(n, s) total subsets of this size
+            prob = (
+                1.0 if full_count <= two_c else two_c / full_count
+            )  # inclusion probability ℓ_z·2c
+
+            # Number of distinct unordered pairs at this size.
+            pool_size = (
+                math.comb(n - 1, s - 1) if is_middle else full_count
+            )  # # of distinct unordered pairs
+
+            if prob >= 1.0:
+                m_s = pool_size  # include all pairs deterministically
+            elif pool_size > 2**31 - 1:
+                # Pool overflows C long → fall back to Poisson(pool_size·prob).
+                # In this regime pool_size·prob = 2c is bounded and prob → 0, so
+                # Poisson is exact in the limit (n large, p small, np fixed).
+                m_s = min(int(self._rng.poisson(pool_size * prob)), pool_size)
+            else:
+                # Pseudocode samples Binomial(C(n,s), prob) then halves for middle;
+                # equivalent (and exact) to Binomial(pool_size, prob) here.
+                m_s = int(self._rng.binomial(pool_size, prob))  # random count of pairs to draw
+
+            if m_s == 0:
+                continue  # skip this size
+
+            indices = self._sample_without_replacement(
+                pool_size, m_s, py_rng
+            )  # pick m_s unique indices
+
+            for idx in indices:  # build each sampled coalition
+                if is_middle:
+                    # Sample over n-1 items with size s-1, then fix z_n = 1.
+                    z_partial = self._combo(n - 1, s - 1, idx)  # combo over n-1 items
+                    z = np.zeros(n, dtype=bool)
+                    z[: n - 1] = z_partial  # copy partial pattern
+                    z[n - 1] = True  # force last player → ensures unique unordered pair
+                else:
+                    z = self._combo(n, s, idx)  # idx-th lexicographic combination
+                z_bar = ~z  # complement (paired sampling)
+                z_list.append(z)  # add z
+                z_list.append(z_bar)  # add z̄
+                sizes_list.append(int(z.sum()))  # |z|
+                sizes_list.append(int(z_bar.sum()))  # |z̄| = n - |z|
+
+        if z_list:
+            return np.array(z_list), np.array(sizes_list, dtype=int)  # stack into arrays
+        return np.zeros((0, n), dtype=bool), np.zeros(0, dtype=int)  # nothing got sampled
+
+    @staticmethod
+    def _sample_without_replacement(total: int, k: int, py_rng: _py_random.Random) -> list[int]:
+        """Sample ``k`` distinct integers from ``[0, total)`` without replacement.
+
+        ``total`` may be an arbitrary-precision Python int (for large ``n``).
+        """
+        if k >= total:
+            return list(range(total))  # asking for everything → return all indices
+        if total < 10**6:
+            return py_rng.sample(range(total), k)  # small pool: use built-in sampler
+        seen: set[int] = set()  # track unique picks
+        # Rejection sampling: collisions are rare when total >> k.
+        while len(seen) < k:
+            seen.add(py_rng.randrange(total))  # pick a random index, dedupe via set
+        return list(seen)  # return as list
+
+    @staticmethod
+    def _combo(n: int, s: int, i: int) -> np.ndarray:
+        """Algorithm 3: ``i``-th lexicographic combination of size ``s`` from ``n`` items.
+
+        Returns a boolean vector of length ``n`` with exactly ``s`` True entries.
+        ``i`` is 0-indexed.
+        """
+        z = np.zeros(n, dtype=bool)  # output coalition vector
+        if s == 0:
+            return z  # empty combination
+        k = s  # remaining slots to fill
+        j = 0  # current position
+        while k > 0 and j < n:
+            # Number of combinations that include j (and choose k-1 from remaining n-j-1).
+            count = math.comb(n - j - 1, k - 1)  # # combinations with position j included
+            if i < count:
+                z[j] = True  # include position j in the coalition
+                k -= 1  # one fewer slot to fill
+            else:
+                i -= count  # skip this branch, adjust i
+            j += 1  # advance to next position
+        return z  # boolean vector with exactly s True entries
 
     def _solve(
         self,
         Z: np.ndarray,
         game_values: FloatVector,
         v0: float,
+        weights: np.ndarray,
     ) -> FloatVector:
-        """Solve the weighted regression to estimate Shapley values.
+        """Algorithm 1, lines 8-13: weighted least squares with provided IS weights.
 
-        Build target y (shifted by v0). Compute A=ZP via row-centering trick (avoid materializing P).
-        Form b=y-Z1. Solve via np.linalg.lstsq. Apply Efficiency offset, return InteractionValues.
+        Builds A = Z·P (row-centering trick from Lemma 3.1), centered target
+        ``b = (y - v0·1) - efficiency_shift · Z·1`` and solves
+        ``argmin_x ||W^{1/2} A x - W^{1/2} b||_2`` via lstsq, then adds the
+        efficiency offset.
 
         Args:
-            Z: Boolean coalition matrix of shape ``(n_coalitions, n)``.
-            game_values: Game values for each coalition in ``Z``.
-            v0: Value of the empty coalition (baseline).
+            Z: Coalition matrix (rows include empty and grand coalitions).
+            game_values: ``v(z)`` for each row of ``Z``.
+            v0: Empty-coalition value (baseline).
+            weights: Per-row IS weights from ``_sample``; entries for empty/grand
+                are zero and are filtered out by the interior mask.
 
         Returns:
-            Array of Shapley values including the empty-coalition entry, matching the shape
-            expected by :attr:`~shapiq.approximator.base.Approximator.interaction_lookup`.
+            ``[v0, phi_1, ..., phi_n]``.
         """
-        n = self.n  # total number of features
-        coalition_sizes = Z.sum(axis=1)  # Calculates the size of each coalitio
+        n = self.n  # number of players
+        coalition_sizes = Z.sum(axis=1)  # |z| for each row
 
-        # Calculates the total payout of game (difference between model's prediction using all features and baseline prediction with no features). -> this is "efficiency gap" we need to distribute among players bc sum of all feature contributions must equal the total payout.
-        # Grand coalition value pins efficiency axiom: SUM phi = v(N) - v(sigma).
-        v_grand = float(
-            game_values[coalition_sizes == n][0]
-        )  # Finds models prediction for grand coalition(where all features are present)
-
+        v_grand = float(game_values[coalition_sizes == n][0])  # value of grand coalition v(N)
         efficiency_shift = (
-            (v_grand - v0) / n
-        )  # Calculates total prize of game (`v_grand - v0`) && divides it equally among all n features
+            v_grand - v0
+        ) / n  # average per-player share (used to re-center problem)
 
-        # Removes the two trivial coalitions (0 < |S| < n) -> Empty and grand coalitions define v0 and v_grand are excluded ->  not regression rows.
-        interior = (coalition_sizes > 0) & (
-            coalition_sizes < n
-        )  # Creates a boolean mask of interior coalitions
-        Z_int = Z[interior].astype(float)  # selects only interior coal rows from Z
-        v_int = game_values[interior]  # selects only interior coal values from game_values
-        s_int = coalition_sizes[interior]  # selects only interior coal sizes from coalition_sizes
+        interior = (coalition_sizes > 0) & (coalition_sizes < n)  # rows excluding empty + grand
+        Z_int = Z[interior].astype(float)  # interior coalition matrix
+        v_int = game_values[interior]  # interior game values v(z)
+        s_int = coalition_sizes[interior]  # interior sizes |z|
+        w_is = weights[interior]  # interior IS weights
 
-        # cheks if list of interior coalitions (Z_int) is empty.
         if len(Z_int) == 0:
-            # happens when e.g. n ≤ 2 at minimum budget -> sip main regression case because there are only 1 or two featres (v0, v_grand) in coalistions
             return np.concatenate(
                 [[v0], np.full(n, efficiency_shift)]
-            )  # array where every feature gets same efficiency_shit value (no distingush between importanc)
+            )  # fallback: split value evenly
 
-        # --- A = Z·P  (Lemma 3.1) ---
-        # transforms the coalition matrix Z_int into a new matrix A bc regression has efficiency contraint -> normalyl slow -> transformation allows for unconstrained regression problem -> faster solvable -> Not O(n^2) bc row-centering instead of matrix multiplication with P.
-        A = Z_int - (s_int / n)[:, np.newaxis]  # shape (m, n)
+        # A = Z·P with P = I - 1/n · 11^T → row-center each Z row by its size mean.
+        A = Z_int - (s_int / n)[:, np.newaxis]  # row-center: applies projection P from Lemma 3.1
+        b = (v_int - v0) - efficiency_shift * s_int  # centered target vector
 
-        # --- Centred target vector b ---
-        # c the input matrix `Z_int` was adjusted to get `A`, the output values (`v_int`) must be adjusted to match -> New target vector for unconstrained reg problem -> NECESSARY BC WE NEED TO SOLVE FOR THE NEW TRANSFORMED PROBLEM defined by lemma 3.1, not the original one. -> b = y - Z·1·(v(N)-v(sigma))/n, where y_j = v(z_j) - v(sigma).
-        b = (v_int - v0) - efficiency_shift * s_int  # shape (m,)
+        W_sqrt = np.sqrt(w_is)  # sqrt of IS weights for weighted lstsq
+        phi_perp = np.linalg.lstsq(W_sqrt[:, np.newaxis] * A, W_sqrt * b, rcond=None)[
+            0
+        ]  # solve weighted least squares
 
-        # --- Importance-sampling (IS) weights ---
-        # Now calculating weight for each coalition in regression.
-        # Trick: in KernelSHAP weights are very complex and are huge numbers -> numerically unstable
-        # bc of smart sampeling the complex terms cancle out -> simple formula with no huge binomial coefficients anywhere -> numerically stable.
-        # Leverage-score sampling draws each z with probability p = 1 / binom(n, s)
-        # (Lemma 3.2), so the IS-corrected WLS weight is  w(s) / p = 1 / (s·(n-s)). -> formula independent of the sampling probabilities
-        w_is = 1.0 / (s_int * (n - s_int))  # shape (m,)
-
-        # --- Solve  min_x ‖W^{1/2}·A·x - W^{1/2}·b‖₂²  via weighted least squares ---
-        # find best x
-        # A = Z·P always has ones in its null space (each row sums to 0, so A·1 = 0) -> Gram matrix rank-deficient (a technical property resulting from row-centering trick) -> uses np.linalg.lstsq because of this
-        phi_perp = solve_regression(A, b, w_is)
-
-        # --- Efficiency correction  (Algorithm 1, line 13) ---
-        # takes efficiency_shift calculated in Step 1 and adds it to every value in phi_perp -> shifts the entire solution so that it now satisfies the Efficiency rule
-        sv = phi_perp + efficiency_shift
-
-        return np.concatenate([[v0], sv])
-
-        ### min budget -> underdefined linear problem -> value error
+        sv = phi_perp + efficiency_shift  # add efficiency offset back to recover Shapley values
+        return np.concatenate([[v0], sv])  # prepend baseline → [v0, φ₁, ..., φₙ]
