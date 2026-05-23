@@ -169,10 +169,7 @@ class LShapley:
         return shapley_value
 
     def explain(
-        self,
-        max_interaction_size: int,
-        *,
-        break_on_exceeding_budget: bool,
+        self, max_interaction_size: int, *, break_on_exceeding_budget: bool, index: str = "SV"
     ) -> tuple[InteractionValues, bool]:
         """Compute L-Shapley values for all players.
 
@@ -182,6 +179,7 @@ class LShapley:
             break_on_exceeding_budget: If True, raise a :class:`ValueError` when the number of
                 required model evaluations exceeds ``self.max_budget``; if False, set the
                 ``exceeded_budget`` flag and continue.
+            index: The index of the interaction values.
 
         Returns:
             A tuple ``(interaction_values, exceeded_budget)`` where interaction_values is the
@@ -226,7 +224,7 @@ class LShapley:
             min_order=0,
             max_order=1,
             n_players=self.n_players,
-            index="SV",
+            index=index,
             baseline_value=baseline_value,
             estimation_budget=self.last_n_model_calls,
         )
