@@ -35,32 +35,41 @@ def test_init_default():
     assert game.y_index == 0
     assert torch.allclose(game.baseline, torch.zeros(3))
 
-# Test for initialization with custom class index
 def test_init_with_class_index():
+    """Test for initialization with custom class index"""
     model = SimpleGNN(num_node_features=3)
     x_graph = create_test_graph()
     game = GraphGame(model, x_graph, class_index=1)
     assert game.y_index == 1
 
-# Test for initialization with baseline strategy average
 def test_init_with_baseline_strategy():
+    """Test for initialization with baseline strategy average"""
     model = SimpleGNN(num_node_features=3)
     x_graph = create_test_graph()
     game = GraphGame(model, x_graph, baseline_strategy="average")
     assert torch.allclose(game.baseline, x_graph.x.mean(dim=0))
 
-# Test for initialization with normalization
 def test_init_normalize():
+    """Test for initialization with normalization"""
     model = SimpleGNN(num_node_features=3)
     x_graph = create_test_graph()
     game = GraphGame(model, x_graph, normalize=True)
     assert game.normalize is True
     assert game.normalization_value is not None
 
-# Test for initialization without baseline strategy
 @pytest.mark.filterwarnings("error:Baseline is not provided")
 def test_init_warning_no_baseline():
+    """Test for initialization with no baseline strategy"""
     model = SimpleGNN(num_node_features=3)
     x_graph = create_test_graph()
     with pytest.warns(UserWarning, match="Baseline is not provided"):
         GraphGame(model, x_graph, baseline_strategy=None)
+
+def test_mask_input_all_active():
+    """Test mask_input, if all nodes are active."""
+    model = SimpleGNN(num_node_features=3)
+    x_graph = create_test_graph()
+    game = GraphGame(model, x_graph, baseline_strategy="zeros")
+    coalition = np.array([1, 1, 1, 1, 1])
+    masked_graph = game.mask_input(coalition)
+    assert torch.allclose(masked_graph.x, x_graph.x)
