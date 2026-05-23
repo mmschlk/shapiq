@@ -136,3 +136,17 @@ def test_value_function_single_coalition():
     values = game.value_function(coalition)
     assert values.shape == (1,)
     assert isinstance(values[0], float)
+
+def test_value_function_multiple_coalitions():
+    """Test for the value function of multiple coalitions."""
+    model = SimpleGNN(num_node_features=3)
+    x_graph = create_test_graph()
+    game = GraphGame(model, x_graph)
+    coalitions = np.array([
+        [1, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0],
+        [1, 1, 1, 1, 1],
+    ])
+    values = game.value_function(coalitions)
+    assert values.shape == (3,)
+    assert all(isinstance(v, float) for v in values)
