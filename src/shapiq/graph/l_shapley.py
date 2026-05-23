@@ -128,6 +128,12 @@ class LShapley:
         return moebius_interactions
 
     def _shapley_weight(self, neighborhood_size: int, subset_size: int) -> float:
+        """Compute the Shapley weight for a subset within a neighbourhood.
+
+        The weight is the reciprocal of the number of orderings in which
+        player i could enter a coalition of the given size, normalised by
+        the neighbourhood size.
+        """
         return float(binom(neighborhood_size - 1, subset_size - 1) ** -1) / neighborhood_size
 
     def _l_shapley_routine(
@@ -138,6 +144,13 @@ class LShapley:
         coalition_lookup: dict,
         max_interaction_size: int,
     ) -> float:
+        """Compute the L-Shapley value for a single node.
+
+        Iterates over all subsets of the node's neighbourhood up to
+        ``max_interaction_size``, skipping any that do not include
+        ``node_id``. For each qualifying subset S, the marginal
+        contribution of the node is calculated
+        """
         shapley_value: float = 0.0
         neighborhood_size = len(neighborhood_of_i)
         player_set = {node_id}
