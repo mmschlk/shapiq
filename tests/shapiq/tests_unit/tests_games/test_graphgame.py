@@ -96,3 +96,19 @@ def test_mask_input_partial():
     assert torch.allclose(masked_graph.x[4], x_graph.x[4])
     assert torch.allclose(masked_graph.x[1], game.baseline)
     assert torch.allclose(masked_graph.x[3], game.baseline)
+
+def test_mask_input_with_different_baselines():
+    """Test mask input with different baseline strategies."""
+    model = SimpleGNN(num_node_features=3)
+    x_graph = create_test_graph()
+    coalition = np.array([1, 0, 1, 0, 1])
+
+    game_min = GraphGame(model, x_graph, baseline_strategy="min")
+    masked_graph_min = game_min.mask_input(coalition)
+    assert torch.allclose(masked_graph_min.x[1], torch.amin(x_graph.x, dim=0))
+    assert torch.allclose(masked_graph_min.x[3], torch.amin(x_graph.x, dim=0))
+
+    game_max = GraphGame(model, x_graph, baseline_strategy="max")
+    masked_graph_max = game_max.mask_input(coalition)
+    assert torch.allclose(masked_graph_max.x[1], torch.amax(x_graph.x, dim=0))
+    assert torch.allclose(masked_graph_max.x[3], torch.amax(x_graph.x, dim=0))
