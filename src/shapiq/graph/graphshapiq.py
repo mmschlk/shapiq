@@ -113,21 +113,29 @@ class GraphSHAPIQ:
 
     def compute_moebius_transform(
         self,
-        coalitions: dict,
-        coalition_predictions: np.ndarray,
-        coalition_lookup: np.ndarray,
+        coalitions: Union[Set[Tuple[int, ...]], Dict[Tuple[int, ...], Any]],
+        coalition_predictions: NDArray[np.floating],
+        coalition_lookup: Dict[Tuple[int, ...], int],
     ) -> InteractionValues:
-        """Compute moebius traffo."""
-        moebius_values = np.zeros(len(coalition_lookup))
-        moebius_lookup = {}
+        """Compute the Möbius transform for the given coalitions.
+
+        Args:
+            coalitions: Set or dict of coalitions (tuples of player indices).
+            coalition_predictions: Predictions for each coalition.
+            coalition_lookup: Mapping from coalition tuples to their indices.
+
+        Returns:
+            InteractionValues object containing the Möbius values.
+        """
+        moebius_values = np.zeros(len(coalition_lookup), dtype=float)
+        moebius_lookup: Dict[Tuple[int, ...], int] = {}
 
         for i, coalition in enumerate(coalitions):
-            moebius_values[i] = 0
+            moebius_values[i] = 0.0
             moebius_lookup[coalition] = i
-            for L in powerset(coalition):
-                moebius_values[i] += (-1) ** (len(coalition) - len(L)) * coalition_predictions[
-                    coalition_lookup[L]
-                ]
+            for subset in powerset(coalition):
+                sign = (-1) ** (len(coalition) - len(subset))
+                moebius_values[i] += sign * coalition_predictions[coalition_lookup[subset]]
 
         return InteractionValues(
             values=moebius_values,
