@@ -331,3 +331,41 @@ def test_empirical_convergence_rate():
     err_large = mean_error(48)
 
     assert err_large < err_medium < err_small
+
+
+def test_pairing_trick_variance_reduction():
+    """Pairing trick should reduce estimator variance in the stochastic regime.
+
+    This is a statistical test: we run several independent seeds with and without
+    the pairing trick and compare the across-seed variance of the estimated SVs.
+    We assert that the average per-player variance with pairing is not larger than
+    the variance without pairing (i.e., pairing should not increase variance).
+    """
+    n = 6
+    budget = 40  # sampling regime (2**6 == 64)
+    seeds = list(range(10))
+
+    def make_game():
+        return DummyGame(n, interaction=(0, 1))
+
+    vals_no = np.stack(
+        [
+            LeverageSHAP(n, pairing_trick=False, random_state=s)
+            .approximate(budget, make_game())
+            .values[1:]
+            for s in seeds
+        ]
+    )
+    vals_yes = np.stack(
+        [
+            LeverageSHAP(n, pairing_trick=True, random_state=s)
+            .approximate(budget, make_game())
+            .values[1:]
+            for s in seeds
+        ]
+    )
+
+    var_no = np.mean(np.var(vals_no, axis=0))
+    var_yes = np.mean(np.var(vals_yes, axis=0))
+
+    assert var_yes <= var_no
