@@ -176,3 +176,14 @@ def test_value_function_full_coalition():
             batch=getattr(x_graph, "batch", None),
         )[0, game.y_index] #TODO: check if this is correct, should it ne the first node for the prediction?
     assert np.isclose(values[0], float(expected))
+
+def test_value_function_with_normalization():
+    """Test the value function with normalization."""
+    model = SimpleGNN(num_node_features=3)
+    x_graph = create_test_graph()
+    game = GraphGame(model, x_graph, normalize=True)
+    coalition = np.array([1, 0, 1, 0, 1])
+    values = game.value_function(coalition)
+    assert values.shape == (1,)
+    empty_coalition_value = game.value_function(np.zeros(5))[0]
+    assert np.isclose(empty_coalition_value, 0.0, atol=1e-5)
