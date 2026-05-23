@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from shapiq.approximator.regression import LeverageSHAP
+from shapiq.approximator.regression import KernelSHAP, LeverageSHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
@@ -369,3 +369,87 @@ def test_pairing_trick_variance_reduction():
     var_yes = np.mean(np.var(vals_yes, axis=0))
 
     assert var_yes <= var_no
+
+
+def test_leverageshap_vs_kernelshap_mean_error():
+    """LeverageSHAP should have no larger mean error than KernelSHAP on average.
+
+    We compare average L2 error (w.r.t. ExactComputer) across several seeds for
+    both methods at the same budget. The test is conservative: we assert that
+    LeverageSHAP's mean error is not greater than KernelSHAP's mean error.
+    """
+    n = 6
+    budget = 40
+    seeds = [0, 1, 2, 3, 4]
+
+    exact = ExactComputer(DummyGame(n, interaction=(0, 1)), n)
+    exact_sv = exact("SV").values[1:]
+
+    def mean_err(approximator_cls):
+        errs = []
+        for s in seeds:
+            approx = approximator_cls(n, random_state=s)
+            res = approx.approximate(budget, DummyGame(n, interaction=(0, 1)))
+            errs.append(np.linalg.norm(exact_sv - res.values[1:]))
+        return float(np.mean(errs))
+
+    err_leverage = mean_err(LeverageSHAP)
+    err_kernel = mean_err(KernelSHAP)
+
+    assert err_leverage <= err_kernel
+
+
+def test_exact_matches_multiple_small_games():
+    """Verify exact-match property on several small games and n values.
+
+    Ensures that when budget==2**n LeverageSHAP matches ExactComputer for
+    multiple small n and for both a DummyGame and an additive game.
+    """
+    for n in (3, 4, 5, 6):
+        # DummyGame
+        game1 = DummyGame(n, interaction=(0, 1))
+        exact1 = ExactComputer(game1, n)
+        exact_sv1 = exact1("SV")
+        res1 = LeverageSHAP(n, random_state=0).approximate(2**n, game1)
+        np.testing.assert_allclose(res1.values, exact_sv1.values, atol=1e-8, rtol=0.0)
+
+        # Additive game
+        weights = np.arange(1.0, n + 1.0)
+
+        def additive_game(Z, weights=weights):
+            return Z.astype(float) @ weights
+
+        exact2 = ExactComputer(additive_game, n)
+        exact_sv2 = exact2("SV")
+        res2 = LeverageSHAP(n, random_state=0).approximate(2**n, additive_game)
+        np.testing.assert_allclose(res2.values, exact_sv2.values, atol=1e-8, rtol=0.0)
+
+
+def test_null_player_axiom():
+    """Players who never affect the game should get zero Shapley value."""
+    n = 6
+    null_idx = 5
+
+    def game(Z):
+        # Depend only on players 0..4, ignore player 5
+        return Z[:, :null_idx].astype(float).sum(axis=1)
+
+    res = LeverageSHAP(n, random_state=0).approximate(2**n, game)
+    # value slot 0 is baseline, player entries start at index 1; check the null player
+    np.testing.assert_allclose(res.values[1 + null_idx], 0.0, atol=1e-12, rtol=0.0)
+
+
+def test_minimal_budget_sweep():
+    """Verify LeverageSHAP runs and behaves sensibly for tiny budgets.
+
+    This checks budgets at and near the minimal valid values for a small n.
+    """
+    n = 4
+    budgets = [2, 3, 4, 5, 8]
+    for b in budgets:
+        res = LeverageSHAP(n, random_state=0).approximate(b, DummyGame(n, interaction=(0, 1)))
+        assert res.estimation_budget <= b
+        if b < 2**n:
+            assert res.estimated is True
+        else:
+            assert res.estimated is False
