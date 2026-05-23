@@ -174,5 +174,5 @@ def test_value_function_full_coalition():
             x=x_graph.x,
             edge_index=x_graph.edge_index,
             batch=getattr(x_graph, "batch", None),
-        )[0, game.y_index]
+        )[0, game.y_index] #TODO: check if this is correct, should it ne the first node for the prediction?
     assert np.isclose(values[0], float(expected))
