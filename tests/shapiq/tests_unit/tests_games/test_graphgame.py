@@ -83,3 +83,16 @@ def test_mask_input_all_inactive():
     masked_graph = game.mask_input(coalition)
     for i in range(5):
         assert torch.allclose(masked_graph.x[i], game.baseline)
+
+def test_mask_input_partial():
+    """Test mask_input, if some nodes are active and some are inactive."""
+    model = SimpleGNN(num_node_features=3)
+    x_graph = create_test_graph()
+    game = GraphGame(model, x_graph, baseline_strategy="average")
+    coalition = np.array([1, 0, 1, 0, 1])
+    masked_graph = game.mask_input(coalition)
+    assert torch.allclose(masked_graph.x[0], x_graph.x[0])
+    assert torch.allclose(masked_graph.x[2], x_graph.x[2])
+    assert torch.allclose(masked_graph.x[4], x_graph.x[4])
+    assert torch.allclose(masked_graph.x[1], game.baseline)
+    assert torch.allclose(masked_graph.x[3], game.baseline)
