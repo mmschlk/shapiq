@@ -52,3 +52,21 @@ class NormalizedMSEMetric(Metric):
             value=value,
             higher_is_better=self.higher_is_better,
         )
+
+class MAEMetric(Metric):
+    """Mean Absolute Error (MAE) metric for evaluating the performance of models."""
+
+    def __init__(self) -> None:
+        """Initialize the MAE metric with its name and whether higher values are better."""
+        self.name = "mae"
+        self.higher_is_better = False
+
+    def compute(self, ground_truth: T | list[T], estimated: T | list[T]) -> MetricResult:
+        """Compute the MAE value given ground truth and estimated values."""
+        difference = ground_truth - estimated
+
+        return MetricResult(
+            metric_name=self.name,
+            value=float(np.mean(difference)),
+            higher_is_better=self.higher_is_better,
+        )
