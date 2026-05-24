@@ -12,6 +12,7 @@ from tqdm.auto import tqdm
 from shapiq.explainer.base import Explainer
 from shapiq.graph.l_shapley import LShapley
 from shapiq.graph.validation import validate_graph_model
+from shapiq.interaction_values import InteractionValues
 from shapiq_games.benchmark.graphshapiq_xai.base import GraphGame
 
 from .graphshapiq import GraphSHAPIQ
@@ -20,7 +21,6 @@ if TYPE_CHECKING:
     from torch import nn
 
     from shapiq.graph.base import GraphModel
-    from shapiq.interaction_values import InteractionValues
 
 SPARSIFY_THRESHOLD = 1e-8
 
@@ -61,8 +61,8 @@ class GraphExplainer(Explainer):
         super().__init__(model)  # type: ignore[arg-type]
         self.model = cast("nn.Module", self.model)
         self._gnns: list[GraphModel] = validate_graph_model(model)
-        self._n_gnns = len(self._gnns)
-        self.l_shapley_max_budget = l_shapley_max_budget
+        self._n_gnns: int = len(self._gnns)
+        self.l_shapley_max_budget: int = l_shapley_max_budget
 
     @override
     def explain_X(
@@ -183,8 +183,11 @@ class GraphExplainer(Explainer):
             efficiency_routine=True,
         )
 
+        if not isinstance(moebius, InteractionValues):
+            err_msg = f"Expected InteractionValues, got {type(moebius)}"
+            raise TypeError(err_msg)
         moebius.estimation_budget = explainer.last_n_model_calls
-        moebius.estimated = False  # exact by definition
+        moebius.estimated = False
         moebius.sparsify(threshold=SPARSIFY_THRESHOLD)
 
         return moebius
@@ -215,12 +218,13 @@ class GraphExplainer(Explainer):
         )
 
         shapley_values.estimation_budget = l_shapley_explainer.last_n_model_calls
-        shapley_values.estimated = True  # always approximate for L-Shapley
+        shapley_values.estimated = True
         shapley_values.sparsify(threshold=SPARSIFY_THRESHOLD)
 
         return shapley_values
 
     def _check_total_budget(self, total_budget: int) -> None:
+        """Check if total_budget is within the max budget."""
         if total_budget > self.l_shapley_max_budget:
             msg = (
                 f"Total budget of {total_budget} exceeds the limit of {self.l_shapley_max_budget}."
