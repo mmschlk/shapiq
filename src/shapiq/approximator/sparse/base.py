@@ -6,12 +6,20 @@ import copy
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
-from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
-from sparse_transform.qsft.signals.input_signal_subsampled import (
-    SubsampledSignal as SubsampledSignalFourier,
-)
-from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
-from sparse_transform.qsft.utils.query import get_bch_decoder
+
+try:
+    from sparse_transform.qsft.qsft import transform as sparse_fourier_transform
+    from sparse_transform.qsft.signals.input_signal_subsampled import (
+        SubsampledSignal as SubsampledSignalFourier,
+    )
+    from sparse_transform.qsft.utils.general import fourier_to_mobius as fourier_to_moebius
+    from sparse_transform.qsft.utils.query import get_bch_decoder
+except ImportError as e:
+    msg = (
+        "The 'sparse' extra is required for shapiq.approximator.sparse. "
+        "Install it with: pip install 'shapiq[sparse]'"
+    )
+    raise ImportError(msg) from e
 
 from shapiq.approximator.base import Approximator
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
