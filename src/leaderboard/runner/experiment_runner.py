@@ -6,8 +6,8 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from metrics.evaluator import compute_all_metrics
 
+from leaderboard.metrics.evaluator import compute_all_metrics
 from leaderboard.runner.approximator_runner import approximate
 from leaderboard.runner.record_builder import create_run_record
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, UnknownGameError
@@ -15,6 +15,7 @@ from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, Un
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from leaderboard.runner.custom_types import InteractionIndex
     from shapiq import Game, InteractionValues
     from shapiq.approximator import Approximator
 
@@ -28,6 +29,7 @@ def align_interaction_values(
     The function verifies that both "InteractionValues" objects contain the
     same interaction keys and returns two arrays ordered by interaction size and
     interaction tuple.
+    The empty interaction () is excluded from the metrics comparison
 
     Args:
         ground_truth: The exact interaction values.
@@ -38,13 +40,13 @@ def align_interaction_values(
         values as numpy arrays.
 
     Raises:
-        ValueError: If the interaction keys of both inputs do not match.
+        InteractionKeyMismatchError: If the interaction keys of both inputs do not match.
     """
     gt_lookup = ground_truth.interaction_lookup
     approx_lookup = approx_values.interaction_lookup
 
-    gt_keys = set(gt_lookup.keys())
-    approx_keys = set(approx_lookup.keys())
+    gt_keys = set(gt_lookup.keys() - {()})
+    approx_keys = set(approx_lookup.keys() - {()})
 
     if gt_keys != approx_keys:
         raise InteractionKeyMismatchError(gt_keys, approx_keys) from None
@@ -72,10 +74,9 @@ def run_experiment(
     game: Game,
     game_name: str,
     game_params: dict[str, Any],
-    # game_seed: int,
     ground_truth: InteractionValues,
     approximator_class: type[Approximator],
-    index: str,
+    index: InteractionIndex,
     max_order: int,
     budget: int,
     approx_seeds: Iterable[int],
@@ -90,7 +91,6 @@ def run_experiment(
         game: The game for which interaction values are approximated.
         game_name: The name of the game.
         game_params: The parameters used to initialize the game.
-        game_seed: The random seed used to initialize the game.
         ground_truth: The exact interaction values used as reference.
         approximator_class: The approximator class used for the experiment.
         index: The interaction index to approximate.
