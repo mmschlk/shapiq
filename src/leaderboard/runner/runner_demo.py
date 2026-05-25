@@ -33,7 +33,6 @@ def main() -> None:
         game=game,
         game_name="SOUM",
         game_params=game_params,
-        #game_seed=game_seed,
         max_order=max_order,
         approx_seeds=list(range(0,30)),
         budget=100,

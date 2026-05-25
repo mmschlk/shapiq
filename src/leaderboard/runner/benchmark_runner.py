@@ -57,7 +57,6 @@ def run_benchmark(
     """
     # Define the values
     # TO DO: Index approximator validation (e.g. certain indices like SV expect specific order(1)! )
-    #approx_seeds = range(number_of_different_approx_seeds)
 
     # Compute ground truth
     ground_truth = compute_ground_truth(game=game, index=index, max_order=max_order)
