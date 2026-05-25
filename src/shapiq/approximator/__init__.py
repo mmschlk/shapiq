@@ -11,7 +11,6 @@ from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
-from .proxy import ProxySHAP, ProxySPEX, RegressionMSR
 from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
@@ -20,7 +19,20 @@ from .regression import (
     RegressionFSII,
     kADDSHAP,
 )
-from .sparse import SPEX
+
+try:
+    from .sparse import SPEX
+
+    _HAS_SPARSE = True
+except ImportError:
+    _HAS_SPARSE = False
+
+try:
+    from .proxy import ProxySHAP, ProxySPEX, RegressionMSR
+
+    _HAS_PROXY = True
+except ImportError:
+    _HAS_PROXY = False
 
 # contains all SV approximators
 SV_APPROXIMATORS: list[Approximator.__class__] = [
@@ -31,10 +43,11 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     PermutationSamplingSV,
     KernelSHAP,
     kADDSHAP,
-    SPEX,
-    ProxySPEX,
-    RegressionMSR,
 ]
+if _HAS_SPARSE:
+    SV_APPROXIMATORS.append(SPEX)
+if _HAS_PROXY:
+    SV_APPROXIMATORS.extend([ProxySPEX, RegressionMSR])
 
 # contains all SI approximators
 SI_APPROXIMATORS: list[Approximator.__class__] = [
@@ -45,9 +58,9 @@ SI_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     KernelSHAPIQ,
     RegressionFSII,
-    ProxySHAP,
-    RegressionMSR,
 ]
+if _HAS_PROXY:
+    SI_APPROXIMATORS.extend([ProxySHAP, RegressionMSR])
 
 # contains all approximators that can be used for SII
 SII_APPROXIMATORS: list[Approximator.__class__] = [
@@ -56,10 +69,11 @@ SII_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
-    SPEX,
-    ProxySPEX,
-    ProxySHAP,
 ]
+if _HAS_SPARSE:
+    SII_APPROXIMATORS.append(SPEX)
+if _HAS_PROXY:
+    SII_APPROXIMATORS.extend([ProxySPEX, ProxySHAP])
 
 # contains all approximators that can be used for STII
 STII_APPROXIMATORS: list[Approximator.__class__] = [
@@ -68,9 +82,11 @@ STII_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
-    SPEX,
-    ProxySPEX,
 ]
+if _HAS_SPARSE:
+    STII_APPROXIMATORS.append(SPEX)
+if _HAS_PROXY:
+    STII_APPROXIMATORS.append(ProxySPEX)
 
 # contains all approximators that can be used for FSII
 FSII_APPROXIMATORS: list[Approximator.__class__] = [
@@ -79,18 +95,20 @@ FSII_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     SVARMIQ,
     SHAPIQ,
-    SPEX,
-    ProxySPEX,
-    ProxySHAP,
 ]
+if _HAS_SPARSE:
+    FSII_APPROXIMATORS.append(SPEX)
+if _HAS_PROXY:
+    FSII_APPROXIMATORS.extend([ProxySPEX, ProxySHAP])
 
 # contains all approximators that can be used for FBII
 FBII_APPROXIMATORS: list[Approximator.__class__] = [
     RegressionFBII,
-    SPEX,
-    ProxySPEX,
-    ProxySHAP,
 ]
+if _HAS_SPARSE:
+    FBII_APPROXIMATORS.append(SPEX)
+if _HAS_PROXY:
+    FBII_APPROXIMATORS.extend([ProxySPEX, ProxySHAP])
 
 __all__ = [
     "Approximator",

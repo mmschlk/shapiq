@@ -14,7 +14,6 @@ except ImportError:  # pragma: no cover - _version.py is generated at build time
 # approximator classes
 from .approximator import (
     SHAPIQ,
-    SPEX,
     SVARM,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
@@ -24,13 +23,29 @@ from .approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
-    ProxySPEX,
     RegressionFBII,
     RegressionFSII,
     StratifiedSamplingSV,
     UnbiasedKernelSHAP,
     kADDSHAP,
 )
+
+_optional_approximators: list[str] = []
+try:
+    from .approximator import SPEX  # requires the 'sparse' extra
+except ImportError:
+    pass
+else:
+    _optional_approximators.append("SPEX")
+
+try:
+    from .approximator import ProxySPEX, ProxySHAP, RegressionMSR  # requires the 'proxy' extra
+except ImportError:
+    pass
+else:
+    _optional_approximators.append("ProxySPEX")
+    _optional_approximators.append("ProxySHAP")
+    _optional_approximators.append("RegressionMSR")
 
 # dataset functions
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
@@ -107,8 +122,6 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
-    "ProxySPEX",
-    "SPEX",
     # explainers
     "Explainer",
     "TabularExplainer",
@@ -142,3 +155,4 @@ __all__ = [
     "load_adult_census",
     "load_california_housing",
 ]
+__all__.extend(_optional_approximators)

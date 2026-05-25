@@ -24,7 +24,7 @@ jobs:
                     enable-cache: true
             -   name: Install pre-commit
                 run: |
-                    uv sync --group lint
+                    uv sync --group lint --all-extras
                     uv run pre-commit install
             -   name: Run code-quality checks
                 run: uv run pre-commit run --all-files --show-diff-on-failure
@@ -59,7 +59,7 @@ jobs:
             -   name: Create uv virtual environment
                 run: uv venv
             -   name: Install shapiq package
-                run: uv run --no-sync uv pip install --all-extras .
+                run: uv run --no-sync uv pip install .
             -   name: Test import
                 run: uv run --no-sync python -c "import shapiq; print('shapiq imported successfully')"
     # ----------------------------------------------------------------------------------------------
@@ -79,9 +79,7 @@ jobs:
                     enable-cache: true
             -   name: Create uv virtual environment
                 run: uv venv
-            -   name: Install shapiq package
-                run: uv run --no-sync uv pip install --all-extras .
-            -   name: Install dependencies
+            -   name: Install shapiq package and dependencies for shapiq-games
                 run: uv sync --no-dev --all-extras --group all_ml
             -   name: Test import of shapiq_games
                 run: uv run --no-sync python -c "import shapiq_games; print('shapiq_games imported successfully')"
