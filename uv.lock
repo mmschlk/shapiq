@@ -3355,7 +3355,6 @@ name = "shapiq"
 source = { editable = "." }
 dependencies = [
     { name = "colour" },
-    { name = "galois" },
     { name = "joblib" },
     { name = "matplotlib" },
     { name = "networkx" },
@@ -3365,8 +3364,17 @@ dependencies = [
     { name = "requests" },
     { name = "scikit-learn" },
     { name = "scipy" },
-    { name = "sparse-transform" },
     { name = "tqdm" },
+]
+
+[package.optional-dependencies]
+proxy = [
+    { name = "lightgbm" },
+    { name = "xgboost" },
+]
+sparse = [
+    { name = "galois" },
+    { name = "sparse-transform" },
 ]
 
 [package.dev-dependencies]
@@ -3439,8 +3447,9 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "colour" },
-    { name = "galois" },
+    { name = "galois", marker = "extra == 'sparse'" },
     { name = "joblib" },
+    { name = "lightgbm", marker = "extra == 'proxy'" },
     { name = "matplotlib" },
     { name = "networkx" },
     { name = "numpy" },
@@ -3449,9 +3458,11 @@ requires-dist = [
     { name = "requests" },
     { name = "scikit-learn" },
     { name = "scipy" },
-    { name = "sparse-transform" },
+    { name = "sparse-transform", marker = "extra == 'sparse'" },
     { name = "tqdm" },
+    { name = "xgboost", marker = "extra == 'proxy'" },
 ]
+provides-extras = ["sparse", "proxy"]
 
 [package.metadata.requires-dev]
 all-ml = [

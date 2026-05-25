@@ -11,7 +11,7 @@ from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
-from .proxy import ProxySHAP, RegressionMSR
+from .proxy import ProxySHAP, ProxySPEX, RegressionMSR
 from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
@@ -20,7 +20,7 @@ from .regression import (
     RegressionFSII,
     kADDSHAP,
 )
-from .sparse import SPEX, ProxySPEX
+from .sparse import SPEX
 
 # contains all SV approximators
 SV_APPROXIMATORS: list[Approximator.__class__] = [
