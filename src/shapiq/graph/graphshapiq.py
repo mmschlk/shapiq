@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import copy
 import logging
-import multiprocessing as mp
-from typing import TYPE_CHECKING, Any, Dict, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -15,9 +14,10 @@ from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
 if TYPE_CHECKING:
-    from shapiq.games import Game  # noqa: F401
+    from shapiq.games import Game
 
 logger = logging.getLogger(__name__)
+
 
 class GraphSHAPIQ:
     """A class for computing Shapley interactions on graph-structured data using the Möbius transform.
@@ -45,7 +45,6 @@ class GraphSHAPIQ:
         self.sparsify_threshold = 1e-10
         self.max_neighborhood_size = game.max_neighborhood_size
         self._grand_coalition_set = game._grand_coalition_set  # noqa: SLF001
-        self.n_jobs = max(1, mp.cpu_count() - 1)  # Ensure at least 1 job
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
         self.output_dim = game.output_dim
         self.game = game
@@ -64,7 +63,7 @@ class GraphSHAPIQ:
             self.total_budget = 0
             for node in self.neighbors:
                 self.total_budget += 2 ** len(self.neighbors[node])
-            self.total_budget = min(2 ** self.n_players, self.total_budget)
+            self.total_budget = min(2**self.n_players, self.total_budget)
             self.budget_estimated = True
 
         if verbose:
@@ -113,9 +112,9 @@ class GraphSHAPIQ:
 
     def compute_moebius_transform(
         self,
-        coalitions: Union[Set[Tuple[int, ...]], Dict[Tuple[int, ...], Any]],
+        coalitions: set[tuple[int, ...]] | dict[tuple[int, ...], Any],
         coalition_predictions: NDArray[np.floating],
-        coalition_lookup: Dict[Tuple[int, ...], int],
+        coalition_lookup: dict[tuple[int, ...], int],
     ) -> InteractionValues:
         """Compute the Möbius transform for the given coalitions.
 
@@ -128,7 +127,7 @@ class GraphSHAPIQ:
             InteractionValues object containing the Möbius values.
         """
         moebius_values = np.zeros(len(coalition_lookup), dtype=float)
-        moebius_lookup: Dict[Tuple[int, ...], int] = {}
+        moebius_lookup: dict[tuple[int, ...], int] = {}
 
         for i, coalition in enumerate(coalitions):
             moebius_values[i] = 0.0
@@ -149,9 +148,9 @@ class GraphSHAPIQ:
 
     def _convert_to_coalition_matrix(
         self,
-        coalitions: Union[Set[Tuple[int, ...]], Dict[Any, Tuple[int, ...]]],
+        coalitions: set[tuple[int, ...]] | dict[Any, tuple[int, ...]],
         lookup_shift: int = 0,
-    ) -> Tuple[NDArray[np.floating], Dict[Tuple[int, ...], int]]:
+    ) -> tuple[NDArray[np.floating], dict[tuple[int, ...], int]]:
         """Convert a set or dict of coalitions to a binary matrix and lookup dict.
 
         Args:
@@ -164,7 +163,7 @@ class GraphSHAPIQ:
                 - coalition_lookup: Mapping from coalition tuples to row indices.
         """
         coalition_matrix = np.zeros((len(coalitions), self.n_players), dtype=float)
-        coalition_lookup: Dict[Tuple[int, ...], int] = {}
+        coalition_lookup: dict[tuple[int, ...], int] = {}
 
         if isinstance(coalitions, set):
             for i, coalition in enumerate(coalitions):
@@ -181,8 +180,8 @@ class GraphSHAPIQ:
         self,
         masked_predictions: NDArray[np.floating],
         moebius_coefficients: InteractionValues,
-        incomplete_neighborhoods: Set[Tuple[int, ...]],
-        incomplete_neighborhoods_lookup: Dict[Tuple[int, ...], int],
+        incomplete_neighborhoods: set[tuple[int, ...]],
+        incomplete_neighborhoods_lookup: dict[tuple[int, ...], int],
         max_interaction_size: int,
         grand_coalition_prediction_node: NDArray[np.floating],
     ) -> InteractionValues:
@@ -202,7 +201,7 @@ class GraphSHAPIQ:
         incomplete_neighborhoods_sorted = sorted(incomplete_neighborhoods, key=len)
         n_incomplete = len(incomplete_neighborhoods_lookup)
         additional_values = np.zeros(n_incomplete, dtype=float)
-        additional_lookup: Dict[Tuple[int, ...], int] = {}
+        additional_lookup: dict[tuple[int, ...], int] = {}
 
         for i, neighborhood in enumerate(incomplete_neighborhoods_sorted):
             # Compute sum of Möbius coefficients for subsets of the neighborhood
@@ -212,18 +211,14 @@ class GraphSHAPIQ:
 
             # Add contributions from smaller incomplete neighborhoods
             for other_neighborhood in incomplete_neighborhoods_sorted:
-                if (
-                    set(other_neighborhood).issubset(neighborhood)
-                    and len(other_neighborhood) < len(neighborhood)
+                if set(other_neighborhood).issubset(neighborhood) and len(other_neighborhood) < len(
+                    neighborhood
                 ):
-                    sum_coefficients += additional_values[
-                        additional_lookup[other_neighborhood]
-                    ]
+                    sum_coefficients += additional_values[additional_lookup[other_neighborhood]]
 
             # Compute and assign the efficiency gap
             gap = (
-                masked_predictions[incomplete_neighborhoods_lookup[neighborhood]]
-                - sum_coefficients
+                masked_predictions[incomplete_neighborhoods_lookup[neighborhood]] - sum_coefficients
             )
             additional_values[i] = gap
             additional_lookup[neighborhood] = i
@@ -252,9 +247,10 @@ class GraphSHAPIQ:
         order: int | None = None,
         *,
         efficiency_routine: bool = True,
-    ) -> Tuple[
-        Union[InteractionValues, Dict[int, InteractionValues]],
-        Union[InteractionValues, Dict[int, InteractionValues]],
+        index: str = "k-SII",
+    ) -> tuple[
+        InteractionValues | dict[int, InteractionValues],
+        InteractionValues | dict[int, InteractionValues],
     ]:
         """Compute Shapley interactions for the graph.
 
@@ -263,6 +259,7 @@ class GraphSHAPIQ:
                 If None, uses the maximum neighborhood size.
             order: Maximum order of interactions to return. If None, uses n_players.
             efficiency_routine: If True, ensures efficiency by adjusting neighborhood interactions.
+            index: The type of the interaction values.
 
         Returns:
             Tuple of (moebius_coefficients, shapley_interactions).
@@ -310,10 +307,11 @@ class GraphSHAPIQ:
                 capped_interaction_size,
                 order,
                 self._grand_coalition_prediction,
+                index,
             )
         else:
-            moebius_coefficients: Dict[int, InteractionValues] = {}
-            shapley_interactions: Dict[int, InteractionValues] = {}
+            moebius_coefficients: dict[int, InteractionValues] = {}
+            shapley_interactions: dict[int, InteractionValues] = {}
             for idx in range(self.output_dim):
                 grand_coalition_pred_node = self._grand_coalition_prediction[:, idx]
                 masked_predictions_node = masked_predictions[:, idx]
@@ -327,22 +325,24 @@ class GraphSHAPIQ:
                     capped_interaction_size,
                     order,
                     grand_coalition_pred_node,
+                    index,
                 )
 
         return moebius_coefficients, shapley_interactions
 
     def _graphshapiq_routine(
         self,
-        moebius_interactions: Set[Tuple[int, ...]],
+        moebius_interactions: set[tuple[int, ...]],
         masked_predictions: NDArray[np.floating],
-        moebius_coalition_lookup: Dict[Tuple[int, ...], int],
+        moebius_coalition_lookup: dict[tuple[int, ...], int],
         efficiency_routine: bool,
-        incomplete_neighborhoods: Set[Tuple[int, ...]],
-        incomplete_neighborhoods_lookup: Dict[Tuple[int, ...], int],
+        incomplete_neighborhoods: set[tuple[int, ...]],
+        incomplete_neighborhoods_lookup: dict[tuple[int, ...], int],
         max_interaction_size: int,
         order: int,
         grand_coalition_prediction_node: NDArray[np.floating],
-    ) -> Tuple[InteractionValues, InteractionValues]:
+        index: str = "k-SII",
+    ) -> tuple[InteractionValues, InteractionValues]:
         """Core routine for computing GraphSHAPIQ values.
 
         Args:
@@ -383,7 +383,7 @@ class GraphSHAPIQ:
 
         # Convert to Shapley interactions
         converter = MoebiusConverter(moebius_coefficients=final_moebius)
-        interactions = converter.compute(index="k-SII", order=order)
+        interactions = converter.compute(index=index, order=order)
         interactions.sparsify(self.sparsify_threshold)
 
         return copy.deepcopy(final_moebius), copy.deepcopy(interactions)
@@ -393,7 +393,7 @@ class GraphSHAPIQ:
         max_interaction_size: int,
         *,
         efficiency_routine: bool,
-    ) -> Tuple[Set[Tuple[int, ...]], Set[Tuple[int, ...]]]:
+    ) -> tuple[set[tuple[int, ...]], set[tuple[int, ...]]]:
         """Collect all coalitions for Möbius transform and efficiency adjustment.
 
         Args:
@@ -403,8 +403,8 @@ class GraphSHAPIQ:
         Returns:
             Tuple of (moebius_interactions, incomplete_neighborhoods).
         """
-        moebius_interactions: Set[Tuple[int, ...]] = set()
-        incomplete_neighborhoods: Set[Tuple[int, ...]] = set()
+        moebius_interactions: set[tuple[int, ...]] = set()
+        incomplete_neighborhoods: set[tuple[int, ...]] = set()
 
         for node in self.neighbors:
             # Add all subsets of the neighborhood up to max_interaction_size

@@ -59,7 +59,7 @@ class GraphExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
         """
         super().__init__(model)  # type: ignore[arg-type]
-        self.model = cast("nn.Module", self.model)
+        self.model: nn.Module = cast("nn.Module", self.model)
         self._gnns: list[GraphModel] = validate_graph_model(model)
         self._n_gnns: int = len(self._gnns)
         self.l_shapley_max_budget: int = l_shapley_max_budget
@@ -132,11 +132,14 @@ class GraphExplainer(Explainer):
                 approximation.  When ``None`` the full neighbourhood size reported by
                 :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` is used.  Ignored when
                 *l_shapley* is ``False``.
-            **kwargs: Additional keyword arguments are ignored.
+            **kwargs: Allows for passing ``index`` argument which determines the type
+                of shapley interaction.
 
         Returns:
             The interaction values for the instance.
         """
+        index = kwargs.get("index", "k-SII")
+
         game = GraphGame(
             model=cast("nn.Module", self.model),
             x_graph=x,
@@ -154,8 +157,8 @@ class GraphExplainer(Explainer):
                 if max_interaction_size is not None
                 else explainer.max_size_neighbors
             )
-            return self._run_l_shapley_approximation(game, explainer, effective_size)
-        return self._run_graph_shapiq_approximation(game, explainer)
+            return self._run_l_shapley_approximation(game, explainer, effective_size, index)
+        return self._run_graph_shapiq_approximation(game, explainer, index)
 
     @override
     def explain(self, x: np.ndarray | Data | None = None, **kwargs: Any) -> InteractionValues:
@@ -175,12 +178,17 @@ class GraphExplainer(Explainer):
         return self.explain_function(x=x, **kwargs)
 
     def _run_graph_shapiq_approximation(
-        self, game: GraphGame, explainer: GraphSHAPIQ
+        self,
+        game: GraphGame,
+        explainer: GraphSHAPIQ,
+        index: str = "k-SII",
     ) -> InteractionValues:
+        """Approximate Shapley Interactions using grapshapiq."""
         moebius, _ = explainer.explain(
             max_interaction_size=explainer.max_size_neighbors,
             order=game.n_players,
             efficiency_routine=True,
+            index=index,
         )
 
         if not isinstance(moebius, InteractionValues):
@@ -193,7 +201,11 @@ class GraphExplainer(Explainer):
         return moebius
 
     def _run_l_shapley_approximation(
-        self, game: GraphGame, explainer: GraphSHAPIQ, max_interaction_size: int
+        self,
+        game: GraphGame,
+        explainer: GraphSHAPIQ,
+        max_interaction_size: int,
+        index: str,
     ) -> InteractionValues:
         """Run the L-Shapley approximation.
 
@@ -205,6 +217,7 @@ class GraphExplainer(Explainer):
                 :meth:`~shapiq.graph.l_shapley.LShapley.explain` so that
                 ``LShapley.max_size_neighbors`` (which is ``0`` before ``explain()`` runs)
                 is never used as the input.
+            index: The type of the interaction values.
 
         Returns:
             The approximated Shapley values as an
@@ -213,8 +226,7 @@ class GraphExplainer(Explainer):
         l_shapley_explainer = LShapley(game, max_budget=explainer.total_budget)
 
         shapley_values, _ = l_shapley_explainer.explain(
-            max_interaction_size=max_interaction_size,
-            break_on_exceeding_budget=False,
+            max_interaction_size=max_interaction_size, break_on_exceeding_budget=False, index=index
         )
 
         shapley_values.estimation_budget = l_shapley_explainer.last_n_model_calls
