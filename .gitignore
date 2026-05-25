@@ -181,6 +181,7 @@ illustration_sources/
 shapiq/datasets/data
 
 shapiq/games/benchmark/precomputed/
+benchmark/results/*
 precomputed.zip
 game_storage/*
 
