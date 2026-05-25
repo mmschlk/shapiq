@@ -30,6 +30,18 @@ from .approximator import (
     kADDSHAP,
 )
 
+try:
+    from .approximator.sparse import SPEX
+except ImportError:
+    SPEX = None  # type: ignore[assignment]
+
+try:
+    from .approximator.proxy import ProxySHAP, ProxySPEX, RegressionMSR
+except ImportError:
+    ProxySHAP = None  # type: ignore[assignment]
+    ProxySPEX = None  # type: ignore[assignment]
+    RegressionMSR = None  # type: ignore[assignment]
+
 # dataset functions
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 

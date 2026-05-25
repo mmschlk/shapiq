@@ -49,7 +49,8 @@ def get_openmp_flags() -> dict[str, list[str]]:
         for prefix in candidates:
             include_dir = prefix / "include"
             library_dir = prefix / "lib"
-            if include_dir.exists() and library_dir.exists():
+            libomp_dylib = library_dir / "libomp.dylib"
+            if include_dir.exists() and libomp_dylib.exists():
                 return {
                     "extra_compile_args": [
                         "-std=c++17",
@@ -58,11 +59,20 @@ def get_openmp_flags() -> dict[str, list[str]]:
                         "-O3",
                         "-ffast-math",
                     ],
-                    # -rpath is what lets delocate find libomp.dylib at
-                    # wheel-repair time and vendor it into the wheel.
-                    "extra_link_args": ["-lomp", f"-Wl,-rpath,{library_dir}"],
+                    # Link libomp by ABSOLUTE PATH (not -lomp). With
+                    # setuptools' default -undefined dynamic_lookup, a
+                    # plain -lomp gets silently dropped from the
+                    # LC_LOAD_DYLIB entries and the resulting wheel fails
+                    # to load libomp at runtime ("symbol not found in
+                    # flat namespace"). Passing the dylib path positionally
+                    # forces the load command to be recorded. The -rpath
+                    # then lets delocate find and vendor libomp into the
+                    # wheel during repair.
+                    "extra_link_args": [
+                        str(libomp_dylib),
+                        f"-Wl,-rpath,{library_dir}",
+                    ],
                     "include_dirs": [str(include_dir)],
-                    "library_dirs": [str(library_dir)],
                 }
         msg = (
             "OpenMP support on macOS requires libomp. Either install it via "
