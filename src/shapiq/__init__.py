@@ -30,23 +30,6 @@ from .approximator import (
     kADDSHAP,
 )
 
-_optional_approximators: list[str] = []
-try:
-    from .approximator import SPEX  # requires the 'sparse' extra
-except ImportError:
-    pass
-else:
-    _optional_approximators.append("SPEX")
-
-try:
-    from .approximator import ProxySPEX, ProxySHAP, RegressionMSR  # requires the 'proxy' extra
-except ImportError:
-    pass
-else:
-    _optional_approximators.append("ProxySPEX")
-    _optional_approximators.append("ProxySHAP")
-    _optional_approximators.append("RegressionMSR")
-
 # dataset functions
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
 
@@ -155,4 +138,22 @@ __all__ = [
     "load_adult_census",
     "load_california_housing",
 ]
-__all__.extend(_optional_approximators)
+
+# Optional approximators — only available when the corresponding extra is installed.
+try:
+    from .approximator import SPEX  # requires the 'sparse' extra
+except ImportError:
+    pass
+else:
+    __all__ += ["SPEX"]
+
+try:
+    from .approximator import (  # requires the 'proxy' extra
+        ProxySHAP,
+        ProxySPEX,
+        RegressionMSR,
+    )
+except ImportError:
+    pass
+else:
+    __all__ += ["ProxySHAP", "ProxySPEX", "RegressionMSR"]
