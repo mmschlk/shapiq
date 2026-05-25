@@ -38,6 +38,7 @@ class MVPRunConfig(BaseModel):
     game: str = Field(..., min_length=1)
     index: VALID_INDICES = Field(...)
     max_order: int = Field(default=1, ge=1)
+    game_seed: int = Field(default=42)
 
     # Sweep parameters: Accepts lists for Runner iteration
     approximators: list[str] = Field(..., min_length=1)

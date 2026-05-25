@@ -100,4 +100,5 @@ setup(
     ext_modules=ext_modules,
     setup_requires=["numpy"],
     cmdclass={"build_ext": BuildExt},
+    install_requires=['pyyaml', 'pydantic']
 )

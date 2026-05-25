@@ -24,9 +24,8 @@ def run_benchmark(
     game: Game,
     game_name: str,
     game_params: dict[str, Any],
-    game_seed: int,
     max_order: int,
-    number_of_different_approx_seeds: int,
+    approx_seeds: list[int],
     budget: int,
     index: InteractionIndex,
     approximator_class: type[Approximator],
@@ -42,10 +41,8 @@ def run_benchmark(
         game: The game for which interaction values are approximated.
         game_name: The name of the game.
         game_params: The parameters used to initialize the game.
-        game_seed: The random seed used to initialize the game.
         max_order: The maximum interaction order to compute.
-        number_of_different_approx_seeds: The number of approximation seeds to
-            evaluate.
+        approx_seeds: the concrete approximator seeds for evaluation
         budget: The evaluation budget available to the approximator in each run.
         index: The interaction index to approximate.
         approximator_class: The approximator class used for the benchmark.
@@ -60,7 +57,7 @@ def run_benchmark(
     """
     # Define the values
     # TO DO: Index approximator validation (e.g. certain indices like SV expect specific order(1)! )
-    approx_seeds = range(number_of_different_approx_seeds)
+    #approx_seeds = range(number_of_different_approx_seeds)
 
     # Compute ground truth
     ground_truth = compute_ground_truth(game=game, index=index, max_order=max_order)
@@ -70,7 +67,6 @@ def run_benchmark(
         game=game,
         game_name=game_name,
         game_params=game_params,
-        game_seed=game_seed,
         ground_truth=ground_truth,
         approximator_class=approximator_class,
         index=index,

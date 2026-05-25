@@ -29,7 +29,7 @@ class ExpandedRunConfig(TypedDict):
     approximator: str
     max_order: int
     budget: int
-    n_seeds: int
+    seeds: list[int]
     game_seed: int
 
 
@@ -42,21 +42,16 @@ def expand_validated_config(config_obj: MVPRunConfig) -> list[ExpandedRunConfig]
     Returns:
         List of expanded run configurations (one per approximator-budget combo).
     """
-    n_seeds = len(config_obj.seeds)
-    game_seed = 42
-
-    run_configs = [
-        ExpandedRunConfig(
-            {
-                "game": config_obj.game,
-                "index": config_obj.index,
-                "approximator": approx,
-                "max_order": config_obj.max_order,
-                "budget": budget,
-                "n_seeds": n_seeds,
-                "game_seed": game_seed,
-            }
-        )
+    run_configs: list[ExpandedRunConfig] = [
+        {
+            "game": config_obj.game,
+            "index": config_obj.index,
+            "approximator": approx,
+            "max_order": config_obj.max_order,
+            "budget": budget,
+            "seeds": list(config_obj.seeds),
+            "game_seed": config_obj.game_seed,
+        }
         for approx in config_obj.approximators
         for budget in config_obj.budgets
     ]
@@ -106,7 +101,7 @@ def main() -> None:
     # Connect to MongoDB
     db = MongoDBClient.from_env()
 
-    # Test connection
+    #Test connection
     if not db.test_connection():
         raise ConnectionError from None
     logging.info("MongoDB connection successful.")
@@ -127,9 +122,8 @@ def main() -> None:
             game=game,
             game_name=run_config["game"],
             game_params=game_params,
-            game_seed=run_config["game_seed"],
             max_order=run_config["max_order"],
-            number_of_different_approx_seeds=run_config["n_seeds"],
+            approx_seeds=run_config["seeds"],
             budget=run_config["budget"],
             index=cast(InteractionIndex, run_config["index"]),
             approximator_class=approximator_class,
