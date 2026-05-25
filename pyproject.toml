@@ -234,7 +234,8 @@ test-command = "python -c \"import shapiq; from shapiq.tree.conversion import ce
 manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
-before-build = "brew install libomp || true"
+# libomp is installed by build_tools/wheels/build_wheels.sh (pinned conda-forge
+# tarball, not brew) so wheels can target an old MACOSX_DEPLOYMENT_TARGET.
 
 [tool.cibuildwheel.windows]
 # MSVC ships OpenMP runtime (vcomp140.dll) with Visual C++ Redistributable

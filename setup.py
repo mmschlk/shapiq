@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -37,10 +38,17 @@ def get_openmp_flags() -> dict[str, list[str]]:
             "library_dirs": [],
         }
     if sys.platform == "darwin":  # macOS
-        # Prefer standard Homebrew libomp locations to avoid subprocess calls in setup.
-        for brew_prefix in (Path("/opt/homebrew/opt/libomp"), Path("/usr/local/opt/libomp")):
-            include_dir = brew_prefix / "include"
-            library_dir = brew_prefix / "lib"
+        # LIBOMP_PREFIX wins over the brew dirs — the wheel build
+        # (build_tools/wheels/build_wheels.sh) sets it to a pinned conda-forge
+        # libomp so wheels can target an older MACOSX_DEPLOYMENT_TARGET than
+        # brew's current-SDK libomp would allow.
+        candidates: list[Path] = []
+        if env_prefix := os.environ.get("LIBOMP_PREFIX"):
+            candidates.append(Path(env_prefix))
+        candidates += [Path("/opt/homebrew/opt/libomp"), Path("/usr/local/opt/libomp")]
+        for prefix in candidates:
+            include_dir = prefix / "include"
+            library_dir = prefix / "lib"
             if include_dir.exists() and library_dir.exists():
                 return {
                     "extra_compile_args": [
@@ -50,13 +58,16 @@ def get_openmp_flags() -> dict[str, list[str]]:
                         "-O3",
                         "-ffast-math",
                     ],
-                    "extra_link_args": ["-lomp"],
+                    # -rpath is what lets delocate find libomp.dylib at
+                    # wheel-repair time and vendor it into the wheel.
+                    "extra_link_args": ["-lomp", f"-Wl,-rpath,{library_dir}"],
                     "include_dirs": [str(include_dir)],
                     "library_dirs": [str(library_dir)],
                 }
         msg = (
-            "OpenMP support on macOS requires libomp. Please install it via Homebrew: "
-            "brew install libomp"
+            "OpenMP support on macOS requires libomp. Either install it via "
+            "Homebrew (`brew install libomp`) or set LIBOMP_PREFIX to a "
+            "directory containing include/omp.h and lib/libomp.dylib."
         )
         raise RuntimeError(msg)
     # Linux and others
