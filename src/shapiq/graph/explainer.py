@@ -11,7 +11,6 @@ from tqdm.auto import tqdm
 
 from shapiq.explainer.base import Explainer
 from shapiq.graph.l_shapley import LShapley
-from shapiq.graph.validation import validate_graph_model
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.benchmark.graphshapiq_xai.base import GraphGame
 
@@ -20,7 +19,7 @@ from .graphshapiq import GraphSHAPIQ
 if TYPE_CHECKING:
     from torch import nn
 
-    from shapiq.graph.base import GraphModel
+    from shapiq.explainer.custom_types import ExplainerIndices
 
 SPARSIFY_THRESHOLD = 1e-8
 
@@ -49,6 +48,12 @@ class GraphExplainer(Explainer):
         self,
         model: nn.Module,
         l_shapley_max_budget: int = 20000,
+        index: ExplainerIndices = "k-SII",
+        baseline_strategy: str = "max",
+        max_order: int = 2,
+        class_index: int | None = None,
+        *,
+        normalize: bool = False,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
         """Initializes the GraphExplainer.
@@ -56,13 +61,31 @@ class GraphExplainer(Explainer):
         Args:
             model: A Graph-based model to explain.
             l_shapley_max_budget: Maximum budget for LShapley approximation.
+            index: The type of Shapley interaction index to use. Defaults to "k-SII",
+                which computes the k-Shapley Interaction Index. If max_order is set
+                to 1, this corresponds to the Shapley value (index="SV"). Options are:
+                "SV": Shapley value
+                "k-SII": k-Shapley Interaction Index
+                "FSII": Faithful Shapley Interaction Index
+                "FBII": Faithful Banzhaf Interaction Index (becomes BV for order 1)
+                "STII": Shapley Taylor Interaction Index
+                "SII": Shapley Interaction Index
+            class_index: The class index of the model to explain. Defaults to None,
+                which will set the class index to 1 per default for classification
+                models and is ignored for regression models. Note, it is important
+                to specify the class index for your classification model.
+            max_order: The maximum interaction order to be computed.
+                Defaults to 2. Set to 1 for no interactions (single feature attribution)
+            normalize: Whether to normalize graphshapiq algorithm.
+            baseline_strategy: The node masking strategy.
             **kwargs: Additional keyword arguments are ignored.
         """
-        super().__init__(model)  # type: ignore[arg-type]
-        self.model: nn.Module = cast("nn.Module", self.model)
-        self._gnns: list[GraphModel] = validate_graph_model(model)
-        self._n_gnns: int = len(self._gnns)
-        self.l_shapley_max_budget: int = l_shapley_max_budget
+        super().__init__(model, class_index=class_index, index=index, max_order=max_order)  # type: ignore[arg-type]
+        self._model: nn.Module = cast("nn.Module", self._model)
+        self._class_index = class_index
+        self._baseline_strategy = baseline_strategy
+        self._normalize = normalize
+        self._l_shapley_max_budget: int = l_shapley_max_budget
 
     @override
     def explain_X(
@@ -132,20 +155,19 @@ class GraphExplainer(Explainer):
                 approximation.  When ``None`` the full neighbourhood size reported by
                 :class:`~shapiq.graph.graphshapiq.GraphSHAPIQ` is used.  Ignored when
                 *l_shapley* is ``False``.
-            **kwargs: Allows for passing ``index`` argument which determines the type
-                of shapley interaction.
+            **kwargs: Allows for passing and overriding ``index`` argument.
 
         Returns:
             The interaction values for the instance.
         """
-        index = kwargs.get("index", "k-SII")
+        index = kwargs.get("index", self._index)
 
         game = GraphGame(
-            model=cast("nn.Module", self.model),
+            model=cast("nn.Module", self._model),
             x_graph=x,
-            baseline_strategy="max",
-            normalize=False,
-            class_index=None,
+            baseline_strategy=self._baseline_strategy,
+            normalize=self._normalize,
+            class_index=self._class_index,
             verbose=True,
         )
         explainer = GraphSHAPIQ(game=game)
@@ -237,8 +259,8 @@ class GraphExplainer(Explainer):
 
     def _check_total_budget(self, total_budget: int) -> None:
         """Check if total_budget is within the max budget."""
-        if total_budget > self.l_shapley_max_budget:
+        if total_budget > self._l_shapley_max_budget:
             msg = (
-                f"Total budget of {total_budget} exceeds the limit of {self.l_shapley_max_budget}."
+                f"Total budget of {total_budget} exceeds the limit of {self._l_shapley_max_budget}."
             )
             raise RuntimeError(msg)
