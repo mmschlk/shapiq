@@ -120,9 +120,9 @@ def create_game_from_config(
             "random_state": game_seed,
         }
 
+
     else:
-        available = ", ".join(GAME_REGISTRY)
-        raise UnknownGameError(f"Unknown game: {game_name}. Available games: {available}")
+        raise UnknownGameError(game_name, tuple(sorted(GAME_REGISTRY)))
 
     game_params = {
         **default_game_params,

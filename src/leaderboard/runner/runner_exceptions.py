@@ -43,8 +43,10 @@ class InteractionKeyMismatchError(ValueError):
 
 
 class UnknownGameError(ValueError):
-    """Raised when the configured game is unknown."""
+    """Raised when a configured game is unknown."""
 
-    def __init__(self, game_name: str) -> None:
-        """Initialize with a message indicating the unknown game name."""
-        super().__init__(f"Unknown game configured: '{game_name}'.")
+    def __init__(self, game_name: str, available_games: list[str] | tuple[str, ...]) -> None:
+        available = ", ".join(available_games)
+        super().__init__(
+            f"Unknown game: {game_name}. Available games: {available}"
+        )

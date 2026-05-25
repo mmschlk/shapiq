@@ -9,7 +9,6 @@ import numpy as np
 from leaderboard.metrics.evaluator import compute_all_metrics
 
 from leaderboard.runner.approximator_runner import approximate
-from leaderboard.runner.custom_types import InteractionIndex
 from leaderboard.runner.record_builder import create_run_record
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, UnknownGameError
 
@@ -18,7 +17,7 @@ if TYPE_CHECKING:
 
     from shapiq import Game, InteractionValues
     from shapiq.approximator import Approximator
-
+    from leaderboard.runner.custom_types import InteractionIndex
 
 def align_interaction_values(
     ground_truth: InteractionValues,
