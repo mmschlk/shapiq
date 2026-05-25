@@ -81,7 +81,7 @@ class GraphExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
         """
         super().__init__(model, class_index=class_index, index=index, max_order=max_order)  # type: ignore[arg-type]
-        self._model: nn.Module = cast("nn.Module", self._model)
+        self._model: nn.Module = cast("nn.Module", self.model)
         self._class_index = class_index
         self._baseline_strategy = baseline_strategy
         self._normalize = normalize
