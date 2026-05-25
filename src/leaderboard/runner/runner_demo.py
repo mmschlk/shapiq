@@ -34,7 +34,7 @@ def main() -> None:
         game_name="SOUM",
         game_params=game_params,
         max_order=max_order,
-        approx_seeds=list(range(0,30)),
+        approx_seeds=list(range(30)),
         budget=100,
         index="SII",
         approximator_class=ProxySHAP,

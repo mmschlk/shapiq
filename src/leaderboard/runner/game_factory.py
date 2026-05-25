@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from leaderboard.runner.runner_exceptions import UnknownGameError
 from shapiq_games.benchmark.local_xai.benchmark_tabular import (
@@ -112,14 +111,13 @@ def create_game_from_config(
     elif game_name in CLASSIFICATION_GAMES:
         default_game_params = {
             "x": run_config.get("x", 0),
-            "class_to_explain": run_config.get("class_to_explain", None),
+            "class_to_explain": run_config.get("class_to_explain"),
             "model_name": "decision_tree",
             "imputer": "marginal",
             "normalize": True,
             "verbose": False,
             "random_state": game_seed,
         }
-
 
     else:
         raise UnknownGameError(game_name, tuple(sorted(GAME_REGISTRY)))

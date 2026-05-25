@@ -101,7 +101,7 @@ def main() -> None:
     # Connect to MongoDB
     db = MongoDBClient.from_env()
 
-    #Test connection
+    # Test connection
     if not db.test_connection():
         raise ConnectionError from None
     logging.info("MongoDB connection successful.")

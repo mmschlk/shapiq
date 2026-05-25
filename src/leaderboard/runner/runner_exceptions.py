@@ -48,6 +48,4 @@ class UnknownGameError(ValueError):
     def __init__(self, game_name: str, available_games: list[str] | tuple[str, ...]) -> None:
         """Initialize with the name of the game and the list of available games for display to the user."""
         available = ", ".join(available_games)
-        super().__init__(
-            f"Unknown game: {game_name}. Available games: {available}"
-        )
+        super().__init__(f"Unknown game: {game_name}. Available games: {available}")
