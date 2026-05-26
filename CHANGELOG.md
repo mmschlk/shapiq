@@ -1,10 +1,5 @@
 # Changelog
 
-## v1.5.1 (unreleased)
-
-### Plots
-- adds `shapiq.scatter_plot` for SHAP-style scatter (dependence) plots of interaction values, supporting both first-order and higher-order interactions [#516](https://github.com/mmschlk/shapiq/pull/516)
-
 ## v1.5.0 (2026-05-22)
 
 ### Highlights of new Features
@@ -15,6 +10,7 @@
 - adds `LinearTreeSHAP` in `shapiq.tree.linear` for fast first-order Shapley value computation
 - adds `InterventionalTreeExplainer` in `shapiq.tree.interventional`
 - adds `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer` for nearest neighbor models
+- adds `shapiq.scatter_plot` for SHAP-style scatter (dependence) plots of interaction values, supporting both first-order and higher-order interactions [#516](https://github.com/mmschlk/shapiq/pull/516)
 
 
 ### Introducing ProxySHAP [#501](https://github.com/mmschlk/shapiq/pull/501), [Preprint](https://arxiv.org/abs/2605.22738)
