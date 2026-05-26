@@ -10,12 +10,14 @@ from shapiq.approximator import (
     KernelSHAPIQ,
     PermutationSamplingSV,
     ProxySHAP,
+    StratifiedSamplingSV,
 )
 
 APPROXIMATOR_REGISTRY = {
     "ProxySHAP": ProxySHAP,
     "KernelSHAPIQ": KernelSHAPIQ,
     "PermutationSamplingSV": PermutationSamplingSV,
+    "StratifiedSamplingSV": StratifiedSamplingSV,
 }
 
 

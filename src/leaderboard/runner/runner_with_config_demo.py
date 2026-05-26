@@ -1,6 +1,7 @@
 """Runner with config demo for the leaderboard."""
 
 from __future__ import annotations
+from leaderboard.runner.runner_storage_adapter import save_raw_results_jsonl
 
 import json
 import logging
@@ -80,11 +81,12 @@ def main() -> None:
     # Read system args
     argsv = sys.argv
 
+    project_root = Path(__file__).resolve().parents[3]
+
     if len(argsv) > 1:
         logging.info("Using config file: %s", argsv[1])
         config_path = Path(argsv[1])
     else:
-        project_root = Path(__file__).resolve().parents[3]
         config_path = project_root / "configs" / "default_run.yaml"
 
     # Load and validate config using config_manager interface
@@ -127,6 +129,13 @@ def main() -> None:
             budget=run_config["budget"],
             index=cast(InteractionIndex, run_config["index"]),
             approximator_class=approximator_class,
+        )
+
+        output_path = project_root / "data" / "results_raw.jsonl"
+
+        save_raw_results_jsonl(
+            raw_results=benchmark_result["raw_results"],
+            output_path=output_path,
         )
 
         save_raw_results(
