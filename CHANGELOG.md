@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- **`Explainer` default changed to Shapley values.** `Explainer`,
+  `TabularExplainer`, `TabPFNExplainer`, `AgnosticExplainer`, and `TreeExplainer`
+  now default to `index="SV"`, `max_order=1`. Previously they defaulted to
+  `index="k-SII"`, `max_order=2`. Users relying on the previous default must
+  pass these arguments explicitly. NN explainers and `ProductKernelExplainer`
+  are unaffected — they already defaulted to `"SV"`. Approximators and
+  computers also retain their existing defaults.
+
 ## v1.5.0 (2026-05-22)
 
 ### Highlights of new Features
