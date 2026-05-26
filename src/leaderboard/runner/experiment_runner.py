@@ -114,16 +114,10 @@ def run_experiment(
                 seed=approx_seed,
             )
 
-            # align interaction values
-            gt_values, approx_values_aligned = align_interaction_values(
-                ground_truth,
-                approx_values,
-            )
-
             # calculate metrics for each run
             metric_results = compute_all_metrics(
-                ground_truth=gt_values,
-                estimated=approx_values_aligned,
+                ground_truth=ground_truth,
+                estimated=approx_values,
             )
 
             runtime_seconds = time.perf_counter() - start_time

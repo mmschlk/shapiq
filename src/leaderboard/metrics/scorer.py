@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from shapiq.interaction_values import InteractionValues
+
 from .registry import METRIC_ALIASES, METRIC_KEYS, METRIC_SPECS
 from .utils import prepare_metric_inputs
 
@@ -53,11 +55,20 @@ class Scorer:
 
             spec = METRIC_SPECS[metric_name]
             params = self.metric_params.get(metric_name, {})
+            metric_ground_truth = ground_truth_array
+            metric_estimated = estimated_array
+            if (
+                metric_name == "precision_at_k"
+                and isinstance(ground_truth, InteractionValues)
+                and isinstance(estimated, InteractionValues)
+            ):
+                metric_ground_truth = ground_truth
+                metric_estimated = estimated
 
             try:
                 metric_result = spec.function.compute(
-                    ground_truth_array,
-                    estimated_array,
+                    metric_ground_truth,
+                    metric_estimated,
                     **params,
                 )
             except Exception:
