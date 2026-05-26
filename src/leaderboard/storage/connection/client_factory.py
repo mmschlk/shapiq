@@ -10,7 +10,7 @@ Provides functionality for:
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import ClassVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from .connection_exceptions import UnsupportedDatabaseBackendError
 from .mongo_client import MongoDBClient

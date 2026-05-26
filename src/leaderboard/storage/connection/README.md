@@ -32,7 +32,7 @@ from leaderboard.storage.connection import DatabaseClientFactory, DatabaseBacken
 client = DatabaseClientFactory.create_client(DatabaseBackend.MONGODB)
 ```
 
-`create_client` reads all required credentials from environment variables (e.g. `MONGODB_URI`) and returns a fully initialised `DatabaseClient`. 
+`create_client` reads all required credentials from environment variables (e.g. `MONGODB_URI`) and returns a fully initialised `DatabaseClient`.
 
 It is also possible to use a string instead of the specially defined `DatabaseBackend` enum, but using the enum is recommended for better type safety and discoverability. Using a string will attempt to cast it to a `DatabaseBackend` value, which will raise an `UnsupportedBackendError` if the string is not valid.
 
@@ -93,7 +93,7 @@ The abstract base class defines the full public API that every backend must impl
 
 ### Registering a new backend
 
-The factory uses an internal `_registry` dict, which must be populated with the mapping from `DatabaseBackend` values to concrete client classes. 
+The factory uses an internal `_registry` dict, which must be populated with the mapping from `DatabaseBackend` values to concrete client classes.
 
 ## Exceptions
 
