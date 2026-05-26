@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from .proxyshap import ProxySHAP
 
@@ -10,6 +10,9 @@ if TYPE_CHECKING:
     import numpy as np
 
     from shapiq.typing import Model
+
+
+ValidRegressionMSRIndices = Literal["SV", "BV"]
 
 
 class RegressionMSR(ProxySHAP):
@@ -33,7 +36,7 @@ class RegressionMSR(ProxySHAP):
     def __init__(
         self,
         n: int,
-        index: str,
+        index: ValidRegressionMSRIndices,
         *,
         proxy_model: Model | None = None,
         sampling_weights: np.ndarray | None = None,

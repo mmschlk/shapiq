@@ -55,7 +55,7 @@ public:
     BitSet() : size(0), num_features(0), small_data(0ULL),  storage_type(StorageType::NUM) {}
 
     explicit BitSet(int64_t num_features)
-        : num_features(num_features), size(0)
+        : size(0), num_features(num_features)
     {
         if (num_features <= 64) {
             storage_type = StorageType::NUM;
