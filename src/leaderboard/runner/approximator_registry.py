@@ -29,7 +29,7 @@ def get_approximator_class(name: str) -> type[Approximator]:
         the approximator class associated with the name.
 
     Raises:
-        ValueError: If there is no registered approximator corresponding to the name.
+        UnsupportedApproximatorError: If there is no registered approximator corresponding to the name.
     """
     try:
         return APPROXIMATOR_REGISTRY[name]
