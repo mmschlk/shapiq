@@ -16,7 +16,7 @@ from leaderboard.runner.benchmark_runner import run_benchmark
 from leaderboard.runner.custom_types import InteractionIndex
 from leaderboard.runner.game_factory import create_game_from_config
 from leaderboard.runner.runner_storage_adapter import save_raw_results
-from leaderboard.storage.connection import MongoDBClient
+from leaderboard.storage.connection import DatabaseClientFactory
 
 logging.basicConfig(level=logging.INFO)
 
@@ -99,7 +99,7 @@ def main() -> None:
     base_config = load_raw_config(config_path)
 
     # Connect to MongoDB
-    db = MongoDBClient.from_env()
+    db = DatabaseClientFactory.create_client("mongodb")
 
     # Test connection
     if not db.test_connection():

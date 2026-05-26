@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import gradio as gr
 import matplotlib.pyplot as plt
 import pandas as pd
 from dotenv import load_dotenv
 
-from leaderboard.storage.connection import MongoDBClient, MongoDBConnectionError
+from leaderboard.storage.connection import DatabaseClientFactory, DBConnectionError
 from leaderboard.ui.ui_exceptions import UnknownDataLoadingMethodError
+
+if TYPE_CHECKING:
+    from src.leaderboard.storage.connection import DatabaseClient
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -35,11 +39,11 @@ def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.
         runs_df = _local_load(path)
     elif method == "mongodb":
         # Create a client and load data from MongoDB
-        mongoDBClient = MongoDBClient.from_env()
+        mongoDBClient = DatabaseClientFactory.create_client(backend="mongodb")
 
         # Check if we can connect to the database
         if not mongoDBClient.test_connection():
-            raise MongoDBConnectionError from None
+            raise DBConnectionError from None
 
         runs_df = _mongodb_load(mongoDBClient)
     else:
@@ -75,7 +79,7 @@ def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.
     return _aggregate(runs_df)
 
 
-def _mongodb_load(mongoDBClient: MongoDBClient) -> pd.DataFrame:
+def _mongodb_load(mongoDBClient: DatabaseClient) -> pd.DataFrame:
     """Loads all runs from MongoDB and aggregates them into the format used by the implementation of the leaderboard ui and logic.
 
     Returns a DataFrame with columns:
