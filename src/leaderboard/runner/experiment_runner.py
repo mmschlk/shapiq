@@ -6,8 +6,8 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from metrics.evaluator import compute_all_metrics
 
+from leaderboard.metrics.evaluator import compute_all_metrics
 from leaderboard.runner.approximator_runner import approximate
 from leaderboard.runner.record_builder import create_run_record
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, UnknownGameError
@@ -114,16 +114,10 @@ def run_experiment(
                 seed=approx_seed,
             )
 
-            # align interaction values
-            gt_values, approx_values_aligned = align_interaction_values(
-                ground_truth,
-                approx_values,
-            )
-
             # calculate metrics for each run
             metric_results = compute_all_metrics(
-                ground_truth=gt_values,
-                estimated=approx_values_aligned,
+                ground_truth=ground_truth,
+                estimated=approx_values,
             )
 
             runtime_seconds = time.perf_counter() - start_time
