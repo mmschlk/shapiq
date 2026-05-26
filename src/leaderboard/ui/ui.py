@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 from leaderboard.storage.connection import MongoDBClient, MongoDBConnectionError
 from leaderboard.ui.ui_exceptions import UnknownDataLoadingMethodError
-from metrics import METRICS
+from leaderboard.metrics import METRICS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 

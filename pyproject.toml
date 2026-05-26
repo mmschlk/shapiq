@@ -29,6 +29,7 @@ dependencies = [
     "pymongo[srv]>=4.17.0",
     "pyyaml>=6.0.3",
     "plotly>=6.7.0",
+    "pydantic>=2",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
