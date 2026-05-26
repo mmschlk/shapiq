@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from shapiq.interaction_values import InteractionValues, aggregate_interaction_values
 
@@ -94,6 +95,7 @@ def scatter_plot(
     alpha: float = 0.8,
     dot_size: float = 16,
     jitter: float = 0.0,
+    hist: bool = True,
     ax: Axes | None = None,
     show: bool = True,
 ) -> Axes | None:
@@ -129,6 +131,10 @@ def scatter_plot(
         jitter: If positive, adds Gaussian jitter to the plotted x-values, scaled to
             ``jitter * std(x_vals)``. Useful for categorical or integer-valued features.
             Defaults to ``0.0`` (disabled).
+        hist: Whether to draw a faint histogram of the x-axis feature's distribution along
+            the bottom of the plot (SHAP-style). When enabled, the x-axis tick labels and
+            label are placed on the histogram strip rather than on the main scatter axes.
+            Defaults to ``True``.
         ax: ``matplotlib`` ``Axes`` object to plot on. If ``None``, a new figure and axes are
             created.
         show: Whether to call ``plt.show()`` at the end. If ``False``, returns the axes instead.
@@ -217,6 +223,7 @@ def scatter_plot(
             x_plot = x_vals + rng.normal(0.0, jitter * std, size=x_vals.shape)
 
     n_samples = len(x_vals)
+    sc = None
     if color_idx is None:
         ax.scatter(
             x_plot,
@@ -262,13 +269,36 @@ def scatter_plot(
                 linewidth=0,
                 rasterized=n_samples > 500,
             )
-            cb = fig.colorbar(sc, ax=ax, aspect=80)
-            cb.set_label(display_mapping[color_idx], size=11, labelpad=0)
-            cb.ax.tick_params(labelsize=10, length=0)
-            cb.outline.set_visible(False)  # type: ignore[union-attr]
+
+    divider = make_axes_locatable(ax)
+
+    valid_x_for_hist = x_vals[~np.isnan(x_vals)]
+    draw_hist = (
+        hist
+        and len(valid_x_for_hist) >= 2
+        and float(np.min(valid_x_for_hist)) < float(np.max(valid_x_for_hist))
+    )
+    hist_ax = None
+    if draw_hist:
+        hist_ax = divider.append_axes("bottom", size=0.45, pad=0.05, sharex=ax)
+        n_bins = min(50, max(10, len(valid_x_for_hist) // 2))
+        hist_ax.hist(valid_x_for_hist, bins=n_bins, color="#aaaaaa", alpha=0.5)
+        hist_ax.set_yticks([])
+        hist_ax.spines["top"].set_visible(False)
+        hist_ax.spines["right"].set_visible(False)
+        hist_ax.spines["left"].set_visible(False)
+        ax.tick_params(axis="x", labelbottom=False)
+
+    if sc is not None and color_idx is not None:
+        cax = divider.append_axes("right", size="3%", pad=0.1)
+        cb = fig.colorbar(sc, cax=cax)
+        cb.set_label(display_mapping[color_idx], size=11, labelpad=0)
+        cb.ax.tick_params(labelsize=10, length=0)
+        cb.outline.set_visible(False)  # type: ignore[union-attr]
 
     ax.axhline(0, color="#999999", linestyle="-", linewidth=1, zorder=1)
-    ax.set_xlabel(display_mapping[x_idx], fontsize=12)
+    xlabel_target = hist_ax if hist_ax is not None else ax
+    xlabel_target.set_xlabel(display_mapping[x_idx], fontsize=12)
     index_name = interaction_values_list[0].index
     feature_label = ", ".join(display_mapping[f] for f in interaction_tuple)
     ax.set_ylabel(f"{index_name}({feature_label})", fontsize=12)

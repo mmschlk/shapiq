@@ -65,6 +65,7 @@ def test_scatter_plot_basic(mock_interaction_data):
         feature_data_np,
         interaction=(0,),
         feature_names=feature_names,
+        hist=False,
         show=False,
     )
     assert isinstance(ax, plt.Axes)
@@ -77,6 +78,7 @@ def test_scatter_plot_basic(mock_interaction_data):
         feature_data_pd,
         interaction=(0,),
         feature_names=feature_names,
+        hist=False,
         show=False,
     )
     assert isinstance(ax, plt.Axes)
@@ -86,6 +88,7 @@ def test_scatter_plot_basic(mock_interaction_data):
         interaction_values_list,
         feature_data_np,
         interaction=(0,),
+        hist=False,
         show=False,
     )
     assert ax.get_xlabel().startswith("F")
@@ -110,6 +113,7 @@ def test_scatter_plot_basic(mock_interaction_data):
             feature_data_pd,
             interaction=arg,
             feature_names=feature_names,
+            hist=False,
             show=False,
         )
         labels.append(ax.get_xlabel())
@@ -123,6 +127,7 @@ def test_scatter_plot_basic(mock_interaction_data):
         interaction=(0, 1),
         feature_names=feature_names,
         abbreviate=False,
+        hist=False,
         show=False,
     )
     assert ax.get_xlabel() == "feature_0"
@@ -137,6 +142,7 @@ def test_scatter_plot_basic(mock_interaction_data):
         x_feature=1,
         feature_names=feature_names,
         abbreviate=False,
+        hist=False,
         show=False,
     )
     assert ax.get_xlabel() == "feature_1"
@@ -150,6 +156,7 @@ def test_scatter_plot_basic(mock_interaction_data):
         x_feature="feature_1",
         feature_names=feature_names,
         abbreviate=False,
+        hist=False,
         show=False,
     )
     assert ax.get_xlabel() == "feature_1"
@@ -170,6 +177,7 @@ def test_scatter_plot_options(mock_interaction_data):
         color="feature_2",
         feature_names=feature_names,
         abbreviate=False,
+        hist=False,
         ax=ax,
         show=False,
     )
@@ -178,7 +186,7 @@ def test_scatter_plot_options(mock_interaction_data):
     assert "feature_2" in cbar_labels
     plt.close("all")
 
-    # color = None -> no extra colorbar axes added
+    # color = None, hist = False -> no extra axes added
     fig, ax = plt.subplots()
     n_axes_before = len(fig.axes)
     scatter_plot(
@@ -187,6 +195,7 @@ def test_scatter_plot_options(mock_interaction_data):
         interaction=(0,),
         color=None,
         feature_names=feature_names,
+        hist=False,
         ax=ax,
         show=False,
     )
@@ -204,6 +213,7 @@ def test_scatter_plot_options(mock_interaction_data):
         color="feature_2",
         alpha=test_alpha,
         feature_names=feature_names,
+        hist=False,
         show=False,
     )
     expected_nan_color = list(mcolors.to_rgba("#777777"))
@@ -258,6 +268,7 @@ def test_scatter_plot_options(mock_interaction_data):
         interaction=(0,),
         feature_names=long_names,
         abbreviate=False,
+        hist=False,
         show=False,
     )
     assert ax.get_xlabel() == long_names[0]
@@ -270,11 +281,48 @@ def test_scatter_plot_options(mock_interaction_data):
         interaction=(0,),
         feature_names=feature_names,
         jitter=0.5,
+        hist=False,
         show=False,
     )
     raw = feature_data_pd.iloc[:, 0].to_numpy()
     plotted = ax.collections[0].get_offsets()[:, 0]
     assert np.max(np.abs(plotted - raw)) > 0
+    plt.close("all")
+
+    # hist = True -> adds a histogram axes below with the x-axis label
+    fig, ax = plt.subplots()
+    n_axes_before = len(fig.axes)
+    scatter_plot(
+        interaction_values_list,
+        feature_data_pd,
+        interaction=(0,),
+        feature_names=feature_names,
+        abbreviate=False,
+        hist=True,
+        ax=ax,
+        show=False,
+    )
+    assert len(fig.axes) > n_axes_before
+    hist_axes_labels = [a.get_xlabel() for a in fig.axes if a is not ax]
+    assert "feature_0" in hist_axes_labels
+    assert ax.get_xlabel() == ""
+    has_bars = any(a is not ax and len(a.patches) > 0 for a in fig.axes)
+    assert has_bars
+    plt.close("all")
+
+    # hist = True with constant x-values -> no histogram drawn, fallback to xlabel on main ax
+    data_const_x = feature_data_pd.copy()
+    data_const_x.iloc[:, 0] = 0.5
+    ax = scatter_plot(
+        interaction_values_list,
+        data_const_x,
+        interaction=(0,),
+        feature_names=feature_names,
+        abbreviate=False,
+        hist=True,
+        show=False,
+    )
+    assert ax.get_xlabel() == "feature_0"
     plt.close("all")
 
 

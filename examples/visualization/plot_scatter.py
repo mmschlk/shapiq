@@ -111,6 +111,20 @@ shapiq.scatter_plot(
 )
 
 # %%
+# Disable the X-axis Histogram Strip
+# -----------------------------------
+# By default a faint histogram of the x-axis feature is drawn along the bottom
+# (SHAP-style). Pass ``hist=False`` to hide it.
+
+shapiq.scatter_plot(
+    explanations,
+    x_explain,
+    interaction="MedInc",
+    feature_names=feature_names,
+    hist=False,
+)
+
+# %%
 # Custom Axis
 # -----------
 
