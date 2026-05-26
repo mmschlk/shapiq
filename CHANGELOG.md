@@ -11,6 +11,7 @@
 - adds `InterventionalTreeExplainer` in `shapiq.tree.interventional`
 - adds `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer` for nearest neighbor models
 
+
 ### Introducing ProxySHAP [#501](https://github.com/mmschlk/shapiq/pull/501), [Preprint](https://arxiv.org/abs/2605.22738)
 
 Adds [`ProxySHAP`](src/shapiq/approximator/proxy/proxyshap.py) as a new approximator that accelerates Shapley interaction estimation by fitting a lightweight **proxy tree model** (XGBoost by default) on sampled coalitions, computing _exact_ interactions for the proxy via the `InterventionalTreeExplainer`, and then optionally correcting for the approximation error on the true model.
@@ -76,12 +77,20 @@ The conversion of the tree methods has been moved to C++ giving at least 2x up t
 
 - speeds up the baseline imputer by removing a Python `for` loop from its hot path. [#498](https://github.com/mmschlk/shapiq/pull/498)
 
+### Refactoring of spex module
+- moves `ProxySPEX` from `shapiq.approximator.sparse` to `shapiq.approximator.proxy`. Imports from `shapiq.approximator` (i.e. `from shapiq.approximator import ProxySPEX`) are unchanged.
+- removes the `"proxyspex"` option from `Sparse.decoder_type`; it now accepts only `"soft"` or `"hard"` (default `"soft"`).
+- moves `sparse-transform` and `galois` out of the core dependencies. Install with `pip install shapiq[sparse]` to use `SPEX` / `Sparse`.
+- adds a `sparse` extra (`sparse-transform`, `galois`) required by `shapiq.approximator.sparse`.
+- adds a `proxy` extra (`xgboost`, `lightgbm`) required by `shapiq.approximator.proxy` (`ProxySHAP`, `ProxySPEX`, `RegressionMSR`).
+
 ### Bugfix
 
 - fixes a bug in tree conversion, such that tree models with no splits are still correctly parsed. [#370](https://github.com/mmschlk/shapiq/issues/370)
 - fixes `min_order` in `TreeExplainer` so that it now actually restricts the returned `InteractionValues` to interactions of order ``min_order..max_order`` (``min_order=0`` continues to include the empty interaction at the baseline value); invalid values now raise a clear `ValueError`. [#325](https://github.com/mmschlk/shapiq/issues/325)
 - fixes tree conversion breaking when the `LC_NUMERIC` locale is not set to the standard `"C"` value. [#515](https://github.com/mmschlk/shapiq/pull/515)
 - fixes a segfault in the `ProxySHAP` C++ extension code. [#506](https://github.com/mmschlk/shapiq/pull/506)
+
 
 ## v1.4.1 (2025-11-10)
 

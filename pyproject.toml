@@ -16,8 +16,6 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "requests",
-    "sparse-transform",  # for sparse approximators (spex, proxyspex)
-    "galois",            # for sparse approximators (spex, proxyspex)
     # plotting
     "matplotlib",
     "networkx",
@@ -61,6 +59,19 @@ keywords = [
     "shapley values",
     "feature interaction",
 ]
+
+[project.optional-dependencies]
+sparse = [
+    # required by shapiq.approximator.sparse (SPEX and the Sparse base class)
+    "sparse-transform",
+    "galois",
+]
+proxy = [
+    # required by shapiq.approximator.proxy (ProxySHAP, ProxySPEX, RegressionMSR)
+    "xgboost",   # default proxy model in ProxySHAP
+    "lightgbm",  # required by ProxySPEX
+]
+
 [tool.coverage.report]
 exclude_also = [
     'if TYPE_CHECKING:',
@@ -223,7 +234,8 @@ test-command = "python -c \"import shapiq; from shapiq.tree.conversion import ce
 manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
-before-build = "brew install libomp || true"
+# libomp is installed by build_tools/wheels/build_wheels.sh (pinned conda-forge
+# tarball, not brew) so wheels can target an old MACOSX_DEPLOYMENT_TARGET.
 
 [tool.cibuildwheel.windows]
 # MSVC ships OpenMP runtime (vcomp140.dll) with Visual C++ Redistributable
