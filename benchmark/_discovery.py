@@ -15,12 +15,9 @@ from typing import Any
 # Project-specific additions that may not yet be registered in
 # ``SV_APPROXIMATORS`` on every feature branch. Surfacing them by name lets
 # the runner report ``skipped:not_registered`` on branches that do not ship
-# the class yet, instead of silently omitting it. ``PolySHAP`` is split on
-# its feature branch into three variants (KAdd / Partial / Prior); the
-# umbrella name is kept so each appears in ``--check`` independently.
+# the class yet, instead of silently omitting it.
 PROJECT_APPROXIMATOR_NAMES: tuple[str, ...] = (
     "LeverageSHAP",
-    "PolySHAP",
     "PolySHAPKAdd",
     "PolySHAPPartial",
     "PolySHAPPrior",
@@ -104,7 +101,7 @@ def construct_for_sv(
             return approx_cls(**kwargs), None
         except TypeError as exc:
             last_exc = exc
-        except ValueError as exc:
+        except (ValueError, ImportError) as exc:
             if first_value_error is None:
                 first_value_error = exc
             last_exc = exc
