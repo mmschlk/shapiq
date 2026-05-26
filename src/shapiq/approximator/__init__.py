@@ -24,7 +24,7 @@ try:
     from .sparse import SPEX
 except ImportError as _e:
 
-    class SPEX:  # type: ignore[no-redef]
+    class SPEX(Approximator):
         """Placeholder raised when the optional ``sparse`` extra is not installed."""
 
         _import_error = _e
@@ -39,7 +39,7 @@ try:
     from .proxy import ProxySHAP, ProxySPEX, RegressionMSR
 except ImportError as _e:
 
-    class ProxySHAP:  # type: ignore[no-redef]
+    class ProxySHAP(Approximator):
         """Placeholder raised when the optional ``proxy`` extra is not installed."""
 
         _import_error = _e
@@ -49,7 +49,7 @@ except ImportError as _e:
             msg = "ProxySHAP requires the 'proxy' extra: pip install shapiq[proxy]"
             raise ImportError(msg) from self._import_error
 
-    class ProxySPEX:  # type: ignore[no-redef]
+    class ProxySPEX(Approximator):
         """Placeholder raised when the optional ``proxy`` extra is not installed."""
 
         _import_error = _e
@@ -59,7 +59,7 @@ except ImportError as _e:
             msg = "ProxySPEX requires the 'proxy' extra: pip install shapiq[proxy]"
             raise ImportError(msg) from self._import_error
 
-    class RegressionMSR:  # type: ignore[no-redef]
+    class RegressionMSR(Approximator):
         """Placeholder raised when the optional ``proxy`` extra is not installed."""
 
         _import_error = _e
@@ -68,6 +68,7 @@ except ImportError as _e:
             """Raise an informative ImportError pointing to the missing extra."""
             msg = "RegressionMSR requires the 'proxy' extra: pip install shapiq[proxy]"
             raise ImportError(msg) from self._import_error
+
 
 # contains all SV approximators
 SV_APPROXIMATORS: list[Approximator.__class__] = [
@@ -118,7 +119,7 @@ STII_APPROXIMATORS: list[Approximator.__class__] = [
     SVARMIQ,
     SHAPIQ,
     SPEX,
-    ProxySPEX
+    ProxySPEX,
 ]
 
 # contains all approximators that can be used for FSII
@@ -130,16 +131,11 @@ FSII_APPROXIMATORS: list[Approximator.__class__] = [
     SHAPIQ,
     SPEX,
     ProxySPEX,
-    ProxySHAP
+    ProxySHAP,
 ]
 
 # contains all approximators that can be used for FBII
-FBII_APPROXIMATORS: list[Approximator.__class__] = [
-    RegressionFBII,
-    SPEX,
-    ProxySPEX,
-    ProxySHAP
-]
+FBII_APPROXIMATORS: list[Approximator.__class__] = [RegressionFBII, SPEX, ProxySPEX, ProxySHAP]
 
 
 __all__ = [

@@ -9,7 +9,7 @@ import numpy as np
 from shapiq.approximator.base import Approximator
 from shapiq.approximator.montecarlo.shapiq import SHAPIQ
 from shapiq.approximator.montecarlo.svarmiq import SVARMIQ
-from shapiq.approximator.regression.kernelshapiq import KernelSHAPIQ
+from shapiq.approximator.regression.kernelshapiq import KernelSHAPIQ, ValidKernelSHAPIQIndices
 from shapiq.game import Game
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
 
 ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "SII", "SV", "BV"]
+
 
 class ResidualGame(Game):
     """Residual game class for adjusting the proxy model's predictions."""
@@ -133,6 +134,9 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
                     random_state=self._random_state,
                 )
             case "kernel":
+                if self.index not in ValidKernelSHAPIQIndices:
+                    msg = f"KernelSHAPIQ adjustment is only supported for indices {ValidKernelSHAPIQIndices}, but got index {self.index}"
+                    raise ValueError(msg)
                 self.adjustment_method = KernelSHAPIQ(
                     n=self.n,
                     max_order=self.max_order,
@@ -178,8 +182,11 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             target_index=self.index,
         )
         if self.adjustment != "none":
-            residual_values = coalition_values - self.proxy_model.predict(  # ty: ignore[unresolved-attribute]
-                coalitions_matrix
+            residual_values = (
+                coalition_values
+                - self.proxy_model.predict(  # ty: ignore[unresolved-attribute]
+                    coalitions_matrix
+                )
             )
             residual_values -= residual_values[0]  # Normalize residuals
             residual_game = ResidualGame(n_players=self.n, game_values=residual_values)
