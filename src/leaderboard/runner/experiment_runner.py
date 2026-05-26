@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 
 
 def align_interaction_values(
-    ground_truth: InteractionValues,
-    approx_values: InteractionValues,
+        ground_truth: InteractionValues,
+        approx_values: InteractionValues,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Align ground truth and approximated interaction values.
 
@@ -45,8 +45,8 @@ def align_interaction_values(
     gt_lookup = ground_truth.interaction_lookup
     approx_lookup = approx_values.interaction_lookup
 
-    gt_keys = set(gt_lookup.keys() - {()})
-    approx_keys = set(approx_lookup.keys() - {()})
+    gt_keys = set(gt_lookup.keys()) - {()}
+    approx_keys = set(approx_lookup.keys()) - {()}
 
     if gt_keys != approx_keys:
         raise InteractionKeyMismatchError(gt_keys, approx_keys) from None
@@ -70,22 +70,18 @@ def align_interaction_values(
 
 
 def run_experiment(
-    *,
-    game: Game,
-    game_name: str,
-    game_params: dict[str, Any],
-    ground_truth: InteractionValues,
-    approximator_class: type[Approximator],
-    index: InteractionIndex,
-    max_order: int,
-    budget: int,
-    approx_seeds: Iterable[int],
+        *,
+        game: Game,
+        game_name: str,
+        game_params: dict[str, Any],
+        ground_truth: InteractionValues,
+        approximator_class: type[Approximator],
+        index: InteractionIndex,
+        max_order: int,
+        budget: int,
+        approx_seeds: Iterable[int],
 ) -> list[dict[str, Any]]:
     """Run approximation experiments for multiple approximation seeds.
-
-    For each seed, the function runs the approximator, aligns the resulting
-    interaction values with the ground truth, computes metrics, and stores the
-    outcome as a run record. Failed runs are marked and are also stored.
 
     Args:
         game: The game for which interaction values are approximated.
@@ -103,81 +99,142 @@ def run_experiment(
     """
     results = []
     for approx_seed in approx_seeds:
-        start_time = time.perf_counter()
-        try:
-            approx_values = approximate(
-                game=game,
-                approximator_class=approximator_class,
-                index=index,
-                max_order=max_order,
-                budget=budget,
-                seed=approx_seed,
-            )
+        run_record = run_single_experiment_seed(
+            game=game,
+            game_name=game_name,
+            game_params=game_params,
+            ground_truth=ground_truth,
+            approximator_class=approximator_class,
+            index=index,
+            max_order=max_order,
+            budget=budget,
+            approx_seed=approx_seed,
+        )
+        results.append(run_record)
+    return results
 
-            # align interaction values
-            gt_values, approx_values_aligned = align_interaction_values(
-                ground_truth,
-                approx_values,
-            )
 
-            # calculate metrics for each run
-            metric_results = compute_all_metrics(
-                ground_truth=gt_values,
-                estimated=approx_values_aligned,
-            )
+def run_single_experiment_seed(
+    *,
+    game: Game,
+    game_name: str,
+    game_params: dict[str, Any],
+    ground_truth: InteractionValues,
+    approximator_class: type[Approximator],
+    index: InteractionIndex,
+    max_order: int,
+    budget: int,
+    approx_seed: int,
+    approximate_fn=approximate,
+    align_fn=align_interaction_values,
+    metrics_fn=compute_all_metrics,
+    record_builder_fn=create_run_record,
+) -> dict[str, Any]:
+    """Run one approximation experiment for a single approximation seed.
 
-            runtime_seconds = time.perf_counter() - start_time
+       The function executes the approximator for one seed, aligns the resulting
+       interaction values with the provided ground truth, computes evaluation
+       metrics, and builds a raw run record. If one of the expected runner-level
+       errors occurs, the function returns a failed run record instead of raising
+       the error.
 
-            run_record = create_run_record(
-                game=game,
-                game_name=game_name,
-                game_params=game_params,
-                approximator_class=approximator_class,
-                approximator_params={},
-                index=index,
-                max_order=max_order,
-                budget=budget,
-                approx_seed=approx_seed,
-                metrics={
-                    "mse": metric_results.get("mse"),
-                    "mae": metric_results.get("mae"),
-                    "mse_normalized": metric_results.get("mse_normalized"),
-                    "spearman": metric_results.get("spearman"),
-                    "kendall_tau": metric_results.get("kendall_tau"),
-                    "precision_at_k": metric_results.get("precision_at_k"),
-                },
-                runtime_seconds=runtime_seconds,
-                run_failed=False,
-                error_message=None,
-                notes="",
-            )
+       The optional function parameters are dependency-injection hooks. They
+       default to the production implementations, but can be replaced in tests to
+       avoid running real approximators, metrics, or record-building logic.
 
-        except (
+       Args:
+           game: The game for which interaction values are approximated.
+           game_name: The name of the game.
+           game_params: The parameters used to initialize the game.
+           ground_truth: The exact interaction values used as reference.
+           approximator_class: The approximator class used for the experiment.
+           index: The interaction index to approximate.
+           max_order: The maximum interaction order to compute.
+           budget: The evaluation budget available to the approximator.
+           approx_seed: The approximation seed used for this single run.
+           approximate_fn: Function used to compute approximated interaction values.
+           align_fn: Function used to align ground truth and approximated values.
+           metrics_fn: Function used to compute metrics from aligned values.
+           record_builder_fn: Function used to create the raw run record.
+
+       Returns:
+           A raw run record dictionary for the given approximation seed. The record
+           is marked as failed if an expected approximation, alignment, metric, or
+           record-building error occurred.
+       """
+    start_time = time.perf_counter()
+    try:
+        approx_values = approximate_fn(
+            game=game,
+            approximator_class=approximator_class,
+            index=index,
+            max_order=max_order,
+            budget=budget,
+            seed=approx_seed,
+        )
+
+        # align interaction values
+        gt_values_aligned, approx_values_aligned = align_fn(
+            ground_truth,
+            approx_values,
+        )
+
+        # calculate metrics for each run
+        metric_results = metrics_fn(
+            ground_truth=gt_values_aligned,
+            estimated=approx_values_aligned,
+        )
+
+        runtime_seconds = time.perf_counter() - start_time
+
+        run_record = record_builder_fn(
+            game=game,
+            game_name=game_name,
+            game_params=game_params,
+            approximator_class=approximator_class,
+            approximator_params={},
+            index=index,
+            max_order=max_order,
+            budget=budget,
+            approx_seed=approx_seed,
+            metrics={
+                "mse": metric_results.get("mse"),
+                "mae": metric_results.get("mae"),
+                "mse_normalized": metric_results.get("mse_normalized"),
+                "spearman": metric_results.get("spearman"),
+                "kendall_tau": metric_results.get("kendall_tau"),
+                "precision_at_k": metric_results.get("precision_at_k"),
+            },
+            runtime_seconds=runtime_seconds,
+            run_failed=False,
+            error_message=None,
+            notes="",
+        )
+
+    except (
             NotImplementedError,
             ValueError,
             TypeError,
             RuntimeError,
             InteractionKeyMismatchError,
             UnknownGameError,
-        ) as error:
-            runtime_seconds = time.perf_counter() - start_time
+    ) as error:
+        runtime_seconds = time.perf_counter() - start_time
 
-            run_record = create_run_record(
-                game=game,
-                game_name=game_name,
-                game_params=game_params,
-                approximator_class=approximator_class,
-                approximator_params={},
-                index=index,
-                max_order=max_order,
-                budget=budget,
-                approx_seed=approx_seed,
-                metrics=None,
-                runtime_seconds=runtime_seconds,
-                run_failed=True,
-                error_message=str(error),
-                notes="",
-            )
-
-        results.append(run_record)
-    return results
+        run_record = record_builder_fn(
+            game=game,
+            game_name=game_name,
+            game_params=game_params,
+            approximator_class=approximator_class,
+            approximator_params={},
+            index=index,
+            max_order=max_order,
+            budget=budget,
+            approx_seed=approx_seed,
+            metrics=None,
+            runtime_seconds=runtime_seconds,
+            run_failed=True,
+            error_message=str(error),
+            notes="",
+        )
+    return run_record
