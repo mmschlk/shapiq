@@ -6,14 +6,28 @@ import numpy as np
 class PolySHAPPrior(PolySHAP):
     """PolySHAP with a user-supplied *prior* explanation frontier.
 
-    The frontier is taken directly from ``Q_prior``, which should be an
+    The frontier is taken directly from ``q_prior``, which should be an
     iterable of coalition tuples ordered as desired.  The caller is
-    responsible for ensuring all singletons are present.
+    responsible for ensuring all singletons ``(i,)`` for ``i in range(n)``
+    are present; the parent class will raise ``ValueError`` otherwise.
+
+    **When to use:** Best when domain knowledge identifies a specific set of
+    interactions likely to explain most of the model's behaviour.  A
+    well-informed prior can match or outperform :class:`PolySHAPKAdd` at the
+    same frontier size by focusing capacity on interactions that actually
+    matter.  Also useful for reproducing the exact frontier from a prior
+    experiment.
+
+    **Limitations:** Accuracy degrades badly if the prior is uninformative or
+    wrong — more so than the systematic alternatives.  Requires the caller to
+    construct and validate the frontier manually.  When no domain knowledge is
+    available, prefer :class:`PolySHAPKAdd` (systematic) or
+    :class:`PolySHAPPartial` (budget-controlled random extension).
 
     Args:
         n: The number of players.
         q_prior: An iterable of coalition tuples that defines the frontier
-            and its column ordering.
+            and its column ordering.  Must include all singletons.
         pairing_trick: If ``True``, the pairing trick is applied. Defaults to ``False``.
         sampling_weights: Optional sampling weights of shape ``(n + 1,)``.
         random_state: Random state for reproducibility. Defaults to ``None``.

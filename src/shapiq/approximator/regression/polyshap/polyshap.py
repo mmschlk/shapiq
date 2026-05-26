@@ -1,8 +1,9 @@
-"""This module contains the Faithful Shapley-GAX approximator to compute the SV"""
+"""This module contains the PolySHAP approximator to compute Shapley values."""
 
 from __future__ import annotations
 
 import time
+import warnings
 from collections.abc import Callable
 from typing import Any, Literal
 
@@ -17,35 +18,39 @@ ValidRegressionPolySHAPIndices = Literal["SV"]
 
 
 class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
-    """Estimates the Shapley values using polynomial regression. Extends KernelSHAP.
+    """Estimates Shapley values via polynomial regression, generalising KernelSHAP.
 
-    The explanation frontier — the set of interactions used as basis functions in the regression —
-    is supplied as a pre-built dictionary mapping each coalition tuple to its column index.
-    Use one of the subclasses (:class:`PolySHAPKAddFrontier`, :class:`PolySHAPPriorFrontier`,
-    :class:`PolySHAPPartialFrontier`) to construct a frontier automatically rather than building
-    the dictionary by hand.
+    The explanation frontier — the set of interactions used as basis functions in the
+    regression — is supplied as a pre-built dictionary mapping each coalition tuple to
+    its column index.  Use one of the subclasses (:class:`PolySHAPKAdd`,
+    :class:`PolySHAPPartial`, :class:`PolySHAPPrior`) to construct a frontier
+    automatically rather than building the dictionary by hand.
+
+    See `Kolpaczki et al. (2025) <https://arxiv.org/abs/2601.18608>`_ for the full
+    theoretical background.
 
     Args:
         n: The number of players.
-        explanation_frontier: A dictionary mapping coalition tuples to their column positions in
-            the regression matrix. Must contain every singleton ``(i,)`` for ``i`` in ``range(n)``.
-        pairing_trick: If ``True``, the pairing trick is applied to the sampling procedure.
-            Defaults to ``False``.
-        sampling_weights: An optional array of weights for the sampling procedure. The weights
-            must be of shape ``(n + 1,)`` and determine the probability of sampling a coalition
-            of a certain size. Defaults to ``None``.
-        replacement: Whether to sample coalitions with replacement. Defaults to ``True``.
-        random_state: The random state of the estimator. Defaults to ``None``.
+        explanation_frontier: A dictionary mapping coalition tuples to their column
+            positions in the regression matrix.  Must contain every singleton ``(i,)``
+            for ``i`` in ``range(n)``.
+        pairing_trick: If ``True``, the pairing trick is applied to the sampling
+            procedure.  Defaults to ``False``.
+        sampling_weights: An optional array of weights for the sampling procedure.
+            Must be of shape ``(n + 1,)`` and determines the probability of sampling
+            a coalition of a given size.  Defaults to ``None``.
+        random_state: The random state of the estimator.  Defaults to ``None``.
 
     Attributes:
         n: The number of players.
         N: The set of players (``0`` to ``n - 1``).
-        max_order: The interaction order of the approximation.
-        min_order: The minimum order of the approximation (always ``1`` for regression).
-        iteration_cost: The cost of a single iteration of the regression estimator.
+        max_order: Interaction order of the approximation (always ``1`` — PolySHAP
+            targets Shapley values).
+        min_order: Minimum interaction order (always ``0``).
+        iteration_cost: The cost of a single iteration of the estimator.
         explanation_frontier: The active explanation frontier dictionary.
-        runtime_last_approximate_run: Per-phase wall-clock timings from the most recent
-            :meth:`approximate` call.
+        runtime_last_approximate_run: Per-phase wall-clock timings from the most
+            recent :meth:`approximate` call.
     """
 
     def __init__(
@@ -84,12 +89,28 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         # Exclude the empty-coalition term from the variable count.
         self.n_variables = len(explanation_frontier) - 1
 
-    def _init_kernel_weights(self) -> np.ndarray:
-        """Initialise the KernelSHAP kernel weights indexed by coalition size.
+    def _warn_if_underdefined(self, n_sampled: int, budget: int) -> None:
+        """Emit a UserWarning when the least-squares system has more variables than samples.
 
-        Weights are set to zero for the empty and grand coalitions (which are
-        handled as hard constraints) and follow the standard KernelSHAP formula
-        otherwise.
+        Args:
+            n_sampled: Number of sampled coalitions (excluding the border pair).
+            budget: The budget originally passed to :meth:`approximate`.
+        """
+        if n_sampled < self.n_variables:
+            warnings.warn(
+                f"The least-squares system is underdefined: {n_sampled} sampled coalition(s) "
+                f"but {self.n_variables} frontier variable(s). "
+                f"Increase the budget (currently {budget}) or reduce the explanation frontier "
+                "size for reliable estimates.",
+                UserWarning,
+                stacklevel=3,
+            )
+
+    def _init_kernel_weights(self) -> np.ndarray:
+        """Initialise the regression kernel weights indexed by coalition size.
+
+        Weights are zero for the empty and grand coalitions (handled as hard
+        constraints) and follow the KernelSHAP formula otherwise.
 
         Returns:
             Weight vector of shape ``(n + 1,)``.
@@ -138,19 +159,19 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
     ) -> InteractionValues:
         """Approximate Shapley values via weighted least-squares regression.
 
-        The estimator draws random coalitions, queries the game, then solves a
-        weighted least-squares problem whose basis functions are the terms in the
-        explanation frontier.  This generalises KernelSHAP: when the frontier
-        contains only singletons the method reduces exactly to KernelSHAP.
+        Draws random coalitions, queries the game, then solves a weighted
+        least-squares problem whose basis functions are the terms in the explanation
+        frontier.  When the frontier contains only singletons the method reduces
+        exactly to KernelSHAP.
 
-        For background on KernelSHAP see
-        `Lundberg and Lee (2017) <https://doi.org/10.48550/arXiv.1705.07874>`_.
+        See `Kolpaczki et al. (2025) <https://arxiv.org/abs/2601.18608>`_ for the
+        theoretical background.
 
         Args:
-            budget: Total number of coalition evaluations (including the empty
-                and grand coalition which are always queried).
-            game: Callable that accepts a binary coalition matrix of shape
-                ``(budget, n)`` and returns a value array of shape ``(budget,)``.
+            budget: Total number of coalition evaluations (including the empty and
+                grand coalition, which are always queried).
+            game: Callable accepting a binary coalition matrix of shape
+                ``(budget, n)`` and returning a value array of shape ``(budget,)``.
 
         Returns:
             :class:`~shapiq.interaction_values.InteractionValues` containing the
@@ -187,6 +208,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         # whether the corresponding frontier set is a subset of the sampled coalition.
         # Use the actual sample count: the border-trick may cap evaluations below budget.
         n_sampled = len(self._sampler.coalitions_matrix) - 2
+        self._warn_if_underdefined(n_sampled, budget)
         if self.n_variables > self.n:
             x_tilde = np.zeros((n_sampled, self.n_variables))
             for pos, row in enumerate(self.interaction_matrix_binary[1:, :]):

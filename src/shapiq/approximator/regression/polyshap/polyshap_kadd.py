@@ -8,7 +8,21 @@ class PolySHAPKAdd(PolySHAP):
     """PolySHAP with a *k*-additive explanation frontier.
 
     The frontier consists of all subsets of players up to size ``max_order``,
-    optionally skipping certain coalition sizes.
+    optionally skipping certain coalition sizes.  The frontier size equals
+    ``sum(C(n, k) for k in range(max_order + 1))``, which grows rapidly with
+    *n* and *max_order*.
+
+    **When to use:** Default choice when a systematic, exhaustive treatment of
+    all interactions up to order *k* is feasible.  Produces a deterministic,
+    reproducible frontier and yields the best accuracy in practice when the
+    budget comfortably exceeds the frontier size.  At ``max_order=1`` it
+    reduces exactly to KernelSHAP.
+
+    **Limitations:** Frontier size can become prohibitively large for high *n*
+    or high *max_order* (e.g. order-2 with n=20 already adds 190 pairwise
+    terms).  Prefer :class:`PolySHAPPartial` when the budget or memory is
+    tight, or :class:`PolySHAPPrior` when domain knowledge identifies the
+    relevant interactions.
 
     Args:
         n: The number of players.

@@ -9,8 +9,20 @@ class PolySHAPPartial(PolySHAP):
 
     The frontier always contains every singleton, then greedily adds
     higher-order interactions (in a randomly shuffled order) until
-    ``n_explanation_terms`` terms have been selected.  This is useful when
-    a full *k*-additive frontier would be too large.
+    ``n_explanation_terms`` terms have been selected.  The shuffling is
+    driven by a random permutation of the player indices, making the frontier
+    stochastic when ``random_state`` is not fixed.
+
+    **When to use:** Practical fallback when the full *k*-additive frontier of
+    :class:`PolySHAPKAdd` is too large for the available budget or memory (e.g.
+    large *n* with order ≥ 2).  ``n_explanation_terms`` gives direct control
+    over the regression complexity regardless of *n* or the interaction order.
+
+    **Limitations:** The randomly chosen higher-order terms are not guaranteed
+    to be the most informative ones, so accuracy can vary across runs when
+    ``random_state`` is not fixed.  For the best systematic coverage at a given
+    order, prefer :class:`PolySHAPKAdd`; if domain knowledge is available,
+    prefer :class:`PolySHAPPrior`.
 
     Args:
         n: The number of players.
