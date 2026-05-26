@@ -8,7 +8,7 @@ Provides functionality for:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Self, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from leaderboard.storage.data_classes import RunConfig

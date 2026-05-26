@@ -10,10 +10,13 @@ Provides functionality for:
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import ClassVar, TYPE_CHECKING
 
-from .client import DatabaseClient
-from .mongo_client import MongoDBClient
 from .connection_exceptions import UnsupportedDatabaseBackendError
+from .mongo_client import MongoDBClient
+
+if TYPE_CHECKING:
+    from .client import DatabaseClient
 
 
 class DatabaseBackend(StrEnum):
@@ -25,15 +28,15 @@ class DatabaseBackend(StrEnum):
 class DatabaseClientFactory:
     """Factory for creating database clients.
 
-    Examples
+    Examples:
     --------
     >>> client = DatabaseClientFactory.from_env(DatabaseBackend.MONGODB)
 
     Entry point for obtaining a database client instance.
     """
 
-    # Using the registry we keep track of the supported backends and their corresponding client classes. 
-    _registry: dict[DatabaseBackend, type[DatabaseClient]] = {
+    # Using the registry we keep track of the supported backends and their corresponding client classes.
+    _registry: ClassVar[dict[DatabaseBackend, type[DatabaseClient]]] = {
         DatabaseBackend.MONGODB: MongoDBClient,
     }
 
@@ -46,12 +49,11 @@ class DatabaseClientFactory:
         backend:
             The database backend to use.
 
-        Raises
+        Raises:
         ------
         UnsupportedDatabaseBackendError
             If *backend* is not a registered backend.
         """
-
         # Attempt to cast the backend to the enum type if it's provided as a string
         if isinstance(backend, str):
             try:

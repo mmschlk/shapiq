@@ -16,8 +16,8 @@ from pymongo.errors import OperationFailure
 
 from leaderboard.storage.data_classes import RunConfig
 
-from .connection_exceptions import MissingMongoURIError
 from .client import DatabaseClient
+from .connection_exceptions import MissingMongoURIError
 
 if TYPE_CHECKING:
     from pymongo.collection import Collection
