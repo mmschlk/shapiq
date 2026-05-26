@@ -52,11 +52,10 @@ def run_benchmark(
         result.
 
     Raises:
-        ValueError: Propagated from "aggregate_run_records" when no successful
+        NoSuccessfulRunsError: Propagated from "aggregate_run_records" when no successful
             run records are available for aggregation.
     """
     # Define the values
-    # TO DO: Index approximator validation (e.g. certain indices like SV expect specific order(1)! )
 
     # Compute ground truth
     ground_truth = compute_ground_truth(game=game, index=index, max_order=max_order)
