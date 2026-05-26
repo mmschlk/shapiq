@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
     from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
 
+ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "SII", "SV", "BV"]
 
 class ResidualGame(Game):
     """Residual game class for adjusting the proxy model's predictions."""
@@ -41,7 +42,7 @@ class ResidualGame(Game):
         return self.vals
 
 
-class ProxySHAP(Approximator):
+class ProxySHAP(Approximator[ValidProxySHAPIndices]):
     """ProxySHAP is a proxy-based approximator that uses a regression model to approximate the value function and applies an adjustment method to better match the true value function.
 
     It extends RegressionMSR able to compute any-order cardinal-probabilistic indices and supports multiple adjustment methods, including MSR, SVARMIQ, and KernelSHAPIQ.
@@ -52,10 +53,10 @@ class ProxySHAP(Approximator):
         >>> from shapiq_games.synthetic import DummyGame
         >>> from shapiq.approximator import ProxySHAP
         >>> game = DummyGame(n=5, interaction=(1, 2))
-        >>> approximator = ProxySHAP(n=5, max_order=2, index="SII", adjustment="svarm")
+        >>> approximator = ProxySHAP(n=5, max_order=2, index="k-SII", adjustment="svarm")
         >>> approximator.approximate(budget=100, game=game)
         InteractionValues(
-            index=SII, max_order=2, estimated=True, estimation_budget=100
+            index=k-SII, max_order=2, estimated=True, estimation_budget=100
         )
     """
 
@@ -64,7 +65,7 @@ class ProxySHAP(Approximator):
         n: int,
         *,
         max_order: int = 2,
-        index: str = "SII",
+        index: ValidProxySHAPIndices = "k-SII",
         proxy_model: object | None = None,
         adjustment: str = "msr",
         sampling_weights: FloatVector | None = None,
@@ -100,7 +101,7 @@ class ProxySHAP(Approximator):
             try:
                 from xgboost import XGBRegressor
             except ImportError as e:
-                msg = "XGBoost is required for the default proxy model. Please install it with 'pip install xgboost' or provide a custom proxy_model."
+                msg = "XGBoost is required for the default proxy model. Install it with: pip install 'shapiq[proxy]' or provide a custom proxy_model that implements the scikit-learn regressor interface."
                 raise ImportError(msg) from e
             self.proxy_model = XGBRegressor(random_state=random_state)
 
@@ -160,27 +161,25 @@ class ProxySHAP(Approximator):
             self.proxy_model,
             data=np.zeros((1, self.n)),  # reference data for boolean tree
             class_index=None,
-            index=self.index,
+            index=self.approximation_index,
             max_order=self.max_order,
             bool_tree=True,
         )
         proxy_values = explainer.explain_function(np.ones((1, self.n)))
         proxy_interactions = InteractionValues(
             values=proxy_values.interactions,
-            index=self.index,
+            index=self.approximation_index,
             max_order=self.max_order,
             n_players=self.n,
             min_order=0,
             estimated=budget >= 2**self.n,
             estimation_budget=budget,
             baseline_value=float(baseline_value),
+            target_index=self.index,
         )
         if self.adjustment != "none":
-            residual_values = (
-                coalition_values
-                - self.proxy_model.predict(  # ty: ignore[unresolved-attribute]
-                    coalitions_matrix
-                )
+            residual_values = coalition_values - self.proxy_model.predict(  # ty: ignore[unresolved-attribute]
+                coalitions_matrix
             )
             residual_values -= residual_values[0]  # Normalize residuals
             residual_game = ResidualGame(n_players=self.n, game_values=residual_values)

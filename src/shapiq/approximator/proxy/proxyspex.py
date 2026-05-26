@@ -24,7 +24,10 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 
-class ProxySPEX(Approximator[ValidMoebiusConverterIndices]):
+ValidProxySPEXIndices = ValidMoebiusConverterIndices
+
+
+class ProxySPEX(Approximator[ValidProxySPEXIndices]):
     """ProxySPEX (SParse EXplainer) via Fourier transform sampling.
 
     An approximator for cardinal interaction indices using Fourier transform sampling to efficiently
@@ -35,8 +38,8 @@ class ProxySPEX(Approximator[ValidMoebiusConverterIndices]):
         self,
         *,
         n: int,
-        max_order: int,
-        index: ValidMoebiusConverterIndices = "FBII",
+        max_order: int = 2,
+        index: ValidProxySPEXIndices = "k-SII",
         proxy_model: Model | None = None,
         sampling_weights: np.ndarray | None = None,
         pairing_trick: bool = False,
@@ -76,7 +79,7 @@ class ProxySPEX(Approximator[ValidMoebiusConverterIndices]):
             try:
                 import lightgbm as lgb
             except ImportError as err:
-                msg = "The 'lightgbm' package is required for the default proxy model in ProxySPEX but it is not installed. Please install 'lightgbm' to use ProxySPEX or provide a custom proxy_model that implements the scikit-learn regressor interface."
+                msg = "The 'lightgbm' package is required for the default proxy model in ProxySPEX but it is not installed. Install it with: pip install 'shapiq[proxy]' or provide a custom proxy_model that implements the scikit-learn regressor interface."
                 raise ImportError(msg) from err
             decoder_args = {
                 "max_depth": [3, 5],

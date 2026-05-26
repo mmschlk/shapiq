@@ -72,9 +72,9 @@ class Sparse(Approximator[ValidSparseIndices]):
     def __init__(
         self,
         n: int,
-        index: ValidSparseIndices,
         *,
-        max_order: int | None = None,
+        max_order: int = 2,
+        index: ValidSparseIndices = "k-SII",
         top_order: bool = False,
         random_state: int | None = None,
         transform_type: Literal["fourier"] = "fourier",
@@ -86,8 +86,7 @@ class Sparse(Approximator[ValidSparseIndices]):
         Args:
             n: Number of players (features).
 
-            max_order: Maximum interaction order to consider. Defaults to ``None``, which means
-                that all orders up to ``n`` will be considered.
+            max_order: Maximum interaction order to consider. Defaults to ``2``.
 
             index: The Interaction index to use. All indices supported by shapiq's
                 :class:`~shapiq.game_theory.moebius_converter.MoebiusConverter` are supported.

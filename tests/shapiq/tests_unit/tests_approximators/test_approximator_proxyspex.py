@@ -16,12 +16,12 @@ from tests.shapiq.markers import skip_if_no_lightgbm
 def test_initialization_defaults():
     """Test that ProxySPEX initializes with correct defaults."""
     n = 10
-    proxyspex = ProxySPEX(n=n, max_order=n)
+    proxyspex = ProxySPEX(n=n, max_order=2)
 
     # Check ProxySPEX default values
     assert proxyspex.n == n
-    assert proxyspex.max_order == n  # Default is None, which becomes n
-    assert proxyspex.index == "FBII"
+    assert proxyspex.max_order == 2  # Default is 2
+    assert proxyspex.index == "k-SII"
     assert proxyspex.top_order is False
 
 
@@ -73,7 +73,7 @@ def test_approximate(n, interactions, budget):
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == n
     assert estimates.min_order == 0  # Default top_order is False
-    assert estimates.index == "FBII"
+    assert estimates.index == "k-SII"
     assert estimates.estimated
     assert estimates.estimation_budget > 0
 
