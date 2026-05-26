@@ -29,6 +29,9 @@ def run_benchmark(
     budget: int,
     index: InteractionIndex,
     approximator_class: type[Approximator],
+    ground_truth_fn=compute_ground_truth,
+    experiment_fn=run_experiment,
+    aggregate_fn=aggregate_run_records,
 ) -> dict[str, Any]:
     """Run a complete benchmark for one defined setup.
 
@@ -58,10 +61,10 @@ def run_benchmark(
     # Define the values
 
     # Compute ground truth
-    ground_truth = compute_ground_truth(game=game, index=index, max_order=max_order)
+    ground_truth = ground_truth_fn(game=game, index=index, max_order=max_order)
 
     # approximate values [n times]
-    results = run_experiment(
+    results = experiment_fn(
         game=game,
         game_name=game_name,
         game_params=game_params,
@@ -79,7 +82,7 @@ def run_benchmark(
         logging.debug("error: %s\n", record["error_message"])
 
     # aggregation
-    aggregated_result = aggregate_run_records(results)
+    aggregated_result = aggregate_fn(results)
 
     # print-out
     logging.info("number of raw results: %d", len(results))
