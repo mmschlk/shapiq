@@ -33,22 +33,21 @@ class PolySHAPPartial(PolySHAP):
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
     ):
-        N = set(range(n))
         explanation_frontier: dict[tuple, int] = {}
         pos = 0
 
         # Always include all singletons first.
-        for S in powerset(N, max_size=1):
+        for S in powerset(range(n), max_size=1):
             explanation_frontier[S] = pos
             pos += 1
 
         # Extend with higher-order interactions in a reproducible random order.
         if random_state is not None:
             np.random.seed(random_state)
-        perm = list(N)
+        perm = list(range(n))
         np.random.shuffle(perm)
 
-        for S in powerset(N, min_size=2):
+        for S in powerset(range(n), min_size=2):
             if sizes_to_exclude is not None and len(S) in sizes_to_exclude:
                 continue
             if pos >= n_explanation_terms:

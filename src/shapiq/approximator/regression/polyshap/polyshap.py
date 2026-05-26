@@ -59,7 +59,7 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         super().__init__(
             n,
             max_order=1,
-            index=Literal["SV"],
+            index="SV",
             random_state=random_state,
             pairing_trick=pairing_trick,
             sampling_weights=sampling_weights,
@@ -185,8 +185,10 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         # Build the weighted design matrix.
         # When interactions are included (n_variables > n) each column checks
         # whether the corresponding frontier set is a subset of the sampled coalition.
+        # Use the actual sample count: the border-trick may cap evaluations below budget.
+        n_sampled = len(self._sampler.coalitions_matrix) - 2
         if self.n_variables > self.n:
-            x_tilde = np.zeros((budget - 2, self.n_variables))
+            x_tilde = np.zeros((n_sampled, self.n_variables))
             for pos, row in enumerate(self.interaction_matrix_binary[1:, :]):
                 x_tilde[:, pos] = (
                     np.all(row <= self._sampler.coalitions_matrix[2:, :], axis=1)
