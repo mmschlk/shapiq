@@ -284,9 +284,7 @@ def scatter_plot(
         n_bins = min(50, max(10, len(valid_x_for_hist) // 2))
         counts, bin_edges = np.histogram(valid_x_for_hist, bins=n_bins)
         if counts.max() > 0:
-            hist_band = 0.10  # bottom 10% of the plot reserved for the histogram
-            ymin, ymax = ax.get_ylim()
-            new_ymin = ymin - hist_band * (ymax - ymin) / (1 - hist_band)
+            hist_band = 0.10  # bottom 10% of the existing plot area
             rel_heights = (counts / counts.max()) * hist_band
             widths = np.diff(bin_edges)
             ax.bar(
@@ -301,9 +299,6 @@ def scatter_plot(
                 zorder=-2,
                 transform=ax.get_xaxis_transform(),
             )
-            visible_ticks = [t for t in ax.get_yticks() if ymin - 1e-9 <= t <= ymax + 1e-9]
-            ax.set_ylim(new_ymin, ymax)
-            ax.set_yticks(visible_ticks)
 
     ax.axhline(0, color="#999999", linestyle="-", linewidth=1, zorder=1)
     ax.set_xlabel(display_mapping[x_idx], fontsize=12)

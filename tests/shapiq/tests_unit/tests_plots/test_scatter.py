@@ -278,7 +278,7 @@ def test_scatter_plot_options(mock_interaction_data):
     assert np.max(np.abs(plotted - raw)) > 0
     plt.close("all")
 
-    # hist = True -> draws histogram bars on the main ax and extends y-axis downward
+    # hist = True -> draws histogram bars on the main ax (no extra axes, no y-extension)
     fig, ax = plt.subplots()
     n_axes_before = len(fig.axes)
     scatter_plot(
@@ -291,16 +291,17 @@ def test_scatter_plot_options(mock_interaction_data):
         ax=ax,
         show=False,
     )
-    # no extra axes created (histogram lives on the same ax)
     assert len(fig.axes) == n_axes_before
-    # xlabel stays on the main ax
     assert ax.get_xlabel() == "feature_0"
-    # bar patches were added (matplotlib stores Rectangle patches for ax.bar)
     rect_patches = [p for p in ax.patches if type(p).__name__ == "Rectangle"]
     assert len(rect_patches) > 0
+    # histogram bars sit behind the scatter (lower zorder)
+    bar_zorder = min(p.get_zorder() for p in rect_patches)
+    scatter_zorder = min(c.get_zorder() for c in ax.collections)
+    assert bar_zorder < scatter_zorder
     plt.close("all")
 
-    # hist = True with constant x-values -> no histogram drawn, no y-axis extension
+    # hist = True with constant x-values -> no histogram drawn
     data_const_x = feature_data_pd.copy()
     data_const_x.iloc[:, 0] = 0.5
     ax_const = scatter_plot(
@@ -317,7 +318,7 @@ def test_scatter_plot_options(mock_interaction_data):
     assert len(rect_patches) == 0
     plt.close("all")
 
-    # hist = True vs hist = False -> hist=True yields a lower ymin
+    # hist = True does not extend the y-axis (limits identical to hist = False)
     ax_with = scatter_plot(
         interaction_values_list,
         feature_data_pd,
@@ -326,7 +327,7 @@ def test_scatter_plot_options(mock_interaction_data):
         hist=True,
         show=False,
     )
-    ymin_with = ax_with.get_ylim()[0]
+    ylim_with = ax_with.get_ylim()
     plt.close("all")
     ax_without = scatter_plot(
         interaction_values_list,
@@ -336,9 +337,10 @@ def test_scatter_plot_options(mock_interaction_data):
         hist=False,
         show=False,
     )
-    ymin_without = ax_without.get_ylim()[0]
+    ylim_without = ax_without.get_ylim()
     plt.close("all")
-    assert ymin_with < ymin_without
+    assert np.isclose(ylim_with[0], ylim_without[0])
+    assert np.isclose(ylim_with[1], ylim_without[1])
 
 
 def test_scatter_plot_errors(mock_interaction_data):
