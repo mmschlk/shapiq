@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 import warnings
 from collections.abc import Callable
 from typing import Any, Literal
@@ -18,16 +17,15 @@ ValidRegressionPolySHAPIndices = Literal["SV"]
 
 
 class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
-    """Estimates Shapley values via polynomial regression, generalising KernelSHAP.
+    """Estimates Shapley values using the PolySHAP regression algorithm, generalising
+    KernelSHAP :cite:t:`Lundberg.2017`.  The algorithm is described in Fumagalli et al.
+    (2025) :cite:t:`Fumagalli.2025`.
 
     The explanation frontier — the set of interactions used as basis functions in the
     regression — is supplied as a pre-built dictionary mapping each coalition tuple to
-    its column index.  Use one of the subclasses (:class:`PolySHAPKAdd`,
-    :class:`PolySHAPPartial`, :class:`PolySHAPPrior`) to construct a frontier
-    automatically rather than building the dictionary by hand.
-
-    See `Kolpaczki et al. (2025) <https://arxiv.org/abs/2601.18608>`_ for the full
-    theoretical background.
+    its column index.  Three approximators with different frontier schemes are available:
+    :class:`PolySHAPKAdd` (k-additive), :class:`PolySHAPPartial` (budget-controlled
+    random extension), and :class:`PolySHAPPrior` (user-supplied).
 
     Args:
         n: The number of players.
@@ -49,8 +47,6 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         min_order: Minimum interaction order (always ``0``).
         iteration_cost: The cost of a single iteration of the estimator.
         explanation_frontier: The active explanation frontier dictionary.
-        runtime_last_approximate_run: Per-phase wall-clock timings from the most
-            recent :meth:`approximate` call.
     """
 
     def __init__(
@@ -83,8 +79,6 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
         for S, pos in explanation_frontier.items():
             self.interaction_lookup[S] = pos
             self.interaction_matrix_binary[pos, S] = True
-
-        self.runtime_last_approximate_run: dict[str, float] = {}
 
         # Exclude the empty-coalition term from the variable count.
         self.n_variables = len(explanation_frontier) - 1
@@ -161,11 +155,9 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
 
         Draws random coalitions, queries the game, then solves a weighted
         least-squares problem whose basis functions are the terms in the explanation
-        frontier.  When the frontier contains only singletons the method reduces
-        exactly to KernelSHAP.
-
-        See `Kolpaczki et al. (2025) <https://arxiv.org/abs/2601.18608>`_ for the
-        theoretical background.
+        frontier.  When the frontier contains only singletons the method reduces exactly
+        to KernelSHAP :cite:t:`Lundberg.2017`.  For details see Fumagalli et al. (2025)
+        :cite:t:`Fumagalli.2025`.
 
         Args:
             budget: Total number of coalition evaluations (including the empty and
@@ -177,21 +169,12 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
             :class:`~shapiq.interaction_values.InteractionValues` containing the
             estimated Shapley values.
         """
-        approximate_start_time = time.time()
-
         kernel_weights = self._init_kernel_weights()
         self.projection_matrix = np.identity(self.n_variables) - 1 / self.n_variables
 
         # Sample coalitions and query the game.
         self._sampler.sample(budget)
-        sampling_end_time = time.time()
-        self.runtime_last_approximate_run["sampling"] = sampling_end_time - approximate_start_time
-
         game_values = game(self._sampler.coalitions_matrix)
-        game_evaluation_end_time = time.time()
-        self.runtime_last_approximate_run["evaluations"] = (
-            game_evaluation_end_time - sampling_end_time
-        )
 
         # Centre game values on the empty-coalition baseline.
         empty_set_value = game_values[0]
@@ -234,11 +217,6 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
 
         sv, sv_lookup = self._transform_to_shapley(interaction_representation)
 
-        regression_end_time = time.time()
-        self.runtime_last_approximate_run["regression"] = (
-            regression_end_time - game_evaluation_end_time
-        )
-
         result = InteractionValues(
             values=sv,
             index="SV",
@@ -251,12 +229,4 @@ class PolySHAP(Regression[ValidRegressionPolySHAPIndices]):
             estimation_budget=budget,
         )
 
-        final_result = finalize_computed_interactions(result, target_index=self.index)
-        shapiq_post_processing_end_time = time.time()
-        self.runtime_last_approximate_run["shapiq_post_processing"] = (
-            shapiq_post_processing_end_time - regression_end_time
-        )
-        self.runtime_last_approximate_run["total"] = (
-            shapiq_post_processing_end_time - approximate_start_time
-        )
-        return final_result
+        return finalize_computed_interactions(result, target_index=self.index)

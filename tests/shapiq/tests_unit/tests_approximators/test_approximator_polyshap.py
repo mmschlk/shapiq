@@ -357,33 +357,6 @@ def test_prior_agrees_exactly_with_kadd_order1():
 # Shared behaviour across approximators
 # ---------------------------------------------------------------------------
 
-_RUNTIME_KEYS = {"sampling", "evaluations", "regression", "shapiq_post_processing", "total"}
-
-
-@pytest.mark.parametrize(
-    ("ApproxClass", "kwargs"),
-    [
-        (PolySHAPKAdd,  {"max_order": 1}),
-        (PolySHAPKAdd,  {"max_order": 2}),
-        (PolySHAPPartial, {"n_explanation_terms": 10}),
-        (PolySHAPPrior, {"q_prior": _singleton_prior(7)}),
-        (PolySHAPPrior, {"q_prior": _singleton_prior(7) + [(0, 1), (1, 2)]}),
-    ],
-)
-def test_runtime_tracking_populated_after_approximate(ApproxClass, kwargs):
-    """runtime_last_approximate_run must contain all phase keys after approximation."""
-    n = 7
-    approx = ApproxClass(n, **kwargs, random_state=0)
-    approx.approximate(200, DummyGame(n, (1, 2)))
-    assert _RUNTIME_KEYS == set(approx.runtime_last_approximate_run)
-    for key, val in approx.runtime_last_approximate_run.items():
-        assert val >= 0.0, f"Runtime for phase '{key}' must be non-negative"
-    assert approx.runtime_last_approximate_run["total"] == pytest.approx(
-        sum(approx.runtime_last_approximate_run[k] for k in _RUNTIME_KEYS - {"total"}),
-        abs=1e-9,
-    )
-
-
 @pytest.mark.parametrize(
     ("ApproxClass", "kwargs"),
     [
