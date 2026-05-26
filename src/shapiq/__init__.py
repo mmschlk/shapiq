@@ -14,6 +14,7 @@ except ImportError:  # pragma: no cover - _version.py is generated at build time
 # approximator classes
 from .approximator import (
     SHAPIQ,
+    SPEX,
     SVARM,
     SVARMIQ,
     InconsistentKernelSHAPIQ,
@@ -23,24 +24,15 @@ from .approximator import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    ProxySHAP,
+    ProxySPEX,
     RegressionFBII,
     RegressionFSII,
+    RegressionMSR,
     StratifiedSamplingSV,
     UnbiasedKernelSHAP,
     kADDSHAP,
 )
-
-try:
-    from .approximator.sparse import SPEX
-except ImportError:
-    SPEX = None  # type: ignore[assignment]
-
-try:
-    from .approximator.proxy import ProxySHAP, ProxySPEX, RegressionMSR
-except ImportError:
-    ProxySHAP = None  # type: ignore[assignment]
-    ProxySPEX = None  # type: ignore[assignment]
-    RegressionMSR = None  # type: ignore[assignment]
 
 # dataset functions
 from .datasets import load_adult_census, load_bike_sharing, load_california_housing
@@ -117,6 +109,10 @@ __all__ = [
     "SVARMIQ",
     "kADDSHAP",
     "UnbiasedKernelSHAP",
+    "SPEX",
+    "ProxySHAP",
+    "ProxySPEX",
+    "RegressionMSR",
     # explainers
     "Explainer",
     "TabularExplainer",
@@ -150,22 +146,3 @@ __all__ = [
     "load_adult_census",
     "load_california_housing",
 ]
-
-# Optional approximators — only available when the corresponding extra is installed.
-try:
-    from .approximator import SPEX  # requires the 'sparse' extra
-except ImportError:
-    pass
-else:
-    __all__ += ["SPEX"]
-
-try:
-    from .approximator import (  # requires the 'proxy' extra
-        ProxySHAP,
-        ProxySPEX,
-        RegressionMSR,
-    )
-except ImportError:
-    pass
-else:
-    __all__ += ["ProxySHAP", "ProxySPEX", "RegressionMSR"]
