@@ -56,9 +56,9 @@ class TreeExplainer(Explainer):
         *,
         mode: TREE_MODES = "pathdependent",
         reference_dataset: np.ndarray | None = None,
-        max_order: int = 2,
+        max_order: int = 1,
         min_order: int = 0,
-        index: TreeSHAPIQIndices = "k-SII",
+        index: TreeSHAPIQIndices = "SV",
         class_index: int | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> None:
@@ -72,9 +72,10 @@ class TreeExplainer(Explainer):
             In ``"interventional"`` mode, the explainer computes interventional interaction values using the Interventional TreeExplainer algorithm.
             Defaults to ``"pathdependent"``.
 
-            max_order: The maximum interaction order to be computed. An interaction order of ``1``
-                corresponds to the Shapley value. Any value higher than ``1`` computes the Shapley
-                interaction values up to that order. Defaults to ``2``.
+            max_order: The maximum order of interactions to be computed. Set to ``1`` for no
+                interactions (i.e, for Shapley values ``"SV"`` or Banzhaf values ``"BV"``). Any
+                value higher than ``1`` computes interaction values up to that order. Defaults to
+                ``1``.
 
             min_order: The minimum interaction order to keep in the returned
                 :class:`~shapiq.interaction_values.InteractionValues`. Must satisfy
@@ -86,7 +87,7 @@ class TreeExplainer(Explainer):
 
             index: The type of interaction to be computed. It can be one of
                 ``["k-SII", "SII", "STII", "FSII", "BII", "SV"]``. All indices apart from ``"BII"``
-                will reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"k-SII"``.
+                will reduce to the ``"SV"`` (Shapley value) for order 1. Defaults to ``"SV"``.
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored

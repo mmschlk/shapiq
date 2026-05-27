@@ -13,7 +13,7 @@ from tests.shapiq.markers import skip_if_no_lightgbm
 
 def test_decision_tree_classifier(rf_clf_model, background_clf_data):
     """Test TreeExplainer with a simple decision tree classifier."""
-    explainer = TreeExplainer(model=rf_clf_model, max_order=2, min_order=1)
+    explainer = TreeExplainer(model=rf_clf_model, max_order=2, min_order=1, index="k-SII")
 
     x_explain = background_clf_data[0]
     explanation = explainer.explain(x_explain)
@@ -22,7 +22,7 @@ def test_decision_tree_classifier(rf_clf_model, background_clf_data):
     assert type(explanation).__name__ == "InteractionValues"  # check correct return type
 
     # check init with class label
-    _ = TreeExplainer(model=rf_clf_model, max_order=2, min_order=0, class_index=0)
+    _ = TreeExplainer(model=rf_clf_model, max_order=2, min_order=0, index="k-SII", class_index=0)
 
     assert True
 
@@ -42,7 +42,7 @@ def test_decision_tree_classifier(rf_clf_model, background_clf_data):
 
 def test_decision_tree_regression(dt_reg_model, background_reg_data):
     """Test TreeExplainer with a simple decision tree regressor."""
-    explainer = TreeExplainer(model=dt_reg_model, max_order=2, min_order=1)
+    explainer = TreeExplainer(model=dt_reg_model, max_order=2, min_order=1, index="k-SII")
 
     x_explain = background_reg_data[0]
     explanation = explainer.explain(x_explain)
@@ -64,7 +64,7 @@ def test_decision_tree_regression(dt_reg_model, background_reg_data):
 
 def test_random_forest_regression(rf_reg_model, background_reg_data):
     """Test TreeExplainer with a simple decision tree regressor."""
-    explainer = TreeExplainer(model=rf_reg_model, max_order=2, min_order=1)
+    explainer = TreeExplainer(model=rf_reg_model, max_order=2, min_order=1, index="k-SII")
 
     x_explain = background_reg_data[0]
     explanation = explainer.explain(x_explain)
@@ -190,9 +190,9 @@ def test_min_order_filters_interactions(rf_reg_model, background_reg_data):
 def test_min_order_validation(rf_reg_model):
     """Invalid ``min_order`` configurations must be rejected eagerly."""
     with pytest.raises(ValueError, match="min_order"):
-        TreeExplainer(model=rf_reg_model, max_order=2, min_order=3)
+        TreeExplainer(model=rf_reg_model, max_order=2, min_order=3, index="k-SII")
     with pytest.raises(ValueError, match="min_order"):
-        TreeExplainer(model=rf_reg_model, max_order=2, min_order=-1)
+        TreeExplainer(model=rf_reg_model, max_order=2, min_order=-1, index="k-SII")
 
 
 def test_xgboost_reg(xgb_reg_model, background_reg_data):

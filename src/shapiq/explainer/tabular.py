@@ -51,8 +51,8 @@ class TabularExplainer(Explainer):
         approximator: (
             Literal["auto"] | TabularExplainerApproximators | Approximator[TabularExplainerIndices]
         ) = "auto",
-        index: TabularExplainerIndices = "k-SII",
-        max_order: int = 2,
+        index: TabularExplainerIndices = "SV",
+        max_order: int = 1,
         random_state: int | None = None,
         verbose: bool = False,
         **kwargs: Any,
@@ -85,16 +85,15 @@ class TabularExplainer(Explainer):
                 :class:`~shapiq.approximator.RegressionFBII` for ``"FBII"``, and
                 :class:`~shapiq.approximator.SVARMIQ` for ``"STII"``.
 
-            index: The index to explain the model with. Defaults to ``"k-SII"`` which computes the
-                k-Shapley Interaction Index. If ``max_order`` is set to 1, this corresponds to the
-                Shapley value (``index="SV"``). Options: ``"SV"`` (Shapley value), ``"k-SII"``
+            index: The index to explain the model with. Defaults to ``"SV"`` which computes the
+                Shapley value. Options: ``"SV"`` (Shapley value), ``"k-SII"``
                 (k-Shapley Interaction Index), ``"FSII"`` (Faithful Shapley Interaction Index),
                 ``"FBII"`` (Faithful Banzhaf Interaction Index, becomes ``BV`` for order 1),
                 ``"STII"`` (Shapley Taylor Interaction Index), ``"SII"`` (Shapley Interaction
                 Index).
 
-            max_order: The maximum interaction order to be computed. Defaults to ``2``. Set to
-                ``1`` for no interactions (single feature importance).
+            max_order: The maximum order of interactions to be computed. Set to ``1`` for no
+                interactions (i.e, for Shapley values ``"SV"`` or Banzhaf values ``"BV"``).
 
             random_state: The random state to initialize Imputer and Approximator with. Defaults to
                 ``None``.
