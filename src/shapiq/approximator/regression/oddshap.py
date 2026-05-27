@@ -65,24 +65,24 @@ class OddSHAP(Approximator):
         weight_vector = np.zeros(n + 1, dtype=float)
         for coalition_size in range(1, n):
             weight_vector[coalition_size] = 1.0 / (
-                    coalition_size * (n - coalition_size) * binom(n, coalition_size)
+                coalition_size * (n - coalition_size) * binom(n, coalition_size)
             )
         return weight_vector
 
     def __init__(
-            self,
-            n: int,
-            *,
-            pairing_trick: bool = True,  # Theorem 3.2 Alg. 1
-            sampling_weights: np.ndarray | None = None,
-            random_state: int | None = None,
-            regression_basis: str = "Fourier",  # isolate odd terms
-            interaction_detection: str = "ProxySHAP",  # screening sparse odd interactions
-            odd_only: bool = True,
-            interaction_factor: int = 10,  # standard setting according to paper
-            tree_params: dict[str, Any] | None = None,
-            proxy_max_order: int | None = None,
-            **kwargs: Any
+        self,
+        n: int,
+        *,
+        pairing_trick: bool = True,  # Theorem 3.2 Alg. 1
+        sampling_weights: np.ndarray | None = None,
+        random_state: int | None = None,
+        regression_basis: str = "Fourier",  # isolate odd terms
+        interaction_detection: str = "ProxySHAP",  # screening sparse odd interactions
+        odd_only: bool = True,
+        interaction_factor: int = 10,  # standard setting according to paper
+        tree_params: dict[str, Any] | None = None,
+        proxy_max_order: int | None = None,
+        **kwargs: Any,
     ) -> None:
         """Initialize the OddSHAP approximator."""
         del kwargs
@@ -119,10 +119,7 @@ class OddSHAP(Approximator):
         self.proxy_max_order = self.n if proxy_max_order is None else proxy_max_order
 
     def approximate(
-            self,
-            budget: int,
-            game: Game | Callable[[np.ndarray], np.ndarray],
-            **kwargs: Any
+        self, budget: int, game: Game | Callable[[np.ndarray], np.ndarray], **kwargs: Any
     ) -> InteractionValues:
         """Approximate first-order Shapley values.
 
@@ -192,14 +189,14 @@ class OddSHAP(Approximator):
         )
 
     def _approximate_via_odd_regression(
-            self,
-            *,
-            budget: int,
-            coalitions: np.ndarray,
-            game_values: np.ndarray,
-            empty_set_value: float,
-            full_set_value: float,
-            n_candidate_interactions: int,
+        self,
+        *,
+        budget: int,
+        coalitions: np.ndarray,
+        game_values: np.ndarray,
+        empty_set_value: float,
+        full_set_value: float,
+        n_candidate_interactions: int,
     ) -> InteractionValues:
         """Run the OddSHAP odd-regression approximation.
 
@@ -249,7 +246,7 @@ class OddSHAP(Approximator):
             baseline_value=empty_set_value,
         )
 
-        interaction_lookup = {(): 0}
+        interaction_lookup: dict[tuple[int, ...], int] = {(): 0}
         for player in range(self.n):
             interaction_lookup[(player,)] = player + 1
 
@@ -261,15 +258,15 @@ class OddSHAP(Approximator):
             n_players=self.n,
             interaction_lookup=interaction_lookup,
             baseline_value=float(empty_set_value),
-            estimated=not budget >= 2 ** self.n,
+            estimated=not budget >= 2**self.n,
             estimation_budget=budget,
             target_index="SV",
         )
 
     def _fit_surrogate_model(
-            self,
-            coalitions: np.ndarray,
-            game_values: np.ndarray,
+        self,
+        coalitions: np.ndarray,
+        game_values: np.ndarray,
     ) -> object:
         """Fit the LightGBM surrogate used for sparse odd-interaction detection."""
         lgb = _import_lightgbm()
@@ -293,8 +290,8 @@ class OddSHAP(Approximator):
         return surrogate_model
 
     def _build_support(
-            self,
-            selected_interactions: list[tuple[int, ...]] | None,
+        self,
+        selected_interactions: list[tuple[int, ...]] | None,
     ) -> None:
         """Build the active OddSHAP support.
 
@@ -346,13 +343,13 @@ class OddSHAP(Approximator):
         self.n_active_interactions = len(active_interactions)
 
     def _select_odd_interactions(
-            self,
-            *,
-            budget: int,
-            coalitions: np.ndarray,
-            game_values: np.ndarray,
-            n_candidate_interactions: int,
-            surrogate_model: object | None = None,
+        self,
+        *,
+        budget: int,
+        coalitions: np.ndarray,
+        game_values: np.ndarray,
+        n_candidate_interactions: int,
+        surrogate_model: object | None = None,
     ) -> list[tuple[int, ...]]:
         """Return selected higher-order odd interactions using ProxySHAP's proxy-tree screening step."""
         del budget, coalitions, game_values
@@ -376,10 +373,10 @@ class OddSHAP(Approximator):
         higher_order_odd: dict[tuple[int, ...], float] = {}
 
         for interaction, value in proxy_interactions.items():
-            interaction = tuple(sorted(interaction))
+            normalized_interaction = tuple(sorted(interaction))
 
-            if len(interaction) >= 3 and len(interaction) % 2 == 1:
-                higher_order_odd[interaction] = float(value)
+            if len(normalized_interaction) >= 3 and len(normalized_interaction) % 2 == 1:
+                higher_order_odd[normalized_interaction] = float(value)
 
         selected = sorted(
             higher_order_odd.items(),
@@ -397,24 +394,21 @@ class OddSHAP(Approximator):
         - sampling adjustment weights from the CoalitionSampler
 
         """
-        #kernel_weights = self._init_sampling_weights_static(self.n)
         kernel_weights = self._init_regression_kernel_weights_static(self.n)
         coalition_sizes = self._sampler.coalitions_size
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
 
-        regression_weights = (
-                kernel_weights[coalition_sizes] * sampling_adjustment_weights
-        )
+        regression_weights = kernel_weights[coalition_sizes] * sampling_adjustment_weights
         return np.sqrt(regression_weights)
 
     def _build_weighted_system(
-            self,
-            *,
-            coalitions: np.ndarray,
-            game_values: np.ndarray,
-            empty_set_value: float,
-            full_set_value: float,
-            drop_boundary_rows: bool = True,
+        self,
+        *,
+        coalitions: np.ndarray,
+        game_values: np.ndarray,
+        empty_set_value: float,
+        full_set_value: float,
+        drop_boundary_rows: bool = True,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Build the weighted OddSHAP regression system (X_tilde, y_tilde).
 
@@ -426,9 +420,7 @@ class OddSHAP(Approximator):
         following Appendix C of the OddSHAP paper.
         """
         if self.n_active_interactions == 0:
-            msg = (
-                "OddSHAP support has not been built yet. Call _build_support(...) first."
-            )
+            msg = "OddSHAP support has not been built yet. Call _build_support(...) first."
             raise RuntimeError(msg)
 
         row_weights = self._get_regression_row_weights()
@@ -462,10 +454,10 @@ class OddSHAP(Approximator):
         return X_tilde, y_tilde
 
     def _build_constraint_system(
-            self,
-            *,
-            full_set_value: float,
-            empty_set_value: float,
+        self,
+        *,
+        full_set_value: float,
+        empty_set_value: float,
     ) -> tuple[float, np.ndarray, np.ndarray]:
         """Build the exact OddSHAP Fourier constraint system.
 
@@ -479,9 +471,7 @@ class OddSHAP(Approximator):
         """
         n_nonempty_terms = self.n_active_interactions - 1
         if n_nonempty_terms <= 0:
-            msg = (
-                "OddSHAP support must contain at least one non-empty interaction before building constraint objects."
-            )
+            msg = "OddSHAP support must contain at least one non-empty interaction before building constraint objects."
             raise RuntimeError(msg)
 
         beta_empty = 0.5 * (full_set_value + empty_set_value)
@@ -498,12 +488,12 @@ class OddSHAP(Approximator):
         return beta_empty, projection_matrix, beta_const
 
     def _solve_constrained_regression(
-            self,
-            *,
-            X_tilde: np.ndarray,
-            y_tilde: np.ndarray,
-            empty_set_value: float,
-            full_set_value: float,
+        self,
+        *,
+        X_tilde: np.ndarray,
+        y_tilde: np.ndarray,
+        empty_set_value: float,
+        full_set_value: float,
     ) -> np.ndarray:
         """Solve the constrained OddSHAP regression in the Fourier basis.
 
@@ -534,10 +524,10 @@ class OddSHAP(Approximator):
         return beta_full
 
     def _transform_to_shapley(
-            self,
-            odd_fourier_coefficients: np.ndarray,
-            *,
-            baseline_value: float,
+        self,
+        odd_fourier_coefficients: np.ndarray,
+        *,
+        baseline_value: float,
     ) -> np.ndarray:
         """Transform fitted odd Fourier coefficients into first-order Shapley values.
 

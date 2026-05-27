@@ -120,7 +120,7 @@ def test_sampling_weights_symmetric(n):
     w = OddSHAP._init_sampling_weights_static(n)
     for k in range(1, n):
         assert w[k] == pytest.approx(w[n - k]), (
-            f"weights not symmetric at k={k}: w[{k}]={w[k]} vs w[{n-k}]={w[n-k]}"
+            f"weights not symmetric at k={k}: w[{k}]={w[k]} vs w[{n - k}]={w[n - k]}"
         )
 
 
@@ -163,7 +163,7 @@ def test_regression_kernel_weights_match_paper_formula(n):
 def _regression_path_setup(n=8, seed=42):
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=seed)
     approx = OddSHAP(n=n, random_state=seed)
-    budget = 2 ** n  # well above n*interaction_factor (= 10n) for n>=6
+    budget = 2**n  # well above n*interaction_factor (= 10n) for n>=6
     assert budget >= n * approx.interaction_factor
     return approx, game, budget
 
@@ -204,9 +204,9 @@ def test_approximate_estimated_flag(budget_pct):
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    budget = int(budget_pct * 2 ** n)
+    budget = int(budget_pct * 2**n)
     iv = approx.approximate(budget, game)
-    assert iv.estimated == (budget < 2 ** n)
+    assert iv.estimated == (budget < 2**n)
 
 
 # -----------------------------------------------------------------------------
@@ -219,7 +219,7 @@ def test_efficiency_axiom_holds_exactly(n):
     """sum_i phi_i = v(N) - v(empty) is enforced by Sara's constraint system."""
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    iv = approx.approximate(2 ** n, game)
+    iv = approx.approximate(2**n, game)
     v_full = float(game(np.ones((1, n), dtype=bool))[0])
     v_empty = float(game(np.zeros((1, n), dtype=bool))[0])
     assert np.sum(iv.values[1:]) == pytest.approx(v_full - v_empty, abs=1e-6)
@@ -229,7 +229,7 @@ def test_efficiency_axiom_holds_exactly(n):
 def test_baseline_exact(n):
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    iv = approx.approximate(2 ** n, game)
+    iv = approx.approximate(2**n, game)
     v_empty = float(game(np.zeros((1, n), dtype=bool))[0])
     assert iv.values[0] == pytest.approx(v_empty, abs=1e-9)
 
@@ -242,8 +242,8 @@ def test_baseline_exact(n):
 def test_determinism_same_seed_same_output():
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
-    a = OddSHAP(n=n, random_state=7).approximate(2 ** n, game)
-    b = OddSHAP(n=n, random_state=7).approximate(2 ** n, game)
+    a = OddSHAP(n=n, random_state=7).approximate(2**n, game)
+    b = OddSHAP(n=n, random_state=7).approximate(2**n, game)
     np.testing.assert_array_equal(a.values, b.values)
 
 
@@ -303,9 +303,7 @@ def test_boundary_budget_uses_paper_candidate_count(monkeypatch):
 
     approx.approximate(budget, additive_game)
 
-    assert captured["n_candidate_interactions"] == math.ceil(
-        budget / approx.interaction_factor
-    )
+    assert captured["n_candidate_interactions"] == math.ceil(budget / approx.interaction_factor)
 
 
 def test_candidate_interaction_count_matches_paper(monkeypatch):
@@ -329,9 +327,7 @@ def test_candidate_interaction_count_matches_paper(monkeypatch):
 
     approx.approximate(budget, additive_game)
 
-    assert captured["n_candidate_interactions"] == math.ceil(
-        budget / approx.interaction_factor
-    )
+    assert captured["n_candidate_interactions"] == math.ceil(budget / approx.interaction_factor)
 
 
 # -----------------------------------------------------------------------------
@@ -344,7 +340,8 @@ def _fit_surrogate(approx, game, budget):
     coalitions = approx._sampler.coalitions_matrix
     game_values = np.asarray(game(coalitions), dtype=float)
     surrogate = approx._fit_surrogate_model(
-        coalitions=coalitions, game_values=game_values,
+        coalitions=coalitions,
+        game_values=game_values,
     )
     return coalitions, game_values, surrogate
 
@@ -353,11 +350,13 @@ def test_select_odd_interactions_returns_higher_order_odd_only():
     n = 10
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2 ** n)
+    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2**n)
     selected = approx._select_odd_interactions(
         budget=200,  # sub-budget triggers the top-k truncation branch
-        coalitions=coalitions, game_values=game_values,
-        n_candidate_interactions=10, surrogate_model=surrogate,
+        coalitions=coalitions,
+        game_values=game_values,
+        n_candidate_interactions=10,
+        surrogate_model=surrogate,
     )
     for t in selected:
         assert isinstance(t, tuple)
@@ -369,12 +368,14 @@ def test_select_odd_interactions_respects_k():
     n = 10
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2 ** n)
+    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2**n)
     k = 5
     selected = approx._select_odd_interactions(
         budget=200,  # sub-budget so the top-k limit kicks in
-        coalitions=coalitions, game_values=game_values,
-        n_candidate_interactions=k, surrogate_model=surrogate,
+        coalitions=coalitions,
+        game_values=game_values,
+        n_candidate_interactions=k,
+        surrogate_model=surrogate,
     )
     assert len(selected) <= k
 
@@ -383,24 +384,32 @@ def test_select_odd_interactions_handles_zero_budget():
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2 ** n)
-    assert approx._select_odd_interactions(
-        budget=80,
-        coalitions=coalitions, game_values=game_values,
-        n_candidate_interactions=0, surrogate_model=surrogate,
-    ) == []
+    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2**n)
+    assert (
+        approx._select_odd_interactions(
+            budget=80,
+            coalitions=coalitions,
+            game_values=game_values,
+            n_candidate_interactions=0,
+            surrogate_model=surrogate,
+        )
+        == []
+    )
 
 
 def test_select_odd_interactions_handles_missing_surrogate():
     n = 8
     approx = OddSHAP(n=n, random_state=0)
-    assert approx._select_odd_interactions(
-        budget=80,
-        coalitions=np.zeros((1, n), dtype=bool),
-        game_values=np.zeros(1),
-        n_candidate_interactions=10,
-        surrogate_model=None,
-    ) == []
+    assert (
+        approx._select_odd_interactions(
+            budget=80,
+            coalitions=np.zeros((1, n), dtype=bool),
+            game_values=np.zeros(1),
+            n_candidate_interactions=10,
+            surrogate_model=None,
+        )
+        == []
+    )
 
 
 def test_select_odd_interactions_full_budget_returns_all_higher_order_odd():
@@ -409,10 +418,11 @@ def test_select_odd_interactions_full_budget_returns_all_higher_order_odd():
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2 ** n)
+    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2**n)
     selected = approx._select_odd_interactions(
-        budget=2 ** n,  # full-budget path
-        coalitions=coalitions, game_values=game_values,
+        budget=2**n,  # full-budget path
+        coalitions=coalitions,
+        game_values=game_values,
         n_candidate_interactions=3,  # would clip to 3 in sub-budget mode
         surrogate_model=surrogate,
     )
@@ -444,9 +454,7 @@ def test_build_support_drops_even_and_singleton_inputs():
     n = 6
     approx = OddSHAP(n=n, random_state=0)
     approx._build_support([(0,), (1, 2), (0, 1, 2, 3, 4)])  # only the last is kept
-    higher_order = {
-        t for t in approx.odd_interaction_lookup if len(t) >= 2
-    }
+    higher_order = {t for t in approx.odd_interaction_lookup if len(t) >= 2}
     assert higher_order == {(0, 1, 2, 3, 4)}
 
 
@@ -478,7 +486,7 @@ def test_dummy_game_singleton_attribution(n):
     interaction = (1, 2)
     game = DummyGame(n=n, interaction=interaction)
     approx = OddSHAP(n=n, random_state=0)
-    iv = approx.approximate(2 ** n, game)
+    iv = approx.approximate(2**n, game)
     v_full = float(game(np.ones((1, n), dtype=bool))[0])
     v_empty = float(game(np.zeros((1, n), dtype=bool))[0])
     # efficiency holds exactly:
@@ -496,7 +504,7 @@ def test_dummy_game_singleton_attribution(n):
 def test_convergence_vs_exact_at_full_budget(n):
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    iv = approx.approximate(2 ** n, game)
+    iv = approx.approximate(2**n, game)
     exact = ExactComputer(game, n_players=n)(index="SV")
     np.testing.assert_allclose(iv.values, exact.values, atol=1e-2)
 
@@ -506,7 +514,7 @@ def test_efficiency_persists_at_sub_budget(n):
     """Efficiency axiom is enforced by construction, so it must hold even sub-budget."""
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    budget = max(n * approx.interaction_factor, int(0.5 * 2 ** n))
+    budget = max(n * approx.interaction_factor, int(0.5 * 2**n))
     iv = approx.approximate(budget, game)
     v_full = float(game(np.ones((1, n), dtype=bool))[0])
     v_empty = float(game(np.zeros((1, n), dtype=bool))[0])
