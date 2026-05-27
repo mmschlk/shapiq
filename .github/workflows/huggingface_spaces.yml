@@ -30,7 +30,10 @@ jobs:
             --path-glob '*.yaml' \
             --path-glob '*.yml' \
             --path-glob '*.toml' \
-            --path-glob '*.json'
+            --path-glob '*.json' \
+            --path-glob '*.cc' \
+            --path-glob '*.h' \
+            --path-glob '*.cpp'
 
       - name: Push to Hugging Face Space
         env:
