@@ -17,12 +17,13 @@ jobs:
       - name: Install git-filter-repo
         run: pip install git-filter-repo
 
-      - name: Purge large files from entire history
+      - name: Purge large/binary files from entire history
         run: |
           git filter-repo --force \
-            --path src/shapiq_games/datasets/data/amazon.csv --invert-paths \
-            --path src/shapiq_games/datasets/data/bioresponse.csv --invert-paths \
-            --path docs/source/notebooks/basics_notebooks/parallel_computation.ipynb --invert-paths \
+            --path data/ --invert-paths \
+            --path docs/ --invert-paths \
+            --path src/shapiq_games/datasets/data/ --invert-paths \
+            --path src/shapiq_games/benchmark/imagenet_examples/ --invert-paths \
             --path precomputed.zip --invert-paths
 
       - name: Push to Hugging Face Space
