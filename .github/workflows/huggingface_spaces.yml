@@ -16,6 +16,16 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Remove large files before deploy
+        run: |
+          echo "Removing large datasets and artifacts..."
+
+          git rm --cached -r src/shapiq_games/datasets/data || true
+          git rm --cached docs/source/notebooks || true
+          git rm --cached precomputed.zip || true
+
+          echo "Done cleaning large files."
+
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
