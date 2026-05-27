@@ -16,8 +16,8 @@ def test_initialization_defaults():
 
     # Check SPEX default values
     assert spex.n == n
-    assert spex.max_order == n  # Default is None, which becomes n
-    assert spex.index == "FBII"
+    assert spex.max_order == 2  # Default is 2
+    assert spex.index == "k-SII"
     assert spex.top_order is False
     assert spex.transform_type == "fourier"
     assert spex.decoder_args["reconstruct_method_channel"] == "identity-siso"  # For soft decoder
@@ -28,7 +28,7 @@ def test_initialization_defaults():
     [
         (7, "STII", 2, False, "soft"),
         (7, "FBII", 3, True, "hard"),
-        (20, "FSII", None, False, "soft"),
+        (20, "FSII", 2, False, "soft"),
     ],
 )
 def test_initialization_custom(n, index, max_order, top_order, decoder_type):
@@ -42,7 +42,7 @@ def test_initialization_custom(n, index, max_order, top_order, decoder_type):
     )
 
     assert spex.n == n
-    assert spex.max_order == (n if max_order is None else max_order)
+    assert spex.max_order == max_order
     assert spex.index == index
     assert spex.top_order is top_order
     assert spex.transform_type == "fourier"
@@ -67,7 +67,7 @@ def test_approximate(n, interaction, budget):
     game = DummyGame(n, interaction)
 
     # Initialize SPEX approximator
-    spex = SPEX(n=n, random_state=42)
+    spex = SPEX(n=n, random_state=42, max_order=n, index="k-SII")
 
     # Perform approximation
     estimates = spex.approximate(budget, game)
@@ -76,7 +76,7 @@ def test_approximate(n, interaction, budget):
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == n
     assert estimates.min_order == 0  # Default top_order is False
-    assert estimates.index == "FBII"
+    assert estimates.index == "k-SII"
     assert estimates.estimated
     assert estimates.estimation_budget > 0
 
@@ -109,7 +109,7 @@ def test_spex_vs_sparse():
     # Initialize both approximators with identical parameters
     spex = SPEX(n=n, random_state=random_state)
     sparse = Sparse(
-        n=n, index="FBII", transform_type="fourier", decoder_type="soft", random_state=random_state
+        n=n, index="k-SII", transform_type="fourier", decoder_type="soft", random_state=random_state
     )
 
     # Run approximation with both
@@ -143,7 +143,7 @@ def test_sparsity_parameter(n, interaction, budget, correct_b, correct_t):
     game = DummyGame(n, interaction)
 
     # Initialize SPEX approximator
-    spex = SPEX(n=n, random_state=42)
+    spex = SPEX(n=n, random_state=42, index="FBII", max_order=n)
 
     # Run approximation with both
     _ = spex.approximate(budget, game)

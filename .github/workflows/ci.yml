@@ -24,7 +24,7 @@ jobs:
                     enable-cache: true
             -   name: Install pre-commit
                 run: |
-                    uv sync --group lint
+                    uv sync --group lint --all-extras
                     uv run pre-commit install
             -   name: Run code-quality checks
                 run: uv run pre-commit run --all-files --show-diff-on-failure
@@ -79,10 +79,8 @@ jobs:
                     enable-cache: true
             -   name: Create uv virtual environment
                 run: uv venv
-            -   name: Install shapiq package
-                run: uv run --no-sync uv pip install .
-            -   name: Install dependencies
-                run: uv sync --no-dev --group all_ml
+            -   name: Install shapiq package and dependencies for shapiq-games
+                run: uv sync --no-dev --all-extras --group all_ml
             -   name: Test import of shapiq_games
                 run: uv run --no-sync python -c "import shapiq_games; print('shapiq_games imported successfully')"
     # ----------------------------------------------------------------------------------------------
@@ -101,7 +99,7 @@ jobs:
                     python-version: "3.12"
                     enable-cache: true
             -   name: Install test dependencies
-                run: uv sync
+                run: uv sync --all-extras
             -   name: Run unit tests
                 run: uv run pytest "tests/shapiq"
     test_shapiq_matrix:
@@ -131,7 +129,7 @@ jobs:
                 name: Install libomp on macOS
                 run: brew install libomp
             -   name: Install test dependencies
-                run: uv sync
+                run: uv sync --all-extras
             -   name: Run unit tests
                 run: uv run pytest "tests/shapiq"
     # ----------------------------------------------------------------------------------------------
@@ -152,7 +150,7 @@ jobs:
                     python-version: "3.12"
                     enable-cache: true
             -   name: Install dependencies
-                run: uv sync --no-dev --group docs
+                run: uv sync --no-dev --all-extras --group docs
             -   name: Build documentation
                 run: uv run --no-sync sphinx-build -W --keep-going -b html docs/source docs/build/html
     # ----------------------------------------------------------------------------------------------
@@ -173,7 +171,7 @@ jobs:
                     python-version: "3.12"
                     enable-cache: true
             -   name: Install test dependencies
-                run: uv sync
+                run: uv sync --all-extras
             -   name: Measure coverage
                 run: uv run pytest "tests/shapiq" --cov=shapiq --cov-report=xml -n logical
             -   name: Upload coverage to codecov

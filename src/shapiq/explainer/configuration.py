@@ -6,7 +6,6 @@ from typing import Literal
 
 from shapiq import (
     SHAPIQ,
-    SPEX,
     SVARM,
     SVARMIQ,
     KernelSHAP,
@@ -22,6 +21,11 @@ from shapiq import (
 from shapiq.approximator.base import Approximator, ValidApproximationIndices
 from shapiq.approximator.regression.base import Regression
 from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
+
+try:
+    from shapiq import SPEX  # requires the 'sparse' extra
+except ImportError:
+    SPEX = None  # type: ignore[assignment]
 
 ValidApproximatorTypes = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
 APPROXIMATOR_CONFIGURATIONS: dict[
@@ -64,7 +68,9 @@ APPROXIMATOR_CONFIGURATIONS: dict[
         "BII": SVARMIQ,
         "CHII": SVARMIQ,
     },
-    "spex": {
+}
+if SPEX is not None:
+    APPROXIMATOR_CONFIGURATIONS["spex"] = {
         "SII": SPEX,
         "STII": SPEX,
         "FSII": SPEX,
@@ -72,8 +78,7 @@ APPROXIMATOR_CONFIGURATIONS: dict[
         "k-SII": SPEX,
         "SV": SPEX,
         "BV": SPEX,
-    },
-}
+    }
 
 
 def choose_spex(max_order: int, n_players: int) -> bool:
@@ -112,7 +117,11 @@ def setup_approximator_automatically(
     Returns:
         The selected approximator.
     """
-    if choose_spex(max_order=max_order, n_players=n_players) and index in SPEX.valid_indices:
+    if (
+        SPEX is not None
+        and choose_spex(max_order=max_order, n_players=n_players)
+        and index in SPEX.valid_indices
+    ):
         return SPEX(
             n=n_players,
             max_order=max_order,
