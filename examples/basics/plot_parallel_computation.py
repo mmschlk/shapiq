@@ -36,7 +36,13 @@ X_test = rng.standard_normal((6, n_features))
 # Explain a Single Instance
 # --------------------------
 
-explainer = shapiq.Explainer(model=synthetic_model, data=X_background, random_state=0)
+explainer = shapiq.Explainer(
+    model=synthetic_model,
+    data=X_background,
+    index="k-SII",
+    max_order=2,
+    random_state=0,
+)
 print(f"Explainer type: {type(explainer).__name__}")
 
 iv = explainer.explain(X_test[0], budget=256)
