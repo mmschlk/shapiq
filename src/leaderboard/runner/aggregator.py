@@ -80,7 +80,7 @@ def aggregate_run_records(run_records: list[dict[str, Any]]) -> dict[str, Any]:
         The resulting run also represents runtime and hardware information
 
     Raises:
-        ValueError: If no successful run records are available for aggregation.
+        NoSuccessfulRunsError: If no successful run records are available for aggregation.
     """
     successful_runs = []
     runtime_values = []

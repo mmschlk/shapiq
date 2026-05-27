@@ -10,7 +10,10 @@ from leaderboard.runner.experiment_runner import run_experiment
 from leaderboard.runner.ground_truth_computer import compute_ground_truth
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from leaderboard.runner.custom_types import InteractionIndex
+    from shapiq import InteractionValues
     from shapiq.approximator import Approximator
     from shapiq.game import Game
 
@@ -29,6 +32,9 @@ def run_benchmark(
     budget: int,
     index: InteractionIndex,
     approximator_class: type[Approximator],
+    ground_truth_fn: Callable[..., InteractionValues] = compute_ground_truth,
+    experiment_fn: Callable[..., list[dict[str, Any]]] = run_experiment,
+    aggregate_fn: Callable[[list[dict[str, Any]]], dict[str, Any]] = aggregate_run_records,
 ) -> dict[str, Any]:
     """Run a complete benchmark for one defined setup.
 
@@ -46,23 +52,25 @@ def run_benchmark(
         budget: The evaluation budget available to the approximator in each run.
         index: The interaction index to approximate.
         approximator_class: The approximator class used for the benchmark.
+        ground_truth_fn: Function used to compute the ground truth.
+        experiment_fn: Function used to run the experiment.
+        aggregate_fn: Function used to aggregate the raw records.
 
     Returns:
         A dictionary containing the raw run records and the aggregated benchmark
         result.
 
     Raises:
-        ValueError: Propagated from "aggregate_run_records" when no successful
+        NoSuccessfulRunsError: Propagated from "aggregate_run_records" when no successful
             run records are available for aggregation.
     """
     # Define the values
-    # TO DO: Index approximator validation (e.g. certain indices like SV expect specific order(1)! )
 
     # Compute ground truth
-    ground_truth = compute_ground_truth(game=game, index=index, max_order=max_order)
+    ground_truth = ground_truth_fn(game=game, index=index, max_order=max_order)
 
     # approximate values [n times]
-    results = run_experiment(
+    results = experiment_fn(
         game=game,
         game_name=game_name,
         game_params=game_params,
@@ -80,7 +88,7 @@ def run_benchmark(
         logging.debug("error: %s\n", record["error_message"])
 
     # aggregation
-    aggregated_result = aggregate_run_records(results)
+    aggregated_result = aggregate_fn(results)
 
     # print-out
     logging.info("number of raw results: %d", len(results))
