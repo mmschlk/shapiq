@@ -1190,7 +1190,9 @@ def _validate_and_return_interactions(
         TypeError: If the values or interaction_lookup are not of the expected types.
     """
     interactions: dict[tuple[int, ...], float] = {}
-    if interaction_lookup is None:
+    # Dict-input does not consume the lookup (see deepcopy branch below) and
+    # building it is O(2**n_players) worst case — skip to avoid OOM at large n.
+    if interaction_lookup is None and not isinstance(values, dict):
         interaction_lookup = generate_interaction_lookup(
             players=n_players,
             min_order=min_order,
