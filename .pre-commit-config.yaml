@@ -1,0 +1,20 @@
+# Used by prek, which reads the standard pre-commit configuration format.
+default_install_hook_types:
+  - pre-commit
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --group lint ruff check --fix
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: ty-check
+        name: ty check
+        entry: uv run --group lint ty check
+        language: system
+        pass_filenames: false
+        always_run: true

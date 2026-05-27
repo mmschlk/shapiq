@@ -63,7 +63,7 @@ write_to = "src/shapiq/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["./src"]
-include = ["shapiq*", "lazy_dispatch"]
+include = ["shapiq*"]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md", "CHANGELOG.md"], content-type = "text/markdown"}
@@ -83,7 +83,7 @@ minversion = "8.0"
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py313"
 src = ["tests", "src", "docs"]
 
 [tool.ruff.lint]
@@ -238,8 +238,6 @@ all_ml = [
     "lightgbm",    # lightgbm has install problems on macOS in github actions
     "transformers",
     "scikit-image",
-    "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
-    "tf-keras; python_version < '3.13' and platform_system != 'Windows'",   # only up to py 3.12
 ]
 test = [
     "pytest>=9.0.2",        # for running tests
@@ -249,7 +247,7 @@ test = [
 ]
 lint = [
     "ruff>=0.14.1",       # for linting
-    "pre-commit>=4.3.0",  # for running the linters pre-commit hooks
+    "prek>=0.4.3",        # for running the linters as pre-commit hooks
     "ty>=0.0.21",         # for type checking
 ]
 docs = [
