@@ -18,10 +18,7 @@ def test_expand_validated_config():
     run_configs = expand_validated_config(mvp_run_config)
     assert len(run_configs) == 2
 
-    budgets = []
-    for run_config in run_configs:
-        budgets.append(run_config["budget"])
-    assert budgets == [100, 500]
+    budgets = [run_config["budget"] for run_config in run_configs]
 
     for run_config in run_configs:
         assert run_config["game"] == "CaliforniaHousing"

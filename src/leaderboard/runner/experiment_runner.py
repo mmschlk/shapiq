@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
@@ -125,10 +125,13 @@ def run_single_experiment_seed(
     max_order: int,
     budget: int,
     approx_seed: int,
-    approximate_fn=approximate,
-    align_fn=align_interaction_values,
-    metrics_fn=compute_all_metrics,
-    record_builder_fn=create_run_record,
+    approximate_fn: Callable[..., InteractionValues] = approximate,
+    align_fn: Callable[
+        [InteractionValues, InteractionValues],
+        tuple[np.ndarray, np.ndarray],
+    ] = align_interaction_values,
+    metrics_fn: Callable[..., dict[str, Any]] = compute_all_metrics,
+    record_builder_fn: Callable[..., dict[str, Any]] = create_run_record,
 ) -> dict[str, Any]:
     """Run one approximation experiment for a single approximation seed.
 

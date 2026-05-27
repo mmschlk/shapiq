@@ -23,7 +23,7 @@ def save_raw_results(db: MongoDBClient, raw_results: list[dict[str, Any]]) -> No
     for run_record in raw_results:
         db.insert_one(run_record)
 
-def json_default(value: Any) -> Any:
+def json_default(value: object) -> object:
     """Convert non-standard numeric values to JSON-compatible values."""
     if isinstance(value, np.integer):
         return int(value)

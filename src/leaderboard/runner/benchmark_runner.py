@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from leaderboard.runner.aggregator import aggregate_run_records
 from leaderboard.runner.experiment_runner import run_experiment
 from leaderboard.runner.ground_truth_computer import compute_ground_truth
+from shapiq import InteractionValues
 
 if TYPE_CHECKING:
     from leaderboard.runner.custom_types import InteractionIndex
@@ -29,9 +30,9 @@ def run_benchmark(
     budget: int,
     index: InteractionIndex,
     approximator_class: type[Approximator],
-    ground_truth_fn=compute_ground_truth,
-    experiment_fn=run_experiment,
-    aggregate_fn=aggregate_run_records,
+    ground_truth_fn: Callable[..., InteractionValues] = compute_ground_truth,
+    experiment_fn: Callable[..., list[dict[str, Any]]] = run_experiment,
+    aggregate_fn: Callable[[list[dict[str, Any]]], dict[str, Any]] = aggregate_run_records,
 ) -> dict[str, Any]:
     """Run a complete benchmark for one defined setup.
 
@@ -49,6 +50,9 @@ def run_benchmark(
         budget: The evaluation budget available to the approximator in each run.
         index: The interaction index to approximate.
         approximator_class: The approximator class used for the benchmark.
+        ground_truth_fn: Function used to compute the ground truth.
+        experiment_fn: Function used to run the experiment.
+        aggregate_fn: Function used to aggregate the raw records.
 
     Returns:
         A dictionary containing the raw run records and the aggregated benchmark

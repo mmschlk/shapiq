@@ -4,6 +4,8 @@ from typing import cast, Any
 import numpy as np
 import pytest
 
+from config_manager import UnsupportedApproximatorError
+from leaderboard.runner.approximator_registry import APPROXIMATOR_REGISTRY
 from leaderboard.runner.experiment_runner import align_interaction_values
 from leaderboard.runner.experiment_runner import run_single_experiment_seed
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError
@@ -103,7 +105,8 @@ def fake_approximate(**kwargs: Any) -> str:
 
 def failing_approximate(**kwargs: Any) -> str:
     """Raise a controlled error to test failed run record creation."""
-    raise RuntimeError("approximation failed")
+    available = APPROXIMATOR_REGISTRY.keys()
+    raise UnsupportedApproximatorError("Fail", list(available)) from None
 
 
 def fake_align(ground_truth: InteractionValues, approx_values: Any) -> tuple[np.ndarray, np.ndarray]:
