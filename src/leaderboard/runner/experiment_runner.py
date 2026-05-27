@@ -13,6 +13,7 @@ from leaderboard.runner.record_builder import create_run_record
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, UnknownGameError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from collections.abc import Iterable
     from leaderboard.runner.custom_types import InteractionIndex
     from shapiq import Game, InteractionValues
