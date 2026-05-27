@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from leaderboard.runner.game_factory import create_game_from_config
@@ -33,6 +35,7 @@ def test_create_game_from_config():
 
     assert game.n_players == 10
 
+
 def test_create_game_from_config_with_params_override():
     """Test that game_params from base_config override defaults."""
     run_config = {
@@ -62,6 +65,7 @@ def test_create_game_from_config_with_params_override():
     assert game_params["n_basis_games"] == 3
     assert game_params["random_state"] == 123
 
+
 def test_create_game_from_config_creates_california_housing():
     """Test that the game factory creates a CaliforniaHousing game with default parameters."""
     run_config = {
@@ -86,6 +90,7 @@ def test_create_game_from_config_creates_california_housing():
     assert game_params["normalize"] is True
     assert game_params["verbose"] is False
     assert game_params["random_state"] == 42
+
 
 def test_create_game_from_config_raises_for_unknown_game():
     """Test that an unknown game name raises UnknownGameError."""

@@ -13,16 +13,16 @@ from leaderboard.runner.record_builder import create_run_record
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, UnknownGameError
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
+
     from leaderboard.runner.custom_types import InteractionIndex
     from shapiq import Game, InteractionValues
     from shapiq.approximator import Approximator
 
 
 def align_interaction_values(
-        ground_truth: InteractionValues,
-        approx_values: InteractionValues,
+    ground_truth: InteractionValues,
+    approx_values: InteractionValues,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Align ground truth and approximated interaction values.
 
@@ -70,16 +70,16 @@ def align_interaction_values(
 
 
 def run_experiment(
-        *,
-        game: Game,
-        game_name: str,
-        game_params: dict[str, Any],
-        ground_truth: InteractionValues,
-        approximator_class: type[Approximator],
-        index: InteractionIndex,
-        max_order: int,
-        budget: int,
-        approx_seeds: Iterable[int],
+    *,
+    game: Game,
+    game_name: str,
+    game_params: dict[str, Any],
+    ground_truth: InteractionValues,
+    approximator_class: type[Approximator],
+    index: InteractionIndex,
+    max_order: int,
+    budget: int,
+    approx_seeds: Iterable[int],
 ) -> list[dict[str, Any]]:
     """Run approximation experiments for multiple approximation seeds.
 
@@ -135,36 +135,36 @@ def run_single_experiment_seed(
 ) -> dict[str, Any]:
     """Run one approximation experiment for a single approximation seed.
 
-       The function executes the approximator for one seed, aligns the resulting
-       interaction values with the provided ground truth, computes evaluation
-       metrics, and builds a raw run record. If one of the expected runner-level
-       errors occurs, the function returns a failed run record instead of raising
-       the error.
+    The function executes the approximator for one seed, aligns the resulting
+    interaction values with the provided ground truth, computes evaluation
+    metrics, and builds a raw run record. If one of the expected runner-level
+    errors occurs, the function returns a failed run record instead of raising
+    the error.
 
-       The optional function parameters are dependency-injection hooks. They
-       default to the production implementations, but can be replaced in tests to
-       avoid running real approximators, metrics, or record-building logic.
+    The optional function parameters are dependency-injection hooks. They
+    default to the production implementations, but can be replaced in tests to
+    avoid running real approximators, metrics, or record-building logic.
 
-       Args:
-           game: The game for which interaction values are approximated.
-           game_name: The name of the game.
-           game_params: The parameters used to initialize the game.
-           ground_truth: The exact interaction values used as reference.
-           approximator_class: The approximator class used for the experiment.
-           index: The interaction index to approximate.
-           max_order: The maximum interaction order to compute.
-           budget: The evaluation budget available to the approximator.
-           approx_seed: The approximation seed used for this single run.
-           approximate_fn: Function used to compute approximated interaction values.
-           align_fn: Function used to align ground truth and approximated values.
-           metrics_fn: Function used to compute metrics from aligned values.
-           record_builder_fn: Function used to create the raw run record.
+    Args:
+        game: The game for which interaction values are approximated.
+        game_name: The name of the game.
+        game_params: The parameters used to initialize the game.
+        ground_truth: The exact interaction values used as reference.
+        approximator_class: The approximator class used for the experiment.
+        index: The interaction index to approximate.
+        max_order: The maximum interaction order to compute.
+        budget: The evaluation budget available to the approximator.
+        approx_seed: The approximation seed used for this single run.
+        approximate_fn: Function used to compute approximated interaction values.
+        align_fn: Function used to align ground truth and approximated values.
+        metrics_fn: Function used to compute metrics from aligned values.
+        record_builder_fn: Function used to create the raw run record.
 
-       Returns:
-           A raw run record dictionary for the given approximation seed. The record
-           is marked as failed if an expected approximation, alignment, metric, or
-           record-building error occurred.
-       """
+    Returns:
+        A raw run record dictionary for the given approximation seed. The record
+        is marked as failed if an expected approximation, alignment, metric, or
+        record-building error occurred.
+    """
     start_time = time.perf_counter()
     try:
         approx_values = approximate_fn(
@@ -215,12 +215,12 @@ def run_single_experiment_seed(
         )
 
     except (
-            NotImplementedError,
-            ValueError,
-            TypeError,
-            RuntimeError,
-            InteractionKeyMismatchError,
-            UnknownGameError,
+        NotImplementedError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        InteractionKeyMismatchError,
+        UnknownGameError,
     ) as error:
         runtime_seconds = time.perf_counter() - start_time
 

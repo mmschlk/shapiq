@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 import pytest
@@ -6,6 +8,7 @@ from leaderboard.runner.benchmark_runner import run_benchmark
 from leaderboard.runner.runner_exceptions import NoSuccessfulRunsError
 from shapiq.approximator import ProxySHAP
 from shapiq_games.synthetic import DummyGame
+
 
 def fake_ground_truth_fn(*, game: Any, index: str, max_order: int) -> str:
     """Return a fixed fake ground truth object for benchmark orchestration tests."""
@@ -64,9 +67,12 @@ def fake_aggregate_fn(raw_results: list[dict[str, Any]]) -> dict[str, Any]:
             "mse_mean": 0.15,
         },
     }
+
+
 def failing_aggregate_fn(raw_results: list[dict[str, Any]]) -> dict[str, Any]:
     """Raise a controlled error to test aggregation error propagation."""
     raise NoSuccessfulRunsError from None
+
 
 def test_run_benchmark_successful_returns_both_raw_and_aggregated_results():
     """Test that run_benchmark orchestrates ground truth, experiments, and aggregation."""
@@ -100,6 +106,7 @@ def test_run_benchmark_successful_returns_both_raw_and_aggregated_results():
             "mse_mean": 0.15,
         },
     }
+
 
 def test_run_benchmark_propagates_aggregation_error():
     """Test that run_benchmark propagates aggregation errors."""

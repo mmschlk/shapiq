@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from leaderboard.runner.runner_storage_adapter import save_raw_results
 
 
 class FakeDB:
     """Small fake database object for testing."""
+
     def __init__(self):
         self.inserted_runs = []
 

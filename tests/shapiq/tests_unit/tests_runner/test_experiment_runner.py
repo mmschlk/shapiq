@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import cast, Any
+from typing import Any, cast
 
 import numpy as np
 import pytest
 
 from config_manager import UnsupportedApproximatorError
 from leaderboard.runner.approximator_registry import APPROXIMATOR_REGISTRY
-from leaderboard.runner.experiment_runner import align_interaction_values
-from leaderboard.runner.experiment_runner import run_single_experiment_seed
+from leaderboard.runner.experiment_runner import (
+    align_interaction_values,
+    run_single_experiment_seed,
+)
 from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError
 from shapiq import InteractionValues
 from shapiq.approximator import ProxySHAP
@@ -49,6 +53,7 @@ def test_align_interaction_values_removes_empty_interaction_and_aligns_values():
 
     assert np.array_equal(gt_values_aligned, np.array([10.0, 20.0, 30.0]))
     assert np.array_equal(approx_values_aligned, np.array([100.0, 200.0, 300.0]))
+
 
 def test_align_interaction_values_raises_on_key_mismatch():
     """Test that mismatching interaction keys raise an error."""
@@ -98,6 +103,7 @@ def test_align_interaction_values_removes_empty_interaction():
     assert np.array_equal(gt_values_aligned, np.array([]))
     assert np.array_equal(approx_values_aligned, np.array([]))
 
+
 def fake_approximate(**kwargs: Any) -> str:
     """Return a fake approximation result for the successful runner path."""
     return "approx_values"
@@ -110,7 +116,9 @@ def failing_approximate(**kwargs: Any) -> str:
     raise UnsupportedApproximatorError(name, list(available)) from None
 
 
-def fake_align(ground_truth: InteractionValues, approx_values: Any) -> tuple[np.ndarray, np.ndarray]:
+def fake_align(
+    ground_truth: InteractionValues, approx_values: Any
+) -> tuple[np.ndarray, np.ndarray]:
     """Return fixed aligned ground truth and approximation arrays."""
     return np.array([1.0, 2.0]), np.array([1.1, 1.9])
 
@@ -129,9 +137,11 @@ def fake_metrics(
         "precision_at_k": None,
     }
 
+
 def fake_record_builder(**kwargs: Any) -> dict[str, Any]:
     """Return the record-builder arguments as the produced run record."""
     return kwargs
+
 
 def test_run_single_experiment_seed_success():
     """Test that a successful single-seed experiment creates a successful run record."""
@@ -161,6 +171,7 @@ def test_run_single_experiment_seed_success():
     assert record["error_message"] is None
     assert record["metrics"]["mse"] == 0.01
     assert record["metrics"]["spearman"] == 1.0
+
 
 def test_run_single_experiment_seed_creates_failed_record_on_error():
     """Test that expected errors produce a failed run record."""

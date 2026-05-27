@@ -1,7 +1,6 @@
 """Runner with config demo for the leaderboard."""
 
 from __future__ import annotations
-from leaderboard.runner.runner_storage_adapter import save_raw_results_jsonl
 
 import json
 import logging
@@ -16,7 +15,7 @@ from leaderboard.runner.approximator_registry import get_approximator_class
 from leaderboard.runner.benchmark_runner import run_benchmark
 from leaderboard.runner.custom_types import InteractionIndex
 from leaderboard.runner.game_factory import create_game_from_config
-from leaderboard.runner.runner_storage_adapter import save_raw_results
+from leaderboard.runner.runner_storage_adapter import save_raw_results, save_raw_results_jsonl
 from leaderboard.storage.connection import MongoDBClient
 
 logging.basicConfig(level=logging.INFO)

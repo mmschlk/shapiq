@@ -1,13 +1,12 @@
 """Runner storage adapter for the leaderboard."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-
-from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from leaderboard.storage.connection import MongoDBClient
@@ -22,6 +21,7 @@ def save_raw_results(db: MongoDBClient, raw_results: list[dict[str, Any]]) -> No
     """
     for run_record in raw_results:
         db.insert_one(run_record)
+
 
 def json_default(value: object) -> object:
     """Convert non-standard numeric values to JSON-compatible values."""
