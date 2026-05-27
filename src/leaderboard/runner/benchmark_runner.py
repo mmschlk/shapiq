@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING, Any
 from leaderboard.runner.aggregator import aggregate_run_records
 from leaderboard.runner.experiment_runner import run_experiment
 from leaderboard.runner.ground_truth_computer import compute_ground_truth
-from shapiq import InteractionValues
 
 if TYPE_CHECKING:
     from leaderboard.runner.custom_types import InteractionIndex
     from shapiq.approximator import Approximator
     from shapiq.game import Game
     from collections.abc import Callable
+    from shapiq import InteractionValues
 
 import logging
 
