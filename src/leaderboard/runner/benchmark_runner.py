@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from leaderboard.runner.aggregator import aggregate_run_records
 from leaderboard.runner.experiment_runner import run_experiment
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from leaderboard.runner.custom_types import InteractionIndex
     from shapiq.approximator import Approximator
     from shapiq.game import Game
+    from collections.abc import Callable
 
 import logging
 

@@ -19,6 +19,7 @@ def test_expand_validated_config():
     assert len(run_configs) == 2
 
     budgets = [run_config["budget"] for run_config in run_configs]
+    assert budgets == [100, 500]
 
     for run_config in run_configs:
         assert run_config["game"] == "CaliforniaHousing"

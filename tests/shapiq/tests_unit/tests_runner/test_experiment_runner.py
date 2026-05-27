@@ -106,7 +106,8 @@ def fake_approximate(**kwargs: Any) -> str:
 def failing_approximate(**kwargs: Any) -> str:
     """Raise a controlled error to test failed run record creation."""
     available = APPROXIMATOR_REGISTRY.keys()
-    raise UnsupportedApproximatorError("Fail", list(available)) from None
+    name = "Fail"
+    raise UnsupportedApproximatorError(name, list(available)) from None
 
 
 def fake_align(ground_truth: InteractionValues, approx_values: Any) -> tuple[np.ndarray, np.ndarray]:

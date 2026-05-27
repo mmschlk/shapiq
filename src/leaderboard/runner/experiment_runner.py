@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -14,7 +14,6 @@ from leaderboard.runner.runner_exceptions import InteractionKeyMismatchError, Un
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-
     from leaderboard.runner.custom_types import InteractionIndex
     from shapiq import Game, InteractionValues
     from shapiq.approximator import Approximator
