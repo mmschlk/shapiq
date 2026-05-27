@@ -16,23 +16,25 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Remove large files before deploy
+      - name: Clean large files for deployment
         run: |
-          echo "Removing large datasets and artifacts..."
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-          git rm --cached -r src/shapiq_games/datasets/data || true
-          git rm --cached docs/source/notebooks || true
+          echo "Removing large files from deployment commit..."
+
+          git rm -r --cached src/shapiq_games/datasets/data || true
+          git rm -r --cached docs/source/notebooks || true
           git rm --cached precomputed.zip || true
 
-          echo "Done cleaning large files."
+          echo "Creating clean deployment commit..."
+
+          git commit -m "Clean HF Space deployment (remove large files)" || echo "No changes to commit"
 
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
           git remote add hf https://JJ248:${HF_TOKEN}@huggingface.co/spaces/JJ248/shapiq-leaderboard
 
           git push hf HEAD:main --force
