@@ -54,7 +54,9 @@ class BruteForceComputer[In: Game, IndexT: IndexType](GroundTruthComputer[IndexT
             game=game, n_players=game.n_players, evaluate_game=False
         )
 
-    def exact_values(self, index: IndexT, order: int, **kwargs) -> InteractionValues:
+    def exact_values(
+        self, index: IndexT, order: int, **kwargs: object
+    ) -> InteractionValues:
         """Compute the exact values using brute force."""
 
         return self._computer(index=index, order=order, **kwargs)
@@ -73,7 +75,9 @@ class InterventionalComputer(GroundTruthComputer[IndexType]):
             class_index=self.game.class_index,
         )
 
-    def exact_values(self, index: IndexType, order: int, **kwargs) -> InteractionValues:
+    def exact_values(
+        self, index: IndexType, order: int, **kwargs: object
+    ) -> InteractionValues:
         """Compute exact interaction values using the InterventionalTreeExplainer.
 
         Args:
@@ -100,7 +104,9 @@ class PathdependentComputer(GroundTruthComputer[IndexType]):
             class_index=self.game.class_label,
         )
 
-    def exact_values(self, index: IndexType, order: int, **kwargs) -> InteractionValues:
+    def exact_values(
+        self, index: IndexType, order: int, **kwargs: object
+    ) -> InteractionValues:
         """Compute exact interaction values using the TreeExplainer.
 
         Args:
@@ -139,7 +145,10 @@ class LocalXAIComputer(GroundTruthComputer[IndexType]):
         Returns:
             InteractionValues: The computed interaction values.
         """
-        return self._computer(index=index, order=order,)
+        return self._computer(
+            index=index,
+            order=order,
+        )
 
 
 class TabPFNComputer(BruteForceComputer[TabPFNImputer, IndexType]):

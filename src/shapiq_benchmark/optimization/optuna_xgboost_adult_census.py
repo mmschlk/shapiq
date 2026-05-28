@@ -4,18 +4,27 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from pathlib import Path
-from typing import Any
 
+import numpy as np
 import optuna
+from numpy.typing import NDArray
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import StratifiedKFold
 from xgboost import XGBClassifier
 
+from shapiq_benchmark.bench_types import BenchmarkDataset
 from shapiq_benchmark.setup import load_data_from_str
 
+IndexArray = NDArray[np.integer]
+DataArray = NDArray[np.number]
 
-def _subset(data: Any, indices: Any) -> Any:
+logger = logging.getLogger(__name__)
+
+
+def _subset(data: DataArray, indices: IndexArray) -> DataArray:
+    """Return a subset of data for the provided indices."""
     if hasattr(data, "iloc"):
         return data.iloc[indices]
     return data[indices]
@@ -23,11 +32,12 @@ def _subset(data: Any, indices: Any) -> Any:
 
 def objective(
     trial: optuna.Trial,
-    dataset: Any,
+    dataset: BenchmarkDataset,
     random_state: int,
     n_splits: int,
 ) -> float:
-    params: dict[str, Any] = {
+    """Run cross-validated optimization for a trial."""
+    params: dict[str, object] = {
         "n_estimators": trial.suggest_int("n_estimators", 100, 800),
         "max_depth": trial.suggest_int("max_depth", 3, 10),
         "learning_rate": trial.suggest_float("learning_rate", 1e-3, 0.3, log=True),
@@ -73,6 +83,7 @@ def save_results(
     n_trials: int,
     n_splits: int,
 ) -> None:
+    """Persist study results to disk."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "dataset": dataset_name,
@@ -87,6 +98,8 @@ def save_results(
 
 
 def main() -> None:
+    """Run Optuna optimization for XGBoost on Adult Census."""
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("--trials", type=int, default=50)
     parser.add_argument("--random-state", type=int, default=42)
@@ -105,10 +118,10 @@ def main() -> None:
         n_trials=args.trials,
     )
 
-    print("Best accuracy:", study.best_value)
-    print("Best params:")
+    logger.info("Best accuracy: %s", study.best_value)
+    logger.info("Best params:")
     for key, value in study.best_params.items():
-        print(f"  {key}: {value}")
+        logger.info("  %s: %s", key, value)
     save_results(
         args.output,
         "adult_census",
@@ -117,7 +130,7 @@ def main() -> None:
         args.trials,
         args.folds,
     )
-    print("Saved results to:", args.output)
+    logger.info("Saved results to: %s", args.output)
 
 
 if __name__ == "__main__":

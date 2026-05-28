@@ -6,10 +6,10 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 from shapiq.typing import IndexType
-from .computers import GroundTruthComputer
 
 if TYPE_CHECKING:
     from shapiq import Game, InteractionValues
+    from .computers import GroundTruthComputer
 
 
 T_Index_contra = TypeVar("T_Index_contra", bound=IndexType, contravariant=True)

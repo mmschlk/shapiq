@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import Literal, Protocol, TypeAlias, cast, get_args
+from typing import Literal, Protocol, cast, get_args
 
 from lightgbm import LGBMClassifier, LGBMRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -18,7 +18,7 @@ from shapiq_games.benchmark.setup import GameBenchmarkSetup
 
 from .bench_types import BenchmarkDataset
 
-AllSupportedDatasets: TypeAlias = Literal[
+type AllSupportedDatasets = Literal[
     "communities_and_crime",
     "california_housing",
     "adult_census",
@@ -75,7 +75,7 @@ AllSupportedDatasets: TypeAlias = Literal[
     "tabarena_mic",
 ]
 
-AllSupportedModels: TypeAlias = Literal[
+type AllSupportedModels = Literal[
     "decision_tree",
     "random_forest",
     "tabpfn",
@@ -86,18 +86,20 @@ AllSupportedModels: TypeAlias = Literal[
     "resnet_18",
 ]
 
-SupportedModelsInterventional: TypeAlias = Literal[
+type SupportedModelsInterventional = Literal[
     "decision_tree", "random_forest", "xgboost", "lightgbm"
 ]
-SupportedModelsPathdependent: TypeAlias = Literal["decision_tree", "random_forest", "xgboost", "lightgbm"]
-SupportedModelsLocalXAI: TypeAlias = Literal[
+type SupportedModelsPathdependent = Literal[
+    "decision_tree", "random_forest", "xgboost", "lightgbm"
+]
+type SupportedModelsLocalXAI = Literal[
     "decision_tree", "random_forest", "xgboost", "lightgbm", "mlp"
 ]
-SupportedModelsImage: TypeAlias = Literal[
+type SupportedModelsImage = Literal[
     "vit_16_patches",
     "resnet_18",
 ]
-SupportedModelsTabPFN: TypeAlias = Literal["tabpfn"]
+type SupportedModelsTabPFN = Literal["tabpfn"]
 
 
 class _FitModel(Protocol):
@@ -105,6 +107,11 @@ class _FitModel(Protocol):
 
 
 ModelBuilder = Callable[..., _FitModel]
+
+
+def _get_literal_args(type_alias: object) -> tuple[str, ...]:
+    value = getattr(type_alias, "__value__", type_alias)
+    return cast("tuple[str, ...]", get_args(value))
 
 
 _MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
@@ -121,6 +128,7 @@ _MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
     ("mlp", "classification"): MLPClassifier,
     ("mlp", "regression"): MLPRegressor,
 }
+
 
 def load_data_from_str(
     data_str: str,
@@ -193,7 +201,7 @@ def load_from_str(
     **kwargs: object,
 ) -> tuple[BenchmarkDataset, object]:
     """Convenience function to load both dataset and model from string identifiers."""
-    allowed_data = get_args(AllSupportedDatasets)
+    allowed_data = _get_literal_args(AllSupportedDatasets)
     if data_str not in allowed_data:
         msg = (
             f"Unsupported dataset '{data_str}' for {benchmark_type}. "
@@ -202,13 +210,13 @@ def load_from_str(
         raise ValueError(msg)
 
     if benchmark_type == "interventional":
-        allowed_models = get_args(SupportedModelsInterventional)
+        allowed_models = _get_literal_args(SupportedModelsInterventional)
     elif benchmark_type == "pathdependent":
-        allowed_models = get_args(SupportedModelsPathdependent)
+        allowed_models = _get_literal_args(SupportedModelsPathdependent)
     elif benchmark_type == "local_xai":
-        allowed_models = get_args(SupportedModelsLocalXAI)
+        allowed_models = _get_literal_args(SupportedModelsLocalXAI)
     elif benchmark_type == "tabpfn":
-        allowed_models = get_args(SupportedModelsTabPFN)
+        allowed_models = _get_literal_args(SupportedModelsTabPFN)
     else:
         msg = f"Unsupported benchmark type '{benchmark_type}'."
         raise ValueError(msg)
