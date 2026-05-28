@@ -2,22 +2,62 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, TypeVar, runtime_checkable
 
-from shapiq import ExactComputer
+from shapiq import ExactComputer, Game
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 from shapiq.tree.explainer import TreeExplainer
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
 from shapiq.typing import IndexType
 from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
 
-from .base import BruteForceComputer, GroundTruthComputer
+T_Index_contra = TypeVar("T_Index_contra", bound=IndexType, contravariant=True)
 
 if TYPE_CHECKING:
     from shapiq import InteractionValues
     from shapiq.tree.interventional.game import InterventionalGame
     from shapiq_games.benchmark.local_xai.base import LocalExplanation
     from shapiq_games.benchmark.treeshapiq_xai.base import TreeSHAPIQXAI
+
+
+@runtime_checkable
+class GroundTruthComputer(Protocol[T_Index_contra]):
+    """A protocol for ground truth computers that compute exact interaction values.
+
+    This protocol defines the interface for any ground truth computer that can compute exact
+    interaction values for a given game and index type.
+    """
+
+    def exact_values(
+        self, index: T_Index_contra, order: int, budget: int | None = None
+    ) -> InteractionValues:
+        """Compute the exact interaction values for a given index and order.
+
+        Args:
+            index: The index type for which to compute the interaction values.
+            order: The order of interactions to compute.
+            budget: Optional budget for computation.
+
+        Returns:
+            InteractionValues: The computed interaction values for the specified index and order.
+        """
+        ...
+
+
+class BruteForceComputer[In: Game, IndexT: IndexType](GroundTruthComputer[IndexT]):
+    """A brute force computer for exact computation of interaction values."""
+
+    def __init__(self, game: In) -> None:
+        """Initialize a BruteForceComputer instance."""
+        self.game = game
+        self._computer = ExactComputer(
+            game=game, n_players=game.n_players, evaluate_game=False
+        )
+
+    def exact_values(self, index: IndexT, order: int, **kwargs) -> InteractionValues:
+        """Compute the exact values using brute force."""
+
+        return self._computer(index=index, order=order, **kwargs)
 
 
 class InterventionalComputer(GroundTruthComputer[IndexType]):
@@ -33,24 +73,20 @@ class InterventionalComputer(GroundTruthComputer[IndexType]):
             class_index=self.game.class_index,
         )
 
-    def exact_values(
-        self, index: IndexType, order: int, budget: int | None = None
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs) -> InteractionValues:
         """Compute exact interaction values using the InterventionalTreeExplainer.
 
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
-            budget: Optional budget for computation (not used in this computer).
+            **kwargs: Additional keyword arguments for computation.
 
         Returns:
             InteractionValues: The computed interaction values.
         """
-        if budget is not None:
-            _ = budget
         self._computer.index = index
         self._computer.max_order = order
-        return self._computer.explain_function(x=self.game.target_instance[0])
+        return self._computer.explain_function(x=self.game.target_instance[0], **kwargs)
 
 
 class PathdependentComputer(GroundTruthComputer[IndexType]):
@@ -64,25 +100,22 @@ class PathdependentComputer(GroundTruthComputer[IndexType]):
             class_index=self.game.class_label,
         )
 
-    def exact_values(
-        self, index: IndexType, order: int, budget: int | None = None
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs) -> InteractionValues:
         """Compute exact interaction values using the TreeExplainer.
 
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
-            budget: Optional budget for computation (not used in this computer).
+            **kwargs: Additional keyword arguments for computation.
 
         Returns:
             InteractionValues: The computed interaction values.
         """
-        if budget is not None:
-            _ = budget
         return self._computer.explain_function(
             x=self.game.x_explain,
             index=index,
             max_order=order,
+            **kwargs,
         )
 
 
@@ -92,24 +125,21 @@ class LocalXAIComputer(GroundTruthComputer[IndexType]):
     def __init__(self, game: LocalExplanation) -> None:
         """Initialize the local XAI computer for a given game."""
         self.game = game
-        self._computer = ExactComputer(game=game, n_players=game.n_players, evaluate_game=False)
+        self._computer = ExactComputer(
+            game=game, n_players=game.n_players, evaluate_game=False
+        )
 
-    def exact_values(
-        self, index: IndexType, order: int, budget: int | None = None
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int) -> InteractionValues:
         """Compute exact interaction values using the ExactComputer.
 
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
-            budget: Optional budget for computation (not used in this computer).
 
         Returns:
             InteractionValues: The computed interaction values.
         """
-        if budget is not None:
-            _ = budget
-        return self._computer(index=index, order=order)
+        return self._computer(index=index, order=order,)
 
 
 class TabPFNComputer(BruteForceComputer[TabPFNImputer, IndexType]):

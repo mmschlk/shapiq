@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 from shapiq.typing import IndexType, Model
 from shapiq_games.benchmark.local_xai.benchmark_image import ImageClassifier
 
-from .base import Benchmark, BruteForceComputer, GroundTruthComputer
+from .base import Benchmark
+from .computers import ImageComputer
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -29,7 +30,9 @@ def _collect_image_paths(root: Path) -> list[str]:
         msg = f"Image data path does not exist: {root}"
         raise ValueError(msg)
     image_paths = [
-        str(path) for path in sorted(root.rglob("*")) if path.suffix.lower() in _IMAGE_EXTENSIONS
+        str(path)
+        for path in sorted(root.rglob("*"))
+        if path.suffix.lower() in _IMAGE_EXTENSIONS
     ]
     if not image_paths:
         msg = f"No image files found under {root}."
@@ -100,22 +103,20 @@ class ImageBench(Benchmark[IndexType]):
             normalize=normalize,
             verbose=verbose,
         )
-        self._computer: GroundTruthComputer[IndexType] = BruteForceComputer(self._game)
+        self._computer: ImageComputer[IndexType] = ImageComputer(self._game)
 
-    def exact_values(
-        self, index: IndexType, order: int, budget: int | None = None
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs) -> InteractionValues:
         """Compute exact interaction values using the ImageBench computer.
 
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
-            budget: Optional budget for computation.
+            **kwargs: Additional keyword arguments for computation.
 
         Returns:
             InteractionValues: The computed interaction values.
         """
-        return self._computer.exact_values(index=index, order=order, budget=budget)
+        return self._computer.exact_values(index=index, order=order, **kwargs)
 
     @property
     def game(self) -> ImageClassifier:
@@ -123,6 +124,6 @@ class ImageBench(Benchmark[IndexType]):
         return self._game
 
     @property
-    def computer(self) -> GroundTruthComputer[IndexType]:
+    def computer(self) -> ImageComputer[IndexType]:
         """Ground truth computer used by the Image Benchmark."""
         return self._computer

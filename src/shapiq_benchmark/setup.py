@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import Literal, Protocol, cast, get_args
+from typing import Literal, Protocol, TypeAlias, cast, get_args
 
 from lightgbm import LGBMClassifier, LGBMRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -18,7 +18,7 @@ from shapiq_games.benchmark.setup import GameBenchmarkSetup
 
 from .bench_types import BenchmarkDataset
 
-type AllSupportedDatasets = Literal[
+AllSupportedDatasets: TypeAlias = Literal[
     "communities_and_crime",
     "california_housing",
     "adult_census",
@@ -75,7 +75,7 @@ type AllSupportedDatasets = Literal[
     "tabarena_mic",
 ]
 
-type AllSupportedModels = Literal[
+AllSupportedModels: TypeAlias = Literal[
     "decision_tree",
     "random_forest",
     "tabpfn",
@@ -86,18 +86,18 @@ type AllSupportedModels = Literal[
     "resnet_18",
 ]
 
-type SupportedModelsInterventional = Literal[
+SupportedModelsInterventional: TypeAlias = Literal[
     "decision_tree", "random_forest", "xgboost", "lightgbm"
 ]
-type SupportedModelsPathdependent = Literal["decision_tree", "random_forest", "xgboost", "lightgbm"]
-type SupportedModelsLocalXAI = Literal[
+SupportedModelsPathdependent: TypeAlias = Literal["decision_tree", "random_forest", "xgboost", "lightgbm"]
+SupportedModelsLocalXAI: TypeAlias = Literal[
     "decision_tree", "random_forest", "xgboost", "lightgbm", "mlp"
 ]
-type SupportedModelsImage = Literal[
+SupportedModelsImage: TypeAlias = Literal[
     "vit_16_patches",
     "resnet_18",
 ]
-type SupportedModelsTabPFN = Literal["tabpfn"]
+SupportedModelsTabPFN: TypeAlias = Literal["tabpfn"]
 
 
 class _FitModel(Protocol):
@@ -121,16 +121,6 @@ _MODEL_BUILDERS: dict[tuple[str, str], ModelBuilder] = {
     ("mlp", "classification"): MLPClassifier,
     ("mlp", "regression"): MLPRegressor,
 }
-
-
-def register_model_builder(model_name: str, data_type: str, builder: ModelBuilder) -> None:
-    """Register a new model builder for future extensions."""
-    key = (model_name.lower(), data_type.lower())
-    if key in _MODEL_BUILDERS:
-        msg = f"Model builder already registered for {key[0]} ({key[1]})."
-        raise ValueError(msg)
-    _MODEL_BUILDERS[key] = builder
-
 
 def load_data_from_str(
     data_str: str,
@@ -165,12 +155,12 @@ def load_data_from_str(
     )
 
 
-def load_model_from_str(
+def load_and_fit_model_from_str(
     model_str: str,
     dataset: BenchmarkDataset,
     **kwargs: object,
 ) -> object:
-    """Create an unfitted model from a string identifier.
+    """Create a fitted model from a string identifier.
 
     Args:
             model_str: Model identifier (e.g. "decision_tree").
@@ -233,12 +223,12 @@ def load_from_str(
 
     best_params = check_for_known_combination(data_str, model_str) or {}
     model_params = {**best_params, **kwargs}
-    model = load_model_from_str(model_str, dataset, **model_params)
+    model = load_and_fit_model_from_str(model_str, dataset, **model_params)
     return dataset, model
 
 
 def infer_data_type(model: object) -> Literal["classification", "regression"]:
-    """Infer whether a model is a classifier or regressor based on its attributes."""
+    """Infer whether a sklearn model is a classifier or regressor based on its attributes."""
     estimator_type = getattr(model, "_estimator_type", None)
     if estimator_type == "classifier":
         return "classification"

@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from shapiq.tree.interventional.game import InterventionalGame
 from shapiq.typing import IndexType, Model
 
-from .base import Benchmark
 from .computers import InterventionalComputer
-from .setup import (
-    infer_data_type,
-    load_from_str,
-)
+from .local_xai_bench import LocalXAIBench
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -22,7 +18,7 @@ if TYPE_CHECKING:
     from shapiq import InteractionValues
 
 
-class InterventionalBench(Benchmark[IndexType]):
+class InterventionalBench(LocalXAIBench):
     """Benchmark for interventional tree-based explanations."""
 
     def __init__(
@@ -45,38 +41,16 @@ class InterventionalBench(Benchmark[IndexType]):
             random_state: Random state used for data split and model init.
             **kwargs: Additional keyword arguments for model building.
         """
-        if isinstance(data, str) and isinstance(model, str):
-            self.dataset, self.model = load_from_str(
-                data,
-                model,
-                benchmark_type="interventional",
-                random_state=random_state,
-                **kwargs,
-            )
-            self.data: np.ndarray = np.asarray(self.dataset.x_test)
-
-        elif isinstance(data, np.ndarray) and not isinstance(model, str):
-            self.dataset = None
-            self.data = np.asarray(data)
-            self.model = model
-        else:
-            msg = (
-                "Invalid combination of data and model arguments. "
-                "Please provide either both as strings or both as objects."
-            )
-            raise TypeError(msg)
-
-        data_type: Literal["classification", "regression"] | None = (
-            self.dataset.data_type if self.dataset else infer_data_type(self.model)
+        class_index, _ = self._load_dataset_and_model(
+            data,
+            model,
+            benchmark_type="interventional",
+            random_state=random_state,
+            class_index=class_index,
+            **kwargs,
         )
 
-        if data_type == "regression":
-            class_index = None
-
-        x_index = 0 if x_explain is None else x_explain
-        if not isinstance(x_index, int):
-            msg = "x_explain must be an int index."
-            raise TypeError(msg)
+        x_index = self._resolve_x_explain(x_explain)
 
         self._game = InterventionalGame(
             model=self.model,
@@ -86,20 +60,18 @@ class InterventionalBench(Benchmark[IndexType]):
         )
         self._computer = InterventionalComputer(self._game)
 
-    def exact_values(
-        self, index: IndexType, order: int, budget: int | None = None
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs) -> InteractionValues:
         """Compute exact interaction values using the InterventionalBench computer.
 
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
-            budget: Optional Budget for computation.
+            **kwargs: Additional keyword arguments for computation.
 
         Returns:
             InteractionValues: The computed interaction values.
         """
-        return self._computer.exact_values(index=index, order=order, budget=budget)
+        return self._computer.exact_values(index=index, order=order, **kwargs)
 
     @property
     def game(self) -> InterventionalGame:

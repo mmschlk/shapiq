@@ -51,33 +51,21 @@ def _build_predict_fn(
 class LocalXAIBench(Benchmark[IndexType]):
     """Benchmark for local explanation games."""
 
-    def __init__(
+    def _load_dataset_and_model(
         self,
         data: str | np.ndarray,
         model: str | Model | Callable[[np.ndarray], np.ndarray],
         *,
-        x_explain: int | None = 0,
-        class_index: int | None = 1,
-        random_state: int | None = 42,
-        imputer: str = "marginal",
+        benchmark_type: str,
+        random_state: int | None,
+        class_index: int | None,
         **kwargs: object,
-    ) -> None:
-        """Initialize the benchmark by loading data and model and fitting the model.
-
-        Args:
-            data: Dataset identifier (e.g. "adult_census") or a NumPy array containing the data.
-            model: Model identifier (e.g. "decision_tree") or a fitted model object.
-            x_explain: Instance to explain.
-            class_index: Class index for classification models.
-            random_state: Random state used for data split and model init.
-            imputer: Imputation method to use in the LocalExplanation game.
-            **kwargs: Additional keyword arguments for model building.
-        """
+    ) -> tuple[int | None, Literal["classification", "regression"]]:
         if isinstance(data, str) and isinstance(model, str):
             self.dataset, self.model = load_from_str(
                 data,
                 model,
-                benchmark_type="local_xai",
+                benchmark_type=benchmark_type,
                 random_state=random_state,
                 **kwargs,
             )
@@ -102,11 +90,49 @@ class LocalXAIBench(Benchmark[IndexType]):
         if data_type == "regression":
             class_index = None
 
-        predict_fn = _build_predict_fn(self.model, data_type, class_index)
+        return class_index, data_type
+
+    @staticmethod
+    def _resolve_x_explain(x_explain: int | None) -> int:
         x_index = 0 if x_explain is None else x_explain
         if not isinstance(x_index, int):
             msg = "x_explain must be an int index."
             raise TypeError(msg)
+        return x_index
+
+    def __init__(
+        self,
+        data: str | np.ndarray,
+        model: str | Model | Callable[[np.ndarray], np.ndarray],
+        *,
+        x_explain: int | None = 0,
+        class_index: int | None = 1,
+        random_state: int | None = 42,
+        imputer: str = "marginal",
+        **kwargs: object,
+    ) -> None:
+        """Initialize the benchmark by loading data and model and fitting the model.
+
+        Args:
+            data: Dataset identifier (e.g. "adult_census") or a NumPy array containing the data.
+            model: Model identifier (e.g. "decision_tree") or a fitted model object.
+            x_explain: Instance to explain.
+            class_index: Class index for classification models.
+            random_state: Random state used for data split and model init.
+            imputer: Imputation method to use in the LocalExplanation game.
+            **kwargs: Additional keyword arguments for model building.
+        """
+        class_index, data_type = self._load_dataset_and_model(
+            data,
+            model,
+            benchmark_type="local_xai",
+            random_state=random_state,
+            class_index=class_index,
+            **kwargs,
+        )
+
+        predict_fn = _build_predict_fn(self.model, data_type, class_index)
+        x_index = self._resolve_x_explain(x_explain)
         self._game = LocalExplanation(
             data=self.data,
             model=predict_fn,
@@ -117,20 +143,17 @@ class LocalXAIBench(Benchmark[IndexType]):
         )
         self._computer = LocalXAIComputer(self._game)
 
-    def exact_values(
-        self, index: IndexType, order: int, budget: int | None = None
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs) -> InteractionValues:
         """Compute exact interaction values using the LocalXAIBench computer.
 
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
-            budget: Optional budget for computation.
 
         Returns:
             InteractionValues: The computed interaction values.
         """
-        return self._computer.exact_values(index=index, order=order, budget=budget)
+        return self._computer.exact_values(index=index, order=order, **kwargs)
 
     @property
     def game(self) -> LocalExplanation:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 from tabpfn import TabPFNClassifier, TabPFNRegressor
@@ -11,7 +11,8 @@ from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 from shapiq.typing import IndexType, Model
 
-from .base import Benchmark, BruteForceComputer, GroundTruthComputer
+from .base import Benchmark, GroundTruthComputer
+from .computers import BruteForceComputer
 from .setup import load_from_str
 
 if TYPE_CHECKING:
@@ -96,39 +97,31 @@ class TabPFNBench(Benchmark[IndexType]):
             self.model, class_index=class_index
         )
 
-        class _TabPFNWithPredict(Protocol):
-            shapiq_predict_function: Callable[[np.ndarray], np.ndarray]
-
-        model_with_predict = cast("_TabPFNWithPredict", self.model)
-        model_with_predict.shapiq_predict_function = cast(
-            "Callable[[np.ndarray], np.ndarray]", predict_function
-        )
+        setattr(self.model, "_shapiq_predict_function", predict_function)
 
         imputer = TabPFNImputer(
             model=self.model,
             x_train=x_train,
             y_train=y_train,
             x_test=x_test,
+            predict_function=predict_function,
         )
         imputer.fit(np.asarray(x_train[x_explain]))
 
         self._game = imputer
         self._computer: GroundTruthComputer[IndexType] = BruteForceComputer(self._game)
 
-    def exact_values(
-        self, index: IndexType, order: int, budget: int | None = None
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs) -> InteractionValues:
         """Compute exact interaction values using the TabPFNComputer.
 
         Args:
             index: The index for which to compute interaction values.
             order: The order of interactions to compute.
-            budget: Budget for computation.
 
         Returns:
             InteractionValues: The computed interaction values.
         """
-        return self._computer.exact_values(index=index, order=order, budget=budget)
+        return self._computer.exact_values(index=index, order=order, **kwargs)
 
     @property
     def game(self) -> TabPFNImputer:
