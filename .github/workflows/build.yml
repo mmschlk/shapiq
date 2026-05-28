@@ -1,5 +1,6 @@
 name: Build Wheels and SDist
 on:
+  # pull_request:
   workflow_call:
     inputs:
       ref:
@@ -18,12 +19,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
         include:
-          - os: macos-13
-            macos_target: "13.0"
-          - os: macos-latest
-            macos_target: "15.0"
+          - os: ubuntu-latest
+          - os: windows-latest
+          - os: macos-14          # Apple Silicon
+            cibw_archs_macos: arm64
+          - os: macos-15-intel    # Intel x86_64
+            cibw_archs_macos: x86_64
     steps:
       - uses: actions/checkout@v6
         with:
@@ -33,13 +35,20 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
+      # libomp is installed via conda inside build_wheels.sh — see that
+      # script for the rationale (mirrors scikit-learn's wheel build).
+      - uses: conda-incubator/setup-miniconda@v3
+        if: startsWith(matrix.os, 'macos')
+        with:
+          miniforge-version: latest
       - name: Build wheels
-        run: uvx cibuildwheel==3.4.0 --output-dir wheelhouse
+        shell: bash -el {0}
+        run: bash build_tools/wheels/build_wheels.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_WINDOWS: "AMD64"
-          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_target || '15.0' }}"
+          CIBW_ARCHS_MACOS: ${{ matrix.cibw_archs_macos }}
           UV_PYTHON: ""
       - name: Check wheels were produced
         shell: bash

@@ -1,5 +1,7 @@
 """Proxy classes for approximator."""
 
-from .proxyshap import MSRBiased, ProxySHAP
+from .proxyshap import ProxySHAP
+from .proxyspex import ProxySPEX
+from .regressionmsr import RegressionMSR
 
-__all__ = ["ProxySHAP", "MSRBiased"]
+__all__ = ["ProxySHAP", "ProxySPEX", "RegressionMSR"]
