@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
 from shapiq_games.benchmark.treeshapiq_xai.base import TreeSHAPIQXAI
 
 from .computers import PathdependentComputer
