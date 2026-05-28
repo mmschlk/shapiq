@@ -93,7 +93,7 @@ type SupportedModelsPathdependent = Literal["decision_tree", "random_forest", "x
 type SupportedModelsLocalXAI = Literal[
     "decision_tree", "random_forest", "xgboost", "lightgbm", "mlp"
 ]
-type SupportedModelsImage = Literal["vit_16_patches","resnet_18",]
+type SupportedModelsImage = Literal["vit_16_patches", "resnet_18",]
 type SupportedModelsTabPFN = Literal["tabpfn"]
 
 
