@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
 from shapiq.tree.interventional.game import InterventionalGame
+
 from .computers import InterventionalComputer
 from .local_xai_bench import LocalXAIBench
 
@@ -58,9 +60,7 @@ class InterventionalBench(LocalXAIBench):
         )
         self._computer = InterventionalComputer(self._game)
 
-    def exact_values(
-        self, index: IndexType, order: int, **kwargs: object
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs: object) -> InteractionValues:
         """Compute exact interaction values using the InterventionalBench computer.
 
         Args:

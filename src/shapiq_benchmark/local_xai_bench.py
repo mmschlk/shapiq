@@ -143,9 +143,7 @@ class LocalXAIBench(Benchmark[IndexType]):
         )
         self._computer = LocalXAIComputer(self._game)
 
-    def exact_values(
-        self, index: IndexType, order: int, **kwargs: object
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs: object) -> InteractionValues:
         """Compute exact interaction values using the LocalXAIBench computer.
 
         Args:

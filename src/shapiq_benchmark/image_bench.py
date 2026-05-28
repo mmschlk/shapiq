@@ -29,11 +29,7 @@ def _collect_image_paths(root: Path) -> list[str]:
     if not root.is_dir():
         msg = f"Image data path does not exist: {root}"
         raise ValueError(msg)
-    image_paths = [
-        str(path)
-        for path in sorted(root.rglob("*"))
-        if path.suffix.lower() in _IMAGE_EXTENSIONS
-    ]
+    image_paths = [str(path) for path in sorted(root.rglob("*")) if path.suffix.lower() in _IMAGE_EXTENSIONS]
     if not image_paths:
         msg = f"No image files found under {root}."
         raise ValueError(msg)
@@ -105,9 +101,7 @@ class ImageBench(Benchmark[IndexType]):
         )
         self._computer: ImageComputer[IndexType] = ImageComputer(self._game)
 
-    def exact_values(
-        self, index: IndexType, order: int, **kwargs: object
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs: object) -> InteractionValues:
         """Compute exact interaction values using the ImageBench computer.
 
         Args:

@@ -59,9 +59,7 @@ class PathdependentBench(LocalXAIBench):
         )
         self._computer = PathdependentComputer(self._game)
 
-    def exact_values(
-        self, index: IndexType, order: int, **kwargs: object
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs: object) -> InteractionValues:
         """Compute exact interaction values using the PathdependentBench computer.
 
         Args:

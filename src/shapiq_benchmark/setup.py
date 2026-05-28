@@ -86,19 +86,10 @@ type AllSupportedModels = Literal[
     "resnet_18",
 ]
 
-type SupportedModelsInterventional = Literal[
-    "decision_tree", "random_forest", "xgboost", "lightgbm"
-]
-type SupportedModelsPathdependent = Literal[
-    "decision_tree", "random_forest", "xgboost", "lightgbm"
-]
-type SupportedModelsLocalXAI = Literal[
-    "decision_tree", "random_forest", "xgboost", "lightgbm", "mlp"
-]
-type SupportedModelsImage = Literal[
-    "vit_16_patches",
-    "resnet_18",
-]
+type SupportedModelsInterventional = Literal["decision_tree", "random_forest", "xgboost", "lightgbm"]
+type SupportedModelsPathdependent = Literal["decision_tree", "random_forest", "xgboost", "lightgbm"]
+type SupportedModelsLocalXAI = Literal["decision_tree", "random_forest", "xgboost", "lightgbm", "mlp"]
+type SupportedModelsImage = Literal["vit_16_patches","resnet_18",]
 type SupportedModelsTabPFN = Literal["tabpfn"]
 
 

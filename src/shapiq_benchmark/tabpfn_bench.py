@@ -109,9 +109,7 @@ class TabPFNBench(Benchmark[IndexType]):
         self._game = imputer
         self._computer: GroundTruthComputer[IndexType] = BruteForceComputer(self._game)
 
-    def exact_values(
-        self, index: IndexType, order: int, **kwargs: object
-    ) -> InteractionValues:
+    def exact_values(self, index: IndexType, order: int, **kwargs: object) -> InteractionValues:
         """Compute exact interaction values using the TabPFNComputer.
 
         Args:
