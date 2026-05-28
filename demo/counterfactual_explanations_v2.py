@@ -393,12 +393,12 @@ if __name__ == "__main__":
             "He hardly works.",
         ),
         (
-            "Length difference / sentiment reversal",
+            "Length difference",
             "I liked the restaurant.",
             "I liked the restaurant until the food arrived.",
         ),
         (
-            "Quantifier interaction",
+            "Few vs A few",
             "Few students passed the exam.",
             "A few students passed the exam.",
         ),
