@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-
-
 from shapiq_games.benchmark.treeshapiq_xai.base import TreeSHAPIQXAI
 
 from .computers import PathdependentComputer
@@ -12,7 +10,9 @@ from .local_xai_bench import LocalXAIBench
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
     import numpy as np
+
     from shapiq import InteractionValues
     from shapiq.typing import IndexType, Model
 

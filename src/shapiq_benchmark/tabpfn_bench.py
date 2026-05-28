@@ -11,8 +11,8 @@ from shapiq.explainer.utils import get_predict_function_and_model_type
 from shapiq.imputer.tabpfn_imputer import TabPFNImputer
 from shapiq.typing import IndexType, Model
 
-from .base import Benchmark, GroundTruthComputer
-from .computers import BruteForceComputer
+from .base import Benchmark
+from .computers import BruteForceComputer, GroundTruthComputer
 from .setup import load_from_str
 
 if TYPE_CHECKING:
@@ -97,8 +97,6 @@ class TabPFNBench(Benchmark[IndexType]):
             self.model, class_index=class_index
         )
 
-        setattr(self.model, "_shapiq_predict_function", predict_function)
-
         imputer = TabPFNImputer(
             model=self.model,
             x_train=x_train,
@@ -111,7 +109,9 @@ class TabPFNBench(Benchmark[IndexType]):
         self._game = imputer
         self._computer: GroundTruthComputer[IndexType] = BruteForceComputer(self._game)
 
-    def exact_values(self, index: IndexType, order: int, **kwargs: object) -> InteractionValues:
+    def exact_values(
+        self, index: IndexType, order: int, **kwargs: object
+    ) -> InteractionValues:
         """Compute exact interaction values using the TabPFNComputer.
 
         Args:

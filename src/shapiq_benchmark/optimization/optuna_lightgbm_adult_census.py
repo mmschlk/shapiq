@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import optuna
@@ -14,8 +15,10 @@ from numpy.typing import NDArray
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import StratifiedKFold
 
-from shapiq_benchmark.bench_types import BenchmarkDataset
 from shapiq_benchmark.setup import load_data_from_str
+
+if TYPE_CHECKING:
+    from shapiq_benchmark.bench_types import BenchmarkDataset
 
 IndexArray = NDArray[np.integer]
 DataArray = NDArray[np.number]

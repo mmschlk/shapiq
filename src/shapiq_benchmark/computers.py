@@ -58,7 +58,6 @@ class BruteForceComputer[In: Game, IndexT: IndexType](GroundTruthComputer[IndexT
         self, index: IndexT, order: int, **kwargs: object
     ) -> InteractionValues:
         """Compute the exact values using brute force."""
-
         return self._computer(index=index, order=order, **kwargs)
 
 

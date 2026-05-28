@@ -9,6 +9,7 @@ from shapiq.typing import IndexType
 
 if TYPE_CHECKING:
     from shapiq import Game, InteractionValues
+
     from .computers import GroundTruthComputer
 
 
