@@ -33,7 +33,7 @@ class Benchmark(ABC, Generic[T_Index_contra]):
 
     @abstractmethod
     def exact_values(
-        self, index: T_Index_contra, order: int, budget: int | None = None
+        self, index: T_Index_contra, order: int, **kwargs: object
     ) -> InteractionValues:
         """Compute exact interaction values for the given index and order."""
         ...
