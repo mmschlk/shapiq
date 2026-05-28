@@ -30,7 +30,7 @@ namespace inter_weights
         if (k > n - k)
             k = n - k;
         uint64_t result = 1;
-        for (unsigned i = 1; i <= k; ++i)
+        for (signed i = 1; i <= k; ++i)
         {
             result = (result * (n - k + i)) / i;
         }
@@ -209,13 +209,13 @@ namespace inter_weights
 
         // Existing constructor (no custom table)
         WeightCache(uint64_t max_number)
-            : max_number(max_number), custom_table(nullptr), custom_N(0), custom_K(0)
+            : custom_table(nullptr), custom_N(0), custom_K(0), max_number(max_number)
         {
         }
 
         // New constructor for custom table
         WeightCache(uint64_t max_number, const double* table, int64_t N, int64_t K)
-            : max_number(max_number), custom_table(table), custom_N(N), custom_K(K)
+            : custom_table(table), custom_N(N), custom_K(K), max_number(max_number)
         {
         }
 
