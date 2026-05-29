@@ -17,7 +17,7 @@ build:
     create_environment:
       - uv venv
     install:
-      - uv sync --group docs
+      - uv sync --no-dev --all-extras --group docs
     build:
       html:
-      - uv run sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html
+      - uv run --no-sync sphinx-build -b html docs/source $READTHEDOCS_OUTPUT/html
