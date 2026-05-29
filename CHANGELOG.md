@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.5.0 (2026-05-22)
+## v1.5.0 (2026-05-26)
 
 ### Highlights of new Features
 
@@ -10,6 +10,7 @@
 - adds `LinearTreeSHAP` in `shapiq.tree.linear` for fast first-order Shapley value computation
 - adds `InterventionalTreeExplainer` in `shapiq.tree.interventional`
 - adds `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer` for nearest neighbor models
+- changes the default for all user-facing `Explainer` classes to `index="SV"`, `max_order=1` (Shapley values) — see Breaking Changes below
 - adds `shapiq.scatter_plot` for SHAP-style scatter (dependence) plots of interaction values, supporting both first-order and higher-order interactions [#516](https://github.com/mmschlk/shapiq/pull/516)
 
 
@@ -34,6 +35,16 @@ One application of these explainers is Data Valuation, i.e. the task of evaluati
 
 - removes `path_to_values` parameter from `shapiq.Game`, which was previously deprecated. Use `shapiq.Game.load()` instead. [#496](https://github.com/mmschlk/shapiq/pull/496)
 - removes pickle support from `shapiq.InteractionValues`. JSON is now the only supported file format. Use `InteractionValues.save()` and `InteractionValues.load()` with JSON files. [#496](https://github.com/mmschlk/shapiq/pull/496)
+
+### Breaking Changes
+
+- **`Explainer` default changed to Shapley values.** `Explainer`,
+  `TabularExplainer`, `TabPFNExplainer`, `AgnosticExplainer`, and `TreeExplainer`
+  now default to `index="SV"`, `max_order=1`. Previously they defaulted to
+  `index="k-SII"`, `max_order=2`. Users relying on the previous default must
+  pass these arguments explicitly. NN explainers and `ProductKernelExplainer`
+  are unaffected — they already defaulted to `"SV"`. Approximators and
+  computers also retain their existing defaults.
 
 ### Extending shapiq-games [#476](https://github.com/mmschlk/shapiq/issues/476)
 - adds standard SHAP datasets for benchmarking in `shapiq_games.benchmark.local_xai`.
