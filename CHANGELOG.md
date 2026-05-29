@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.5.0 (2026-05-26)
+## v1.5.0 (2026-05-29)
 
 ### Highlights of new Features
 
