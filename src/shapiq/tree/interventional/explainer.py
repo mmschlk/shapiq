@@ -12,11 +12,12 @@ from shapiq.game_theory.indices import get_computation_index
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.validation import validate_tree_model
 
-from .cext import (
-    compute_interactions_batched_sparse,  # ty: ignore[unresolved-import]
-    compute_interactions_flatten,  # ty: ignore[unresolved-import]
-    preprocess_boolean_trees,  # ty: ignore[unresolved-import]
-)
+# NOTE: the compiled ``.cext`` module is imported lazily inside the methods that
+# use it (see ``_preprocess_boolean_tree`` and ``explain_function``). It links a
+# private, statically-embedded OpenMP runtime on macOS; importing it at module
+# top level would pull that runtime into the process at ``import shapiq`` time,
+# which is undesirable for users who never run the interventional explainer. This
+# mirrors the lazy import in ``shapiq.tree.linear.explainer``.
 
 # The dense `compute_interactions_flatten` path allocates a result buffer of
 # sum(C(n, k) for k in 1..max_order) doubles, plus one such buffer per OpenMP
@@ -264,6 +265,8 @@ class InterventionalTreeExplainer:
 
     def _preprocess_boolean_tree(self) -> None:
         """Gather E and R statistics for boolean tree mode using C++ BitSet DFS."""
+        from .cext import preprocess_boolean_trees  # ty: ignore[unresolved-import]
+
         self.n_features = self.reference_data.shape[1]
 
         # Prepare tree arrays for C++
@@ -450,6 +453,11 @@ class InterventionalTreeExplainer:
             empty-set entry ``()`` set to ``self.baseline_value``, even though
             ``min_order`` reports ``1``.
         """
+        from .cext import (
+            compute_interactions_batched_sparse,  # ty: ignore[unresolved-import]
+            compute_interactions_flatten,  # ty: ignore[unresolved-import]
+        )
+
         if not self.bool_tree and not self._use_sparse_path:
             self._preprocess_tree(x)
         computation_index = get_computation_index(self.index)
