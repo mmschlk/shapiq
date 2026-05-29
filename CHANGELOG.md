@@ -102,7 +102,7 @@ The conversion of the tree methods has been moved to C++ giving at least 2x up t
 - fixes `min_order` in `TreeExplainer` so that it now actually restricts the returned `InteractionValues` to interactions of order ``min_order..max_order`` (``min_order=0`` continues to include the empty interaction at the baseline value); invalid values now raise a clear `ValueError`. [#325](https://github.com/mmschlk/shapiq/issues/325)
 - fixes tree conversion breaking when the `LC_NUMERIC` locale is not set to the standard `"C"` value. [#515](https://github.com/mmschlk/shapiq/pull/515)
 - fixes a segfault in the `ProxySHAP` C++ extension code. [#506](https://github.com/mmschlk/shapiq/pull/506)
-
+- fixes a Out Of Memory (OOM) when values is an dictionary and n_players is large.  [#531](https://github.com/mmschlk/shapiq/issues/531)
 
 ## v1.4.1 (2025-11-10)
 
