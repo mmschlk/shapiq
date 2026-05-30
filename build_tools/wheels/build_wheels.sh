@@ -1,21 +1,28 @@
 #!/bin/bash
 # Build shapiq wheels with cibuildwheel.
 #
-# On macOS, brew-installed libomp is built against the runner's current macOS
-# SDK, which forces MACOSX_DEPLOYMENT_TARGET up to that runner version. To
-# produce widely-installable wheels we instead pull a pinned conda-forge
-# llvm-openmp package (compiled against an old SDK), wire up the compiler
-# flags so the build links against it, and let delocate vendor libomp.dylib
-# into the wheel via the rpath baked in by LDFLAGS.
+# macOS OpenMP strategy: the interventional extension links libomp *statically
+# and hidden* (-Wl,-load_hidden,<prefix>/lib/libomp.a; see setup.py). libomp's
+# objects are baked into the extension, giving shapiq a private OpenMP runtime
+# that does NOT participate in dyld's process-wide weak-symbol coalescing —
+# which otherwise crashes when another libomp image is present (e.g. xgboost's
+# Homebrew libomp). No separate libomp.dylib is vendored into the wheel.
 #
-# The pin must be llvm-openmp >= 12: our C extensions use
-# `#pragma omp for schedule(dynamic, ...)`, and modern clang lowers those into
-# a call to __kmpc_dispatch_deinit which was first added to the libomp runtime
-# in LLVM 12. Older pins (e.g. 11.1.0) build cleanly but fail at wheel-import
-# time with "symbol not found in flat namespace ___kmpc_dispatch_deinit".
+# Because we static-link, we can use Homebrew's libomp directly and the old
+# conda-forge old-SDK pin is no longer needed:
+#   * Deployment target: the wheel's per-file minimum macOS is governed by our
+#     own -mmacosx-version-min (MACOSX_DEPLOYMENT_TARGET below), not by libomp's.
+#     The libomp objects are merged into the extension, so there is no standalone
+#     libomp.dylib whose current-SDK `minos` would force the wheel target up.
+#   * Symbols: libomp's object code references only ancient, stable libSystem
+#     symbols (pthread_*, mach_*, sysctlbyname, __tlv_bootstrap, dlsym), so a
+#     current-SDK build still runs on our old deployment targets. The nm guard
+#     below fails the build if a future libomp ever uses a newer-only symbol.
 #
-# This mirrors scikit-learn's approach. See their build script for reference:
-# https://github.com/scikit-learn/scikit-learn/blob/main/build_tools/wheels/build_wheels.sh
+# Requirement: libomp >= 12. Our C extensions use
+# `#pragma omp for schedule(dynamic, ...)`, which modern clang lowers into a call
+# to __kmpc_dispatch_deinit, first added to the libomp runtime in LLVM 12.
+# Homebrew's libomp is far newer, so this is always satisfied.
 
 set -euxo pipefail
 
@@ -24,24 +31,30 @@ if [[ $(uname) == "Darwin" ]]; then
         # arm64 wheels: matches SciPy's minimum (kernel-panic workaround).
         # https://github.com/scipy/scipy/issues/14688
         export MACOSX_DEPLOYMENT_TARGET=12.0
-        # conda-forge build metadata: __osx >=11.0 — compatible with target 12.0.
-        OPENMP_URL="https://anaconda.org/conda-forge/llvm-openmp/19.1.7/download/osx-arm64/llvm-openmp-19.1.7-hdb05f8b_1.conda"
     else
         # x86_64 wheels: matches CPython 3.12's documented minimum.
         export MACOSX_DEPLOYMENT_TARGET=10.13
-        # conda-forge build metadata: __osx >=10.13 — compatible with target 10.13.
-        OPENMP_URL="https://anaconda.org/conda-forge/llvm-openmp/19.1.7/download/osx-64/llvm-openmp-19.1.7-ha54dae1_1.conda"
     fi
 
-    # Use conda purely as a tarball extractor for the pinned llvm-openmp.
-    conda create -y -n build "$OPENMP_URL"
+    # Static-link Homebrew's libomp into the extension (setup.py reads
+    # LIBOMP_PREFIX and links <prefix>/lib/libomp.a). `brew install` is a no-op
+    # if libomp is already present on the runner image.
+    brew install libomp
+    LIBOMP_PREFIX="$(brew --prefix libomp)"
+    export LIBOMP_PREFIX
 
-    # setup.py reads LIBOMP_PREFIX to wire up the include / library / rpath
-    # flags for the C extensions. The rpath it adds is what lets delocate
-    # vendor libomp.dylib into the wheel at repair time.
-    export LIBOMP_PREFIX="$CONDA/envs/build"
+    # Guard: our deployment target is older than the SDK Homebrew built libomp
+    # against. That is safe only because libomp references no newer-only macOS
+    # APIs. Fail loudly at build time if that ever stops being true, instead of
+    # discovering it via crash reports from users on older macOS.
+    if nm -u "$LIBOMP_PREFIX/lib/libomp.a" \
+        | grep -qiE 'os_unfair_lock|os_log|os_workgroup|pthread_jit|mach_msg2'; then
+        echo "ERROR: libomp.a references a newer-only macOS API; revisit the" \
+             "deployment target or pin an older libomp." >&2
+        exit 1
+    fi
 
-    # Ensure system clang is used rather than anything conda put on PATH.
+    # Ensure system clang is used rather than anything on PATH.
     export CC=/usr/bin/clang
     export CXX=/usr/bin/clang++
 fi

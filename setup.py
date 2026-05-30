@@ -28,8 +28,35 @@ class BuildExt(_build_ext):
         self.include_dirs.append(np.get_include())
 
 
+def get_base_flags() -> dict[str, list[str]]:
+    """Get compiler/linker flags for extensions that do NOT use OpenMP."""
+    if sys.platform == "win32":  # Windows (MSVC)
+        return {
+            "extra_compile_args": ["/std:c++17", "/O2"],
+            "extra_link_args": [],
+            "include_dirs": [],
+            "library_dirs": [],
+        }
+    # macOS and Linux
+    return {
+        "extra_compile_args": ["-std=c++17", "-O3", "-ffast-math"],
+        "extra_link_args": [],
+        "include_dirs": [],
+        "library_dirs": [],
+    }
+
+
 def get_openmp_flags() -> dict[str, list[str]]:
-    """Get OpenMP compiler and linker flags based on platform."""
+    """Get OpenMP compiler and linker flags based on platform.
+
+    Used only for the ``interventional`` extension, the only one that uses
+    OpenMP. On macOS, libomp is linked STATICALLY with its symbols hidden so the
+    extension carries a private OpenMP runtime that does not participate in
+    dyld's process-wide weak-symbol coalescing. This prevents the cross-image
+    crash where another library's OpenMP barrier (e.g. xgboost via Homebrew
+    libomp) lands in shapiq's vendored libomp with a mismatched struct layout.
+    Linux and Windows do not have this dyld coalescing problem and keep dynamic OpenMP.
+    """
     if sys.platform == "win32":  # Windows (MSVC)
         return {
             "extra_compile_args": ["/std:c++17", "/openmp", "/O2"],
@@ -49,8 +76,8 @@ def get_openmp_flags() -> dict[str, list[str]]:
         for prefix in candidates:
             include_dir = prefix / "include"
             library_dir = prefix / "lib"
-            libomp_dylib = library_dir / "libomp.dylib"
-            if include_dir.exists() and libomp_dylib.exists():
+            libomp_archive = library_dir / "libomp.a"
+            if include_dir.exists() and libomp_archive.exists():
                 return {
                     "extra_compile_args": [
                         "-std=c++17",
@@ -58,26 +85,32 @@ def get_openmp_flags() -> dict[str, list[str]]:
                         "-fopenmp",
                         "-O3",
                         "-ffast-math",
+                        # Hide our own (algorithms::*) symbols; only _PyInit_cext
+                        # is exported via the linker allowlist below.
+                        "-fvisibility=hidden",
                     ],
-                    # Link libomp by ABSOLUTE PATH (not -lomp). With
-                    # setuptools' default -undefined dynamic_lookup, a
-                    # plain -lomp gets silently dropped from the
-                    # LC_LOAD_DYLIB entries and the resulting wheel fails
-                    # to load libomp at runtime ("symbol not found in
-                    # flat namespace"). Passing the dylib path positionally
-                    # forces the load command to be recorded. The -rpath
-                    # then lets delocate find and vendor libomp into the
-                    # wheel during repair.
                     "extra_link_args": [
-                        str(libomp_dylib),
-                        f"-Wl,-rpath,{library_dir}",
+                        # Static-link the libomp archive AND hide every symbol it
+                        # contributes (-load_hidden). Hidden symbols never enter
+                        # the export table, so dyld cannot coalesce them with any
+                        # other libomp image in the process. No LC_LOAD_DYLIB for
+                        # libomp is recorded, so delocate vendors nothing.
+                        f"-Wl,-load_hidden,{libomp_archive}",
+                        # Drop libomp objects not reachable from the __kmpc_*
+                        # entry points we actually call, bounding the size added
+                        # to this single extension.
+                        "-Wl,-dead_strip",
+                        # Belt-and-suspenders allowlist: export only the module
+                        # init symbol. Closes the coalescing surface even if a
+                        # weak libomp symbol slipped past -load_hidden.
+                        "-Wl,-exported_symbol,_PyInit_cext",
                     ],
                     "include_dirs": [str(include_dir)],
                 }
         msg = (
-            "OpenMP support on macOS requires libomp. Either install it via "
-            "Homebrew (`brew install libomp`) or set LIBOMP_PREFIX to a "
-            "directory containing include/omp.h and lib/libomp.dylib."
+            "OpenMP support on macOS requires a static libomp (libomp.a). Either "
+            "install it via Homebrew (`brew install libomp`) or set LIBOMP_PREFIX "
+            "to a directory containing include/omp.h and lib/libomp.a."
         )
         raise RuntimeError(msg)
     # Linux and others
@@ -99,7 +132,8 @@ ext_modules = [
             "src/shapiq/tree/conversion/cext/catboost_json.cc",
         ],
         language="c++",
-        **get_openmp_flags(),
+        # No OpenMP: this extension contains no #pragma omp / omp_* usage.
+        **get_base_flags(),
     ),
     Extension(
         "shapiq.tree.interventional.cext",
@@ -107,6 +141,7 @@ ext_modules = [
             "src/shapiq/tree/interventional/cext/cext.cc",
         ],
         language="c++",
+        # The only extension that uses OpenMP (static+hidden libomp on macOS).
         **get_openmp_flags(),
     ),
     Extension(
@@ -115,7 +150,8 @@ ext_modules = [
             "src/shapiq/tree/linear/cext/cext.cc",
         ],
         language="c++",
-        **get_openmp_flags(),
+        # No OpenMP: this extension contains no #pragma omp / omp_* usage.
+        **get_base_flags(),
     ),
 ]
 
