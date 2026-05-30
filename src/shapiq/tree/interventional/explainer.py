@@ -12,19 +12,7 @@ from shapiq.game_theory.indices import get_computation_index
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.validation import validate_tree_model
 
-# NOTE: the compiled ``.cext`` module is imported lazily inside the methods that
-# use it (see ``_preprocess_boolean_tree`` and ``explain_function``). It links a
-# private, statically-embedded OpenMP runtime on macOS; importing it at module
-# top level would pull that runtime into the process at ``import shapiq`` time,
-# which is undesirable for users who never run the interventional explainer. This
-# mirrors the lazy import in ``shapiq.tree.linear.explainer``.
-
-# The dense `compute_interactions_flatten` path allocates a result buffer of
-# sum(C(n, k) for k in 1..max_order) doubles, plus one such buffer per OpenMP
-# thread inside the order-2/3 leaf-parallel kernels. Above this threshold we
-# redirect to the sparse `compute_interactions_batched_sparse` path, which only
-# materializes interactions actually touched by tree paths. 1_000_000 entries
-# = 8 MB per thread — comfortably below typical RAM budgets.
+# Maximal budget, for which we still use the flatten path: max_order=3 for n_features up to 100, or max_order=4 for n_features up to 20.
 _DENSE_FLATTEN_MAX_RESULT_SIZE = 1_000_000
 
 

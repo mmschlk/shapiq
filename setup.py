@@ -29,14 +29,7 @@ class BuildExt(_build_ext):
 
 
 def get_base_flags() -> dict[str, list[str]]:
-    """Get compiler/linker flags for extensions that do NOT use OpenMP.
-
-    Used for the ``conversion`` and ``linear`` extensions, which contain no
-    ``#pragma omp`` / ``omp_*`` usage. Keeping libomp off their link lines means
-    they introduce no OpenMP runtime into the process (important on macOS, where
-    a second libomp image triggers weak-symbol coalescing crashes against other
-    libraries' OpenMP runtimes — see ``get_openmp_flags``).
-    """
+    """Get compiler/linker flags for extensions that do NOT use OpenMP."""
     if sys.platform == "win32":  # Windows (MSVC)
         return {
             "extra_compile_args": ["/std:c++17", "/O2"],
@@ -62,8 +55,7 @@ def get_openmp_flags() -> dict[str, list[str]]:
     dyld's process-wide weak-symbol coalescing. This prevents the cross-image
     crash where another library's OpenMP barrier (e.g. xgboost via Homebrew
     libomp) lands in shapiq's vendored libomp with a mismatched struct layout.
-    Linux and Windows do not have this dyld coalescing problem and keep dynamic
-    OpenMP.
+    Linux and Windows do not have this dyld coalescing problem and keep dynamic OpenMP.
     """
     if sys.platform == "win32":  # Windows (MSVC)
         return {
