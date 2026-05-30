@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.5.1 (2026-05-30)
+
+### Bugfix
+
+- Fixes segfaults on macOS when using shapiq alongside XGBoost or LightGBM by static-linking the OpenMP runtime instead of vendoring a dynamic `libomp.dylib`. No API changes. [#536](https://github.com/mmschlk/shapiq/issues/536)
+
 ## v1.5.0 (2026-05-29)
 
 ### Highlights of new Features
