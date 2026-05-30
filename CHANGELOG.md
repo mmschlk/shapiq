@@ -1,6 +1,12 @@
 # Changelog
 
-## v1.5.0 (2026-05-26)
+## v1.5.1 (2026-05-30)
+
+### Bugfix
+
+- Fixes segfaults on macOS when using shapiq alongside XGBoost or LightGBM by static-linking the OpenMP runtime instead of vendoring a dynamic `libomp.dylib`. No API changes. [#536](https://github.com/mmschlk/shapiq/issues/536)
+
+## v1.5.0 (2026-05-29)
 
 ### Highlights of new Features
 
@@ -11,6 +17,7 @@
 - adds `InterventionalTreeExplainer` in `shapiq.tree.interventional`
 - adds `KNNExplainer`, `WeightedKNNExplainer` and `ThresholdNNExplainer` for nearest neighbor models
 - changes the default for all user-facing `Explainer` classes to `index="SV"`, `max_order=1` (Shapley values) — see Breaking Changes below
+- adds `shapiq.scatter_plot` for SHAP-style scatter (dependence) plots of interaction values, supporting both first-order and higher-order interactions [#516](https://github.com/mmschlk/shapiq/pull/516)
 
 
 ### Introducing ProxySHAP [#501](https://github.com/mmschlk/shapiq/pull/501), [Preprint](https://arxiv.org/abs/2605.22738)
@@ -101,7 +108,7 @@ The conversion of the tree methods has been moved to C++ giving at least 2x up t
 - fixes `min_order` in `TreeExplainer` so that it now actually restricts the returned `InteractionValues` to interactions of order ``min_order..max_order`` (``min_order=0`` continues to include the empty interaction at the baseline value); invalid values now raise a clear `ValueError`. [#325](https://github.com/mmschlk/shapiq/issues/325)
 - fixes tree conversion breaking when the `LC_NUMERIC` locale is not set to the standard `"C"` value. [#515](https://github.com/mmschlk/shapiq/pull/515)
 - fixes a segfault in the `ProxySHAP` C++ extension code. [#506](https://github.com/mmschlk/shapiq/pull/506)
-
+- fixes a Out Of Memory (OOM) when values is an dictionary and n_players is large.  [#531](https://github.com/mmschlk/shapiq/issues/531)
 
 ## v1.4.1 (2025-11-10)
 

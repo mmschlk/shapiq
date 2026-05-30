@@ -12,18 +12,7 @@ from shapiq.game_theory.indices import get_computation_index
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.validation import validate_tree_model
 
-from .cext import (
-    compute_interactions_batched_sparse,  # ty: ignore[unresolved-import]
-    compute_interactions_flatten,  # ty: ignore[unresolved-import]
-    preprocess_boolean_trees,  # ty: ignore[unresolved-import]
-)
-
-# The dense `compute_interactions_flatten` path allocates a result buffer of
-# sum(C(n, k) for k in 1..max_order) doubles, plus one such buffer per OpenMP
-# thread inside the order-2/3 leaf-parallel kernels. Above this threshold we
-# redirect to the sparse `compute_interactions_batched_sparse` path, which only
-# materializes interactions actually touched by tree paths. 1_000_000 entries
-# = 8 MB per thread — comfortably below typical RAM budgets.
+# Maximal budget, for which we still use the flatten path: max_order=3 for n_features up to 100, or max_order=4 for n_features up to 20.
 _DENSE_FLATTEN_MAX_RESULT_SIZE = 1_000_000
 
 
@@ -264,6 +253,8 @@ class InterventionalTreeExplainer:
 
     def _preprocess_boolean_tree(self) -> None:
         """Gather E and R statistics for boolean tree mode using C++ BitSet DFS."""
+        from .cext import preprocess_boolean_trees  # ty: ignore[unresolved-import]
+
         self.n_features = self.reference_data.shape[1]
 
         # Prepare tree arrays for C++
@@ -450,6 +441,11 @@ class InterventionalTreeExplainer:
             empty-set entry ``()`` set to ``self.baseline_value``, even though
             ``min_order`` reports ``1``.
         """
+        from .cext import (
+            compute_interactions_batched_sparse,  # ty: ignore[unresolved-import]
+            compute_interactions_flatten,  # ty: ignore[unresolved-import]
+        )
+
         if not self.bool_tree and not self._use_sparse_path:
             self._preprocess_tree(x)
         computation_index = get_computation_index(self.index)

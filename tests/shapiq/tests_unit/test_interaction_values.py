@@ -929,3 +929,36 @@ def test_from_empty_array():
     assert len(iv.interaction_lookup) == 1
     assert iv[()] == baseline_value
     assert iv.baseline_value == baseline_value
+
+
+def test_init_with_sparse_dict():
+    """Regression: a sparse-dict ``values`` input must not allocate the dense
+    interaction lookup of size Σ C(n_players, k).
+
+    Before the fix, ``_validate_and_return_interactions`` unconditionally called
+    ``generate_interaction_lookup(n_players, min_order, max_order)`` even when
+    ``values`` was a dict (where the built lookup is then unused — the dict
+    branch only does ``copy.deepcopy(values)``).  For n_players=30 and
+    max_order=30 that lookup would have 2**30 ~ 1e9 entries and OOM.
+
+    The fix skips the build when ``values`` is a dict.  Pre-fix, this test
+    crashes with MemoryError; post-fix it completes instantly.
+    """
+    sparse_values = {(0,): 1.0, (1,): 2.0, (0, 1): 3.0}
+
+    iv = InteractionValues(
+        values=sparse_values,
+        index="SV",
+        max_order=30,
+        n_players=30,
+        min_order=1,
+        baseline_value=0.0,
+    )
+
+    assert iv.interactions == sparse_values
+    assert iv.n_players == 30
+    assert iv.max_order == 30
+    # ``interaction_lookup`` is a property derived from ``self.interactions``;
+    # it should only contain keys actually present in ``values``, not the
+    # full enumeration of Σ C(n_players, k) interactions.
+    assert set(iv.interaction_lookup.keys()) == set(sparse_values.keys())
