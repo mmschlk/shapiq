@@ -621,26 +621,32 @@ def solve_regression(
     *,
     use_svd: bool = False,
 ) -> np.ndarray:
-    """Solves the Shapley regression problem.
-
-    Solves the regression problem using the weighted least squares method. Returns all approximated
-    interactions.
-
-    Args:
-        X: The regression matrix of shape ``[n_coalitions, n_interactions]``.
-        y: The response vector for each coalition of shape ``[n_coalitions]``.
-        kernel_weights: The weights for the regression problem for each coalition.
-        use_svd: If ``True``, solve via the SVD-backed least-squares path directly.
-
-    Returns:
-        The solution to the regression problem.
-
-    """
+    """Solves the Shapley regression problem."""
     WX = kernel_weights[:, np.newaxis] * X
+
+    # If we explicitly want to use the SVD-backed least-squares path, we can skip the rank check and directly solve via lstsq, which is more stable in the presence of NaNs/Infs and rank-deficiency. This is especially relevant for the test_extreme_weight_initialisation test case, which intentionally creates extreme weights that can lead to numerical issues.
     if use_svd:
         W_sqrt = np.sqrt(kernel_weights)
-        X = W_sqrt[:, np.newaxis] * X
-        y = W_sqrt * y
-        return np.linalg.lstsq(X, y, rcond=None)[0]
+        X_w = W_sqrt[:, np.newaxis] * X
+        y_w = W_sqrt * y
+        # Guard: SVD crashes for NaN/Inf values.
+        if not np.isfinite(X_w).all() or not np.isfinite(y_w).all():
+            return np.full(X.shape[1], np.nan)
+        return np.linalg.lstsq(X_w, y_w, rcond=None)[0]
 
-    return np.linalg.solve(X.T @ WX, WX.T @ y)
+    # Otherwise, we attempt the fast path via np.linalg.solve, but only if the Gram matrix is well-conditioned and of full rank. This is a more efficient solution for well-behaved cases, while still providing a fallback to the more robust lstsq method when numerical issues are detected.
+    gram_matrix = X.T @ WX
+
+    # test_extreme_weight_initialisation causes extreme weights that lead to Inf/NaN in the Gram matrix. np.linalg.solve used to silently return NaNs in this case. We now explicitly handle this cleanly and return NaNs for the regression coefficients.
+    if not np.isfinite(gram_matrix).all():
+        return np.full(X.shape[1], np.nan)
+
+    # Deterministic rank check (Look before you leap) instead of Try/Except
+    if (X.shape[0] < X.shape[1]) or (np.linalg.matrix_rank(gram_matrix) < gram_matrix.shape[0]):
+        W_sqrt = np.sqrt(kernel_weights)
+        X_w = W_sqrt[:, np.newaxis] * X
+        y_w = W_sqrt * y
+        return np.linalg.lstsq(X_w, y_w, rcond=None)[0]
+
+    # The fast standard path for full-rank matrices
+    return np.linalg.solve(gram_matrix, WX.T @ y)
