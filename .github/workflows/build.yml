@@ -1,6 +1,6 @@
 name: Build Wheels and SDist
 on:
-  pull_request:
+  # pull_request:
   workflow_call:
     inputs:
       ref:
