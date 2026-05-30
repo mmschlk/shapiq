@@ -32,9 +32,9 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
        (Algorithm 2): for each size ``s``, ``m_s ~ Binomial(C(n,s), min(1, 2c/C(n,s)))``
        pairs are included. Subsets of small sizes (where ``C(n,s) <= 2c``) are
        included deterministically; only larger sizes are subsampled.
-    3. Reweights each row by ``w(||z||) / min(1, 2c·ℓ_z)`` where
+     3. Reweights each row by ``w(||z||) / min(1, 2c·l_z)`` where
        ``w(s) = (s-1)!(n-s-1)!/n!`` is the Shapley kernel weight and
-       ``ℓ_z = 1/C(n,s)`` is its leverage score.
+         ``l_z = 1/C(n,s)`` is its leverage score.
     4. Solves the unconstrained centered regression (Lemma 3.1) and adds the
        efficiency offset.
 
@@ -103,7 +103,32 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         Z, weights = self._sample(budget)
         game_values: FloatVector = game(Z)
         v0 = float(game_values[np.sum(Z, axis=1) == 0][0])
-        sv = self._solve(Z, game_values, v0, weights)
+
+        n = self.n
+        coalition_sizes = Z.sum(axis=1)
+        v_grand = float(game_values[coalition_sizes == n][0])
+        efficiency_shift = (v_grand - v0) / n
+
+        interior = (coalition_sizes > 0) & (coalition_sizes < n)
+        Z_int = Z[interior].astype(float)
+        v_int = game_values[interior]
+        s_int = coalition_sizes[interior]
+        w_is = weights[interior]
+
+        if len(Z_int) == 0:
+            sv = np.concatenate([[v0], np.full(n, efficiency_shift)])
+        else:
+            # Keep all LeverageSHAP-specific math here: the shared solver only handles
+            # the weighted least-squares step.
+            A = Z_int - (s_int / n)[:, np.newaxis]
+            b = (v_int - v0) - efficiency_shift * s_int
+            phi_perp = super().solve_regression(
+                X=A,
+                y=b,
+                kernel_weights=w_is,
+                use_svd=True,
+            )
+            sv = np.concatenate([[v0], phi_perp + efficiency_shift])
         return InteractionValues(
             values=sv,
             index=self.approximation_index,
@@ -127,7 +152,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             Z: Boolean coalition matrix of shape ``(n_coalitions, n)`` containing
                 the empty coalition, the grand coalition, and the BernoulliSample
                 pairs.
-            weights: Per-coalition IS weights ``w(s) / min(1, 2c·ℓ_z)`` with
+            weights: Per-coalition IS weights ``w(s) / min(1, 2c·l_z)`` with
                 arbitrary positive scale (only relative weights matter for lstsq).
                 Empty/grand coalitions get weight 0 (they enter via the efficiency
                 shift, not the regression).
@@ -158,9 +183,9 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 log_C = (
                     math.lgamma(n + 1) - math.lgamma(s + 1) - math.lgamma(n - s + 1)
                 )  # log C(n,s)
-                log_p = log_2c - log_C  # log(2c · ℓ_z) = log(2c / C(n,s))
+                log_p = log_2c - log_C  # log(2c * l_z) = log(2c / C(n,s))
                 log_min_p = min(0.0, log_p)  # cap probability at 1 (log 1 = 0)
-                log_weights[i] = log_w - log_min_p  # IS weight = w(s) / min(1, 2c·ℓ_z)
+                log_weights[i] = log_w - log_min_p  # IS weight = w(s) / min(1, 2c*l_z)
             log_weights -= log_weights.max()  # shift so exp doesn't overflow
             weights_pairs = np.exp(log_weights)  # back to linear space
             Z = np.vstack(
@@ -231,7 +256,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         # Convert numpy seed to a Python random seed so randrange supports
         # arbitrary-precision integers (needed for large n where C(n, n/2) overflows int64).
         py_seed = int(self._rng.integers(0, 2**32))  # reproducible seed for python RNG
-        py_rng = _py_random.Random(py_seed)  # python RNG (handles big ints)
+        py_rng = _py_random.Random(py_seed)  # noqa: S311 - reproducible, non-crypto sampling
 
         two_c = 2.0 * c  # cached for the loop
         for s in range(1, n // 2 + 1):  # iterate sizes 1..⌊n/2⌋ (rest covered via complement z̄)
@@ -239,7 +264,7 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
             full_count = math.comb(n, s)  # C(n, s) total subsets of this size
             prob = (
                 1.0 if full_count <= two_c else two_c / full_count
-            )  # inclusion probability ℓ_z·2c
+            )  # inclusion probability l_z*2c
 
             # Number of distinct unordered pairs at this size.
             pool_size = (
@@ -322,58 +347,3 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
                 i -= count  # skip this branch, adjust i
             j += 1  # advance to next position
         return z  # boolean vector with exactly s True entries
-
-    def _solve(
-        self,
-        Z: np.ndarray,
-        game_values: FloatVector,
-        v0: float,
-        weights: np.ndarray,
-    ) -> FloatVector:
-        """Algorithm 1, lines 8-13: weighted least squares with provided IS weights.
-
-        Builds A = Z·P (row-centering trick from Lemma 3.1), centered target
-        ``b = (y - v0·1) - efficiency_shift · Z·1`` and solves
-        ``argmin_x ||W^{1/2} A x - W^{1/2} b||_2`` via lstsq, then adds the
-        efficiency offset.
-
-        Args:
-            Z: Coalition matrix (rows include empty and grand coalitions).
-            game_values: ``v(z)`` for each row of ``Z``.
-            v0: Empty-coalition value (baseline).
-            weights: Per-row IS weights from ``_sample``; entries for empty/grand
-                are zero and are filtered out by the interior mask.
-
-        Returns:
-            ``[v0, phi_1, ..., phi_n]``.
-        """
-        n = self.n  # number of players
-        coalition_sizes = Z.sum(axis=1)  # |z| for each row
-
-        v_grand = float(game_values[coalition_sizes == n][0])  # value of grand coalition v(N)
-        efficiency_shift = (
-            v_grand - v0
-        ) / n  # average per-player share (used to re-center problem)
-
-        interior = (coalition_sizes > 0) & (coalition_sizes < n)  # rows excluding empty + grand
-        Z_int = Z[interior].astype(float)  # interior coalition matrix
-        v_int = game_values[interior]  # interior game values v(z)
-        s_int = coalition_sizes[interior]  # interior sizes |z|
-        w_is = weights[interior]  # interior IS weights
-
-        if len(Z_int) == 0:
-            return np.concatenate(
-                [[v0], np.full(n, efficiency_shift)]
-            )  # fallback: split value evenly
-
-        # A = Z·P with P = I - 1/n · 11^T → row-center each Z row by its size mean.
-        A = Z_int - (s_int / n)[:, np.newaxis]  # row-center: applies projection P from Lemma 3.1
-        b = (v_int - v0) - efficiency_shift * s_int  # centered target vector
-
-        W_sqrt = np.sqrt(w_is)  # sqrt of IS weights for weighted lstsq
-        phi_perp = np.linalg.lstsq(W_sqrt[:, np.newaxis] * A, W_sqrt * b, rcond=None)[
-            0
-        ]  # solve weighted least squares
-
-        sv = phi_perp + efficiency_shift  # add efficiency offset back to recover Shapley values
-        return np.concatenate([[v0], sv])  # prepend baseline → [v0, φ₁, ..., φₙ]

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import warnings
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, get_args
 
 import numpy as np
@@ -189,6 +188,27 @@ class Regression(Approximator[TIndices]):
             target_index=self.index,
         )
 
+    def solve_regression(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        kernel_weights: FloatVector,
+        *,
+        use_svd: bool = False,
+    ) -> np.ndarray:
+        """Solve the weighted regression system used by regression approximators.
+
+        Args:
+            X: The regression matrix of shape ``[n_coalitions, n_interactions]``.
+            y: The response vector for each coalition of shape ``[n_coalitions]``.
+            kernel_weights: The weights for the regression problem for each coalition.
+            use_svd: If ``True``, solve via the SVD-backed least-squares path directly.
+
+        Returns:
+            The solution to the regression problem.
+        """
+        return solve_regression(X=X, y=y, kernel_weights=kernel_weights, use_svd=use_svd)
+
     def kernel_shap_iq_routine(
         self,
         kernel_weights_dict: dict[int, FloatVector],
@@ -246,10 +266,11 @@ class Regression(Approximator[TIndices]):
 
             if interaction_size <= 2:
                 # get \phi_i via solving the regression problem
-                sii_values_current_size = solve_regression(
+                sii_values_current_size = self.solve_regression(
                     X=regression_matrix,
                     y=residual_game_values[interaction_size],
                     kernel_weights=regression_weights,
+                    use_svd=False,
                 )
             else:
                 # for order > 2 use ground truth weights for sizes < interaction_size and > n -
@@ -271,10 +292,11 @@ class Regression(Approximator[TIndices]):
                 game_values_plus[ground_truth_weights_indicator] = 0
 
                 # get \phi_i via solving the regression problem
-                sii_values_current_size_plus = solve_regression(
+                sii_values_current_size_plus = self.solve_regression(
                     X=regression_matrix,
                     y=game_values_plus,
                     kernel_weights=regression_weights,
+                    use_svd=False,
                 )
 
                 sii_values_current_size = (
@@ -329,10 +351,11 @@ class Regression(Approximator[TIndices]):
             n=self.n,
         )
 
-        shapley_interactions_values = solve_regression(
+        shapley_interactions_values = self.solve_regression(
             X=regression_matrix,
             y=regression_response,
             kernel_weights=regression_weights,
+            use_svd=False,
         )
 
         if index_approximation in ["kADD-SHAP", "FBII"]:
@@ -591,7 +614,13 @@ def _get_regression_matrices(
     return regression_matrix, regression_weights
 
 
-def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: FloatVector) -> np.ndarray:
+def solve_regression(
+    X: np.ndarray,
+    y: np.ndarray,
+    kernel_weights: FloatVector,
+    *,
+    use_svd: bool = False,
+) -> np.ndarray:
     """Solves the Shapley regression problem.
 
     Solves the regression problem using the weighted least squares method. Returns all approximated
@@ -601,21 +630,17 @@ def solve_regression(X: np.ndarray, y: np.ndarray, kernel_weights: FloatVector) 
         X: The regression matrix of shape ``[n_coalitions, n_interactions]``.
         y: The response vector for each coalition of shape ``[n_coalitions]``.
         kernel_weights: The weights for the regression problem for each coalition.
+        use_svd: If ``True``, solve via the SVD-backed least-squares path directly.
 
     Returns:
         The solution to the regression problem.
 
     """
-    try:
-        # try solving via solve function
-        WX = kernel_weights[:, np.newaxis] * X
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            phi = np.linalg.solve(X.T @ WX, WX.T @ y)
-    except np.linalg.LinAlgError:
-        # solve WLSQ via lstsq function and throw warning
+    WX = kernel_weights[:, np.newaxis] * X
+    if use_svd:
         W_sqrt = np.sqrt(kernel_weights)
         X = W_sqrt[:, np.newaxis] * X
         y = W_sqrt * y
-        phi = np.linalg.lstsq(X, y, rcond=None)[0]
-    return phi
+        return np.linalg.lstsq(X, y, rcond=None)[0]
+
+    return np.linalg.solve(X.T @ WX, WX.T @ y)
