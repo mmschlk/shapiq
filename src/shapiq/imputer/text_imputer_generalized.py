@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 import nltk
+from nltk.corpus import wordnet as wn
+
 nltk.download("punkt")
+nltk.download("wordnet")
+nltk.download("averaged_perceptron_tagger")
+nltk.download("averaged_perceptron_tagger_eng")
 
 if TYPE_CHECKING:
     from transformers import (
@@ -306,6 +311,67 @@ class NeutralPerturbation(BasePerturbationStrategy):
     ) -> str:
         """Return neutral replacement text."""
         return self.neutral_text
+
+
+# =============================================================================
+
+# WORDNET NEUTRAL PERTURBATION
+
+# =============================================================================
+
+# Xufan Dong
+def _penn_to_wn(tag: str) -> str | None:
+
+    if tag.startswith("N"):
+        return wn.NOUN
+
+    if tag.startswith("V"):
+        return wn.VERB
+
+    if tag.startswith("J"):
+        return wn.ADJ
+
+    if tag.startswith("R"):
+        return wn.ADV
+
+    return None
+
+def get_neutral_replacement( word: str, pos_tag: str) -> str:
+    """Generate a semantic neutral replacement using WordNet hypernyms."""
+    wn_pos = _penn_to_wn(pos_tag)
+
+    if wn_pos is None:
+        return "something"
+
+    synsets = wn.synsets(word, pos=wn_pos)
+
+    if not synsets:
+        return "something"
+
+    hypernyms = synsets[0].hypernyms()
+
+    if not hypernyms:
+        return "something"
+
+    replacement = hypernyms[0].lemma_names()[0]
+
+    return replacement.replace("_", " ").split()[0]
+
+class WordNetNeutralPerturbation(BasePerturbationStrategy):
+    """Semantic neutral replacement.
+
+    Examples:
+    dog -> animal
+    car -> vehicle
+    apple -> fruit
+    """
+
+    def perturb(self, player: str) -> str:
+        """Replace a player with a semantic hypernym."""
+        tag = nltk.pos_tag([player])[0][1]
+
+        return get_neutral_replacement(player, tag)
+
 # =============================================================================
 # TARGET CALLABLES
 # =============================================================================
@@ -418,21 +484,96 @@ class EncoderClassifierCallable(BaseTargetCallable):
 # - log-prob scoring
 # =============================================================================
 
-
+# Xufan Dong
 class CausalLMCallable(BaseTargetCallable):
-    """Placeholder for future causal LM support."""
+    """Causal language model scoring."""
+    def __init__(
+        self,
+        model: PreTrainedModel,
+        tokenizer: PreTrainedTokenizerBase,
+        device: str,
+        target_label: str = "good",
+
+        prompt_template: str = (
+            "Review: {text}\n\n"
+            "Sentiment:"
+            ),
+    ) -> None:
+        """Causal language model scoring."""
+        super().__init__(model, tokenizer, device)
+
+        self.prompt_template = prompt_template
+
+        target_ids = tokenizer.encode(target_label, add_special_tokens=False)
+
+        if len(target_ids) != 1:
+            msg = (
+                f"Target label '{target_label}' "
+                "must be single-token."
+            )
+            raise ValueError(msg)
+
+        self.target_token_id = target_ids[0]
+
+        if tokenizer.pad_token is None:
+
+            tokenizer.pad_token = tokenizer.eos_token
+
+        tokenizer.padding_side = "left"
+
+    def _build_prompt(
+        self,
+        text: str,
+    ) -> str:
+        """Construct a prompt for causal LM scoring."""
+        return self.prompt_template.format(text=text)
 
     def predict(
         self,
         texts: list[str],
     ) -> np.ndarray:
-        """Placeholder for future causal LM support."""
-        msg = "CausalLMCallable is not implemented yet."
-        raise NotImplementedError(
-            msg
+        """Score texts using next-token log probabilities."""
+        prompts = [
+            self._build_prompt(text)
+            for text in texts
+        ]
+
+        encoded = self.tokenizer(
+            prompts,
+            padding=True,
+            truncation=True,
+            max_length=512,
+            return_tensors="pt"
         )
 
+        encoded = {
+            key: value.to(self.device)
+            for key, value in encoded.items()
+            }
 
+        with torch.no_grad():
+            outputs = self.model(**encoded)
+            logits = outputs.logits
+
+        next_token_logits = logits[:, -1, :]
+
+        log_probs = torch.log_softmax(
+            next_token_logits,
+            dim=-1,
+        )
+
+        scores = log_probs[
+            :,
+            self.target_token_id,
+        ]
+
+        return (
+            scores
+            .detach()
+            .cpu()
+            .float()
+            .numpy()
+        )
 # =============================================================================
 # TO DO:
 # Future seq2seq support.
@@ -497,6 +638,18 @@ class TextImputer:
         output_type: str = "logit",
 
         # ---------------------------------------------------------------------
+        # causal LM settings
+        # ---------------------------------------------------------------------
+        # Xufan Dong
+
+        target_label: str = "good",
+
+        prompt_template: str = (
+            "Review: {text}\n\n"
+            "Sentiment:"
+        ),
+
+        # ---------------------------------------------------------------------
         # architecture selection
         # ---------------------------------------------------------------------
 
@@ -521,11 +674,21 @@ class TextImputer:
         self.batch_size = batch_size
 
         if device is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
 
+            if torch.cuda.is_available():
+                device = "cuda"
+
+            elif torch.backends.mps.is_available():
+                device = "mps"
+
+            else:
+                device = "cpu"
         self.device = device
 
-        self.model = self.model.to(self.device)
+        # Xufan Dong
+        if not hasattr(self.model, "hf_device_map"):
+            self.model = self.model.to(self.device)
+
         self.model.eval()
 
         # =============================================================================
@@ -574,7 +737,9 @@ class TextImputer:
                 model=model,
                 tokenizer=tokenizer,
                 device=device,
-            )
+                target_label=target_label,
+                prompt_template=prompt_template,
+                )
 
         elif model_type == "seq2seq":
 
