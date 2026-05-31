@@ -21,7 +21,7 @@ nltk.download("averaged_perceptron_tagger")
 nltk.download("averaged_perceptron_tagger_eng")
 nltk.download("maxent_ne_chunker")
 nltk.download("words")
-
+nltk.download("maxent_ne_chunker_tab")
 
 if TYPE_CHECKING:
     from transformers import (
@@ -539,7 +539,7 @@ class MaskTokenPerturbation(BasePerturbationStrategy):
         self,
         _player: str,
         *,
-        _context: dict | None = None,
+        context: dict | None = None,
     ) -> str:
         """Replace missing words with [MASK]."""
         return self.mask_token
@@ -570,7 +570,7 @@ class PadTokenPerturbation(BasePerturbationStrategy):
         self,
         _player: str,
         *,
-        _context: dict | None = None,
+        context: dict | None = None,
     ) -> str:
         """Return the PAD token."""
         return self.pad_token
@@ -589,7 +589,7 @@ class RemovalPerturbation(BasePerturbationStrategy):
         self,
         _player: str,
         *,
-        _context: dict | None = None,
+        context: dict | None = None,
     ) -> str:
         """Return empty string."""
         return ""
@@ -614,7 +614,7 @@ class NeutralPerturbation(BasePerturbationStrategy):
         self,
         _player: str,
         *,
-        _context: dict | None = None,
+        context: dict | None = None,
     ) -> str:
         """Return neutral replacement text."""
         return self.neutral_text
@@ -676,7 +676,7 @@ class WordNetNeutralPerturbation(BasePerturbationStrategy):
         self,
         _player: str,
         *,
-        _context: dict | None = None,
+        context: dict | None = None,
     ) -> str:
         """Replace a player with a semantic hypernym."""
         tag = nltk.pos_tag([_player])[0][1]
@@ -1021,7 +1021,6 @@ class EncoderClassifierCallable(BaseTargetCallable):
 # - log-prob scoring
 # =============================================================================
 
-# Xufan Dong
 class CausalLMCallable(BaseTargetCallable):
     """Causal language model scoring."""
     def __init__(
@@ -1041,18 +1040,21 @@ class CausalLMCallable(BaseTargetCallable):
 
         self.prompt_template = prompt_template
 
-        target_ids = tokenizer.encode(target_label, add_special_tokens=False)
+        self.target_token_ids = tokenizer.encode(target_label, add_special_tokens=False)
 
-        if len(target_ids) != 1:
+        if len(self.target_token_ids) == 0:
             msg = (
-                f"Target label '{target_label}' "
-                "must be single-token."
+                f"Target label '{target_label}' produced no tokens."
             )
             raise ValueError(msg)
 
-        self.target_token_id = target_ids[0]
+        if tokenizer.pad_token_id is None:
 
-        if tokenizer.pad_token is None:
+            if tokenizer.eos_token_id is None:
+                msg = (
+                    "Tokenizer must define either a pad token or eos token."
+                )
+                raise ValueError(msg)
 
             tokenizer.pad_token = tokenizer.eos_token
 
@@ -1065,52 +1067,64 @@ class CausalLMCallable(BaseTargetCallable):
         """Construct a prompt for causal LM scoring."""
         return self.prompt_template.format(text=text)
 
+    def _score_target_sequence(
+        self,
+        prompt: str,
+    ) -> float:
+        """Compute log-probability of target sequence."""
+        prompt_ids = self.tokenizer.encode(
+            prompt,
+            add_special_tokens=False,
+        )
+        target_ids = self.target_token_ids
+        total_log_prob = 0.0
+
+        for i in range(len(target_ids)):
+
+            prefix_ids = target_ids[:i]
+            input_ids = prompt_ids + prefix_ids
+            encoded = {
+                "input_ids": torch.tensor(
+                    [input_ids],
+                    device=self.device,
+                ),
+            }
+
+            with torch.no_grad():
+                outputs = self.model(**encoded)
+
+            logits = outputs.logits
+            next_token_logits = logits[:, -1, :]
+            log_probs = torch.log_softmax(
+                next_token_logits,
+                dim=-1,
+            )
+
+            total_log_prob += (
+                log_probs[
+                    0,
+                    target_ids[i],
+                ]
+                .item()
+            )
+
+        return total_log_prob
+
     def predict(
         self,
         texts: list[str],
     ) -> np.ndarray:
-        """Score texts using next-token log probabilities."""
-        prompts = [
-            self._build_prompt(text)
-            for text in texts
-        ]
+        """Score texts using target-sequence log probabilities."""
+        scores = []
+        for text in texts:
+            prompt = self._build_prompt(text)
+            score = self._score_target_sequence(
+                prompt,
+            )
+            scores.append(score)
 
-        encoded = self.tokenizer(
-            prompts,
-            padding=True,
-            truncation=True,
-            max_length=512,
-            return_tensors="pt"
-        )
+        return np.asarray(scores,dtype=np.float32)
 
-        encoded = {
-            key: value.to(self.device)
-            for key, value in encoded.items()
-            }
-
-        with torch.no_grad():
-            outputs = self.model(**encoded)
-            logits = outputs.logits
-
-        next_token_logits = logits[:, -1, :]
-
-        log_probs = torch.log_softmax(
-            next_token_logits,
-            dim=-1,
-        )
-
-        scores = log_probs[
-            :,
-            self.target_token_id,
-        ]
-
-        return (
-            scores
-            .detach()
-            .cpu()
-            .float()
-            .numpy()
-        )
 # =============================================================================
 # TO DO:
 # Future seq2seq support.
@@ -1241,6 +1255,7 @@ class TextImputer:
 
         self.player_level = player_level
         self.player_strategy = player_strategy
+        self.model_type = model_type
 
         # =============================================================================
         # PERTURBATION STRATEGY
