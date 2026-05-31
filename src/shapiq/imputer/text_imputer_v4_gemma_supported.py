@@ -539,7 +539,7 @@ class MaskTokenPerturbation(BasePerturbationStrategy):
         self,
         _player: str,
         *,
-        _context: dict | None = None,
+        context: dict | None = None, #把_context改成了context
     ) -> str:
         """Replace missing words with [MASK]."""
         return self.mask_token
@@ -570,7 +570,7 @@ class PadTokenPerturbation(BasePerturbationStrategy):
         self,
         _player: str,
         *,
-        _context: dict | None = None,
+        context: dict | None = None, #把_context改成了context
     ) -> str:
         """Return the PAD token."""
         return self.pad_token
