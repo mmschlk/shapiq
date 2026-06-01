@@ -10,12 +10,14 @@ from shapiq.approximator import (
     KernelSHAPIQ,
     PermutationSamplingSV,
     ProxySHAP,
+    StratifiedSamplingSV,
 )
 
 APPROXIMATOR_REGISTRY = {
     "ProxySHAP": ProxySHAP,
     "KernelSHAPIQ": KernelSHAPIQ,
     "PermutationSamplingSV": PermutationSamplingSV,
+    "StratifiedSamplingSV": StratifiedSamplingSV,
 }
 
 
@@ -29,7 +31,7 @@ def get_approximator_class(name: str) -> type[Approximator]:
         the approximator class associated with the name.
 
     Raises:
-        ValueError: If there is no registered approximator corresponding to the name.
+        UnsupportedApproximatorError: If there is no registered approximator corresponding to the name.
     """
     try:
         return APPROXIMATOR_REGISTRY[name]
