@@ -19,7 +19,7 @@ from .graphshapiq import GraphSHAPIQ
 if TYPE_CHECKING:
     from torch import nn
 
-    from shapiq.explainer.custom_types import ExplainerIndices
+    from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
 
 SPARSIFY_THRESHOLD = 1e-8
 
@@ -48,8 +48,8 @@ class GraphExplainer(Explainer):
         self,
         model: nn.Module,
         l_shapley_max_budget: int = 20000,
-        index: ExplainerIndices = "k-SII",
-        baseline_strategy: str = "max",
+        index: ValidMoebiusConverterIndices = "k-SII",
+        baseline_strategy: str = "average",
         max_order: int = 2,
         class_index: int | None = None,
         *,
@@ -203,7 +203,7 @@ class GraphExplainer(Explainer):
         self,
         game: GraphGame,
         explainer: GraphSHAPIQ,
-        index: str = "k-SII",
+        index: ValidMoebiusConverterIndices = "k-SII",
     ) -> InteractionValues:
         """Approximate Shapley Interactions using grapshapiq."""
         moebius, _ = explainer.explain(
@@ -227,7 +227,7 @@ class GraphExplainer(Explainer):
         game: GraphGame,
         explainer: GraphSHAPIQ,
         max_interaction_size: int,
-        index: str,
+        index: ValidMoebiusConverterIndices,
     ) -> InteractionValues:
         """Run the L-Shapley approximation.
 
