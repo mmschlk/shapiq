@@ -4,28 +4,23 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from transformers import (
     AutoTokenizer,
-    AutoModelForSequenceClassification,
+    AutoModelForCausalLM,
 )
 
 from shapiq.imputer.text_imputer import TextImputer
 
 
-MODEL_NAME = (
-    "distilbert-base-uncased-finetuned-sst-2-english"
-)
+MODEL_NAME = "google/gemma-4-E2B-it"
 
 TEXT = (
-    "Barack Obama visited New York and met Microsoft executives."
+    "The movie was surprisingly good and very entertaining."
 )
 
-TARGET_LABEL = "POSITIVE"
-
+TARGET_LABEL = "positive"
 
 PERTURBATIONS = [
     "mask",
     "pad",
-    "removal",
-    "neutral",
     "wordnet_neutral",
     "mlm_infilling",
 ]
@@ -39,18 +34,14 @@ def print_header(title: str):
 
 def print_players(imputer):
 
-    print_header("Named Entity Players")
+    print_header("Players")
 
     print(f"n_players = {imputer.n_players}\n")
 
-    players = (
-        imputer.player_strategy.get_players()
-    )
+    players = imputer.player_strategy.get_players()
 
     for i, player in enumerate(players):
         print(f"[{i}] {player}")
-
-    return players
 
 
 def show_prediction(imputer):
@@ -63,148 +54,40 @@ def show_prediction(imputer):
     print(f"Prediction   : {score}")
 
 
-def build_coalitions(players):
-
-    n = len(players)
-
-    examples = []
-
-    #
-    # Full coalition
-    #
-    examples.append(
-        (
-            "Keep Everything",
-            [True] * n,
-        )
-    )
-
-    #
-    # Empty coalition
-    #
-    examples.append(
-        (
-            "Keep Nothing",
-            [False] * n,
-        )
-    )
-
-    #
-    # Keep Barack Obama
-    #
-    coalition = [False] * n
-
-    for i, player in enumerate(players):
-
-        p = str(player)
-
-        if (
-            "Barack" in p
-            or "Obama" in p
-        ):
-            coalition[i] = True
-
-    examples.append(
-        (
-            "Keep Barack Obama",
-            coalition,
-        )
-    )
-
-    #
-    # Keep New York
-    #
-    coalition = [False] * n
-
-    for i, player in enumerate(players):
-
-        if "New York" in str(player):
-            coalition[i] = True
-
-    examples.append(
-        (
-            "Keep New York",
-            coalition,
-        )
-    )
-
-    #
-    # Keep Microsoft
-    #
-    coalition = [False] * n
-
-    for i, player in enumerate(players):
-
-        if "Microsoft" in str(player):
-            coalition[i] = True
-
-    examples.append(
-        (
-            "Keep Microsoft",
-            coalition,
-        )
-    )
-
-    #
-    # Keep Named Entities
-    #
-    coalition = [False] * n
-
-    for i, player in enumerate(players):
-
-        p = str(player)
-
-        if (
-            "Barack" in p
-            or "Obama" in p
-            or "New York" in p
-            or "Microsoft" in p
-        ):
-            coalition[i] = True
-
-    examples.append(
-        (
-            "Keep Named Entities",
-            coalition,
-        )
-    )
-
-    #
-    # Remove Named Entities
-    #
-    coalition = [True] * n
-
-    for i, player in enumerate(players):
-
-        p = str(player)
-
-        if (
-            "Barack" in p
-            or "Obama" in p
-            or "New York" in p
-            or "Microsoft" in p
-        ):
-            coalition[i] = False
-
-    examples.append(
-        (
-            "Remove Named Entities",
-            coalition,
-        )
-    )
-
-    return examples
-
-
 def show_perturbation_examples(imputer):
 
     print_header("Perturbation Examples")
 
-    players = (
-        imputer.player_strategy.get_players()
+    n = imputer.n_players
+
+    examples = []
+
+    #
+    # Keep Only "good"
+    #
+    coalition = [False] * n
+    coalition[4] = True
+
+    examples.append(
+        (
+            "Keep Only 'good'",
+            coalition,
+        )
     )
 
-    examples = build_coalitions(players)
+    #
+    # Keep movie + good
+    #
+    coalition = [False] * n
+    coalition[1] = True
+    coalition[4] = True
+
+    examples.append(
+        (
+            "Keep 'movie' + 'good'",
+            coalition,
+        )
+    )
 
     for title, coalition in examples:
 
@@ -250,20 +133,29 @@ def run_demo(
 ):
 
     print_header(
-        f"Named Entity + {perturbation_type}"
+        f"Gemma4 + Word + {perturbation_type}"
     )
 
     imputer = TextImputer(
         model=model,
         tokenizer=tokenizer,
         text=TEXT,
-        model_type="encoder_classifier",
+        model_type="causal_lm",
         target_label=TARGET_LABEL,
-        player_level="named_entity",
+        player_level="word",
         perturbation_type=perturbation_type,
     )
 
+    print_header("Backend")
+
+    print(
+        type(
+            imputer.target_callable
+        ).__name__
+    )
+
     print_header("Original Text")
+
     print(TEXT)
 
     print_players(imputer)
@@ -277,15 +169,21 @@ def run_demo(
 
 if __name__ == "__main__":
 
+    print("Loading tokenizer...")
+
     tokenizer = (
         AutoTokenizer.from_pretrained(
             MODEL_NAME
         )
     )
 
+    print("Loading model...")
+
     model = (
-        AutoModelForSequenceClassification
-        .from_pretrained(MODEL_NAME)
+        AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME,
+            device_map="auto",
+        )
     )
 
     for perturbation in PERTURBATIONS:
@@ -308,7 +206,5 @@ if __name__ == "__main__":
 
     print("mask             ✓")
     print("pad              ✓")
-    print("removal          ✓")
-    print("neutral          ✓")
     print("wordnet_neutral  ✓")
     print("mlm_infilling    ✓")

@@ -1,3 +1,7 @@
+import os
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
@@ -9,17 +13,180 @@ from shapiq.imputer.text_imputer import TextImputer
 MODEL_NAME = "distilbert-base-uncased-finetuned-sst-2-english"
 
 TEXT = (
-    "The movie was surprisingly good and very entertaining."
+    "The movie was surprisingly good and very entertaining for everyone."
 )
 
 TARGET_LABEL = "POSITIVE"
 
 
-def main():
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+def print_header(title: str):
+    print("\n" + "=" * 80)
+    print(title)
+    print("=" * 80)
 
-    model = AutoModelForSequenceClassification.from_pretrained(
+
+def print_players(imputer):
+    print_header("Players")
+
+    print(f"n_players = {imputer.n_players}\n")
+
+    players = imputer.player_strategy.get_players()
+
+    for i, player in enumerate(players):
+        print(f"[{i}] {player}")
+
+
+def show_prediction(imputer):
+    print_header("Full Prediction")
+
+    score = imputer.full_prediction()
+
+    print(f"Target Label : {TARGET_LABEL}")
+    print(f"Prediction   : {score}")
+
+
+def show_perturbation_examples(imputer):
+    print_header("MLM Infilling Examples")
+
+    players = imputer.player_strategy.get_players()
+
+    print("\nPlayer Index Mapping")
+    print("-" * 40)
+
+    for i, player in enumerate(players):
+        print(f"[{i}] {player}")
+
+    n = imputer.n_players
+
+    examples = []
+
+    #
+    # Example 1
+    # Only sentiment word
+    #
+    coalition = [False] * n
+    coalition[4] = True
+
+    examples.append(
+        (
+            "Only Sentiment Word",
+            coalition,
+        )
+    )
+
+    #
+    # Example 2
+    # movie + good
+    #
+    coalition = [False] * n
+    coalition[1] = True
+    coalition[4] = True
+
+    examples.append(
+        (
+            "Movie + Good",
+            coalition,
+        )
+    )
+
+    #
+    # Example 3
+    # sentence skeleton
+    #
+    coalition = [False] * n
+
+    for idx in [0, 1, 2, 4, 5, 7, 9, 10]:
+        if idx < n:
+            coalition[idx] = True
+
+    examples.append(
+        (
+            "Sentence Skeleton",
+            coalition,
+        )
+    )
+
+    #
+    # Example 4
+    # important content words
+    #
+    coalition = [False] * n
+
+    for idx in [1, 4, 7, 9]:
+        if idx < n:
+            coalition[idx] = True
+
+    examples.append(
+        (
+            "Important Keywords",
+            coalition,
+        )
+    )
+
+    #
+    # Example 5
+    # almost complete sentence
+    #
+    coalition = [False] * n
+
+    for idx in [0, 1, 2, 3, 4, 5, 7, 8, 9, 10]:
+        if idx < n:
+            coalition[idx] = True
+
+    examples.append(
+        (
+            "Near Complete Sentence",
+            coalition,
+        )
+    )
+
+    for title, coalition in examples:
+
+        print("\n")
+        print("=" * 80)
+        print(title)
+        print("=" * 80)
+
+        print("\nCoalition:")
+        print(coalition)
+
+        try:
+
+            infilled_text = imputer.coalition_to_text(
+                coalition
+            )
+
+            print("\nInfilled Text:")
+            print(infilled_text)
+
+            prediction = imputer.value_function(
+                [coalition]
+            )[0]
+
+            print("\nPrediction:")
+            print(prediction)
+
+        except Exception as e:
+
+            print(
+                f"Could not generate infilling: {e}"
+            )
+
+
+def run_demo():
+
+    print_header(
+        "DistilBERT + Word Strategy + MLM Infilling"
+    )
+
+    tokenizer = AutoTokenizer.from_pretrained(
         MODEL_NAME
+    )
+
+    model = (
+        AutoModelForSequenceClassification.from_pretrained(
+            MODEL_NAME
+        )
     )
 
     imputer = TextImputer(
@@ -32,49 +199,17 @@ def main():
         perturbation_type="mlm_infilling",
     )
 
-    print("=" * 80)
-    print("Word + MLMInfilling")
-    print("=" * 80)
+    print_header("Original Text")
+    print(TEXT)
 
-    print("\nPlayers")
-    print("-" * 40)
+    print_players(imputer)
 
-    print(f"n_players: {imputer.n_players}")
+    show_prediction(imputer)
 
-    try:
-        print(imputer.players)
-    except Exception:
-        pass
+    show_perturbation_examples(imputer)
 
-    print("\nFull Prediction")
-    print("-" * 40)
-
-    full_pred = imputer.full_prediction()
-
-    print(full_pred)
-
-    print("\nValue Function")
-    print("-" * 40)
-
-    n = imputer.n_players
-
-    coalitions = [
-        [True] * n,      # full coalition
-        [False] * n,     # empty coalition
-    ]
-
-    if n >= 2:
-        coalition = [False] * n
-        coalition[0] = True
-        coalition[1] = True
-        coalitions.append(coalition)
-
-    values = imputer.value_function(coalitions)
-
-    print(values)
-
-    print("\nSuccess")
+    print("\nDemo completed.")
 
 
 if __name__ == "__main__":
-    main()
+    run_demo()
