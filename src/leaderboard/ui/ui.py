@@ -27,6 +27,10 @@ LOADING_METHOD = "mongodb"  # "local" or "mongodb"
 # Temporary seed determination
 SEED_IDs = ["approx_seed", "seed"]  # List of possible seed identifier columns in the raw data
 
+# Compare-Tab: Globale Variablen
+MAX_COLS = 5
+DEFAULT_COLS = 2
+
 
 def reload_data() -> pd.DataFrame:
     """Reloads the raw data and re-aggregates it, returning the updated aggregated DataFrame."""
@@ -323,11 +327,11 @@ df_agg = load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH)
 available_metrics = [m for m in METRICS if f"{m}_mean" in df_agg.columns]
 
 
-def compute_yranges(g, a1, a2, a3):
+def compute_yranges(g, approximators: list):
     df_filtered = df_agg[
-        (df_agg["game_name"] == g) & (df_agg["approximator_name"].isin([a1, a2, a3]))
+        (df_agg["game_name"] == g) &
+        (df_agg["approximator_name"].isin(approximators))
     ]
-
     yranges = {}
     for m in available_metrics:
         col = f"{m}_mean"
@@ -337,13 +341,43 @@ def compute_yranges(g, a1, a2, a3):
     return yranges
 
 
-def update_compare_plots(g, a1, a2, a3):
-    yranges = compute_yranges(g, a1, a2, a3)
-    return tuple(
-        get_plot_single(df_agg, g, m, a, yranges.get(m))
-        for m in available_metrics
-        for a in [a1, a2, a3]
-    )
+def update_compare_plots(*args):
+    # args enthält:
+    # [0..4] Approximatoren, [5..9] Games, [10] Anzahl aktiver Spalten (n_cols)
+    approx_vals = list(args[:MAX_COLS])
+    game_vals = list(args[MAX_COLS:2 * MAX_COLS])
+    n_cols = args[-1]
+
+    # Approximatoren und Spiele herausfiltern, die gerade aktiv sichtbar sind
+    active_approxs = approx_vals[:n_cols]
+    active_games = game_vals[:n_cols]
+
+    # Y-Achsen-Limits über alle aktiven Kombinationen hinweg
+    yranges = {}
+    for m in available_metrics:
+        col = f"{m}_mean"
+
+        df_filtered = df_agg[
+            (df_agg["game_name"].isin(active_games)) &
+            (df_agg["approximator_name"].isin(active_approxs))
+            ]
+
+        if not df_filtered.empty:
+            y_min = max(df_filtered[col].min(), 1e-300)
+            y_max = df_filtered[col].max()
+            if pd.isna(y_min) or pd.isna(y_max):
+                yranges[m] = None
+            else:
+                yranges[m] = [np.log10(y_min) - 0.5, np.log10(y_max) + 0.5]
+        else:
+            yranges[m] = None
+
+    outputs = []
+    for m in available_metrics:
+        for i in range(MAX_COLS):
+            outputs.append(get_plot_single(df_agg, game_vals[i], m, approx_vals[i], yranges.get(m)))
+
+    return tuple(outputs)
 
 
 # --- Gradio App ---
@@ -415,55 +449,87 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         gr.Markdown("## Side-by-side Approximator Comparison")
 
         with gr.Row():
-            compare_game_dropdown = gr.Dropdown(
-                choices=df_agg["game_name"].unique().tolist(),
-                value=df_agg["game_name"].iloc[0],
-                label="Game",
-            )
+            add_col_btn = gr.Button("+ Add Approximator", scale=0)
+            remove_col_btn = gr.Button("- Remove", scale=0)
+            n_cols_state = gr.State(value=DEFAULT_COLS)
+
+        # Pro Spalte: Approximator-Dropdown + Game-Dropdown
+        compare_column_containers = []
+        compare_approx_dropdowns = []
+        compare_game_dropdowns = []
+
+        approxs = df_agg["approximator_name"].unique().tolist()
+        games = df_agg["game_name"].unique().tolist()
 
         with gr.Row():
-            compare_approx_1 = gr.Dropdown(
-                choices=df_agg["approximator_name"].unique().tolist(),
-                value=df_agg["approximator_name"].unique().tolist()[0],
-                label="Approximator 1",
-            )
-            compare_approx_2 = gr.Dropdown(
-                choices=df_agg["approximator_name"].unique().tolist(),
-                value=df_agg["approximator_name"].unique().tolist()[1],
-                label="Approximator 2",
-            )
-            compare_approx_3 = gr.Dropdown(
-                choices=df_agg["approximator_name"].unique().tolist(),
-                value=df_agg["approximator_name"].unique().tolist()[2],
-                label="Approximator 3",
-            )
+            for i in range(MAX_COLS):
+                with gr.Column(visible=(i < DEFAULT_COLS)) as col:
+                    compare_column_containers.append(col)
+                    compare_approx_dropdowns.append(gr.Dropdown(
+                        choices=approxs,
+                        value=approxs[i % len(approxs)],
+                        label=f"Approximator {i+1}",
+                    ))
+                    compare_game_dropdowns.append(gr.Dropdown(
+                        choices=games,
+                        value=games[0],
+                        label="Game",
+                    ))
 
-        # --- Range beim Start berechnen ---
-        _first_game = df_agg["game_name"].iloc[0]
-        _approxs = df_agg["approximator_name"].unique().tolist()
-        _a1, _a2, _a3 = _approxs[0], _approxs[1], _approxs[2]
-        _yranges = compute_yranges(_first_game, _a1, _a2, _a3)
+        # Plots pro Metrik pro Spalte
+        compare_plot_rows = {}  # compare_plot_rows[metric] = [plot0, plot1, ...]
+        _yranges = compute_yranges(games[0], [approxs[0], approxs[1 % len(approxs)], approxs[2 % len(approxs)]])
 
-        compare_plots = {}  # compare_plots[metric] = [plot1, plot2, plot3]
         for m in available_metrics:
             gr.Markdown(f"### {m.upper()} across Budgets")
             with gr.Row():
-                p1 = gr.Plot(value=get_plot_single(df_agg, _first_game, m, _a1, _yranges.get(m)))
-                p2 = gr.Plot(value=get_plot_single(df_agg, _first_game, m, _a2, _yranges.get(m)))
-                p3 = gr.Plot(value=get_plot_single(df_agg, _first_game, m, _a3, _yranges.get(m)))
-                compare_plots[m] = [p1, p2, p3]
+                plots = []
+                for i in range(MAX_COLS):
+                    plots.append(gr.Plot(
+                        value=get_plot(df_agg, games[0], m, [approxs[i % len(approxs)]], _yranges.get(m)) if i < DEFAULT_COLS else None,
+                        visible=(i < DEFAULT_COLS),
+                    ))
+                compare_plot_rows[m] = plots
 
-        compare_inputs = [
-            compare_game_dropdown,
-            compare_approx_1,
-            compare_approx_2,
-            compare_approx_3,
-        ]
-        compare_outputs = [p for m in available_metrics for p in compare_plots[m]]
+        # Spalte hinzufuegen/entfernen
+        all_col_components = compare_column_containers + \
+                             [p for m in available_metrics for p in compare_plot_rows[m]]
 
-        for component in compare_inputs:
+        def update_col_visibility(n, delta):
+            new_n = max(2, min(MAX_COLS, n + delta))
+            updates = []
+
+            # Spalten-Container (Inklusive der darin liegenden Dropdowns) updaten
+            for c_idx in range(MAX_COLS):
+                updates.append(gr.update(visible=(c_idx < new_n)))
+
+            # Plots updaten
+            for m in available_metrics:
+                for p_idx in range(MAX_COLS):
+                    updates.append(gr.update(visible=(p_idx < new_n)))
+            return [new_n] + updates
+
+
+        add_col_btn.click(
+            fn=lambda n: update_col_visibility(n, +1),
+            inputs=[n_cols_state],
+            outputs=[n_cols_state] + all_col_components
+        )
+        remove_col_btn.click(
+            fn=lambda n: update_col_visibility(n, -1),
+            inputs=[n_cols_state],
+            outputs=[n_cols_state] + all_col_components
+        )
+
+        # Plot Update bei Aenderung
+        all_inputs = compare_approx_dropdowns + compare_game_dropdowns
+        plot_outputs = [p for m in available_metrics for p in compare_plot_rows[m]]
+
+        for component in all_inputs:
             component.change(
-                fn=update_compare_plots, inputs=compare_inputs, outputs=compare_outputs
+                fn=update_compare_plots,
+                inputs=all_inputs + [n_cols_state],
+                outputs=plot_outputs
             )
 
     def on_reload() -> tuple[Any, ...]:
