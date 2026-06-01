@@ -731,7 +731,7 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
         cache_key = self._build_cache_key(players, coalition)
 
         if cache_key not in self._cache:
-            self._cache[cache_key] = (self._predict_masks(players, coalition,))
+            self._cache[cache_key] = (self._predict_masks(players, coalition))
 
         replacements = self._cache[cache_key]
 
@@ -831,12 +831,7 @@ class EncoderClassifierCallable(BaseTargetCallable):
         texts: list[str],
     ) -> np.ndarray:
         """Run encoder classifier inference."""
-        encoded = self.tokenizer(
-            texts,
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        )
+        encoded = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
 
         encoded = {
             key: value.to(self.device)
@@ -846,7 +841,6 @@ class EncoderClassifierCallable(BaseTargetCallable):
         with torch.no_grad():
 
             outputs = self.model(**encoded)
-
             logits = outputs.logits
 
         if self.output_type == "logit":
@@ -856,7 +850,6 @@ class EncoderClassifierCallable(BaseTargetCallable):
         else:
 
             probs = torch.softmax(logits, dim=-1)
-
             scores = probs[:, self.class_idx]
 
         return scores.detach().cpu().numpy()
@@ -881,23 +874,16 @@ class CausalLMCallable(BaseTargetCallable):
     ) -> None:
         """Causal language model scoring."""
         super().__init__(model, tokenizer, device)
-
         self.prompt_template = prompt_template
-
         self.target_token_ids = tokenizer.encode(target_label, add_special_tokens=False)
 
         if len(self.target_token_ids) == 0:
-            msg = (
-                f"Target label '{target_label}' produced no tokens."
-            )
+            msg = (f"Target label '{target_label}' produced no tokens.")
             raise ValueError(msg)
 
         if tokenizer.pad_token_id is None:
-
             if tokenizer.eos_token_id is None:
-                msg = (
-                    "Tokenizer must define either a pad token or eos token."
-                )
+                msg = ("Tokenizer must define either a pad token or eos token.")
                 raise ValueError(msg)
 
             tokenizer.pad_token = tokenizer.eos_token
@@ -916,10 +902,7 @@ class CausalLMCallable(BaseTargetCallable):
         prompt: str,
     ) -> float:
         """Compute log-probability of target sequence."""
-        prompt_ids = self.tokenizer.encode(
-            prompt,
-            add_special_tokens=False,
-        )
+        prompt_ids = self.tokenizer.encode(prompt, add_special_tokens=False)
         target_ids = self.target_token_ids
         total_log_prob = 0.0
 
@@ -927,30 +910,16 @@ class CausalLMCallable(BaseTargetCallable):
 
             prefix_ids = target_ids[:i]
             input_ids = prompt_ids + prefix_ids
-            encoded = {
-                "input_ids": torch.tensor(
-                    [input_ids],
-                    device=self.device,
-                ),
-            }
+            encoded = {"input_ids": torch.tensor([input_ids], device=self.device)}
 
             with torch.no_grad():
                 outputs = self.model(**encoded)
 
             logits = outputs.logits
             next_token_logits = logits[:, -1, :]
-            log_probs = torch.log_softmax(
-                next_token_logits,
-                dim=-1,
-            )
+            log_probs = torch.log_softmax( next_token_logits, dim=-1)
 
-            total_log_prob += (
-                log_probs[
-                    0,
-                    target_ids[i],
-                ]
-                .item()
-            )
+            total_log_prob += (log_probs[0, target_ids[i]].item())
 
         return total_log_prob
 
@@ -962,9 +931,7 @@ class CausalLMCallable(BaseTargetCallable):
         scores = []
         for text in texts:
             prompt = self._build_prompt(text)
-            score = self._score_target_sequence(
-                prompt,
-            )
+            score = self._score_target_sequence(prompt)
             scores.append(score)
 
         return np.asarray(scores,dtype=np.float32)
@@ -972,9 +939,7 @@ class CausalLMCallable(BaseTargetCallable):
 # =============================================================================
 # TO DO:
 # seq2seq support
-
 # =============================================================================
-
 
 class Seq2SeqCallable(BaseTargetCallable):
     """Placeholder for future seq2seq support."""
@@ -985,10 +950,7 @@ class Seq2SeqCallable(BaseTargetCallable):
     ) -> np.ndarray:
         """Placeholder for future seq2seq support."""
         msg = "Seq2SeqCallable is not implemented yet."
-        raise NotImplementedError(
-            msg
-        )
-
+        raise NotImplementedError(msg)
 
 # =============================================================================
 # TEXT IMPUTER
@@ -1008,16 +970,13 @@ class TextImputer:
         # ---------------------------------------------------------------------
         # encoder classifier settings
         # ---------------------------------------------------------------------
-
         class_idx: int = 1,
         output_type: str = "logit",
 
         # ---------------------------------------------------------------------
         # causal LM settings
         # ---------------------------------------------------------------------
-
         target_label: str = "good",
-
         prompt_template: str = (
             "Review: {text}\n\n"
             "Sentiment:"
@@ -1041,7 +1000,6 @@ class TextImputer:
         self.model = model
         self.tokenizer = tokenizer
         self.text = text
-
         self.batch_size = batch_size
 
         if device is None:
@@ -1065,11 +1023,7 @@ class TextImputer:
         # =============================================================================
 
         if player_strategy is None:
-            player_strategy = create_player_strategy(
-                level=player_level,
-                text=text,
-                tokenizer=tokenizer,
-            )
+            player_strategy = create_player_strategy(level=player_level, text=text, tokenizer=tokenizer)
 
         self.player_level = player_level
         self.player_strategy = player_strategy
@@ -1080,14 +1034,10 @@ class TextImputer:
         # =============================================================================
 
         if perturbation_strategy is None:
-            perturbation_strategy = (
-                create_perturbation_strategy(
-                    strategy=perturbation_type,
-                    tokenizer=tokenizer,
-                )
-            )
-            self.perturbation_type = perturbation_type
-            self.perturbation_strategy = perturbation_strategy
+            perturbation_strategy = (create_perturbation_strategy(strategy=perturbation_type, tokenizer=tokenizer))
+
+        self.perturbation_type = perturbation_type
+        self.perturbation_strategy = perturbation_strategy
 
         # MLM infilling currently supports only word, named-entity, and chunk players.
 
@@ -1126,7 +1076,7 @@ class TextImputer:
                 device=device,
                 target_label=target_label,
                 prompt_template=prompt_template,
-                )
+            )
 
         elif model_type == "seq2seq":
 
@@ -1155,10 +1105,7 @@ class TextImputer:
         coalition: np.ndarray,
     ) -> str:
         """Convert coalition into perturbed text."""
-        return self.player_strategy.coalition_to_text(
-            coalition,
-            self.perturbation_strategy,
-        )
+        return self.player_strategy.coalition_to_text(coalition, self.perturbation_strategy)
 
     def _coalitions_to_texts(
         self,
@@ -1184,7 +1131,7 @@ class TextImputer:
         """Predict in batches."""
         all_scores = []
 
-        for start in range(0, len(texts), self.batch_size,):
+        for start in range(0, len(texts), self.batch_size):
             batch = texts[start : start + self.batch_size]
             batch_scores = self._predict_batch(batch)
             all_scores.append(batch_scores)
