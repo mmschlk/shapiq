@@ -16,7 +16,6 @@ from tests.shapiq.graph.fixtures.gnn_models import (
     gin_model,
     gat_model,
     gcn_model_classification,
-    any_gnn_model,
 )
 from tests.shapiq.graph.fixtures.graph_data import simple_graph, small_graph
 
