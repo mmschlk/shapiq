@@ -2,8 +2,15 @@
 # Minimal fast verification configuration provided for Runner testing
 
 game: "CaliforniaHousing"
+game_family: "local_xai"
 index: "SV"
 max_order: 1
+n_players: 14
+
+game_params:
+  model_name: "decision_tree"
+  imputer: "marginal"
+  x: 0
 
 ground_truth:
   strategy: "compute"
@@ -11,7 +18,15 @@ ground_truth:
 
 approximators:
   - "PermutationSamplingSV"
+  - "StratifiedSamplingSV"
 
+# For n=14, valid budgets satisfy 15 <= budget < 16384.
+# budget_policy (optional): use when you want runner to generate budgets based on game size
+# budget_policy:
+#   strategy: "range"
+#   start: "n+1"
+#   end: "2^n-1"
+#   steps: 10
 budgets:
   - 100
   - 500
