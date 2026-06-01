@@ -10,7 +10,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Self
 
+from leaderboard.storage.connection.utilities import _process
+
 if TYPE_CHECKING:
+    import pandas as pd
+
     from leaderboard.storage.data_classes import RunConfig
 
 
@@ -23,8 +27,32 @@ class DatabaseClient(ABC):
 
     @classmethod
     @abstractmethod
-    def from_env(cls) -> Self:
-        """Create a DatabaseClient instance using connection parameters from environment variables."""
+    def from_env(cls, args: dict) -> Self:
+        """Create a DatabaseClient instance using connection parameters from environment variables.
+
+        Args:
+            args: Arguments for the database client constructor.
+                Order of priority is:
+                    1) values in ``args``,
+                    2) environment variables,
+                    3) default values (if applicable).
+
+        Returns:
+            DatabaseClient: An instance of the database client.
+        """
+
+    def load_dataframe(self) -> pd.DataFrame:
+        """Load all runs, filter failures, flatten metrics, and aggregate.
+
+        Returns a DataFrame ready for the leaderboard UI with columns:
+            game_name, approximator_name, budget,
+            mse_mean, mse_std, mae_mean, mae_std,
+            ground_truth_method,
+            runtime_mean, runtime_min, runtime_max,
+            n_seeds
+        """
+        raw = self.get_all()
+        return _process(raw)
 
     @abstractmethod
     def test_connection(self) -> bool:

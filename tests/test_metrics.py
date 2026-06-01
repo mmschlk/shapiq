@@ -37,6 +37,7 @@ def interaction_values(
         interaction_lookup={interaction: index for index, interaction in enumerate(interactions)},
     )
 
+
 from metrics import METRIC_KEYS, METRICS, Scorer
 
 

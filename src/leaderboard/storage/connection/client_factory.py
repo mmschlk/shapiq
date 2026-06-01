@@ -13,6 +13,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from .connection_exceptions import UnsupportedDatabaseBackendError
+from .local_client import LocalClient
 from .mongo_client import MongoDBClient
 
 if TYPE_CHECKING:
@@ -23,6 +24,7 @@ class DatabaseBackend(StrEnum):
     """Enum for supported database backends."""
 
     MONGODB = "mongodb"
+    LOCAL = "local"
 
 
 class DatabaseClientFactory:
@@ -30,7 +32,9 @@ class DatabaseClientFactory:
 
     Examples:
     --------
-    >>> client = DatabaseClientFactory.from_env(DatabaseBackend.MONGODB)
+    >>> client = DatabaseClientFactory.create_client(DatabaseBackend.MONGODB)
+    >>> client = DatabaseClientFactory.create_client(DatabaseBackend.LOCAL)
+    >>> client = DatabaseClientFactory.create_client("local")  # string form also accepted
 
     Entry point for obtaining a database client instance.
     """
@@ -38,23 +42,29 @@ class DatabaseClientFactory:
     # Using the registry we keep track of the supported backends and their corresponding client classes.
     _registry: ClassVar[dict[DatabaseBackend, type[DatabaseClient]]] = {
         DatabaseBackend.MONGODB: MongoDBClient,
+        DatabaseBackend.LOCAL: LocalClient,
     }
 
     @classmethod
-    def create_client(cls, backend: DatabaseBackend | str) -> DatabaseClient:
+    def create_client(cls, backend: DatabaseBackend | str, args: dict) -> DatabaseClient:
         """Create a database client using environment variables. Uses the registry to determine which client class to instantiate based on the provided backend.
 
         Parameters
         ----------
         backend:
-            The database backend to use.
+            The database backend to use. Accepted values are the members of
+            ``DatabaseBackend`` or their string equivalents (``"mongodb"``,
+            ``"local"``).
+        args:
+            Arguments to pass to the client constructor.
+            Uses the arguments from args by default, falls back to environment variables if not provided.
+            If environment variables are also not provided, fallbacks to default values
 
         Raises:
         ------
         UnsupportedDatabaseBackendError
             If *backend* is not a registered backend.
         """
-        # Attempt to cast the backend to the enum type if it's provided as a string
         if isinstance(backend, str):
             try:
                 backend = DatabaseBackend(backend)
@@ -64,4 +74,4 @@ class DatabaseClientFactory:
         client_class = cls._registry.get(backend)
         if client_class is None:
             raise UnsupportedDatabaseBackendError(str(backend), list(cls._registry)) from None
-        return client_class.from_env()
+        return client_class.from_env(args)

@@ -24,16 +24,6 @@ if TYPE_CHECKING:
     from pymongo.database import Database
 
 
-def load_env() -> tuple[str, str]:
-    """Load MongoDB connection parameters from environment variables."""
-    load_dotenv()
-    uri = os.getenv("MONGODB_URI")
-    db_name = os.getenv("MONGODB_DB", "shapiq-leaderboard")
-    if not uri:
-        raise MissingMongoURIError from None
-    return uri, db_name
-
-
 class MongoDBClient(DatabaseClient):
     """MongoDB client for shapiq experiment results.
 
@@ -57,12 +47,24 @@ class MongoDBClient(DatabaseClient):
         self.collection: Collection = self._db[collection_name]
 
     @classmethod
-    def from_env(cls) -> MongoDBClient:
+    def from_env(cls, args: dict) -> MongoDBClient:
         """Create a MongoDBClient instance using connection parameters from environment variables.
 
         Returns: MongoDBClient.
         """
-        uri, db_name = load_env()
+        # Load environment variables from .env file if present
+        load_dotenv()
+
+        uri = args["MONGODB_URI"] if "MONGODB_URI" in args else os.getenv("MONGODB_URI")
+        db_name = (
+            args["MONGODB_DB"]
+            if "MONGODB_DB" in args
+            else os.getenv("MONGODB_DB", "shapiq-leaderboard")
+        )
+
+        if not uri:
+            raise MissingMongoURIError from None
+
         return cls(uri=uri, db_name=db_name)
 
     def test_connection(self) -> bool:
