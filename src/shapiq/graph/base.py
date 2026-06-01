@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 from shapiq.game import Game
 
-
 class GraphGame(Game):
     """A GraphSHAP-IQ explanation game for graph networks.
 

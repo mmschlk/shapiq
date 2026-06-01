@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
-from shapiq_games.benchmark.graphshapiq_xai.base import GraphGame
+from shapiq.graph.base import GraphGame
 import pytest
 
 # Define a simple GNN model
