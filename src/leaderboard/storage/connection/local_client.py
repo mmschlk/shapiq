@@ -11,9 +11,9 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Self
-from dotenv import load_dotenv
 
 import numpy as np
+from dotenv import load_dotenv
 
 from leaderboard.storage.data_classes import RunConfig
 
@@ -52,6 +52,13 @@ class LocalClient(DatabaseClient):
     """
 
     def __init__(self, path: str | Path) -> None:
+        """Initialize the LocalClient with the given file path.
+
+        Parameters
+        ----------
+        path:
+            Path to the JSONL file used as the backing store. Parent directories are created automatically on first write.
+        """
         self._path = Path(path)
 
     # ------------------------------------------------------------------
@@ -64,14 +71,16 @@ class LocalClient(DatabaseClient):
 
         Falls back to ``"data/runs.jsonl"`` when the variable is unset.
         """
-
         # load env
         load_dotenv()
 
-        path = args["LOCAL_DB_PATH"] if "LOCAL_DB_PATH" in args else os.getenv("LOCAL_DB_PATH", "data/runs.jsonl") 
+        path = (
+            args["LOCAL_DB_PATH"]
+            if "LOCAL_DB_PATH" in args
+            else os.getenv("LOCAL_DB_PATH", "data/runs.jsonl")
+        )
 
         return cls(path=path)
-    
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -104,7 +113,7 @@ class LocalClient(DatabaseClient):
     # ------------------------------------------------------------------
 
     def test_connection(self) -> bool:
-        """Always returns True — no network connection required."""
+        """Always returns True - no network connection required."""
         return True
 
     def close(self) -> None:
@@ -186,9 +195,7 @@ class LocalClient(DatabaseClient):
 
     def get_approximators(self) -> list[str]:
         """Return sorted distinct approximator names."""
-        return sorted(
-            {d["approximator_name"] for d in self._load() if "approximator_name" in d}
-        )
+        return sorted({d["approximator_name"] for d in self._load() if "approximator_name" in d})
 
     def get_by_approximator(self, approximator_name: str) -> list[dict[str, Any]]:
         """Return all runs that used a given approximator."""

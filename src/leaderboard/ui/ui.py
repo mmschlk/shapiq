@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any, TypeVar
 
 import gradio as gr
@@ -13,17 +14,20 @@ from dotenv import load_dotenv
 
 from leaderboard.metrics import METRICS
 from leaderboard.storage.connection import DatabaseClientFactory, DBConnectionError
-from leaderboard.ui.ui_exceptions import UnknownDataLoadingMethodError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 load_dotenv()
 T = TypeVar("T")
 
-RESULTS_PATH = "results_raw.jsonl"
+CURRENT_DIR = Path(__file__).parent
+PROJECT_ROOT = CURRENT_DIR.parent.parent.parent
+RESULTS_PATH = PROJECT_ROOT / "data" / "results_raw.jsonl"
+
 ZERO_THRESHOLD = 1e-7
 DASH_STYLES = ["solid", "dash", "dot", "dashdot", "longdash"]
 LOADING_METHOD = "mongodb"  # "local" or "mongodb"
+
 
 # Temporary seed determination
 SEED_IDs = ["approx_seed", "seed"]  # List of possible seed identifier columns in the raw data
@@ -36,23 +40,13 @@ def reload_data() -> pd.DataFrame:
 
 def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.DataFrame:
     """Loads raw run data from the specified source, processes it, and returns an aggregated DataFrame."""
-    if method == "local":
-        # Instantiate a local client
-        local_client = DatabaseClientFactory.create_client("local", args={"file_path": path})
-        runs_df = local_client.load_dataframe()
-    elif method == "mongodb":
-        # Create a client and load data from MongoDB
-        mongo_client = DatabaseClientFactory.create_client("mongodb", args={})
+    db_client = DatabaseClientFactory.create_client(
+        method, db_args={"LOCAL_DB_PATH": path} if method == "local" else {}
+    )
+    if not db_client.test_connection():
+        raise DBConnectionError from None
 
-        # Check if we can connect to the database
-        if not mongo_client.test_connection():
-            raise DBConnectionError from None
-
-        runs_df = mongo_client.load_dataframe()
-    else:
-        raise UnknownDataLoadingMethodError(method) from None
-
-    return runs_df
+    return db_client.load_dataframe()
 
 
 def format_value(col: str, x: T, runtime_cols: list[str]) -> str:

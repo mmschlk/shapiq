@@ -46,7 +46,7 @@ class DatabaseClientFactory:
     }
 
     @classmethod
-    def create_client(cls, backend: DatabaseBackend | str, args: dict) -> DatabaseClient:
+    def create_client(cls, backend: DatabaseBackend | str, db_args: dict) -> DatabaseClient:
         """Create a database client using environment variables. Uses the registry to determine which client class to instantiate based on the provided backend.
 
         Parameters
@@ -55,7 +55,8 @@ class DatabaseClientFactory:
             The database backend to use. Accepted values are the members of
             ``DatabaseBackend`` or their string equivalents (``"mongodb"``,
             ``"local"``).
-        args:
+
+        db_args:
             Arguments to pass to the client constructor.
             Uses the arguments from args by default, falls back to environment variables if not provided.
             If environment variables are also not provided, fallbacks to default values
@@ -74,4 +75,4 @@ class DatabaseClientFactory:
         client_class = cls._registry.get(backend)
         if client_class is None:
             raise UnsupportedDatabaseBackendError(str(backend), list(cls._registry)) from None
-        return client_class.from_env(args)
+        return client_class.from_env(db_args)
