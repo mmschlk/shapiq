@@ -6,9 +6,8 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, TypedDict, cast
-
 import yaml
+from typing import Any, TypedDict, cast
 
 from config_manager import MVPRunConfig, load_and_validate_config
 from leaderboard.runner.approximator_registry import get_approximator_class
@@ -97,7 +96,10 @@ def main() -> None:
     run_configs = expand_validated_config(config_obj)
 
     # Load raw config for optional fields like game_params
-    base_config = load_raw_config(config_path)
+    # base_config = load_raw_config(config_path)
+
+    # Reuse validated config object so optional fields (e.g., game_params) stay typed.
+    base_config = config_obj.model_dump(exclude_none=True)
 
     # Connect to MongoDB
     db = MongoDBClient.from_env()
