@@ -6,7 +6,6 @@ for GraphGame, GraphSHAPIQ, and GraphExplainer.
 """
 
 import pytest
-import torch
 import torch.nn as nn
 from torch_geometric.nn import GCNConv, GINConv, GATConv
 
@@ -21,7 +20,11 @@ class GCNModel(nn.Module):
                       For classification: number of classes.
         in_dim (int): Dimension of input features. Default: 3.
     """
-    def __init__(self, num_layers=2, hidden_dim=16, out_dim=1, in_dim=3):
+    def __init__(self,
+                 num_layers=2,
+                 hidden_dim=16,
+                 out_dim=1,
+                 in_dim=3):
         super().__init__()
         self.convs = nn.ModuleList()
         self.convs.append(GCNConv(in_dim, hidden_dim))
@@ -46,7 +49,11 @@ class GINModel(nn.Module):
         out_dim (int): Dimension of the output. Default: 1 (regression).
         in_dim (int): Dimension of input features. Default: 3.
     """
-    def __init__(self, num_layers=2, hidden_dim=16, out_dim=1, in_dim=3):
+    def __init__(self,
+                 num_layers=2,
+                 hidden_dim=16,
+                 out_dim=1,
+                 in_dim=3):
         super().__init__()
         self.convs = nn.ModuleList()
         mlp = nn.Sequential(
@@ -80,7 +87,12 @@ class GATModel(nn.Module):
         in_dim (int): Dimension of input features. Default: 3.
         heads (int): Number of attention heads. Default: 1.
     """
-    def __init__(self, num_layers=2, hidden_dim=16, out_dim=1, in_dim=3, heads=1):
+    def __init__(self,
+                 num_layers=2,
+                 hidden_dim=16,
+                 out_dim=1,
+                 in_dim=3,
+                 heads=1):
         super().__init__()
         self.convs = nn.ModuleList()
         self.convs.append(GATConv(in_dim, hidden_dim, heads=heads))
@@ -179,7 +191,6 @@ def gat_model_classification():
     """
     return GATModel(out_dim=2)
 
-# --- Fixtures for Models with Different Input Dimensions ---
 @pytest.fixture(params=[1, 3, 5, 10])
 def gcn_model_varied_in_dim(request):
     """
