@@ -123,6 +123,43 @@ class TestSetupApproximator:
             )
 
 
+class TestProxyConfiguration:
+    """Tests that the proxy-based approximators are reachable through the explainer API."""
+
+    def test_proxy_is_a_valid_approximator_type(self):
+        """Tests that ``"proxy"`` is registered as a valid approximator string."""
+        from shapiq.explainer.configuration import APPROXIMATOR_CONFIGURATIONS
+
+        assert "proxy" in get_args(ValidApproximatorTypes)
+        assert "proxy" in APPROXIMATOR_CONFIGURATIONS
+
+    def test_proxy_setup_surfaces_all_three_approximators(self):
+        """Tests that the ``"proxy"`` string surfaces RegressionMSR, ProxySHAP and ProxySPEX."""
+        pytest.importorskip("xgboost")
+        pytest.importorskip("lightgbm")
+
+        from shapiq.approximator import ProxySHAP, ProxySPEX, RegressionMSR
+        from shapiq.explainer.configuration import setup_approximator
+
+        # first-order SV/BV -> RegressionMSR
+        for index in ["SV", "BV"]:
+            approx = setup_approximator(approximator="proxy", index=index, max_order=1, n_players=8)
+            assert isinstance(approx, RegressionMSR)
+            assert approx.max_order == 1
+
+        # cardinal interaction indices -> ProxySHAP
+        for index in ["SII", "k-SII", "FSII", "FBII"]:
+            approx = setup_approximator(approximator="proxy", index=index, max_order=2, n_players=8)
+            assert isinstance(approx, ProxySHAP)
+            assert not isinstance(approx, RegressionMSR)
+            assert approx.max_order == 2
+
+        # STII -> ProxySPEX (ProxySHAP cannot compute STII)
+        approx = setup_approximator(approximator="proxy", index="STII", max_order=2, n_players=8)
+        assert isinstance(approx, ProxySPEX)
+        assert approx.max_order == 2
+
+
 class TestErrorCases:
     """Tests for error cases for the setup_approximator function."""
 

@@ -65,8 +65,9 @@ class AgnosticExplainer(Explainer):
 
             approximator: The approximator to use for the game-based approach. Defaults to "auto",
                 which will automatically select the appropriate approximator based on the index and
-                max_order. Other options include "regression", "spex", "svarm", "montecarlo", and
-                "permutation". Can also be an instance of
+                max_order. Other options include "regression", "spex", "svarm", "montecarlo",
+                "permutation", and "proxy" (proxy-model accelerated approximators, requires the
+                ``proxy`` extra). Can also be an instance of
                 :class:`shapiq.approximator._base.Approximator`.
 
             random_state: The random state to use for reproducibility. Defaults to None.

@@ -47,7 +47,9 @@ class TabPFNExplainer(TabularExplainer):
         empty_prediction: float | None = None,
         class_index: int | None = None,
         approximator: Approximator
-        | Literal["auto", "spex", "montecarlo", "svarm", "permutation", "regression"] = "auto",
+        | Literal[
+            "auto", "spex", "montecarlo", "svarm", "permutation", "regression", "proxy"
+        ] = "auto",
         verbose: bool = False,
     ) -> None:
         """Initialize the TabPFNExplainer.
@@ -63,7 +65,8 @@ class TabPFNExplainer(TabularExplainer):
 
             approximator: An :class:`~shapiq.approximator.Approximator` object to use for the
                 explainer or a literal string from
-                ``["auto", "spex", "montecarlo", "svarm", "permutation"]``. Defaults to ``"auto"``
+                ``["auto", "spex", "montecarlo", "svarm", "permutation", "regression", "proxy"]``.
+                Defaults to ``"auto"``
                 which automatically selects: :class:`~shapiq.approximator.KernelSHAP` for ``"SV"``,
                 :class:`~shapiq.approximator.KernelSHAPIQ` for ``"SII"``/``"k-SII"``,
                 :class:`~shapiq.approximator.RegressionFSII` for ``"FSII"``,

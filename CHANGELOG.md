@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- exposes the proxy-based approximators through the public `Explainer` API via a new `approximator="proxy"` option. The `"proxy"` configuration selects `RegressionMSR` for `"SV"`/`"BV"`, `ProxySHAP` for `"SII"`/`"k-SII"`/`"FSII"`/`"FBII"`, and `ProxySPEX` for `"STII"`. The option is available for `TabularExplainer`, `TabPFNExplainer`, and `AgnosticExplainer` and requires the `proxy` extra (`pip install shapiq[proxy]`). [#538](https://github.com/mmschlk/shapiq/issues/538)
+
 ## v1.5.1 (2026-05-30)
 
 ### Bugfix

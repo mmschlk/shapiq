@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 
 from shapiq import (
     SHAPIQ,
@@ -19,7 +19,6 @@ from shapiq import (
     kADDSHAP,
 )
 from shapiq.approximator.base import Approximator, ValidApproximationIndices
-from shapiq.approximator.regression.base import Regression
 from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
 
 try:
@@ -27,7 +26,15 @@ try:
 except ImportError:
     SPEX = None  # type: ignore[assignment]
 
-ValidApproximatorTypes = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
+try:
+    # the proxy approximators require the 'proxy' extra (xgboost, lightgbm)
+    from shapiq import ProxySHAP, ProxySPEX, RegressionMSR
+except ImportError:
+    ProxySHAP = ProxySPEX = RegressionMSR = None  # type: ignore[assignment]
+
+ValidApproximatorTypes = Literal[
+    "spex", "montecarlo", "svarm", "permutation", "regression", "proxy"
+]
 APPROXIMATOR_CONFIGURATIONS: dict[
     ValidApproximatorTypes, dict[ValidApproximationIndices, type[Approximator]]
 ] = {
@@ -78,6 +85,20 @@ if SPEX is not None:
         "k-SII": SPEX,
         "SV": SPEX,
         "BV": SPEX,
+    }
+
+if ProxySHAP is not None and ProxySPEX is not None and RegressionMSR is not None:
+    # The proxy-based approximators (sota in most settings) are surfaced through a single "proxy"
+    # configuration: RegressionMSR for first-order SV/BV, ProxySHAP for the cardinal interaction
+    # indices it supports, and ProxySPEX for STII (which ProxySHAP cannot compute).
+    APPROXIMATOR_CONFIGURATIONS["proxy"] = {
+        "SV": RegressionMSR,
+        "BV": RegressionMSR,
+        "SII": ProxySHAP,
+        "FSII": ProxySHAP,
+        "FBII": ProxySHAP,
+        "k-SII": ProxySHAP,
+        "STII": ProxySPEX,
     }
 
 
@@ -200,12 +221,13 @@ def setup_approximator(
         raise TypeError(msg)
 
     # initialize the approximator class with params
-    if issubclass(approximator_cls, Regression):
-        return approximator_cls(
+    if RegressionMSR is not None and issubclass(approximator_cls, RegressionMSR):
+        # RegressionMSR is a first-order SV/BV approximator and does not accept ``max_order``.
+        regression_msr_cls = cast("type[RegressionMSR]", approximator_cls)
+        return regression_msr_cls(
             n=n_players,
-            max_order=max_order,
+            index=cast("Literal['SV', 'BV']", index),
             random_state=random_state,
-            index=index,
         )
     return approximator_cls(
         n=n_players,
