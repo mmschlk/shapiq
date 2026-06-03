@@ -6,6 +6,7 @@ import copy
 import logging
 from typing import TYPE_CHECKING, Any
 
+import networkx as nx
 import numpy as np
 
 from shapiq.game_theory.moebius_converter import MoebiusConverter
@@ -43,8 +44,9 @@ class GraphSHAPIQ:
         self.last_n_model_calls: int | None = None
         self.edge_index = game.edge_index
         self.n_players = game.n_players
+        self._graph: nx.Graph = self._build_graph()
         self.sparsify_threshold = 1e-10
-        self.l_hop_distance = game.max_neighborhood_size
+        self.l_hop_distance = int(game.max_neighborhood_size)
         self._grand_coalition_set = game.grand_coalition_set
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
         self.output_dim = game.output_dim
@@ -71,44 +73,35 @@ class GraphSHAPIQ:
             logger.info("Max size neighbors: %d", self.max_size_neighbors)
             logger.info("Total budget: %d", self.total_budget)
 
-    def _get_neighborhoods(self) -> tuple:
-        """Computes the neighborhoods of each node and caps the max_subset_size.
+    def _build_graph(self) -> nx.Graph:
+        """Convert edge_index to an nx.Graph."""
+        G: nx.Graph = nx.Graph()
+        G.add_nodes_from(range(self.n_players))
+        G.add_edges_from(self.edge_index.T.tolist())
+        return G
 
-        Neighborhood is capped to max_subset_size at the size of
-        the largest neighborhood.
+    def _get_neighborhoods(self) -> tuple[dict, int]:
+        """Compute the k-hop neighborhoods of every node.
 
         Returns:
-            neighbors: A dictionary containing all neighbors of each node
-            max_size_neighbors: max_subset_size capped at the largest neighborhood size
+            neighbors: Mapping from node id to a sorted tuple of neighbor ids (including the
+                       node itself).
+            max_size_neighbors: Size of the largest neighborhood found.
         """
-        neighbors = {}
-        max_size_neighbors = 0
-        neighbors_list = [
-            self._get_k_neighborhood(node_id) for node_id in self._grand_coalition_set
-        ]
-
-        for neighbor_id, neighbor_list in enumerate(neighbors_list):
+        neighbors: dict = {}
+        max_size_neighbors: int = 0
+        for neighbor_id in self._grand_coalition_set:
+            neighbor_list = self._get_k_neighborhood(neighbor_id)
             max_size_neighbors = max(max_size_neighbors, len(neighbor_list))
             neighbors[neighbor_id] = neighbor_list
-
         return neighbors, max_size_neighbors
 
-    def _get_k_neighborhood(self, node: int) -> tuple[int, ...]:
-        neighbors = set()
-        queue = [(node, 0)]
-        visited = {node}
-        while queue:
-            curr_node, dist = queue.pop(0)
-            if dist > self.l_hop_distance:
-                break
-            if dist <= self.l_hop_distance:
-                neighbors.add(curr_node)
-            if dist < self.l_hop_distance:
-                for edge in self.edge_index.T:
-                    if edge[0] == curr_node and edge[1] not in visited:
-                        queue.append((edge[1], dist + 1))
-                        visited.add(edge[1])
-        return tuple(sorted(int(n) for n in neighbors))
+    def _get_k_neighborhood(self, node: int) -> tuple:
+        """Get the k-hop neighborhood of a node."""
+        reachable = nx.single_source_shortest_path_length(
+            self._graph, node, cutoff=self.l_hop_distance
+        )
+        return tuple(sorted(reachable.keys()))
 
     # TODO @Amin: Donnerstag
     def compute_moebius_transform(
@@ -394,7 +387,6 @@ class GraphSHAPIQ:
 
         return copy.deepcopy(final_moebius), copy.deepcopy(interactions)
 
-    # TODO @Amin: Donnerstag
     def _get_all_coalitions(
         self,
         max_subset_size: int,
