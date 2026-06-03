@@ -130,3 +130,31 @@ class TestGraphSHAPIQ:
         assert gcn_graphshapiq_single_node.max_size_neighbors == 1
         assert len(gcn_graphshapiq_single_node.neighbors) == 1
         assert gcn_graphshapiq_single_node.total_budget > 0
+
+    def test_get_k_neighborhood_simple_graph(self, gcn_graphshapiq):
+        """Test _get_k_neighborhood on a cycle graph with max_neighborhood_size=2."""
+        # simple_graph is a cycle 0↔1↔2↔3↔0, all nodes reachable within depth 2
+        assert gcn_graphshapiq._get_k_neighborhood(0) == (0, 1, 2, 3)
+        assert gcn_graphshapiq._get_k_neighborhood(1) == (0, 1, 2, 3)
+        assert gcn_graphshapiq._get_k_neighborhood(2) == (0, 1, 2, 3)
+        assert gcn_graphshapiq._get_k_neighborhood(3) == (0, 1, 2, 3)
+
+    def test_get_k_neighborhood_small_graph(self, gcn_graphshapiq_small):
+        """Test _get_k_neighborhood on a chain graph with max_neighborhood_size=2."""
+        # small_graph is a chain 0↔1↔2↔3↔4
+        assert gcn_graphshapiq_small._get_k_neighborhood(0) == (0, 1, 2)
+        assert gcn_graphshapiq_small._get_k_neighborhood(2) == (0, 1, 2, 3, 4)
+        assert gcn_graphshapiq_small._get_k_neighborhood(4) == (2, 3, 4)
+
+    def test_get_k_neighborhood_disconnected_graph(self, gcn_graphshapiq_disconnected):
+        """Test _get_k_neighborhood on a disconnected graph with max_neighborhood_size=2."""
+        # disconnected_graph: component 1 is 0↔1, component 2 is 2↔3↔4
+        assert gcn_graphshapiq_disconnected._get_k_neighborhood(0) == (0, 1)
+        assert gcn_graphshapiq_disconnected._get_k_neighborhood(1) == (0, 1)
+        assert gcn_graphshapiq_disconnected._get_k_neighborhood(2) == (2, 3, 4)
+        assert gcn_graphshapiq_disconnected._get_k_neighborhood(3) == (2, 3, 4)
+        assert gcn_graphshapiq_disconnected._get_k_neighborhood(4) == (2, 3, 4)
+
+    def test_get_k_neighborhood_single_node_graph(self, gcn_graphshapiq_single_node):
+        """Test _get_k_neighborhood on a single node graph with max_neighborhood_size=2."""
+        assert gcn_graphshapiq_single_node._get_k_neighborhood(0) == (0,)
