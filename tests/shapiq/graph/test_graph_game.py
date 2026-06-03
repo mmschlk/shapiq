@@ -43,9 +43,30 @@ class TestGraphGame:
 
         assert torch.allclose(masked_graph.x, expected_x)
 
-def test_mask_input_all_active(gcn_graph_game):
-    """Full coalition should return identical node features."""
-    coalition = np.ones(gcn_graph_game.n_players, dtype=bool)
-    masked_graph = gcn_graph_game.mask_input(coalition)
+    def test_mask_input_all_active(self, gcn_graph_game):
+        """Full coalition should return identical node features."""
+        coalition = np.ones(gcn_graph_game.n_players, dtype=bool)
+        masked_graph = gcn_graph_game.mask_input(coalition)
 
-    assert torch.allclose(masked_graph.x, gcn_graph_game.x_graph.x)
+        assert torch.allclose(masked_graph.x, gcn_graph_game.x_graph.x)
+
+    def test_mask_input_all_inactive(self,gcn_graph_game):
+        """Empty coalition should replace all features with baseline."""
+        coalition = np.zeros(gcn_graph_game.n_players, dtype=bool)
+
+        masked_graph = gcn_graph_game.mask_input(coalition)
+
+        baseline = gcn_graph_game.baseline.reshape(1, -1)
+        expected = baseline.repeat(gcn_graph_game.n_players, 1)
+
+        assert torch.allclose(masked_graph.x, expected)
+
+    def test_value_function_deterministic(self, gcn_graph_game):
+        """Same input should always produce same output."""
+        coalition = np.ones(gcn_graph_game.n_players, dtype=bool)
+
+        v1 = gcn_graph_game.value_function(coalition)
+        v2 = gcn_graph_game.value_function(coalition)
+
+        assert np.allclose(v1, v2)
+
