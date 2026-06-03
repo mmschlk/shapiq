@@ -5,7 +5,10 @@ from torch_geometric.nn import GCNConv, GINConv, GATConv, global_mean_pool
 from torch_geometric.data import Data
 
 class SimpleGCN(nn.Module):
-    def __init__(self, num_node_features: int = 3, output_dim: int = 1, num_layers: int = 2):
+    def __init__(self,
+                 num_node_features: int = 3,
+                 output_dim: int = 1,
+                 num_layers: int = 2):
         super().__init__()
         self.num_layers = num_layers
         self.convs = nn.ModuleList()
@@ -24,7 +27,10 @@ class SimpleGCN(nn.Module):
         return self.lin(x)
 
 class SimpleGIN(nn.Module):
-    def __init__(self, num_node_features: int = 3, output_dim: int = 1, num_layers: int = 2):
+    def __init__(self,
+                 num_node_features: int = 3,
+                 output_dim: int = 1,
+                 num_layers: int = 2):
         super().__init__()
         self.num_layers = num_layers
         self.convs = nn.ModuleList()
@@ -45,7 +51,11 @@ class SimpleGIN(nn.Module):
         return self.lin(x)
 
 class SimpleGAT(nn.Module):
-    def __init__(self, num_node_features: int = 3, output_dim: int = 1, num_layers: int = 2, heads: int = 1):
+    def __init__(self,
+                 num_node_features: int = 3,
+                 output_dim: int = 1,
+                 num_layers: int = 2,
+                 heads: int = 1):
         super().__init__()
         self.num_layers = num_layers
         self.convs = nn.ModuleList()
