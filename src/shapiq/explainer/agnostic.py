@@ -40,8 +40,8 @@ class AgnosticExplainer(Explainer):
         game: Game | Callable[[np.ndarray], np.ndarray],
         *,
         n_players: int | None = None,
-        index: AgnosticExplainerIndices = "k-SII",
-        max_order: int = 2,
+        index: AgnosticExplainerIndices = "SV",
+        max_order: int = 1,
         approximator: (
             Approximator[AgnosticExplainerIndices] | Literal["auto"] | TabularExplainerApproximators
         ) = "auto",
@@ -58,9 +58,10 @@ class AgnosticExplainer(Explainer):
                 the :class:`shapiq.games.base.Game`.
 
             index: The type of game-theoretic index to be used for the explanation.
-                Defaults to "k-SII".
+                Defaults to ``"SV"``.
 
-            max_order: The maximum order of interactions to be computed. Defaults to 2.
+            max_order: The maximum order of interactions to be computed. Set to ``1`` for no
+                interactions (i.e, for Shapley values ``"SV"`` or Banzhaf values ``"BV"``).
 
             approximator: The approximator to use for the game-based approach. Defaults to "auto",
                 which will automatically select the appropriate approximator based on the index and

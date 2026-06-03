@@ -16,8 +16,6 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "requests",
-    "sparse-transform",  # for sparse approximators (spex, proxyspex)
-    "galois",            # for sparse approximators (spex, proxyspex)
     # plotting
     "matplotlib",
     "networkx",
@@ -26,13 +24,13 @@ dependencies = [
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
-    {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
-    {name = "Hubert Baniecki"},
-    {name = "Fabian Fumagalli"},
+    {name = "Santo M. A. R. Thies", email = "Santo.Thies@lmu.de"},
+    {name = "Hubert Baniecki", email = "h.baniecki@uw.edu.pl"},
+    {name = "Fabian Fumagalli", email = "ffumagalli@techfak.de"},
 ]
 maintainers = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
-    {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
+    {name = "Santo M. A. R. Thies", email = "Santo.Thies@lmu.de"},
 ]
 license = "MIT"
 classifiers = [
@@ -61,6 +59,19 @@ keywords = [
     "shapley values",
     "feature interaction",
 ]
+
+[project.optional-dependencies]
+sparse = [
+    # required by shapiq.approximator.sparse (SPEX and the Sparse base class)
+    "sparse-transform",
+    "galois",
+]
+proxy = [
+    # required by shapiq.approximator.proxy (ProxySHAP, ProxySPEX, RegressionMSR)
+    "xgboost",   # default proxy model in ProxySHAP
+    "lightgbm",  # required by ProxySPEX
+]
+
 [tool.coverage.report]
 exclude_also = [
     'if TYPE_CHECKING:',
@@ -217,13 +228,14 @@ python-platform = "linux"
 build = ["cp312-*", "cp313-*", "cp314-*"]
 skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]
 build-frontend = "uv"
-test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; print('C extensions OK')\""
+test-command = "python -c \"import shapiq; from shapiq.tree.conversion import cext; from shapiq.tree.interventional import cext; from shapiq.tree.linear import cext; print('C extensions OK')\""
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
-before-build = "brew install libomp || true"
+# libomp is installed by build_tools/wheels/build_wheels.sh (pinned conda-forge
+# tarball, not brew) so wheels can target an old MACOSX_DEPLOYMENT_TARGET.
 
 [tool.cibuildwheel.windows]
 # MSVC ships OpenMP runtime (vcomp140.dll) with Visual C++ Redistributable
@@ -245,6 +257,7 @@ all_ml = [
     "torch",
     "xgboost",
     "lightgbm",    # lightgbm has install problems on macOS in github actions
+    "catboost",
     "transformers",
     "scikit-image",
     "tensorflow; python_version < '3.13' and platform_system != 'Windows'", # only up to py 3.12
