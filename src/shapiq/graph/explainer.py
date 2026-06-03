@@ -12,8 +12,8 @@ from tqdm.auto import tqdm
 from shapiq.explainer.base import Explainer
 from shapiq.graph.l_shapley import LShapley
 from shapiq.interaction_values import InteractionValues
-from shapiq_games.benchmark.graphshapiq_xai.base import GraphGame
 
+from .base import GraphGame
 from .graphshapiq import GraphSHAPIQ
 
 if TYPE_CHECKING:
@@ -207,7 +207,7 @@ class GraphExplainer(Explainer):
     ) -> InteractionValues:
         """Approximate Shapley Interactions using grapshapiq."""
         moebius, _ = explainer.explain(
-            max_interaction_size=explainer.max_size_neighbors,
+            max_subset_size=explainer.max_size_neighbors,
             order=game.n_players,
             efficiency_routine=True,
             index=index,

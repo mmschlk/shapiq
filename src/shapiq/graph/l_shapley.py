@@ -12,7 +12,7 @@ from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
 if TYPE_CHECKING:
-    from shapiq_games.benchmark.graphshapiq_xai.base import GraphGame
+    from .base import GraphGame
 
 
 class LShapley:
@@ -58,6 +58,7 @@ class LShapley:
     def _build_graph(self) -> nx.Graph:
         """Convert edge_index to an nx.Graph."""
         G: nx.Graph = nx.Graph()
+        G.add_nodes_from(range(self.n_players))
         G.add_edges_from(self.edge_index.T.tolist())
         return G
 
