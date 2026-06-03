@@ -29,7 +29,7 @@ class LShapley:
         self.last_n_model_calls: int = 0
         self.max_size_neighbors: int = 0
         self.max_budget: int = max_budget
-        self.max_neighborhood_size: int = 0
+        self.l_hop_distance: int = 0
         self.neighbors: dict = {}
 
         self.game: GraphGame = game
@@ -64,7 +64,7 @@ class LShapley:
     def _get_k_neighborhood(self, node: int) -> tuple:
         """Get the k-hop neighborhood of a node."""
         reachable = nx.single_source_shortest_path_length(
-            self._graph, node, cutoff=self.max_neighborhood_size
+            self._graph, node, cutoff=self.l_hop_distance
         )
         return tuple(sorted(reachable.keys()))
 
@@ -189,7 +189,7 @@ class LShapley:
         Raises:
             ValueError: If break_on_exceeding_budget is True and the budget is exceeded.
         """
-        self.max_neighborhood_size = max_interaction_size
+        self.l_hop_distance = max_interaction_size
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
         max_interaction_size = min(self.max_size_neighbors, max_interaction_size)
 

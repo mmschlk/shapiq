@@ -7,14 +7,15 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from numpy.typing import NDArray
 
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
 from shapiq.utils import powerset
 
 if TYPE_CHECKING:
-    from shapiq.games import Game
+    from numpy.typing import NDArray
+
+    from .base import GraphGame
 
 logger = logging.getLogger(__name__)
 
@@ -25,26 +26,26 @@ class GraphSHAPIQ:
     Attributes:
         edge_index: The edge index of the graph.
         n_players: Number of players (nodes) in the graph.
-        max_neighborhood_size: Maximum size of neighborhoods to consider.
+        l_hop_distance: Maximum size of neighborhoods to consider.
         neighbors: Dictionary mapping each node to its neighborhood.
         max_size_neighbors: Maximum size of any neighborhood in the graph.
         total_budget: Total number of coalitions to evaluate (or upper bound).
         budget_estimated: Whether the budget was estimated or computed exactly.
     """
 
-    def __init__(self, game: Game, *, verbose: bool = False) -> None:
+    def __init__(self, game: GraphGame, *, verbose: bool = False) -> None:
         """Initialize the GraphSHAPIQ class.
 
         Args:
             game: The game object representing the graph and prediction function.
             verbose: If True, prints debug information.
         """
-        self._last_n_model_calls: int | None = None
+        self.last_n_model_calls: int | None = None
         self.edge_index = game.edge_index
         self.n_players = game.n_players
         self.sparsify_threshold = 1e-10
-        self.max_neighborhood_size = game.max_neighborhood_size
-        self._grand_coalition_set = game._grand_coalition_set  # noqa: SLF001
+        self.l_hop_distance = game.max_neighborhood_size
+        self._grand_coalition_set = game.grand_coalition_set
         self.neighbors, self.max_size_neighbors = self._get_neighborhoods()
         self.output_dim = game.output_dim
         self.game = game
@@ -54,7 +55,7 @@ class GraphSHAPIQ:
         # Compute or estimate total budget
         if self.max_size_neighbors <= 22:
             moebius_interactions, _ = self._get_all_coalitions(
-                max_interaction_size=self.max_size_neighbors,
+                max_subset_size=self.max_size_neighbors,
                 efficiency_routine=False,
             )
             self.total_budget = len(moebius_interactions)
@@ -71,14 +72,14 @@ class GraphSHAPIQ:
             logger.info("Total budget: %d", self.total_budget)
 
     def _get_neighborhoods(self) -> tuple:
-        """Computes the neighborhoods of each node and caps the max_interaction_size.
+        """Computes the neighborhoods of each node and caps the max_subset_size.
 
-        Neighborhood is capped to max_interaction_size at the size of
+        Neighborhood is capped to max_subset_size at the size of
         the largest neighborhood.
 
         Returns:
             neighbors: A dictionary containing all neighbors of each node
-            max_interaction_size: max_interaction_size capped at the largest neighborhood size
+            max_size_neighbors: max_subset_size capped at the largest neighborhood size
         """
         neighbors = {}
         max_size_neighbors = 0
@@ -98,18 +99,18 @@ class GraphSHAPIQ:
         visited = {node}
         while queue:
             curr_node, dist = queue.pop(0)
-            if dist > self.max_neighborhood_size:
+            if dist > self.l_hop_distance:
                 break
-            if dist <= self.max_neighborhood_size:
+            if dist <= self.l_hop_distance:
                 neighbors.add(curr_node)
-            if dist < self.max_neighborhood_size:
-                # Find neighbors of current node
+            if dist < self.l_hop_distance:
                 for edge in self.edge_index.T:
                     if edge[0] == curr_node and edge[1] not in visited:
                         queue.append((edge[1], dist + 1))
                         visited.add(edge[1])
-        return tuple(sorted(neighbors))
+        return tuple(sorted(int(n) for n in neighbors))
 
+    # TODO @Amin: Donnerstag
     def compute_moebius_transform(
         self,
         coalitions: set[tuple[int, ...]] | dict[tuple[int, ...], Any],
@@ -146,6 +147,7 @@ class GraphSHAPIQ:
             baseline_value=float(moebius_values[moebius_lookup[()]]),
         )
 
+    # TODO @Amin: Donnerstag
     def _convert_to_coalition_matrix(
         self,
         coalitions: set[tuple[int, ...]] | dict[Any, tuple[int, ...]],
@@ -176,13 +178,14 @@ class GraphSHAPIQ:
 
         return coalition_matrix, coalition_lookup
 
+    # TODO @Amin: Donnerstag
     def _efficiency_routine(
         self,
         masked_predictions: NDArray[np.floating],
         moebius_coefficients: InteractionValues,
         incomplete_neighborhoods: set[tuple[int, ...]],
         incomplete_neighborhoods_lookup: dict[tuple[int, ...], int],
-        max_interaction_size: int,
+        max_subset_size: int,
         grand_coalition_prediction_node: NDArray[np.floating],
     ) -> InteractionValues:
         """Adjust Möbius coefficients to ensure efficiency.
@@ -192,7 +195,7 @@ class GraphSHAPIQ:
             moebius_coefficients: Current Möbius coefficients.
             incomplete_neighborhoods: Neighborhoods not fully covered by coalitions.
             incomplete_neighborhoods_lookup: Lookup for incomplete neighborhoods.
-            max_interaction_size: Maximum interaction size considered.
+            max_subset_size: Maximum interaction size considered.
             grand_coalition_prediction_node: Prediction for the grand coalition.
 
         Returns:
@@ -206,7 +209,7 @@ class GraphSHAPIQ:
         for i, neighborhood in enumerate(incomplete_neighborhoods_sorted):
             # Compute sum of Möbius coefficients for subsets of the neighborhood
             sum_coefficients = 0.0
-            for interaction in powerset(neighborhood, max_size=max_interaction_size):
+            for interaction in powerset(neighborhood, max_size=max_subset_size):
                 sum_coefficients += moebius_coefficients[interaction]
 
             # Add contributions from smaller incomplete neighborhoods
@@ -241,9 +244,10 @@ class GraphSHAPIQ:
             baseline_value=0.0,
         )
 
+    # TODO @Amin: Freitag
     def explain(
         self,
-        max_interaction_size: int | None = None,
+        max_subset_size: int | None = None,
         order: int | None = None,
         *,
         efficiency_routine: bool = True,
@@ -255,7 +259,7 @@ class GraphSHAPIQ:
         """Compute Shapley interactions for the graph.
 
         Args:
-            max_interaction_size: Maximum size of interactions to consider.
+            max_subset_size: Maximum size of interactions to consider.
                 If None, uses the maximum neighborhood size.
             order: Maximum order of interactions to return. If None, uses n_players.
             efficiency_routine: If True, ensures efficiency by adjusting neighborhood interactions.
@@ -269,12 +273,12 @@ class GraphSHAPIQ:
 
         capped_interaction_size = min(
             self.max_size_neighbors,
-            max_interaction_size if max_interaction_size is not None else self.max_size_neighbors,
+            max_subset_size if max_subset_size is not None else self.max_size_neighbors,
         )
 
         # Get coalitions and incomplete neighborhoods
         moebius_interactions, incomplete_neighborhoods = self._get_all_coalitions(
-            max_interaction_size=capped_interaction_size,
+            max_subset_size=capped_interaction_size,
             efficiency_routine=efficiency_routine,
         )
 
@@ -293,7 +297,7 @@ class GraphSHAPIQ:
         # Evaluate all coalitions
         all_coalitions = np.vstack((moebius_coalition_matrix, incomplete_neighborhoods_matrix))
         masked_predictions = self.game(all_coalitions)
-        self._last_n_model_calls = int(all_coalitions.shape[0])
+        self.last_n_model_calls = int(all_coalitions.shape[0])
 
         # Handle single or multi-output cases
         if self.output_dim == 1:
@@ -301,13 +305,13 @@ class GraphSHAPIQ:
                 moebius_interactions,
                 masked_predictions,
                 moebius_coalition_lookup,
-                efficiency_routine,
                 incomplete_neighborhoods,
                 incomplete_neighborhoods_lookup,
                 capped_interaction_size,
                 order,
                 self._grand_coalition_prediction,
                 index,
+                efficiency_routine=efficiency_routine,
             )
         else:
             moebius_coefficients: dict[int, InteractionValues] = {}
@@ -319,29 +323,31 @@ class GraphSHAPIQ:
                     moebius_interactions,
                     masked_predictions_node,
                     moebius_coalition_lookup,
-                    efficiency_routine,
                     incomplete_neighborhoods,
                     incomplete_neighborhoods_lookup,
                     capped_interaction_size,
                     order,
                     grand_coalition_pred_node,
                     index,
+                    efficiency_routine=efficiency_routine,
                 )
 
         return moebius_coefficients, shapley_interactions
 
+    # TODO @Amin: Freitag
     def _graphshapiq_routine(
         self,
         moebius_interactions: set[tuple[int, ...]],
         masked_predictions: NDArray[np.floating],
         moebius_coalition_lookup: dict[tuple[int, ...], int],
-        efficiency_routine: bool,
         incomplete_neighborhoods: set[tuple[int, ...]],
         incomplete_neighborhoods_lookup: dict[tuple[int, ...], int],
-        max_interaction_size: int,
+        max_subset_size: int,
         order: int,
         grand_coalition_prediction_node: NDArray[np.floating],
         index: str = "k-SII",
+        *,
+        efficiency_routine: bool,
     ) -> tuple[InteractionValues, InteractionValues]:
         """Core routine for computing GraphSHAPIQ values.
 
@@ -352,7 +358,7 @@ class GraphSHAPIQ:
             efficiency_routine: Whether to enforce efficiency.
             incomplete_neighborhoods: Neighborhoods not fully covered.
             incomplete_neighborhoods_lookup: Lookup for incomplete neighborhoods.
-            max_interaction_size: Maximum interaction size.
+            max_subset_size: Maximum interaction size.
             order: Maximum order of interactions.
             grand_coalition_prediction_node: Prediction for the grand coalition.
 
@@ -374,7 +380,7 @@ class GraphSHAPIQ:
                 moebius_coefficients,
                 incomplete_neighborhoods,
                 incomplete_neighborhoods_lookup,
-                max_interaction_size,
+                max_subset_size,
                 grand_coalition_prediction_node,
             )
             final_moebius = moebius_coefficients + additional_coefficients
@@ -388,16 +394,17 @@ class GraphSHAPIQ:
 
         return copy.deepcopy(final_moebius), copy.deepcopy(interactions)
 
+    # TODO @Amin: Donnerstag
     def _get_all_coalitions(
         self,
-        max_interaction_size: int,
+        max_subset_size: int,
         *,
         efficiency_routine: bool,
     ) -> tuple[set[tuple[int, ...]], set[tuple[int, ...]]]:
         """Collect all coalitions for Möbius transform and efficiency adjustment.
 
         Args:
-            max_interaction_size: Maximum size of interactions to consider.
+            max_subset_size: Maximum size of interactions to consider.
             efficiency_routine: If True, includes incomplete neighborhoods.
 
         Returns:
@@ -407,20 +414,15 @@ class GraphSHAPIQ:
         incomplete_neighborhoods: set[tuple[int, ...]] = set()
 
         for node in self.neighbors:
-            # Add all subsets of the neighborhood up to max_interaction_size
+            # Add all subsets of the neighborhood up to max_subset_size
             for interaction in powerset(
                 self.neighbors[node],
-                max_size=max_interaction_size,
+                max_size=max_subset_size,
             ):
                 moebius_interactions.add(interaction)
 
             # Add incomplete neighborhoods if efficiency_routine is enabled
-            if efficiency_routine and len(self.neighbors[node]) > max_interaction_size:
+            if efficiency_routine and len(self.neighbors[node]) > max_subset_size:
                 incomplete_neighborhoods.add(tuple(self.neighbors[node]))
 
         return moebius_interactions, incomplete_neighborhoods
-
-    @property
-    def last_n_model_calls(self) -> int | None:
-        """Return the number of model calls from the last explanation."""
-        return self._last_n_model_calls
