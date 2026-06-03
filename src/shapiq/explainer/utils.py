@@ -24,7 +24,7 @@ WARNING_NO_CLASS_INDEX = (
 )
 
 ExplainerTypes = Literal[
-    "tabular", "tree", "tabpfn", "game", "product_kernel", "knn", "wknn", "tnn"
+    "tabular", "tree", "tabpfn", "game", "product_kernel", "knn", "wknn", "tnn", "graph"
 ]
 
 KNN_WEIGHTS_TO_EXPLAINER = {
@@ -44,12 +44,14 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
     import shapiq.explainer.product_kernel.explainer as pk
     import shapiq.explainer.tabpfn as tp
     import shapiq.explainer.tabular as tb
+    import shapiq.graph.explainer as gr
     import shapiq.tree.explainer as tr
     from shapiq.explainer import nn
 
     return {
         "tabular": tb.TabularExplainer,
         "tree": tr.TreeExplainer,
+        "graph": gr.GraphExplainer,
         "tabpfn": tp.TabPFNExplainer,
         "game": ag.AgnosticExplainer,
         "product_kernel": pk.ProductKernelExplainer,
