@@ -1,5 +1,5 @@
 """
-Test module for the GraphGame class in shapiq.graph.
+Test module for the GraphGame class in shapiq.graph.Idk why its empty
 """
 import pytest
 
