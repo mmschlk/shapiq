@@ -70,3 +70,6 @@ class TestGraphGame:
 
         assert np.allclose(v1, v2)
 
+    def test_baseline_shape(self,gcn_graph_game):
+        """Baseline must match feature dimension."""
+        assert gcn_graph_game.baseline.shape[0] == gcn_graph_game.x_graph.x.shape[1]
