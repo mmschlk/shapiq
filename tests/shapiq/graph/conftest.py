@@ -2,18 +2,22 @@
 Central pytest fixtures for GraphGame and GraphSHAPIQ tests.
 """
 
+from __future__ import annotations
+
 import pytest
 import torch
-import torch.nn as nn
-from torch_geometric.nn import GCNConv, GINConv, GATConv, global_mean_pool
+from torch import nn
 from torch_geometric.data import Data
+from torch_geometric.nn import GATConv, GCNConv, GINConv, global_mean_pool
 
 from shapiq.graph.base import GraphGame
 from shapiq.graph.graphshapiq import GraphSHAPIQ
 
+
 class SimpleGCN(nn.Module):
     def __init__(self, num_node_features=3, output_dim=1, num_layers=2):
         super().__init__()
+        self.num_layers = num_layers
         self.convs = nn.ModuleList([GCNConv(num_node_features, 16)])
         for _ in range(num_layers - 1):
             self.convs.append(GCNConv(16, 16))
@@ -35,6 +39,7 @@ class SimpleGIN(nn.Module):
     def __init__(self, num_node_features=3, output_dim=1, num_layers=2):
         super().__init__()
         self.convs = nn.ModuleList()
+        self.num_layers = num_layers
 
         mlp = nn.Sequential(nn.Linear(num_node_features, 16), nn.ReLU(), nn.Linear(16, 16))
         self.convs.append(GINConv(mlp))
@@ -61,6 +66,7 @@ class SimpleGAT(nn.Module):
     def __init__(self, num_node_features=3, output_dim=1, num_layers=2, heads=1):
         super().__init__()
         self.convs = nn.ModuleList()
+        self.num_layers = num_layers
 
         self.convs.append(GATConv(num_node_features, 16, heads=heads))
         for _ in range(num_layers - 1):
@@ -70,22 +76,19 @@ class SimpleGAT(nn.Module):
 
     def forward(self, x, edge_index, batch=None):
         for conv in self.convs:
-            x = conv(x).relu()
-
+            x = conv(x, edge_index).relu()
         if batch is not None:
             x = global_mean_pool(x, batch)
         else:
             x = x.mean(dim=0, keepdim=True)
-
         return self.lin(x)
+
 
 @pytest.fixture
 def simple_graph():
     x = torch.randn(4, 3)
     edge_index = torch.tensor(
-        [[0, 1, 1, 2, 2, 3, 0, 3],
-         [1, 0, 2, 1, 3, 2, 3, 0]],
-        dtype=torch.long
+        [[0, 1, 1, 2, 2, 3, 0, 3], [1, 0, 2, 1, 3, 2, 3, 0]], dtype=torch.long
     )
     return Data(x=x, edge_index=edge_index)
 
@@ -94,9 +97,7 @@ def simple_graph():
 def small_graph():
     x = torch.randn(5, 3)
     edge_index = torch.tensor(
-        [[0, 1, 1, 2, 2, 3, 3, 4],
-         [1, 0, 2, 1, 3, 2, 4, 3]],
-        dtype=torch.long
+        [[0, 1, 1, 2, 2, 3, 3, 4], [1, 0, 2, 1, 3, 2, 4, 3]], dtype=torch.long
     )
     return Data(x=x, edge_index=edge_index)
 
@@ -104,11 +105,7 @@ def small_graph():
 @pytest.fixture
 def disconnected_graph():
     x = torch.randn(5, 3)
-    edge_index = torch.tensor(
-        [[0, 1, 2, 3, 3, 4],
-         [1, 0, 3, 2, 4, 3]],
-        dtype=torch.long
-    )
+    edge_index = torch.tensor([[0, 1, 2, 3, 3, 4], [1, 0, 3, 2, 4, 3]], dtype=torch.long)
     return Data(x=x, edge_index=edge_index)
 
 
@@ -117,6 +114,7 @@ def single_node_graph():
     x = torch.randn(1, 3)
     edge_index = torch.empty((2, 0), dtype=torch.long)
     return Data(x=x, edge_index=edge_index)
+
 
 @pytest.fixture
 def gcn_model():
@@ -141,6 +139,7 @@ def gcn_model_classification():
 # =========================================================
 # GraphGame fixtures
 # =========================================================
+
 
 @pytest.fixture
 def gcn_graph_game(gcn_model, simple_graph):
@@ -205,6 +204,7 @@ def gcn_graph_game_single_node(gcn_model, single_node_graph):
 # =========================================================
 # GraphSHAPIQ fixtures
 # =========================================================
+
 
 @pytest.fixture
 def gcn_graphshapiq(gcn_graph_game):
