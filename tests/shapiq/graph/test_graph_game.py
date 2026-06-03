@@ -40,5 +40,12 @@ class TestGraphGame:
         expected_x = gcn_graph_game.x_graph.x.clone()
         baseline_reshaped = gcn_graph_game.baseline.reshape(1, -1)
         expected_x[~torch.tensor(coalition, dtype=torch.bool)] = baseline_reshaped
+
         assert torch.allclose(masked_graph.x, expected_x)
 
+def test_mask_input_all_active(gcn_graph_game):
+    """Full coalition should return identical node features."""
+    coalition = np.ones(gcn_graph_game.n_players, dtype=bool)
+    masked_graph = gcn_graph_game.mask_input(coalition)
+
+    assert torch.allclose(masked_graph.x, gcn_graph_game.x_graph.x)
