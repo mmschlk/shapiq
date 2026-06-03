@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 from shapiq.game import Game
 
+
 class GraphGame(Game):
     """A GraphSHAP-IQ explanation game for graph networks."""
 
@@ -39,6 +40,8 @@ class GraphGame(Game):
             raise ValueError("class_index cannot be set for regression tasks.")
         if self.x_graph.x is None:
             raise ValueError("x_graph must have node features (x_graph.x must not be None).")
+        if not hasattr(model, num_layer):
+            raise AttributeError("The GNN needs a num_layers attribute")
 
         self.task = task
         self.model = model
@@ -89,26 +92,29 @@ class GraphGame(Game):
     def _calculate_baseline(self, strategy: str | float | None) -> torch.Tensor:
         """Berechnet die Baseline für Masking basierend auf der Strategie."""
         if strategy is None:
-            warnings.warn("Baseline is not provided, baseline will be initialized as zero...", stacklevel=2)
+            warnings.warn(
+                "Baseline is not provided, baseline will be initialized as zero...", stacklevel=2
+            )
             strategy = "zeros"
 
         x = self.x_graph.x
         if isinstance(strategy, torch.Tensor):
             if strategy.shape != (x.shape[1],):
-                raise ValueError(f"Baseline tensor must have shape ({x.shape[1]},), got {tuple(strategy.shape)}.")
+                raise ValueError(
+                    f"Baseline tensor must have shape ({x.shape[1]},), got {tuple(strategy.shape)}."
+                )
             return strategy.to(dtype=torch.float32, device=x.device)
-        elif isinstance(strategy, (float, int)):
+        if isinstance(strategy, (float, int)):
             return torch.full((x.shape[1],), strategy, dtype=torch.float32, device=x.device)
-        elif strategy == "zeros":
+        if strategy == "zeros":
             return torch.zeros(x.shape[1], dtype=torch.float32, device=x.device)
-        elif strategy == "average":
+        if strategy == "average":
             return x.mean(dim=0)
-        elif strategy == "min":
+        if strategy == "min":
             return torch.amin(x, dim=0)
-        elif strategy == "max":
+        if strategy == "max":
             return torch.amax(x, dim=0)
-        else:
-            raise NotImplementedError(f"Baseline strategy '{strategy}' is not supported.")
+        raise NotImplementedError(f"Baseline strategy '{strategy}' is not supported.")
 
     @property
     def normalize(self) -> bool:
@@ -154,5 +160,4 @@ class GraphGame(Game):
         # Gib ein 0-dimensionales Array zurück, wenn nur eine Koalition
         if len(coalition_values) == 1:
             return np.array(coalition_values[0])  # 0-dimensional
-        else:
-            return np.array(coalition_values)  # 1-dimensional
+        return np.array(coalition_values)  # 1-dimensional
