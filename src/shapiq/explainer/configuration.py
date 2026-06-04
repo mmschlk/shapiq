@@ -6,6 +6,7 @@ from typing import Literal
 
 from shapiq import (
     SHAPIQ,
+    SPEX,
     SVARM,
     SVARMIQ,
     KernelSHAP,
@@ -13,6 +14,8 @@ from shapiq import (
     PermutationSamplingSII,
     PermutationSamplingSTII,
     PermutationSamplingSV,
+    ProxySHAP,
+    ProxySPEX,
     RegressionFBII,
     RegressionFSII,
     UnbiasedKernelSHAP,
@@ -22,12 +25,9 @@ from shapiq.approximator.base import Approximator, ValidApproximationIndices
 from shapiq.approximator.regression.base import Regression
 from shapiq.game_theory.indices import index_generalizes_bv, index_generalizes_sv
 
-try:
-    from shapiq import SPEX  # requires the 'sparse' extra
-except ImportError:
-    SPEX = None  # type: ignore[assignment]
-
-ValidApproximatorTypes = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
+ValidApproximatorTypes = Literal[
+    "spex", "montecarlo", "svarm", "permutation", "regression", "proxyshap", "proxyspex"
+]
 APPROXIMATOR_CONFIGURATIONS: dict[
     ValidApproximatorTypes, dict[ValidApproximationIndices, type[Approximator]]
 ] = {
@@ -68,9 +68,26 @@ APPROXIMATOR_CONFIGURATIONS: dict[
         "BII": SVARMIQ,
         "CHII": SVARMIQ,
     },
-}
-if SPEX is not None:
-    APPROXIMATOR_CONFIGURATIONS["spex"] = {
+    "proxyshap": {
+        "SII": ProxySHAP,
+        "FSII": ProxySHAP,
+        "FBII": ProxySHAP,
+        "k-SII": ProxySHAP,
+        "SV": ProxySHAP,
+        "BV": ProxySHAP,
+        "BII": ProxySHAP,
+        "CHII": ProxySHAP,
+    },
+    "proxyspex": {
+        "SII": ProxySPEX,
+        "STII": ProxySPEX,
+        "FSII": ProxySPEX,
+        "FBII": ProxySPEX,
+        "k-SII": ProxySPEX,
+        "SV": ProxySPEX,
+        "BV": ProxySPEX,
+    },
+    "spex": {
         "SII": SPEX,
         "STII": SPEX,
         "FSII": SPEX,
@@ -78,7 +95,8 @@ if SPEX is not None:
         "k-SII": SPEX,
         "SV": SPEX,
         "BV": SPEX,
-    }
+    },
+}
 
 
 def choose_spex(max_order: int, n_players: int) -> bool:
