@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.5.2 (unknown)
+
+### Highlights of new Features
+
+- Added `'baseline'` imputer support (`BaselineImputer`) to the `shapiq_games` `LocalExplanation` benchmark games.
+- Added `ProxySHAP` and `ProxySPEX` as approximator options for the `TabularExplainer` and `TabPFNExplainer` in `shapiq.explainer`.
+- Added support for linear surrogate models and HPO-informed tree proxies (via scikit-learn's `GridSearchCV`, `RandomizedSearchCV`, and `HalvingGridSearchCV`) in `ProxySHAP` and `RegressionMSR`.
+- Added log-space weight computation for the regression-based (`KernelSHAP`, `KernelSHAPIQ`, `RegressionFSII`, `RegressionFBII`, `kADDSHAP`) and Monte Carlo (`SHAPIQ`, `SVARMIQ`) approximators, supporting Shapley approximation for feature counts beyond 1000.
+
+
+### Bugfix
+
+- Fixes `ProxySHAP` and `RegressionMSR` alignment of sampled coalitions between the approximator and its adjustment method (`random_state` now defaults to a fixed seed so both samplers reproduce identical coalitions).
+- Fixes `ProxySPEX` passing `initialize_dict=True` to its sampler, which was unnecessary since `ProxySPEX` does not return all possible interactions (now `False`).
+
 ## v1.5.1 (2026-05-30)
 
 ### Bugfix
