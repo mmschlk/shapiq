@@ -105,7 +105,7 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
             pairing_trick=pairing_trick,
             random_state=random_state,
             sampling_weights=sampling_weights,
-            initialize_dict=True,
+            initialize_dict=False,
         )
 
     def approximate(
