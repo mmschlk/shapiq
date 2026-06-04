@@ -16,6 +16,8 @@ from shapiq.utils import powerset
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from shapiq.game_theory.moebius_converter import ValidMoebiusConverterIndices
+
     from .base import GraphGame
 
 logger = logging.getLogger(__name__)
@@ -140,10 +142,9 @@ class GraphSHAPIQ:
             baseline_value=float(moebius_values[moebius_lookup[()]]),
         )
 
-    # TODO @Amin: Donnerstag
     def _convert_to_coalition_matrix(
         self,
-        coalitions: set[tuple[int, ...]] | dict[Any, tuple[int, ...]],
+        coalitions: set[tuple[int, ...]],
         lookup_shift: int = 0,
     ) -> tuple[NDArray[np.floating], dict[tuple[int, ...], int]]:
         """Convert a set or dict of coalitions to a binary matrix and lookup dict.
@@ -160,14 +161,9 @@ class GraphSHAPIQ:
         coalition_matrix = np.zeros((len(coalitions), self.n_players), dtype=float)
         coalition_lookup: dict[tuple[int, ...], int] = {}
 
-        if isinstance(coalitions, set):
-            for i, coalition in enumerate(coalitions):
-                coalition_matrix[i, list(coalition)] = 1
-                coalition_lookup[coalition] = lookup_shift + i
-        elif isinstance(coalitions, dict):
-            for i, (_, coalition) in enumerate(coalitions.items()):
-                coalition_matrix[i, list(coalition)] = 1
-                coalition_lookup[coalition] = lookup_shift + i
+        for i, coalition in enumerate(coalitions):
+            coalition_matrix[i, list(coalition)] = 1
+            coalition_lookup[coalition] = lookup_shift + i
 
         return coalition_matrix, coalition_lookup
 
@@ -244,7 +240,7 @@ class GraphSHAPIQ:
         order: int | None = None,
         *,
         efficiency_routine: bool = True,
-        index: str = "k-SII",
+        index: ValidMoebiusConverterIndices = "k-SII",
     ) -> tuple[
         InteractionValues | dict[int, InteractionValues],
         InteractionValues | dict[int, InteractionValues],
@@ -338,7 +334,7 @@ class GraphSHAPIQ:
         max_subset_size: int,
         order: int,
         grand_coalition_prediction_node: NDArray[np.floating],
-        index: str = "k-SII",
+        index: ValidMoebiusConverterIndices = "k-SII",
         *,
         efficiency_routine: bool,
     ) -> tuple[InteractionValues, InteractionValues]:
