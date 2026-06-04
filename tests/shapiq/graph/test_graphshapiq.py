@@ -394,3 +394,127 @@ class TestGraphSHAPIQ:
         assert result[(0, 1)] == pytest.approx(0.0)
         # m((0,1,2)) = 6 - 2 - 2 - 2 + 1 + 1 + 1 - 0 = 3
         assert result[(0, 1, 2)] == pytest.approx(3.0)
+
+    @pytest.fixture
+    def efficiency_routine_inputs(self, gcn_graphshapiq):
+        """Shared setup for _efficiency_routine tests with 3 players and multiple incomplete neighborhoods."""
+        coalitions = {(), (0,), (1,), (2,)}
+        coalition_predictions = np.array([0.0, 1.0, 2.0, 3.0])
+        coalition_lookup = {(): 0, (0,): 1, (1,): 2, (2,): 3}
+
+        moebius_coefficients = gcn_graphshapiq.compute_moebius_transform(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        return {
+            "moebius_coefficients": moebius_coefficients,
+            "incomplete_neighborhoods": {(0, 1), (1, 2), (0, 1, 2)},
+            "incomplete_neighborhoods_lookup": {(0, 1): 4, (1, 2): 5, (0, 1, 2): 6},
+            "masked_predictions": np.array([0.0, 1.0, 2.0, 3.0, 5.0, 7.0, 12.0]),
+            "grand_coalition_prediction": np.array(12.0),
+        }
+
+    def test_compute_moebius_transform_efficiency_axiom(self, gcn_graphshapiq):
+        """Test that sum of all Möbius coefficients equals v(grand coalition)."""
+        coalitions = {(), (0,), (1,), (0, 1)}
+        coalition_predictions = np.array([0.0, 1.0, 2.0, 4.0])
+        coalition_lookup = {(): 0, (0,): 1, (1,): 2, (0, 1): 3}
+
+        result = gcn_graphshapiq.compute_moebius_transform(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        # sum of all Möbius coefficients = v(grand coalition) = 4
+        assert np.sum(result.values) == pytest.approx(coalition_predictions[-1])
+
+    def test_efficiency_routine_returns_interaction_values(
+        self, gcn_graphshapiq, efficiency_routine_inputs
+    ):
+        """Test that _efficiency_routine returns an InteractionValues object."""
+        result = gcn_graphshapiq._efficiency_routine(
+            masked_predictions=efficiency_routine_inputs["masked_predictions"],
+            moebius_coefficients=efficiency_routine_inputs["moebius_coefficients"],
+            incomplete_neighborhoods=efficiency_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=efficiency_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            grand_coalition_prediction_node=efficiency_routine_inputs["grand_coalition_prediction"],
+        )
+
+        assert isinstance(result, InteractionValues)
+        assert result.index == "Moebius"
+        assert result.n_players == gcn_graphshapiq.n_players
+        assert result.baseline_value == pytest.approx(0.0)
+
+    def test_efficiency_routine_gap_multiple_incomplete_neighborhoods(
+        self, gcn_graphshapiq, efficiency_routine_inputs
+    ):
+        """Test that gaps are correctly computed for multiple incomplete neighborhoods."""
+        result = gcn_graphshapiq._efficiency_routine(
+            masked_predictions=efficiency_routine_inputs["masked_predictions"],
+            moebius_coefficients=efficiency_routine_inputs["moebius_coefficients"],
+            incomplete_neighborhoods=efficiency_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=efficiency_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            grand_coalition_prediction_node=efficiency_routine_inputs["grand_coalition_prediction"],
+        )
+
+        # gap(0,1) = v((0,1)) - (m(()) + m((0,)) + m((1,))) = 5 - 3 = 2
+        assert result[(0, 1)] == pytest.approx(2.0)
+        # gap(1,2) = v((1,2)) - (m(()) + m((1,)) + m((2,))) = 7 - 5 = 2
+        # (0,1) is not a subset of (1,2) so no nested contribution
+        assert result[(1, 2)] == pytest.approx(2.0)
+        # final adjustment: 12 - (0+1+2+3) - (2+2) = 2
+        assert result[(0, 1, 2)] == pytest.approx(2.0)
+
+    def test_efficiency_routine_enforces_efficiency(
+        self, gcn_graphshapiq, efficiency_routine_inputs
+    ):
+        """Test that sum of all Möbius coefficients equals grand coalition prediction."""
+        result = gcn_graphshapiq._efficiency_routine(
+            masked_predictions=efficiency_routine_inputs["masked_predictions"],
+            moebius_coefficients=efficiency_routine_inputs["moebius_coefficients"],
+            incomplete_neighborhoods=efficiency_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=efficiency_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            grand_coalition_prediction_node=efficiency_routine_inputs["grand_coalition_prediction"],
+        )
+
+        total = np.sum(efficiency_routine_inputs["moebius_coefficients"].values) + np.sum(
+            result.values
+        )
+        assert total == pytest.approx(
+            float(efficiency_routine_inputs["grand_coalition_prediction"])
+        )
+
+    def test_efficiency_routine_lookup_contains_all_incomplete_neighborhoods(
+        self, gcn_graphshapiq, efficiency_routine_inputs
+    ):
+        """Test that the returned lookup contains exactly all incomplete neighborhoods."""
+        result = gcn_graphshapiq._efficiency_routine(
+            masked_predictions=efficiency_routine_inputs["masked_predictions"],
+            moebius_coefficients=efficiency_routine_inputs["moebius_coefficients"],
+            incomplete_neighborhoods=efficiency_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=efficiency_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            grand_coalition_prediction_node=efficiency_routine_inputs["grand_coalition_prediction"],
+        )
+
+        assert (0, 1) in result.interaction_lookup
+        assert (1, 2) in result.interaction_lookup
+        assert (0, 1, 2) in result.interaction_lookup
+        assert (
+            len(result.interaction_lookup)
+            == len(efficiency_routine_inputs["incomplete_neighborhoods"]) + 1
+        )
