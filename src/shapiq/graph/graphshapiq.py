@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
@@ -76,7 +76,7 @@ class GraphSHAPIQ:
             logger.info("Total budget: %d", self.total_budget)
 
     def _build_graph(self) -> nx.Graph:
-        """Convert edge_index to an nx.Graph."""
+        """Convert edge_index and nodes to an nx.Graph."""
         G: nx.Graph = nx.Graph()
         G.add_nodes_from(range(self.n_players))
         G.add_edges_from(self.edge_index.T.tolist())
@@ -105,10 +105,9 @@ class GraphSHAPIQ:
         )
         return tuple(sorted(reachable.keys()))
 
-    # TODO @Amin: Donnerstag
     def compute_moebius_transform(
         self,
-        coalitions: set[tuple[int, ...]] | dict[tuple[int, ...], Any],
+        coalitions: set[tuple[int, ...]],
         coalition_predictions: NDArray[np.floating],
         coalition_lookup: dict[tuple[int, ...], int],
     ) -> InteractionValues:
@@ -167,7 +166,6 @@ class GraphSHAPIQ:
 
         return coalition_matrix, coalition_lookup
 
-    # TODO @Amin: Donnerstag
     def _efficiency_routine(
         self,
         masked_predictions: NDArray[np.floating],
@@ -179,20 +177,52 @@ class GraphSHAPIQ:
     ) -> InteractionValues:
         """Adjust Möbius coefficients to ensure efficiency.
 
+        The efficiency axiom states that the sum of all Möbius coefficients must equal
+        the grand coalition prediction:
+
+            sum_{S ⊆ N} m(S) = v(N)
+
+        When neighborhoods are incomplete (i.e. their size exceeds max_subset_size),
+        the Möbius transform is truncated and the efficiency axiom is violated. This
+        routine corrects for this by computing a gap term for each incomplete neighborhood:
+
+            gap(S) = v(S) - sum_{T ⊆ S, |T| <= max_subset_size} m(T)
+                        - sum_{S' ⊂ S, S' incomplete} gap(S')
+
+        Where:
+            - v(S) is the game value of the incomplete neighborhood S
+            - m(T) are the already-computed Möbius coefficients for subsets T of S
+            - gap(S') are the correction terms for smaller incomplete neighborhoods
+            that are subsets of S
+
+        Note:
+            - This method should only be called when incomplete_neighborhoods is non-empty.
+            - The returned InteractionValues has baseline_value=0.0 since the corrections
+            are gap terms only; the empty coalition contribution is already captured
+            in the original moebius_coefficients.
+
         Args:
-            masked_predictions: Predictions for all coalitions.
-            moebius_coefficients: Current Möbius coefficients.
-            incomplete_neighborhoods: Neighborhoods not fully covered by coalitions.
-            incomplete_neighborhoods_lookup: Lookup for incomplete neighborhoods.
-            max_subset_size: Maximum interaction size considered.
-            grand_coalition_prediction_node: Prediction for the grand coalition.
+            masked_predictions: Predictions for all coalitions, including incomplete
+                neighborhoods. Indices are given by incomplete_neighborhoods_lookup.
+            moebius_coefficients: Current Möbius coefficients computed from the
+                truncated powerset via compute_moebius_transform.
+            incomplete_neighborhoods: Set of neighborhood tuples whose size exceeds
+                max_subset_size and therefore were not fully covered by the Möbius
+                transform.
+            incomplete_neighborhoods_lookup: Mapping from incomplete neighborhood tuples
+                to their row indices in masked_predictions.
+            max_subset_size: Maximum subset size used in the Möbius transform. Subsets
+                larger than this were not evaluated.
+            grand_coalition_prediction_node: The model prediction for the grand coalition
+                (all nodes present), used to enforce the global efficiency constraint.
 
         Returns:
-            InteractionValues with adjusted Möbius coefficients.
+            InteractionValues containing the gap correction terms for each incomplete
+            neighborhood, with baseline_value=0.0 and index="Moebius".
         """
         incomplete_neighborhoods_sorted = sorted(incomplete_neighborhoods, key=len)
-        n_incomplete = len(incomplete_neighborhoods_lookup)
-        additional_values = np.zeros(n_incomplete, dtype=float)
+        n_incomplete_neighborhoods = len(incomplete_neighborhoods_lookup)
+        additional_values = np.zeros(n_incomplete_neighborhoods, dtype=float)
         additional_lookup: dict[tuple[int, ...], int] = {}
 
         for i, neighborhood in enumerate(incomplete_neighborhoods_sorted):
@@ -354,7 +384,6 @@ class GraphSHAPIQ:
         Returns:
             Tuple of (final Möbius coefficients, Shapley interactions).
         """
-        # Compute Möbius transform
         moebius_coefficients = self.compute_moebius_transform(
             coalitions=moebius_interactions,
             coalition_predictions=masked_predictions,
@@ -362,8 +391,7 @@ class GraphSHAPIQ:
         )
         moebius_coefficients.sparsify(self.sparsify_threshold)
 
-        # Adjust for efficiency if needed
-        if efficiency_routine:
+        if efficiency_routine and incomplete_neighborhoods:
             additional_coefficients = self._efficiency_routine(
                 masked_predictions,
                 moebius_coefficients,
@@ -376,7 +404,6 @@ class GraphSHAPIQ:
         else:
             final_moebius = moebius_coefficients
 
-        # Convert to Shapley interactions
         converter = MoebiusConverter(moebius_coefficients=final_moebius)
         interactions = converter.compute(index=index, order=order)
         interactions.sparsify(self.sparsify_threshold)
