@@ -53,7 +53,15 @@ def extract_linear_interactions(
 
 
 class ResidualGame(Game):
-    """Residual game class for adjusting the proxy model's predictions."""
+    """Residual game class for adjusting the proxy model's predictions.
+
+    The residual values are precomputed on the coalitions that :class:`ProxySHAP` sampled
+    and returned for every query. This is correct only because :class:`ProxySHAP` forces a
+    fixed ``random_state`` (see its constructor) so that the adjustment approximator's
+    coalition sampler reproduces the *identical* coalitions in the identical order; the
+    ``i``-th row of any queried coalition matrix then matches the ``i``-th precomputed
+    residual.
+    """
 
     def __init__(self, n_players: int, game_values: np.ndarray) -> None:
         """Initialize the residual game with the given values for each coalition."""
@@ -65,7 +73,7 @@ class ResidualGame(Game):
 
         Args:
             coalitions: A binary matrix of shape (n_samples, n_features) where each row represents a coalition and each column represents a feature. A value of 1 indicates that the feature is included in the coalition, while a value of 0 indicates that it is not.
-            Note: The coalitions are expected to be ordered in the same way as the values in self.vals, i.e., the i-th row of coalitions corresponds to the i-th entry in self.vals.
+            Note: The coalitions are expected to be ordered in the same way as the values in self.vals, i.e., the i-th row of coalitions corresponds to the i-th entry in self.vals. ProxySHAP guarantees this by fixing the random_state shared with the adjustment approximator.
 
         Returns:
             A vector of shape (n_samples,) where each entry is the value of the corresponding coalition in the residual game.
@@ -114,8 +122,18 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             adjustment: Method for adjusting the proxy model's predictions to better match the true value function. Options are "none" (no adjustment), "msr","svarm" (statified MSR), "kernel" (KernelSHAPIQ).
             sampling_weights: Optional array of weights for the sampling procedure. The weights must be of shape (n + 1,) and are used to determine the probability of sampling a coalition. Defaults to None.
             pairing_trick: If True, the pairing trick is applied to the sampling procedure. Defaults to True.
-            random_state: The random state of the estimator. Defaults to None.
+            random_state: The random state of the estimator. Defaults to None, which is internally
+                replaced by a fixed seed (0). ProxySHAP and its residual-adjustment approximator
+                use *separate* coalition samplers, and the residual correction most beneficial when they use the same coalitions. A shared, fixed seed
+                guarantees this alignment; with ``random_state=None`` the two samplers would diverge
+                and the adjustment would be applied to mismatched coalitions. Pass an explicit
+                integer to control the (still shared) seed; passing ``None`` keeps results
+                deterministic across runs.
         """
+        if random_state is None:
+            # ProxySHAP and the adjustment approximator must sample the *same* coalitions for the
+            # residual correction to align; a shared fixed seed enforces this (see docstring).
+            random_state = 0
         super().__init__(
             n=n,
             max_order=max_order,
@@ -213,9 +231,7 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         that fitted coefficients map directly to Möbius interactions; the
         result is then converted to ``self.approximation_index`` via
         :class:`~shapiq.game_theory.moebius_converter.MoebiusConverter`.
-        Optional residual adjustment is applied to the proxy's residuals on
-        the same coalitions. Per-stage timings populate
-        ``self.runtime_last_approximate_run``.
+        Optional residual adjustment is applied to the proxy's residuals on the same coalitions; see :class:`ResidualGame` for how alignment is ensured.
 
         Args:
             budget: Number of coalition evaluations to draw.
@@ -235,8 +251,9 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         # 2. Extract interactions from proxy model coefficients, converting to the correct index if necessary
         linear_interactions: dict[tuple[int, ...], float]
         if self.max_order == 1:
+            proxy_features = coalitions_matrix  # linear proxy fits the raw coalitions
             self.proxy_model.fit(  # ty: ignore[unresolved-attribute]
-                coalitions_matrix, coalition_values
+                proxy_features, coalition_values
             )
             linear_interactions = {
                 (i,): float(self.proxy_model.coef_[i])  # ty: ignore[unresolved-attribute]
@@ -246,9 +263,9 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             poly = PolynomialFeatures(
                 degree=self.max_order, interaction_only=True, include_bias=False
             )
-            coalitions_matrix_extended = poly.fit_transform(coalitions_matrix)
+            proxy_features = poly.fit_transform(coalitions_matrix)  # interaction-only expansion
             self.proxy_model.fit(  # ty: ignore[unresolved-attribute]
-                coalitions_matrix_extended, coalition_values
+                proxy_features, coalition_values
             )
             linear_interactions = extract_linear_interactions(
                 coefficients=self.proxy_model.coef_,  # ty: ignore[unresolved-attribute]
@@ -269,13 +286,12 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             index=self.index, order=self.max_order
         )
 
-        # 3. Optional adjustment of the proxy
+        # 3. Optional adjustment of the proxy. The adjustment approximator re-samples the same
+        # coalitions (ProxySHAP fixes a shared random_state), so the residual values stay aligned.
         if self.adjustment != "none":
             residual_values = (
                 coalition_values
-                - self.proxy_model.predict(  # ty: ignore[unresolved-attribute]
-                    coalitions_matrix
-                )
+                - self.proxy_model.predict(proxy_features)  # ty: ignore[unresolved-attribute]
             )
             residual_values -= residual_values[0]  # Normalize residuals
             residual_game = ResidualGame(n_players=self.n, game_values=residual_values)
@@ -294,10 +310,7 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         Samples ``budget`` coalitions, evaluates the game, fits the tree proxy,
         then reads off interactions exactly via
         :class:`~shapiq.tree.interventional.explainer.InterventionalTreeExplainer`
-        in boolean-tree mode. If ``self.disjoint`` is set, sampled coalitions
-        are split (80/20) so the proxy is fit on one part and the residual
-        adjustment is computed on the other. Per-stage timings populate
-        ``self.runtime_last_approximate_run``.
+        in boolean-tree mode. Optional residual adjustment is applied to the proxy's residuals on the same coalitions; see :class:`ResidualGame` for how alignment is ensured.
 
         Args:
             budget: Number of coalition evaluations to draw.
@@ -346,13 +359,12 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             baseline_value=float(baseline_value),
         )
 
-        # 3. Optional adjustment of the proxy
+        # 3. Optional adjustment of the proxy. The adjustment approximator re-samples the same
+        # coalitions (ProxySHAP fixes a shared random_state), so the residual values stay aligned.
         if self.adjustment != "none":
             residual_values = (
                 game_values
-                - self.proxy_model.predict(  # ty: ignore[unresolved-attribute]
-                    coalitions_matrix
-                )
+                - self.proxy_model.predict(coalitions_matrix)  # ty: ignore[unresolved-attribute]
             )
             residual_values -= residual_values[0]  # Normalize residuals
             residual_game = ResidualGame(n_players=self.n, game_values=residual_values)
