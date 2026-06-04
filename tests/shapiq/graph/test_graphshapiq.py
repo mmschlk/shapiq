@@ -8,6 +8,9 @@ Shapley interaction values for graph neural networks (GNNs) using the GraphSHAP-
 from __future__ import annotations
 
 import numpy as np
+import pytest
+
+from shapiq.interaction_values import InteractionValues
 
 
 class TestGraphSHAPIQ:
@@ -273,3 +276,121 @@ class TestGraphSHAPIQ:
         matrix, lookup = gcn_graphshapiq._convert_to_coalition_matrix(coalitions)
         assert matrix.shape == (1, gcn_graphshapiq.n_players)
         assert len(lookup) == 1
+
+    def test_compute_moebius_transform_simple(self, gcn_graphshapiq):
+        """Test Möbius transform with hand-crafted values for 2 players."""
+        # Define coalitions and known game values
+        # v(()) = 0, v((0,)) = 1, v((1,)) = 2, v((0,1)) = 4
+        coalitions = {(), (0,), (1,), (0, 1)}
+        coalition_predictions = np.array([0.0, 1.0, 2.0, 4.0])
+        coalition_lookup = {(): 0, (0,): 1, (1,): 2, (0, 1): 3}
+
+        result = gcn_graphshapiq.compute_moebius_transform(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        # m(()) = v(()) = 0
+        assert result[()] == pytest.approx(0.0)
+        # m((0,)) = v((0,)) - v(()) = 1 - 0 = 1
+        assert result[(0,)] == pytest.approx(1.0)
+        # m((1,)) = v((1,)) - v(()) = 2 - 0 = 2
+        assert result[(1,)] == pytest.approx(2.0)
+        # m((0,1)) = v((0,1)) - v((0,)) - v((1,)) + v(()) = 4 - 1 - 2 + 0 = 1
+        assert result[(0, 1)] == pytest.approx(1.0)
+
+    def test_compute_moebius_transform_returns_interaction_values(self, gcn_graphshapiq):
+        """Test that the return type is InteractionValues with correct attributes."""
+        coalitions = {(), (0,), (1,), (0, 1)}
+        coalition_predictions = np.array([0.0, 1.0, 2.0, 4.0])
+        coalition_lookup = {(): 0, (0,): 1, (1,): 2, (0, 1): 3}
+
+        result = gcn_graphshapiq.compute_moebius_transform(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        assert isinstance(result, InteractionValues)
+        assert result.n_players == gcn_graphshapiq.n_players
+        assert result.index == "Moebius"
+        assert result.min_order == 0
+        assert result.max_order == gcn_graphshapiq.n_players
+
+    def test_compute_moebius_transform_baseline_value(self, gcn_graphshapiq):
+        """Test that baseline_value equals m(()) = v(())."""
+        coalitions = {(), (0,), (1,), (0, 1)}
+        coalition_predictions = np.array([0.5, 1.0, 2.0, 4.0])
+        coalition_lookup = {(): 0, (0,): 1, (1,): 2, (0, 1): 3}
+
+        result = gcn_graphshapiq.compute_moebius_transform(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        # baseline_value = m(()) = v(()) = 0.5
+        assert result.baseline_value == pytest.approx(0.5)
+
+    def test_compute_moebius_transform_empty_coalition_only(self, gcn_graphshapiq):
+        """Test Möbius transform with only the empty coalition."""
+        coalitions = {()}
+        coalition_predictions = np.array([3.0])
+        coalition_lookup = {(): 0}
+
+        result = gcn_graphshapiq.compute_moebius_transform(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        assert result[()] == pytest.approx(3.0)
+        assert result.baseline_value == pytest.approx(3.0)
+
+    def test_compute_moebius_transform_additive_game(self, gcn_graphshapiq):
+        """Test Möbius transform on an additive game — no interactions, so m(S)=0 for |S|>1."""
+        # Additive game: v(S) = sum of player values, no synergy
+        # v(()) = 0, v((0,)) = 1, v((1,)) = 2, v((0,1)) = 3
+        coalitions = {(), (0,), (1,), (0, 1)}
+        coalition_predictions = np.array([0.0, 1.0, 2.0, 3.0])
+        coalition_lookup = {(): 0, (0,): 1, (1,): 2, (0, 1): 3}
+
+        result = gcn_graphshapiq.compute_moebius_transform(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        # m((0,1)) = 3 - 1 - 2 + 0 = 0 — no interaction in additive game
+        assert result[(0, 1)] == pytest.approx(0.0)
+        assert result[(0,)] == pytest.approx(1.0)
+        assert result[(1,)] == pytest.approx(2.0)
+
+    def test_compute_moebius_transform_three_players(self, gcn_graphshapiq):
+        """Test Möbius transform with three players and known values."""
+        # v(()) = 0, v((0,)) = 1, v((1,)) = 1, v((2,)) = 1
+        # v((0,1)) = 2, v((0,2)) = 2, v((1,2)) = 2, v((0,1,2)) = 6
+        coalitions = {(), (0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)}
+        coalition_predictions = np.array([0.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 6.0])
+        coalition_lookup = {
+            (): 0,
+            (0,): 1,
+            (1,): 2,
+            (2,): 3,
+            (0, 1): 4,
+            (0, 2): 5,
+            (1, 2): 6,
+            (0, 1, 2): 7,
+        }
+
+        result = gcn_graphshapiq.compute_moebius_transform(
+            coalitions=coalitions,
+            coalition_predictions=coalition_predictions,
+            coalition_lookup=coalition_lookup,
+        )
+
+        # m((0,1)) = 2 - 1 - 1 + 0 = 0
+        assert result[(0, 1)] == pytest.approx(0.0)
+        # m((0,1,2)) = 6 - 2 - 2 - 2 + 1 + 1 + 1 - 0 = 3
+        assert result[(0, 1, 2)] == pytest.approx(3.0)
