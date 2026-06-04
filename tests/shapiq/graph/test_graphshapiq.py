@@ -7,6 +7,8 @@ Shapley interaction values for graph neural networks (GNNs) using the GraphSHAP-
 
 from __future__ import annotations
 
+import numpy as np
+
 
 class TestGraphSHAPIQ:
     """Test class for GraphSHAPIQ.__init__."""
@@ -207,3 +209,67 @@ class TestGraphSHAPIQ:
         # moebius_interactions still populated normally
         assert () in moebius_interactions
         assert (0,) in moebius_interactions
+
+    def test_convert_to_coalition_matrix_shape(self, gcn_graphshapiq):
+        """Test that the coalition matrix has the correct shape."""
+        coalitions = {(), (0,), (1,), (0, 1)}
+        matrix, _ = gcn_graphshapiq._convert_to_coalition_matrix(coalitions)
+        assert matrix.shape == (len(coalitions), gcn_graphshapiq.n_players)
+
+    def test_convert_to_coalition_matrix_empty_coalition(self, gcn_graphshapiq):
+        """Test that the empty coalition maps to an all-zero row."""
+        coalitions = {()}
+        matrix, lookup = gcn_graphshapiq._convert_to_coalition_matrix(coalitions)
+        assert np.all(matrix[lookup[()]] == 0)
+
+    def test_convert_to_coalition_matrix_full_coalition(self, gcn_graphshapiq):
+        """Test that the full coalition maps to an all-ones row."""
+        full = tuple(range(gcn_graphshapiq.n_players))
+        coalitions = {full}
+        matrix, lookup = gcn_graphshapiq._convert_to_coalition_matrix(coalitions)
+        assert np.all(matrix[lookup[full]] == 1)
+
+    def test_convert_to_coalition_matrix_partial_coalition(self, gcn_graphshapiq):
+        """Test that a partial coalition correctly sets the right positions to 1."""
+        coalition = (0, 2)
+        coalitions = {coalition}
+        matrix, lookup = gcn_graphshapiq._convert_to_coalition_matrix(coalitions)
+        row = matrix[lookup[coalition]]
+        assert row[0] == 1
+        assert row[1] == 0
+        assert row[2] == 1
+        assert row[3] == 0
+
+    def test_convert_to_coalition_matrix_lookup_no_shift(self, gcn_graphshapiq):
+        """Test that lookup indices start at 0 without a shift."""
+        coalitions = {(), (0,), (1,), (0, 1)}
+        _, lookup = gcn_graphshapiq._convert_to_coalition_matrix(coalitions)
+        assert min(lookup.values()) == 0
+        assert max(lookup.values()) == len(coalitions) - 1
+
+    def test_convert_to_coalition_matrix_lookup_with_shift(self, gcn_graphshapiq):
+        """Test that lookup indices are correctly offset by lookup_shift."""
+        coalitions = {(), (0,), (1,), (0, 1)}
+        shift = 10
+        _, lookup = gcn_graphshapiq._convert_to_coalition_matrix(coalitions, lookup_shift=shift)
+        assert min(lookup.values()) == shift
+        assert max(lookup.values()) == shift + len(coalitions) - 1
+
+    def test_convert_to_coalition_matrix_lookup_consistency(self, gcn_graphshapiq):
+        """Test that each lookup index points to the correct row in the matrix."""
+        coalitions = {(), (0,), (2,), (0, 2)}
+        matrix, lookup = gcn_graphshapiq._convert_to_coalition_matrix(coalitions)
+        for coalition, idx in lookup.items():
+            row = matrix[idx]
+            for player in range(gcn_graphshapiq.n_players):
+                if player in coalition:
+                    assert row[player] == 1
+                else:
+                    assert row[player] == 0
+
+    def test_convert_to_coalition_matrix_single_coalition(self, gcn_graphshapiq):
+        """Test with a single coalition input."""
+        coalitions = {(0, 1)}
+        matrix, lookup = gcn_graphshapiq._convert_to_coalition_matrix(coalitions)
+        assert matrix.shape == (1, gcn_graphshapiq.n_players)
+        assert len(lookup) == 1
