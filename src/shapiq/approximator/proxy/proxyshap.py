@@ -118,7 +118,7 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
             max_order: Maximum order of interactions to consider.
             index: Index of the instance to explain.
             proxy_model: Optional proxy model to use for approximating the value function. If None, a default XGBoost regressor will be used.
-                We support HPO of tree-models, via sklearn's GridSearchCV, RandomizedSearchCV, and HalvingGridSearchCV. In this case, the best_estimator_ will be used as the proxy model for interaction extraction and adjustment.
+                We support HPO of tree-models, via sklearn's GridSearchCV, RandomizedSearchCV, and HalvingGridSearchCV. In this case, the ``.best_estimator_`` will be used as the proxy model for interaction extraction and adjustment.
             adjustment: Method for adjusting the proxy model's predictions to better match the true value function. Options are "none" (no adjustment), "msr","svarm" (statified MSR), "kernel" (KernelSHAPIQ).
             sampling_weights: Optional array of weights for the sampling procedure. The weights must be of shape (n + 1,) and are used to determine the probability of sampling a coalition. Defaults to None.
             pairing_trick: If True, the pairing trick is applied to the sampling procedure. Defaults to True.
