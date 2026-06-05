@@ -518,3 +518,202 @@ class TestGraphSHAPIQ:
             len(result.interaction_lookup)
             == len(efficiency_routine_inputs["incomplete_neighborhoods"]) + 1
         )
+
+    @pytest.fixture
+    def graphshapiq_routine_inputs(self, gcn_graphshapiq):
+        """Shared setup for _graphshapiq_routine tests with 3 players."""
+        # Möbius coalitions: all subsets up to size 1
+        moebius_interactions = {(), (0,), (1,), (2,)}
+        moebius_coalition_lookup = {(): 0, (0,): 1, (1,): 2, (2,): 3}
+
+        # Incomplete neighborhoods
+        incomplete_neighborhoods = {(0, 1), (0, 1, 2)}
+        incomplete_neighborhoods_lookup = {(0, 1): 4, (0, 1, 2): 5}
+
+        # All predictions: moebius coalitions + incomplete neighborhoods
+        masked_predictions = np.array([0.0, 2.0, 3.0, 4.0, 7.0, 15.0])
+        grand_coalition_prediction = np.array(15.0)
+
+        return {
+            "moebius_interactions": moebius_interactions,
+            "moebius_coalition_lookup": moebius_coalition_lookup,
+            "incomplete_neighborhoods": incomplete_neighborhoods,
+            "incomplete_neighborhoods_lookup": incomplete_neighborhoods_lookup,
+            "masked_predictions": masked_predictions,
+            "grand_coalition_prediction": grand_coalition_prediction,
+        }
+
+    def test_graphshapiq_routine_return_types(self, gcn_graphshapiq, graphshapiq_routine_inputs):
+        """Test that _graphshapiq_routine returns a tuple of two InteractionValues."""
+        final_moebius, interactions = gcn_graphshapiq._graphshapiq_routine(
+            moebius_interactions=graphshapiq_routine_inputs["moebius_interactions"],
+            masked_predictions=graphshapiq_routine_inputs["masked_predictions"],
+            moebius_coalition_lookup=graphshapiq_routine_inputs["moebius_coalition_lookup"],
+            incomplete_neighborhoods=graphshapiq_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=graphshapiq_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            order=3,
+            grand_coalition_prediction_node=graphshapiq_routine_inputs[
+                "grand_coalition_prediction"
+            ],
+            efficiency_routine=True,
+        )
+
+        assert isinstance(final_moebius, InteractionValues)
+        assert isinstance(interactions, InteractionValues)
+
+    def test_graphshapiq_routine_moebius_attributes(
+        self, gcn_graphshapiq, graphshapiq_routine_inputs
+    ):
+        """Test that final Möbius coefficients have correct attributes."""
+        final_moebius, _ = gcn_graphshapiq._graphshapiq_routine(
+            moebius_interactions=graphshapiq_routine_inputs["moebius_interactions"],
+            masked_predictions=graphshapiq_routine_inputs["masked_predictions"],
+            moebius_coalition_lookup=graphshapiq_routine_inputs["moebius_coalition_lookup"],
+            incomplete_neighborhoods=graphshapiq_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=graphshapiq_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            order=3,
+            grand_coalition_prediction_node=graphshapiq_routine_inputs[
+                "grand_coalition_prediction"
+            ],
+            efficiency_routine=True,
+        )
+
+        assert final_moebius.index == "Moebius"
+        assert final_moebius.n_players == gcn_graphshapiq.n_players
+
+    def test_graphshapiq_routine_interactions_attributes(
+        self, gcn_graphshapiq, graphshapiq_routine_inputs
+    ):
+        """Test that Shapley interactions have correct attributes."""
+        _, interactions = gcn_graphshapiq._graphshapiq_routine(
+            moebius_interactions=graphshapiq_routine_inputs["moebius_interactions"],
+            masked_predictions=graphshapiq_routine_inputs["masked_predictions"],
+            moebius_coalition_lookup=graphshapiq_routine_inputs["moebius_coalition_lookup"],
+            incomplete_neighborhoods=graphshapiq_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=graphshapiq_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            order=3,
+            grand_coalition_prediction_node=graphshapiq_routine_inputs[
+                "grand_coalition_prediction"
+            ],
+            efficiency_routine=True,
+            index="k-SII",
+        )
+
+        assert interactions.index == "k-SII"
+        assert interactions.n_players == gcn_graphshapiq.n_players
+
+    def test_graphshapiq_routine_efficiency_axiom_with_routine(
+        self, gcn_graphshapiq, graphshapiq_routine_inputs
+    ):
+        """Test that efficiency axiom holds when efficiency_routine=True."""
+        final_moebius, _ = gcn_graphshapiq._graphshapiq_routine(
+            moebius_interactions=graphshapiq_routine_inputs["moebius_interactions"],
+            masked_predictions=graphshapiq_routine_inputs["masked_predictions"],
+            moebius_coalition_lookup=graphshapiq_routine_inputs["moebius_coalition_lookup"],
+            incomplete_neighborhoods=graphshapiq_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=graphshapiq_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            order=3,
+            grand_coalition_prediction_node=graphshapiq_routine_inputs[
+                "grand_coalition_prediction"
+            ],
+            efficiency_routine=True,
+        )
+
+        # sum of all final Möbius coefficients = v(grand coalition) = 15
+        assert np.sum(final_moebius.values) == pytest.approx(
+            float(graphshapiq_routine_inputs["grand_coalition_prediction"])
+        )
+
+    def test_graphshapiq_routine_no_efficiency_routine(
+        self, gcn_graphshapiq, graphshapiq_routine_inputs
+    ):
+        """Test that without efficiency_routine, final_moebius equals raw Möbius coefficients."""
+        final_moebius_with, _ = gcn_graphshapiq._graphshapiq_routine(
+            moebius_interactions=graphshapiq_routine_inputs["moebius_interactions"],
+            masked_predictions=graphshapiq_routine_inputs["masked_predictions"],
+            moebius_coalition_lookup=graphshapiq_routine_inputs["moebius_coalition_lookup"],
+            incomplete_neighborhoods=graphshapiq_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=graphshapiq_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            order=3,
+            grand_coalition_prediction_node=graphshapiq_routine_inputs[
+                "grand_coalition_prediction"
+            ],
+            efficiency_routine=True,
+        )
+
+        final_moebius_without, _ = gcn_graphshapiq._graphshapiq_routine(
+            moebius_interactions=graphshapiq_routine_inputs["moebius_interactions"],
+            masked_predictions=graphshapiq_routine_inputs["masked_predictions"],
+            moebius_coalition_lookup=graphshapiq_routine_inputs["moebius_coalition_lookup"],
+            incomplete_neighborhoods=graphshapiq_routine_inputs["incomplete_neighborhoods"],
+            incomplete_neighborhoods_lookup=graphshapiq_routine_inputs[
+                "incomplete_neighborhoods_lookup"
+            ],
+            max_subset_size=1,
+            order=3,
+            grand_coalition_prediction_node=graphshapiq_routine_inputs[
+                "grand_coalition_prediction"
+            ],
+            efficiency_routine=False,
+        )
+
+        # Without efficiency routine, sum of Möbius coefficients does not equal grand coalition
+        assert np.sum(final_moebius_without.values) != pytest.approx(
+            float(graphshapiq_routine_inputs["grand_coalition_prediction"])
+        )
+        # And the two results differ
+        assert np.sum(final_moebius_with.values) != pytest.approx(
+            np.sum(final_moebius_without.values)
+        )
+
+    def test_graphshapiq_routine_no_incomplete_neighborhoods(
+        self, gcn_graphshapiq, graphshapiq_routine_inputs
+    ):
+        """Test that efficiency_routine=True with no incomplete neighborhoods behaves like False."""
+        final_moebius_no_incomplete, _ = gcn_graphshapiq._graphshapiq_routine(
+            moebius_interactions=graphshapiq_routine_inputs["moebius_interactions"],
+            masked_predictions=graphshapiq_routine_inputs["masked_predictions"],
+            moebius_coalition_lookup=graphshapiq_routine_inputs["moebius_coalition_lookup"],
+            incomplete_neighborhoods=set(),  # no incomplete neighborhoods
+            incomplete_neighborhoods_lookup={},
+            max_subset_size=1,
+            order=3,
+            grand_coalition_prediction_node=graphshapiq_routine_inputs[
+                "grand_coalition_prediction"
+            ],
+            efficiency_routine=True,
+        )
+
+        final_moebius_false, _ = gcn_graphshapiq._graphshapiq_routine(
+            moebius_interactions=graphshapiq_routine_inputs["moebius_interactions"],
+            masked_predictions=graphshapiq_routine_inputs["masked_predictions"],
+            moebius_coalition_lookup=graphshapiq_routine_inputs["moebius_coalition_lookup"],
+            incomplete_neighborhoods=set(),
+            incomplete_neighborhoods_lookup={},
+            max_subset_size=1,
+            order=3,
+            grand_coalition_prediction_node=graphshapiq_routine_inputs[
+                "grand_coalition_prediction"
+            ],
+            efficiency_routine=False,
+        )
+
+        # Both should give the same result since there are no incomplete neighborhoods
+        assert np.sum(final_moebius_no_incomplete.values) == pytest.approx(
+            np.sum(final_moebius_false.values)
+        )
