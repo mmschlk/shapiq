@@ -25,9 +25,11 @@ if TYPE_CHECKING:
     from typing import Any
 
     from matplotlib.axes import Axes
+    from matplotlib.colors import Colormap
     from matplotlib.figure import Figure
 
     from shapiq.typing import InteractionScores, JSONType
+    from shapiq.vision.explainer import ImageExplainer
 
 
 class InteractionValues:
@@ -1061,6 +1063,47 @@ class InteractionValues:
         from shapiq.plot.upset import upset_plot
 
         return upset_plot(self, show=show, **kwargs)
+
+    def plot_image_attributions(
+        self,
+        image: np.ndarray,
+        explainer: ImageExplainer,
+        *,
+        region_label: str = "Region",
+        alpha: float = 0.5,
+        cmap: Colormap | str | None = None,
+        show: bool = True,
+        heatmap_only: bool = True,
+    ) -> tuple[Figure, tuple[Axes, Axes]] | None:
+        """Visualize first-order attributions as a heatmap overlaid on the original image.
+
+        Args:
+            image: Original image as a ``(H, W, C)`` numpy array.
+            explainer: The ``ImageExplainer`` used to produce this object. Its imputer
+                provides the pixel-space player masks.
+            region_label: x-axis label for the bar chart, e.g. ``"Patch"`` or
+                ``"Superpixel"``. Defaults to ``"Region"``.
+            alpha: Transparency of the heatmap overlay. Defaults to ``0.5``.
+            cmap: Matplotlib colormap or name. ``None`` uses shapiq's BLUE→white→RED
+                diverging palette. Defaults to ``None``.
+            show: Whether to display the plot. Defaults to ``True``.
+
+        Returns:
+            If ``show`` is ``False``, returns ``(figure, (ax_heatmap, ax_bar))``.
+
+        """
+        from shapiq.plot.vision import image_attribution_plot
+
+        return image_attribution_plot(
+            self,
+            image,
+            explainer.imputer.player_masks,
+            region_label=region_label,
+            alpha=alpha,
+            cmap=cmap,
+            show=show,
+            heatmap_only=heatmap_only,
+        )
 
 
 def aggregate_interaction_values(
