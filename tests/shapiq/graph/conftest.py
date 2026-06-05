@@ -201,9 +201,25 @@ def gcn_graph_game_single_node(gcn_model, single_node_graph):
     )
 
 
+@pytest.fixture
+def gcn_graph_game_classification(gcn_model_classification, simple_graph):
+    return GraphGame(
+        model=gcn_model_classification,
+        x_graph=simple_graph,
+        task="classification",
+        class_index=0,
+        baseline_strategy="average",
+    )
+
+
 # =========================================================
 # GraphSHAPIQ fixtures
 # =========================================================
+
+
+@pytest.fixture
+def gcn_graphshapiq_classification(gcn_graph_game_classification):
+    return GraphSHAPIQ(game=gcn_graph_game_classification)
 
 
 @pytest.fixture

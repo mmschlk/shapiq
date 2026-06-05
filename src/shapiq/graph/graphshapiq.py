@@ -263,7 +263,6 @@ class GraphSHAPIQ:
             baseline_value=0.0,
         )
 
-    # TODO @Amin: Freitag
     def explain(
         self,
         max_subset_size: int | None = None,
@@ -271,10 +270,7 @@ class GraphSHAPIQ:
         *,
         efficiency_routine: bool = True,
         index: ValidMoebiusConverterIndices = "k-SII",
-    ) -> tuple[
-        InteractionValues | dict[int, InteractionValues],
-        InteractionValues | dict[int, InteractionValues],
-    ]:
+    ) -> tuple[InteractionValues, InteractionValues]:
         """Compute Shapley interactions for the graph.
 
         Args:
@@ -315,45 +311,23 @@ class GraphSHAPIQ:
 
         # Evaluate all coalitions
         all_coalitions = np.vstack((moebius_coalition_matrix, incomplete_neighborhoods_matrix))
-        masked_predictions = self.game(all_coalitions)
+        masked_predictions = self.game(all_coalitions.astype(bool))
         self.last_n_model_calls = int(all_coalitions.shape[0])
 
-        # Handle single or multi-output cases
-        if self.output_dim == 1:
-            moebius_coefficients, shapley_interactions = self._graphshapiq_routine(
-                moebius_interactions,
-                masked_predictions,
-                moebius_coalition_lookup,
-                incomplete_neighborhoods,
-                incomplete_neighborhoods_lookup,
-                capped_interaction_size,
-                order,
-                self._grand_coalition_prediction,
-                index,
-                efficiency_routine=efficiency_routine,
-            )
-        else:
-            moebius_coefficients: dict[int, InteractionValues] = {}
-            shapley_interactions: dict[int, InteractionValues] = {}
-            for idx in range(self.output_dim):
-                grand_coalition_pred_node = self._grand_coalition_prediction[:, idx]
-                masked_predictions_node = masked_predictions[:, idx]
-                moebius_coefficients[idx], shapley_interactions[idx] = self._graphshapiq_routine(
-                    moebius_interactions,
-                    masked_predictions_node,
-                    moebius_coalition_lookup,
-                    incomplete_neighborhoods,
-                    incomplete_neighborhoods_lookup,
-                    capped_interaction_size,
-                    order,
-                    grand_coalition_pred_node,
-                    index,
-                    efficiency_routine=efficiency_routine,
-                )
-
+        moebius_coefficients, shapley_interactions = self._graphshapiq_routine(
+            moebius_interactions,
+            masked_predictions,
+            moebius_coalition_lookup,
+            incomplete_neighborhoods,
+            incomplete_neighborhoods_lookup,
+            capped_interaction_size,
+            order,
+            self._grand_coalition_prediction[0],
+            index,
+            efficiency_routine=efficiency_routine,
+        )
         return moebius_coefficients, shapley_interactions
 
-    # TODO @Amin: Freitag
     def _graphshapiq_routine(
         self,
         moebius_interactions: set[tuple[int, ...]],
@@ -375,6 +349,7 @@ class GraphSHAPIQ:
             masked_predictions: Predictions for all coalitions.
             moebius_coalition_lookup: Lookup for Möbius coalitions.
             efficiency_routine: Whether to enforce efficiency.
+            index: The type of shapley interaction.
             incomplete_neighborhoods: Neighborhoods not fully covered.
             incomplete_neighborhoods_lookup: Lookup for incomplete neighborhoods.
             max_subset_size: Maximum interaction size.
