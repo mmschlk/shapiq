@@ -717,3 +717,61 @@ class TestGraphSHAPIQ:
         assert np.sum(final_moebius_no_incomplete.values) == pytest.approx(
             np.sum(final_moebius_false.values)
         )
+
+    def test_explain_single_output(self, gcn_graphshapiq):
+        """Test that explain returns correct types and attributes for single output."""
+        assert gcn_graphshapiq.last_n_model_calls is None
+        moebius, interactions = gcn_graphshapiq.explain(index="SII")
+        assert isinstance(moebius, InteractionValues)
+        assert isinstance(interactions, InteractionValues)
+        assert interactions.index == "SII"
+        assert moebius.n_players == gcn_graphshapiq.n_players
+        assert interactions.n_players == gcn_graphshapiq.n_players
+        assert interactions.max_order == gcn_graphshapiq.n_players
+        assert gcn_graphshapiq.last_n_model_calls is not None
+        assert gcn_graphshapiq.last_n_model_calls > 0
+
+    def test_explain_efficiency_axiom(self, gcn_graphshapiq):
+        """Test that efficiency axiom holds on Möbius coefficients when efficiency_routine=True."""
+        moebius, _ = gcn_graphshapiq.explain(efficiency_routine=True)
+        grand_coalition_prediction = float(gcn_graphshapiq._grand_coalition_prediction[0])
+        assert np.sum(moebius.values) == pytest.approx(grand_coalition_prediction, abs=1e-6)
+
+    def test_explain_max_subset_size_none_defaults_to_max_size_neighbors(self, gcn_graphshapiq):
+        """Test that max_subset_size=None defaults to max_size_neighbors."""
+        moebius_default, _ = gcn_graphshapiq.explain(max_subset_size=None)
+        moebius_explicit, _ = gcn_graphshapiq.explain(
+            max_subset_size=gcn_graphshapiq.max_size_neighbors
+        )
+        assert np.sum(moebius_default.values) == pytest.approx(np.sum(moebius_explicit.values))
+
+    def test_explain_max_subset_size_capped_at_max_size_neighbors(self, gcn_graphshapiq):
+        """Test that max_subset_size larger than max_size_neighbors gets capped."""
+        moebius_capped, _ = gcn_graphshapiq.explain(
+            max_subset_size=gcn_graphshapiq.max_size_neighbors + 10
+        )
+        moebius_default, _ = gcn_graphshapiq.explain(max_subset_size=None)
+        assert np.sum(moebius_capped.values) == pytest.approx(np.sum(moebius_default.values))
+
+    def test_explain_without_efficiency_routine(self, gcn_graphshapiq_small):
+        """Test that efficiency axiom does not hold when efficiency_routine=False and there are incomplete neighborhoods."""
+        moebius, _ = gcn_graphshapiq_small.explain(
+            max_subset_size=1,
+            efficiency_routine=False,
+        )
+        grand_coalition_prediction = float(gcn_graphshapiq_small._grand_coalition_prediction[0])
+        assert np.sum(moebius.values) != pytest.approx(grand_coalition_prediction, abs=1e-6)
+
+    def test_explain_with_gin_model(self, gin_graphshapiq):
+        """Test that explain works correctly with a GIN model."""
+        moebius, interactions = gin_graphshapiq.explain()
+        assert isinstance(moebius, InteractionValues)
+        assert isinstance(interactions, InteractionValues)
+        assert interactions.index == "k-SII"
+
+    def test_explain_with_gat_model(self, gat_graphshapiq):
+        """Test that explain works correctly with a GAT model."""
+        moebius, interactions = gat_graphshapiq.explain()
+        assert isinstance(moebius, InteractionValues)
+        assert isinstance(interactions, InteractionValues)
+        assert interactions.index == "k-SII"
