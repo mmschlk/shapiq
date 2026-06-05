@@ -102,6 +102,9 @@ class LeverageSHAP(Regression[ValidRegressionLeverageSHAPIndices]):
         """
         Z, weights = self._sample(budget)
         game_values: FloatVector = game(Z)
+        if not np.all(np.isfinite(game_values)):
+            msg = "Game returned NaN or Inf values. LeverageSHAP requires finite game values."
+            raise ValueError(msg)
         v0 = float(game_values[np.sum(Z, axis=1) == 0][0])
 
         n = self.n

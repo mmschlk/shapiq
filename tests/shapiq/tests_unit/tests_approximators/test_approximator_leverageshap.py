@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from shapiq.approximator.regression import KernelSHAP, LeverageSHAP
+from shapiq.approximator.regression.base import solve_regression
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
@@ -241,8 +242,9 @@ def test_skewed_interaction_game(seed):
     # Approximate Shapley values under the skewed payoff function using the chosen budget.
     result = approximator.approximate(budget=300, game=skewed_game)
 
-    # efficiency must hold despite extreme scale differences
-    assert result.values[1:].sum() == pytest.approx(v_grand - v_empty, rel=1e-4)
+    # efficiency is baked in algebraically via the efficiency_shift construction, so it must
+    # hold to near machine precision even under extreme scale differences.
+    assert result.values[1:].sum() == pytest.approx(v_grand - v_empty, rel=1e-10)
 
     # dominant player (index 0) must have the highest SV
     assert result[(dominant,)] == pytest.approx(max(result.values[1:]), abs=1e-6)
@@ -479,3 +481,113 @@ def test_minimal_budget_sweep(seed):
             assert res.estimated is True
         else:
             assert res.estimated is False
+
+
+def test_inf_game_values_raise():
+    """A game returning Inf values must raise ValueError, not silently return NaN Shapley values.
+
+    Before the fix, v0=inf and v_grand=inf caused efficiency_shift=nan (inf-inf),
+    which propagated through the solver into the returned InteractionValues without
+    any indication of failure.
+    """
+    n = 5
+
+    def inf_game(Z):
+        return np.full(len(Z), np.inf)
+
+    approximator = LeverageSHAP(n, random_state=0)
+    with pytest.raises(ValueError, match="finite game values"):
+        approximator.approximate(budget=20, game=inf_game)
+
+
+def test_solve_regression_nan_guard_svd_path():
+    """solve_regression with use_svd=True must return NaNs (not crash) when inputs contain Inf/NaN.
+
+    LeverageSHAP always uses use_svd=True. If extreme IS weights produce Inf in the
+    weight-scaled design matrix, the solver must return NaN rather than raise or silently
+    return garbage. The caller can then decide how to handle it.
+    """
+    rng = np.random.default_rng(0)
+    n_rows, n_cols = 10, 4
+    X = rng.standard_normal((n_rows, n_cols))
+    y = rng.standard_normal(n_rows)
+
+    # Inject Inf into the weights so W_sqrt * X contains Inf.
+    weights = np.ones(n_rows)
+    weights[3] = np.inf
+
+    result = solve_regression(X=X, y=y, kernel_weights=weights, use_svd=True)
+    assert result.shape == (n_cols,)
+    assert np.all(np.isnan(result)), f"Expected all-NaN, got {result}"
+
+
+@pytest.mark.parametrize("seed", DIVERSE_SEEDS)
+def test_constant_game_zero_svs(seed):
+    """A constant game v(S) = c for all S must assign zero Shapley value to every player.
+
+    This puts b = 0 in the regression system (all game values equal the baseline after
+    centering), so the solver receives a zero target vector. The efficiency axiom must
+    still hold (sum of SVs == v(N) - v({}) == 0).
+    """
+    n = 6
+    c = 7.5  # arbitrary non-zero constant
+
+    def constant_game(Z):
+        return np.full(len(Z), c)
+
+    result = LeverageSHAP(n, random_state=seed).approximate(budget=2**n, game=constant_game)
+
+    np.testing.assert_allclose(result.values[1:], 0.0, atol=1e-10)
+    assert result.values[1:].sum() == pytest.approx(0.0, abs=1e-10)
+
+
+@pytest.mark.parametrize("seed", DIVERSE_SEEDS)
+def test_underdetermined_efficiency_axiom(seed):
+    """When budget << n, the design matrix A has fewer rows than columns (underdetermined).
+
+    lstsq returns the minimum-norm solution in this regime. Efficiency must still hold
+    exactly because it is enforced algebraically via the efficiency_shift construction,
+    independently of the regression solve.
+    """
+    n = 10
+    # budget=4 gives only ~2 interior rows for n=10, far fewer than n columns
+    budget = 4
+
+    game = DummyGame(n, interaction=(0, 1))
+    v_grand = game(np.ones((1, n), dtype=bool))[0]
+    v_empty = game(np.zeros((1, n), dtype=bool))[0]
+
+    result = LeverageSHAP(n, random_state=seed).approximate(budget=budget, game=game)
+
+    assert result.values[1:].sum() == pytest.approx(v_grand - v_empty, abs=1e-8)
+
+
+@pytest.mark.parametrize("seed", DIVERSE_SEEDS)
+def test_negative_large_magnitude_game(seed):
+    """Game with large-magnitude negative values should not degrade numerical precision.
+
+    Tests that neither the IS weight computation nor the solver loses precision when
+    game values span a large negative range, which exercises different floating-point
+    paths than the positive skewed game.
+    """
+    n = 7
+    scale = 1e5
+
+    def large_negative_game(Z):
+        # Additive game with large negative weights — exact SVs are known analytically.
+        player_weights = -scale * np.arange(1, n + 1, dtype=float)
+        return Z.astype(float) @ player_weights
+
+    v_grand = large_negative_game(np.ones((1, n)))[0]
+    v_empty = large_negative_game(np.zeros((1, n)))[0]
+
+    result = LeverageSHAP(n, random_state=seed).approximate(budget=2**n, game=large_negative_game)
+
+    # efficiency must hold to near machine precision (algebraic, not solver-dependent)
+    assert result.values[1:].sum() == pytest.approx(v_grand - v_empty, rel=1e-10)
+
+    # exact SVs for an additive game equal the player weights; verify ordering
+    # (player n has the most negative SV, player 1 the least negative)
+    svs = result.values[1:]
+    for i in range(n - 1):
+        assert svs[i] > svs[i + 1], f"Expected sv[{i}] > sv[{i+1}], got {svs[i]:.6f} vs {svs[i+1]:.6f}"
