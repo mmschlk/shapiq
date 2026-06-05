@@ -12,6 +12,7 @@
 
 ### Bugfix
 
+- Fixes `InterventionalTreeExplainer` routing the explain point at float64 precision while tree thresholds and the reference data are float32. The explain point is now cast to float32 to match the model's evaluation.
 - Fixes `ProxySHAP` and `RegressionMSR` alignment of sampled coalitions between the approximator and its adjustment method (`random_state` now defaults to a fixed seed so both samplers reproduce identical coalitions).
 - Fixes `ProxySPEX` passing `initialize_dict=True` to its sampler, which was unnecessary since `ProxySPEX` does not return all possible interactions (now `False`).
 
