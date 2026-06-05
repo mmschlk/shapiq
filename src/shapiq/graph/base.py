@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 from shapiq.game import Game
 
+
 class GraphGame(Game):
     """A GraphSHAP-IQ explanation game for graph networks."""
 
@@ -26,7 +27,7 @@ class GraphGame(Game):
         output_dim: int = 1,
         baseline_strategy: str | float | None = None,
         normalize: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
     ) -> None:
         """Initialize the GraphGame."""
         self._normalize = normalize
@@ -39,11 +40,14 @@ class GraphGame(Game):
             raise ValueError("class_index cannot be set for regression tasks.")
         if self.x_graph.x is None:
             raise ValueError("x_graph must have node features (x_graph.x must not be None).")
+        if not hasattr(model, "num_layers"):
+            raise AttributeError("The GNN needs a num_layers attribute")
 
         self.task = task
         self.model = model
         self.model.eval()
         self.edge_index = self.x_graph.edge_index.detach().numpy()
+        assert isinstance(model.num_layers, int), "model.num_layers must be an int"
         self.max_neighborhood_size = model.num_layers
         self.output_dim = output_dim
         self.n_players = self.x_graph.x.shape[0]  # <-- WICHTIG: n_players als Attribut setzen!
@@ -72,7 +76,7 @@ class GraphGame(Game):
             # Berechne den Normalisierungswert (empty coalition)
             empty_coalition_value = self.value_function(np.zeros(self.n_players))
             # Extrahiere den Scalar (value_function gibt jetzt Skalare zurück)
-            normalization_value = float(empty_coalition_value)  # Kein [0] mehr nötig!
+            normalization_value = float(empty_coalition_value[0])
             super().__init__(
                 n_players=self.n_players,
                 normalize=normalize,
@@ -89,26 +93,29 @@ class GraphGame(Game):
     def _calculate_baseline(self, strategy: str | float | None) -> torch.Tensor:
         """Berechnet die Baseline für Masking basierend auf der Strategie."""
         if strategy is None:
-            warnings.warn("Baseline is not provided, baseline will be initialized as zero...", stacklevel=2)
+            warnings.warn(
+                "Baseline is not provided, baseline will be initialized as zero...", stacklevel=2
+            )
             strategy = "zeros"
 
         x = self.x_graph.x
         if isinstance(strategy, torch.Tensor):
             if strategy.shape != (x.shape[1],):
-                raise ValueError(f"Baseline tensor must have shape ({x.shape[1]},), got {tuple(strategy.shape)}.")
+                raise ValueError(
+                    f"Baseline tensor must have shape ({x.shape[1]},), got {tuple(strategy.shape)}."
+                )
             return strategy.to(dtype=torch.float32, device=x.device)
-        elif isinstance(strategy, (float, int)):
+        if isinstance(strategy, (float, int)):
             return torch.full((x.shape[1],), strategy, dtype=torch.float32, device=x.device)
-        elif strategy == "zeros":
+        if strategy == "zeros":
             return torch.zeros(x.shape[1], dtype=torch.float32, device=x.device)
-        elif strategy == "average":
+        if strategy == "average":
             return x.mean(dim=0)
-        elif strategy == "min":
+        if strategy == "min":
             return torch.amin(x, dim=0)
-        elif strategy == "max":
+        if strategy == "max":
             return torch.amax(x, dim=0)
-        else:
-            raise NotImplementedError(f"Baseline strategy '{strategy}' is not supported.")
+        raise NotImplementedError(f"Baseline strategy '{strategy}' is not supported.")
 
     @property
     def normalize(self) -> bool:
@@ -151,8 +158,4 @@ class GraphGame(Game):
             else:
                 coalition_values.append(float(coalition_value))  # float() für NumPy-Skalare
 
-        # Gib ein 0-dimensionales Array zurück, wenn nur eine Koalition
-        if len(coalition_values) == 1:
-            return np.array(coalition_values[0])  # 0-dimensional
-        else:
-            return np.array(coalition_values)  # 1-dimensional
+        return np.array(coalition_values)
