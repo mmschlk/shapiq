@@ -446,6 +446,15 @@ class InterventionalTreeExplainer:
             compute_interactions_flatten,  # ty: ignore[unresolved-import]
         )
 
+        # Route the explain point at the same float32 precision as the reference
+        # data (cast in __init__) and the tree thresholds. The underlying tree
+        # models (e.g. XGBoost) evaluate splits in float32, so comparing a
+        # float64 explain value against a float32 threshold can flip the routing
+        # at a split whose threshold lies between the two representations,
+        # sending the explanation to the wrong leaf and disagreeing with the
+        # model it explains.
+        x = np.asarray(x, dtype=np.float32)
+
         if not self.bool_tree and not self._use_sparse_path:
             self._preprocess_tree(x)
         computation_index = get_computation_index(self.index)
