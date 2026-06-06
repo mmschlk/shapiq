@@ -7,9 +7,13 @@ Shapley interaction values for graph neural networks (GNNs) using the GraphSHAP-
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
+from shapiq.game_theory.exact import ExactComputer
+from shapiq.graph.graphshapiq import GraphSHAPIQ
 from shapiq.interaction_values import InteractionValues
 
 
@@ -775,3 +779,203 @@ class TestGraphSHAPIQ:
         assert isinstance(moebius, InteractionValues)
         assert isinstance(interactions, InteractionValues)
         assert interactions.index == "k-SII"
+
+    def test_explain_matches_exact_computer_k_sii(self, gcn_graphshapiq, gcn_graph_game):
+        """Test that GraphSHAPIQ k-SII matches ExactComputer on simple graph (complete case)."""
+        # simple_graph is complete case — no incomplete neighborhoods
+        _, interactions = gcn_graphshapiq.explain(index="k-SII", efficiency_routine=False)
+
+        exact = ExactComputer(game=gcn_graph_game)
+        exact_interactions = exact(index="k-SII", order=gcn_graphshapiq.n_players)
+
+        for coalition, idx in interactions.interaction_lookup.items():
+            assert interactions.values[idx] == pytest.approx(
+                exact_interactions[coalition], abs=1e-6
+            )
+
+    def test_explain_matches_exact_computer_sii(self, gcn_graphshapiq, gcn_graph_game):
+        """Test that GraphSHAPIQ SII matches ExactComputer on simple graph (complete case)."""
+        _, interactions = gcn_graphshapiq.explain(index="SII", efficiency_routine=True)
+
+        exact = ExactComputer(game=gcn_graph_game)
+        exact_interactions = exact(index="SII", order=gcn_graphshapiq.n_players)
+
+        for coalition, idx in interactions.interaction_lookup.items():
+            assert interactions.values[idx] == pytest.approx(
+                exact_interactions[coalition], abs=1e-6
+            )
+
+    def test_explain_matches_exact_computer_stii(self, gcn_graphshapiq, gcn_graph_game):
+        """Test that GraphSHAPIQ STII matches ExactComputer on simple graph (complete case)."""
+        _, interactions = gcn_graphshapiq.explain(index="STII", efficiency_routine=True)
+
+        exact = ExactComputer(game=gcn_graph_game)
+        exact_interactions = exact(index="STII", order=gcn_graphshapiq.n_players)
+
+        for coalition, idx in interactions.interaction_lookup.items():
+            assert interactions.values[idx] == pytest.approx(
+                exact_interactions[coalition], abs=1e-6
+            )
+
+    def test_explain_order_parameter(self, gcn_graphshapiq, gcn_graph_game):
+        """Test that order parameter correctly limits interaction order."""
+        _, interactions_order_1 = gcn_graphshapiq.explain(index="k-SII", order=1)
+        _, interactions_order_2 = gcn_graphshapiq.explain(index="k-SII", order=2)
+
+        # order=1 should only contain singletons
+        for coalition in interactions_order_1.interaction_lookup:
+            assert len(coalition) <= 1
+
+        # order=2 should contain at most pairs
+        for coalition in interactions_order_2.interaction_lookup:
+            assert len(coalition) <= 2
+
+    def test_explain_order_1_matches_exact_computer(self, gcn_graphshapiq, gcn_graph_game):
+        """Test that order=1 Shapley values match ExactComputer."""
+        _, interactions = gcn_graphshapiq.explain(index="k-SII", order=1)
+
+        exact = ExactComputer(game=gcn_graph_game)
+        exact_interactions = exact(index="k-SII", order=1)
+
+        for coalition, idx in interactions.interaction_lookup.items():
+            if len(coalition) <= 1:
+                assert interactions.values[idx] == pytest.approx(
+                    exact_interactions[coalition], abs=1e-6
+                )
+
+    def test_explain_does_not_match_different_game(self, gcn_graphshapiq, gcn_graph_game_small):
+        """Test that GraphSHAPIQ values do not match ExactComputer on a different game."""
+        # gcn_graphshapiq is built on simple_graph, but ExactComputer uses small_graph
+        _, interactions = gcn_graphshapiq.explain(index="k-SII", efficiency_routine=True)
+
+        exact = ExactComputer(game=gcn_graph_game_small)
+        exact_interactions = exact(index="k-SII", order=gcn_graphshapiq.n_players)
+
+        # At least one value should differ since the games are different
+        any_mismatch = any(
+            not np.isclose(interactions.values[idx], exact_interactions[coalition], atol=1e-6)
+            for coalition, idx in interactions.interaction_lookup.items()
+            if coalition in exact_interactions.interaction_lookup
+        )
+        assert any_mismatch
+
+    @pytest.fixture
+    def mock_graphshapiq(self, gcn_graph_game):
+        """Create a GraphSHAPIQ instance with a mocked value function."""
+        return gcn_graph_game
+
+    def _make_coalition_values(self, game, value_fn):
+        """Helper to create a mock value function based on coalition lookup."""
+
+        def mock_value_function(coalitions):
+            values = []
+            for coalition in coalitions:
+                active_nodes = tuple(sorted(np.where(coalition)[0].tolist()))
+                values.append(value_fn(active_nodes))
+            return np.array(values)
+
+        return mock_value_function
+
+    def test_shapley_efficiency_axiom(self, gcn_graphshapiq):
+        """Test efficiency axiom: sum of SVs equals v(N) - v(empty)."""
+        _, interactions = gcn_graphshapiq.explain(index="SV", order=1, efficiency_routine=False)
+
+        shapley_values = np.array([interactions[(i,)] for i in range(gcn_graphshapiq.n_players)])
+        v_grand = float(gcn_graphshapiq._grand_coalition_prediction[0])
+        v_empty = float(gcn_graphshapiq.game(np.zeros((1, gcn_graphshapiq.n_players)))[0])
+        assert np.sum(shapley_values) == pytest.approx(v_grand - v_empty, abs=1e-6)
+
+    def test_shapley_dummy_axiom(self, gcn_graph_game):
+        """Test dummy axiom: node 3 never contributes so its SV should be zero."""
+
+        def value_fn(coalition):
+            # v(S) = |S ∩ {0,1,2}| — node 3 is dummy
+            return float(len(set(coalition) & {0, 1, 2}))
+
+        with patch.object(
+            gcn_graph_game, "value_function", self._make_coalition_values(gcn_graph_game, value_fn)
+        ):
+            graphshapiq = GraphSHAPIQ(game=gcn_graph_game)
+            _, interactions = graphshapiq.explain(index="SV", order=1, efficiency_routine=True)
+
+        assert interactions[(3,)] == pytest.approx(0.0, abs=1e-6)
+
+    def test_shapley_symmetry_axiom(self, gcn_graph_game):
+        """Test symmetry axiom: nodes 0 and 1 are symmetric so they receive the same SV."""
+
+        def value_fn(coalition):
+            # v(S) = 1 if 0 in S or 1 in S, else 0
+            return 1.0 if (0 in coalition or 1 in coalition) else 0.0
+
+        with patch.object(
+            gcn_graph_game, "value_function", self._make_coalition_values(gcn_graph_game, value_fn)
+        ):
+            graphshapiq = GraphSHAPIQ(game=gcn_graph_game)
+            _, interactions = graphshapiq.explain(index="SV", order=1, efficiency_routine=True)
+
+        assert interactions[(0,)] == pytest.approx(interactions[(1,)], abs=1e-6)
+
+    def test_shapley_linearity_axiom(self, gcn_graph_game):
+        """Test linearity axiom: SVs of linear combination equal linear combination of SVs."""
+        alpha, beta = 2.0, 3.0
+
+        def value_fn_1(coalition):
+            return float(len(coalition))  # v1(S) = |S|
+
+        def value_fn_2(coalition):
+            return 2.0 * float(len(coalition))  # v2(S) = 2|S|
+
+        def value_fn_combined(coalition):
+            return alpha * value_fn_1(coalition) + beta * value_fn_2(coalition)  # 8|S|
+
+        # Compute SVs for v1
+        with patch.object(
+            gcn_graph_game,
+            "value_function",
+            self._make_coalition_values(gcn_graph_game, value_fn_1),
+        ):
+            graphshapiq_1 = GraphSHAPIQ(game=gcn_graph_game)
+            _, interactions_1 = graphshapiq_1.explain(index="SV", order=1, efficiency_routine=True)
+
+        # Compute SVs for v2
+        with patch.object(
+            gcn_graph_game,
+            "value_function",
+            self._make_coalition_values(gcn_graph_game, value_fn_2),
+        ):
+            graphshapiq_2 = GraphSHAPIQ(game=gcn_graph_game)
+            _, interactions_2 = graphshapiq_2.explain(index="SV", order=1, efficiency_routine=True)
+
+        # Compute SVs for combined game
+        with patch.object(
+            gcn_graph_game,
+            "value_function",
+            self._make_coalition_values(gcn_graph_game, value_fn_combined),
+        ):
+            graphshapiq_combined = GraphSHAPIQ(game=gcn_graph_game)
+            _, interactions_combined = graphshapiq_combined.explain(
+                index="SV", order=1, efficiency_routine=True
+            )
+
+        # SVs of combined game should equal linear combination of individual SVs
+        for i in range(gcn_graph_game.n_players):
+            expected = alpha * interactions_1[(i,)] + beta * interactions_2[(i,)]
+            assert interactions_combined[(i,)] == pytest.approx(expected, abs=1e-6)
+
+    def test_shapley_efficiency_axiom_incomplete(self, gcn_graphshapiq_small):
+        """Test efficiency axiom holds in incomplete case when efficiency_routine=True."""
+        _, interactions = gcn_graphshapiq_small.explain(
+            index="SV",
+            order=1,
+            max_subset_size=1,
+            efficiency_routine=True,
+        )
+
+        shapley_values = np.array(
+            [interactions[(i,)] for i in range(gcn_graphshapiq_small.n_players)]
+        )
+        v_grand = float(gcn_graphshapiq_small._grand_coalition_prediction[0])
+        v_empty = float(
+            gcn_graphshapiq_small.game(np.zeros((1, gcn_graphshapiq_small.n_players)))[0]
+        )
+        assert np.sum(shapley_values) == pytest.approx(v_grand - v_empty, abs=1e-6)
