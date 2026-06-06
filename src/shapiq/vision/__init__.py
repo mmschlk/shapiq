@@ -1,19 +1,19 @@
 """Vision-based explanation methods for image models."""
 
-from .architecture import ModelArchitectureStrategy, ResNetArchitecture, ViTArchitecture
+from .architecture import ModelArchitectureStrategy, CNNArchitecture, TransformerArchitecture
 from .imputer import ImageImputer
 from .masking import (
     BoolMaskedPosStrategy,
-    LatentMaskingStrategy,
+    TransformerMaskingStrategy,
     MaskTokenStrategy,
     MeanColorMasking,
-    PixelMaskingStrategy,
+    CNNMaskingStrategy,
     ZeroMasking,
 )
 from .players import (
-    LatentPlayerStrategy,
+    TransformerPlayerStrategy,
     PatchStrategy,
-    PixelPlayerStrategy,
+    CNNPlayerStrategy,
     PlayerStrategy,
     SuperpixelStrategy,
 )
@@ -21,21 +21,21 @@ from .players import (
 __all__ = [
     # Architecture
     "ModelArchitectureStrategy",
-    "ResNetArchitecture",
-    "ViTArchitecture",
+    "CNNArchitecture",
+    "TransformerArchitecture",
     # Imputer
     "ImageImputer",
     # Masking
-    "PixelMaskingStrategy",
-    "LatentMaskingStrategy",
+    "CNNMaskingStrategy",
+    "TransformerMaskingStrategy",
     "MeanColorMasking",
     "ZeroMasking",
     "BoolMaskedPosStrategy",
     "MaskTokenStrategy",
     # Players
     "PlayerStrategy",
-    "PixelPlayerStrategy",
-    "LatentPlayerStrategy",
+    "CNNPlayerStrategy",
+    "TransformerPlayerStrategy",
     "SuperpixelStrategy",
     "PatchStrategy",
 ]

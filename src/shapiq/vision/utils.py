@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 
 def is_valid_image_shape(image: np.ndarray) -> bool:

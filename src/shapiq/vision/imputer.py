@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import numpy as np
 
 from shapiq.imputer.base import Imputer
 
-from .architecture import ModelArchitectureStrategy, ResNetArchitecture, ViTArchitecture
+from .architecture import ModelArchitectureStrategy, CNNArchitecture, TransformerArchitecture
 from .players import PlayerStrategy
-from .masking import PixelMaskingStrategy, LatentMaskingStrategy
+from .masking import CNNMaskingStrategy, TransformerMaskingStrategy
 
 from .utils import is_valid_image_shape
 
@@ -18,7 +20,7 @@ class ImageImputer(Imputer):
         model,
         image: np.ndarray,
         player_strategy: PlayerStrategy | None = None,
-        masking_strategy: PixelMaskingStrategy | LatentMaskingStrategy | None = None,
+        masking_strategy: CNNMaskingStrategy | TransformerMaskingStrategy | None = None,
         normalize: bool = True,
         model_architecture: ModelArchitectureStrategy | None = None,
         vit_processor=None,
@@ -68,21 +70,21 @@ class ImageImputer(Imputer):
         return float(self.architecture.value_function(np.zeros((1, self.n_features), dtype=bool))[0])
 
     @property
-    def player_masks(self) -> np.ndarray | None:
-        """Spatial masks per player, shape (n_players, H, W). None for latent-space architectures."""
-        return getattr(self.architecture, "_player_masks", None)
+    def player_masks(self) -> np.ndarray:
+        """Spatial masks per player, shape (n_players, H, W)."""
+        return self.architecture.player_masks
     
     def _predict_model_architecture(self, model, masking_strategy=None, player_strategy=None, vit_processor=None) -> ModelArchitectureStrategy:
         """Auto-detects the model architecture and returns the appropriate ModelArchitectureStrategy."""
         
         import torchvision.models as models
         if isinstance(model, models.ResNet):
-            return ResNetArchitecture(model, masking_strategy, player_strategy)
+            return CNNArchitecture(model, masking_strategy, player_strategy)
         
         from transformers import ViTForImageClassification
         if isinstance(model, ViTForImageClassification):
             if vit_processor is None:
                 raise ValueError("Please provide a processor for ViT models.")
-            return ViTArchitecture(model, vit_processor, masking_strategy, player_strategy)
+            return TransformerArchitecture(model, vit_processor, masking_strategy, player_strategy)
         
         raise ValueError(f"Could not auto-detect architecture for model type '{type(model)}'.")

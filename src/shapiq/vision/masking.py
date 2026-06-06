@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 import numpy as np
-import torch
 
-class PixelMaskingStrategy(ABC):
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import torch
+
+class CNNMaskingStrategy(ABC):
     @abstractmethod
     def apply(self, image: np.ndarray, player_masks: np.ndarray, coalition: np.ndarray) -> np.ndarray:
         """
@@ -17,7 +23,7 @@ class PixelMaskingStrategy(ABC):
         ...
 
 
-class MeanColorMasking(PixelMaskingStrategy):
+class MeanColorMasking(CNNMaskingStrategy):
     """Imputes the masked pixels with the mean color of the entire image."""
     
     def apply(self, image: np.ndarray, player_masks: np.ndarray, coalition: np.ndarray) -> np.ndarray:
@@ -36,7 +42,7 @@ class MeanColorMasking(PixelMaskingStrategy):
         return masked_images
 
 
-class ZeroMasking(PixelMaskingStrategy):
+class ZeroMasking(CNNMaskingStrategy):
     def __init__(self, value: float = 0.0):
         self.value = value
     
@@ -56,33 +62,59 @@ class ZeroMasking(PixelMaskingStrategy):
         return masked_images
 
 
-class LatentMaskingStrategy(ABC):
+class TransformerMaskingStrategy(ABC):
     """Defines how tokens are masked in latent/embedding space."""
 
     @abstractmethod
-    def predict_logits(
+    def apply(
         self,
-        model,
-        pixel_values: torch.Tensor,  # (1, 3, H, W)
-        bool_masks: torch.Tensor,    # (B, n_tokens)
-    ) -> torch.Tensor:               # (B, n_classes)
+        coalitions: np.ndarray,
+        token_masks: np.ndarray,
+    ) -> torch.Tensor:               # (B, n_coalitions)
         ...
+        
+    def _to_token_mask(
+        self,
+        coalitions: np.ndarray,   # (n_coalitions, n_players)
+        token_masks: np.ndarray, # (n_players, tokens_per_player)
+    ) -> torch.Tensor:             # (n_coalitions, n_tokens)
+        """Converts coalitions to token_mask.
+        
+        True  = token is masked (player absent)
+        False = token is visible (player present)
+        """
+        import torch
+        
+        n_coalitions = coalitions.shape[0]
+        n_tokens = int(token_masks.max()) + 1
+        
+        token_mask = torch.ones((n_coalitions, n_tokens), dtype=torch.bool)
+        for i, coalition in enumerate(coalitions):
+            for player, is_present in enumerate(coalition):
+                if is_present:
+                    token_mask[i, token_masks[player]] = False
+        
+        return token_mask
 
 
-class BoolMaskedPosStrategy(LatentMaskingStrategy):
-    """Masks tokens via the bool_masked_pos argument in the model forward pass."""
+class BoolMaskedPosStrategy(TransformerMaskingStrategy):
+    """Masks tokens via the token_mask argument in the model forward pass."""
 
-    def predict_logits(self, model, pixel_values, bool_masks):
-        batch = pixel_values.repeat(bool_masks.shape[0], 1, 1, 1)
-        return model(pixel_values=batch, bool_masked_pos=bool_masks).logits
+    def apply(self, coalitions: np.ndarray, token_masks: np.ndarray) -> torch.Tensor:
+        return self._to_token_mask(coalitions, token_masks)
 
 
-class MaskTokenStrategy(LatentMaskingStrategy):
+class MaskTokenStrategy(TransformerMaskingStrategy):
     """Masks tokens by zeroing the mask_token embedding before the forward pass."""
 
-    def predict_logits(self, model, pixel_values, bool_masks):
-        model.vit.embeddings.mask_token = torch.nn.Parameter(
-            torch.zeros(1, 1, model.config.hidden_size)
+    def __init__(self, model) -> None:
+        self._model = model
+
+    def apply(self, coalitions: np.ndarray, token_masks: np.ndarray) -> torch.Tensor:
+        import torch
+        
+        token_mask = self._to_token_mask(coalitions, token_masks)
+        self._model.vit.embeddings.mask_token = torch.nn.Parameter(
+            torch.zeros(1, 1, self._model.config.hidden_size)
         )
-        batch = pixel_values.repeat(bool_masks.shape[0], 1, 1, 1)
-        return model(pixel_values=batch, bool_masked_pos=bool_masks).logits
+        return token_mask
