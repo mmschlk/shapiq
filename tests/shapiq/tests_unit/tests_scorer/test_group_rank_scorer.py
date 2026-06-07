@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from leaderboard.scoring.group_rank_scorer import GroupRankScorer
@@ -87,7 +89,6 @@ def _make_test_records() -> list[dict[str, object]]:
                 "spearman": 0.50,
             },
         },
-
         # Group 2: CaliforniaHousing / SV / budget 500
         {
             "run_id": "g2-strat-seed-0",
@@ -173,13 +174,13 @@ def _make_test_records() -> list[dict[str, object]]:
 
 
 def _full_record(
-        *,
-        run_id: str,
-        game_id: str,
-        budget: int,
-        approximator_name: str,
-        approx_seed: int,
-        metrics: dict[str, float],
+    *,
+    run_id: str,
+    game_id: str,
+    budget: int,
+    approximator_name: str,
+    approx_seed: int,
+    metrics: dict[str, float],
 ) -> dict[str, object]:
     """Create a realistic raw run record with all common benchmark fields."""
     return {
@@ -297,7 +298,6 @@ def _make_full_test_records() -> list[dict[str, object]]:
                 "precision_at_k": 0.60,
             },
         ),
-
         # Group 2: budget 500
         _full_record(
             run_id="g2-strat-0",
@@ -376,6 +376,7 @@ def _make_full_test_records() -> list[dict[str, object]]:
         ),
     ]
 
+
 def _minimal_record(
     *,
     approximator_name: str,
@@ -413,6 +414,7 @@ def _minimal_record(
 
     return record
 
+
 def test_group_rank_scorer_aggregates_seeds_and_ranks_groups():
     """Test group-wise ranking with seed aggregation."""
     scorer = GroupRankScorer()
@@ -426,9 +428,7 @@ def test_group_rank_scorer_aggregates_seeds_and_ranks_groups():
     assert result.metadata["n_groups"] == 2
 
     mse_group_results = [
-        group_result
-        for group_result in result.group_results
-        if group_result.metric_name == "mse"
+        group_result for group_result in result.group_results if group_result.metric_name == "mse"
     ]
 
     assert len(mse_group_results) == 2
@@ -444,15 +444,9 @@ def test_group_rank_scorer_aggregates_seeds_and_ranks_groups():
         if group_result.group_key["budget"] == 500
     )
 
-    group_100_rows = {
-        row.approximator_name: row
-        for row in group_100.rows
-    }
+    group_100_rows = {row.approximator_name: row for row in group_100.rows}
 
-    group_500_rows = {
-        row.approximator_name: row
-        for row in group_500.rows
-    }
+    group_500_rows = {row.approximator_name: row for row in group_500.rows}
 
     # Group 1 / budget 100:
     # Stratified mean MSE = mean(0.010, 0.020) = 0.015 -> rank 1
@@ -484,10 +478,7 @@ def test_group_rank_scorer_builds_average_rank_leaderboard():
 
     result = scorer.score(records)
 
-    rows_by_approximator = {
-        row.approximator_name: row
-        for row in result.rows
-    }
+    rows_by_approximator = {row.approximator_name: row for row in result.rows}
 
     # Expected MSE ranks:
     # Group 100: Stratified=1, Permutation=2, Proxy=3
@@ -530,6 +521,7 @@ def test_group_rank_scorer_accepts_full_raw_run_records():
     assert result.context.indices == ["SV"]
     assert result.context.budgets == [100, 500]
 
+
 def test_group_rank_scorer_aggregates_seeds_from_full_records():
     """Test that full records are aggregated over seeds before ranking."""
     scorer = GroupRankScorer()
@@ -538,9 +530,7 @@ def test_group_rank_scorer_aggregates_seeds_from_full_records():
     result = scorer.score(records)
 
     mse_group_results = [
-        group_result
-        for group_result in result.group_results
-        if group_result.metric_name == "mse"
+        group_result for group_result in result.group_results if group_result.metric_name == "mse"
     ]
 
     group_100 = next(
@@ -549,10 +539,7 @@ def test_group_rank_scorer_aggregates_seeds_from_full_records():
         if group_result.group_key["budget"] == 100
     )
 
-    rows_by_approximator = {
-        row.approximator_name: row
-        for row in group_100.rows
-    }
+    rows_by_approximator = {row.approximator_name: row for row in group_100.rows}
 
     assert rows_by_approximator["StratifiedSamplingSV"].metric_value == pytest.approx(0.015)
     assert rows_by_approximator["StratifiedSamplingSV"].rank == 1
@@ -566,6 +553,7 @@ def test_group_rank_scorer_aggregates_seeds_from_full_records():
     assert rows_by_approximator["ProxySHAP"].rank == 3
     assert rows_by_approximator["ProxySHAP"].metadata["n_records"] == 1
 
+
 def test_group_rank_scorer_builds_average_rank_leaderboard_from_full_records():
     """Test average-rank leaderboard creation from realistic full records."""
     scorer = GroupRankScorer()
@@ -573,10 +561,7 @@ def test_group_rank_scorer_builds_average_rank_leaderboard_from_full_records():
 
     result = scorer.score(records)
 
-    rows_by_approximator = {
-        row.approximator_name: row
-        for row in result.rows
-    }
+    rows_by_approximator = {row.approximator_name: row for row in result.rows}
 
     assert rows_by_approximator["StratifiedSamplingSV"].score == pytest.approx(1.5)
     assert rows_by_approximator["PermutationSamplingSV"].score == pytest.approx(1.5)
@@ -586,6 +571,7 @@ def test_group_rank_scorer_builds_average_rank_leaderboard_from_full_records():
     assert rows_by_approximator["StratifiedSamplingSV"].metadata["n_rankings"] == 12
     assert rows_by_approximator["PermutationSamplingSV"].metadata["n_rankings"] == 12
     assert rows_by_approximator["ProxySHAP"].metadata["n_rankings"] == 12
+
 
 def test_group_rank_scorer_ignores_failed_runs():
     """Test that failed runs are ignored before grouping and ranking."""
@@ -614,21 +600,17 @@ def test_group_rank_scorer_ignores_failed_runs():
     assert result.metadata["n_valid_records"] == 2
 
     mse_group_results = [
-        group_result
-        for group_result in result.group_results
-        if group_result.metric_name == "mse"
+        group_result for group_result in result.group_results if group_result.metric_name == "mse"
     ]
 
     assert len(mse_group_results) == 1
 
-    rows_by_approximator = {
-        row.approximator_name: row
-        for row in mse_group_results[0].rows
-    }
+    rows_by_approximator = {row.approximator_name: row for row in mse_group_results[0].rows}
 
     assert "PermutationSamplingSV" not in rows_by_approximator
     assert rows_by_approximator["StratifiedSamplingSV"].rank == 1
     assert rows_by_approximator["ProxySHAP"].rank == 2
+
 
 def test_group_rank_scorer_skips_records_without_metric_value():
     """Test that records missing a metric are skipped for that metric ranking."""
@@ -651,21 +633,17 @@ def test_group_rank_scorer_skips_records_without_metric_value():
     result = scorer.score(records)
 
     mse_group_results = [
-        group_result
-        for group_result in result.group_results
-        if group_result.metric_name == "mse"
+        group_result for group_result in result.group_results if group_result.metric_name == "mse"
     ]
 
     assert len(mse_group_results) == 1
 
-    rows_by_approximator = {
-        row.approximator_name: row
-        for row in mse_group_results[0].rows
-    }
+    rows_by_approximator = {row.approximator_name: row for row in mse_group_results[0].rows}
 
     assert "PermutationSamplingSV" not in rows_by_approximator
     assert rows_by_approximator["StratifiedSamplingSV"].rank == 1
     assert rows_by_approximator["ProxySHAP"].rank == 2
+
 
 def test_group_rank_scorer_accepts_flattened_metric_records():
     """Test that the scorer accepts records with flattened metric fields."""
@@ -686,22 +664,18 @@ def test_group_rank_scorer_accepts_flattened_metric_records():
     result = scorer.score(records)
 
     mse_group_results = [
-        group_result
-        for group_result in result.group_results
-        if group_result.metric_name == "mse"
+        group_result for group_result in result.group_results if group_result.metric_name == "mse"
     ]
 
     assert len(mse_group_results) == 1
 
-    rows_by_approximator = {
-        row.approximator_name: row
-        for row in mse_group_results[0].rows
-    }
+    rows_by_approximator = {row.approximator_name: row for row in mse_group_results[0].rows}
 
     assert rows_by_approximator["StratifiedSamplingSV"].metric_value == pytest.approx(0.10)
     assert rows_by_approximator["StratifiedSamplingSV"].rank == 1
     assert rows_by_approximator["PermutationSamplingSV"].metric_value == pytest.approx(0.20)
     assert rows_by_approximator["PermutationSamplingSV"].rank == 2
+
 
 def test_group_rank_scorer_handles_equal_metric_values():
     """Test current behavior for equal metric values. This should not hinder the ranking."""
@@ -720,18 +694,13 @@ def test_group_rank_scorer_handles_equal_metric_values():
     result = scorer.score(records)
 
     mse_group_results = [
-        group_result
-        for group_result in result.group_results
-        if group_result.metric_name == "mse"
+        group_result for group_result in result.group_results if group_result.metric_name == "mse"
     ]
 
     assert len(mse_group_results) == 1
     assert len(mse_group_results[0].rows) == 2
 
-    rows_by_approximator = {
-        row.approximator_name: row
-        for row in mse_group_results[0].rows
-    }
+    rows_by_approximator = {row.approximator_name: row for row in mse_group_results[0].rows}
 
     assert rows_by_approximator["StratifiedSamplingSV"].metric_value == pytest.approx(0.10)
     assert rows_by_approximator["PermutationSamplingSV"].metric_value == pytest.approx(0.10)

@@ -84,7 +84,6 @@ def make_records() -> list[dict[str, object]]:
             mse=0.050,
             spearman=0.50,
         ),
-
         # Group 2: budget 500
         make_record(
             run_id="g2-strat-0",

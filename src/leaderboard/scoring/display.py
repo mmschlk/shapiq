@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from typing import TextIO
 import sys
+from typing import TYPE_CHECKING, TextIO
 
-from leaderboard.scoring.result import LeaderboardRow, ScoringResult
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from leaderboard.scoring.result import LeaderboardRow, ScoringResult
 
 
 def format_scoring_result(result: ScoringResult) -> str:
@@ -18,7 +20,6 @@ def format_scoring_result(result: ScoringResult) -> str:
     Returns:
         Human-readable terminal table as a string.
     """
-
     used_metrics = sorted({group_result.metric_name for group_result in result.group_results})
 
     lines = [
@@ -32,8 +33,7 @@ def format_scoring_result(result: ScoringResult) -> str:
         _format_separator(),
     ]
 
-    for row in result.rows:
-        lines.append(_format_row(row))
+    lines.extend(_format_row(row) for row in result.rows)
 
     if result.metadata:
         lines.extend(["", "Metadata:"])
@@ -73,12 +73,7 @@ def _format_row(row: LeaderboardRow) -> str:
     rank = "-" if row.rank is None else str(row.rank)
     details = _format_metadata(row.metadata)
 
-    return (
-        f"{rank:>4}  "
-        f"{row.approximator_name:<28}  "
-        f"{row.score:>12.6g}  "
-        f"{details}"
-    )
+    return f"{rank:>4}  {row.approximator_name:<28}  {row.score:>12.6g}  {details}"
 
 
 def _format_metadata(metadata: dict[str, object]) -> str:

@@ -28,8 +28,8 @@ class GroupRankScorer(LeaderboardScorer):
     higher_is_better = False
 
     def __init__(
-            self,
-            group_keys: list[str] | None = None,
+        self,
+        group_keys: list[str] | None = None,
     ) -> None:
         """Create a group-wise ranking scorer.
 
@@ -47,11 +47,7 @@ class GroupRankScorer(LeaderboardScorer):
 
     def score(self, records: list[dict[str, object]]) -> ScoringResult:
         """Compute group-wise metric rankings and aggregate average ranks."""
-        valid_records = [
-            record
-            for record in records
-            if record.get("run_failed") is not True
-        ]
+        valid_records = [record for record in records if record.get("run_failed") is not True]
 
         groups = self._group_records(valid_records)
         group_results = self._score_groups(groups)
@@ -68,12 +64,12 @@ class GroupRankScorer(LeaderboardScorer):
                 "n_groups": len(groups),
                 "n_group_results": len(group_results),
                 "seed_aggregation": "mean",
-            }
+            },
         )
 
     def _group_records(
-            self,
-            records: list[dict[str, object]],
+        self,
+        records: list[dict[str, object]],
     ) -> dict[tuple[object, ...], list[dict[str, object]]]:
         """Group records by comparable benchmark keys."""
         groups: dict[tuple[object, ...], list[dict[str, object]]] = defaultdict(list)
@@ -85,8 +81,8 @@ class GroupRankScorer(LeaderboardScorer):
         return dict(groups)
 
     def _score_groups(
-            self,
-            groups: dict[tuple[object, ...], list[dict[str, object]]],
+        self,
+        groups: dict[tuple[object, ...], list[dict[str, object]]],
     ) -> list[GroupScoringResult]:
         """Rank approximators inside each group for all available metrics."""
         results: list[GroupScoringResult] = []
@@ -121,11 +117,11 @@ class GroupRankScorer(LeaderboardScorer):
         return results
 
     def _build_metric_rows(
-            self,
-            *,
-            records: list[dict[str, object]],
-            metric_name: str,
-            higher_is_better: bool,
+        self,
+        *,
+        records: list[dict[str, object]],
+        metric_name: str,
+        higher_is_better: bool,
     ) -> list[GroupScoreRow]:
         """Build ranked rows for one seed-aggregated group and one metric."""
         values: list[tuple[str, float, dict[str, object]]] = []
@@ -160,8 +156,8 @@ class GroupRankScorer(LeaderboardScorer):
         ]
 
     def _aggregate_group_ranks(
-            self,
-            group_results: list[GroupScoringResult],
+        self,
+        group_results: list[GroupScoringResult],
     ) -> list[LeaderboardRow]:
         """Aggregate group ranks into one average-rank leaderboard."""
         ranks_by_approximator: dict[str, list[float]] = defaultdict(list)
@@ -197,17 +193,13 @@ class GroupRankScorer(LeaderboardScorer):
         ]
 
     def _get_metric_value(
-            self,
-            record: dict[str, object],
-            metric_name: str,
+        self,
+        record: dict[str, object],
+        metric_name: str,
     ) -> float | None:
         """Extract a metric value from nested or flattened records."""
         metrics = record.get("metrics")
-
-        if isinstance(metrics, dict):
-            value = metrics.get(metric_name)
-        else:
-            value = record.get(metric_name)
+        value = metrics.get(metric_name) if isinstance(metrics, dict) else record.get(metric_name)
 
         if isinstance(value, bool):
             return None
@@ -227,8 +219,8 @@ class GroupRankScorer(LeaderboardScorer):
         )
 
     def _aggregate_seeds_in_group(
-            self,
-            records: list[dict[str, object]],
+        self,
+        records: list[dict[str, object]],
     ) -> list[dict[str, object]]:
         """Aggregate metric values over seeds for each approximator in one group."""
         records_by_approximator: dict[str, list[dict[str, object]]] = defaultdict(list)
@@ -283,9 +275,9 @@ class GroupRankScorer(LeaderboardScorer):
         return aggregated_records
 
     def _get_metric_metadata(
-            self,
-            record: dict[str, object],
-            metric_name: str,
+        self,
+        record: dict[str, object],
+        metric_name: str,
     ) -> dict[str, object]:
         """Extract aggregation metadata for one metric if available."""
         metric_stats = record.get("metric_stats")
@@ -300,11 +292,7 @@ class GroupRankScorer(LeaderboardScorer):
 
 def _unique_str_values(records: list[dict[str, object]], key: str) -> list[str]:
     """Return sorted unique string values for one record key."""
-    values = {
-        record[key]
-        for record in records
-        if isinstance(record.get(key), str)
-    }
+    values = {record[key] for record in records if isinstance(record.get(key), str)}
     return sorted(values)
 
 

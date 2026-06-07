@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from leaderboard.scoring.result import ScoringResult
+if TYPE_CHECKING:
+    from leaderboard.scoring.result import ScoringResult
 
 
 class LeaderboardScorer(ABC):
@@ -20,12 +21,12 @@ class LeaderboardScorer(ABC):
 
     @abstractmethod
     def score(self, records: list[dict[str, Any]]) -> ScoringResult:
-         """Compute a complete leaderboard scoring result from benchmark records.
+        """Compute a complete leaderboard scoring result from benchmark records.
 
         Args:
-            records: Benchmark run records
+           records: Benchmark run records
 
         Returns:
-            The complete scoring result, including leaderboard rows and scorer
-            metadata.
+           The complete scoring result, including leaderboard rows and scorer
+           metadata.
         """
