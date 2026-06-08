@@ -1,19 +1,18 @@
-"""Unit tests for LocalClient and the DatabaseClient contract.
+"""Unit tests for DatabaseClient and the DatabaseClient contract.
 
 Structure
 ---------
 * Fixtures – shared pytest helpers (tmp JSONL path, sample documents, client).
-* TestLocalClientConstruction  – from_env / __init__ edge-cases.
-* TestLocalClientConnection    – test_connection / close / context-manager.
-* TestLocalClientWrite         – insert_one / insert_many.
-* TestLocalClientDelete        – delete_all / delete_by_config.
-* TestLocalClientReadGeneric   – get_all / get_by_config.
-* TestLocalClientReadDomain    – get_unique_configs / get_games / get_by_game /
+* TestDatabaseClientConstruction  – from_env / __init__ edge-cases.
+* TestDatabaseClientConnection    – test_connection / close / context-manager.
+* TestDatabaseClientWrite         – insert_one / insert_many.
+* TestDatabaseClientDelete        – delete_all / delete_by_config.
+* TestDatabaseClientReadGeneric   – get_all / get_by_config.
+* TestDatabaseClientReadDomain    – get_unique_configs / get_games / get_by_game /
                                   get_approximators / get_by_approximator /
                                   count_by_config.
-* TestLocalClientLoadDataframe – load_dataframe integration with _process.
+* TestDatabaseClientLoadDataframe – load_dataframe integration with _process.
 * TestDatabaseClientContract   – abstract-method enforcement.
-* TestHelperFunctions          – _json_default / _matches_config unit tests.
 
 The sample documents mirror the JSONL data supplied with the task.
 """
@@ -29,15 +28,13 @@ from unittest.mock import patch
 import pytest
 
 from leaderboard.storage import (
-    LocalClient,
-    _json_default,
-    _matches_config,
+    DatabaseClientFactory,
     DatabaseClient,
     RunConfig,
 )
 
 # ---------------------------------------------------------------------------
-# Sample documents (representative subset from the supplied JSONL)
+# Sample documents (extracted from the raw jsonl data)
 # ---------------------------------------------------------------------------
 
 _PERM_100_SEED0: dict[str, Any] = {
@@ -138,13 +135,13 @@ def jsonl_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
-def empty_client(jsonl_path: Path) -> LocalClient:
-    return LocalClient(path=jsonl_path)
+def empty_client(jsonl_path: Path) -> DatabaseClient:
+    return DatabaseClientFactory.create_client("local", {"LOCAL_DB_PATH": str(jsonl_path)})
 
 
 @pytest.fixture()
-def populated_client(jsonl_path: Path) -> LocalClient:
-    client = LocalClient(path=jsonl_path)
+def populated_client(jsonl_path: Path) -> DatabaseClient:
+    client = DatabaseClientFactory.create_client("local", {"LOCAL_DB_PATH": str(jsonl_path)})
     client.insert_many(ALL_DOCS)
     return client
 
@@ -172,70 +169,70 @@ def strat_config() -> RunConfig:
 
 
 # ===========================================================================
-# TestLocalClientConstruction
+# TestDatabaseClientConstruction
 # ===========================================================================
 
 
-class TestLocalClientConstruction:
+class TestDatabaseClientConstruction:
     def test_init_stores_path(self, jsonl_path: Path) -> None:
-        client = LocalClient(path=jsonl_path)
+        client = DatabaseClient(path=jsonl_path)
         assert client._path == jsonl_path
 
     def test_init_accepts_str(self, tmp_path: Path) -> None:
         p = str(tmp_path / "runs.jsonl")
-        client = LocalClient(path=p)
+        client = DatabaseClient(path=p)
         assert client._path == Path(p)
 
     def test_from_env_uses_args_first(self, tmp_path: Path) -> None:
         custom = str(tmp_path / "custom.jsonl")
-        client = LocalClient.from_env({"LOCAL_DB_PATH": custom})
+        client = DatabaseClient.from_env({"LOCAL_DB_PATH": custom})
         assert client._path == Path(custom)
 
     def test_from_env_uses_env_var(self, tmp_path: Path) -> None:
         custom = str(tmp_path / "env.jsonl")
         with patch.dict(os.environ, {"LOCAL_DB_PATH": custom}):
-            client = LocalClient.from_env({})
+            client = DatabaseClient.from_env({})
         assert client._path == Path(custom)
 
     def test_from_env_default_fallback(self) -> None:
         env = {k: v for k, v in os.environ.items() if k != "LOCAL_DB_PATH"}
         with patch.dict(os.environ, env, clear=True):
-            client = LocalClient.from_env({})
+            client = DatabaseClient.from_env({})
         assert client._path == Path("data/runs.jsonl")
 
     def test_from_env_args_beats_env_var(self, tmp_path: Path) -> None:
         env_path = str(tmp_path / "env.jsonl")
         arg_path = str(tmp_path / "arg.jsonl")
         with patch.dict(os.environ, {"LOCAL_DB_PATH": env_path}):
-            client = LocalClient.from_env({"LOCAL_DB_PATH": arg_path})
+            client = DatabaseClient.from_env({"LOCAL_DB_PATH": arg_path})
         assert client._path == Path(arg_path)
 
 
 # ===========================================================================
-# TestLocalClientConnection
+# TestDatabaseClientConnection
 # ===========================================================================
 
 
-class TestLocalClientConnection:
-    def test_test_connection_always_true(self, empty_client: LocalClient) -> None:
+class TestDatabaseClientConnection:
+    def test_test_connection_always_true(self, empty_client: DatabaseClient) -> None:
         assert empty_client.test_connection() is True
 
-    def test_close_is_noop(self, empty_client: LocalClient) -> None:
+    def test_close_is_noop(self, empty_client: DatabaseClient) -> None:
         # Should not raise.
         empty_client.close()
 
-    def test_context_manager_returns_self(self, empty_client: LocalClient) -> None:
+    def test_context_manager_returns_self(self, empty_client: DatabaseClient) -> None:
         with empty_client as c:
             assert c is empty_client
 
-    def test_context_manager_calls_close(self, empty_client: LocalClient) -> None:
+    def test_context_manager_calls_close(self, empty_client: DatabaseClient) -> None:
         with patch.object(empty_client, "close") as mock_close:
             with empty_client:
                 pass
         mock_close.assert_called_once()
 
     def test_context_manager_calls_close_on_exception(
-        self, empty_client: LocalClient
+        self, empty_client: DatabaseClient
     ) -> None:
         with patch.object(empty_client, "close") as mock_close:
             with pytest.raises(ValueError):
@@ -245,22 +242,22 @@ class TestLocalClientConnection:
 
 
 # ===========================================================================
-# TestLocalClientWrite
+# TestDatabaseClientWrite
 # ===========================================================================
 
 
-class TestLocalClientWrite:
-    def test_insert_one_creates_file(self, empty_client: LocalClient) -> None:
+class TestDatabaseClientWrite:
+    def test_insert_one_creates_file(self, empty_client: DatabaseClient) -> None:
         empty_client.insert_one(_PERM_100_SEED0)
         assert empty_client._path.exists()
 
     def test_insert_one_creates_parent_dirs(self, tmp_path: Path) -> None:
         deep = tmp_path / "a" / "b" / "c" / "runs.jsonl"
-        client = LocalClient(path=deep)
+        client = DatabaseClient(path=deep)
         client.insert_one(_PERM_100_SEED0)
         assert deep.exists()
 
-    def test_insert_one_appends_valid_json(self, empty_client: LocalClient) -> None:
+    def test_insert_one_appends_valid_json(self, empty_client: DatabaseClient) -> None:
         empty_client.insert_one(_PERM_100_SEED0)
         empty_client.insert_one(_PERM_100_SEED1)
         lines = empty_client._path.read_text().splitlines()
@@ -269,24 +266,24 @@ class TestLocalClientWrite:
         assert parsed[0]["run_id"] == _PERM_100_SEED0["run_id"]
         assert parsed[1]["run_id"] == _PERM_100_SEED1["run_id"]
 
-    def test_insert_many_noop_on_empty(self, empty_client: LocalClient) -> None:
+    def test_insert_many_noop_on_empty(self, empty_client: DatabaseClient) -> None:
         empty_client.insert_many([])
         # File should not be created for an empty list
         assert not empty_client._path.exists()
 
-    def test_insert_many_writes_all(self, empty_client: LocalClient) -> None:
+    def test_insert_many_writes_all(self, empty_client: DatabaseClient) -> None:
         docs = [_PERM_100_SEED0, _PERM_100_SEED1, _PERM_500_SEED0]
         empty_client.insert_many(docs)
         lines = empty_client._path.read_text().splitlines()
         assert len(lines) == 3
 
-    def test_insert_many_appends_to_existing(self, empty_client: LocalClient) -> None:
+    def test_insert_many_appends_to_existing(self, empty_client: DatabaseClient) -> None:
         empty_client.insert_one(_PERM_100_SEED0)
         empty_client.insert_many([_PERM_100_SEED1, _PERM_500_SEED0])
         assert len(empty_client.get_all()) == 3
 
     def test_insert_one_serialises_numpy_integer(
-        self, empty_client: LocalClient
+        self, empty_client: DatabaseClient
     ) -> None:
         import numpy as np
         doc = {**_PERM_100_SEED0, "numpy_int": np.int64(42)}
@@ -295,7 +292,7 @@ class TestLocalClientWrite:
         assert loaded["numpy_int"] == 42
 
     def test_insert_one_serialises_numpy_float(
-        self, empty_client: LocalClient
+        self, empty_client: DatabaseClient
     ) -> None:
         import numpy as np
         doc = {**_PERM_100_SEED0, "numpy_float": np.float32(3.14)}
@@ -304,7 +301,7 @@ class TestLocalClientWrite:
         assert abs(loaded["numpy_float"] - 3.14) < 1e-4
 
     def test_insert_one_serialises_numpy_array(
-        self, empty_client: LocalClient
+        self, empty_client: DatabaseClient
     ) -> None:
         import numpy as np
         doc = {**_PERM_100_SEED0, "arr": np.array([1, 2, 3])}
@@ -314,29 +311,29 @@ class TestLocalClientWrite:
 
 
 # ===========================================================================
-# TestLocalClientDelete
+# TestDatabaseClientDelete
 # ===========================================================================
 
 
-class TestLocalClientDelete:
+class TestDatabaseClientDelete:
     def test_delete_all_returns_correct_count(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         assert populated_client.delete_all() == len(ALL_DOCS)
 
     def test_delete_all_leaves_empty_store(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         populated_client.delete_all()
         assert populated_client.get_all() == []
 
     def test_delete_all_on_empty_returns_zero(
-        self, empty_client: LocalClient
+        self, empty_client: DatabaseClient
     ) -> None:
         assert empty_client.delete_all() == 0
 
     def test_delete_by_config_removes_matching(
-        self, populated_client: LocalClient, perm_config: RunConfig
+        self, populated_client: DatabaseClient, perm_config: RunConfig
     ) -> None:
         # _PERM_100_SEED0 and _PERM_100_SEED1 both match
         deleted = populated_client.delete_by_config(perm_config)
@@ -346,7 +343,7 @@ class TestLocalClientDelete:
         assert _PERM_100_SEED1["run_id"] not in run_ids
 
     def test_delete_by_config_keeps_non_matching(
-        self, populated_client: LocalClient, perm_config: RunConfig
+        self, populated_client: DatabaseClient, perm_config: RunConfig
     ) -> None:
         populated_client.delete_by_config(perm_config)
         remaining_ids = {d["run_id"] for d in populated_client.get_all()}
@@ -355,7 +352,7 @@ class TestLocalClientDelete:
         assert _BIKE_PERM_100_SEED0["run_id"] in remaining_ids
 
     def test_delete_by_config_zero_when_no_match(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         no_match = RunConfig(
             game_name="NONEXISTENT", approximator_name="X",
@@ -365,7 +362,7 @@ class TestLocalClientDelete:
         assert len(populated_client.get_all()) == len(ALL_DOCS)
 
     def test_delete_by_config_does_not_rewrite_when_nothing_deleted(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         no_match = RunConfig(
             game_name="NONEXISTENT", approximator_name="X",
@@ -377,26 +374,26 @@ class TestLocalClientDelete:
 
 
 # ===========================================================================
-# TestLocalClientReadGeneric
+# TestDatabaseClientReadGeneric
 # ===========================================================================
 
 
-class TestLocalClientReadGeneric:
-    def test_get_all_empty_when_no_file(self, empty_client: LocalClient) -> None:
+class TestDatabaseClientReadGeneric:
+    def test_get_all_empty_when_no_file(self, empty_client: DatabaseClient) -> None:
         assert empty_client.get_all() == []
 
     def test_get_all_returns_all_documents(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         assert len(populated_client.get_all()) == len(ALL_DOCS)
 
-    def test_get_all_round_trips_data(self, populated_client: LocalClient) -> None:
+    def test_get_all_round_trips_data(self, populated_client: DatabaseClient) -> None:
         ids = {d["run_id"] for d in populated_client.get_all()}
         expected_ids = {d["run_id"] for d in ALL_DOCS}
         assert ids == expected_ids
 
     def test_get_by_config_returns_only_matching(
-        self, populated_client: LocalClient, perm_config: RunConfig
+        self, populated_client: DatabaseClient, perm_config: RunConfig
     ) -> None:
         results = populated_client.get_by_config(perm_config)
         assert len(results) == 2
@@ -406,7 +403,7 @@ class TestLocalClientReadGeneric:
             assert d["game_name"] == "CaliforniaHousing"
 
     def test_get_by_config_empty_when_no_match(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         cfg = RunConfig(
             game_name="MISSING", approximator_name="X",
@@ -415,67 +412,67 @@ class TestLocalClientReadGeneric:
         assert populated_client.get_by_config(cfg) == []
 
     def test_get_by_config_on_empty_store(
-        self, empty_client: LocalClient, perm_config: RunConfig
+        self, empty_client: DatabaseClient, perm_config: RunConfig
     ) -> None:
         assert empty_client.get_by_config(perm_config) == []
 
 
 # ===========================================================================
-# TestLocalClientReadDomain
+# TestDatabaseClientReadDomain
 # ===========================================================================
 
 
-class TestLocalClientReadDomain:
+class TestDatabaseClientReadDomain:
     def test_get_games_returns_sorted_distinct(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         games = populated_client.get_games()
         assert games == sorted(set(games))
         assert set(games) == {"CaliforniaHousing", "BikeSharing"}
 
-    def test_get_games_empty_store(self, empty_client: LocalClient) -> None:
+    def test_get_games_empty_store(self, empty_client: DatabaseClient) -> None:
         assert empty_client.get_games() == []
 
     def test_get_by_game_returns_only_that_game(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         results = populated_client.get_by_game("BikeSharing")
         assert len(results) == 1
         assert all(d["game_name"] == "BikeSharing" for d in results)
 
-    def test_get_by_game_missing_game(self, populated_client: LocalClient) -> None:
+    def test_get_by_game_missing_game(self, populated_client: DatabaseClient) -> None:
         assert populated_client.get_by_game("NONEXISTENT") == []
 
     def test_get_approximators_returns_sorted_distinct(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         approx = populated_client.get_approximators()
         assert approx == sorted(set(approx))
         assert set(approx) == {"PermutationSamplingSV", "StratifiedSamplingSV"}
 
-    def test_get_approximators_empty_store(self, empty_client: LocalClient) -> None:
+    def test_get_approximators_empty_store(self, empty_client: DatabaseClient) -> None:
         assert empty_client.get_approximators() == []
 
     def test_get_by_approximator_filters_correctly(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         results = populated_client.get_by_approximator("StratifiedSamplingSV")
         assert len(results) == 1
         assert all(d["approximator_name"] == "StratifiedSamplingSV" for d in results)
 
     def test_get_by_approximator_missing(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         assert populated_client.get_by_approximator("NONEXISTENT") == []
 
     def test_get_unique_configs_no_duplicates(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         configs = populated_client.get_unique_configs()
         keys = [tuple(sorted(c.to_dict().items())) for c in configs]
         assert len(keys) == len(set(keys))
 
-    def test_get_unique_configs_count(self, populated_client: LocalClient) -> None:
+    def test_get_unique_configs_count(self, populated_client: DatabaseClient) -> None:
         # 4 distinct (game, approx, budget, index, max_order) combos:
         #   CalHousing/Perm/100, CalHousing/Perm/500, CalHousing/Strat/100,
         #   BikeSharing/Perm/100
@@ -484,12 +481,12 @@ class TestLocalClientReadDomain:
         assert len(keys) == 4
 
     def test_count_by_config_correct(
-        self, populated_client: LocalClient, perm_config: RunConfig
+        self, populated_client: DatabaseClient, perm_config: RunConfig
     ) -> None:
         assert populated_client.count_by_config(perm_config) == 2
 
     def test_count_by_config_zero_for_missing(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         cfg = RunConfig(
             game_name="MISSING", approximator_name="X",
@@ -498,25 +495,25 @@ class TestLocalClientReadDomain:
         assert populated_client.count_by_config(cfg) == 0
 
     def test_count_by_config_empty_store(
-        self, empty_client: LocalClient, perm_config: RunConfig
+        self, empty_client: DatabaseClient, perm_config: RunConfig
     ) -> None:
         assert empty_client.count_by_config(perm_config) == 0
 
 
 # ===========================================================================
-# TestLocalClientLoadDataframe
+# TestDatabaseClientLoadDataframe
 # ===========================================================================
 
 
-class TestLocalClientLoadDataframe:
+class TestDatabaseClientLoadDataframe:
     def test_load_dataframe_returns_dataframe(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         import pandas as pd
         df = populated_client.load_dataframe()
         assert isinstance(df, pd.DataFrame)
 
-    def test_load_dataframe_empty_store(self, empty_client: LocalClient) -> None:
+    def test_load_dataframe_empty_store(self, empty_client: DatabaseClient) -> None:
         import pandas as pd
         df = empty_client.load_dataframe()
         assert isinstance(df, pd.DataFrame)
@@ -525,14 +522,14 @@ class TestLocalClientLoadDataframe:
     def test_load_dataframe_excludes_failed_runs(
         self, jsonl_path: Path
     ) -> None:
-        client = LocalClient(path=jsonl_path)
+        client = DatabaseClient(path=jsonl_path)
         client.insert_many([_PERM_100_SEED0, _FAILED_RUN])
         df = client.load_dataframe()
         assert len(df) == 1
         assert df.iloc[0]["game_name"] == "CaliforniaHousing"
 
     def test_load_dataframe_has_expected_columns(
-        self, populated_client: LocalClient
+        self, populated_client: DatabaseClient
     ) -> None:
         df = populated_client.load_dataframe()
         for col in ("game_name", "approximator_name", "budget", "mse"):
@@ -541,61 +538,11 @@ class TestLocalClientLoadDataframe:
     def test_load_dataframe_row_count_excludes_failures(
         self, jsonl_path: Path
     ) -> None:
-        client = LocalClient(path=jsonl_path)
+        client = DatabaseClient(path=jsonl_path)
         client.insert_many(ALL_DOCS + [_FAILED_RUN])
         df = client.load_dataframe()
         assert len(df) == len(ALL_DOCS)
 
-
-# ===========================================================================
-# TestHelperFunctions
-# ===========================================================================
-
-
-class TestHelperFunctions:
-    def test_json_default_numpy_integer(self) -> None:
-        import numpy as np
-        result = _json_default(np.int32(7))
-        assert result == 7
-        assert isinstance(result, int)
-
-    def test_json_default_numpy_floating(self) -> None:
-        import numpy as np
-        result = _json_default(np.float64(3.14))
-        assert isinstance(result, float)
-        assert abs(result - 3.14) < 1e-9
-
-    def test_json_default_numpy_array(self) -> None:
-        import numpy as np
-        result = _json_default(np.array([1, 2, 3]))
-        assert result == [1, 2, 3]
-
-    def test_json_default_fallback_to_str(self) -> None:
-        class _Weird:
-            def __str__(self) -> str:
-                return "weird"
-        assert _json_default(_Weird()) == "weird"
-
-    def test_matches_config_true(self) -> None:
-        cfg = RunConfig(game_name="CaliforniaHousing", approximator_name="X")
-        doc = {"game_name": "CaliforniaHousing", "approximator_name": "X", "extra": 1}
-        assert _matches_config(doc, cfg) is True
-
-    def test_matches_config_false_wrong_value(self) -> None:
-        cfg = RunConfig(game_name="CaliforniaHousing", approximator_name="X")
-        doc = {"game_name": "CaliforniaHousing", "approximator_name": "Y"}
-        assert _matches_config(doc, cfg) is False
-
-    def test_matches_config_false_missing_key(self) -> None:
-        cfg = RunConfig(game_name="CaliforniaHousing", approximator_name="X")
-        doc = {"game_name": "CaliforniaHousing"}
-        assert _matches_config(doc, cfg) is False
-
-    def test_matches_config_empty_config(self) -> None:
-        """An empty RunConfig matches any document."""
-        cfg = RunConfig()
-        doc = {"game_name": "CaliforniaHousing", "budget": 100}
-        assert _matches_config(doc, cfg) is True
 
 
 # ===========================================================================
@@ -629,7 +576,7 @@ class TestDatabaseClientContract:
         assert expected == set(DatabaseClient.__abstractmethods__)
 
     def test_local_client_satisfies_contract(self, jsonl_path: Path) -> None:
-        client = LocalClient(path=jsonl_path)
+        client = DatabaseClient(path=jsonl_path)
         assert isinstance(client, DatabaseClient)
         # Verify no unimplemented abstract methods remain
         assert not getattr(client.__class__, "__abstractmethods__", set())
