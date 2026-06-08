@@ -3,7 +3,7 @@ from itertools import combinations
 
 from leaderboard.metrics.registry import METRIC_ALIASES, METRIC_SPECS
 from leaderboard.scoring import LeaderboardScorer, ScoringResult
-from leaderboard.scoring.result import ScoringContext
+from leaderboard.scoring.result import ScoringContext, LeaderboardRow
 from leaderboard.scoring.scorer_utils import (
     aggregate_seeds_in_group,
     build_context,
@@ -109,9 +109,26 @@ class EloScorer(LeaderboardScorer):
         groups = group_records(selected_records, self.group_keys)
         matches = self._build_pairwise_matches(groups)
 
-        # Temporary until Elo update is implemented.
-        raise NotImplementedError(
-            f"Built {len(matches)} pairwise matches. Elo update is not implemented yet."
+        ratings, stats = self._compute_elo(matches)
+        leaderboard_rows = self._build_leaderboard_rows(ratings, stats)
+
+        return ScoringResult(
+            scorer_name=self.name,
+            context=self._build_context(selected_records),
+            rows=leaderboard_rows,
+            group_results=[],
+            metadata={
+                "n_input_records": len(records),
+                "n_valid_records": len(valid_records),
+                "n_selected_records": len(selected_records),
+                "n_groups": len(groups),
+                "n_matches": len(matches),
+                "initial_elo": self.initial_elo,
+                "k_factor": self.k_factor,
+                "tie_tolerance": self.tie_tolerance,
+                "seed_aggregation": "mean",
+                "ordering_strategy": "deterministic",
+            },
         )
 
     def _build_pairwise_matches(
@@ -277,3 +294,171 @@ class EloScorer(LeaderboardScorer):
             metric_names=list(self.metric_names),
             group_keys=context.group_keys,
         )
+
+    def _expected_score(self, rating_a: float, rating_b: float) -> float:
+        """Compute expected Elo score for A against B."""
+        return 1.0 / (1.0 + 10 ** ((rating_b - rating_a) / 400.0))
+
+    def _update_ratings(
+            self,
+            *,
+            rating_a: float,
+            rating_b: float,
+            score_a: float,
+            score_b: float,
+    ) -> tuple[float, float]:
+        """Update two Elo ratings after one pairwise match."""
+        expected_a = self._expected_score(rating_a, rating_b)
+        expected_b = self._expected_score(rating_b, rating_a)
+
+        new_rating_a = rating_a + self.k_factor * (score_a - expected_a)
+        new_rating_b = rating_b + self.k_factor * (score_b - expected_b)
+
+        return new_rating_a, new_rating_b
+
+    def _initialize_match_stats(
+            self,
+            matches: list[PairwiseMatch],
+    ) -> dict[str, dict[str, int]]:
+        """Initialize match counters for all approximators occurring in matches.
+
+        Args:
+            matches: Pairwise matches from which all participating approximators
+                are collected.
+
+        Returns:
+            A dictionary mapping each approximator name to initialized match
+            counters. Each counter dictionary contains ``n_matches``, ``wins``,
+            ``losses``, and ``ties``, all initialized to zero.
+        """
+        approximators = set()
+        for match in matches:
+            approximators.add(match.approximator_a)
+            approximators.add(match.approximator_b)
+
+        return {
+            approximator: {
+                "n_matches": 0,
+                "wins": 0,
+                "losses": 0,
+                "ties": 0,
+            }
+            for approximator in approximators
+        }
+
+
+    def _compute_elo(
+            self,
+            matches: list[PairwiseMatch],
+    ) -> tuple[dict[str, float], dict[str, dict[str, int]]]:
+        """Compute Elo ratings and match statistics from pairwise matches.
+
+        The method starts every approximator at ``self.initial_elo`` and applies
+        the matches sequentially. After each match, both participating
+        approximators receive updated Elo ratings based on their current ratings,
+        expected scores, actual match scores, and ``self.k_factor``.
+
+        Args:
+            matches: Pairwise matches used as Elo update events. Each match contains
+                two approximators and their actual scores, where ``1.0`` means win,
+                ``0.5`` means tie, and ``0.0`` means loss.
+
+        Returns:
+            A tuple containing two dictionaries:
+
+            - The first dictionary maps approximator names to their final Elo
+              ratings.
+            - The second dictionary maps approximator names to match statistics,
+              including ``n_matches``, ``wins``, ``losses``, and ``ties``.
+        """
+        stats = self._initialize_match_stats(matches)
+        ratings = {
+            approximator: self.initial_elo
+            for approximator in stats
+        }
+
+        for match in matches:
+            rating_a = ratings[match.approximator_a]
+            rating_b = ratings[match.approximator_b]
+
+            new_rating_a, new_rating_b = self._update_ratings(
+                rating_a=rating_a,
+                rating_b=rating_b,
+                score_a=match.score_a,
+                score_b=match.score_b,
+            )
+
+            ratings[match.approximator_a] = new_rating_a
+            ratings[match.approximator_b] = new_rating_b
+
+            self._update_match_stats(stats, match)
+
+        return ratings, stats
+
+    def _update_match_stats(
+            self,
+            stats: dict[str, dict[str, int]],
+            match: PairwiseMatch,
+    ) -> None:
+        """Update win, loss, tie, and match counters for one pairwise match."""
+        stats[match.approximator_a]["n_matches"] += 1
+        stats[match.approximator_b]["n_matches"] += 1
+
+        if match.score_a == 0.5 and match.score_b == 0.5:
+            stats[match.approximator_a]["ties"] += 1
+            stats[match.approximator_b]["ties"] += 1
+            return
+
+        if match.score_a > match.score_b:
+            stats[match.approximator_a]["wins"] += 1
+            stats[match.approximator_b]["losses"] += 1
+            return
+
+        stats[match.approximator_a]["losses"] += 1
+        stats[match.approximator_b]["wins"] += 1
+
+    def _build_leaderboard_rows(
+            self,
+            ratings: dict[str, float],
+            stats: dict[str, dict[str, int]],
+    ) -> list[LeaderboardRow]:
+        """Build ranked leaderboard rows from Elo ratings.
+
+        Args:
+            ratings: Final Elo ratings per approximator.
+            stats: Match statistics per approximator.
+
+        Returns:
+            Ranked leaderboard rows sorted by Elo rating in descending order.
+        """
+        leaderboard_rows = []
+
+        for approximator, rating in ratings.items():
+            approximator_stats = stats[approximator]
+
+            leaderboard_row = LeaderboardRow(
+                approximator_name=approximator,
+                score=rating,
+                higher_is_better=True,
+                rank=None,
+                metadata={
+                    "n_matches": approximator_stats["n_matches"],
+                    "wins": approximator_stats["wins"],
+                    "losses": approximator_stats["losses"],
+                    "ties": approximator_stats["ties"],
+                },
+            )
+            leaderboard_rows.append(leaderboard_row)
+
+        leaderboard_rows.sort(key=lambda row: row.score, reverse=True)
+
+        return [
+            LeaderboardRow(
+                approximator_name=row.approximator_name,
+                score=row.score,
+                higher_is_better=row.higher_is_better,
+                rank=rank,
+                metadata=row.metadata,
+            )
+            for rank, row in enumerate(leaderboard_rows, start=1)
+        ]
