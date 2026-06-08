@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from statistics import mean, stdev
+from statistics import mean
 
 from leaderboard.metrics.registry import METRIC_SPECS
 from leaderboard.scoring.base import LeaderboardScorer
@@ -11,7 +11,6 @@ from leaderboard.scoring.result import (
     GroupScoreRow,
     GroupScoringResult,
     LeaderboardRow,
-    ScoringContext,
     ScoringResult,
 )
 from leaderboard.scoring.scorer_utils import (
@@ -74,8 +73,6 @@ class GroupRankScorer(LeaderboardScorer):
                 "seed_aggregation": "mean",
             },
         )
-
-
 
     def _score_groups(
         self,

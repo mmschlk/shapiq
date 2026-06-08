@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from leaderboard.scoring.elo_scorer import EloScorer, PairwiseMatch
@@ -17,6 +19,7 @@ def test_elo_scorer_filters_matches_by_metric_and_budget():
     assert matches
     assert all(match.metric_name == "spearman" for match in matches)
     assert all(match.group_key["budget"] == 500 for match in matches)
+
 
 def test_expected_score_equal_ratings():
     """Test that equal Elo ratings produce an expected score of 0.5."""
@@ -125,7 +128,6 @@ def _make_two_budget_records() -> list[dict[str, object]]:
             mse=0.07,
             spearman=0.50,
         ),
-
         # Budget 500: B wins by lower MSE.
         _make_record(
             run_id="a-budget-500-seed-0",
@@ -257,10 +259,7 @@ def test_elo_scorer_filters_by_metric_and_budget():
 
     result = scorer.score(_make_two_budget_records())
 
-    rows_by_approximator = {
-        row.approximator_name: row
-        for row in result.rows
-    }
+    rows_by_approximator = {row.approximator_name: row for row in result.rows}
 
     assert result.context.metric_names == ["mse"]
     assert result.context.budgets == [100]

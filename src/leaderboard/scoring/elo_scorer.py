@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from itertools import combinations
 
 from leaderboard.metrics.registry import METRIC_ALIASES, METRIC_SPECS
 from leaderboard.scoring import LeaderboardScorer, ScoringResult
-from leaderboard.scoring.result import ScoringContext, LeaderboardRow
+from leaderboard.scoring.result import LeaderboardRow, ScoringContext
 from leaderboard.scoring.scorer_utils import (
     aggregate_seeds_in_group,
     build_context,
@@ -58,15 +60,15 @@ class EloScorer(LeaderboardScorer):
     higher_is_better = True
 
     def __init__(
-            self,
-            initial_elo: float = 1000.0,
-            k_factor: float = 16.0,
-            tie_tolerance: float = 0.0,
-            group_keys: list[str] | None = None,
-            metric_names: list[str] | None = None,
-            game_names: list[str] | None = None,
-            indices: list[str] | None = None,
-            budgets: list[int] | None = None,
+        self,
+        initial_elo: float = 1000.0,
+        k_factor: float = 16.0,
+        tie_tolerance: float = 0.0,
+        group_keys: list[str] | None = None,
+        metric_names: list[str] | None = None,
+        game_names: list[str] | None = None,
+        indices: list[str] | None = None,
+        budgets: list[int] | None = None,
     ) -> None:
         """Create an Elo scorer.
 
@@ -132,8 +134,8 @@ class EloScorer(LeaderboardScorer):
         )
 
     def _build_pairwise_matches(
-            self,
-            groups: dict[tuple[object, ...], list[dict[str, object]]],
+        self,
+        groups: dict[tuple[object, ...], list[dict[str, object]]],
     ) -> list[PairwiseMatch]:
         """Build pairwise matches from selected comparable groups and metrics."""
         matches: list[PairwiseMatch] = []
@@ -172,11 +174,7 @@ class EloScorer(LeaderboardScorer):
         metric_name: str,
     ) -> list[dict[str, object]]:
         """Return records that contain a usable value for the selected metric."""
-        return [
-            record
-            for record in records
-            if get_metric_value(record, metric_name) is not None
-        ]
+        return [record for record in records if get_metric_value(record, metric_name) is not None]
 
     def _build_pairwise_match(
         self,
@@ -264,8 +262,8 @@ class EloScorer(LeaderboardScorer):
         return list(dict.fromkeys(normalized_names))
 
     def _filter_records_by_context(
-            self,
-            records: list[dict[str, object]],
+        self,
+        records: list[dict[str, object]],
     ) -> list[dict[str, object]]:
         """Filter records according to the selected scoring context."""
         return [record for record in records if self._record_matches_context(record)]
@@ -300,12 +298,12 @@ class EloScorer(LeaderboardScorer):
         return 1.0 / (1.0 + 10 ** ((rating_b - rating_a) / 400.0))
 
     def _update_ratings(
-            self,
-            *,
-            rating_a: float,
-            rating_b: float,
-            score_a: float,
-            score_b: float,
+        self,
+        *,
+        rating_a: float,
+        rating_b: float,
+        score_a: float,
+        score_b: float,
     ) -> tuple[float, float]:
         """Update two Elo ratings after one pairwise match."""
         expected_a = self._expected_score(rating_a, rating_b)
@@ -317,8 +315,8 @@ class EloScorer(LeaderboardScorer):
         return new_rating_a, new_rating_b
 
     def _initialize_match_stats(
-            self,
-            matches: list[PairwiseMatch],
+        self,
+        matches: list[PairwiseMatch],
     ) -> dict[str, dict[str, int]]:
         """Initialize match counters for all approximators occurring in matches.
 
@@ -343,13 +341,12 @@ class EloScorer(LeaderboardScorer):
                 "losses": 0,
                 "ties": 0,
             }
-            for approximator in approximators
+            for approximator in sorted(approximators)
         }
 
-
     def _compute_elo(
-            self,
-            matches: list[PairwiseMatch],
+        self,
+        matches: list[PairwiseMatch],
     ) -> tuple[dict[str, float], dict[str, dict[str, int]]]:
         """Compute Elo ratings and match statistics from pairwise matches.
 
@@ -372,10 +369,7 @@ class EloScorer(LeaderboardScorer):
               including ``n_matches``, ``wins``, ``losses``, and ``ties``.
         """
         stats = self._initialize_match_stats(matches)
-        ratings = {
-            approximator: self.initial_elo
-            for approximator in stats
-        }
+        ratings = {approximator: self.initial_elo for approximator in stats}
 
         for match in matches:
             rating_a = ratings[match.approximator_a]
@@ -396,9 +390,9 @@ class EloScorer(LeaderboardScorer):
         return ratings, stats
 
     def _update_match_stats(
-            self,
-            stats: dict[str, dict[str, int]],
-            match: PairwiseMatch,
+        self,
+        stats: dict[str, dict[str, int]],
+        match: PairwiseMatch,
     ) -> None:
         """Update win, loss, tie, and match counters for one pairwise match."""
         stats[match.approximator_a]["n_matches"] += 1
@@ -418,9 +412,9 @@ class EloScorer(LeaderboardScorer):
         stats[match.approximator_b]["wins"] += 1
 
     def _build_leaderboard_rows(
-            self,
-            ratings: dict[str, float],
-            stats: dict[str, dict[str, int]],
+        self,
+        ratings: dict[str, float],
+        stats: dict[str, dict[str, int]],
     ) -> list[LeaderboardRow]:
         """Build ranked leaderboard rows from Elo ratings.
 
