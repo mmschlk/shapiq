@@ -28,6 +28,7 @@ ZERO_THRESHOLD = 1e-7
 DASH_STYLES = ["solid", "dash", "dot", "dashdot", "longdash"]
 LOADING_METHOD = "mongodb"  # "local" or "mongodb"
 
+
 # Temporary seed determination
 SEED_IDs = ["approx_seed", "seed"]  # List of possible seed identifier columns in the raw data
 

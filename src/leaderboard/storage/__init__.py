@@ -21,6 +21,5 @@ __all__ = [
     "RunConfig",
     "MetricsLoader",
     "MissingMongoURIError",
-    "MongoDBConnectionError",
     "UnsupportedDatabaseBackendError",
 ]
