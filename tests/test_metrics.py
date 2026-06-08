@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+from runner.aggregator import aggregate_metric_values, aggregate_run_records
 
 from leaderboard.metrics import METRIC_KEYS, METRICS, Scorer
 from leaderboard.metrics.evaluator import compute_all_metrics
@@ -35,6 +36,9 @@ def interaction_values(
         min_order=0,
         interaction_lookup={interaction: index for index, interaction in enumerate(interactions)},
     )
+
+
+from metrics import METRIC_KEYS, METRICS, Scorer
 
 
 class MetricsTestCase(unittest.TestCase):

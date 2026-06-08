@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from pathlib import Path
+from typing import Any, TypeVar
 
 import gradio as gr
 import numpy as np
@@ -12,17 +13,21 @@ import plotly.graph_objects as go
 from dotenv import load_dotenv
 
 from leaderboard.metrics import METRICS
-from leaderboard.storage.connection import MongoDBClient, MongoDBConnectionError
-from leaderboard.ui.ui_exceptions import UnknownDataLoadingMethodError
+from leaderboard.storage.connection import DatabaseClientFactory, DBConnectionError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 load_dotenv()
+T = TypeVar("T")
 
-RESULTS_PATH = "results_raw.jsonl"
+CURRENT_DIR = Path(__file__).parent
+PROJECT_ROOT = CURRENT_DIR.parent.parent.parent
+RESULTS_PATH = PROJECT_ROOT / "data" / "results_raw.jsonl"
+
 ZERO_THRESHOLD = 1e-7
 DASH_STYLES = ["solid", "dash", "dot", "dashdot", "longdash"]
 LOADING_METHOD = "mongodb"  # "local" or "mongodb"
+
 
 # Temporary seed determination
 SEED_IDs = ["approx_seed", "seed"]  # List of possible seed identifier columns in the raw data
@@ -35,117 +40,26 @@ def reload_data() -> pd.DataFrame:
 
 def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.DataFrame:
     """Loads raw run data from the specified source, processes it, and returns an aggregated DataFrame."""
-    if method == "local":
-        runs_df = _local_load(path)
-    elif method == "mongodb":
-        # Create a client and load data from MongoDB
-        mongoDBClient = MongoDBClient.from_env()
-
-        # Check if we can connect to the database
-        if not mongoDBClient.test_connection():
-            raise MongoDBConnectionError from None
-
-        runs_df = _mongodb_load(mongoDBClient)
-    else:
-        raise UnknownDataLoadingMethodError(method)
-
-    # If runs_df is empty - populate it with a dummy entry to avoid errors
-    if runs_df.empty:
-        runs_df = pd.DataFrame(
-            [
-                {
-                    "game_name": "N/A",
-                    "approximator_name": "N/A",
-                    "budget": 0,
-                    "mse": 0,
-                    "mae": 0,
-                    "ground_truth_method": "N/A",
-                    "runtime_seconds": 0,
-                    "approx_seed": 0,
-                }
-            ]
-        )
-
-    # Rename "seed" column to "approx_seed" if it exists, for consistency
-    if "seed" in runs_df.columns and "approx_seed" not in runs_df.columns:
-        runs_df = runs_df.rename(columns={"seed": "approx_seed"})
-
-    # If now there is both a seed column and an approx_seed column, drop the "seed" column
-    # Copy seed values to approx_seed if they exist, to avoid losing data
-    if "seed" in runs_df.columns and "approx_seed" in runs_df.columns:
-        runs_df["approx_seed"] = runs_df["approx_seed"].combine_first(runs_df["seed"])
-        runs_df = runs_df.drop(columns=["seed"])
-
-    return _aggregate(runs_df)
-
-
-def _mongodb_load(mongoDBClient: MongoDBClient) -> pd.DataFrame:
-    """Loads all runs from MongoDB and aggregates them into the format used by the implementation of the leaderboard ui and logic.
-
-    Returns a DataFrame with columns:
-        game_name, approximator_name, budget,
-        mse_mean, mse_std, mae_mean, mae_std,
-        ground_truth_method,
-        runtime_mean, runtime_min, runtime_max,
-        n_seeds
-    """
-    # Fetch all raw runs from the database
-    raw_runs = mongoDBClient.get_all()
-
-    if not raw_runs:
-        return pd.DataFrame()
-
-    raw_runs_df = pd.DataFrame(raw_runs)
-
-    # Drop failed runs, matching the original filter
-    raw_runs_df = raw_runs_df[~raw_runs_df["run_failed"]]
-
-    # Flatten the nested metrics dict (same as pd.json_normalize in original)
-    metrics_df = pd.json_normalize(raw_runs_df["metrics"])
-
-    return pd.concat([raw_runs_df.drop(columns=["metrics"]), metrics_df], axis=1)
-
-
-def _local_load(path: str) -> pd.DataFrame:
-    """Loads raw run data from a local JSONL file, filters out failed runs, and flattens the metrics dict."""
-    runs_df = pd.read_json(path, lines=True)
-    runs_df = runs_df[~runs_df["run_failed"]]
-
-    # metrics-Dict auseinandernehmen
-    metrics_df = pd.json_normalize(runs_df["metrics"])
-
-    return pd.concat([runs_df.drop(columns=["metrics"]), metrics_df], axis=1)
-
-
-def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
-    """Aggregates the raw run data by game_name, approximator_name, and budget, computing mean and std for mse and mae."""
-    avail_metrics = [m for m in METRICS if m in df.columns]
-
-    metric_aggs = {}
-    for m in avail_metrics:
-        metric_aggs[f"{m}_mean"] = (m, "mean")
-        metric_aggs[f"{m}_std"] = (m, "std")
-
-    # Aggregate over seeds
-    agg = (
-        df.groupby(["game_name", "approximator_name", "budget"])
-        .agg(
-            **metric_aggs,
-            ground_truth_method=("ground_truth_method", "first"),
-            runtime_mean=("runtime_seconds", "mean"),
-            runtime_min=("runtime_seconds", "min"),
-            runtime_max=("runtime_seconds", "max"),
-            n_seeds=("approx_seed", "count"),
-        )
-        .reset_index()
+    db_client = DatabaseClientFactory.create_client(
+        method, db_args={"LOCAL_DB_PATH": path} if method == "local" else {}
     )
+    if not db_client.test_connection():
+        raise DBConnectionError from None
 
-    logging.info("Aggregated data shape: %s", agg.shape)
-
-    return agg
+    return db_client.load_dataframe()
 
 
-def format_value(col, x, runtime_cols) -> str:
+def format_value(col: str, x: T, runtime_cols: list[str]) -> str:
+    """Formats a value for display in the leaderboard, handling small values and runtime formatting.
+
+    Args:
+        col: The column name (used to determine if it's a runtime column).
+        x: The value to format.
+        runtime_cols: List of column names that represent runtimes, which should be rounded to 4 decimals.
+
+    Returns:
+        A formatted string representation of the value.
+    """
     if not isinstance(x, float):
         return x
     if isinstance(x, float) and abs(x) < ZERO_THRESHOLD and col not in runtime_cols:
