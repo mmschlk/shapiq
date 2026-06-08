@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 
-class MongoDBClientError(Exception):
-    """Base exception for MongoDB client errors."""
+class DBClientError(Exception):
+    """Base exception for database client errors."""
 
     def __init__(self) -> None:
         """Initialize with a custom error message."""
-        super().__init__("MongoDB client error occurred.")
+        super().__init__("Database client error occurred.")
 
 
-class MissingMongoURIError(MongoDBClientError):
+class MissingMongoURIError(DBClientError):
     """Raised when MONGODB_URI is not set."""
 
     def __init__(self) -> None:
@@ -19,9 +19,19 @@ class MissingMongoURIError(MongoDBClientError):
         super().__init__("MONGODB_URI is not set in the environment.")
 
 
-class MongoDBConnectionError(MongoDBClientError):
-    """Raised when the MongoDB client fails to connect to the database."""
+class UnsupportedDatabaseBackendError(DBClientError):
+    """Raised when an unsupported database backend is specified."""
 
-    def __init__(self) -> None:
+    def __init__(self, unsupported_backend: str, supported_backends: list[str]) -> None:
+        """Initialize with a message indicating an unsupported backend."""
+        super().__init__(
+            f"Unsupported database backend specified: {unsupported_backend}. Supported backends: {', '.join(supported_backends)}."
+        )
+
+
+class DBConnectionError(DBClientError):
+    """Raised when the database client fails to connect to the database."""
+
+    def __init__(self, client: str = "Database") -> None:
         """Initialize with a message indicating a connection failure."""
-        super().__init__("Failed to connect to MongoDB")
+        super().__init__(f"Failed to connect to {client}")

@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 if TYPE_CHECKING:
-    from leaderboard.storage.connection import MongoDBClient
+    from leaderboard.storage.connection import DatabaseClient
 
 
-def save_raw_results(db: MongoDBClient, raw_results: list[dict[str, Any]]) -> None:
+def save_raw_results(db: DatabaseClient, raw_results: list[dict[str, Any]]) -> None:
     """Store raw benchmark run records in the database.
 
     Args:

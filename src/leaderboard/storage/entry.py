@@ -9,17 +9,18 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from leaderboard.storage.connection import MongoDBClient
+from leaderboard.storage.connection import DatabaseClientFactory
 from leaderboard.storage.metrics import MetricsLoader
 
 if TYPE_CHECKING:
+    from leaderboard.storage.connection import DatabaseClient
     from leaderboard.storage.data_classes import RunConfig
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
-def _get_config(db: MongoDBClient, idx: int) -> RunConfig:
+def _get_config(db: DatabaseClient, idx: int) -> RunConfig:
     """Helper function to retrieve a RunConfig by index from the database."""
     configs = db.get_unique_configs()
     if not configs:
@@ -36,7 +37,7 @@ def _get_config(db: MongoDBClient, idx: int) -> RunConfig:
 # ---------------------------------------------------------------------------
 
 
-def cmd_upload(db: MongoDBClient, args: argparse.Namespace) -> None:
+def cmd_upload(db: DatabaseClient, args: argparse.Namespace) -> None:
     """Upload runs from a JSONL file, where each line is a JSON object representing a run document to be inserted into MongoDB."""
     if not Path(args.file).exists():
         logging.error("File not found: %s", args.file)
@@ -58,7 +59,7 @@ def cmd_upload(db: MongoDBClient, args: argparse.Namespace) -> None:
     logging.info("Inserted %s runs (%s lines skipped).", len(entries), skipped)
 
 
-def cmd_configs(db: MongoDBClient, _args: argparse.Namespace) -> None:
+def cmd_configs(db: DatabaseClient, _args: argparse.Namespace) -> None:
     """List all unique RunConfigs in the database with their index for reference in other commands."""
     configs = db.get_unique_configs()
     logging.info("Found %s unique configuration(s):", len(configs))
@@ -66,7 +67,7 @@ def cmd_configs(db: MongoDBClient, _args: argparse.Namespace) -> None:
         logging.info("  [%s] %s", i, cfg)
 
 
-def cmd_metrics(db: MongoDBClient, args: argparse.Namespace) -> None:
+def cmd_metrics(db: DatabaseClient, args: argparse.Namespace) -> None:
     """Show aggregated metrics for a specific configuration, identified by its index from the configs command."""
     config = _get_config(db, args.config_index)
     logging.info("Aggregated metrics for config [%s]:", args.config_index)
@@ -76,13 +77,13 @@ def cmd_metrics(db: MongoDBClient, args: argparse.Namespace) -> None:
     )
 
 
-def cmd_count(db: MongoDBClient, args: argparse.Namespace) -> None:
+def cmd_count(db: DatabaseClient, args: argparse.Namespace) -> None:
     """Count runs for a specific configuration, identified by its index from the configs command."""
     config = _get_config(db, args.config_index)
     logging.info("Config [%s] has %s run(s).", args.config_index, db.count_by_config(config))
 
 
-def cmd_games(db: MongoDBClient, _args: argparse.Namespace) -> None:
+def cmd_games(db: DatabaseClient, _args: argparse.Namespace) -> None:
     """List distinct game names."""
     games = db.get_games()
     logging.info("Distinct games (%s):", len(games))
@@ -90,7 +91,7 @@ def cmd_games(db: MongoDBClient, _args: argparse.Namespace) -> None:
         logging.info("  - %s", g)
 
 
-def cmd_approximators(db: MongoDBClient, _args: argparse.Namespace) -> None:
+def cmd_approximators(db: DatabaseClient, _args: argparse.Namespace) -> None:
     """List distinct approximator names."""
     approximators = db.get_approximators()
     logging.info("Distinct approximators (%s):", len(approximators))
@@ -99,7 +100,7 @@ def cmd_approximators(db: MongoDBClient, _args: argparse.Namespace) -> None:
     logging.info()
 
 
-def cmd_delete_all(db: MongoDBClient, args: argparse.Namespace) -> None:
+def cmd_delete_all(db: DatabaseClient, args: argparse.Namespace) -> None:
     """Delete ALL documents in the collection. Use with caution! Requires --confirm flag to execute."""
     if not args.confirm:
         logging.info("Pass --confirm to actually delete all documents.")
@@ -107,7 +108,7 @@ def cmd_delete_all(db: MongoDBClient, args: argparse.Namespace) -> None:
     logging.info("Deleted %s document(s).", db.delete_all())
 
 
-def cmd_delete_config(db: MongoDBClient, args: argparse.Namespace) -> None:
+def cmd_delete_config(db: DatabaseClient, args: argparse.Namespace) -> None:
     """Delete all runs for a specific configuration, identified by its index from the configs command."""
     config = _get_config(db, args.config_index)
     logging.info(
@@ -165,7 +166,7 @@ _COMMANDS = {
 def main() -> None:
     """Entry point for the CLI. Parses arguments, connects to MongoDB, and dispatches to the appropriate command function."""
     args = _build_parser().parse_args()
-    mongoDBClient = MongoDBClient.from_env()
+    mongoDBClient = DatabaseClientFactory.create_client("mongodb")
     with mongoDBClient as db:
         _COMMANDS[args.command](db, args)
 
