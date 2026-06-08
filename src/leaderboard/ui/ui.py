@@ -373,20 +373,31 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             interactive=False
         )
 
+        def force_global_dataframe_rerender(df, approxs, metrics):
+            yield gr.update(visible=False)
+            filtered_df = get_leaderboard_global(df, approxs, metrics)
+            yield gr.update(value=filtered_df, visible=True)
+
+        def force_game_dataframe_rerender(game, df, approxs, metrics):
+            yield gr.update(visible=False)
+            filtered_df = get_leaderboard_game(df, game, approxs, metrics)
+            yield gr.update(value=filtered_df, visible=True)
+
+
         for component in [lb_approx_filter, lb_metric_filter]:
             component.change(
-                fn=lambda df, a, m: get_leaderboard_global(df, a, m),
+                fn=force_global_dataframe_rerender,
                 inputs=[df_state, lb_approx_filter, lb_metric_filter],
                 outputs=global_leaderboard
             )
             component.change(
-                fn=lambda g, df, a, m: get_leaderboard_game(df, g, a, m),
+                fn=force_game_dataframe_rerender,
                 inputs=[game_dropdown_lb, df_state, lb_approx_filter, lb_metric_filter],
                 outputs=game_leaderboard
             )
 
         game_dropdown_lb.change(
-            fn=lambda g, df, a, m: get_leaderboard_game(df, g, a, m),
+            fn=force_game_dataframe_rerender,
             inputs=[game_dropdown_lb, df_state, lb_approx_filter, lb_metric_filter],
             outputs=game_leaderboard
         )
@@ -474,7 +485,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         all_col_components = compare_column_containers + \
                              [p for m in available_metrics for p in compare_plot_rows[m]]
 
-        def update_col_visibility(n, delta):
+        def update_col_visibility(n, delta, *dropdown_values):
             new_n = max(2, min(MAX_COLS, n + delta))
             updates = []
 
@@ -482,21 +493,35 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             for c_idx in range(MAX_COLS):
                 updates.append(gr.update(visible=(c_idx < new_n)))
 
-            # Plots updaten
+            # Plots berechnen UND sichtbar schalten
             for m in available_metrics:
                 for p_idx in range(MAX_COLS):
-                    updates.append(gr.update(visible=(p_idx < new_n)))
+                    is_visible = (p_idx < new_n)
+
+                    if is_visible:
+                        approx_val = dropdown_values[p_idx]
+                        game_val = dropdown_values[MAX_COLS + p_idx]
+
+                        yr = compute_yranges(game_val, [approx_val])
+                        plot_figure = get_plot_single(df_agg, game_val, m, approx_val, yr.get(m))
+
+                        updates.append(gr.update(value=plot_figure, visible=True))
+                    else:
+                        updates.append(gr.update(visible=False))
+
             return [new_n] + updates
 
+        click_inputs = [n_cols_state] + compare_approx_dropdowns + compare_game_dropdowns
 
         add_col_btn.click(
-            fn=lambda n: update_col_visibility(n, +1),
-            inputs=[n_cols_state],
+            fn=lambda n, *args: update_col_visibility(n, +1, *args),
+            inputs=click_inputs,
             outputs=[n_cols_state] + all_col_components
         )
+
         remove_col_btn.click(
-            fn=lambda n: update_col_visibility(n, -1),
-            inputs=[n_cols_state],
+            fn=lambda n, *args: update_col_visibility(n, -1, *args),
+            inputs=click_inputs,
             outputs=[n_cols_state] + all_col_components
         )
 
