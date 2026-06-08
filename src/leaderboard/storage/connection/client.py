@@ -54,6 +54,7 @@ class DatabaseClient(ABC):
         raw = self.get_all()
         return _process(raw)
 
+
     @abstractmethod
     def test_connection(self) -> bool:
         """Test the connection to the database.

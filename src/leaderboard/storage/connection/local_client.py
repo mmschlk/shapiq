@@ -113,8 +113,9 @@ class LocalClient(DatabaseClient):
     # ------------------------------------------------------------------
 
     def test_connection(self) -> bool:
-        """Always returns True - no network connection required."""
-        return True
+        """If the path exists, return True; otherwise, return False."""
+
+        return True if self._path.exists() else False
 
     def close(self) -> None:
         """No-op: file handles are opened and closed per operation."""
