@@ -287,9 +287,9 @@ class EloScorer(LeaderboardScorer):
         return True
 
     def _build_context(
-            self,
-            records: list[dict[str, object]],
-            metric_names: list[str],
+        self,
+        records: list[dict[str, object]],
+        metric_names: list[str],
     ) -> ScoringContext:
         """Build context describing the selected Elo scoring subset."""
         context = build_context(records, self.group_keys)
@@ -468,13 +468,8 @@ class EloScorer(LeaderboardScorer):
 
     def _get_used_metric_names(self, matches: list[PairwiseMatch]) -> list[str]:
         """Return selected metric names that actually produced matches."""
-        used_metric_names = {
-            match.metric_name
-            for match in matches
-        }
+        used_metric_names = {match.metric_name for match in matches}
 
         return [
-            metric_name
-            for metric_name in self.metric_names
-            if metric_name in used_metric_names
+            metric_name for metric_name in self.metric_names if metric_name in used_metric_names
         ]

@@ -10,12 +10,10 @@ if TYPE_CHECKING:
 
     from leaderboard.scoring.result import LeaderboardRow, ScoringResult
 
+
 def _format_metric_names(result: ScoringResult) -> str:
     """Format metric names from group results or scoring context."""
-    group_metrics = {
-        group_result.metric_name
-        for group_result in result.group_results
-    }
+    group_metrics = {group_result.metric_name for group_result in result.group_results}
 
     metric_names = sorted(group_metrics) if group_metrics else result.context.metric_names
 

@@ -253,6 +253,7 @@ def test_elo_scorer_can_rank_different_budget_contexts_differently():
     assert budget_100_result.rows[0].approximator_name == "ApproximatorA"
     assert budget_500_result.rows[0].approximator_name == "ApproximatorB"
 
+
 def test_compute_elo_returns_expected_rating_after_three_matches():
     """Test concrete Elo ratings after three sequential wins."""
     scorer = EloScorer(k_factor=16.0)

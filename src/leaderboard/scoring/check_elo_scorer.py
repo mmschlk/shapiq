@@ -85,7 +85,6 @@ def make_records() -> list[dict[str, object]]:
             mse=0.050,
             spearman=0.50,
         ),
-
         # Group 2: budget 500
         # Permutation wins both MSE and Spearman in this group.
         make_record(
