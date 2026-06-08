@@ -41,7 +41,7 @@ _PERM_100_SEED0: dict[str, Any] = {
         "x": 0, "model_name": "decision_tree", "imputer": "marginal",
         "normalize": True, "verbose": False, "random_state": 42,
     },
-    "n_players": 8,
+    "n_players": 5,
     "approximator_name": "PermutationSamplingSV",
     "approximator_params": {},
     "shapiq_version": "1.4.2",
