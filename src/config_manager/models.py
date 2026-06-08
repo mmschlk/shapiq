@@ -187,7 +187,11 @@ class MVPRunConfig(BaseModel):
 
         steps = self.budget_policy.get("steps")
         if steps is not None:
-            steps_value = cast(int, steps)
+            # Be permissive about YAML types (e.g. "10"), but require an integer > 0.
+            try:
+                steps_value = int(steps)
+            except Exception:
+                raise ValueError("budget_policy.steps must be an integer greater than 0") from None
             if steps_value <= 0:
                 raise ValueError("budget_policy.steps must be greater than 0") from None
 
