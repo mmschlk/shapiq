@@ -114,9 +114,14 @@ class EloScorer(LeaderboardScorer):
         ratings, stats = self._compute_elo(matches)
         leaderboard_rows = self._build_leaderboard_rows(ratings, stats)
 
+        used_metric_names = self._get_used_metric_names(matches)
+
         return ScoringResult(
             scorer_name=self.name,
-            context=self._build_context(selected_records),
+            context=self._build_context(
+                records=selected_records,
+                metric_names=used_metric_names,
+            ),
             rows=leaderboard_rows,
             group_results=[],
             metadata={
@@ -281,7 +286,11 @@ class EloScorer(LeaderboardScorer):
 
         return True
 
-    def _build_context(self, records: list[dict[str, object]]) -> ScoringContext:
+    def _build_context(
+            self,
+            records: list[dict[str, object]],
+            metric_names: list[str],
+    ) -> ScoringContext:
         """Build context describing the selected Elo scoring subset."""
         context = build_context(records, self.group_keys)
 
@@ -289,7 +298,7 @@ class EloScorer(LeaderboardScorer):
             game_names=context.game_names,
             indices=context.indices,
             budgets=context.budgets,
-            metric_names=list(self.metric_names),
+            metric_names=metric_names,
             group_keys=context.group_keys,
         )
 
@@ -455,4 +464,17 @@ class EloScorer(LeaderboardScorer):
                 metadata=row.metadata,
             )
             for rank, row in enumerate(leaderboard_rows, start=1)
+        ]
+
+    def _get_used_metric_names(self, matches: list[PairwiseMatch]) -> list[str]:
+        """Return selected metric names that actually produced matches."""
+        used_metric_names = {
+            match.metric_name
+            for match in matches
+        }
+
+        return [
+            metric_name
+            for metric_name in self.metric_names
+            if metric_name in used_metric_names
         ]

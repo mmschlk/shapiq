@@ -1,66 +1,11 @@
+"""Tests for the Elo scorer."""
+
 from __future__ import annotations
 
 import pytest
 
 from leaderboard.scoring.elo_scorer import EloScorer, PairwiseMatch
 from leaderboard.scoring.scorer_utils import filter_valid_records, group_records
-from tests.shapiq.tests_unit.tests_scorer.test_group_rank_scorer import _make_test_records
-
-
-def test_elo_scorer_filters_matches_by_metric_and_budget():
-    scorer = EloScorer(metric_names=["spearman"], budgets=[500])
-    records = _make_test_records()
-
-    valid_records = filter_valid_records(records)
-    selected_records = scorer._filter_records_by_context(valid_records)
-    groups = group_records(selected_records, scorer.group_keys)
-    matches = scorer._build_pairwise_matches(groups)
-
-    assert matches
-    assert all(match.metric_name == "spearman" for match in matches)
-    assert all(match.group_key["budget"] == 500 for match in matches)
-
-
-def test_expected_score_equal_ratings():
-    """Test that equal Elo ratings produce an expected score of 0.5."""
-    scorer = EloScorer()
-
-    expected_score = scorer._expected_score(
-        rating_a=1000.0,
-        rating_b=1000.0,
-    )
-
-    assert expected_score == pytest.approx(0.5)
-
-
-def test_expected_score_lower_rated_against_higher_rated():
-    """Test expected score for a 1000-rated player against a 1200-rated player."""
-    scorer = EloScorer()
-
-    expected_score = scorer._expected_score(
-        rating_a=1000.0,
-        rating_b=1200.0,
-    )
-
-    assert expected_score == pytest.approx(0.240253, rel=1e-5)
-
-
-def test_update_ratings_when_equal_rated_a_wins():
-    """Test that a winning approximator gains Elo and the loser loses Elo."""
-    scorer = EloScorer(k_factor=16.0)
-
-    new_rating_a, new_rating_b = scorer._update_ratings(
-        rating_a=1000.0,
-        rating_b=1000.0,
-        score_a=1.0,
-        score_b=0.0,
-    )
-
-    assert new_rating_a > 1000.0
-    assert new_rating_b < 1000.0
-
-    assert new_rating_a == pytest.approx(1008.0)
-    assert new_rating_b == pytest.approx(992.0)
 
 
 def _make_record(
@@ -95,7 +40,7 @@ def _make_record(
 def _make_two_budget_records() -> list[dict[str, object]]:
     """Create records where A wins at budget 100 and B wins at budget 500."""
     return [
-        # Budget 100: A wins by lower MSE.
+        # Budget 100: A wins by lower MSE and higher Spearman.
         _make_record(
             run_id="a-budget-100-seed-0",
             budget=100,
@@ -128,7 +73,7 @@ def _make_two_budget_records() -> list[dict[str, object]]:
             mse=0.07,
             spearman=0.50,
         ),
-        # Budget 500: B wins by lower MSE.
+        # Budget 500: B wins by lower MSE and higher Spearman.
         _make_record(
             run_id="a-budget-500-seed-0",
             budget=500,
@@ -162,6 +107,22 @@ def _make_two_budget_records() -> list[dict[str, object]]:
             spearman=0.85,
         ),
     ]
+
+
+def test_elo_scorer_filters_matches_by_metric_and_budget():
+    """Test that pairwise matches are restricted by metric and budget filters."""
+    scorer = EloScorer(metric_names=["spearman"], budgets=[500])
+    records = _make_two_budget_records()
+
+    valid_records = filter_valid_records(records)
+    selected_records = scorer._filter_records_by_context(valid_records)
+    groups = group_records(selected_records, scorer.group_keys)
+    matches = scorer._build_pairwise_matches(groups)
+
+    assert matches
+    assert len(matches) == 1
+    assert all(match.metric_name == "spearman" for match in matches)
+    assert all(match.group_key["budget"] == 500 for match in matches)
 
 
 def test_expected_score_equal_ratings():
@@ -291,3 +252,58 @@ def test_elo_scorer_can_rank_different_budget_contexts_differently():
 
     assert budget_100_result.rows[0].approximator_name == "ApproximatorA"
     assert budget_500_result.rows[0].approximator_name == "ApproximatorB"
+
+def test_compute_elo_returns_expected_rating_after_three_matches():
+    """Test concrete Elo ratings after three sequential wins."""
+    scorer = EloScorer(k_factor=16.0)
+
+    matches = [
+        PairwiseMatch(
+            approximator_a="ApproximatorA",
+            approximator_b="ApproximatorB",
+            metric_name="mse",
+            metric_value_a=0.01,
+            metric_value_b=0.05,
+            score_a=1.0,
+            score_b=0.0,
+            group_key={"budget": 100},
+        ),
+        PairwiseMatch(
+            approximator_a="ApproximatorA",
+            approximator_b="ApproximatorB",
+            metric_name="mse",
+            metric_value_a=0.02,
+            metric_value_b=0.06,
+            score_a=1.0,
+            score_b=0.0,
+            group_key={"budget": 500},
+        ),
+        PairwiseMatch(
+            approximator_a="ApproximatorA",
+            approximator_b="ApproximatorB",
+            metric_name="mse",
+            metric_value_a=0.03,
+            metric_value_b=0.07,
+            score_a=1.0,
+            score_b=0.0,
+            group_key={"budget": 1000},
+        ),
+    ]
+
+    ratings, stats = scorer._compute_elo(matches)
+
+    assert ratings["ApproximatorA"] == pytest.approx(1022.9139101641008)
+    assert ratings["ApproximatorB"] == pytest.approx(977.0860898358992)
+
+    assert stats["ApproximatorA"] == {
+        "n_matches": 3,
+        "wins": 3,
+        "losses": 0,
+        "ties": 0,
+    }
+    assert stats["ApproximatorB"] == {
+        "n_matches": 3,
+        "wins": 0,
+        "losses": 3,
+        "ties": 0,
+    }
