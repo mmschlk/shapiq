@@ -144,6 +144,7 @@ jobs:
         runs-on: ubuntu-latest
         needs:
             - install_and_import_shapiq
+            - install_and_import_shapiq_games
         steps:
             -   uses: actions/checkout@v6
             -   name: Set up Python and uv
