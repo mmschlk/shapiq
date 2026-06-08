@@ -81,10 +81,10 @@ class GroupRankScorer(LeaderboardScorer):
         """Rank approximators inside each group for all available metrics."""
         results: list[GroupScoringResult] = []
 
-        for group_key_tuple, group_records in groups.items():
+        for group_key_tuple, records_in_group in groups.items():
             group_key = dict(zip(self.group_keys, group_key_tuple, strict=True))
             aggregated_records = aggregate_seeds_in_group(
-                group_records,
+                records_in_group,
                 self.group_keys,
             )
 
@@ -105,7 +105,7 @@ class GroupRankScorer(LeaderboardScorer):
                         rows=metric_rows,
                         metadata={
                             "n_approximators": len(metric_rows),
-                            "n_raw_records": len(group_records),
+                            "n_raw_records": len(records_in_group),
                             "n_seed_aggregated_records": len(aggregated_records),
                         },
                     )
