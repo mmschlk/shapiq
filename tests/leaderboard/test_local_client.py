@@ -299,7 +299,8 @@ class TestDatabaseClientDelete:
         self, populated_client: DatabaseClient
     ) -> None:
         no_match = RunConfig(
-            game_name="NONEXISTENT", approximator_name="X",
+            game_name="NONEXISTENT", n_players=5, 
+            approximator_name="X", ground_truth_method="ExactComputer",
             budget=9999, index="SV", max_order=1,
         )
         assert populated_client.delete_by_config(no_match) == 0
@@ -309,8 +310,9 @@ class TestDatabaseClientDelete:
         self, populated_client: DatabaseClient
     ) -> None:
         no_match = RunConfig(
-            game_name="NONEXISTENT", approximator_name="X",
-            budget=1, index="SV", max_order=1,
+            game_name="NONEXISTENT", n_players=5, 
+            approximator_name="X", ground_truth_method="ExactComputer",
+            budget=9999, index="SV", max_order=1,
         )
         with patch.object(populated_client, "_save") as mock_save:
             populated_client.delete_by_config(no_match)
@@ -350,7 +352,8 @@ class TestDatabaseClientReadGeneric:
         self, populated_client: DatabaseClient
     ) -> None:
         cfg = RunConfig(
-            game_name="MISSING", approximator_name="X",
+            game_name="MISSING", n_players=5, 
+            approximator_name="X", ground_truth_method="ExactComputer",
             budget=9999, index="SV", max_order=1,
         )
         assert populated_client.get_by_config(cfg) == []
