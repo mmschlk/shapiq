@@ -135,6 +135,27 @@ jobs:
             -   name: Run unit tests
                 run: uv run pytest "tests/shapiq"
     # ----------------------------------------------------------------------------------------------
+    # Unit Tests for shapiq leaderboard
+    # ----------------------------------------------------------------------------------------------
+
+    test_shapiq_leaderboard_stable:
+    name: Run Unit Tests (Stable Python) - Leaderboard only logic
+    runs-on: ubuntu-latest
+    needs:
+        - install_and_import_shapiq
+    steps:
+        -   uses: actions/checkout@v6
+        -   name: Set up Python and uv
+            uses: astral-sh/setup-uv@v7
+            with:
+                python-version: "3.12"
+                enable-cache: true
+        -   name: Install test dependencies
+            run: uv sync
+        -   name: Run unit tests
+            run: uv run pytest "tests/leader"
+
+    # ----------------------------------------------------------------------------------------------
     # Test Documentation Build
     # ----------------------------------------------------------------------------------------------
     doc_build:
