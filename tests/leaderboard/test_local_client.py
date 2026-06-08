@@ -15,7 +15,6 @@ The sample documents mirror the JSONL data supplied with the task.
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 from typing import Any
@@ -24,8 +23,8 @@ from unittest.mock import patch
 import pytest
 
 from leaderboard.storage import (
-    DatabaseClientFactory,
     DatabaseClient,
+    DatabaseClientFactory,
     RunConfig,
 )
 
@@ -38,8 +37,12 @@ _PERM_100_SEED0: dict[str, Any] = {
     "game_name": "CaliforniaHousing",
     "game_id": "CaliforniaHousing_LocalExplanation_Game_87076402",
     "game_params": {
-        "x": 0, "model_name": "decision_tree", "imputer": "marginal",
-        "normalize": True, "verbose": False, "random_state": 42,
+        "x": 0,
+        "model_name": "decision_tree",
+        "imputer": "marginal",
+        "normalize": True,
+        "verbose": False,
+        "random_state": 42,
     },
     "n_players": 5,
     "approximator_name": "PermutationSamplingSV",
@@ -53,8 +56,12 @@ _PERM_100_SEED0: dict[str, Any] = {
     "run_failed": False,
     "error_message": None,
     "metrics": {
-        "mse": 0.007025, "mae": None, "mse_normalized": None,
-        "spearman": 1.0, "kendall_tau": None, "precision_at_k": None,
+        "mse": 0.007025,
+        "mae": None,
+        "mse_normalized": None,
+        "spearman": 1.0,
+        "kendall_tau": None,
+        "precision_at_k": None,
     },
     "runtime_seconds": 0.022,
     "timestamp": "2026-05-26T19:58:19.420086+00:00",
@@ -177,9 +184,7 @@ def strat_config() -> RunConfig:
 
 class TestDatabaseClientConstruction:
     def test_init_stores_path(self, jsonl_path: Path) -> None:
-        client = DatabaseClientFactory.create_client(
-            "local", {"LOCAL_DB_PATH": str(jsonl_path)}
-        )
+        client = DatabaseClientFactory.create_client("local", {"LOCAL_DB_PATH": str(jsonl_path)})
         # no internal attribute checks — validate behavior instead
         assert isinstance(client, DatabaseClient)
 
@@ -203,7 +208,7 @@ class TestDatabaseClientConstruction:
         with patch.dict(os.environ, {}, clear=True):
             client = DatabaseClientFactory.create_client("local", {})
         assert isinstance(client, DatabaseClient)
-    
+
     def test_populated_client_builds(self, populated_client: DatabaseClient) -> None:
         assert len(populated_client.get_all()) == len(ALL_DOCS)
 
@@ -213,6 +218,7 @@ class TestDatabaseClientConstruction:
         with patch.dict(os.environ, {"LOCAL_DB_PATH": env_path}):
             client = DatabaseClientFactory.create_client("local", {"LOCAL_DB_PATH": arg_path})
         assert isinstance(client, DatabaseClient)
+
 
 # ===========================================================================
 # TestDatabaseClientConnection
@@ -234,9 +240,7 @@ class TestDatabaseClientConnection:
                 pass
         mock_close.assert_called_once()
 
-    def test_context_manager_calls_close_on_exception(
-        self, empty_client: DatabaseClient
-    ) -> None:
+    def test_context_manager_calls_close_on_exception(self, empty_client: DatabaseClient) -> None:
         with patch.object(empty_client, "close") as mock_close:
             with pytest.raises(ValueError):
                 with empty_client:
@@ -263,26 +267,21 @@ class TestDatabaseClientWrite:
         assert data[0]["run_id"] == _PERM_100_SEED0["run_id"]
         assert data[1]["run_id"] == _PERM_100_SEED1["run_id"]
 
+
 # ===========================================================================
 # TestDatabaseClientDelete
 # ===========================================================================
 
 
 class TestDatabaseClientDelete:
-    def test_delete_all_returns_correct_count(
-        self, populated_client: DatabaseClient
-    ) -> None:
+    def test_delete_all_returns_correct_count(self, populated_client: DatabaseClient) -> None:
         assert populated_client.delete_all() == len(ALL_DOCS)
 
-    def test_delete_all_leaves_empty_store(
-        self, populated_client: DatabaseClient
-    ) -> None:
+    def test_delete_all_leaves_empty_store(self, populated_client: DatabaseClient) -> None:
         populated_client.delete_all()
         assert populated_client.get_all() == []
 
-    def test_delete_all_on_empty_returns_zero(
-        self, empty_client: DatabaseClient
-    ) -> None:
+    def test_delete_all_on_empty_returns_zero(self, empty_client: DatabaseClient) -> None:
         assert empty_client.delete_all() == 0
 
     def test_delete_by_config_removes_matching(
@@ -304,13 +303,15 @@ class TestDatabaseClientDelete:
         assert _STRAT_100_SEED0["run_id"] in remaining_ids
         assert _BIKE_PERM_100_SEED0["run_id"] in remaining_ids
 
-    def test_delete_by_config_zero_when_no_match(
-        self, populated_client: DatabaseClient
-    ) -> None:
+    def test_delete_by_config_zero_when_no_match(self, populated_client: DatabaseClient) -> None:
         no_match = RunConfig(
-            game_name="NONEXISTENT", n_players=5, 
-            approximator_name="X", ground_truth_method="ExactComputer",
-            budget=9999, index="SV", max_order=1,
+            game_name="NONEXISTENT",
+            n_players=5,
+            approximator_name="X",
+            ground_truth_method="ExactComputer",
+            budget=9999,
+            index="SV",
+            max_order=1,
         )
         assert populated_client.delete_by_config(no_match) == 0
         assert len(populated_client.get_all()) == len(ALL_DOCS)
@@ -319,9 +320,13 @@ class TestDatabaseClientDelete:
         self, populated_client: DatabaseClient
     ) -> None:
         no_match = RunConfig(
-            game_name="NONEXISTENT", n_players=5, 
-            approximator_name="X", ground_truth_method="ExactComputer",
-            budget=9999, index="SV", max_order=1,
+            game_name="NONEXISTENT",
+            n_players=5,
+            approximator_name="X",
+            ground_truth_method="ExactComputer",
+            budget=9999,
+            index="SV",
+            max_order=1,
         )
         with patch.object(populated_client, "_save") as mock_save:
             populated_client.delete_by_config(no_match)
@@ -337,9 +342,7 @@ class TestDatabaseClientReadGeneric:
     def test_get_all_empty_when_no_file(self, empty_client: DatabaseClient) -> None:
         assert empty_client.get_all() == []
 
-    def test_get_all_returns_all_documents(
-        self, populated_client: DatabaseClient
-    ) -> None:
+    def test_get_all_returns_all_documents(self, populated_client: DatabaseClient) -> None:
         assert len(populated_client.get_all()) == len(ALL_DOCS)
 
     def test_get_all_round_trips_data(self, populated_client: DatabaseClient) -> None:
@@ -357,13 +360,15 @@ class TestDatabaseClientReadGeneric:
             assert d["budget"] == 100
             assert d["game_name"] == "CaliforniaHousing"
 
-    def test_get_by_config_empty_when_no_match(
-        self, populated_client: DatabaseClient
-    ) -> None:
+    def test_get_by_config_empty_when_no_match(self, populated_client: DatabaseClient) -> None:
         cfg = RunConfig(
-            game_name="MISSING", n_players=5, 
-            approximator_name="X", ground_truth_method="ExactComputer",
-            budget=9999, index="SV", max_order=1,
+            game_name="MISSING",
+            n_players=5,
+            approximator_name="X",
+            ground_truth_method="ExactComputer",
+            budget=9999,
+            index="SV",
+            max_order=1,
         )
         assert populated_client.get_by_config(cfg) == []
 
@@ -409,4 +414,3 @@ class TestDatabaseClientContract:
         assert isinstance(client, DatabaseClient)
         # Verify no unimplemented abstract methods remain
         assert not getattr(client.__class__, "__abstractmethods__", set())
-

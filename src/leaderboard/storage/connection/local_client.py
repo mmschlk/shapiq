@@ -33,15 +33,14 @@ def _json_default(value: object) -> object:
 
 def _matches_config(document: dict[str, Any], config: RunConfig) -> bool:
     """Return True if *document* contains all key/value pairs in *config*."""
-
     return (
-        document.get("game_name") == config.game_name and
-        document.get("n_players") == config.n_players and
-        document.get("approximator_name") == config.approximator_name and
-        document.get("index") == config.index and
-        document.get("max_order") == config.max_order and
-        document.get("budget") == config.budget and
-        document.get("ground_truth_method") == config.ground_truth_method
+        document.get("game_name") == config.game_name
+        and document.get("n_players") == config.n_players
+        and document.get("approximator_name") == config.approximator_name
+        and document.get("index") == config.index
+        and document.get("max_order") == config.max_order
+        and document.get("budget") == config.budget
+        and document.get("ground_truth_method") == config.ground_truth_method
     )
 
 
@@ -122,8 +121,7 @@ class LocalClient(DatabaseClient):
 
     def test_connection(self) -> bool:
         """If the path exists, return True; otherwise, return False."""
-
-        return True if self._path.exists() else False
+        return self._path.exists()
 
     def close(self) -> None:
         """No-op: file handles are opened and closed per operation."""
