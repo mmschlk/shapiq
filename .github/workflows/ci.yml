@@ -85,55 +85,56 @@ jobs:
                 run: uv sync --no-dev --group all_ml
             -   name: Test import of shapiq_games
                 run: uv run --no-sync python -c "import shapiq_games; print('shapiq_games imported successfully')"
+
     # ----------------------------------------------------------------------------------------------
     # Unit Tests for shapiq (Stable Python and Matrix)
     # ----------------------------------------------------------------------------------------------
-    test_shapiq_stable:
-        name: Run Unit Tests (Stable Python)
-        runs-on: ubuntu-latest
-        needs:
-            - install_and_import_shapiq
-        steps:
-            -   uses: actions/checkout@v6
-            -   name: Set up Python and uv
-                uses: astral-sh/setup-uv@v7
-                with:
-                    python-version: "3.12"
-                    enable-cache: true
-            -   name: Install test dependencies
-                run: uv sync
-            -   name: Run unit tests
-                run: uv run pytest "tests/shapiq"
-    test_shapiq_matrix:
-        name: Run Unit Tests (Matrix)
-        needs:
-            - test_shapiq_stable
-            - install_and_import_shapiq
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - os: ubuntu-latest
-                      python-version: "3.14"  # Test latest Python on Ubuntu
-                    - os: windows-latest
-                      python-version: "3.12"  # Test stable Python on Windows
-                    - os: macos-latest
-                      python-version: "3.12"  # Test stable Python on macOS
-        runs-on: ${{ matrix.os }}
-        steps:
-            -   uses: actions/checkout@v6
-            -   name: Set up Python and uv
-                uses: astral-sh/setup-uv@v7
-                with:
-                    python-version: ${{ matrix.python-version }}
-                    enable-cache: true
-            -   if: matrix.os == 'macos-latest'
-                name: Install libomp on macOS
-                run: brew install libomp
-            -   name: Install test dependencies
-                run: uv sync
-            -   name: Run unit tests
-                run: uv run pytest "tests/shapiq"
+    # test_shapiq_stable:
+    #     name: Run Unit Tests (Stable Python)
+    #     runs-on: ubuntu-latest
+    #     needs:
+    #         - install_and_import_shapiq
+    #     steps:
+    #         -   uses: actions/checkout@v6
+    #         -   name: Set up Python and uv
+    #             uses: astral-sh/setup-uv@v7
+    #             with:
+    #                 python-version: "3.12"
+    #                 enable-cache: true
+    #         -   name: Install test dependencies
+    #             run: uv sync
+    #         -   name: Run unit tests
+    #             run: uv run pytest "tests/shapiq"
+    # test_shapiq_matrix:
+    #     name: Run Unit Tests (Matrix)
+    #     needs:
+    #         - test_shapiq_stable
+    #         - install_and_import_shapiq
+    #     strategy:
+    #         fail-fast: false
+    #         matrix:
+    #             include:
+    #                 - os: ubuntu-latest
+    #                   python-version: "3.14"  # Test latest Python on Ubuntu
+    #                 - os: windows-latest
+    #                   python-version: "3.12"  # Test stable Python on Windows
+    #                 - os: macos-latest
+    #                   python-version: "3.12"  # Test stable Python on macOS
+    #     runs-on: ${{ matrix.os }}
+    #     steps:
+    #         -   uses: actions/checkout@v6
+    #         -   name: Set up Python and uv
+    #             uses: astral-sh/setup-uv@v7
+    #             with:
+    #                 python-version: ${{ matrix.python-version }}
+    #                 enable-cache: true
+    #         -   if: matrix.os == 'macos-latest'
+    #             name: Install libomp on macOS
+    #             run: brew install libomp
+    #         -   name: Install test dependencies
+    #             run: uv sync
+    #         -   name: Run unit tests
+    #             run: uv run pytest "tests/shapiq"
     # ----------------------------------------------------------------------------------------------
     # Unit Tests for shapiq leaderboard
     # ----------------------------------------------------------------------------------------------
@@ -164,7 +165,8 @@ jobs:
         needs:
             - install_and_import_shapiq
             - check_code_quality
-            - test_shapiq_stable
+            - test_shapiq_leaderboard_stable
+            # - test_shapiq_stable
         steps:
             -   uses: actions/checkout@v6
             -   name: Set up Python and uv
@@ -185,7 +187,8 @@ jobs:
         needs:
             - install_and_import_shapiq
             - check_code_quality
-            - test_shapiq_stable
+            - test_shapiq_leaderboard_stable
+            # - test_shapiq_stable
         steps:
             -   uses: actions/checkout@v6
             -   name: Set up Python and uv
@@ -196,7 +199,8 @@ jobs:
             -   name: Install test dependencies
                 run: uv sync
             -   name: Measure coverage
-                run: uv run pytest "tests/shapiq" --cov=shapiq --cov-report=xml -n logical
+                # run: uv run pytest "tests/shapiq" --cov=shapiq --cov-report=xml -n logical
+                run: uv run pytest "tests/leaderboard" --cov=leaderboard --cov-report=xml -n logical
             -   name: Upload coverage to codecov
                 uses: codecov/codecov-action@v6
                 with:

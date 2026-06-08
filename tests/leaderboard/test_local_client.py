@@ -146,6 +146,8 @@ def populated_client(jsonl_path: Path) -> DatabaseClient:
 def perm_config() -> RunConfig:
     return RunConfig(
         game_name="CaliforniaHousing",
+        n_players=5,
+        ground_truth_method="ExactComputer",
         approximator_name="PermutationSamplingSV",
         budget=100,
         index="SV",
@@ -157,6 +159,8 @@ def perm_config() -> RunConfig:
 def strat_config() -> RunConfig:
     return RunConfig(
         game_name="CaliforniaHousing",
+        n_players=5,
+        ground_truth_method="ExactComputer",
         approximator_name="StratifiedSamplingSV",
         budget=100,
         index="SV",
