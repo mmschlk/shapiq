@@ -73,8 +73,8 @@ def format_value(col: str, x: T, runtime_cols: list[str]) -> str:
     return f"{x:.4e}"
 
 
-def _build_leaderboard(df: pd.DataFrame) -> pd.DataFrame:
-    avail_metrics = [m for m in METRICS if f"{m}_mean" in df.columns]
+def _build_leaderboard(df: pd.DataFrame, selected_metrics: list) -> pd.DataFrame:
+    avail_metrics = [m for m in selected_metrics if f"{m}_mean" in df.columns]  # nur ausgewählte
 
     # Dynamic rename-Map
     rename_map = {
@@ -86,6 +86,7 @@ def _build_leaderboard(df: pd.DataFrame) -> pd.DataFrame:
         "runtime_max": "Runtime max (s)",
         "n_seeds": "Seeds",
     }
+
     for m in avail_metrics:
         rename_map[f"{m}_mean"] = f"{m.upper()} (mean)"
         rename_map[f"{m}_std"] = f"{m.upper()} (std)"
@@ -94,9 +95,7 @@ def _build_leaderboard(df: pd.DataFrame) -> pd.DataFrame:
     best = best.sort_values("mse_mean").rename(columns=rename_map)
 
     runtime_cols = ["Runtime mean (s)", "Runtime min (s)", "Runtime max (s)"]
-    metric_cols = [f"{m.upper()} (mean)" for m in avail_metrics] + [
-        f"{m.upper()} (std)" for m in avail_metrics
-    ]
+    metric_cols = [c for m in avail_metrics for c in [f"{m.upper()} (mean)", f"{m.upper()} (std)"]]
 
     col_order = (
         ["Approximator", "Budget at best MSE"]
@@ -113,14 +112,16 @@ def _build_leaderboard(df: pd.DataFrame) -> pd.DataFrame:
     return leaderboard_df
 
 
-def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
+def get_leaderboard_global(df_agg: pd.DataFrame, selected_approxs: list, selected_metrics: list) -> pd.DataFrame:
     """Computes the global leaderboard by finding the best (lowest) MSE for each approximator across all games and budgets.
 
     Returns: per game aggregated DataFrame.
     """
+    df_filtered = df_agg[df_agg["approximator_name"].isin(selected_approxs)]
+
     # Aggregate over all games
     global_agg = (
-        df_agg.groupby(["approximator_name", "budget"])
+        df_filtered.groupby(["approximator_name", "budget"])
         .agg(
             **{
                 **{
@@ -143,17 +144,24 @@ def get_leaderboard_global(df_agg: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
 
-    return _build_leaderboard(global_agg)
+    return _build_leaderboard(global_agg, selected_metrics)
 
 
-def get_leaderboard_game(df_agg: pd.DataFrame, selected_game: str) -> pd.DataFrame:
+def get_leaderboard_game(
+        df_agg: pd.DataFrame,
+        selected_game: str,
+        selected_approxs: list,
+        selected_metrics: list) -> pd.DataFrame:
     """Computes the leaderboard for a specific game by finding the best (lowest) MSE for each approximator across all budgets for that game.
 
     Returns: per game aggregated DataFrame.
     """
-    df_filtered = df_agg[df_agg["game_name"] == selected_game]
+    df_filtered = df_agg[
+        (df_agg["game_name"] == selected_game) &
+        (df_agg["approximator_name"].isin(selected_approxs))
+    ]
 
-    return _build_leaderboard(df_filtered)
+    return _build_leaderboard(df_filtered, selected_metrics)
 
 
 def get_plot(
@@ -293,6 +301,32 @@ def update_compare_plots(*args):
 
     return tuple(outputs)
 
+"""def update_compare_plots(*args):
+    approx_vals = list(args[:MAX_COLS])
+    game_vals = list(args[MAX_COLS:2 * MAX_COLS])
+    n_cols = args[-1]
+
+    active_approxs = approx_vals[:n_cols]
+    active_games = game_vals[:n_cols]
+
+    all_same_game = len(set(active_games)) == 1  # neu
+
+    outputs = []
+    for m in available_metrics:
+        if all_same_game:
+            # gemeinsame Y-Achse
+            yranges = compute_yranges(active_games[0], active_approxs)
+            yrange = yranges.get(m)
+            for i in range(MAX_COLS):
+                outputs.append(get_plot_single(df_agg, game_vals[i], m, approx_vals[i], yrange))
+        else:
+            # separate Y-Achse pro Spalte
+            for i in range(MAX_COLS):
+                yr = compute_yranges(game_vals[i], [approx_vals[i]])
+                outputs.append(get_plot_single(df_agg, game_vals[i], m, approx_vals[i], yr.get(m)))
+
+    return tuple(outputs)"""
+
 
 # --- Gradio App ---
 with gr.Blocks(title="shapiq Leaderboard") as demo:
@@ -309,7 +343,23 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
     with gr.Tab("Leaderboard"):
         gr.Markdown("## Global Leaderboard (all games)")
-        global_leaderboard = gr.Dataframe(value=get_leaderboard_global(df_agg), interactive=False)
+
+        with gr.Row():
+            lb_approx_filter = gr.CheckboxGroup(
+                choices=df_agg["approximator_name"].unique().tolist(),
+                value=df_agg["approximator_name"].unique().tolist(),
+                label="Approximators"
+            )
+            lb_metric_filter = gr.CheckboxGroup(
+                choices=available_metrics,
+                value=available_metrics,
+                label="Metrics"
+            )
+
+        global_leaderboard = gr.Dataframe(
+            value=get_leaderboard_global(df_agg, df_agg["approximator_name"].unique().tolist(), available_metrics),
+            interactive=False
+        )
 
         gr.Markdown("## Per-Game Leaderboard")
         game_dropdown_lb = gr.Dropdown(
@@ -318,12 +368,27 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             label="Game",
         )
         game_leaderboard = gr.Dataframe(
-            value=get_leaderboard_game(df_agg, df_agg["game_name"].iloc[0]), interactive=False
+            value=get_leaderboard_game(df_agg, df_agg["game_name"].iloc[0],
+                                       df_agg["approximator_name"].unique().tolist(), available_metrics),
+            interactive=False
         )
+
+        for component in [lb_approx_filter, lb_metric_filter]:
+            component.change(
+                fn=lambda df, a, m: get_leaderboard_global(df, a, m),
+                inputs=[df_state, lb_approx_filter, lb_metric_filter],
+                outputs=global_leaderboard
+            )
+            component.change(
+                fn=lambda g, df, a, m: get_leaderboard_game(df, g, a, m),
+                inputs=[game_dropdown_lb, df_state, lb_approx_filter, lb_metric_filter],
+                outputs=game_leaderboard
+            )
+
         game_dropdown_lb.change(
-            fn=lambda g, df: get_leaderboard_game(df, g),
-            inputs=[game_dropdown_lb, df_state],
-            outputs=game_leaderboard,
+            fn=lambda g, df, a, m: get_leaderboard_game(df, g, a, m),
+            inputs=[game_dropdown_lb, df_state, lb_approx_filter, lb_metric_filter],
+            outputs=game_leaderboard
         )
 
     game_dropdowns = {}
