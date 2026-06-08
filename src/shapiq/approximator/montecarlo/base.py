@@ -172,6 +172,16 @@ class MonteCarlo(Approximator[TIndices]):
         empty_coalition_value = float(game_values[self._sampler.empty_coalition_index])
         game_values_centered = game_values - empty_coalition_value
 
+        # The sampling-adjustment weights only depend on the interaction when the intersection is
+        # stratified (SHAP-IQ and coalition-size-only stratification are interaction-independent).
+        # Hoist those out of the per-interaction loop so they are computed once.
+        precomputed_log_adjustment: np.ndarray | None = None
+        if not self.stratify_intersection:
+            if self.stratify_coalition_size:
+                precomputed_log_adjustment = self._log_coalition_size_stratification()
+            else:  # this is SHAP-IQ
+                precomputed_log_adjustment = self._sampler.log_sampling_adjustment_weights
+
         # compute approximations per interaction with monte carlo
         for interaction, interaction_pos in self.interaction_lookup.items():
             interaction_binary = np.zeros(self.n, dtype=int)
@@ -188,14 +198,12 @@ class MonteCarlo(Approximator[TIndices]):
             ]
 
             # get the (log) sampling adjustment weights depending on the stratification strategy
-            if self.stratify_coalition_size and self.stratify_intersection:  # this is SVARM-IQ
+            if precomputed_log_adjustment is not None:  # SHAP-IQ / coalition-size stratification
+                log_sampling_adjustment_weights = precomputed_log_adjustment
+            elif self.stratify_coalition_size:  # this is SVARM-IQ
                 log_sampling_adjustment_weights = self._log_svarmiq_routine(interaction)
-            elif not self.stratify_coalition_size and self.stratify_intersection:
+            else:  # intersection stratification only
                 log_sampling_adjustment_weights = self._log_intersection_stratification(interaction)
-            elif self.stratify_coalition_size and not self.stratify_intersection:
-                log_sampling_adjustment_weights = self._log_coalition_size_stratification()
-            else:  # this is SHAP-IQ
-                log_sampling_adjustment_weights = self._sampler.log_sampling_adjustment_weights
 
             # Combine the discrete-derivative weight and the sampling-adjustment weight in
             # log-space and exponentiate once. For many players the weight magnitude underflows to
