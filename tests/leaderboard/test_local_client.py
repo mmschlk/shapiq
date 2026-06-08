@@ -73,7 +73,8 @@ _PERM_100_SEED1: dict[str, Any] = {
 _PERM_500_SEED0: dict[str, Any] = {
     **_PERM_100_SEED0,
     "run_id": "e9440ad1-179c-4de9-bbd8-a748efd43e55",
-    "game_id": "CaliforniaHousing_LocalExplanation_Game_87076400",
+    "game_name": "SOUM",
+    "game_id": "SOUM_LocalExplanation_Game_12345678",
     "budget": 500,
     "approx_seed": 0,
     "metrics": {**_PERM_100_SEED0["metrics"], "mse": 0.001015},
@@ -83,6 +84,7 @@ _PERM_500_SEED0: dict[str, Any] = {
 _STRAT_100_SEED0: dict[str, Any] = {
     **_PERM_100_SEED0,
     "run_id": "cd7acb0b-f941-44f7-9408-25b34e6da831",
+    "game_name": "CaliforniaHousing",
     "game_id": "CaliforniaHousing_LocalExplanation_Game_87076410",
     "approximator_name": "StratifiedSamplingSV",
     "budget": 100,
@@ -201,6 +203,9 @@ class TestDatabaseClientConstruction:
         with patch.dict(os.environ, {}, clear=True):
             client = DatabaseClientFactory.create_client("local", {})
         assert isinstance(client, DatabaseClient)
+    
+    def test_populated_client_builds(self, populated_client: DatabaseClient) -> None:
+        assert len(populated_client.get_all()) == len(ALL_DOCS)
 
     def test_from_env_args_beats_env_var(self, tmp_path: Path) -> None:
         env_path = str(tmp_path / "env.jsonl")
@@ -404,3 +409,4 @@ class TestDatabaseClientContract:
         assert isinstance(client, DatabaseClient)
         # Verify no unimplemented abstract methods remain
         assert not getattr(client.__class__, "__abstractmethods__", set())
+
