@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from leaderboard.scoring.display import print_scoring_result
 from leaderboard.scoring.elo_scorer import EloScorer
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+LOGGER = logging.getLogger(__name__)
 
 
 def make_record(
@@ -136,11 +141,11 @@ def make_records() -> list[dict[str, object]]:
 
 
 def print_section(title: str) -> None:
-    """Print a readable section header."""
-    print()
-    print("=" * len(title))
-    print(title)
-    print("=" * len(title))
+    """Log a readable section header."""
+    LOGGER.info("")
+    LOGGER.info("=" * len(title))
+    LOGGER.info(title)
+    LOGGER.info("=" * len(title))
 
 
 def main() -> None:

@@ -1,3 +1,5 @@
+"""Elo-based leaderboard scorer."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -145,9 +147,9 @@ class EloScorer(LeaderboardScorer):
         """Build pairwise matches from selected comparable groups and metrics."""
         matches: list[PairwiseMatch] = []
 
-        for group_key_tuple, group_records in groups.items():
+        for group_key_tuple, records_in_group in groups.items():
             group_key = dict(zip(self.group_keys, group_key_tuple, strict=True))
-            aggregated_records = aggregate_seeds_in_group(group_records, self.group_keys)
+            aggregated_records = aggregate_seeds_in_group(records_in_group, self.group_keys)
 
             for metric_name in self.metric_names:
                 metric_spec = METRIC_SPECS[metric_name]
@@ -277,14 +279,9 @@ class EloScorer(LeaderboardScorer):
         """Return whether a record belongs to the selected scoring context."""
         if self.game_names is not None and record.get("game_name") not in self.game_names:
             return False
-
         if self.indices is not None and record.get("index") not in self.indices:
             return False
-
-        if self.budgets is not None and record.get("budget") not in self.budgets:
-            return False
-
-        return True
+        return self.budgets is None or record.get("budget") in self.budgets
 
     def _build_context(
         self,

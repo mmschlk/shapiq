@@ -29,8 +29,6 @@ def format_scoring_result(result: ScoringResult) -> str:
     Returns:
         Human-readable terminal table as a string.
     """
-    used_metrics = sorted({group_result.metric_name for group_result in result.group_results})
-
     lines = [
         f"Scorer: {result.scorer_name}",
         f"Metrics: {_format_metric_names(result)}",
