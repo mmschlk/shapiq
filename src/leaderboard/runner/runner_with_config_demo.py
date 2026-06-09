@@ -131,7 +131,7 @@ def main() -> None:
             max_order=run_config["max_order"],
             approx_seeds=run_config["seeds"],
             budget=run_config["budget"],
-            index=cast(InteractionIndex, run_config["index"]),
+            index=cast("InteractionIndex", run_config["index"]),
             approximator_class=approximator_class,
         )
 
