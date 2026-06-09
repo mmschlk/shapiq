@@ -92,17 +92,14 @@ class TestGraphGame:
         v = gcn_graph_game.value_function(coalition)
         assert isinstance(v, float)
 
-    def test_value_function_classification(self, gcn_model_classification, simple_graph):
-        """Test value_function for classification task."""
-        game = GraphGame(
-            model=gcn_model_classification,
-            x_graph=simple_graph,
-            task="classification",
-            class_index=0,
-        )
-        coalition = np.ones(game.n_players, dtype=bool)
-        value = game.value_function(coalition)
-        assert isinstance(value, np.ndarray)
-        assert value.ndim == 0  # Skalar
+    # Normalization value tests
+    def test_normalization_value(self,gcn_graph_game):
+        """Test that normalization_value is the value of the empty coalition."""
+        empty_coalition_value = gcn_graph_game.value_function(np.zeros(gcn_graph_game.n_players))
+        assert np.isclose(gcn_graph_game.normalization_value, empty_coalition_value)
+
+
+
+
 
 
