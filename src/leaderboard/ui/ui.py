@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 import gradio as gr
 import numpy as np
@@ -26,7 +29,18 @@ RESULTS_PATH = PROJECT_ROOT / "data" / "results_raw.jsonl"
 
 ZERO_THRESHOLD = 1e-7
 
-COLORS = ["#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A", "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"]
+COLORS = [
+    "#636EFA",
+    "#EF553B",
+    "#00CC96",
+    "#AB63FA",
+    "#FFA15A",
+    "#19D3F3",
+    "#FF6692",
+    "#B6E880",
+    "#FF97FF",
+    "#FECB52",
+]
 DASH_STYLES = ["solid", "dash", "dot", "dashdot", "longdash", "longdashdot"]
 GLOBAL_APPROX_STYLES = {}
 
@@ -41,16 +55,20 @@ MAX_COLS = 5
 DEFAULT_COLS = 2
 
 
-def update_global_styles(df: pd.DataFrame):
-    """Fills the global mapping, based on ALL approximators existing in the dataset"""
-    global GLOBAL_APPROX_STYLES
+def update_global_styles(df: pd.DataFrame) -> None:
+    """Fills the global mapping based on ALL approximators in the dataset.
+
+    This ensures that each approximator retains a unique and stable color and
+    dash style across all plots.
+    """
     all_approxs = sorted(df["approximator_name"].unique().tolist())
 
-    GLOBAL_APPROX_STYLES = {}
+    GLOBAL_APPROX_STYLES.clear()
+
     for idx, approx in enumerate(all_approxs):
         GLOBAL_APPROX_STYLES[approx] = {
             "color": COLORS[idx % len(COLORS)],
-            "dash": DASH_STYLES[idx % len(DASH_STYLES)]
+            "dash": DASH_STYLES[idx % len(DASH_STYLES)],
         }
 
 
@@ -70,7 +88,7 @@ def load_and_aggregate(method: str = "mongodb", path: str | Path = RESULTS_PATH)
     return db_client.load_dataframe()
 
 
-def format_value(col: str, x: T, runtime_cols: list[str]) -> str:
+def format_value[T](col: str, x: T, runtime_cols: list[str]) -> str:
     """Formats a value for display in the leaderboard, handling small values and runtime formatting.
 
     Args:
@@ -90,8 +108,9 @@ def format_value(col: str, x: T, runtime_cols: list[str]) -> str:
     return f"{x:.4e}"
 
 
-def _build_leaderboard(df: pd.DataFrame, selected_metrics: list) -> pd.DataFrame:
-    avail_metrics = [m for m in selected_metrics if f"{m}_mean" in df.columns]  # nur ausgewählte
+def _build_leaderboard(df: pd.DataFrame, selected_metrics: list[str]) -> pd.DataFrame:
+    """Builds the leaderboard DataFrame with formatted and ordered columns."""
+    avail_metrics = [m for m in selected_metrics if f"{m}_mean" in df.columns]
 
     # Dynamic rename-Map
     rename_map = {
@@ -114,11 +133,16 @@ def _build_leaderboard(df: pd.DataFrame, selected_metrics: list) -> pd.DataFrame
     runtime_cols = ["Runtime mean (s)", "Runtime min (s)", "Runtime max (s)"]
     metric_cols = [c for m in avail_metrics for c in [f"{m.upper()} (mean)", f"{m.upper()} (std)"]]
 
-    col_order = (
-        ["Approximator", "Budget at best MSE"]
-        + metric_cols
-        + ["GT Method", "Runtime mean (s)", "Runtime min (s)", "Runtime max (s)", "Seeds"]
-    )
+    col_order = [
+        "Approximator",
+        "Budget at best MSE",
+        *metric_cols,
+        "GT Method",
+        "Runtime mean (s)",
+        "Runtime min (s)",
+        "Runtime max (s)",
+        "Seeds",
+    ]
     col_order = [c for c in col_order if c in best.columns]
 
     leaderboard_df = best[col_order].copy()
@@ -129,10 +153,14 @@ def _build_leaderboard(df: pd.DataFrame, selected_metrics: list) -> pd.DataFrame
     return leaderboard_df
 
 
-def get_leaderboard_global(df_agg: pd.DataFrame, selected_approxs: list, selected_metrics: list) -> pd.DataFrame:
-    """Computes the global leaderboard by finding the best (lowest) MSE for each approximator across all games and budgets.
+def get_leaderboard_global(
+    df_agg: pd.DataFrame, selected_approxs: list[str], selected_metrics: list[str]
+) -> pd.DataFrame:
+    """Computes the global leaderboard across all games and budgets.
 
-    Returns: per game aggregated DataFrame.
+    Aggregates performance metrics by calculating the mean over all games
+    for each approximator and budget configuration, then structures the
+    leaderboard using the best configuration found.
     """
     df_filtered = df_agg[df_agg["approximator_name"].isin(selected_approxs)]
 
@@ -165,27 +193,35 @@ def get_leaderboard_global(df_agg: pd.DataFrame, selected_approxs: list, selecte
 
 
 def get_leaderboard_game(
-        df_agg: pd.DataFrame,
-        selected_game: str,
-        selected_approxs: list,
-        selected_metrics: list) -> pd.DataFrame:
-    """Computes the leaderboard for a specific game by finding the best (lowest) MSE for each approximator across all budgets for that game.
+    df_agg: pd.DataFrame,
+    selected_game: str,
+    selected_approxs: list[str],
+    selected_metrics: list[str],
+) -> pd.DataFrame:
+    """Computes the leaderboard for a specific game.
 
-    Returns: per game aggregated DataFrame.
+    Filters the data for the selected game and approximators, then determines
+    the best budget configuration based on the lowest MSE.
     """
     df_filtered = df_agg[
-        (df_agg["game_name"] == selected_game) &
-        (df_agg["approximator_name"].isin(selected_approxs))
+        (df_agg["game_name"] == selected_game)
+        & (df_agg["approximator_name"].isin(selected_approxs))
     ]
 
     return _build_leaderboard(df_filtered, selected_metrics)
 
 
 def get_plot(
-    df_agg: pd.DataFrame, selected_game: str, metric, selected_approximators, yaxis_range=None
+    df_agg: pd.DataFrame,
+    selected_game: str,
+    metric: str,
+    selected_approximators: list[str],
+    yaxis_range: list[float] | None = None,
 ) -> go.Figure:
-    """Generates a line plot of the specified metric (MSE or MAE) across budgets for the selected game,
-    with separate lines for each approximator and shaded areas representing standard deviation across seeds.
+    """Generates a line plot of the specified metric across budgets.
+
+    Plots separate lines for each approximator and shaded areas representing
+    the standard deviation across seeds for the selected game.
     """
     df_filtered = df_agg[
         (df_agg["game_name"] == selected_game)
@@ -213,6 +249,7 @@ def get_plot(
         dash = style["dash"]
 
         sorted_group = group.sort_values("budget")
+        approx_str = str(approx_name)
 
         # Linie
         fig.add_trace(
@@ -221,8 +258,8 @@ def get_plot(
                 y=sorted_group[mean_col],
                 mode="lines+markers",
                 name=approx_name,
-                line=dict(dash=dash, color=color),
-                legendgroup=approx_name,
+                line={"dash": dash, "color": color},
+                legendgroup=approx_str,
             )
         )
 
@@ -239,11 +276,11 @@ def get_plot(
                 ),
                 fill="toself",
                 fillcolor=f"rgba({r}, {g}, {b}, 0.15)",
-                line=dict(color="rgba(255,255,255,0)"),
+                line={"color": "rgba(255,255,255,0)"},
                 showlegend=False,
                 hoverinfo="skip",
                 name=approx_name,
-                legendgroup=approx_name,
+                legendgroup=approx_str,
             )
         )
 
@@ -251,10 +288,10 @@ def get_plot(
         title=f"{metric.upper()} across Budgets - {selected_game}",
         xaxis_title="Budget (coalition evaluations)",
         yaxis_title=f"{metric.upper()} (mean over seeds)",
-        yaxis=dict(
-            type="log",
-            range=yaxis_range,
-        ),
+        yaxis={
+            "type": "log",
+            "range": yaxis_range,
+        },
         legend_title="Approximator",
         hovermode="x unified",
     )
@@ -262,7 +299,18 @@ def get_plot(
     return fig
 
 
-def get_plot_single(df_agg, selected_game, metric, approximator, yaxis_range=None) -> go.Figure:
+def get_plot_single(
+    df_agg: pd.DataFrame,
+    selected_game: str,
+    metric: str,
+    approximator: str,
+    yaxis_range: list[float] | None = None,
+) -> go.Figure:
+    """Generates a line plot for a single specified approximator.
+
+    Wraps the generic get_plot function by encapsulating the single
+    approximator string into a list.
+    """
     return get_plot(df_agg, selected_game, metric, [approximator], yaxis_range)
 
 
@@ -273,10 +321,14 @@ update_global_styles(df_agg)
 available_metrics = [m for m in METRICS if f"{m}_mean" in df_agg.columns]
 
 
-def compute_yranges(g, approximators: list):
+def compute_yranges(g: str, approximators: list[str]) -> dict[str, list[float] | None]:
+    """Computes common y-axis ranges for a game and given approximators.
+
+    Filters out values below the defined threshold to ensure clean log-scaling
+    across all available metrics.
+    """
     df_filtered = df_agg[
-        (df_agg["game_name"] == g) &
-        (df_agg["approximator_name"].isin(approximators))
+        (df_agg["game_name"] == g) & (df_agg["approximator_name"].isin(approximators))
     ]
     yranges = {}
     for m in available_metrics:
@@ -288,17 +340,22 @@ def compute_yranges(g, approximators: list):
         if not valid_values.empty:
             y_min = valid_values.min()
             y_max = valid_values.max()
-            yranges[m] = [np.log10(y_min) - 0.5, np.log10(y_max) + 0.5]
+            yranges[m] = [float(np.log10(y_min) - 0.5), float(np.log10(y_max) + 0.5)]
         else:
             yranges[m] = None
 
     return yranges
 
 
-def update_compare_plots(*args):
+def update_compare_plots(*args: Any) -> tuple[go.Figure, ...]:
+    """Updates all comparison plots dynamically based on selected configurations.
+
+    Calculates common y-axis limits strictly using only the visible columns
+    and filters out extreme or zero-bound variations.
+    """
     # args enthält: [0..4] Approximatoren, [5..9] Games, [10] Anzahl aktiver Spalten (n_cols)
     approx_vals = list(args[:MAX_COLS])
-    game_vals = list(args[MAX_COLS:2 * MAX_COLS])
+    game_vals = list(args[MAX_COLS : 2 * MAX_COLS])
     n_cols = args[-1]
 
     # Approximatoren und Spiele herausfiltern, die gerade aktiv sichtbar sind
@@ -311,9 +368,9 @@ def update_compare_plots(*args):
         col = f"{m}_mean"
 
         df_filtered = df_agg[
-            (df_agg["game_name"].isin(active_games)) &
-            (df_agg["approximator_name"].isin(active_approxs))
-            ]
+            (df_agg["game_name"].isin(active_games))
+            & (df_agg["approximator_name"].isin(active_approxs))
+        ]
 
         if not df_filtered.empty:
             valid_values = pd.to_numeric(df_filtered[col], errors="coerce")
@@ -327,7 +384,7 @@ def update_compare_plots(*args):
                     yranges[m] = None
                 else:
                     # Puffer für die Log-Skala berechnen
-                    yranges[m] = [np.log10(y_min) - 0.5, np.log10(y_max) + 0.5]
+                    yranges[m] = [float(np.log10(y_min) - 0.5), float(np.log10(y_max) + 0.5)]
             else:
                 yranges[m] = None
         else:
@@ -335,10 +392,16 @@ def update_compare_plots(*args):
 
     outputs = []
     for m in available_metrics:
-        for i in range(MAX_COLS):
-            outputs.append(get_plot_single(df_agg, game_vals[i], m, approx_vals[i], yranges.get(m)))
+        # KORREKTUR: Wir nutzen extend mit einer List-Comprehension für die Spalten
+        outputs.extend(
+            [
+                get_plot_single(df_agg, game_vals[i], m, approx_vals[i], yranges.get(m))
+                for i in range(MAX_COLS)
+            ]
+        )
 
     return tuple(outputs)
+
 
 # --- Gradio App ---
 with gr.Blocks(title="shapiq Leaderboard") as demo:
@@ -360,17 +423,19 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             lb_approx_filter = gr.CheckboxGroup(
                 choices=df_agg["approximator_name"].unique().tolist(),
                 value=df_agg["approximator_name"].unique().tolist(),
-                label="Approximators"
+                label="Approximators",
             )
             lb_metric_filter = gr.CheckboxGroup(
                 choices=available_metrics,
                 value=available_metrics,
-                label="Metrics"
+                label="Metrics",
             )
 
         global_leaderboard = gr.Dataframe(
-            value=get_leaderboard_global(df_agg, df_agg["approximator_name"].unique().tolist(), available_metrics),
-            interactive=False
+            value=get_leaderboard_global(
+                df_agg, df_agg["approximator_name"].unique().tolist(), available_metrics
+            ),
+            interactive=False,
         )
 
         gr.Markdown("## Per-Game Leaderboard")
@@ -380,38 +445,55 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             label="Game",
         )
         game_leaderboard = gr.Dataframe(
-            value=get_leaderboard_game(df_agg, df_agg["game_name"].iloc[0],
-                                       df_agg["approximator_name"].unique().tolist(), available_metrics),
-            interactive=False
+            value=get_leaderboard_game(
+                df_agg,
+                df_agg["game_name"].iloc[0],
+                df_agg["approximator_name"].unique().tolist(),
+                available_metrics,
+            ),
+            interactive=False,
         )
 
-        def force_global_dataframe_rerender(df, approxs, metrics):
+        def force_global_dataframe_rerender(
+            df: pd.DataFrame, approxs: list[str], metrics: list[str]
+        ) -> Iterator[Any]:
+            """Forces a re-render of the global leaderboard dataframe.
+
+            First hides the component to reset the UI state, then calculates the
+            filtered leaderboard and displays it again.
+            """
             yield gr.update(visible=False)
             filtered_df = get_leaderboard_global(df, approxs, metrics)
             yield gr.update(value=filtered_df, visible=True)
 
-        def force_game_dataframe_rerender(game, df, approxs, metrics):
+        def force_game_dataframe_rerender(
+            game: str, df: pd.DataFrame, approxs: list[str], metrics: list[str]
+        ) -> Iterator[Any]:
+            """Forces a re-render of the per-game leaderboard dataframe.
+
+            First hides the component to reset the UI state, then calculates the
+            game-specific leaderboard and displays it again.
+            """
             yield gr.update(visible=False)
             filtered_df = get_leaderboard_game(df, game, approxs, metrics)
             yield gr.update(value=filtered_df, visible=True)
-
 
         for component in [lb_approx_filter, lb_metric_filter]:
             component.change(
                 fn=force_global_dataframe_rerender,
                 inputs=[df_state, lb_approx_filter, lb_metric_filter],
-                outputs=global_leaderboard
+                outputs=global_leaderboard,
             )
             component.change(
                 fn=force_game_dataframe_rerender,
                 inputs=[game_dropdown_lb, df_state, lb_approx_filter, lb_metric_filter],
-                outputs=game_leaderboard
+                outputs=game_leaderboard,
             )
 
         game_dropdown_lb.change(
             fn=force_game_dataframe_rerender,
             inputs=[game_dropdown_lb, df_state, lb_approx_filter, lb_metric_filter],
-            outputs=game_leaderboard
+            outputs=game_leaderboard,
         )
 
     game_dropdowns = {}
@@ -467,43 +549,60 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             for i in range(MAX_COLS):
                 with gr.Column(visible=(i < DEFAULT_COLS)) as col:
                     compare_column_containers.append(col)
-                    compare_approx_dropdowns.append(gr.Dropdown(
-                        choices=approxs,
-                        value=approxs[i % len(approxs)],
-                        label=f"Approximator {i+1}",
-                    ))
-                    compare_game_dropdowns.append(gr.Dropdown(
-                        choices=games,
-                        value=games[0],
-                        label="Game",
-                    ))
+                    compare_approx_dropdowns.append(
+                        gr.Dropdown(
+                            choices=approxs,
+                            value=approxs[i % len(approxs)],
+                            label=f"Approximator {i + 1}",
+                        )
+                    )
+                    compare_game_dropdowns.append(
+                        gr.Dropdown(
+                            choices=games,
+                            value=games[0],
+                            label="Game",
+                        )
+                    )
 
         # Plots pro Metrik pro Spalte
         compare_plot_rows = {}  # compare_plot_rows[metric] = [plot0, plot1, ...]
-        _yranges = compute_yranges(games[0], [approxs[0], approxs[1 % len(approxs)], approxs[2 % len(approxs)]])
+        _yranges = compute_yranges(
+            games[0], [approxs[0], approxs[1 % len(approxs)], approxs[2 % len(approxs)]]
+        )
 
         for m in available_metrics:
             gr.Markdown(f"### {m.upper()} across Budgets")
             with gr.Row():
-                plots = []
-                for i in range(MAX_COLS):
-                    plots.append(gr.Plot(
-                        value=get_plot(df_agg, games[0], m, [approxs[i % len(approxs)]], _yranges.get(m)) if i < DEFAULT_COLS else None,
+                plots = [
+                    gr.Plot(
+                        value=get_plot(
+                            df_agg, games[0], m, [approxs[i % len(approxs)]], _yranges.get(m)
+                        )
+                        if i < DEFAULT_COLS
+                        else None,
                         visible=(i < DEFAULT_COLS),
-                    ))
+                    )
+                    for i in range(MAX_COLS)
+                ]
                 compare_plot_rows[m] = plots
 
         # Spalte hinzufuegen/entfernen
-        all_col_components = compare_column_containers + \
-                             [p for m in available_metrics for p in compare_plot_rows[m]]
+        all_col_components = [
+            *compare_column_containers,
+            *[p for m in available_metrics for p in compare_plot_rows[m]],
+        ]
 
-        def update_col_visibility(n, delta, *dropdown_values):
+        def update_col_visibility(n: int, delta: int, *dropdown_values: Any) -> list[Any]:
+            """Updates the visibility and plots of side-by-side comparison columns.
+
+            Calculates the new column count, dynamically adjusts the visibility
+            of components, and recalculates the shared y-axis ranges.
+            """
             new_n = max(2, min(MAX_COLS, n + delta))
             updates = []
 
             # Spalten-Container (Inklusive der darin liegenden Dropdowns) updaten
-            for c_idx in range(MAX_COLS):
-                updates.append(gr.update(visible=(c_idx < new_n)))
+            updates = [gr.update(visible=(c_idx < new_n)) for c_idx in range(MAX_COLS)]
 
             # Gemeinsame Y-Range über alle aktiven Spalten berechnen
             active_approxs = [dropdown_values[i] for i in range(new_n)]
@@ -514,7 +613,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 yr_shared = compute_yranges(active_games[0], active_approxs).get(m)
 
                 for p_idx in range(MAX_COLS):
-                    is_visible = (p_idx < new_n)
+                    is_visible = p_idx < new_n
 
                     if is_visible:
                         approx_val = dropdown_values[p_idx]
@@ -524,20 +623,20 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                     else:
                         updates.append(gr.update(visible=False))
 
-            return [new_n] + updates
+            return [new_n, *updates]
 
-        click_inputs = [n_cols_state] + compare_approx_dropdowns + compare_game_dropdowns
+        click_inputs = [n_cols_state, *compare_approx_dropdowns, *compare_game_dropdowns]
 
         add_col_btn.click(
             fn=lambda n, *args: update_col_visibility(n, +1, *args),
             inputs=click_inputs,
-            outputs=[n_cols_state] + all_col_components
+            outputs=[n_cols_state, *all_col_components],
         )
 
         remove_col_btn.click(
             fn=lambda n, *args: update_col_visibility(n, -1, *args),
             inputs=click_inputs,
-            outputs=[n_cols_state] + all_col_components
+            outputs=[n_cols_state, *all_col_components],
         )
 
         # Plot Update bei Aenderung
@@ -546,13 +645,15 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
         for component in all_inputs:
             component.change(
-                fn=update_compare_plots,
-                inputs=all_inputs + [n_cols_state],
-                outputs=plot_outputs
+                fn=update_compare_plots, inputs=[*all_inputs, n_cols_state], outputs=plot_outputs
             )
 
     def on_reload() -> tuple[Any, ...]:
-        """Reloads the raw data, re-aggregates it, and updates all components with the new data."""
+        """Reloads the raw dataset and refreshes all UI components.
+
+        Fetches the fresh data from the source, updates the global visualization
+        styles, and rebuilds all tables and plots for the interface.
+        """
         new_df = reload_data()
         update_global_styles(new_df)
 
@@ -568,9 +669,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         ]
 
         for m in available_metrics:
-            outputs.append(gr.Dropdown(choices=games, value=first_game))
-            outputs.append(gr.CheckboxGroup(choices=approxs, value=approxs))
-            outputs.append(get_plot(new_df, first_game, m, approxs))
+            outputs.extend(
+                [
+                    gr.Dropdown(choices=games, value=first_game),
+                    gr.CheckboxGroup(choices=approxs, value=approxs),
+                    get_plot(new_df, first_game, m, approxs),
+                ]
+            )
 
         return tuple(outputs)
 
@@ -585,7 +690,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             *[
                 comp
                 for m in available_metrics
-                for comp in [game_dropdowns[m], game_dropdowns[m], metric_plots[m]]
+                for comp in [game_dropdowns[m], approx_checkboxes[m], metric_plots[m]]
             ],
         ],
     )
