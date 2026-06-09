@@ -5,23 +5,31 @@ This module contains all Pydantic models and their associated validators for the
 
 from __future__ import annotations
 
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
+
+import shapiq
 
 from .config_exceptions import (
     ApproximatorIndexIncompatibleError,
     ApproximatorNotFoundError,
+    BudgetRangeError,
     InvalidBudgetError,
+    InvalidBudgetStepsError,
+    InvalidBudgetStrategyError,
+    InvalidGameFamilyError,
     InvalidOrderForIndexError,
     UnsupportedApproximatorError,
+    UnsupportedGameError,
+    UnsupportedImputerError,
 )
 from .constants import (
     ALL_SUPPORTED_APPROXIMATORS,
+    GLOBAL_GAMES,
+    LOCAL_GAMES,
     SUPPORTED_GAMES,
     SUPPORTED_IMPUTERS,
-    LOCAL_GAMES,
-    GLOBAL_GAMES,
     VALID_INDICES,
 )
 
@@ -61,7 +69,7 @@ class MVPRunConfig(BaseModel):
     game_params: dict[str, Any] = Field(default_factory=dict)
     # Optional policy describing how budgets should be generated. If empty, runner will
     # use the explicit `budgets` list. Example:
-    # budget_policy: {strategy: 'range', start: 'n+1', end: '2^n-1', steps: 20}
+    # budget_policy: strategy: 'range', start: 'n+1', end: '2^n-1', steps: 20
     budget_policy: dict[str, Any] = Field(default_factory=dict)
 
     # Nested GT configuration
@@ -72,22 +80,11 @@ class MVPRunConfig(BaseModel):
     def validate_game(self) -> MVPRunConfig:
         """Validate game name against the runner's supported game registry."""
         if self.game not in SUPPORTED_GAMES:
-            supported_games = ", ".join(sorted(SUPPORTED_GAMES))
-            raise ValueError(
-                f"Unsupported game '{self.game}'. Available games: {supported_games}"
-            ) from None
+            raise UnsupportedGameError(self.game, SUPPORTED_GAMES) from None
 
         # verify membership according to declared family
-        if self.game_family == "local_xai":
-            if self.game not in LOCAL_GAMES:
-                raise ValueError(
-                    f"Game '{self.game}' is not available as a local_xai game."
-                ) from None
-        elif self.game_family == "global_xai":
-            if self.game not in GLOBAL_GAMES:
-                raise ValueError(
-                    f"Game '{self.game}' is not available as a global_xai game."
-                ) from None
+        if (self.game_family == "local_xai" and self.game not in LOCAL_GAMES) or (self.game_family == "global_xai" and self.game not in GLOBAL_GAMES):
+            raise InvalidGameFamilyError(self.game, self.game_family) from None
         return self
 
     @model_validator(mode="after")
@@ -99,11 +96,11 @@ class MVPRunConfig(BaseModel):
             if b <= 0:
                 raise InvalidBudgetError(b) from None
             if b < min_allowed or b >= max_exclusive:
-                raise ValueError(
-                    "Invalid budget value "
-                    f"{b}. For this project, n_players={self.n_players} so budgets must satisfy "
-                    f"{min_allowed} <= budget < {max_exclusive} (for n=14, this is 15 <= budget < 16384). "
-                    "Please remove this value or change `n_players` if your game has a different size."
+                raise BudgetRangeError(
+                    budget=b,
+                    n_players=self.n_players,
+                    min_allowed=min_allowed,
+                    max_exclusive=max_exclusive,
                 ) from None
         return self
 
@@ -115,8 +112,6 @@ class MVPRunConfig(BaseModel):
         1. Whitelist check: approximator exists in supported list
         2. Compatibility check: approximator supports the chosen index
         """
-        import shapiq
-
         for app in self.approximators:
             # 1. Check if it's in the hardcoded whitelist
             if app not in ALL_SUPPORTED_APPROXIMATORS:
@@ -169,10 +164,7 @@ class MVPRunConfig(BaseModel):
         """Validate optional game-specific parameters used by the game factory."""
         imputer = self.game_params.get("imputer")
         if imputer is not None and imputer not in SUPPORTED_IMPUTERS:
-            supported_imputers = ", ".join(SUPPORTED_IMPUTERS)
-            raise ValueError(
-                f"Unsupported imputer '{imputer}'. Available imputers: {supported_imputers}"
-            ) from None
+            raise UnsupportedImputerError(imputer, SUPPORTED_IMPUTERS) from None
         return self
 
     @model_validator(mode="after")
@@ -183,17 +175,17 @@ class MVPRunConfig(BaseModel):
 
         strategy = self.budget_policy.get("strategy")
         if strategy is not None and strategy != "range":
-            raise ValueError("budget_policy.strategy must be 'range' when provided") from None
+            raise InvalidBudgetStrategyError(strategy) from None
 
         steps = self.budget_policy.get("steps")
         if steps is not None:
             # Be permissive about YAML types (e.g. "10"), but require an integer > 0.
             try:
                 steps_value = int(steps)
-            except Exception:
-                raise ValueError("budget_policy.steps must be an integer greater than 0") from None
+            except (ValueError, TypeError):
+                raise InvalidBudgetStepsError(steps_input=steps, is_negative=False) from None
+
             if steps_value <= 0:
-                raise ValueError("budget_policy.steps must be greater than 0") from None
+                raise InvalidBudgetStepsError(steps_input=steps_value, is_negative=True) from None
 
         return self
-
