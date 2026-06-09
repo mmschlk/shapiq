@@ -40,7 +40,6 @@ def main() -> None:
     )
 
     db = DatabaseClientFactory.create_client("mongodb", args={})
-
     db.insert_many(benchmark_result["raw_results"])
 
     logging.info(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
