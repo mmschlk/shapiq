@@ -25,7 +25,11 @@ PROJECT_ROOT = CURRENT_DIR.parent.parent.parent
 RESULTS_PATH = PROJECT_ROOT / "data" / "results_raw.jsonl"
 
 ZERO_THRESHOLD = 1e-7
-DASH_STYLES = ["solid", "dash", "dot", "dashdot", "longdash"]
+
+COLORS = ["#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A", "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"]
+DASH_STYLES = ["solid", "dash", "dot", "dashdot", "longdash", "longdashdot"]
+GLOBAL_APPROX_STYLES = {}
+
 LOADING_METHOD = "mongodb"  # "local" or "mongodb"
 
 
@@ -37,15 +41,28 @@ MAX_COLS = 5
 DEFAULT_COLS = 2
 
 
+def update_global_styles(df: pd.DataFrame):
+    """Fills the global mapping, based on ALL approximators existing in the dataset"""
+    global GLOBAL_APPROX_STYLES
+    all_approxs = sorted(df["approximator_name"].unique().tolist())
+
+    GLOBAL_APPROX_STYLES = {}
+    for idx, approx in enumerate(all_approxs):
+        GLOBAL_APPROX_STYLES[approx] = {
+            "color": COLORS[idx % len(COLORS)],
+            "dash": DASH_STYLES[idx % len(DASH_STYLES)]
+        }
+
+
 def reload_data() -> pd.DataFrame:
     """Reloads the raw data and re-aggregates it, returning the updated aggregated DataFrame."""
     return load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH)
 
 
-def load_and_aggregate(method: str = "mongodb", path: str = RESULTS_PATH) -> pd.DataFrame:
+def load_and_aggregate(method: str = "mongodb", path: str | Path = RESULTS_PATH) -> pd.DataFrame:
     """Loads raw run data from the specified source, processes it, and returns an aggregated DataFrame."""
     db_client = DatabaseClientFactory.create_client(
-        method, db_args={"LOCAL_DB_PATH": path} if method == "local" else {}
+        method, db_args={"LOCAL_DB_PATH": str(path)} if method == "local" else {}
     )
     if not db_client.test_connection():
         raise DBConnectionError from None
@@ -65,11 +82,11 @@ def format_value(col: str, x: T, runtime_cols: list[str]) -> str:
         A formatted string representation of the value.
     """
     if not isinstance(x, float):
-        return x
-    if isinstance(x, float) and abs(x) < ZERO_THRESHOLD and col not in runtime_cols:
+        return str(x)
+    if abs(x) < ZERO_THRESHOLD and col not in runtime_cols:
         return "0"
     if col in runtime_cols:
-        return round(x, 4)
+        return f"{x:.4f}"
     return f"{x:.4e}"
 
 
@@ -190,8 +207,11 @@ def get_plot(
     if df_filtered[std_col].isna().any():
         df_filtered[std_col] = df_filtered[std_col].fillna(0)
 
-    for i, (approx_name, group) in enumerate(df_filtered.groupby("approximator_name")):
-        dash = DASH_STYLES[i % len(DASH_STYLES)]
+    for approx_name, group in df_filtered.groupby("approximator_name"):
+        style = GLOBAL_APPROX_STYLES.get(approx_name, {"color": "#000000", "dash": "solid"})
+        color = style["color"]
+        dash = style["dash"]
+
         sorted_group = group.sort_values("budget")
 
         # Linie
@@ -201,11 +221,13 @@ def get_plot(
                 y=sorted_group[mean_col],
                 mode="lines+markers",
                 name=approx_name,
-                line=dict(dash=dash),
+                line=dict(dash=dash, color=color),
+                legendgroup=approx_name,
             )
         )
 
         # Fehlerband
+        r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
         fig.add_trace(
             go.Scatter(
                 x=pd.concat([sorted_group["budget"], sorted_group["budget"].iloc[::-1]]),
@@ -216,11 +238,12 @@ def get_plot(
                     ]
                 ),
                 fill="toself",
-                fillcolor="rgba(0,100,255,0.1)",
+                fillcolor=f"rgba({r}, {g}, {b}, 0.15)",
                 line=dict(color="rgba(255,255,255,0)"),
                 showlegend=False,
                 hoverinfo="skip",
                 name=approx_name,
+                legendgroup=approx_name,
             )
         )
 
@@ -245,6 +268,7 @@ def get_plot_single(df_agg, selected_game, metric, approximator, yaxis_range=Non
 
 # --- Daten laden ---
 df_agg = load_and_aggregate(method=LOADING_METHOD, path=RESULTS_PATH)
+update_global_styles(df_agg)
 
 available_metrics = [m for m in METRICS if f"{m}_mean" in df_agg.columns]
 
@@ -257,15 +281,22 @@ def compute_yranges(g, approximators: list):
     yranges = {}
     for m in available_metrics:
         col = f"{m}_mean"
-        y_min = max(df_filtered[col].min(), 1e-300)
-        y_max = df_filtered[col].max()
-        yranges[m] = [np.log10(y_min) - 0.5, np.log10(y_max) + 0.5]
+
+        valid_values = pd.to_numeric(df_filtered[col], errors="coerce")
+        valid_values = valid_values[valid_values > ZERO_THRESHOLD]
+
+        if not valid_values.empty:
+            y_min = valid_values.min()
+            y_max = valid_values.max()
+            yranges[m] = [np.log10(y_min) - 0.5, np.log10(y_max) + 0.5]
+        else:
+            yranges[m] = None
+
     return yranges
 
 
 def update_compare_plots(*args):
-    # args enthält:
-    # [0..4] Approximatoren, [5..9] Games, [10] Anzahl aktiver Spalten (n_cols)
+    # args enthält: [0..4] Approximatoren, [5..9] Games, [10] Anzahl aktiver Spalten (n_cols)
     approx_vals = list(args[:MAX_COLS])
     game_vals = list(args[MAX_COLS:2 * MAX_COLS])
     n_cols = args[-1]
@@ -285,12 +316,20 @@ def update_compare_plots(*args):
             ]
 
         if not df_filtered.empty:
-            y_min = max(df_filtered[col].min(), 1e-300)
-            y_max = df_filtered[col].max()
-            if pd.isna(y_min) or pd.isna(y_max):
-                yranges[m] = None
+            valid_values = pd.to_numeric(df_filtered[col], errors="coerce")
+            valid_values = valid_values[valid_values > ZERO_THRESHOLD]
+
+            if not valid_values.empty:
+                y_min = valid_values.min()
+                y_max = valid_values.max()
+
+                if pd.isna(y_min) or pd.isna(y_max):
+                    yranges[m] = None
+                else:
+                    # Puffer für die Log-Skala berechnen
+                    yranges[m] = [np.log10(y_min) - 0.5, np.log10(y_max) + 0.5]
             else:
-                yranges[m] = [np.log10(y_min) - 0.5, np.log10(y_max) + 0.5]
+                yranges[m] = None
         else:
             yranges[m] = None
 
@@ -300,33 +339,6 @@ def update_compare_plots(*args):
             outputs.append(get_plot_single(df_agg, game_vals[i], m, approx_vals[i], yranges.get(m)))
 
     return tuple(outputs)
-
-"""def update_compare_plots(*args):
-    approx_vals = list(args[:MAX_COLS])
-    game_vals = list(args[MAX_COLS:2 * MAX_COLS])
-    n_cols = args[-1]
-
-    active_approxs = approx_vals[:n_cols]
-    active_games = game_vals[:n_cols]
-
-    all_same_game = len(set(active_games)) == 1  # neu
-
-    outputs = []
-    for m in available_metrics:
-        if all_same_game:
-            # gemeinsame Y-Achse
-            yranges = compute_yranges(active_games[0], active_approxs)
-            yrange = yranges.get(m)
-            for i in range(MAX_COLS):
-                outputs.append(get_plot_single(df_agg, game_vals[i], m, approx_vals[i], yrange))
-        else:
-            # separate Y-Achse pro Spalte
-            for i in range(MAX_COLS):
-                yr = compute_yranges(game_vals[i], [approx_vals[i]])
-                outputs.append(get_plot_single(df_agg, game_vals[i], m, approx_vals[i], yr.get(m)))
-
-    return tuple(outputs)"""
-
 
 # --- Gradio App ---
 with gr.Blocks(title="shapiq Leaderboard") as demo:
@@ -493,18 +505,21 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             for c_idx in range(MAX_COLS):
                 updates.append(gr.update(visible=(c_idx < new_n)))
 
+            # Gemeinsame Y-Range über alle aktiven Spalten berechnen
+            active_approxs = [dropdown_values[i] for i in range(new_n)]
+            active_games = [dropdown_values[MAX_COLS + i] for i in range(new_n)]
+
             # Plots berechnen UND sichtbar schalten
             for m in available_metrics:
+                yr_shared = compute_yranges(active_games[0], active_approxs).get(m)
+
                 for p_idx in range(MAX_COLS):
                     is_visible = (p_idx < new_n)
 
                     if is_visible:
                         approx_val = dropdown_values[p_idx]
                         game_val = dropdown_values[MAX_COLS + p_idx]
-
-                        yr = compute_yranges(game_val, [approx_val])
-                        plot_figure = get_plot_single(df_agg, game_val, m, approx_val, yr.get(m))
-
+                        plot_figure = get_plot_single(df_agg, game_val, m, approx_val, yr_shared)
                         updates.append(gr.update(value=plot_figure, visible=True))
                     else:
                         updates.append(gr.update(visible=False))
@@ -539,15 +554,17 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
     def on_reload() -> tuple[Any, ...]:
         """Reloads the raw data, re-aggregates it, and updates all components with the new data."""
         new_df = reload_data()
+        update_global_styles(new_df)
+
         games = new_df["game_name"].unique().tolist()
         approxs = new_df["approximator_name"].unique().tolist()
         first_game = games[0]
 
         outputs: list[Any] = [
             new_df,
-            get_leaderboard_global(new_df),
+            get_leaderboard_global(new_df, approxs, available_metrics),
             gr.Dropdown(choices=games, value=first_game),
-            get_leaderboard_game(new_df, first_game),
+            get_leaderboard_game(new_df, first_game, approxs, available_metrics),
         ]
 
         for m in available_metrics:
