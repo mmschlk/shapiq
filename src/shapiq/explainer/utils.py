@@ -24,7 +24,7 @@ WARNING_NO_CLASS_INDEX = (
 )
 
 ExplainerTypes = Literal[
-    "tabular", "tree", "tabpfn", "game", "product_kernel", "knn", "wknn", "tnn"
+    "tabular", "tree", "tabpfn", "game", "product_kernel", "knn", "wknn", "tnn", "vision"
 ]
 
 KNN_WEIGHTS_TO_EXPLAINER = {
@@ -46,6 +46,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
     import shapiq.explainer.tabular as tb
     import shapiq.tree.explainer as tr
     from shapiq.explainer import nn
+    from shapiq.explainer.vision import VisionExplainer
 
     return {
         "tabular": tb.TabularExplainer,
@@ -56,6 +57,7 @@ def get_explainers() -> dict[ExplainerTypes, type[Explainer]]:
         "knn": nn.KNNExplainer,
         "wknn": nn.WeightedKNNExplainer,
         "tnn": nn.ThresholdNNExplainer,
+        "vision": VisionExplainer,
     }
 
 
@@ -162,6 +164,12 @@ def get_predict_function_and_model_type(
         _predict_function = predict_catboost
         _model_type = "tree"
 
+    # HuggingFace vision-language models (CLIP, SigLIP, SigLIP2)
+    _is_hf_vlm = hasattr(model, "vision_model") and not model_class.startswith("torch.nn.")
+    if _is_hf_vlm:
+        _model_type = "vision"
+        _predict_function = _predict_hf_vlm
+
     # pytorch
     if model_class in [
         "torch.nn.modules.container.Sequential",
@@ -257,6 +265,26 @@ def get_predict_function_and_model_type(
 def predict_callable(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a model that is callable."""
     return model(data)
+
+
+def _predict_hf_vlm(model: Model, data: np.ndarray) -> np.ndarray:  # noqa: ARG001
+    """Placeholder predict function for HuggingFace vision-language models.
+
+    ``VisionExplainer`` does not use this function directly — it builds a
+    ``VisionLanguageGame`` instead. This stub exists solely so that the
+    auto-dispatch machinery can route ``Explainer(model, data=img)`` to the
+    correct explainer without raising a ``TypeError``.
+
+    Raises:
+        RuntimeError: Always, since VLMs require a ``VisionExplainer`` that
+            does not call ``predict``.
+    """
+    msg = (
+        "HuggingFace vision-language models cannot be used with the default "
+        "predict function. Use ``shapiq.Explainer(model, data=image, text=..., "
+        "processor=...)`` for auto-dispatch to VisionExplainer."
+    )
+    raise RuntimeError(msg)
 
 
 def predict(model: Model, data: np.ndarray) -> np.ndarray:

@@ -4,36 +4,36 @@ from __future__ import annotations
 
 import os
 from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
 import torch
 
 from shapiq.imputer.vision import (
-    SegmenterConfig,
+    CrossModalBlurMasker,
+    CrossModalBlurParams,
+    CrossModalMeanMasker,
+    CrossModalMeanParams,
+    CustomSegmenter,
     MaskerConfig,
     PatchParams,
-    SlicParams,
-    VisionMeanParams,
-    VisionBlurParams,
-    TextAttentionParams,
-    CrossModalMeanParams,
-    CrossModalBlurParams,
-    SpatialLayout,
+    PatchSegmenter,
     PhysicalMask,
     ProcessorOutput,
-    PatchSegmenter,
-    VisionMeanMasker,
-    VisionBlurMasker,
+    SegmenterConfig,
+    SlicParams,
+    SpatialLayout,
     TextAttentionMasker,
-    CrossModalMeanMasker,
-    CrossModalBlurMasker,
+    VisionBlurMasker,
+    VisionBlurParams,
     VisionImputer,
     VisionImputerFactory,
     VisionLanguageGame,
+    VisionMeanMasker,
+    VisionMeanParams,
 )
-from shapiq.imputer.vision.segmenters import get_segmenter
 from shapiq.imputer.vision.maskers import get_masker
-
+from shapiq.imputer.vision.segmenters import get_segmenter
 
 # ═══════════════════════════════════════════════════════════════════════
 # Data type tests
@@ -229,8 +229,8 @@ class TestPatchSegmenter:
         seg = PatchSegmenter(patch_config)
         mask = seg.generate_masks(coalitions_text=np.zeros((1, 8), dtype=bool))
         attn = mask.text_attention_mask
-        assert attn[0, 0] == 1        # BOS
-        assert attn[0, -1] == 1       # EOS
+        assert attn[0, 0] == 1  # BOS
+        assert attn[0, -1] == 1  # EOS
         assert attn[0, 1:-1].sum() == 0.0  # all tokens occluded
 
     def test_image_mask_all_present(self, patch_config):
@@ -254,9 +254,83 @@ class TestSegmenterRegistry:
         cls = get_segmenter("slic")
         assert cls.__name__ == "SLICSegmenter"
 
+    def test_get_custom_segmenter(self):
+        cls = get_segmenter("custom_segmenter")
+        assert cls.__name__ == "CustomSegmenter"
+
     def test_unknown_segmenter_raises(self):
         with pytest.raises(KeyError):
             get_segmenter("nonexistent")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# CustomSegmenter tests
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestCustomSegmenter:
+    """CustomSegmenter: user-provided binary masks as players."""
+
+    def test_requires_masks(self):
+        with pytest.raises(ValueError, match="requires.*masks"):
+            CustomSegmenter(SegmenterConfig(strategy="custom_segmenter"))
+
+    def test_invalid_ndim(self):
+        with pytest.raises(ValueError, match="3D"):
+            CustomSegmenter(
+                SegmenterConfig(strategy="custom_segmenter"),
+                masks=np.ones((2, 3, 4, 5)),
+            )
+
+    def test_get_layout(self):
+        masks = np.zeros((4, 16, 16), dtype=bool)
+        masks[0, :4, :4] = True
+        seg = CustomSegmenter(
+            SegmenterConfig(strategy="custom_segmenter", n_channels=3),
+            masks=masks,
+        )
+        layout = seg.get_layout()
+        assert layout.n_players_image == 4
+        assert layout.image_size == 16
+
+    def test_generate_mask_shape(self):
+        masks = np.zeros((3, 8, 8), dtype=bool)
+        masks[0, :4, :4] = True
+        seg = CustomSegmenter(
+            SegmenterConfig(strategy="custom_segmenter", n_channels=1),
+            masks=masks,
+        )
+        pm = seg.generate_masks(coalitions_image=np.ones((2, 3), dtype=bool))
+        assert pm.image_binary_mask.shape == (2, 1, 8, 8)
+
+    def test_generate_mask_union(self):
+        """Only selected players' pixels are kept."""
+        masks = np.zeros((2, 4, 4), dtype=bool)
+        masks[0, :2, :] = True  # player 0: top half
+        masks[1, 2:, :] = True  # player 1: bottom half
+        seg = CustomSegmenter(
+            SegmenterConfig(strategy="custom_segmenter", n_channels=1),
+            masks=masks,
+        )
+        # Only player 0 active
+        pm = seg.generate_masks(coalitions_image=np.array([[True, False]]))
+        kept = pm.image_binary_mask[0, 0]
+        assert kept[:2, :].sum() == 2 * 4  # top half kept
+        assert kept[2:, :].sum() == 0.0  # bottom half occluded
+
+        # Both players active → full image kept
+        pm = seg.generate_masks(coalitions_image=np.array([[True, True]]))
+        assert pm.image_binary_mask[0, 0].sum() == 4 * 4
+
+    def test_generate_mask_no_text(self):
+        """Without coalitions_text, text_attention_mask stays None."""
+        masks = np.ones((2, 8, 8), dtype=bool)
+        seg = CustomSegmenter(
+            SegmenterConfig(strategy="custom_segmenter", n_channels=3),
+            masks=masks,
+        )
+        pm = seg.generate_masks(coalitions_image=np.ones((1, 2), dtype=bool))
+        assert pm.text_attention_mask is None
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -330,7 +404,7 @@ class TestCrossModalMeanMasker:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Blur masker tests 
+# Blur masker tests
 # ═══════════════════════════════════════════════════════════════════════
 
 
@@ -540,9 +614,13 @@ class TestSLICSegmenter:
     @pytest.fixture
     def image(self):
         from PIL import Image
+
         path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "..", "..", "data", "test_croc.JPEG",
+            "..",
+            "..",
+            "data",
+            "test_croc.JPEG",
         )
         return Image.open(path).convert("RGB").resize((64, 64))
 
@@ -560,6 +638,7 @@ class TestSLICSegmenter:
 
     def test_requires_image_array(self):
         from shapiq.imputer.vision.segmenters.slic import SLICSegmenter
+
         with pytest.raises(ValueError, match="requires image_array"):
             SLICSegmenter(SegmenterConfig(strategy="slic"))
 
@@ -601,25 +680,37 @@ class TestVisionImputerForward:
     def model(self):
         """Returns logits_per_image matching CLIP shape: (img_bs, txt_bs)."""
         import types
+
         class MockModel:
             name_or_path = "openai/clip-vit-base-patch32"
+
             def parameters(self):
                 return iter([torch.nn.Parameter(torch.randn(1))])
+
             def __call__(self, **kwargs):
                 img_bs = kwargs["pixel_values"].shape[0]
                 txt_bs = kwargs["input_ids"].shape[0]
                 out = types.SimpleNamespace()
                 out.logits_per_image = torch.randn(img_bs, txt_bs)
                 return out
+
         return MockModel()
 
     @pytest.fixture
     def segmenter(self):
-        return PatchSegmenter(SegmenterConfig(
-            strategy="patch", model_type="clip", image_size=224,
-            patch_size=32, n_channels=3, grid_size=7,
-            n_players_image=49, n_players_text=8, text_total_length=10,
-        ))
+        return PatchSegmenter(
+            SegmenterConfig(
+                strategy="patch",
+                model_type="clip",
+                image_size=224,
+                patch_size=32,
+                n_channels=3,
+                grid_size=7,
+                n_players_image=49,
+                n_players_text=8,
+                text_total_length=10,
+            )
+        )
 
     @pytest.fixture
     def masker(self):
@@ -637,9 +728,12 @@ class TestVisionImputerForward:
     def test_forward_1d_shape(self, model, segmenter, masker, inputs_original):
         """forward_1d with 4 coalitions, batch_size=2 → shape (4,)."""
         from unittest.mock import MagicMock
+
         imputer = VisionImputer(
-            model=model, processor=MagicMock(),
-            segmenter=segmenter, masker=masker,
+            model=model,
+            processor=MagicMock(),
+            segmenter=segmenter,
+            masker=masker,
             inputs_original=inputs_original,
         )
         result = imputer.forward_1d(np.ones((4, 57), dtype=bool), batch_size=2)
@@ -649,8 +743,10 @@ class TestVisionImputerForward:
     def test_forward_1d_single_batch(self, model, segmenter, masker, inputs_original):
         """forward_1d with 3 coalitions where batch_size > n_coalitions."""
         imputer = VisionImputer(
-            model=model, processor=MagicMock(),
-            segmenter=segmenter, masker=masker,
+            model=model,
+            processor=MagicMock(),
+            segmenter=segmenter,
+            masker=masker,
             inputs_original=inputs_original,
         )
         result = imputer.forward_1d(np.ones((3, 57), dtype=bool), batch_size=8)
@@ -665,8 +761,10 @@ class TestVisionImputerForward:
             "attention_mask": torch.ones(1, 8, dtype=torch.int),
         }
         imputer = VisionImputer(
-            model=model, processor=proc,
-            segmenter=segmenter, masker=masker,
+            model=model,
+            processor=proc,
+            segmenter=segmenter,
+            masker=masker,
             inputs_original=inputs_original,
         )
         result = imputer.forward_crossmodal(
@@ -685,8 +783,10 @@ class TestVisionImputerForward:
             "attention_mask": torch.ones(1, 8, dtype=torch.int),
         }
         imputer = VisionImputer(
-            model=model, processor=proc,
-            segmenter=segmenter, masker=masker,
+            model=model,
+            processor=proc,
+            segmenter=segmenter,
+            masker=masker,
             inputs_original=inputs_original,
         )
         result = imputer.forward_crossmodal(
@@ -698,8 +798,10 @@ class TestVisionImputerForward:
 
     def test_n_players_properties(self, model, segmenter, masker, inputs_original):
         imputer = VisionImputer(
-            model=model, processor=MagicMock(),
-            segmenter=segmenter, masker=masker,
+            model=model,
+            processor=MagicMock(),
+            segmenter=segmenter,
+            masker=masker,
             inputs_original=inputs_original,
         )
         assert imputer.n_players_image == 49
@@ -708,8 +810,10 @@ class TestVisionImputerForward:
 
     def test_model_type_property(self, model, segmenter, masker, inputs_original):
         imputer = VisionImputer(
-            model=model, processor=MagicMock(),
-            segmenter=segmenter, masker=masker,
+            model=model,
+            processor=MagicMock(),
+            segmenter=segmenter,
+            masker=masker,
             inputs_original=inputs_original,
         )
         assert imputer.model_type == "clip"
@@ -727,6 +831,7 @@ class TestVisionLanguageGame:
     def mock_imputer(self):
         """Returns a MagicMock that mimics VisionImputer interface."""
         from unittest.mock import MagicMock
+
         imputer = MagicMock()
         imputer.n_players_image = 49
         imputer.n_players_text = 8
@@ -776,17 +881,21 @@ class TestVisionImputerFactoryBuild:
 
     @pytest.fixture
     def mock_model(self):
-        from unittest.mock import MagicMock
         import types
+        from unittest.mock import MagicMock
+
         class MockModel:
             name_or_path = "openai/clip-vit-base-patch32"
+
             def parameters(self):
                 return iter([torch.nn.Parameter(torch.randn(1))])
+
             def __call__(self, **kwargs):
                 bs = kwargs["pixel_values"].shape[0]
                 out = types.SimpleNamespace()
                 out.logits_per_image = torch.randn(bs, bs)
                 return out
+
         # Mock vision_model required by _extract_vision_dims
         vc = MagicMock()
         vc.image_size = 224
@@ -806,6 +915,7 @@ class TestVisionImputerFactoryBuild:
     @pytest.fixture
     def mock_processor(self):
         from unittest.mock import MagicMock
+
         proc = MagicMock()
         proc.return_value = {
             "pixel_values": torch.randn(1, 3, 224, 224),
@@ -818,8 +928,10 @@ class TestVisionImputerFactoryBuild:
         """Default config: PatchSegmenter + CrossModalMeanMasker."""
         factory = VisionImputerFactory()
         imputer = factory.build(
-            mock_model, mock_processor,
-            torch.randn(3, 224, 224), "test text",
+            mock_model,
+            mock_processor,
+            torch.randn(3, 224, 224),
+            "test text",
         )
         assert imputer.n_players_image == 49
         assert imputer.n_players_text == 6  # CLIP: input_length(8) - 2
@@ -830,8 +942,10 @@ class TestVisionImputerFactoryBuild:
         """AMP flag is passed through."""
         factory = VisionImputerFactory()
         imputer = factory.build(
-            mock_model, mock_processor,
-            torch.randn(3, 224, 224), "test text",
+            mock_model,
+            mock_processor,
+            torch.randn(3, 224, 224),
+            "test text",
             use_amp=True,
         )
         assert imputer.use_amp is True
@@ -840,8 +954,10 @@ class TestVisionImputerFactoryBuild:
         """After build, forward_1d returns correct shape."""
         factory = VisionImputerFactory()
         imputer = factory.build(
-            mock_model, mock_processor,
-            torch.randn(3, 224, 224), "test text",
+            mock_model,
+            mock_processor,
+            torch.randn(3, 224, 224),
+            "test text",
         )
         result = imputer.forward_1d(np.ones((2, imputer.n_players), dtype=bool), batch_size=2)
         assert result.shape == (2,)
@@ -850,11 +966,14 @@ class TestVisionImputerFactoryBuild:
         """forward_1d with all-False (empty) coalition returns correct shape."""
         factory = VisionImputerFactory()
         imputer = factory.build(
-            mock_model, mock_processor,
-            torch.randn(3, 224, 224), "test text",
+            mock_model,
+            mock_processor,
+            torch.randn(3, 224, 224),
+            "test text",
         )
         result = imputer.forward_1d(
-            np.zeros((1, imputer.n_players), dtype=bool), batch_size=1,
+            np.zeros((1, imputer.n_players), dtype=bool),
+            batch_size=1,
         )
         assert result.shape == (1,)
 
@@ -862,14 +981,17 @@ class TestVisionImputerFactoryBuild:
         """AMP flag accepted; if no CUDA the autocast context is a no-op."""
         factory = VisionImputerFactory()
         imputer = factory.build(
-            mock_model, mock_processor,
-            torch.randn(3, 224, 224), "test text",
+            mock_model,
+            mock_processor,
+            torch.randn(3, 224, 224),
+            "test text",
             use_amp=True,
         )
         assert imputer.use_amp is True
         # Call with a tiny batch to ensure the AMP codepath doesn't crash
         result = imputer.forward_1d(
-            np.ones((1, imputer.n_players), dtype=bool), batch_size=1,
+            np.ones((1, imputer.n_players), dtype=bool),
+            batch_size=1,
         )
         assert result.shape == (1,)
 
@@ -883,12 +1005,19 @@ class TestTextMaskFormat:
     """Verify Segmenter._build_text_attention_mask for different model types."""
 
     def _make_segmenter(self, model_type: str, n_txt: int = 8, total_len: int = 64):
-        return PatchSegmenter(SegmenterConfig(
-            strategy="patch", model_type=model_type,
-            image_size=224, patch_size=32, n_channels=3, grid_size=7,
-            n_players_image=49, n_players_text=n_txt,
-            text_total_length=total_len,
-        ))
+        return PatchSegmenter(
+            SegmenterConfig(
+                strategy="patch",
+                model_type=model_type,
+                image_size=224,
+                patch_size=32,
+                n_channels=3,
+                grid_size=7,
+                n_players_image=49,
+                n_players_text=n_txt,
+                text_total_length=total_len,
+            )
+        )
 
     def test_clip_bos_eos(self):
         """CLIP: pads with BOS=1 and EOS=1."""
@@ -897,9 +1026,9 @@ class TestTextMaskFormat:
         mask = seg.generate_masks(coalitions_text=coalitions)
         attn = mask.text_attention_mask
         assert attn.shape == (1, 10)
-        assert attn[0, 0].item() == 1       # BOS
-        assert attn[0, -1].item() == 1      # EOS
-        assert attn[0, 1:-1].sum() == 0.0   # all tokens False
+        assert attn[0, 0].item() == 1  # BOS
+        assert attn[0, -1].item() == 1  # EOS
+        assert attn[0, 1:-1].sum() == 0.0  # all tokens False
 
     def test_siglip_right_pad(self):
         """SigLIP: right-pads with 1s after valid tokens."""
@@ -910,7 +1039,7 @@ class TestTextMaskFormat:
         assert attn.shape == (1, 64)
         # First 8 positions follow coalition (all 1), remaining 56 are pad (also 1)
         assert attn[0, :8].sum() == 8.0
-        assert attn[0, 8:].sum() == 56.0   # all padded
+        assert attn[0, 8:].sum() == 56.0  # all padded
 
     def test_siglip2_right_pad(self):
         """SigLIP2: same right-pad behaviour as SigLIP."""
@@ -934,7 +1063,10 @@ class TestFactoryBuildWithSLIC:
 
     IMAGE_PATH = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        "..", "..", "data", "dog_and_hydrant.png",
+        "..",
+        "..",
+        "data",
+        "dog_and_hydrant.png",
     )
     INPUT_TEXT = "black dog next to a yellow hydrant"
 
@@ -942,16 +1074,20 @@ class TestFactoryBuildWithSLIC:
     def model(self):
         import types
         from unittest.mock import MagicMock
+
         class MockModel:
             name_or_path = "openai/clip-vit-base-patch32"
+
             def parameters(self):
                 return iter([torch.nn.Parameter(torch.randn(1))])
+
             def __call__(self, **kwargs):
                 img_bs = kwargs["pixel_values"].shape[0]
                 txt_bs = kwargs["input_ids"].shape[0]
                 out = types.SimpleNamespace()
                 out.logits_per_image = torch.randn(img_bs, txt_bs)
                 return out
+
         vc = MagicMock()
         vc.image_size = 224
         vc.num_channels = 3
@@ -970,6 +1106,7 @@ class TestFactoryBuildWithSLIC:
     @pytest.fixture
     def mock_processor(self):
         from unittest.mock import MagicMock
+
         proc = MagicMock()
         proc.return_value = {
             "pixel_values": torch.randn(1, 3, 224, 224),
@@ -980,15 +1117,18 @@ class TestFactoryBuildWithSLIC:
 
     def test_build_slic_default(self, model, mock_processor):
         """Build with strategy='slic' and a real image → succeeds."""
-        from shapiq.imputer.vision import SlicParams
         from PIL import Image
+
+        from shapiq.imputer.vision import SlicParams
+
         seg_cfg = SegmenterConfig(
             strategy="slic",
             slic=SlicParams(n_segments=15, compactness=10.0, sigma=1.0),
         )
         factory = VisionImputerFactory()
         imputer = factory.build(
-            model, mock_processor,
+            model,
+            mock_processor,
             Image.open(self.IMAGE_PATH).convert("RGB"),
             self.INPUT_TEXT,
             segmenter_config=seg_cfg,
@@ -998,14 +1138,17 @@ class TestFactoryBuildWithSLIC:
         assert imputer.model_type == "clip"
         # forward_1d with a few coalitions
         result = imputer.forward_1d(
-            np.ones((2, imputer.n_players), dtype=bool), batch_size=2,
+            np.ones((2, imputer.n_players), dtype=bool),
+            batch_size=2,
         )
         assert result.shape == (2,)
 
     def test_build_slic_budget_change(self, model, mock_processor):
         """Different n_segments produces different player counts."""
-        from shapiq.imputer.vision import SlicParams
         from PIL import Image
+
+        from shapiq.imputer.vision import SlicParams
+
         seg_cfg_10 = SegmenterConfig(
             strategy="slic",
             slic=SlicParams(n_segments=10, compactness=10.0, sigma=1.0),
@@ -1016,18 +1159,17 @@ class TestFactoryBuildWithSLIC:
         )
         factory = VisionImputerFactory()
         im1 = factory.build(
-            model, mock_processor,
+            model,
+            mock_processor,
             Image.open(self.IMAGE_PATH).convert("RGB"),
             self.INPUT_TEXT,
             segmenter_config=seg_cfg_10,
         )
         im2 = factory.build(
-            model, mock_processor,
+            model,
+            mock_processor,
             Image.open(self.IMAGE_PATH).convert("RGB"),
             self.INPUT_TEXT,
             segmenter_config=seg_cfg_50,
         )
         assert im2.n_players_image > im1.n_players_image
-
-
-

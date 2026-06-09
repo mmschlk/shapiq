@@ -1,5 +1,4 @@
-"""
-Base module for the vision imputer sub-package.
+"""Base module for the vision imputer sub-package.
 
 Defines:
     - Data transfer types: SegmenterConfig, MaskerConfig, SpatialLayout,
@@ -11,11 +10,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import torch
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # Segmenter Configuration
@@ -25,7 +22,6 @@ import torch
 @dataclass
 class PatchParams:
     """Rigid-grid patch segmenter parameters.  No configurable knobs."""
-    pass
 
 
 @dataclass
@@ -37,6 +33,7 @@ class SlicParams:
         compactness: SLIC compactness factor (higher = more regular shapes).
         sigma: Pre-segmentation Gaussian blur sigma.
     """
+
     n_segments: int = 49
     compactness: float = 10.0
     sigma: float = 0.0
@@ -50,22 +47,33 @@ class GradientGuidedParams:
         n_segments: Target superpixel count. None means derive from
             grid_size (ViT) or fall back to 49.
     """
-    n_segments: Optional[int] = None
+
+    n_segments: int | None = None
+
+
+@dataclass
+class CustomSegmenterParams:
+    """User-provided binary mask segmenter parameters.
+
+    Each mask defines one player. Masks are supplied directly to
+    ``CustomSegmenter`` at construction time, not via this dataclass.
+    """
 
 
 @dataclass
 class SegmenterConfig:
-    """
-    Complete configuration for a Segmenter.
+    """Complete configuration for a Segmenter.
 
     Caller-provided: strategy + per-strategy params (patch / slic / gradient_guided).
     Factory-populated: model metadata (image_size, patch_size, model_type, ...).
     Default strategy is ``"patch"``.
     """
+
     strategy: str = "patch"
     patch: PatchParams = field(default_factory=PatchParams)
     slic: SlicParams = field(default_factory=SlicParams)
     gradient_guided: GradientGuidedParams = field(default_factory=GradientGuidedParams)
+    custom_segmenter: CustomSegmenterParams = field(default_factory=CustomSegmenterParams)
 
     # Factory-populated (model metadata)
     model_type: str = ""
@@ -90,41 +98,38 @@ class SegmenterConfig:
 @dataclass
 class CrossModalMeanParams:
     """Cross-modal occlusion (vision-mean + text-attention)."""
-    pass
 
 
 @dataclass
 class CrossModalBlurParams:
     """Cross-modal occlusion (vision-blur + text-attention)."""
-    pass
 
 
 @dataclass
 class VisionMeanParams:
     """Pure image occlusion via multiplicative binary mask."""
-    pass
 
 
 @dataclass
 class VisionBlurParams:
     """Pure image occlusion via Gaussian blur."""
+
     sigma: float = 3.0
 
 
 @dataclass
 class TextAttentionParams:
     """Pure text occlusion via attention_mask replacement."""
-    pass
 
 
 @dataclass
 class MaskerConfig:
-    """
-    Complete configuration for a Masker.
+    """Complete configuration for a Masker.
 
     Caller-provided: strategy + per-strategy params.
     Default strategy is ``"crossmodal_mean"``.
     """
+
     strategy: str = "crossmodal_mean"
     crossmodal_mean: CrossModalMeanParams = field(default_factory=CrossModalMeanParams)
     crossmodal_blur: CrossModalBlurParams = field(default_factory=CrossModalBlurParams)
@@ -144,8 +149,7 @@ class MaskerConfig:
 
 @dataclass
 class SpatialLayout:
-    """
-    Describes the spatial division of the input into players.
+    """Describes the spatial division of the input into players.
 
     Attributes:
         n_players_image: Number of image players (patches/superpixels).
@@ -158,6 +162,7 @@ class SpatialLayout:
         text_total_length: Total token length expected by the model.
         is_stateful: Whether the layout can change across iterations.
     """
+
     n_players_image: int
     n_players_text: int
     image_size: int
@@ -176,8 +181,7 @@ class SpatialLayout:
 
 @dataclass
 class PhysicalMask:
-    """
-    Concrete, pixel/token-level masks ready to be applied to model inputs.
+    """Concrete, pixel/token-level masks ready to be applied to model inputs.
 
     Attributes:
         image_binary_mask: Tensor (N_img, C, H, W) float/bool.
@@ -185,8 +189,9 @@ class PhysicalMask:
         text_attention_mask: Tensor (N_txt, L) int.
             1 = attend, 0 = ignore. Already padded for model_type.
     """
-    image_binary_mask: Optional[torch.Tensor] = None
-    text_attention_mask: Optional[torch.Tensor] = None
+
+    image_binary_mask: torch.Tensor | None = None
+    text_attention_mask: torch.Tensor | None = None
 
     @property
     def batch_size_img(self) -> int:
@@ -204,8 +209,7 @@ class PhysicalMask:
 
 @dataclass
 class ProcessorOutput:
-    """
-    Standardised wrapper around HuggingFace processor outputs.
+    """Standardised wrapper around HuggingFace processor outputs.
 
     Attributes:
         pixel_values: Tensor (B, C, H, W).
@@ -213,6 +217,7 @@ class ProcessorOutput:
         attention_mask: Tensor (B, L).
         model_type: str identifying the model family.
     """
+
     pixel_values: torch.Tensor
     input_ids: torch.Tensor
     attention_mask: torch.Tensor
@@ -255,8 +260,7 @@ class ProcessorOutput:
 
 
 class Segmenter(ABC):
-    """
-    Abstract base class for spatial division strategies.
+    """Abstract base class for spatial division strategies.
 
     A Segmenter defines which pixels/tokens belong to which player.
     It produces a SpatialLayout and converts coalition arrays into
@@ -277,9 +281,9 @@ class Segmenter(ABC):
     @abstractmethod
     def generate_masks(
         self,
-        coalitions_image: Optional[np.ndarray] = None,
-        coalitions_text: Optional[np.ndarray] = None,
-        device: Optional[torch.device] = None,
+        coalitions_image: np.ndarray | None = None,
+        coalitions_text: np.ndarray | None = None,
+        device: torch.device | None = None,
     ) -> PhysicalMask:
         """Translate boolean coalition arrays into concrete physical masks.
 
@@ -301,10 +305,9 @@ class Segmenter(ABC):
     def _build_text_attention_mask(
         self,
         coalitions: np.ndarray,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> torch.Tensor:
-        """
-        Convert token-level coalitions to an attention mask matching the
+        """Convert token-level coalitions to an attention mask matching the
         model's expected total length.
 
         Args:
@@ -339,14 +342,13 @@ class Segmenter(ABC):
 
 
 class Masker(ABC):
-    """
-    Abstract base class for feature occlusion strategies.
+    """Abstract base class for feature occlusion strategies.
 
     A Masker applies a PhysicalMask to model inputs (ProcessorOutput)
     and returns modified inputs ready for model.forward().
     """
 
-    def __init__(self, config: Optional[MaskerConfig] = None):
+    def __init__(self, config: MaskerConfig | None = None):
         self.config = config or MaskerConfig()
 
     @abstractmethod

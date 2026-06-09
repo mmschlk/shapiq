@@ -1,23 +1,21 @@
-"""
-PatchSegmenter — Rigid-grid segmenter aligned with Vision Transformer embeddings.
+"""PatchSegmenter — Rigid-grid segmenter aligned with Vision Transformer embeddings.
 
 Each patch is a single player. Default baseline for VLMs (CLIP, SigLIP)
 since their vision encoders natively operate on patches.
 """
 
-from typing import Optional
+from __future__ import annotations
 
 import numpy as np
 import torch
 
-from ..base import Segmenter, SegmenterConfig, SpatialLayout, PhysicalMask
+from ..base import PhysicalMask, Segmenter, SegmenterConfig, SpatialLayout
 from . import register_segmenter
 
 
 @register_segmenter("patch")
 class PatchSegmenter(Segmenter):
-    """
-    Rigid-grid segmenter with one player per ViT patch.
+    """Rigid-grid segmenter with one player per ViT patch.
 
     Args:
         config: SegmenterConfig with strategy ``"patch"``. Model metadata
@@ -53,39 +51,36 @@ class PatchSegmenter(Segmenter):
 
     def generate_masks(
         self,
-        coalitions_image: Optional[np.ndarray] = None,
-        coalitions_text: Optional[np.ndarray] = None,
-        device: Optional[torch.device] = None,
+        coalitions_image: np.ndarray | None = None,
+        coalitions_text: np.ndarray | None = None,
+        device: torch.device | None = None,
     ) -> PhysicalMask:
         mask = PhysicalMask()
         if coalitions_image is not None:
             mask.image_binary_mask = self._generate_image_mask(coalitions_image, device=device)
         if coalitions_text is not None:
-            mask.text_attention_mask = self._build_text_attention_mask(coalitions_text, device=device)
+            mask.text_attention_mask = self._build_text_attention_mask(
+                coalitions_text, device=device
+            )
         return mask
 
     def _generate_image_mask(
         self,
         coalitions: np.ndarray,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> torch.Tensor:
-        """
-        Convert patch-level coalition array to pixel-level binary mask.
+        """Convert patch-level coalition array to pixel-level binary mask.
 
         Returns:
             Tensor (N, C, H, W) with 1=keep, 0=occlude.
         """
         coalition_t = torch.as_tensor(coalitions, dtype=torch.bool, device=device)
         n_coalitions = coalition_t.shape[0]
-        binary_masks = (
-            coalition_t
-            .repeat_interleave(self.patch_size ** 2, dim=1)
-            .reshape(n_coalitions, self.grid_size, self.grid_size, self.patch_size, self.patch_size)
+        binary_masks = coalition_t.repeat_interleave(self.patch_size**2, dim=1).reshape(
+            n_coalitions, self.grid_size, self.grid_size, self.patch_size, self.patch_size
         )
-        binary_masks = (
-            binary_masks
-            .permute(0, 1, 3, 2, 4)
-            .reshape(n_coalitions, self.image_size, self.image_size)
+        binary_masks = binary_masks.permute(0, 1, 3, 2, 4).reshape(
+            n_coalitions, self.image_size, self.image_size
         )
         binary_masks = binary_masks.unsqueeze(1).repeat(1, self.n_channels, 1, 1)
         return binary_masks.float()

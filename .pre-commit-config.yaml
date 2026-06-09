@@ -14,14 +14,14 @@ repos:
     rev: v0.9.10
     hooks:
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix, --no-cache]
+        args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
   - repo: local
     hooks:
       - id: ty
         name: ty
-        entry: uv run ty check
+        entry: conda run -n ttml ty check
         language: system
         pass_filenames: false
         types: [python]

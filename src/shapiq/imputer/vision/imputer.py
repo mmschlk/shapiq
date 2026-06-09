@@ -1,5 +1,4 @@
-"""
-VisionImputer — Core orchestration engine.
+"""VisionImputer — Core orchestration engine.
 
 Coordinates Segmenter → Masker → Model pipeline.
 Handles batching, device placement, and post-processing.
@@ -7,17 +6,16 @@ Handles batching, device placement, and post-processing.
 
 from __future__ import annotations
 
-from typing import Optional, Any
+from typing import Any
 
 import numpy as np
 import torch
 
-from .base import SpatialLayout, PhysicalMask, ProcessorOutput, Segmenter, Masker
+from .base import Masker, PhysicalMask, ProcessorOutput, Segmenter, SpatialLayout
 
 
 class VisionImputer:
-    """
-    Core orchestration container for vision-language model explanation.
+    """Core orchestration container for vision-language model explanation.
 
     Lifecycle:
         1. __init__(model, processor, segmenter, masker, inputs_original, ...)
@@ -72,7 +70,7 @@ class VisionImputer:
     def forward_1d(
         self,
         coalitions: np.ndarray,
-        batch_size: Optional[int] = None,
+        batch_size: int | None = None,
     ) -> np.ndarray:
         """Evaluate the model on a set of coalitions (1D input space)."""
         if batch_size is None:
@@ -104,7 +102,7 @@ class VisionImputer:
         self,
         coalitions_image: np.ndarray,
         coalitions_text: np.ndarray,
-        batch_size: Optional[int] = None,
+        batch_size: int | None = None,
     ) -> np.ndarray:
         """Evaluate cross-modal coalitions (2D: image × text)."""
         if batch_size is None:
@@ -120,7 +118,8 @@ class VisionImputer:
             img_bs = img_end - img_start
 
             img_slice_mask = self.segmenter.generate_masks(
-                coalitions_image=coalitions_image[img_start:img_end], device=device,
+                coalitions_image=coalitions_image[img_start:img_end],
+                device=device,
             )
             inputs_img_batched = self._repeat_inputs(self.inputs_original, img_bs, device=device)
             inputs_img_masked = self.masker.apply(inputs_img_batched, img_slice_mask)
@@ -131,7 +130,8 @@ class VisionImputer:
                 txt_bs = txt_end - txt_start
 
                 txt_slice_mask = self.segmenter.generate_masks(
-                    coalitions_text=coalitions_text[txt_start:txt_end], device=device,
+                    coalitions_text=coalitions_text[txt_start:txt_end],
+                    device=device,
                 )
 
                 if txt_bs == img_bs:
@@ -171,7 +171,7 @@ class VisionImputer:
         self,
         inputs: ProcessorOutput,
         batch_size: int,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> ProcessorOutput:
         pixel_values = inputs.pixel_values
         input_ids = inputs.input_ids

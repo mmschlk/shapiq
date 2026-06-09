@@ -1,5 +1,4 @@
-"""
-CrossModalBlurMasker — Composite masker with Gaussian-blur image occlusion
+"""CrossModalBlurMasker — Composite masker with Gaussian-blur image occlusion
 for Vision-Language Models.
 
 Follows the Composite Pattern: internally instantiates two atomic maskers
@@ -16,18 +15,17 @@ Registered as ``"crossmodal_blur"`` in the masker registry.
     the CPU Gaussian blur implementation.
 """
 
-from typing import Optional
+from __future__ import annotations
 
-from ..base import Masker, PhysicalMask, ProcessorOutput, MaskerConfig
+from ..base import Masker, MaskerConfig, PhysicalMask, ProcessorOutput
 from . import register_masker
-from .vision_blur import VisionBlurMasker
 from .text_attention import TextAttentionMasker
+from .vision_blur import VisionBlurMasker
 
 
 @register_masker("crossmodal_blur")
 class CrossModalBlurMasker(Masker):
-    """
-    Cross-modal occlusion orchestrator with Gaussian-blur image occlusion.
+    """Cross-modal occlusion orchestrator with Gaussian-blur image occlusion.
 
     Delegates:
         - Image occlusion → VisionBlurMasker (registered as ``"vision_blur"``)
@@ -45,7 +43,7 @@ class CrossModalBlurMasker(Masker):
     Registered as ``"crossmodal_blur"``.
     """
 
-    def __init__(self, config: Optional[MaskerConfig] = None):
+    def __init__(self, config: MaskerConfig | None = None):
         super().__init__(config)
         self._vision_masker = VisionBlurMasker(config=config)
         self._text_masker = TextAttentionMasker(config=config)
@@ -55,8 +53,7 @@ class CrossModalBlurMasker(Masker):
         processor_output: ProcessorOutput,
         physical_mask: PhysicalMask,
     ) -> ProcessorOutput:
-        """
-        Apply blur image occlusion + attention-mask text occlusion.
+        """Apply blur image occlusion + attention-mask text occlusion.
 
         Args:
             processor_output: Original model inputs.

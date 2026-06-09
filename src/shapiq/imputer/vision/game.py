@@ -1,5 +1,4 @@
-"""
-VisionLanguageGame — Thin shapiq.Game adapter for HuggingFace VLMs.
+"""VisionLanguageGame — Thin shapiq.Game adapter for HuggingFace VLMs.
 
 All masking, batching, and model-forward logic is delegated to a
 VisionImputer. The Game only handles Shapley scheduling concerns.
@@ -8,12 +7,12 @@ VisionImputer. The Game only handles Shapley scheduling concerns.
 from __future__ import annotations
 
 import numpy as np
+
 from ...game import Game
 
 
 class VisionLanguageGame(Game):
-    """
-    A shapiq.Game adapter for HuggingFace CLIP / SigLIP.
+    """A shapiq.Game adapter for HuggingFace CLIP / SigLIP.
 
     Delegates all masking, batching, and model forward passes to
     a VisionImputer. Handles only normalisation values and the
@@ -22,7 +21,7 @@ class VisionLanguageGame(Game):
 
     def __init__(
         self,
-        imputer,       # VisionImputer
+        imputer,  # VisionImputer
         batch_size: int = 64,
         verbose: bool = False,
     ):
@@ -66,5 +65,7 @@ class VisionLanguageGame(Game):
         if batch_size is None:
             batch_size = self._batch_size
         return self._imputer.forward_crossmodal(
-            coalitions_image, coalitions_text, batch_size=batch_size,
+            coalitions_image,
+            coalitions_text,
+            batch_size=batch_size,
         )

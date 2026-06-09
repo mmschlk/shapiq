@@ -1,5 +1,4 @@
-"""
-VisionBlurMasker — Image occlusion via Gaussian blur in masked regions.
+"""VisionBlurMasker — Image occlusion via Gaussian blur in masked regions.
 
 Operates exclusively on pixel_values. Must never touch input_ids or
 attention_mask.
@@ -16,16 +15,19 @@ Phase 2 (future GPU optimisation):
     Replace with pre-computed torch.nn.functional.conv2d kernel.
 """
 
-from typing import Optional
+from __future__ import annotations
 
-import torch
 import numpy as np
-from ..base import Masker, PhysicalMask, ProcessorOutput, MaskerConfig
+import torch
+
+from ..base import Masker, MaskerConfig, PhysicalMask, ProcessorOutput
 from . import register_masker
+
 try:
     from skimage.filters import gaussian as _gaussian_blur
 except ImportError:
     _gaussian_blur = None
+
 
 @register_masker("vision_blur")
 class VisionBlurMasker(Masker):
@@ -48,14 +50,13 @@ class VisionBlurMasker(Masker):
 
     def __init__(
         self,
-        config: Optional[MaskerConfig] = None,
+        config: MaskerConfig | None = None,
         sigma: float = 3.0,
     ):
         super().__init__(config)
         if _gaussian_blur is None:
             raise ImportError(
-                "VisionBlurMasker requires scikit-image. "
-                "Install with: pip install scikit-image"
+                "VisionBlurMasker requires scikit-image. Install with: pip install scikit-image"
             )
 
         # Resolve sigma: typed config overrides constructor default
@@ -96,14 +97,14 @@ class VisionBlurMasker(Masker):
         if physical_mask.image_binary_mask is None:
             return processor_output
 
-        pixel_values = processor_output.pixel_values          # (N, C, H, W)
-        mask = physical_mask.image_binary_mask                # (N, C, H, W)
+        pixel_values = processor_output.pixel_values  # (N, C, H, W)
+        mask = physical_mask.image_binary_mask  # (N, C, H, W)
         device = pixel_values.device
 
         # ── CPU-based per-channel Gaussian blur ──────────────────────────
         # skimage operates on numpy arrays, so we transfer to CPU once.
-        im_np = pixel_values.detach().cpu().numpy()            # (N, C, H, W)
-        mask_np = mask.detach().cpu().numpy()                  # (N, C, H, W)
+        im_np = pixel_values.detach().cpu().numpy()  # (N, C, H, W)
+        mask_np = mask.detach().cpu().numpy()  # (N, C, H, W)
 
         sigma = self._sigma
         n_batch, n_chan = im_np.shape[:2]
@@ -113,9 +114,7 @@ class VisionBlurMasker(Masker):
             for c in range(n_chan):
                 # skimage.filters.gaussian applies a 2D Gaussian to
                 # (H, W) single-channel arrays
-                blurred[b, c] = _gaussian_blur(
-                    im_np[b, c], sigma=sigma
-                )
+                blurred[b, c] = _gaussian_blur(im_np[b, c], sigma=sigma)
 
         # Blend: original where mask=1, blurred where mask=0
         blended_np = im_np * mask_np + blurred * (1.0 - mask_np)
@@ -127,7 +126,7 @@ class VisionBlurMasker(Masker):
 
         return ProcessorOutput(
             pixel_values=pixel_values,
-            input_ids=processor_output.input_ids,          # pass-through
-            attention_mask=processor_output.attention_mask, # pass-through
+            input_ids=processor_output.input_ids,  # pass-through
+            attention_mask=processor_output.attention_mask,  # pass-through
             model_type=processor_output.model_type,
         )

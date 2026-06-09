@@ -1,21 +1,21 @@
-"""
-VisionImputerFactory — Central assembly line.
+"""VisionImputerFactory — Central assembly line.
 
 Inspects the model, enriches SegmenterConfig with model metadata,
 selects components, and returns a fully wired VisionImputer.
 """
 
-from typing import Optional, Any
+from __future__ import annotations
 
+from typing import Any
+
+from .base import MaskerConfig, ProcessorOutput, SegmenterConfig
 from .imputer import VisionImputer
-from .base import SegmenterConfig, MaskerConfig, ProcessorOutput
-from .segmenters import get_segmenter
 from .maskers import get_masker
+from .segmenters import get_segmenter
 
 
 class VisionImputerFactory:
-    """
-    Assembles the VisionImputer pipeline from typed configs.
+    """Assembles the VisionImputer pipeline from typed configs.
 
     Usage::
 
@@ -37,9 +37,10 @@ class VisionImputerFactory:
         processor: Any,
         input_image: Any,
         input_text: str,
-        segmenter_config: Optional[SegmenterConfig] = None,
-        masker_config: Optional[MaskerConfig] = None,
+        segmenter_config: SegmenterConfig | None = None,
+        masker_config: MaskerConfig | None = None,
         use_amp: bool = False,
+        **segmenter_kwargs,
     ) -> VisionImputer:
         if segmenter_config is None:
             segmenter_config = SegmenterConfig()
@@ -53,7 +54,7 @@ class VisionImputerFactory:
         image_size, patch_size, n_channels = self._extract_vision_dims(model)
         is_vit = patch_size > 0
         grid_size = image_size // patch_size if is_vit else 0
-        n_players_image = grid_size ** 2 if is_vit else 0
+        n_players_image = grid_size**2 if is_vit else 0
 
         # 3. Preprocess once to determine text players
         inputs_dict = self._preprocess(processor, input_image, input_text, model_type)
@@ -73,14 +74,16 @@ class VisionImputerFactory:
         # 5. Create Segmenter
         strategy = segmenter_config.strategy
         if strategy == "slic":
-            segmenter = self._create_segmenter(segmenter_config, image_array=input_image)
+            segmenter_kwargs.setdefault("image_array", input_image)
+            segmenter = self._create_segmenter(segmenter_config, **segmenter_kwargs)
         elif strategy == "gradient_guided":
-            segmenter = self._create_segmenter(
-                segmenter_config, model=model, processor=processor,
-                image=input_image, text=input_text,
-            )
+            segmenter_kwargs.setdefault("model", model)
+            segmenter_kwargs.setdefault("processor", processor)
+            segmenter_kwargs.setdefault("image", input_image)
+            segmenter_kwargs.setdefault("text", input_text)
+            segmenter = self._create_segmenter(segmenter_config, **segmenter_kwargs)
         else:
-            segmenter = self._create_segmenter(segmenter_config)
+            segmenter = self._create_segmenter(segmenter_config, **segmenter_kwargs)
 
         segmenter_config.n_players_image = segmenter.get_layout().n_players_image
 
@@ -124,7 +127,7 @@ class VisionImputerFactory:
         normalized = [str(value).lower() for value in candidates if value]
         if any("siglip2" in value for value in normalized):
             return "siglip2"
-        elif any("siglip" in value for value in normalized):
+        if any("siglip" in value for value in normalized):
             return "siglip"
         return "clip"
 
@@ -161,9 +164,9 @@ class VisionImputerFactory:
         input_ids = inputs["input_ids"][0]
         if model_type == "siglip2":
             return input_ids.count_nonzero().item() - 1
-        elif model_type == "siglip":
+        if model_type == "siglip":
             return (input_ids != 1).count_nonzero().item()
-        elif model_type == "clip":
+        if model_type == "clip":
             return input_ids.size(0) - 2
         return 0
 

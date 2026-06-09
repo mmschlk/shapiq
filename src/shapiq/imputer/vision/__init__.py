@@ -1,5 +1,4 @@
-"""
-shapiq.imputer.vision — Vision-language model imputation sub-package.
+"""shapiq.imputer.vision — Vision-language model imputation sub-package.
 
 Provides pluggable Segmenter and Masker abstractions for explaining
 vision-language model predictions via Shapley interactions.
@@ -15,33 +14,34 @@ Core pipeline::
 """
 
 from .base import (
-    Segmenter,
+    CrossModalBlurParams,
+    CrossModalMeanParams,
+    CustomSegmenterParams,
+    GradientGuidedParams,
     Masker,
-    SegmenterConfig,
     MaskerConfig,
     PatchParams,
-    SlicParams,
-    GradientGuidedParams,
-    CrossModalMeanParams,
-    CrossModalBlurParams,
-    VisionMeanParams,
-    VisionBlurParams,
-    TextAttentionParams,
-    SpatialLayout,
     PhysicalMask,
     ProcessorOutput,
+    Segmenter,
+    SegmenterConfig,
+    SlicParams,
+    SpatialLayout,
+    TextAttentionParams,
+    VisionBlurParams,
+    VisionMeanParams,
 )
-from .imputer import VisionImputer
 from .factory import VisionImputerFactory
 from .game import VisionLanguageGame
-from .segmenters import PatchSegmenter
+from .imputer import VisionImputer
 from .maskers import (
-    VisionMeanMasker,
-    VisionBlurMasker,
-    TextAttentionMasker,
-    CrossModalMeanMasker,
     CrossModalBlurMasker,
+    CrossModalMeanMasker,
+    TextAttentionMasker,
+    VisionBlurMasker,
+    VisionMeanMasker,
 )
+from .segmenters import CustomSegmenter, PatchSegmenter
 
 __all__ = [
     "VisionImputer",
@@ -63,6 +63,8 @@ __all__ = [
     "PhysicalMask",
     "ProcessorOutput",
     "PatchSegmenter",
+    "CustomSegmenter",
+    "CustomSegmenterParams",
     "VisionMeanMasker",
     "VisionBlurMasker",
     "TextAttentionMasker",

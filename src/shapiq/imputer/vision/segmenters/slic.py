@@ -1,5 +1,4 @@
-"""
-SLICSegmenter — Perceptual superpixel segmenter (skimage SLIC).
+"""SLICSegmenter — Perceptual superpixel segmenter (skimage SLIC).
 
 Algorithm:
     1. __init__ (CPU planning, once): run skimage.segmentation.slic on the
@@ -13,12 +12,14 @@ would introduce out-of-distribution artefacts; SLIC follows perceptual
 content boundaries.
 """
 
-from typing import Optional, Any
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 import torch
 
-from ..base import Segmenter, SegmenterConfig, SpatialLayout, PhysicalMask
+from ..base import PhysicalMask, Segmenter, SegmenterConfig, SpatialLayout
 from . import register_segmenter
 
 try:
@@ -29,8 +30,7 @@ except ImportError:
 
 @register_segmenter("slic")
 class SLICSegmenter(Segmenter):
-    """
-    Perceptual superpixel segmenter for VLMs (especially CNN backbones).
+    """Perceptual superpixel segmenter for VLMs (especially CNN backbones).
 
     Args:
         config: SegmenterConfig with strategy ``"slic"``.
@@ -81,8 +81,8 @@ class SLICSegmenter(Segmenter):
             n_players_image=self.n_players_image,
             n_players_text=self.n_players_text,
             image_size=self.image_size,
-            patch_size=0,       # N/A for SLIC
-            grid_size=0,        # N/A for SLIC
+            patch_size=0,  # N/A for SLIC
+            grid_size=0,  # N/A for SLIC
             n_channels=self.n_channels,
             model_type=self.model_type,
             text_total_length=self.text_total_length,
@@ -94,21 +94,23 @@ class SLICSegmenter(Segmenter):
 
     def generate_masks(
         self,
-        coalitions_image: Optional[np.ndarray] = None,
-        coalitions_text: Optional[np.ndarray] = None,
-        device: Optional[torch.device] = None,
+        coalitions_image: np.ndarray | None = None,
+        coalitions_text: np.ndarray | None = None,
+        device: torch.device | None = None,
     ) -> PhysicalMask:
         mask = PhysicalMask()
         if coalitions_image is not None:
             mask.image_binary_mask = self._scatter_image_mask(coalitions_image, device=device)
         if coalitions_text is not None:
-            mask.text_attention_mask = self._build_text_attention_mask(coalitions_text, device=device)
+            mask.text_attention_mask = self._build_text_attention_mask(
+                coalitions_text, device=device
+            )
         return mask
 
     def _scatter_image_mask(
         self,
         coalitions: np.ndarray,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> torch.Tensor:
         """Translate (N, K) bool coalitions → (N, C, H, W) float pixel masks."""
         coalition_t = torch.as_tensor(coalitions, dtype=torch.bool, device=device)
@@ -133,7 +135,9 @@ class SLICSegmenter(Segmenter):
             PILImage = None
 
         if PILImage is not None and isinstance(image, PILImage.Image):
-            return np.asarray(image.convert("RGB").resize((target_size, target_size)), dtype=np.uint8)
+            return np.asarray(
+                image.convert("RGB").resize((target_size, target_size)), dtype=np.uint8
+            )
 
         arr = np.asarray(image)
         if arr.ndim == 3 and arr.shape[2] > 3:
@@ -144,5 +148,7 @@ class SLICSegmenter(Segmenter):
         if arr.shape[:2] != (target_size, target_size):
             if PILImage is None:
                 raise ImportError("PIL is required to resize ndarray inputs for SLIC.")
-            arr = np.asarray(PILImage.fromarray(arr).resize((target_size, target_size)), dtype=np.uint8)
+            arr = np.asarray(
+                PILImage.fromarray(arr).resize((target_size, target_size)), dtype=np.uint8
+            )
         return arr

@@ -1,10 +1,9 @@
-"""
-TextAttentionMasker — Pure text occlusion via attention_mask replacement.
+"""TextAttentionMasker — Pure text occlusion via attention_mask replacement.
 
 Operates exclusively on attention_mask. Must never touch pixel_values.
 """
 
-import torch
+from __future__ import annotations
 
 from ..base import Masker, PhysicalMask, ProcessorOutput
 from . import register_masker
@@ -12,8 +11,7 @@ from . import register_masker
 
 @register_masker("text_attn")
 class TextAttentionMasker(Masker):
-    """
-    Pure text occlusion via attention_mask replacement.
+    """Pure text occlusion via attention_mask replacement.
 
     Registered as ``"text_attn"``.
     """

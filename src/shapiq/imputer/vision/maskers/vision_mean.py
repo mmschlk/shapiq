@@ -1,11 +1,10 @@
-"""
-VisionMeanMasker — Pure image occlusion via multiplicative binary mask.
+"""VisionMeanMasker — Pure image occlusion via multiplicative binary mask.
 
 Operates exclusively on pixel_values. Must never touch input_ids or
 attention_mask.
 """
 
-import torch
+from __future__ import annotations
 
 from ..base import Masker, PhysicalMask, ProcessorOutput
 from . import register_masker
@@ -13,8 +12,7 @@ from . import register_masker
 
 @register_masker("vision_mean")
 class VisionMeanMasker(Masker):
-    """
-    Pure image occlusion via multiplicative binary mask.
+    """Pure image occlusion via multiplicative binary mask.
 
     Since CLIP/SigLIP inputs are normalized (mean ≈ 0), zeroing out
     pixels is equivalent to filling with the dataset mean.
