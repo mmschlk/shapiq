@@ -88,14 +88,21 @@ def test_approximate(n, interactions, budget):
         assert estimates[interaction] == pytest.approx(1.0, abs=0.5)
 
 
-def test_proxyspex_import_error_if_missing(monkeypatch):
-    """Tests that ProxySPEX raises an ImportError if lightgbm is not installed."""
+def test_proxyspex_falls_back_to_decision_tree_without_lightgbm(monkeypatch):
+    """Without lightgbm, ProxySPEX falls back to a bare DecisionTreeRegressor instead of raising.
+
+    ProxySPEX no longer requires lightgbm: the default ``"lightgbm"`` tag warns and falls back
+    to a scikit-learn ``DecisionTreeRegressor`` (so it is *not* wrapped in the LightGBM grid
+    search), keeping ProxySPEX usable without the optional gradient-boosting backends.
+    """
+    from sklearn.tree import DecisionTreeRegressor
+
     # Temporarily pretend lightgbm is not installed
     monkeypatch.setitem(sys.modules, "lightgbm", None)
 
-    # Use pytest.raises to assert that an ImportError is thrown
-    with pytest.raises(ImportError, match="The 'lightgbm' package is required"):
-        ProxySPEX(n=10, max_order=2)
+    with pytest.warns(UserWarning):
+        approximator = ProxySPEX(n=10, max_order=2)
+    assert isinstance(approximator.proxy_model, DecisionTreeRegressor)
 
 
 @skip_if_no_lightgbm

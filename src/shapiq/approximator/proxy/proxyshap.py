@@ -7,22 +7,214 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from sklearn.preprocessing import PolynomialFeatures
 
+from lazy_dispatch.singledispatch import lazydispatch
 from shapiq.approximator.base import Approximator
 from shapiq.approximator.montecarlo.shapiq import SHAPIQ
 from shapiq.approximator.montecarlo.svarmiq import SVARMIQ
+from shapiq.approximator.proxy._models import (
+    ProxyLiteral,
+    ProxyModel,
+    ProxyModelWithHPO,
+    _select_base_proxy_via_string,
+)
 from shapiq.approximator.regression.kernelshapiq import KernelSHAPIQ
 from shapiq.game import Game
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
-from shapiq.utils.modules import safe_isinstance
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from sklearn.linear_model._base import LinearModel
+
     from shapiq.typing import CoalitionMatrix, FloatVector, GameValues
 
 ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "SII", "SV", "BV"]
+
+
+def _dispatch_on_base_estimator(proxy_model: object, *_args: object, **_kwargs: object) -> object:
+    """Dispatch key for :func:`proxy_approximate`: the proxy's *base* estimator.
+
+    HPO wrappers expose their unfitted base via ``.estimator``; raw proxy models are their own
+    base. ``lazydispatch`` keys on ``.__class__`` of the returned object, so returning the base
+    *instance* makes the base estimator's type select the route while the original (possibly
+    wrapping) model is still handed to the route for fitting.
+    """
+    return getattr(proxy_model, "estimator", proxy_model)
+
+
+@lazydispatch(dispatch_on=_dispatch_on_base_estimator)
+def proxy_approximate(
+    estimator: object,
+    *,
+    coalitions_matrix: CoalitionMatrix,
+    coalition_values: GameValues,
+    baseline_value: float,
+    max_order: int,
+    approximation_index: ValidProxySHAPIndices,
+    target_index: ValidProxySHAPIndices,
+    adjustment_method: Approximator | None = None,
+) -> InteractionValues:
+    """Dispatch interaction extraction on the type of the proxy's base ``estimator``.
+
+    This is the default fallback: it is invoked only for estimator types that have no
+    registered route (linear models via :func:`_approximate_linear`, tree models via
+    :func:`_approximate_tree`) and raises :class:`NotImplementedError` to surface the
+    unsupported proxy early.
+
+    Args:
+        estimator: The proxy's (HPO-unwrapped) base estimator; its type selects the route.
+        coalitions_matrix: Binary coalition matrix the proxy is fit on.
+        coalition_values: Baseline-centered game values for ``coalitions_matrix``.
+        baseline_value: Value of the empty coalition.
+        max_order: Maximum interaction order to extract.
+        approximation_index: Index the proxy is read out in (the computation index).
+        target_index: Index the result is finalized to (the user-facing index).
+        adjustment_method: Optional residual-adjustment approximator, or ``None``.
+
+    Returns:
+        The approximated interaction values.
+
+    Raises:
+        NotImplementedError: Always, since this fallback only runs for unregistered types.
+    """
+    msg = (
+        f"No proxy approximation route registered for estimator type {type(estimator).__name__}. "
+        "This likely means that the proxy model is of an unsupported type, and the error will be raised downstream in the tree-conversion layer. If you believe this estimator should be supported, please open an issue or submit a pull request with the implementation of the appropriate route in shapiq.approximator.proxyshap."
+    )
+    raise NotImplementedError(msg)
+
+
+@proxy_approximate.register("sklearn.linear_model._base.LinearModel")
+def _approximate_linear(
+    estimator: LinearModel | ProxyModelWithHPO,
+    *,
+    coalitions_matrix: CoalitionMatrix,
+    coalition_values: GameValues,
+    baseline_value: float,
+    max_order: int,
+    approximation_index: ValidProxySHAPIndices,
+    target_index: ValidProxySHAPIndices,
+    adjustment_method: Approximator | None = None,
+) -> InteractionValues:
+    """Route for linear-in-features proxies: read interactions from coefficients.
+
+    ``estimator`` may be a bare linear model or an HPO wrapper around one; the wrapper is fit
+    on the (polynomially expanded) coalition features and its ``best_estimator_`` is read out.
+    """
+    budget = coalitions_matrix.shape[0]
+    n_players = coalitions_matrix.shape[1]
+    # 2. Fit the proxy (running HPO if it is a wrapper) and read its linear coefficients.
+    linear_interactions: dict[tuple[int, ...], float]
+    if max_order == 1:
+        proxy_features = coalitions_matrix  # linear proxy fits the raw coalitions
+        estimator.fit(proxy_features, coalition_values)
+        fitted = (
+            estimator.best_estimator_ if isinstance(estimator, ProxyModelWithHPO) else estimator
+        )
+        linear_interactions = {
+            (i,): float(fitted.coef_[i])  # ty: ignore[unresolved-attribute]
+            for i in range(n_players)
+        }
+    else:
+        poly = PolynomialFeatures(degree=max_order, interaction_only=True, include_bias=False)
+        proxy_features = poly.fit_transform(coalitions_matrix)  # interaction-only expansion
+        estimator.fit(proxy_features, coalition_values)
+        fitted = (
+            estimator.best_estimator_ if isinstance(estimator, ProxyModelWithHPO) else estimator
+        )
+        linear_interactions = extract_linear_interactions(
+            coefficients=fitted.coef_,  # ty: ignore[unresolved-attribute]
+            poly=poly,
+        )
+
+    proxy_interactions = InteractionValues(
+        linear_interactions,
+        index=approximation_index,
+        n_players=n_players,
+        min_order=0,
+        max_order=max_order,
+        baseline_value=float(baseline_value),
+        estimated=not budget >= 2**n_players,
+        estimation_budget=int(budget),
+    )
+    proxy_interactions = MoebiusConverter(moebius_coefficients=proxy_interactions).compute(
+        index=target_index, order=max_order
+    )
+
+    # 3. Optional adjustment of the proxy. The adjustment approximator re-samples the same
+    if adjustment_method is not None:
+        residual_values = coalition_values - fitted.predict(proxy_features)
+        residual_values -= residual_values[0]  # Normalize residuals
+        residual_game = ResidualGame(n_players=n_players, game_values=residual_values)
+        proxy_interactions += adjustment_method.approximate(budget, residual_game)
+    proxy_interactions.baseline_value = baseline_value
+    proxy_interactions.interactions[()] = baseline_value  # Ensure empty coalition value is correct
+    return proxy_interactions
+
+
+@proxy_approximate.register(
+    (
+        "sklearn.tree._classes.DecisionTreeRegressor",
+        "sklearn.ensemble._forest.RandomForestRegressor",
+        "xgboost.sklearn.XGBRegressor",
+        "lightgbm.sklearn.LGBMRegressor",
+        "catboost.core.CatBoostRegressor",
+    )
+)
+def _approximate_tree(
+    estimator: ProxyModel | ProxyModelWithHPO,
+    /,
+    coalitions_matrix: CoalitionMatrix,
+    coalition_values: GameValues,
+    baseline_value: float,
+    max_order: int,
+    approximation_index: ValidProxySHAPIndices,
+    target_index: ValidProxySHAPIndices,
+    adjustment_method: Approximator | None = None,
+) -> InteractionValues:
+    """Route for tree proxies: fit the tree and read interactions via exact tree readout.
+
+    ``estimator`` may be a bare tree model or an HPO wrapper around one; the wrapper is fit on
+    the coalitions and its ``best_estimator_`` is read out.
+    """
+    budget = coalitions_matrix.shape[0]
+    n_players = coalitions_matrix.shape[1]
+    estimator.fit(coalitions_matrix, coalition_values)
+    fitted = estimator.best_estimator_ if isinstance(estimator, ProxyModelWithHPO) else estimator
+    # 2. Extract interactions from proxy tree
+    explainer = InterventionalTreeExplainer(
+        fitted,
+        data=np.zeros((1, n_players)),  # reference data for boolean tree
+        index=approximation_index,
+        max_order=max_order,
+        bool_tree=True,
+    )
+    proxy_values = explainer.explain_function(np.ones((1, n_players)))
+    proxy_interactions = InteractionValues(
+        values=proxy_values.interactions,
+        index=approximation_index,
+        max_order=max_order,
+        n_players=n_players,
+        min_order=0,
+        estimated=budget >= 2**n_players,
+        estimation_budget=budget,
+        baseline_value=float(baseline_value),
+        target_index=target_index,
+    )
+
+    # 3. Optional adjustment of the proxy. The adjustment approximator re-samples the same
+    # coalitions (ProxySHAP fixes a shared random_state), so the residual values stay aligned.
+    if adjustment_method is not None:
+        residual_values = coalition_values - fitted.predict(coalitions_matrix)
+        residual_values -= residual_values[0]  # Normalize residuals
+        residual_game = ResidualGame(n_players=n_players, game_values=residual_values)
+        proxy_interactions += adjustment_method.approximate(budget, residual_game)
+    proxy_interactions.baseline_value = baseline_value
+    proxy_interactions.interactions[()] = baseline_value  # Ensure empty coalition value is correct
+
+    return proxy_interactions
 
 
 def extract_linear_interactions(
@@ -105,7 +297,7 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         *,
         max_order: int = 2,
         index: ValidProxySHAPIndices = "k-SII",
-        proxy_model: object | None = None,
+        proxy_model: ProxyModel | ProxyModelWithHPO | ProxyLiteral = "xgboost",
         adjustment: str = "msr",
         sampling_weights: FloatVector | None = None,
         pairing_trick: bool = True,
@@ -145,17 +337,13 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         )
         self._sampling_weights = sampling_weights
         self._pairing_trick = pairing_trick
-        if proxy_model is not None:
-            self.proxy_model = proxy_model
-        else:
-            try:
-                from xgboost import XGBRegressor
-            except ImportError as e:
-                msg = "XGBoost is required for the default proxy model. Install it with: pip install 'shapiq[proxy]' or provide a custom proxy_model that implements the scikit-learn regressor interface."
-                raise ImportError(msg) from e
-            self.proxy_model = XGBRegressor(random_state=random_state)
-
         self.set_adjustment_method(adjustment)
+        if isinstance(proxy_model, str):
+            self.proxy_model: ProxyModel | ProxyModelWithHPO = _select_base_proxy_via_string(
+                proxy_model, random_state
+            )
+        else:
+            self.proxy_model: ProxyModel | ProxyModelWithHPO = proxy_model
 
     def set_adjustment_method(self, adjustment: str) -> None:
         """Select the method for adjusting the proxy model's predictions."""
@@ -194,52 +382,31 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
                     pairing_trick=self._pairing_trick,
                     random_state=self._random_state,
                 )
+            case "none":
+                self.adjustment_method = None
 
     def approximate(
         self,
         budget: int,
         game: Game | Callable[[np.ndarray], np.ndarray],
-        **kwargs: dict,
+        **kwargs: dict,  # noqa: ARG002
     ) -> InteractionValues:
-        """Approximate interaction values, dispatching by proxy type.
+        """Approximate interaction values, dispatching on the proxy's base estimator type.
 
-        Routes to :meth:`approximate_linear` for an
-        :class:`sklearn.linear_model.LinearRegression` proxy and to
-        :meth:`approximate_tree` for everything else.
+        The route is resolved by :func:`proxy_approximate`, which dispatches on the type of the
+        proxy's *base* estimator (unwrapped from any HPO wrapper via its ``estimator`` attribute):
+        linear models route to :func:`_approximate_linear`, registered tree models to
+        :func:`_approximate_tree`.
 
         Args:
             budget: Number of coalition evaluations to draw.
             game: Coalition game (a :class:`shapiq.game.Game` or any callable
                 accepting a binary coalition matrix and returning game values).
-            **kwargs: Forwarded to the dispatched method.
+            **kwargs: Ignored; present for interface compatibility.
 
         Returns:
             :class:`~shapiq.interaction_values.InteractionValues` for orders 0
             through ``self.max_order``.
-        """
-        if safe_isinstance(self.proxy_model, "sklearn.linear_model.LinearRegression"):
-            return self.approximate_linear(budget, game, **kwargs)
-        return self.approximate_tree(budget, game, **kwargs)
-
-    def approximate_linear(
-        self, budget: int, game: Game | Callable[[np.ndarray], np.ndarray], **_: dict
-    ) -> InteractionValues:
-        """Approximate interactions with a linear-in-features proxy.
-
-        For ``max_order > 1`` the coalition matrix is expanded with
-        :class:`sklearn.preprocessing.PolynomialFeatures` (interaction-only) so
-        that fitted coefficients map directly to Möbius interactions; the
-        result is then converted to ``self.approximation_index`` via
-        :class:`~shapiq.game_theory.moebius_converter.MoebiusConverter`.
-        Optional residual adjustment is applied to the proxy's residuals on the same coalitions; see :class:`ResidualGame` for how alignment is ensured.
-
-        Args:
-            budget: Number of coalition evaluations to draw.
-            game: Coalition game.
-
-        Returns:
-            :class:`~shapiq.interaction_values.InteractionValues` for the
-            requested index and order.
         """
         # 1. Sample coalitions and fit proxy linear model. Keep track of binary coalition matrix for adjustment.
         self._sampler.sample(int(budget))
@@ -248,130 +415,13 @@ class ProxySHAP(Approximator[ValidProxySHAPIndices]):
         baseline_value = coalition_values[0]
         coalition_values -= baseline_value
 
-        # 2. Extract interactions from proxy model coefficients, converting to the correct index if necessary
-        linear_interactions: dict[tuple[int, ...], float]
-        if self.max_order == 1:
-            proxy_features = coalitions_matrix  # linear proxy fits the raw coalitions
-            self.proxy_model.fit(  # ty: ignore[unresolved-attribute]
-                proxy_features, coalition_values
-            )
-            linear_interactions = {
-                (i,): float(self.proxy_model.coef_[i])  # ty: ignore[unresolved-attribute]
-                for i in range(self.n)
-            }
-        else:
-            poly = PolynomialFeatures(
-                degree=self.max_order, interaction_only=True, include_bias=False
-            )
-            proxy_features = poly.fit_transform(coalitions_matrix)  # interaction-only expansion
-            self.proxy_model.fit(  # ty: ignore[unresolved-attribute]
-                proxy_features, coalition_values
-            )
-            linear_interactions = extract_linear_interactions(
-                coefficients=self.proxy_model.coef_,  # ty: ignore[unresolved-attribute]
-                poly=poly,
-            )
-
-        proxy_interactions = InteractionValues(
-            linear_interactions,
-            index=self.approximation_index,
-            n_players=self.n,
-            min_order=self.min_order,
-            max_order=self.max_order,
-            baseline_value=float(baseline_value),
-            estimated=not budget >= 2**self.n,
-            estimation_budget=int(budget),
-        )
-        proxy_interactions = MoebiusConverter(moebius_coefficients=proxy_interactions).compute(
-            index=self.index, order=self.max_order
-        )
-
-        # 3. Optional adjustment of the proxy. The adjustment approximator re-samples the same
-        # coalitions (ProxySHAP fixes a shared random_state), so the residual values stay aligned.
-        if self.adjustment != "none":
-            residual_values = (
-                coalition_values
-                - self.proxy_model.predict(proxy_features)  # ty: ignore[unresolved-attribute]
-            )
-            residual_values -= residual_values[0]  # Normalize residuals
-            residual_game = ResidualGame(n_players=self.n, game_values=residual_values)
-            proxy_interactions += self.adjustment_method.approximate(budget, residual_game)
-        proxy_interactions.baseline_value = baseline_value
-        proxy_interactions.interactions[()] = (
-            baseline_value  # Ensure empty coalition value is correct
-        )
-        return proxy_interactions
-
-    def approximate_tree(
-        self, budget: int, game: Game | Callable[[np.ndarray], np.ndarray], **_: dict
-    ) -> InteractionValues:
-        """Approximate interactions with a tree proxy and exact tree readout.
-
-        Samples ``budget`` coalitions, evaluates the game, fits the tree proxy,
-        then reads off interactions exactly via
-        :class:`~shapiq.tree.interventional.explainer.InterventionalTreeExplainer`
-        in boolean-tree mode. Optional residual adjustment is applied to the proxy's residuals on the same coalitions; see :class:`ResidualGame` for how alignment is ensured.
-
-        Args:
-            budget: Number of coalition evaluations to draw.
-            game: Coalition game.
-
-        Returns:
-            :class:`~shapiq.interaction_values.InteractionValues` for the
-            requested index and order.
-        """
-        # 1. Sample coalitions and fit proxy tree
-        self._sampler.sample(budget)
-        coalitions_matrix = self._sampler.coalitions_matrix
-        game_values = game(coalitions_matrix)
-        baseline_value = game_values[0]  # Value of the empty coalition
-        game_values -= baseline_value  # Normalize values
-
-        # 2. Extract interactions from proxy tree
-        self.proxy_model.fit(coalitions_matrix, game_values)  # ty: ignore[unresolved-attribute]
-
-        if safe_isinstance(
+        return proxy_approximate(
             self.proxy_model,
-            [
-                "sklearn.model_selection._search.GridSearchCV",
-                "sklearn.model_selection._search.RandomizedSearchCV",
-                "sklearn.model_selection._search.HalvingGridSearchCV",
-            ],
-        ):
-            self.proxy_model = self.proxy_model.best_estimator_  # ty: ignore[unresolved-attribute]
-
-        explainer = InterventionalTreeExplainer(
-            self.proxy_model,
-            data=np.zeros((1, self.n)),  # reference data for boolean tree
-            index=self.index,
+            coalitions_matrix=coalitions_matrix,
+            coalition_values=coalition_values,
+            baseline_value=baseline_value,
             max_order=self.max_order,
-            bool_tree=True,
+            approximation_index=self.approximation_index,
+            target_index=self.index,
+            adjustment_method=self.adjustment_method,
         )
-        proxy_values = explainer.explain_function(np.ones((1, self.n)))
-        proxy_interactions = InteractionValues(
-            values=proxy_values.interactions,
-            index=self.index,
-            max_order=self.max_order,
-            n_players=self.n,
-            min_order=0,
-            estimated=budget >= 2**self.n,
-            estimation_budget=budget,
-            baseline_value=float(baseline_value),
-        )
-
-        # 3. Optional adjustment of the proxy. The adjustment approximator re-samples the same
-        # coalitions (ProxySHAP fixes a shared random_state), so the residual values stay aligned.
-        if self.adjustment != "none":
-            residual_values = (
-                game_values
-                - self.proxy_model.predict(coalitions_matrix)  # ty: ignore[unresolved-attribute]
-            )
-            residual_values -= residual_values[0]  # Normalize residuals
-            residual_game = ResidualGame(n_players=self.n, game_values=residual_values)
-            proxy_interactions += self.adjustment_method.approximate(budget, residual_game)
-        proxy_interactions.baseline_value = baseline_value
-        proxy_interactions.interactions[()] = (
-            baseline_value  # Ensure empty coalition value is correct
-        )
-
-        return proxy_interactions

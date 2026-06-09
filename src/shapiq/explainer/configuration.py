@@ -135,11 +135,7 @@ def setup_approximator_automatically(
     Returns:
         The selected approximator.
     """
-    if (
-        SPEX is not None
-        and choose_spex(max_order=max_order, n_players=n_players)
-        and index in SPEX.valid_indices
-    ):
+    if choose_spex(max_order=max_order, n_players=n_players) and index in SPEX.valid_indices:
         return SPEX(
             n=n_players,
             max_order=max_order,

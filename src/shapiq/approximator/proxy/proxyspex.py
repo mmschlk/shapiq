@@ -11,9 +11,16 @@ from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import GridSearchCV
 
 from shapiq.approximator.base import Approximator
+from shapiq.approximator.proxy._models import (
+    ProxyLiteral,
+    ProxyModel,
+    ProxyModelWithHPO,
+    _select_base_proxy_via_string,
+)
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.conversion import convert_tree_model
+from shapiq.utils.modules import safe_isinstance
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
@@ -25,6 +32,13 @@ if TYPE_CHECKING:
 
 
 ValidProxySPEXIndices = ValidMoebiusConverterIndices
+
+# Hyperparameter grid for ProxySPEX's reference HPO-informed LightGBM proxy (Butler et al., 2025).
+_LIGHTGBM_DECODER_GRID = {
+    "max_depth": [3, 5],
+    "max_iter": [500, 1000],
+    "learning_rate": [0.01, 0.1],
+}
 
 
 class ProxySPEX(Approximator[ValidProxySPEXIndices]):
@@ -40,7 +54,7 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
         n: int,
         max_order: int = 2,
         index: ValidProxySPEXIndices = "k-SII",
-        proxy_model: Model | None = None,
+        proxy_model: Model | ProxyLiteral | ProxyModelWithHPO = "lightgbm",
         sampling_weights: np.ndarray | None = None,
         pairing_trick: bool = False,
         top_order: bool = False,
@@ -67,7 +81,23 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
                 must be of shape ``(n + 1,)`` and are used to determine the probability of sampling
                 a coalition of a certain size. Defaults to ``None``.
 
-            proxy_model: Optional proxy model to use for approximating the value function. If None, a default LightGBM regressor with hyperparameter tuning will be used. The model must implement the scikit-learn regressor interface (i.e., it must have fit and predict methods). Defaults to None.
+            proxy_model: Proxy model used to approximate the value function. ProxySPEX reads
+                interactions off the proxy's tree structure, so only **tree** proxies are
+                supported. May be:
+
+                * a string identifier (``"lightgbm"`` (default), ``"xgboost"``, ``"tree"``)
+                  selecting a tree estimator; ``"linear"`` is rejected since ProxySPEX is
+                  tree-only. The ``"lightgbm"`` tag yields the reference HPO-informed LightGBM
+                  proxy -- the selected ``LGBMRegressor`` wrapped in a grid search over
+                  :data:`_LIGHTGBM_DECODER_GRID`, as described in :cite:t:`Butler.2025`. The
+                  other tags select a bare estimator. ProxySPEX does not require the optional
+                  gradient-boosting backends: if the requested package is unavailable the tag
+                  warns and falls back to a bare scikit-learn ``DecisionTreeRegressor`` (which
+                  is therefore *not* wrapped in the LightGBM grid search).
+                * a fitted-on-call estimator implementing the scikit-learn regressor interface,
+                  or a hyperparameter-search wrapper exposing ``best_estimator_`` (e.g.
+                  :class:`~sklearn.model_selection.GridSearchCV` or the
+                  :class:`~shapiq.approximator.proxy._models.ProxyModelWithHPO` wrappers).
 
             random_state: Seed for random number generator. Defaults to ``None``.
 
@@ -75,28 +105,24 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
         """
         if sampling_weights is None:
             sampling_weights = np.array([math.comb(n, i) for i in range(n + 1)], dtype=float)
-        if proxy_model is None:
-            try:
-                import lightgbm as lgb
-            except ImportError as err:
-                msg = "The 'lightgbm' package is required for the default proxy model in ProxySPEX but it is not installed. Install it with: pip install 'shapiq[proxy]' or provide a custom proxy_model that implements the scikit-learn regressor interface."
-                raise ImportError(msg) from err
-            decoder_args = {
-                "max_depth": [3, 5],
-                "max_iter": [500, 1000],
-                "learning_rate": [0.01, 0.1],
-            }
-            base_model = lgb.LGBMRegressor(random_state=random_state)
-            self.proxy_model = GridSearchCV(
-                estimator=base_model,
-                param_grid=decoder_args,
-                scoring="r2",
-                cv=5,
-                verbose=0,
-                n_jobs=1,
-            )
+        if isinstance(proxy_model, str):
+            if proxy_model == "linear":
+                msg = "ProxySPEX only supports tree-based proxy models; 'linear' is not available."
+                raise ValueError(msg)
+            self.proxy_model = _select_base_proxy_via_string(proxy_model, random_state)
+            if proxy_model == "lightgbm" and safe_isinstance(
+                self.proxy_model, "lightgbm.LGBMRegressor"
+            ):
+                self.proxy_model: ProxyModel | ProxyModelWithHPO = GridSearchCV(
+                    estimator=self.proxy_model,
+                    param_grid=_LIGHTGBM_DECODER_GRID,
+                    scoring="r2",
+                    cv=5,
+                    verbose=0,
+                    n_jobs=1,
+                )
         else:
-            self.proxy_model = proxy_model
+            self.proxy_model: ProxyModel | ProxyModelWithHPO = proxy_model
         super().__init__(
             n=n,
             max_order=max_order,
@@ -133,12 +159,15 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
         # Fit the model on the training data
         self.proxy_model.fit(coalitions_matrix, coalition_values)
 
-        if isinstance(self.proxy_model, GridSearchCV):
+        if isinstance(self.proxy_model, ProxyModelWithHPO):
             final_model = self.proxy_model.best_estimator_
         else:
             final_model = self.proxy_model
-        # Obtain TreeModel
+        # Obtain TreeModel(s). convert_tree_model returns a single TreeModel for single-tree
+        # proxies (e.g. a DecisionTreeRegressor) and a list for ensembles; normalize to a list.
         tree_models = convert_tree_model(final_model)
+        if not isinstance(tree_models, list):
+            tree_models = [tree_models]
         # Obtain fourier coefficients
         unrefined_fourier = self._sklearn_to_fourier(tree_models=tree_models)
         # Refine the Fourier coefficients using the training data
