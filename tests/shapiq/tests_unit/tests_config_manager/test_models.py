@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 from pydantic import ValidationError
 
@@ -42,7 +44,7 @@ def test_budget_validation_rejects_out_of_range_values_for_n_14(budget: int):
 
 
 def test_budget_policy_validation_rejects_bad_steps():
-    with pytest.raises(ValidationError, match="budget_policy.steps must be greater than 0"):
+    with pytest.raises(ValidationError, match=r"budget_policy\.steps must be greater than 0"):
         MVPRunConfig(
             game="CaliforniaHousing",
             game_family="local_xai",
@@ -77,7 +79,12 @@ def test_game_family_validation_rejects_mismatched_family():
 
 
 def test_game_params_rejects_invalid_imputer():
-    with pytest.raises(ValidationError, match="Unsupported imputer 'bogus'"):
+    with pytest.raises(
+        ValidationError,
+        match=re.escape(
+            "Unsupported imputer 'bogus'. Available imputers: baseline, conditional, marginal"
+        ),
+    ):
         MVPRunConfig(
             game="CaliforniaHousing",
             game_family="local_xai",
@@ -91,5 +98,3 @@ def test_game_params_rejects_invalid_imputer():
             game_params={"imputer": "bogus"},
             ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
         )
-
-
