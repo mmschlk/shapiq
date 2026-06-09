@@ -1,0 +1,79 @@
+"""
+CrossModalBlurMasker — Composite masker with Gaussian-blur image occlusion
+for Vision-Language Models.
+
+Follows the Composite Pattern: internally instantiates two atomic maskers
+(VisionBlurMasker + TextAttentionMasker) and delegates image/text occlusion
+to each respectively. Owns no low-level tensor math itself.
+
+This is the counterpart of ``CrossModalMeanMasker``; the only difference is
+the image-side occlusion strategy (Gaussian blur instead of zero-out mean).
+
+Registered as ``"crossmodal_blur"`` in the masker registry.
+
+.. note::
+    Requires ``VisionBlurMasker``. See ``VisionBlurMasker`` for
+    the CPU Gaussian blur implementation.
+"""
+
+from typing import Optional
+
+from ..base import Masker, PhysicalMask, ProcessorOutput, MaskerConfig
+from . import register_masker
+from .vision_blur import VisionBlurMasker
+from .text_attention import TextAttentionMasker
+
+
+@register_masker("crossmodal_blur")
+class CrossModalBlurMasker(Masker):
+    """
+    Cross-modal occlusion orchestrator with Gaussian-blur image occlusion.
+
+    Delegates:
+        - Image occlusion → VisionBlurMasker (registered as ``"vision_blur"``)
+        - Text occlusion  → TextAttentionMasker (registered as ``"text_attn"``)
+
+    The composite itself performs no element-wise operations.
+
+    Usage:
+        From a notebook or experiment::
+
+            from ImputerFactory import MaskerConfig
+            cfg = MaskerConfig(strategy="crossmodal_blur")
+            imputer = factory.build(model, processor, img, txt, masker_config=cfg)
+
+    Registered as ``"crossmodal_blur"``.
+    """
+
+    def __init__(self, config: Optional[MaskerConfig] = None):
+        super().__init__(config)
+        self._vision_masker = VisionBlurMasker(config=config)
+        self._text_masker = TextAttentionMasker(config=config)
+
+    def apply(
+        self,
+        processor_output: ProcessorOutput,
+        physical_mask: PhysicalMask,
+    ) -> ProcessorOutput:
+        """
+        Apply blur image occlusion + attention-mask text occlusion.
+
+        Args:
+            processor_output: Original model inputs.
+            physical_mask: Contains both ``image_binary_mask`` (for blur)
+                and ``text_attention_mask`` (for attention swapping).
+
+        Returns:
+            ProcessorOutput with:
+                - ``pixel_values``: Gaussian-blurred in masked regions.
+                - ``attention_mask``: Replaced by text coalition mask.
+                - ``input_ids``: Unchanged.
+        """
+        # 1. Delegate image occlusion to VisionBlurMasker (blur + blend)
+        masked = self._vision_masker.apply(processor_output, physical_mask)
+
+        # 2. Delegate text occlusion to TextAttentionMasker
+        #    (swaps attention_mask, passes pixel_values through)
+        masked = self._text_masker.apply(masked, physical_mask)
+
+        return masked
