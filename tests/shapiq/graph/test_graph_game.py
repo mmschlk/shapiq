@@ -7,6 +7,8 @@ Shapley interaction values for graph neural networks (GNNs) using the GraphSHAP-
 
 import torch
 import numpy as np
+import pytest
+from shapiq.graph import GraphGame
 
 class TestGraphGame:
     """Test class for GraphGame."""
@@ -73,3 +75,8 @@ class TestGraphGame:
     def test_baseline_shape(self,gcn_graph_game):
         """Baseline must match feature dimension."""
         assert gcn_graph_game.baseline.shape[0] == gcn_graph_game.x_graph.x.shape[1]
+
+    def test_init_invalid_task(gcn_model, simple_graph):
+        """Test that ValueError is raised for invalid task."""
+        with pytest.raises(ValueError, match="task must be 'classification' or 'regression'"):
+            GraphGame(model=gcn_model, x_graph=simple_graph, task="invalid")

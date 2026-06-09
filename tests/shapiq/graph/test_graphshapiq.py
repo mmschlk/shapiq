@@ -7,12 +7,6 @@ Shapley interaction values for graph neural networks (GNNs) using the GraphSHAP-
 
 from __future__ import annotations
 
-import pytest
-
-from shapiq.graph.base import GraphGame
-from shapiq.graph.graphshapiq import GraphSHAPIQ
-
-
 class TestGraphSHAPIQ:
     """Test class for GraphSHAPIQ.__init__."""
 
