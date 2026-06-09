@@ -14,6 +14,7 @@ from shapiq.graph.graphshapiq import GraphSHAPIQ
 class SimpleGCN(nn.Module):
     def __init__(self, num_node_features=3, output_dim=1, num_layers=2):
         super().__init__()
+        self.num_layers = num_layers  # <-- Hier fehlt es!
         self.convs = nn.ModuleList([GCNConv(num_node_features, 16)])
         for _ in range(num_layers - 1):
             self.convs.append(GCNConv(16, 16))
@@ -151,7 +152,6 @@ def gcn_graph_game(gcn_model, simple_graph):
         baseline_strategy="average",
     )
 
-
 @pytest.fixture
 def gin_graph_game(gin_model, simple_graph):
     return GraphGame(
@@ -160,7 +160,6 @@ def gin_graph_game(gin_model, simple_graph):
         task="regression",
         baseline_strategy="average",
     )
-
 
 @pytest.fixture
 def gat_graph_game(gat_model, simple_graph):
@@ -171,7 +170,6 @@ def gat_graph_game(gat_model, simple_graph):
         baseline_strategy="average",
     )
 
-
 @pytest.fixture
 def gcn_graph_game_small(gcn_model, small_graph):
     return GraphGame(
@@ -180,7 +178,6 @@ def gcn_graph_game_small(gcn_model, small_graph):
         task="regression",
         baseline_strategy="average",
     )
-
 
 @pytest.fixture
 def gcn_graph_game_disconnected(gcn_model, disconnected_graph):
@@ -191,7 +188,6 @@ def gcn_graph_game_disconnected(gcn_model, disconnected_graph):
         baseline_strategy="average",
     )
 
-
 @pytest.fixture
 def gcn_graph_game_single_node(gcn_model, single_node_graph):
     return GraphGame(
@@ -200,7 +196,6 @@ def gcn_graph_game_single_node(gcn_model, single_node_graph):
         task="regression",
         baseline_strategy="average",
     )
-
 
 # =========================================================
 # GraphSHAPIQ fixtures
