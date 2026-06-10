@@ -30,7 +30,7 @@ def _import_lightgbm() -> ModuleType:
     except ImportError as err:
         msg = (
             "The 'lightgbm' package is required for OddSHAP but it is not installed. "
-            "Please install lightgbm to use this approximator."
+            "Install it via the optional extra: pip install 'shapiq[proxy]'."
         )
         raise ImportError(msg) from err
     return lightgbm
@@ -363,8 +363,10 @@ class OddSHAP(Approximator):
         tree_models = convert_tree_model(surrogate_model)
         # The ProxySPEX instance is only a host for its exact GBT->Fourier extractor;
         # it is never sampled or fit.
+        # max_order=1 keeps the base class from building an order-2 interaction
+        # lookup that the extractor never uses.
         fourier_extractor = ProxySPEX(
-            n=self.n, proxy_model=surrogate_model, random_state=self._random_state
+            n=self.n, max_order=1, proxy_model=surrogate_model, random_state=self._random_state
         )
         fourier_coefficients = fourier_extractor._sklearn_to_fourier(tree_models)  # noqa: SLF001
 
