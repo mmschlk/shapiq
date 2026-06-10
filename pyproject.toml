@@ -221,7 +221,7 @@ exclude = ["tests", "docs", "benchmark", "scripts", "src/shapiq_games"]
 
 [tool.ty.environment]
 python-version = "3.12"
-python = "/home/gengtianhao/miniforge3/envs/ttml/bin/python"
+python = "./.venv"
 python-platform = "linux"
 
 [tool.cibuildwheel]
