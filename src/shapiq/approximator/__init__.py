@@ -84,7 +84,6 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     RegressionMSR,
     ProxySPEX,
     ProxySHAP,
-    MSRBiased,
     OddSHAP,
 ]
 
@@ -156,7 +155,6 @@ __all__ = [
     "InconsistentKernelSHAPIQ",
     "ProxySPEX",
     "ProxySHAP",
-    "MSRBiased",
     "OddSHAP",
     "RegressionMSR",
     "SHAPIQ",
