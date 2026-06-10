@@ -26,7 +26,7 @@ def supported_indices_for_class(cls) -> list[str]:
     return supported
 
 
-def main() -> None:
+def test_approximator_configurations() -> None:
     for name in ALL_SUPPORTED_APPROXIMATORS:
         # 1. Assert that the approximator class actually exists in the shapiq module
         assert hasattr(appr, name), (
@@ -73,7 +73,3 @@ def main() -> None:
                     f"with index '{idx}': {type(e).__name__}: {e}"
                 )
                 raise AssertionError(msg) from e
-
-
-if __name__ == "__main__":
-    main()

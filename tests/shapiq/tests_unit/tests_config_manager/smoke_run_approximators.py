@@ -14,7 +14,7 @@ def try_run(ApproxClass, name):
         game = DummyGame(n)
         # Instantiate with common parameters if supported
         inst = ApproxClass(n=n, random_state=0)
-        iv = inst.approximate(budget=20, game=game)
+        iv = inst.approximate(budget=10, game=game)
         logger.info(
             "Success: returned InteractionValues, n_players=%s, estimated=%s",
             iv.n_players,

@@ -1,10 +1,9 @@
 # Default Benchmark Configuration
 # Minimal fast verification configuration provided for Runner testing
-
 game: "CaliforniaHousing"
 game_family: "local_xai"
-index: "SV"
-max_order: 1
+index: "SII"
+max_order: 2
 n_players: 14
 
 game_params:
@@ -12,26 +11,26 @@ game_params:
   imputer: "marginal"
   x: 0
 
+# For n=14, valid budgets satisfy 15 <= budget < 16384.
+# budget_policy (optional): use when you want runner to generate budgets based on game size
+#budget_policy:
+#  strategy: "range"
+#  start: "n+1"
+#  end: "2^n-1"
+#  steps: 10
+
 ground_truth:
   strategy: "compute"
   method: "ExactComputer"
 
 approximators:
-  - "PermutationSamplingSV"
-  - "StratifiedSamplingSV"
+  - "SHAPIQ"
+  - "KernelSHAPIQ"
 
-# For n=14, valid budgets satisfy 15 <= budget < 16384.
-# budget_policy (optional): use when you want runner to generate budgets based on game size
-# budget_policy:
-#   strategy: "range"
-#   start: "n+1"
-#   end: "2^n-1"
-#   steps: 10
+
 budgets:
-  - 100
-  - 500
+  - 200
+  - 1000
 
 seeds:
-  - 0
-  - 1
-  - 2
+  - 42
