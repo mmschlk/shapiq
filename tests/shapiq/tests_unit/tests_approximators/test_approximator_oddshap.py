@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import math
 import sys
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -214,7 +215,7 @@ def test_approximate_estimated_flag(budget_pct):
 
 @pytest.mark.parametrize("n", [6, 8, 10])
 def test_efficiency_axiom_holds_exactly(n):
-    """sum_i phi_i = v(N) - v(empty) is enforced by Sara's constraint system."""
+    """sum_i phi_i = v(N) - v(empty) is enforced exactly by the constraint system."""
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
     iv = approx.approximate(2**n, game)
@@ -260,9 +261,8 @@ def test_different_seed_differs():
 # -----------------------------------------------------------------------------
 # Budget validation
 #
-# Sara replaced the low-budget TreeExplainer fallback with an explicit
-# ValueError per Max's feedback. The regression branch is now the only
-# code path; verify that the budget threshold is enforced.
+# Sub-budget calls raise instead of silently falling back to TreeSHAP (a
+# deliberate divergence from Algorithm 1); verify the threshold is enforced.
 # -----------------------------------------------------------------------------
 
 
@@ -353,6 +353,9 @@ def test_select_odd_interactions_returns_higher_order_odd_only():
         n_candidate_interactions=10,
         surrogate_model=surrogate,
     )
+    # Guard against a silent break of convert_tree_model / _sklearn_to_fourier
+    # that would make screening return nothing and pass the loop vacuously.
+    assert len(selected) > 0
     for t in selected:
         assert isinstance(t, tuple)
         assert len(t) >= 3
@@ -430,10 +433,12 @@ def test_select_odd_interactions_returns_full_support_for_large_k():
     approx = OddSHAP(n=n, random_state=0)
     *_, surrogate = _fit_surrogate(approx, game, 2**n)
     selected_small = approx._select_odd_interactions(
-        n_candidate_interactions=3, surrogate_model=surrogate,
+        n_candidate_interactions=3,
+        surrogate_model=surrogate,
     )
     selected_all = approx._select_odd_interactions(
-        n_candidate_interactions=2**n, surrogate_model=surrogate,
+        n_candidate_interactions=2**n,
+        surrogate_model=surrogate,
     )
     assert len(selected_small) <= 3
     assert len(selected_all) >= len(selected_small)
@@ -577,14 +582,98 @@ def test_build_weighted_system_keeps_boundary_rows_when_requested():
     coalitions = approx._sampler.coalitions_matrix
     game_values = np.asarray(game(coalitions), dtype=float)
     approx._build_support(None)
-    x_drop, y_drop = approx._build_weighted_system(
-        coalitions=coalitions, game_values=game_values,
-        empty_set_value=0.0, full_set_value=1.0, drop_boundary_rows=True,
+    x_drop, _y_drop = approx._build_weighted_system(
+        coalitions=coalitions,
+        game_values=game_values,
+        empty_set_value=0.0,
+        full_set_value=1.0,
+        drop_boundary_rows=True,
     )
     x_keep, y_keep = approx._build_weighted_system(
-        coalitions=coalitions, game_values=game_values,
-        empty_set_value=0.0, full_set_value=1.0, drop_boundary_rows=False,
+        coalitions=coalitions,
+        game_values=game_values,
+        empty_set_value=0.0,
+        full_set_value=1.0,
+        drop_boundary_rows=False,
     )
     assert x_keep.shape[0] == coalitions.shape[0]
     assert x_keep.shape[0] == x_drop.shape[0] + 2
     assert y_keep.shape[0] == x_keep.shape[0]
+
+
+# -----------------------------------------------------------------------------
+# Defensive guards (contract violations / invalid internal calls)
+# -----------------------------------------------------------------------------
+
+
+def test_missing_empty_coalition_raises():
+    """If the sampler omits the empty coalition (contract violation), approximate raises."""
+    n = 6
+    approx = OddSHAP(n=n, random_state=0)
+    fake_sampler = MagicMock()
+    fake_sampler.coalitions_matrix = np.ones((1, n), dtype=bool)
+    fake_sampler.empty_coalition_index = None
+    approx._sampler = fake_sampler
+    with pytest.raises(RuntimeError, match="expected empty coalition"):
+        approx.approximate(n * approx.interaction_factor, lambda c: np.zeros(len(c)))
+
+
+def test_missing_grand_coalition_raises():
+    """If the sampler omits the grand coalition (contract violation), approximate raises."""
+    n = 6
+    approx = OddSHAP(n=n, random_state=0)
+    fake_sampler = MagicMock()
+    fake_sampler.coalitions_matrix = np.zeros((1, n), dtype=bool)
+    fake_sampler.empty_coalition_index = 0
+    approx._sampler = fake_sampler
+    with pytest.raises(RuntimeError, match="expected grand coalition"):
+        approx.approximate(n * approx.interaction_factor, lambda c: np.zeros(len(c)))
+
+
+def test_build_weighted_system_without_support_raises():
+    """_build_weighted_system requires _build_support to have run first."""
+    n = 6
+    approx = OddSHAP(n=n, random_state=0)
+    with pytest.raises(RuntimeError, match="support has not been built"):
+        approx._build_weighted_system(
+            coalitions=np.zeros((2, n), dtype=bool),
+            game_values=np.zeros(2),
+            empty_set_value=0.0,
+            full_set_value=1.0,
+        )
+
+
+def test_build_constraint_system_without_support_raises():
+    """_build_constraint_system requires a non-empty support."""
+    n = 6
+    approx = OddSHAP(n=n, random_state=0)
+    with pytest.raises(RuntimeError, match="at least one non-empty interaction"):
+        approx._build_constraint_system(full_set_value=1.0, empty_set_value=0.0)
+
+
+def test_transform_to_shapley_rejects_wrong_length():
+    """_transform_to_shapley validates the coefficient-vector length against the support."""
+    n = 6
+    approx = OddSHAP(n=n, random_state=0)
+    approx._build_support([(0, 1, 2)])
+    wrong = np.zeros(approx.n_active_interactions + 1)
+    with pytest.raises(ValueError, match="does not match the active OddSHAP support"):
+        approx._transform_to_shapley(wrong, baseline_value=0.0)
+
+
+def test_transform_to_shapley_skips_even_interactions():
+    """Even-cardinality terms never appear from _build_support, but _transform skips
+    them defensively: perturbing an even term's coefficient must not change the output.
+    """
+    n = 6
+    approx = OddSHAP(n=n, random_state=0)
+    approx._build_support([(0, 1, 2)])
+    # inject an even interaction past the regular support
+    approx.odd_interaction_lookup[(0, 1)] = approx.n_active_interactions
+    approx.n_active_interactions += 1
+    coeffs = np.ones(approx.n_active_interactions)
+    coeffs_perturbed = coeffs.copy()
+    coeffs_perturbed[-1] = 1e9  # huge coefficient on the even term
+    sv = approx._transform_to_shapley(coeffs, baseline_value=0.0)
+    sv_perturbed = approx._transform_to_shapley(coeffs_perturbed, baseline_value=0.0)
+    np.testing.assert_array_equal(sv, sv_perturbed)
