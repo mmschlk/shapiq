@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -78,7 +79,10 @@ class LinearTreeSHAP:
                 given depth. Defaults to :func:`numpy.polynomial.chebyshev.chebpts2`.
         """
         self.clf = model
-        self._tree = validate_tree_model(model, class_label=None)[0]
+        # validate_tree_model returns TreeModel inputs by reference; deepcopy before
+        # reduce_feature_complexity() so a caller-owned (possibly shared) TreeModel is
+        # never mutated in place.
+        self._tree = copy.deepcopy(validate_tree_model(model, class_label=None)[0])
         self._relevant_features: np.ndarray = np.array(list(self._tree.feature_ids), dtype=int)
         self._tree.reduce_feature_complexity()
         self._n_nodes: int = self._tree.n_nodes

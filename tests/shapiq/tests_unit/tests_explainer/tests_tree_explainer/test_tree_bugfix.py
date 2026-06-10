@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from shapiq.tree import TreeExplainer, TreeModel, TreeSHAPIQ
+from shapiq.tree.linear import LinearTreeSHAP
 
 _LIGHTGBM_UBUNTU_BYTES_FILE = (
     Path(__file__).parent.parent.parent.parent / "data" / "models" / "lightgbm_ubuntu.bytes"
@@ -822,3 +823,30 @@ def test_xgb_ubjson_skip_single_value_truncated_raises():
     truncated = buf[:empty_idx] + b"[#i\x01D"  # count=1, type='D', no payload bytes
     with pytest.raises(RuntimeError, match=r"End of stream|Unexpected end of UBJSON"):
         parse_xgboost_ubjson(truncated, -1, 0.0)
+
+
+def test_linear_tree_shap_does_not_mutate_caller_tree_model():
+    """Test that constructing LinearTreeSHAP leaves the passed TreeModel untouched.
+
+    Regression test for https://github.com/mmschlk/shapiq/issues/544: validate_tree_model
+    returns TreeModel inputs by reference, and LinearTreeSHAP called
+    reduce_feature_complexity() on the result, remapping the caller's feature ids in place.
+    """
+    tree = TreeModel(
+        children_left=np.array([1, 3, -1, -1, -1]),
+        children_right=np.array([2, 4, -1, -1, -1]),
+        children_missing=np.array([1, 3, -1, -1, -1]),
+        # splits on features 3 and 1 only (a strict subset of the data's features)
+        features=np.array([3, 1, -2, -2, -2]),
+        thresholds=np.array([0.5, 0.5, np.nan, np.nan, np.nan]),
+        values=np.array([0.0, 0.0, 2.0, -1.0, 1.0]),
+        node_sample_weight=np.array([10.0, 6.0, 4.0, 3.0, 3.0]),
+    )
+    features_before = tree.features.copy()
+
+    explainer = LinearTreeSHAP(tree)
+
+    assert np.array_equal(tree.features, features_before)
+    # the explainer still works on its private reduced copy
+    explanation = explainer.explain_function(np.array([0.0, 0.0, 0.0, 1.0]))
+    assert np.isfinite(explanation.values).all()

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bugfix
+
+- Fixes `LinearTreeSHAP` mutating a caller-owned `TreeModel` in place during construction (`reduce_feature_complexity()` remapped the feature ids of the passed object, silently corrupting other explainers sharing it). The validated tree is now deep-copied before reduction. [#544](https://github.com/mmschlk/shapiq/issues/544)
+
 ## v1.5.1 (2026-05-30)
 
 ### Bugfix
