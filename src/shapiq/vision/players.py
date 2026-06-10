@@ -1,32 +1,91 @@
+"""Player strategies for vision models, that define how to create players from images. 
+Players are defined in pixel space for CNNs and token space for ViTs. 
+Each strategy returns boolean masks that map each player to its corresponding pixels or tokens.
+
+Requires scikit-image for superpixel segmentation, otherwise numpy only."""
+
 from __future__ import annotations
 
 import math
 import numpy as np
-from typing import Optional, Literal, TYPE_CHECKING
+from typing import Optional, Literal
 from abc import ABC, abstractmethod
 
-if TYPE_CHECKING:
-    import torch
-
 class PlayerStrategy(ABC):
-    """Defines how the image is split into n_players regions."""
+    """Abstract base class for all player strategies.
+    A player strategy encapsulates the rule by which an image is divided into
+    ``n_players`` disjoint regions.
+    """
 
     @property
     @abstractmethod
     def n_players(self) -> int: ...
+    """Number of players (image regions) produced by this strategy.
+
+        Returns:
+            int: The number of players.
+    """
 
 
 class CNNPlayerStrategy(PlayerStrategy, ABC):
-    """Player strategy that returns spatial masks in pixel space."""
+    """Abstract base class for player strategies that returns spatial masks in pixel space."""
 
     @abstractmethod
     def get_masks(self, image: np.ndarray) -> np.ndarray:
-        # returns (n_players, H, W)
+        """Compute and return per-player pixel masks for the given image.
+
+        Args:
+            image: Input image as a ``(H, W, C)`` numpy array
+
+        Returns:
+            Boolean numpy array of shape ``(n_players, H, W)``
+        """
         ...
         
 
 class SuperpixelStrategy(CNNPlayerStrategy):
-    """Splits the image into superpixels using SLIC or a custom mask."""
+    """Partition the image into superpixels.
+
+    Players are computed either by running the SLIC (Simple Linear Iterative
+    Clustering) algorithm from ``scikit-image``, or by accepting a
+    user-provided segmentation mask.
+
+    **SLIC behaviour**: SLIC is not guaranteed to produce exactly that many superpixels as passed by ``n_segments``. If fewer than ``n_segments``
+    superpixels are produced, the strategy retries with a progressively larger
+    request (up to 20 additional attempts) before accepting the result.
+    :attr:`n_players` always reflects the *actual* number of superpixels
+    found after the algorithm ran.
+
+    Args:
+        n_segments: Preferred number of superpixels to request from SLIC.
+            Required when no ``mask`` is provided; ignored once a custom mask
+            is set.
+        algorithm: SLIC variant to use.
+
+            - ``"slico"`` (default): SLIC-zero — enforces equal-size
+              superpixels regardless of image texture, producing a more
+              uniform grid.
+            - ``"slic"``: standard SLIC — segment size follows image content,
+              which can yield very irregular segments in textured regions.
+
+        mask: Optional precomputed segmentation. Accepted formats:
+
+            - **2-D integer array** ``(H, W)``: each unique integer value
+              identifies one superpixel. Labels need not be contiguous or
+              start at 0.
+            - **3-D boolean array** ``(n_players, H, W)``: ``mask[i]`` is
+              the binary pixel mask for player ``i``. Must be non-overlapping
+              (each pixel belongs to at most one player) and cover every pixel.
+
+    Raises:
+        ValueError: If neither ``n_segments`` nor ``mask`` is provided.
+
+    Example:
+        >>> strategy = SuperpixelStrategy(n_segments=16)
+        >>> masks = strategy.get_masks(image)   # (n_players, H, W) bool
+        >>> strategy.n_players                  # actual superpixel count
+        16
+    """
 
     def __init__(
         self,
@@ -34,21 +93,7 @@ class SuperpixelStrategy(CNNPlayerStrategy):
         algorithm: Literal["slic", "slico"] = "slico",
         mask: Optional[np.ndarray] = None,
     ):
-        """Create a SuperpixelStrategy.
-
-        Args:
-            n_segments: Optional if no mask provided. Preferred number of segments 
-                passed to `slic`.
-            algorithm: Which SLIC algorithm to use. "slic" may produce smooth
-                regular-sized superpixels in smooth regions and highly irregular
-                superpixels in textured regions. "slico" generates regular shaped
-                superpixels in both textured and non-textured regions alike.
-            mask: Optional precomputed mask. Can be either:
-                - 2D integer label array with shape (H, W), where each unique
-                  integer denotes a superpixel (labels need not be contiguous
-                  or start at 1), or
-                - 3D boolean array with shape (n_players, H, W).
-        """
+    
         if mask is None and n_segments is None:
             raise ValueError("Either n_segments or mask must be provided.")
         
@@ -166,11 +211,15 @@ class SuperpixelStrategy(CNNPlayerStrategy):
 
 
 class TransformerPlayerStrategy(PlayerStrategy, ABC):
-    """Player strategy that returns a 1D boolean mask in latent/token space."""
+    """Abstract base class for token-space player strategies."""
 
     @abstractmethod
-    def get_token_masks(self) -> torch.Tensor:
-        # returns (n_tokens,) bool
+    def get_token_masks(self) -> np.ndarray:
+        """Return the flat token indices owned by each player.
+
+        Returns:
+            Integer numpy array of shape ``(n_players, tokens_per_player)``
+        """
         ...
 
 
