@@ -119,6 +119,21 @@ METRIC_FUNCTIONS: dict[str, Any] = {
 _LOWER_IS_BETTER = frozenset({"MSE", "MAE", "SSE", "SAE"})
 
 
+def canonical_sv_vector(interaction_values, n: int) -> np.ndarray:
+    """Extract ``[baseline, phi_0, ..., phi_{n-1}]`` keyed by interaction.
+
+    Aligns estimates and ground truth by interaction *key* instead of relying on
+    ``.values`` positional order, which differs across approximators (the
+    proxy-family methods order their ``interaction_lookup`` differently from
+    ``ExactComputer``, so a positional comparison scrambles the singletons).
+    """
+    dict_values = interaction_values.dict_values
+    baseline = float(dict_values.get((), interaction_values.baseline_value))
+    return np.array(
+        [baseline] + [float(dict_values.get((i,), 0.0)) for i in range(n)], dtype=float
+    )
+
+
 # -----------------------------------------------------------------------------
 # Game registry
 # -----------------------------------------------------------------------------
@@ -205,16 +220,17 @@ def evaluate_cell(
             status=f"skipped:refused_regime({type(refuse_exc).__name__})",
         )
 
-    if iv.values.shape != ground_truth.shape:
+    estimate = canonical_sv_vector(iv, game_spec.n)
+    if estimate.shape != ground_truth.shape:
         return CellResult(
             method=method_name, game=game_spec.name, n=game_spec.n,
             budget=budget, seed=seed, metrics={},
             runtime_seconds=runtime,
-            status=f"skipped:shape_mismatch({iv.values.shape}vs{ground_truth.shape})",
+            status=f"skipped:shape_mismatch({estimate.shape}vs{ground_truth.shape})",
         )
 
     metrics = {
-        name: fn(iv.values, ground_truth)
+        name: fn(estimate, ground_truth)
         for name, fn in METRIC_FUNCTIONS.items()
     }
     return CellResult(
@@ -248,9 +264,9 @@ def run_sweep(
             key = (spec.name, seed)
             if key not in truth_cache:
                 truth_game = spec.factory(seed)
-                truth_cache[key] = ExactComputer(
-                    truth_game, n_players=spec.n,
-                )(index="SV").values
+                truth_cache[key] = canonical_sv_vector(
+                    ExactComputer(truth_game, n_players=spec.n)(index="SV"), spec.n,
+                )
 
             ground_truth = truth_cache[key]
             for budget_pct in budget_pcts:

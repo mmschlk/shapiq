@@ -94,6 +94,7 @@ def construct_for_sv(
         candidate_kwargs.append({"n": n, "random_state": random_state, **extra})
     candidate_kwargs.extend([
         dict(n=n, index="SV", max_order=1, random_state=random_state),
+        dict(n=n, index="SV", random_state=random_state),
         dict(n=n, random_state=random_state),
     ])
 
