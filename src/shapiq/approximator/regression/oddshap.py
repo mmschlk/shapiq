@@ -179,7 +179,8 @@ class OddSHAP(Approximator):
         full_set_value = float(game_values[np.where(full_mask)[0][0]])
 
         # Candidate higher-order support size |T_odd| = ceil(m / eta) (paper Alg. 1);
-        # at full budget the regression is exact, so the support is not truncated.
+        # at full budget all coalitions are enumerated, so the candidate support is
+        # not truncated.
         if budget >= 2**self.n:
             n_candidate_interactions = 2**self.n
         else:
