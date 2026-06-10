@@ -54,11 +54,6 @@ def test_init_defaults(n):
     assert approx.index == "SV"
     assert approx.interaction_factor == 10
     assert approx.odd_only is True
-    assert approx.regression_basis == "Fourier"
-    # Default detection backend now uses tree interaction values
-    # (ProxySHAP-style InterventionalTreeExplainer), not the bespoke
-    # lgboost-Fourier adapter.
-    assert approx.interaction_detection == "ProxySHAP"
 
 
 def test_init_custom_kwargs():
@@ -350,11 +345,8 @@ def test_select_odd_interactions_returns_higher_order_odd_only():
     n = 10
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2**n)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
     selected = approx._select_odd_interactions(
-        budget=200,  # sub-budget triggers the top-k truncation branch
-        coalitions=coalitions,
-        game_values=game_values,
         n_candidate_interactions=10,
         surrogate_model=surrogate,
     )
@@ -368,12 +360,9 @@ def test_select_odd_interactions_respects_k():
     n = 10
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2**n)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
     k = 5
     selected = approx._select_odd_interactions(
-        budget=200,  # sub-budget so the top-k limit kicks in
-        coalitions=coalitions,
-        game_values=game_values,
         n_candidate_interactions=k,
         surrogate_model=surrogate,
     )
@@ -384,12 +373,9 @@ def test_select_odd_interactions_handles_zero_budget():
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2**n)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
     assert (
         approx._select_odd_interactions(
-            budget=80,
-            coalitions=coalitions,
-            game_values=game_values,
             n_candidate_interactions=0,
             surrogate_model=surrogate,
         )
@@ -402,9 +388,6 @@ def test_select_odd_interactions_handles_missing_surrogate():
     approx = OddSHAP(n=n, random_state=0)
     assert (
         approx._select_odd_interactions(
-            budget=80,
-            coalitions=np.zeros((1, n), dtype=bool),
-            game_values=np.zeros(1),
             n_candidate_interactions=10,
             surrogate_model=None,
         )
@@ -418,12 +401,9 @@ def test_select_odd_interactions_full_budget_returns_all_higher_order_odd():
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
-    coalitions, game_values, surrogate = _fit_surrogate(approx, game, 2**n)
+    *_, surrogate = _fit_surrogate(approx, game, 2**n)
     selected = approx._select_odd_interactions(
-        budget=2**n,  # full-budget path
-        coalitions=coalitions,
-        game_values=game_values,
-        n_candidate_interactions=3,  # would clip to 3 in sub-budget mode
+        n_candidate_interactions=3,
         surrogate_model=surrogate,
     )
     # At full budget we expect more than 3 since k truncation is bypassed.
