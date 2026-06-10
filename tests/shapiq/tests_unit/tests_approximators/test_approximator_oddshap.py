@@ -1,17 +1,16 @@
 """Tests for the OddSHAP approximator.
 
 OddSHAP estimates first-order Shapley values via paired sampling + odd-only
-Fourier regression on a LightGBM surrogate. The algorithm has two branches:
+Fourier regression. A LightGBM surrogate is fitted to the sampled coalitions
+and its exact Fourier spectrum (extracted via ProxySPEX's tree-to-Fourier
+routine) screens the top ``ceil(budget / interaction_factor)`` odd
+higher-order interactions; the active support is then solved with a
+constrained weighted Fourier regression and the odd coefficients are
+transformed into Shapley values. Budgets below ``n * interaction_factor``
+are rejected with a ``ValueError`` (there is deliberately no fallback to
+another estimator).
 
-  - low-budget fallback (budget < n * interaction_factor):
-        fit surrogate, explain via TreeExplainer
-
-  - high-budget regression (budget >= n * interaction_factor):
-        fit surrogate, screen top-k odd interactions via the ProxySPEX adapter,
-        build active support, solve constrained weighted Fourier regression,
-        transform odd coefficients to Shapley values
-
-The constraint system enforces the exact identity
+The constraint system enforces the exact identities
     beta_empty = (f(N) + f(empty)) / 2,
     sum over non-empty odd Fourier coefficients = -(f(N) - f(empty)) / 2,
 which after the -2 scaling in `_transform_to_shapley` guarantees the
@@ -19,9 +18,8 @@ efficiency axiom by construction:
     sum_i phi_i = f(N) - f(empty),
     phi_empty   = f(empty).
 
-These two identities are checked as EXACT properties below. Convergence to
-ExactComputer on dense games is NOT a guarantee — OddSHAP is a sparse
-recovery method — so the convergence test is marked xfail(strict=False).
+These two identities are checked as EXACT properties below, alongside a
+full-budget convergence check against ExactComputer on a sparse SOUM game.
 """
 
 from __future__ import annotations
@@ -38,6 +36,11 @@ from shapiq.approximator.regression import OddSHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import SOUM, DummyGame
+from tests.shapiq.markers import skip_if_no_lightgbm
+
+# OddSHAP's surrogate requires lightgbm (optional 'proxy' extra); skip the whole
+# module in environments without it, like the other LightGBM-dependent suites.
+pytestmark = [skip_if_no_lightgbm]
 
 # -----------------------------------------------------------------------------
 # Initialization
@@ -395,22 +398,46 @@ def test_select_odd_interactions_handles_missing_surrogate():
     )
 
 
-def test_select_odd_interactions_full_budget_returns_all_higher_order_odd():
-    """At full budget Sara's code returns the entire higher-order odd support,
-    not the top-k subset — k truncation is only for sub-budget mode."""
+def test_full_budget_bypasses_candidate_truncation(monkeypatch):
+    """At budget = 2**n the candidate support must not be truncated to
+    ceil(budget / interaction_factor): ``approximate`` passes the untruncated
+    candidate count (2**n) down to the screening step."""
+    n = 8
+    approx = OddSHAP(n=n, random_state=0)
+    captured = {}
+
+    def additive_game(coalitions):
+        return coalitions.astype(float).sum(axis=1)
+
+    def fake_select_odd_interactions(**kwargs):
+        captured["n_candidate_interactions"] = kwargs["n_candidate_interactions"]
+        return []
+
+    monkeypatch.setattr(approx, "_fit_surrogate_model", lambda **kw: object())
+    monkeypatch.setattr(approx, "_select_odd_interactions", fake_select_odd_interactions)
+
+    approx.approximate(2**n, additive_game)
+
+    assert captured["n_candidate_interactions"] == 2**n
+    assert captured["n_candidate_interactions"] > math.ceil(2**n / approx.interaction_factor)
+
+
+def test_select_odd_interactions_returns_full_support_for_large_k():
+    """With a candidate budget larger than the available odd support, the
+    screening returns the entire higher-order odd support (no spurious cap)."""
     n = 8
     game = SOUM(n=n, n_basis_games=15, max_interaction_size=3, random_state=42)
     approx = OddSHAP(n=n, random_state=0)
     *_, surrogate = _fit_surrogate(approx, game, 2**n)
-    selected = approx._select_odd_interactions(
-        n_candidate_interactions=3,
-        surrogate_model=surrogate,
+    selected_small = approx._select_odd_interactions(
+        n_candidate_interactions=3, surrogate_model=surrogate,
     )
-    # At full budget we expect more than 3 since k truncation is bypassed.
-    # The exact count depends on the surrogate; just verify the limit is
-    # not enforced.
-    if len(selected) > 0:
-        assert all(len(t) >= 3 and len(t) % 2 == 1 for t in selected)
+    selected_all = approx._select_odd_interactions(
+        n_candidate_interactions=2**n, surrogate_model=surrogate,
+    )
+    assert len(selected_small) <= 3
+    assert len(selected_all) >= len(selected_small)
+    assert all(len(t) >= 3 and len(t) % 2 == 1 for t in selected_all)
 
 
 # -----------------------------------------------------------------------------
@@ -499,3 +526,65 @@ def test_efficiency_persists_at_sub_budget(n):
     v_full = float(game(np.ones((1, n), dtype=bool))[0])
     v_empty = float(game(np.zeros((1, n), dtype=bool))[0])
     assert np.sum(iv.values[1:]) == pytest.approx(v_full - v_empty, abs=1e-6)
+
+
+# -----------------------------------------------------------------------------
+# Remaining branch coverage
+# -----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("n", [0, 1])
+def test_sampling_weights_reject_degenerate_n(n):
+    with pytest.raises(ValueError, match="undefined for n <= 1"):
+        OddSHAP._init_sampling_weights_static(n)
+
+
+@pytest.mark.parametrize("n", [0, 1])
+def test_regression_kernel_weights_reject_degenerate_n(n):
+    with pytest.raises(ValueError, match="undefined for n <= 1"):
+        OddSHAP._init_regression_kernel_weights_static(n)
+
+
+def test_custom_tree_params_are_used_for_the_surrogate_fit():
+    """The tree_params branch of `_fit_surrogate_model` builds the LightGBM
+    surrogate from the user-supplied parameters."""
+    n = 6
+    game = DummyGame(n=n, interaction=(1, 2))
+    approx = OddSHAP(n=n, random_state=0, tree_params={"max_depth": 2, "n_estimators": 5})
+    approx._sampler.sample(2**n)
+    coalitions = approx._sampler.coalitions_matrix
+    game_values = np.asarray(game(coalitions), dtype=float)
+    surrogate = approx._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
+    assert surrogate.get_params()["max_depth"] == 2
+    assert surrogate.get_params()["n_estimators"] == 5
+
+
+def test_build_support_with_none_yields_baseline_support():
+    """`_build_support(None)` produces the minimal support: () plus singletons."""
+    n = 5
+    approx = OddSHAP(n=n, random_state=0)
+    approx._build_support(None)
+    assert approx.n_active_interactions == n + 1
+    assert list(approx.odd_interaction_lookup) == [()] + [(i,) for i in range(n)]
+
+
+def test_build_weighted_system_keeps_boundary_rows_when_requested():
+    """`drop_boundary_rows=False` keeps the empty and grand coalition rows."""
+    n = 5
+    game = DummyGame(n=n, interaction=(1, 2))
+    approx = OddSHAP(n=n, random_state=0)
+    approx._sampler.sample(2**n)
+    coalitions = approx._sampler.coalitions_matrix
+    game_values = np.asarray(game(coalitions), dtype=float)
+    approx._build_support(None)
+    x_drop, y_drop = approx._build_weighted_system(
+        coalitions=coalitions, game_values=game_values,
+        empty_set_value=0.0, full_set_value=1.0, drop_boundary_rows=True,
+    )
+    x_keep, y_keep = approx._build_weighted_system(
+        coalitions=coalitions, game_values=game_values,
+        empty_set_value=0.0, full_set_value=1.0, drop_boundary_rows=False,
+    )
+    assert x_keep.shape[0] == coalitions.shape[0]
+    assert x_keep.shape[0] == x_drop.shape[0] + 2
+    assert y_keep.shape[0] == x_keep.shape[0]

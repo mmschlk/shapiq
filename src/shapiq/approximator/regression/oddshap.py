@@ -136,6 +136,17 @@ class OddSHAP(Approximator):
         """
         del kwargs
 
+        # Validate the budget up front, before any sampling or game evaluation, so an
+        # invalid budget fails fast without paying for (possibly expensive) game calls.
+        minimum_budget = self.n * self.interaction_factor
+        if budget < minimum_budget:
+            msg = (
+                "The budget is too small for OddSHAP. "
+                f"Received budget={budget}, but at least {minimum_budget} evaluations are required. "
+                "Please increase the budget."
+            )
+            raise ValueError(msg)
+
         # 1. Sample coalitions
         # use coalition sampler initialized in base class
         self._sampler.sample(budget)
@@ -149,30 +160,25 @@ class OddSHAP(Approximator):
         empty_idx = self._sampler.empty_coalition_index
         if empty_idx is None:
             msg = "OddSHAP expected empty coalition to be present in the sampled coalitions"
-            raise RuntimeError(msg)
+            raise RuntimeError(msg)  # pragma: no cover
 
         empty_set_value = float(game_values[empty_idx])
 
         full_mask = np.sum(coalitions, axis=1) == self.n
         if not np.any(full_mask):
             msg = "OddSHAP expected grand coalition to be present in the sampled coalitions"
-            raise RuntimeError(msg)
+            raise RuntimeError(msg)  # pragma: no cover
 
         full_set_value = float(game_values[np.where(full_mask)[0][0]])
 
         # 4. Compute how many higher-order interactions OddSHAP is allowed to consider later.
         # The paper defines |T_odd| = ceil(m / eta); singletons are added separately.
-        n_candidate_interactions = max(0, math.ceil(budget / self.interaction_factor))
-
-        minimum_budget = self.n * self.interaction_factor
-        # Require enough samples to fit the OddSHAP odd-regression problem
-        if budget < minimum_budget:
-            msg = (
-                "The budget is too small for OddSHAP. "
-                f"Received budget={budget}, but at least {minimum_budget} evaluations are required. "
-                "Please increase the budget."
-            )
-            raise ValueError(msg)
+        # When the sampler enumerated all coalitions (full budget), the regression is
+        # exact and there is no reason to truncate the candidate support.
+        if budget >= 2**self.n:
+            n_candidate_interactions = 2**self.n
+        else:
+            n_candidate_interactions = max(0, math.ceil(budget / self.interaction_factor))
 
         return self._approximate_via_odd_regression(
             budget=budget,
@@ -244,7 +250,7 @@ class OddSHAP(Approximator):
 
         return InteractionValues(
             values=sv_values,
-            index="SV",
+            index=self.approximation_index,
             max_order=1,
             min_order=0,
             n_players=self.n,
@@ -252,7 +258,7 @@ class OddSHAP(Approximator):
             baseline_value=float(empty_set_value),
             estimated=not budget >= 2**self.n,
             estimation_budget=budget,
-            target_index="SV",
+            target_index=self.index,
         )
 
     def _fit_surrogate_model(
@@ -410,7 +416,7 @@ class OddSHAP(Approximator):
         """
         if self.n_active_interactions == 0:
             msg = "OddSHAP support has not been built yet. Call _build_support(...) first."
-            raise RuntimeError(msg)
+            raise RuntimeError(msg)  # pragma: no cover
 
         row_weights = self._get_regression_row_weights()
         beta_empty = 0.5 * (full_set_value + empty_set_value)
@@ -461,7 +467,7 @@ class OddSHAP(Approximator):
         n_nonempty_terms = self.n_active_interactions - 1
         if n_nonempty_terms <= 0:
             msg = "OddSHAP support must contain at least one non-empty interaction before building constraint objects."
-            raise RuntimeError(msg)
+            raise RuntimeError(msg)  # pragma: no cover
 
         beta_empty = 0.5 * (full_set_value + empty_set_value)
 
@@ -540,7 +546,7 @@ class OddSHAP(Approximator):
                 "Coefficient vector length does not match the active OddSHAP support. "
                 f"Expected {self.n_active_interactions}, got {odd_fourier_coefficients.shape[0]}."
             )
-            raise ValueError(msg)
+            raise ValueError(msg)  # pragma: no cover
 
         sv_values = np.zeros(self.n + 1, dtype=float)
         sv_values[0] = baseline_value
