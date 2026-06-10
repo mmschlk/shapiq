@@ -19,7 +19,8 @@ from typing import Any
 import numpy as np
 import torch
 
-from ..base import PhysicalMask, Segmenter, SegmenterConfig, SpatialLayout
+from ..base import PhysicalMask, SpatialLayout
+from ..segmenters.base import Segmenter, SegmenterConfig
 from . import register_segmenter
 
 try:

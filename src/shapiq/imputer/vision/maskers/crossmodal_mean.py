@@ -6,7 +6,8 @@ and delegates image/text occlusion respectively.
 
 from __future__ import annotations
 
-from ..base import Masker, MaskerConfig, PhysicalMask, ProcessorOutput
+from ..base import PhysicalMask, ProcessorOutput
+from ..maskers.base import Masker, MaskerConfig
 from . import register_masker
 from .text_attention import TextAttentionMasker
 from .vision_mean import VisionMeanMasker

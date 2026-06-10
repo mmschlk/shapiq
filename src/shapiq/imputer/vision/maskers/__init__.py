@@ -4,7 +4,7 @@ To add a new masker, decorate the class with ``@register_masker("name")``.
 The factory will resolve it via config.strategy.
 """
 
-from ..base import Masker
+from .base import Masker
 
 _MASKER_REGISTRY: dict[str, type[Masker]] = {}
 

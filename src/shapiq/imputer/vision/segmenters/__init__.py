@@ -4,7 +4,7 @@ To add a new segmenter, decorate the class with ``@register_segmenter("name")``.
 The factory will resolve it via config.strategy.
 """
 
-from ..base import Segmenter
+from .base import Segmenter
 
 _SEGMENTER_REGISTRY: dict[str, type[Segmenter]] = {}
 

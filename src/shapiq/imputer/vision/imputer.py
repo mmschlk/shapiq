@@ -11,7 +11,9 @@ from typing import Any
 import numpy as np
 import torch
 
-from .base import Masker, PhysicalMask, ProcessorOutput, Segmenter, SpatialLayout
+from .base import PhysicalMask, ProcessorOutput, SpatialLayout
+from .maskers.base import Masker
+from .segmenters.base import Segmenter
 
 
 class VisionImputer:

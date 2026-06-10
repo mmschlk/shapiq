@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from .base import MaskerConfig, ProcessorOutput, SegmenterConfig
+from .base import ProcessorOutput
+from .maskers.base import MaskerConfig
+from .segmenters.base import SegmenterConfig
 from .imputer import VisionImputer
 from .maskers import get_masker
 from .segmenters import get_segmenter

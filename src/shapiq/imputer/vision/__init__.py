@@ -13,23 +13,23 @@ Core pipeline::
     # game can now be used with any shapiq approximator
 """
 
-from .base import (
+from .base import PhysicalMask, ProcessorOutput, SpatialLayout
+from .maskers.base import (
     CrossModalBlurParams,
     CrossModalMeanParams,
-    CustomSegmenterParams,
-    GradientGuidedParams,
     Masker,
     MaskerConfig,
-    PatchParams,
-    PhysicalMask,
-    ProcessorOutput,
-    Segmenter,
-    SegmenterConfig,
-    SlicParams,
-    SpatialLayout,
     TextAttentionParams,
     VisionBlurParams,
     VisionMeanParams,
+)
+from .segmenters.base import (
+    CustomSegmenterParams,
+    GradientGuidedParams,
+    PatchParams,
+    Segmenter,
+    SegmenterConfig,
+    SlicParams,
 )
 from .factory import VisionImputerFactory
 from .game import VisionLanguageGame

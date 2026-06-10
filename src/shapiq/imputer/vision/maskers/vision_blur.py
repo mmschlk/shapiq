@@ -20,7 +20,8 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from ..base import Masker, MaskerConfig, PhysicalMask, ProcessorOutput
+from ..base import PhysicalMask, ProcessorOutput
+from ..maskers.base import Masker, MaskerConfig
 from . import register_masker
 
 try:

@@ -5,7 +5,8 @@ Operates exclusively on attention_mask. Must never touch pixel_values.
 
 from __future__ import annotations
 
-from ..base import Masker, PhysicalMask, ProcessorOutput
+from ..base import PhysicalMask, ProcessorOutput
+from ..maskers.base import Masker
 from . import register_masker
 
 

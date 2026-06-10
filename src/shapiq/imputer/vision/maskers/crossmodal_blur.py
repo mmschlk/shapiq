@@ -17,7 +17,8 @@ Registered as ``"crossmodal_blur"`` in the masker registry.
 
 from __future__ import annotations
 
-from ..base import Masker, MaskerConfig, PhysicalMask, ProcessorOutput
+from ..base import PhysicalMask, ProcessorOutput
+from ..maskers.base import Masker, MaskerConfig
 from . import register_masker
 from .text_attention import TextAttentionMasker
 from .vision_blur import VisionBlurMasker
