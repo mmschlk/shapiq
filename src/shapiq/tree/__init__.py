@@ -4,6 +4,9 @@ Provides :class:`TreeSHAPIQ` for computing exact Shapley interaction values on t
 along with supporting data structures and algorithm variants.
 """
 
+# re-exported for convenience; documented (and listed in __all__) only in shapiq.utils
+from shapiq.utils.errors import RepresentationLimitError  # noqa: F401
+
 from .base import TreeModel
 from .interventional import InterventionalGame, InterventionalTreeExplainer
 from .linear import LinearTreeSHAP

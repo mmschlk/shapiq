@@ -79,8 +79,9 @@ from .plot import (
 )
 from .tree import TreeExplainer
 
-# public utils functions
-from .utils import (  # sets.py  # tree.py
+# public utils functions and errors
+from .utils import (
+    RepresentationLimitError,
     get_explicit_subsets,
     powerset,
     safe_isinstance,
@@ -114,6 +115,8 @@ __all__ = [
     "ProxySHAP",
     "ProxySPEX",
     "RegressionMSR",
+    # errors
+    "RepresentationLimitError",
     # explainers
     "Explainer",
     "TabularExplainer",

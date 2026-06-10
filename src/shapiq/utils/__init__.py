@@ -1,7 +1,7 @@
 """Low-level utility functions for working with subsets, coalitions, and modules."""
 
 from .datasets import shuffle_data
-from .errors import raise_deprecation_warning
+from .errors import RepresentationLimitError, raise_deprecation_warning
 from .modules import check_import_module, safe_isinstance
 from .sets import (
     count_interactions,
@@ -32,5 +32,6 @@ __all__ = [
     # datasets
     "shuffle_data",
     # errors
+    "RepresentationLimitError",
     "raise_deprecation_warning",
 ]

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from shapiq.explainer.base import Explainer
 from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
+from shapiq.utils.errors import RepresentationLimitError
 
 from .linear import LinearTreeSHAP
 from .treeshapiq import TreeSHAPIQ, TreeSHAPIQIndices
@@ -97,6 +98,10 @@ class TreeExplainer(Explainer):
 
             **kwargs: Additional keyword arguments are ignored.
 
+        Raises:
+            RepresentationLimitError: If a tree's interpolation degree exceeds the
+                float64 representation limit and no re-route applies (see
+                :class:`~shapiq.utils.errors.RepresentationLimitError`).
         """
         super().__init__(model, index=index, max_order=max_order)
 
@@ -116,28 +121,42 @@ class TreeExplainer(Explainer):
         self.mode = mode
         self._reference_dataset: np.ndarray | None = reference_dataset
 
-        # In ``"pathdependent"`` mode, build exactly one per-tree explainer list — either
-        # ``LinearTreeSHAP`` (cheap, order-1 only) or ``TreeSHAPIQ`` (any order). The dispatch
-        # decision is fixed at construction time so callers can mutate the chosen list (e.g.
-        # ``_tree.thresholds`` rounding in tests) before calling :meth:`explain`. In
+        # In ``"pathdependent"`` mode, build per-tree explainers at construction time:
+        # ``LinearTreeSHAP`` (cheap, order-1 only) where possible, ``TreeSHAPIQ`` (any
+        # order) otherwise. The two lists can BOTH be populated when individual trees
+        # are re-routed (a tree whose depth-based interpolation degree exceeds the
+        # float64 representation limit while its feature-bounded TreeSHAPIQ degree
+        # does not); :meth:`explain` then aggregates across both lists. In
         # ``"interventional"`` mode no per-tree list is created — the
-        # :class:`~shapiq.tree.interventional.explainer.InterventionalTreeExplainer` handles the
-        # full ensemble in one shot, so a per-tree list would be meaningless.
+        # :class:`~shapiq.tree.interventional.explainer.InterventionalTreeExplainer`
+        # handles the full ensemble in one shot.
         self._treeshapiq_explainers: list[TreeSHAPIQ] = []
         self._lineartreeshap_explainers: list[LinearTreeSHAP] = []
         self._interventional_explainer: InterventionalTreeExplainer | None = None
 
+        # ``index`` (the local parameter) is already narrowed to ``TreeSHAPIQIndices``;
+        # ``self.index`` is the broader ``ExplainerIndices`` and would not type-check.
+        def _build_treeshapiq(tree: TreeModel, tree_index: TreeSHAPIQIndices) -> TreeSHAPIQ:
+            return TreeSHAPIQ(model=tree, max_order=self._max_order, index=tree_index)
+
         if self.mode == "pathdependent":
             if self._can_use_lineartreeshap():
-                self._lineartreeshap_explainers = [
-                    LinearTreeSHAP(model=tree) for tree in self._trees
-                ]
+                for tree in self._trees:
+                    try:
+                        self._lineartreeshap_explainers.append(LinearTreeSHAP(model=tree))
+                    except RepresentationLimitError:
+                        # LinearTreeSHAP's interpolation degree is the full tree
+                        # depth, while TreeSHAPIQ's is min(depth, features in the
+                        # tree), so a deep tree over few features can still be
+                        # explained there — at the same order-1 Shapley values.
+                        # Only the affected tree leaves the fast path; if its
+                        # TreeSHAPIQ degree also exceeds the limit, the error
+                        # propagates. ``index="SV"`` matches LinearTreeSHAP's
+                        # output label (order-1 indices all reduce to SV).
+                        self._treeshapiq_explainers.append(_build_treeshapiq(tree, "SV"))
             else:
-                # ``index`` (the local parameter) is already narrowed to ``TreeSHAPIQIndices``;
-                # ``self.index`` is the broader ``ExplainerIndices`` and would not type-check.
                 self._treeshapiq_explainers = [
-                    TreeSHAPIQ(model=tree, max_order=self._max_order, index=index)
-                    for tree in self._trees
+                    _build_treeshapiq(tree, index) for tree in self._trees
                 ]
         elif self.mode == "interventional":
             if self._reference_dataset is None:
@@ -173,45 +192,6 @@ class TreeExplainer(Explainer):
             and all(tree.n_features_in_tree >= 2 for tree in self._trees)
         )
 
-    def _explain_function_lineartreeshap(
-        self,
-        x: np.ndarray,
-        **kwargs: Any,  # noqa: ARG002
-    ) -> InteractionValues:
-        """Compute first-order Shapley values for ``x`` by aggregating the per-tree LinearTreeSHAP results.
-
-        Mirrors the per-tree aggregation done by ``_explain_function_treeshapiq``: each
-        ``LinearTreeSHAP`` in ``self._lineartreeshap_explainers`` runs against ``x``, the
-        resulting :class:`~shapiq.interaction_values.InteractionValues` are summed (which also
-        sums ``baseline_value`` and the ``()`` entry), and ``min_order`` is finally enforced via
-        :meth:`InteractionValues.get_n_order` when the user asked for a stricter minimum.
-
-        Args:
-            x: The instance to explain as a 1-dimensional array.
-            **kwargs: Additional keyword arguments are ignored.
-
-        Returns:
-            The aggregated Shapley values for the instance.
-        """
-        if len(x.shape) != 1:
-            msg = "explain expects a single instance, not a batch."
-            raise TypeError(msg)
-
-        interaction_values: list[InteractionValues] = [
-            lts.explain_function(x) for lts in self._lineartreeshap_explainers
-        ]
-        final_explanation = interaction_values[0]
-        for iv in interaction_values[1:]:
-            final_explanation += iv
-
-        if self._min_order > final_explanation.min_order:
-            final_explanation = final_explanation.get_n_order(
-                min_order=self._min_order,
-                max_order=self._max_order,
-            )
-
-        return final_explanation
-
     def _explain_function_interventionaltreeshapiq(
         self,
         x: np.ndarray,
@@ -231,7 +211,7 @@ class TreeExplainer(Explainer):
             raise RuntimeError(msg)
         return self._interventional_explainer.explain_function(x)
 
-    def _explain_function_treeshapiq(
+    def _explain_function_pathdependent(
         self,
         x: np.ndarray,
         **kwargs: Any,  # noqa: ARG002
@@ -249,17 +229,19 @@ class TreeExplainer(Explainer):
         if len(x.shape) != 1:
             msg = "explain expects a single instance, not a batch."
             raise TypeError(msg)
-        # run treeshapiq for all trees
-        interaction_values: list[InteractionValues] = []
+        # run the per-tree explainers; both lists can be populated when trees
+        # were re-routed at construction time (the other list is then empty)
+        interaction_values: list[InteractionValues] = [
+            lts.explain_function(x) for lts in self._lineartreeshap_explainers
+        ]
         for explainer in self._treeshapiq_explainers:
             tree_explanation = explainer.explain(x)
             interaction_values.append(tree_explanation)
 
         # combine the explanations for all trees
         final_explanation = interaction_values[0]
-        if len(interaction_values) > 1:
-            for i in range(1, len(interaction_values)):
-                final_explanation += interaction_values[i]
+        for tree_explanation in interaction_values[1:]:
+            final_explanation += tree_explanation
 
         if self._min_order == 0 and final_explanation.min_order == 1:
             final_explanation.min_order = 0
@@ -295,8 +277,5 @@ class TreeExplainer(Explainer):
             The computed interaction index for the instance.
         """
         if self.mode == "pathdependent":
-            # Dispatch on whichever per-tree list __init__ chose to populate.
-            if self._lineartreeshap_explainers:
-                return self._explain_function_lineartreeshap(x, **kwargs)
-            return self._explain_function_treeshapiq(x, **kwargs)
+            return self._explain_function_pathdependent(x, **kwargs)
         return self._explain_function_interventionaltreeshapiq(x, **kwargs)

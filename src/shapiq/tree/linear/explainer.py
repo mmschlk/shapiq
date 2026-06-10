@@ -8,7 +8,7 @@ import numpy as np
 import scipy.special as sp
 
 from shapiq.interaction_values import InteractionValues
-from shapiq.tree._numerics import VandermondeDiagnostics, grid_is_certified, solve_vandermonde
+from shapiq.tree._numerics import build_n_matrix
 from shapiq.tree.conversion.edges import create_edge_tree
 from shapiq.tree.validation import validate_tree_model
 from shapiq.utils.sets import generate_interaction_lookup, powerset
@@ -37,17 +37,7 @@ def get_N_prime(max_size: int = 10) -> np.ndarray:
 
 def get_N_v2(D: np.ndarray) -> np.ndarray:
     """Get N_v2 matrix for Linear Tree Shap."""
-    depth = D.shape[0]
-    Ns = np.zeros((depth + 1, depth))
-    diagnostics = VandermondeDiagnostics()
-    certified = grid_is_certified(D)
-    for i in range(1, depth + 1):
-        Ns[i, :i] = solve_vandermonde(
-            D[:i], 1.0 / get_norm_weight(i - 1), certified=certified, diagnostics=diagnostics
-        )
-    # default stacklevel traces emit <- get_N_v2 <- __init__ <- user
-    diagnostics.emit()
-    return Ns
+    return build_n_matrix(D, lambda i: 1.0 / get_norm_weight(i - 1))
 
 
 class LinearTreeSHAP:
@@ -83,6 +73,11 @@ class LinearTreeSHAP:
                 :func:`~shapiq.tree.validation.validate_tree_model`.
             base_func: Callable ``int -> np.ndarray`` returning the interpolation base for the
                 given depth. Defaults to :func:`numpy.polynomial.chebyshev.chebpts2`.
+
+        Raises:
+            RepresentationLimitError: If the tree depth exceeds the float64
+                representation limit of the interpolation pipeline (see
+                :class:`~shapiq.utils.errors.RepresentationLimitError`).
         """
         self.clf = model
         self._tree = validate_tree_model(model, class_label=None)[0]

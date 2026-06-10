@@ -17,3 +17,17 @@ def raise_deprecation_warning(
     )
 
     warn(message, DeprecationWarning, stacklevel=2)
+
+
+class RepresentationLimitError(ValueError):
+    """The interpolation degree exceeds what the float64 TreeSHAP pipeline can evaluate.
+
+    The exact interpolation coefficients are available at any depth, but the
+    downstream double-precision evaluation would cancel them beyond an acceptable
+    error. For order-1 SV/SII configurations, ``TreeExplainer`` catches this and
+    re-routes the affected tree to ``TreeSHAPIQ`` (whose interpolation degree is
+    bounded by the features in the tree rather than the tree depth); in every
+    other configuration — higher orders, the feature-bounded indices, or trees
+    that exceed the limit on both paths — the error propagates from the
+    constructor.
+    """

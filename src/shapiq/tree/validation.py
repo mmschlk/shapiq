@@ -56,7 +56,9 @@ def validate_tree_model(
 
     Raises:
         TypeError: If the model type is not supported (raised from the underlying
-            ``NotImplementedError`` of :func:`~shapiq.tree.conversion.convert_tree_model`).
+            ``NotImplementedError`` of :func:`~shapiq.tree.conversion.convert_tree_model`), or
+            if the model yields no trees (an empty list, or a list whose elements are not
+            ``TreeModel`` instances).
     """
     tree_model = []
     # direct returns for base tree models and dict as model
@@ -78,4 +80,9 @@ def validate_tree_model(
             msg = f"Model type {type(model)} is not supported."
             raise TypeError(msg) from e
         tree_model = result if isinstance(result, list) else [result]
+    if not tree_model:
+        # an empty list, or a list whose elements are not TreeModel instances,
+        # would otherwise propagate as an opaque IndexError at explain time
+        msg = "The model does not contain any trees: expected a non-empty (list of) TreeModel."
+        raise TypeError(msg)
     return tree_model

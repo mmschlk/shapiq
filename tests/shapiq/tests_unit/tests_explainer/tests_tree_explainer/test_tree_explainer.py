@@ -422,7 +422,7 @@ def test_xgboost_shap_error(xgb_clf_model, background_clf_data):
     # per-tree explainer list was populated so the mutation actually takes effect at explain time.
     per_tree_explainers = (
         explainer_shapiq_rounded._lineartreeshap_explainers
-        or explainer_shapiq_rounded._treeshapiq_explainers
+        + explainer_shapiq_rounded._treeshapiq_explainers
     )
     for tree_explainer in per_tree_explainers:
         tree_explainer._tree.thresholds = np.round(tree_explainer._tree.thresholds, 4)

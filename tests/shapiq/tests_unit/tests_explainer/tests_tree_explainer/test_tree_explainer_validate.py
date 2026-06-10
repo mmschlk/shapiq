@@ -33,6 +33,12 @@ def test_validate_model(dt_clf_model, dt_reg_model, rf_reg_model, rf_clf_model, 
     with pytest.raises(TypeError):
         validate_tree_model("unsupported_model")
 
+    # treeless inputs raise instead of propagating an IndexError at explain time
+    with pytest.raises(TypeError, match="does not contain any trees"):
+        validate_tree_model([])
+    with pytest.raises(TypeError, match="does not contain any trees"):
+        validate_tree_model([dt_clf_model, dt_reg_model])  # a list of raw sklearn models
+
 
 @pytest.mark.external_libraries
 @pytest.mark.parametrize(("model_fixture", "model_class"), TREE_MODEL_FIXTURES)

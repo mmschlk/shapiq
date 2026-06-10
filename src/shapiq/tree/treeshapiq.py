@@ -11,9 +11,10 @@ import scipy as sp
 
 from shapiq.game_theory.indices import get_computation_index
 from shapiq.interaction_values import InteractionValues
+from shapiq.utils.errors import RepresentationLimitError
 from shapiq.utils.sets import generate_interaction_lookup, powerset
 
-from ._numerics import VandermondeDiagnostics, grid_is_certified, solve_vandermonde
+from ._numerics import build_n_matrix
 from .conversion.edges import create_edge_tree
 from .validation import validate_tree_model
 
@@ -154,6 +155,10 @@ class TreeSHAPIQ:
         if self._n_features_in_tree > 0:
             try:
                 self._init_summary_polynomials()
+            except RepresentationLimitError:
+                # a structural float64 limit, never the trivial single-feature
+                # case the broader ValueError handler below absorbs
+                raise
             except ValueError:
                 if self._n_features_in_tree == 1:
                     self._trivial_computation = True  # for one feature the computation is trivial
@@ -710,35 +715,17 @@ class TreeSHAPIQ:
             The N matrix.
 
         """
-        depth = interpolated_poly.shape[0]
-        Ns = np.zeros((depth + 1, depth))
-        diagnostics = VandermondeDiagnostics()
-        certified = grid_is_certified(interpolated_poly)
-        for i in range(1, depth + 1):
-            Ns[i, :i] = solve_vandermonde(
-                interpolated_poly[:i],
-                1.0 / np.array([sp.special.binom(i - 1, k) for k in range(i)]),
-                certified=certified,
-                diagnostics=diagnostics,
-            )
-        diagnostics.emit(stacklevel=5)
-        return Ns
+        return build_n_matrix(
+            interpolated_poly,
+            lambda i: 1.0 / np.array([sp.special.binom(i - 1, k) for k in range(i)]),
+        )
 
     def _get_n_cii_matrix(self, interpolated_poly: np.ndarray, order: int) -> np.ndarray:
         """Computes the N matrix for the CII index."""
-        depth = interpolated_poly.shape[0]
-        Ns = np.zeros((depth + 1, depth))
-        diagnostics = VandermondeDiagnostics()
-        certified = grid_is_certified(interpolated_poly)
-        for i in range(1, depth + 1):
-            Ns[i, :i] = solve_vandermonde(
-                interpolated_poly[:i],
-                i * np.array([self._get_subset_weight_cii(j, order) for j in range(i)]),
-                certified=certified,
-                diagnostics=diagnostics,
-            )
-        diagnostics.emit(stacklevel=5)
-        return Ns
+        return build_n_matrix(
+            interpolated_poly,
+            lambda i: i * np.array([self._get_subset_weight_cii(j, order) for j in range(i)]),
+        )
 
     def _get_subset_weight_cii(self, t: int, order: int) -> float | None:
         """Computes the weight for a given subset size and interaction order.
@@ -769,17 +756,7 @@ class TreeSHAPIQ:
     @staticmethod
     def _get_n_id_matrix(D: np.ndarray) -> np.ndarray:
         """Computes N_id matrix."""
-        depth = D.shape[0]
-        Ns_id = np.zeros((depth + 1, depth))
-        diagnostics = VandermondeDiagnostics()
-        certified = grid_is_certified(D)
-        for i in range(1, depth + 1):
-            Ns_id[i, :i] = solve_vandermonde(
-                D[:i], np.ones(i), certified=certified, diagnostics=diagnostics
-            )
-        # stacklevel traces emit <- builder <- _init_summary_polynomials <- __init__ <- user
-        diagnostics.emit(stacklevel=5)
-        return Ns_id
+        return build_n_matrix(D, np.ones)
 
     @staticmethod
     def _cache(interpolated_poly: FloatVector) -> FloatVector:

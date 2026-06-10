@@ -14,6 +14,17 @@
 {%- endfor %}
 {% endif %}
 
+{% if exceptions %}
+.. rubric:: Exceptions
+
+.. autosummary::
+   :toctree:
+   :nosignatures:
+{% for item in exceptions %}
+   {{ item }}
+{%- endfor %}
+{% endif %}
+
 {% if functions %}
 .. rubric:: Functions
 

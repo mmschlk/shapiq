@@ -4,15 +4,15 @@
 
 ### Bugfix
 
-- Hardens the Vandermonde interpolation solves in the polynomial TreeSHAP machinery (`TreeSHAPIQ`, `LinearTreeSHAP`):
-  - **surfaces a pre-existing silent-wrong-answer bug**: for interpolation degrees ~27-31 (for `TreeSHAPIQ` the degree is `min(depth, n_features)`), the previous explicit matrix inversion silently lost precision - a coalesced `RuntimeWarning` now reports the worst condition number; from degree ~32 the prefix systems become rank-deficient and the returned values can violate the completeness axiom by errors up to orders of magnitude beyond the prediction itself - such cases now emit a clear `RuntimeWarning` stating the values are NOT reliable,
-  - very deep trees no longer crash with an unexplained `LinAlgError` (previously at degree ~60); a least-squares fallback is returned together with the reliability warning,
-  - no explicit matrix inverse is formed anymore (`np.linalg.solve` / SVD-based least squares),
-  - interpolation grids are certified by measurement (cached per grid, hoisted out of the construction loops), so custom `LinearTreeSHAP(base_func=...)` grids are handled correctly and ordinary trees pay no per-solve diagnostic work. [#545](https://github.com/mmschlk/shapiq/issues/545)
+- Solves the Vandermonde interpolation systems of the polynomial TreeSHAP machinery (`TreeSHAPIQ`, `LinearTreeSHAP`) exactly at every depth, replacing the explicit float64 inverse:
+  - an O(n^2) Björck-Pereyra recursion in scaled-integer arithmetic with a bitwise convergence certificate returns the float64 rounding of the exact rational solution for any grid of distinct nodes,
+  - this **fixes a pre-existing silent-wrong-answer bug**: the previous inversion drifted at the ~1e-7 level from interpolation degree ~20, returned silently wrong values from ~32, and crashed with an unexplained `LinAlgError` at ~60+; the exact solves carry no conditioning error at any degree,
+  - beyond the float64 representation limit of the monomial-basis pipeline (interpolation degree ~29 for `LinearTreeSHAP` and ~25 for `TreeSHAPIQ` on the default grids, where the exact coefficients exceed ~3e10 and downstream double-precision evaluation provably cancels more than ~1% of the result) construction raises an explanatory `RepresentationLimitError` (a `ValueError`) instead of returning silently wrong values. [#545](https://github.com/mmschlk/shapiq/issues/545)
 
 ### Changed
 
-- `LinearTreeSHAP` (trees deeper than ~26) and `TreeSHAPIQ` (interpolation degree above ~26) now emit a `RuntimeWarning` on paths that previously were silent (precision loss / unreliable deep-tree values); test suites running with `filterwarnings = error` will surface this intentionally. Likely warrants a minor (not patch) version bump.
+- Models whose interpolation degree exceeds the float64 representation limit (~29 for `LinearTreeSHAP`, ~25 for `TreeSHAPIQ`, on the default grids) now raise `RepresentationLimitError` (a `ValueError`) at construction; previously they returned silently wrong values (degrees ~32-59) or crashed with `LinAlgError` (~60+). The degree depends on the configuration: the tree depth for `LinearTreeSHAP`, `min(depth, features in the tree)` for `TreeSHAPIQ` with SV/SII/k-SII, and the number of features in the tree for STII/FSII/BII. For order-1 SV/SII configurations `TreeExplainer` re-routes the affected trees to `TreeSHAPIQ` when its feature-bounded degree still fits; other configurations propagate the error.
+- Shapley values for interpolation degrees above ~20 may shift at the ~1e-7 level relative to previous releases: the coefficients are now the correctly rounded exact solutions rather than the output of a float64 inverse. Below the representation limit the remaining end-to-end completeness error is bounded by the downstream float64 evaluation (about `max|N| * 1e-13`, i.e. up to ~1e-4 at degree 24 and ~1e-2 at degree 28 on adversarial chain trees).
 
 ## v1.5.1 (2026-05-30)
 
