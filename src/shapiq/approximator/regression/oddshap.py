@@ -37,7 +37,14 @@ def _import_lightgbm() -> ModuleType:
 
 
 class OddSHAP(Approximator):
-    """OddSHAP approximator for first-order Shapley values."""
+    """OddSHAP approximator for first-order Shapley values (Fumagalli et al., 2026).
+
+    Note:
+        Where Algorithm 1 of the paper falls back to TreeSHAP for budgets below
+        ``n * interaction_factor``, this implementation raises ``ValueError`` instead
+        (no silent downgrade to another estimator). It therefore does not reproduce the
+        low-budget, high-dimension regime of the paper's Figure 2.
+    """
 
     valid_indices: tuple[str, ...] = ("SV",)
 
@@ -106,6 +113,9 @@ class OddSHAP(Approximator):
             msg = "This OddSHAP implementation supports only odd_only=True."
             raise ValueError(msg)
         self.odd_only = True
+        if interaction_factor < 1:
+            msg = "interaction_factor (eta) must be a positive integer."
+            raise ValueError(msg)
         self.interaction_factor = interaction_factor
         self.tree_params = tree_params
 
@@ -262,11 +272,13 @@ class OddSHAP(Approximator):
                 max_depth=10,
             )
         else:
+            # Keep the paper's depth-10 surrogate unless the user overrides it explicitly.
+            params = {"max_depth": 10, **self.tree_params}
             surrogate_model = lgb.LGBMRegressor(
                 verbose=-1,
                 n_jobs=1,
                 random_state=self._random_state,
-                **self.tree_params,
+                **params,
             )
 
         surrogate_model.fit(coalitions.astype(float), game_values)

@@ -83,7 +83,6 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     SPEX,
     RegressionMSR,
     ProxySPEX,
-    ProxySHAP,
     OddSHAP,
 ]
 

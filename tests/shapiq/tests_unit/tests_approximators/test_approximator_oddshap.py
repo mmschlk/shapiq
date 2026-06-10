@@ -82,6 +82,13 @@ def test_init_rejects_odd_only_false():
         OddSHAP(n=8, odd_only=False)
 
 
+@pytest.mark.parametrize("bad_eta", [0, -1])
+def test_init_rejects_nonpositive_interaction_factor(bad_eta):
+    """interaction_factor must be positive (guards a later ceil(budget/eta) division)."""
+    with pytest.raises(ValueError, match="interaction_factor"):
+        OddSHAP(n=8, interaction_factor=bad_eta)
+
+
 def test_init_requires_lightgbm(monkeypatch):
     monkeypatch.setitem(sys.modules, "lightgbm", None)
 
@@ -561,6 +568,19 @@ def test_custom_tree_params_are_used_for_the_surrogate_fit():
     game_values = np.asarray(game(coalitions), dtype=float)
     surrogate = approx._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
     assert surrogate.get_params()["max_depth"] == 2
+    assert surrogate.get_params()["n_estimators"] == 5
+
+
+def test_tree_params_without_depth_keeps_paper_default():
+    """tree_params lacking max_depth keeps the paper's depth-10 surrogate (not unlimited)."""
+    n = 6
+    game = DummyGame(n=n, interaction=(1, 2))
+    approx = OddSHAP(n=n, random_state=0, tree_params={"n_estimators": 5})
+    approx._sampler.sample(2**n)
+    coalitions = approx._sampler.coalitions_matrix
+    game_values = np.asarray(game(coalitions), dtype=float)
+    surrogate = approx._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
+    assert surrogate.get_params()["max_depth"] == 10
     assert surrogate.get_params()["n_estimators"] == 5
 
 
