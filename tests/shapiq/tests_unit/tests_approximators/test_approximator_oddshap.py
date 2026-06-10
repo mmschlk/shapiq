@@ -1,17 +1,16 @@
 """Tests for the OddSHAP approximator.
 
 OddSHAP estimates first-order Shapley values via paired sampling + odd-only
-Fourier regression on a LightGBM surrogate. The algorithm has two branches:
+Fourier regression. A LightGBM surrogate is fitted to the sampled coalitions
+and its exact Fourier spectrum (extracted via ProxySPEX's tree-to-Fourier
+routine) screens the top ``ceil(budget / interaction_factor)`` odd
+higher-order interactions; the active support is then solved with a
+constrained weighted Fourier regression and the odd coefficients are
+transformed into Shapley values. Budgets below ``n * interaction_factor``
+are rejected with a ``ValueError`` (there is deliberately no fallback to
+another estimator).
 
-  - low-budget fallback (budget < n * interaction_factor):
-        fit surrogate, explain via TreeExplainer
-
-  - high-budget regression (budget >= n * interaction_factor):
-        fit surrogate, screen top-k odd interactions via the ProxySPEX adapter,
-        build active support, solve constrained weighted Fourier regression,
-        transform odd coefficients to Shapley values
-
-The constraint system enforces the exact identity
+The constraint system enforces the exact identities
     beta_empty = (f(N) + f(empty)) / 2,
     sum over non-empty odd Fourier coefficients = -(f(N) - f(empty)) / 2,
 which after the -2 scaling in `_transform_to_shapley` guarantees the
@@ -19,9 +18,8 @@ efficiency axiom by construction:
     sum_i phi_i = f(N) - f(empty),
     phi_empty   = f(empty).
 
-These two identities are checked as EXACT properties below. Convergence to
-ExactComputer on dense games is NOT a guarantee — OddSHAP is a sparse
-recovery method — so the convergence test is marked xfail(strict=False).
+These two identities are checked as EXACT properties below, alongside a
+full-budget convergence check against ExactComputer on a sparse SOUM game.
 """
 
 from __future__ import annotations
@@ -38,6 +36,11 @@ from shapiq.approximator.regression import OddSHAP
 from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import SOUM, DummyGame
+from tests.shapiq.markers import skip_if_no_lightgbm
+
+# OddSHAP's surrogate requires lightgbm (optional 'proxy' extra); skip the whole
+# module in environments without it, like the other LightGBM-dependent suites.
+pytestmark = [skip_if_no_lightgbm]
 
 # -----------------------------------------------------------------------------
 # Initialization
