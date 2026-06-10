@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Adds the `OddSHAP` approximator for first-order Shapley values (Fumagalli et al., 2026, arXiv:2602.01399): paired sampling, sparse odd-interaction screening via the ProxySPEX tree-to-Fourier extraction, and a constrained odd Fourier regression that enforces the efficiency axiom exactly. [#522](https://github.com/mmschlk/shapiq/pull/522)
+
 ## v1.5.1 (2026-05-30)
 
 ### Bugfix
