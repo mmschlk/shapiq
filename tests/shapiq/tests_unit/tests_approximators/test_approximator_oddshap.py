@@ -32,6 +32,7 @@ import numpy as np
 import pytest
 from scipy.special import binom
 
+import shapiq
 import shapiq.approximator as approximator_module
 from shapiq.approximator.regression import OddSHAP
 from shapiq.game_theory.exact import ExactComputer
@@ -99,6 +100,12 @@ def test_init_requires_lightgbm(monkeypatch):
 def test_public_approximator_exports_include_oddshap():
     assert "OddSHAP" in approximator_module.__all__
     assert OddSHAP in approximator_module.SV_APPROXIMATORS
+
+
+def test_top_level_export_includes_oddshap():
+    """OddSHAP is re-exported at the package top level like its sibling approximators."""
+    assert shapiq.OddSHAP is OddSHAP
+    assert "OddSHAP" in shapiq.__all__
 
 
 # -----------------------------------------------------------------------------
@@ -281,6 +288,26 @@ def test_low_budget_raises_value_error():
     budget = n * approx.interaction_factor - 1
     with pytest.raises(ValueError, match="too small"):
         approx.approximate(budget, game)
+
+
+def test_full_enumeration_bypasses_minimum_budget():
+    """budget >= 2**n is accepted even when 2**n < n * interaction_factor (small n)."""
+    n = 4  # 2**4 = 16 < 40 = n * eta
+    game = DummyGame(n=n, interaction=(1, 2))
+    iv = OddSHAP(n=n, random_state=0).approximate(2**n, game)
+    assert isinstance(iv, InteractionValues)
+    v_full = float(game(np.ones((1, n), dtype=bool))[0])
+    v_empty = float(game(np.zeros((1, n), dtype=bool))[0])
+    assert np.sum(iv.values[1:]) == pytest.approx(v_full - v_empty, abs=1e-6)
+
+
+def test_small_budget_below_full_enumeration_still_raises():
+    """Below both the eta-based minimum and 2**n the ValueError is kept, and the
+    message reports the effective minimum (16 = 2**4, not n * eta = 40)."""
+    n = 4
+    game = DummyGame(n=n, interaction=(1, 2))
+    with pytest.raises(ValueError, match="at least 16 evaluations"):
+        OddSHAP(n=n, random_state=0).approximate(2**n - 1, game)
 
 
 def test_boundary_budget_uses_paper_candidate_count(monkeypatch):
@@ -569,6 +596,20 @@ def test_custom_tree_params_are_used_for_the_surrogate_fit():
     surrogate = approx._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
     assert surrogate.get_params()["max_depth"] == 2
     assert surrogate.get_params()["n_estimators"] == 5
+
+
+def test_tree_params_can_override_shared_surrogate_kwargs():
+    """tree_params entries override the built-in surrogate kwargs without a TypeError."""
+    n = 6
+    game = DummyGame(n=n, interaction=(1, 2))
+    approx = OddSHAP(n=n, random_state=0, tree_params={"random_state": 7, "n_jobs": 2})
+    approx._sampler.sample(2**n)
+    coalitions = approx._sampler.coalitions_matrix
+    game_values = np.asarray(game(coalitions), dtype=float)
+    surrogate = approx._fit_surrogate_model(coalitions=coalitions, game_values=game_values)
+    assert surrogate.get_params()["random_state"] == 7
+    assert surrogate.get_params()["n_jobs"] == 2
+    assert surrogate.get_params()["max_depth"] == 10
 
 
 def test_tree_params_without_depth_keeps_paper_default():

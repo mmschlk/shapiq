@@ -42,8 +42,9 @@ class OddSHAP(Approximator):
     Note:
         Where Algorithm 1 of the paper falls back to TreeSHAP for budgets below
         ``n * interaction_factor``, this implementation raises ``ValueError`` instead
-        (no silent downgrade to another estimator). It therefore does not reproduce the
-        low-budget, high-dimension regime of the paper's Figure 2.
+        (no silent downgrade to another estimator), unless the budget already covers
+        the full coalition space (``budget >= 2**n``). It therefore does not reproduce
+        the low-budget, high-dimension regime of the paper's Figure 2.
     """
 
     valid_indices: tuple[str, ...] = ("SV",)
@@ -89,7 +90,12 @@ class OddSHAP(Approximator):
         tree_params: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
-        """Initialize the OddSHAP approximator."""
+        """Initialize the OddSHAP approximator.
+
+        ``tree_params`` entries override the surrogate defaults — including
+        ``random_state``, ``n_jobs``, and ``verbose``; ``max_depth`` defaults to 10
+        (the paper's configuration) unless overridden.
+        """
         del kwargs
         _import_lightgbm()
 
@@ -114,10 +120,12 @@ class OddSHAP(Approximator):
             raise ValueError(msg)
         self.odd_only = True
         if interaction_factor < 1:
-            msg = "interaction_factor (eta) must be a positive integer."
+            msg = "interaction_factor (eta) must be at least 1."
             raise ValueError(msg)
         self.interaction_factor = interaction_factor
         self.tree_params = tree_params
+        # The WLS kernel weights depend only on n; compute them once.
+        self._kernel_weights = self._init_regression_kernel_weights_static(n)
 
         self.odd_interaction_lookup: dict[tuple[int, ...], int] = {}
         self.odd_interaction_matrix_binary = np.zeros((0, self.n), dtype=bool)
@@ -141,16 +149,20 @@ class OddSHAP(Approximator):
             Estimated first-order Shapley values.
 
         Raises:
-            ValueError: If ``budget < n * interaction_factor``. Algorithm 1 of the paper
-                falls back to TreeSHAP in this regime; this implementation deliberately
-                raises instead, so an under-budgeted call never silently returns a
-                different estimator's values.
+            ValueError: If ``budget < min(n * interaction_factor, 2**n)``, i.e. the
+                budget is below the eta-based minimum and does not cover the full
+                coalition space either. Algorithm 1 of the paper falls back to TreeSHAP
+                in this regime; this implementation deliberately raises instead, so an
+                under-budgeted call never silently returns a different estimator's
+                values.
             RuntimeError: If the sampled coalitions do not contain the empty or grand coalition.
         """
         del kwargs
 
-        # Fail fast before any (possibly expensive) game evaluation.
-        minimum_budget = self.n * self.interaction_factor
+        # Fail fast before any (possibly expensive) game evaluation. A budget that
+        # covers the full coalition space is always sufficient, even when 2**n is
+        # smaller than the eta-based minimum (small n).
+        minimum_budget = min(self.n * self.interaction_factor, 2**self.n)
         if budget < minimum_budget:
             msg = (
                 "The budget is too small for OddSHAP. "
@@ -240,17 +252,15 @@ class OddSHAP(Approximator):
             baseline_value=empty_set_value,
         )
 
-        interaction_lookup: dict[tuple[int, ...], int] = {(): 0}
-        for player in range(self.n):
-            interaction_lookup[(player,)] = player + 1
-
         return InteractionValues(
             values=sv_values,
             index=self.approximation_index,
             max_order=1,
             min_order=0,
             n_players=self.n,
-            interaction_lookup=interaction_lookup,
+            # the base class populated {(): 0, (0,): 1, ..., (n-1,): n} for
+            # min_order=0, max_order=1
+            interaction_lookup=self.interaction_lookup,
             baseline_value=float(empty_set_value),
             estimated=not (budget >= 2**self.n),
             estimation_budget=budget,
@@ -265,23 +275,16 @@ class OddSHAP(Approximator):
         """Fit the LightGBM surrogate used for sparse odd-interaction detection."""
         lgb = _import_lightgbm()
 
-        if self.tree_params is None:
-            surrogate_model = lgb.LGBMRegressor(
-                verbose=-1,
-                n_jobs=1,
-                random_state=self._random_state,
-                max_depth=10,
-            )
-        else:
-            # Keep the paper's depth-10 surrogate unless the user overrides it explicitly.
-            params = {"max_depth": 10, **self.tree_params}
-            surrogate_model = lgb.LGBMRegressor(
-                verbose=-1,
-                n_jobs=1,
-                random_state=self._random_state,
-                **params,
-            )
-
+        # Paper defaults (depth-10 surrogate); any user-supplied tree_params entry
+        # overrides the matching default.
+        params = {
+            "verbose": -1,
+            "n_jobs": 1,
+            "random_state": self._random_state,
+            "max_depth": 10,
+            **(self.tree_params or {}),
+        }
+        surrogate_model = lgb.LGBMRegressor(**params)
         surrogate_model.fit(coalitions.astype(float), game_values)
         return surrogate_model
 
@@ -387,7 +390,7 @@ class OddSHAP(Approximator):
         - sampling adjustment weights from the CoalitionSampler
 
         """
-        kernel_weights = self._init_regression_kernel_weights_static(self.n)
+        kernel_weights = self._kernel_weights
         coalition_sizes = self._sampler.coalitions_size
         sampling_adjustment_weights = self._sampler.sampling_adjustment_weights
 
