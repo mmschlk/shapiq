@@ -160,14 +160,14 @@ class OddSHAP(Approximator):
         empty_idx = self._sampler.empty_coalition_index
         if empty_idx is None:
             msg = "OddSHAP expected empty coalition to be present in the sampled coalitions"
-            raise RuntimeError(msg)
+            raise RuntimeError(msg)  # pragma: no cover
 
         empty_set_value = float(game_values[empty_idx])
 
         full_mask = np.sum(coalitions, axis=1) == self.n
         if not np.any(full_mask):
             msg = "OddSHAP expected grand coalition to be present in the sampled coalitions"
-            raise RuntimeError(msg)
+            raise RuntimeError(msg)  # pragma: no cover
 
         full_set_value = float(game_values[np.where(full_mask)[0][0]])
 
@@ -416,7 +416,7 @@ class OddSHAP(Approximator):
         """
         if self.n_active_interactions == 0:
             msg = "OddSHAP support has not been built yet. Call _build_support(...) first."
-            raise RuntimeError(msg)
+            raise RuntimeError(msg)  # pragma: no cover
 
         row_weights = self._get_regression_row_weights()
         beta_empty = 0.5 * (full_set_value + empty_set_value)
@@ -467,7 +467,7 @@ class OddSHAP(Approximator):
         n_nonempty_terms = self.n_active_interactions - 1
         if n_nonempty_terms <= 0:
             msg = "OddSHAP support must contain at least one non-empty interaction before building constraint objects."
-            raise RuntimeError(msg)
+            raise RuntimeError(msg)  # pragma: no cover
 
         beta_empty = 0.5 * (full_set_value + empty_set_value)
 
@@ -546,7 +546,7 @@ class OddSHAP(Approximator):
                 "Coefficient vector length does not match the active OddSHAP support. "
                 f"Expected {self.n_active_interactions}, got {odd_fourier_coefficients.shape[0]}."
             )
-            raise ValueError(msg)
+            raise ValueError(msg)  # pragma: no cover
 
         sv_values = np.zeros(self.n + 1, dtype=float)
         sv_values[0] = baseline_value
