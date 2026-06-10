@@ -8,6 +8,7 @@ import numpy as np
 import scipy.special as sp
 
 from shapiq.interaction_values import InteractionValues
+from shapiq.tree._numerics import VandermondeDiagnostics, grid_is_certified, solve_vandermonde
 from shapiq.tree.conversion.edges import create_edge_tree
 from shapiq.tree.validation import validate_tree_model
 from shapiq.utils.sets import generate_interaction_lookup, powerset
@@ -38,8 +39,14 @@ def get_N_v2(D: np.ndarray) -> np.ndarray:
     """Get N_v2 matrix for Linear Tree Shap."""
     depth = D.shape[0]
     Ns = np.zeros((depth + 1, depth))
+    diagnostics = VandermondeDiagnostics()
+    certified = grid_is_certified(D)
     for i in range(1, depth + 1):
-        Ns[i, :i] = np.linalg.inv(np.vander(D[:i]).T).dot(1.0 / get_norm_weight(i - 1))
+        Ns[i, :i] = solve_vandermonde(
+            D[:i], 1.0 / get_norm_weight(i - 1), certified=certified, diagnostics=diagnostics
+        )
+    # default stacklevel traces emit <- get_N_v2 <- __init__ <- user
+    diagnostics.emit()
     return Ns
 
 

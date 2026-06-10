@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Bugfix
+
+- Hardens the Vandermonde interpolation solves in the polynomial TreeSHAP machinery (`TreeSHAPIQ`, `LinearTreeSHAP`):
+  - **surfaces a pre-existing silent-wrong-answer bug**: for interpolation degrees ~27-31 (for `TreeSHAPIQ` the degree is `min(depth, n_features)`), the previous explicit matrix inversion silently lost precision - a coalesced `RuntimeWarning` now reports the worst condition number; from degree ~32 the prefix systems become rank-deficient and the returned values can violate the completeness axiom by errors up to orders of magnitude beyond the prediction itself - such cases now emit a clear `RuntimeWarning` stating the values are NOT reliable,
+  - very deep trees no longer crash with an unexplained `LinAlgError` (previously at degree ~60); a least-squares fallback is returned together with the reliability warning,
+  - no explicit matrix inverse is formed anymore (`np.linalg.solve` / SVD-based least squares),
+  - interpolation grids are certified by measurement (cached per grid, hoisted out of the construction loops), so custom `LinearTreeSHAP(base_func=...)` grids are handled correctly and ordinary trees pay no per-solve diagnostic work. [#545](https://github.com/mmschlk/shapiq/issues/545)
+
+### Changed
+
+- `LinearTreeSHAP` (trees deeper than ~26) and `TreeSHAPIQ` (interpolation degree above ~26) now emit a `RuntimeWarning` on paths that previously were silent (precision loss / unreliable deep-tree values); test suites running with `filterwarnings = error` will surface this intentionally. Likely warrants a minor (not patch) version bump.
+
 ## v1.5.1 (2026-05-30)
 
 ### Bugfix
