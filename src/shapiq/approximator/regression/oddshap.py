@@ -13,8 +13,9 @@ import numpy as np
 from scipy.special import binom
 
 from shapiq.approximator.base import Approximator
+from shapiq.approximator.proxy.proxyspex import ProxySPEX
 from shapiq.interaction_values import InteractionValues
-from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
+from shapiq.tree.conversion import convert_tree_model
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -76,12 +77,9 @@ class OddSHAP(Approximator):
         pairing_trick: bool = True,  # Theorem 3.2 Alg. 1
         sampling_weights: np.ndarray | None = None,
         random_state: int | None = None,
-        regression_basis: str = "Fourier",  # isolate odd terms
-        interaction_detection: str = "ProxySHAP",  # screening sparse odd interactions
         odd_only: bool = True,
         interaction_factor: int = 10,  # standard setting according to paper
         tree_params: dict[str, Any] | None = None,
-        proxy_max_order: int | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the OddSHAP approximator."""
@@ -104,8 +102,6 @@ class OddSHAP(Approximator):
             random_state=random_state,
         )
 
-        self.regression_basis = regression_basis
-        self.interaction_detection = interaction_detection
         if not odd_only:
             msg = "This OddSHAP implementation supports only odd_only=True."
             raise ValueError(msg)
@@ -116,7 +112,6 @@ class OddSHAP(Approximator):
         self.odd_interaction_lookup: dict[tuple[int, ...], int] = {}
         self.odd_interaction_matrix_binary = np.zeros((0, self.n), dtype=bool)
         self.n_active_interactions: int = 0
-        self.proxy_max_order = self.n if proxy_max_order is None else proxy_max_order
 
     def approximate(
         self, budget: int, game: Game | Callable[[np.ndarray], np.ndarray], **kwargs: Any
@@ -213,9 +208,6 @@ class OddSHAP(Approximator):
 
         # 2. detect odd higher-order interactions
         detected_interactions = self._select_odd_interactions(
-            budget=budget,
-            coalitions=coalitions,
-            game_values=game_values,
             n_candidate_interactions=n_candidate_interactions,
             surrogate_model=surrogate_model,
         )
@@ -345,38 +337,35 @@ class OddSHAP(Approximator):
     def _select_odd_interactions(
         self,
         *,
-        budget: int,
-        coalitions: np.ndarray,
-        game_values: np.ndarray,
         n_candidate_interactions: int,
         surrogate_model: object | None = None,
     ) -> list[tuple[int, ...]]:
-        """Return selected higher-order odd interactions using ProxySHAP's proxy-tree screening step."""
-        del budget, coalitions, game_values
+        """Screen higher-order odd interactions from the surrogate's Fourier spectrum.
 
+        Implements the paper's ``OddInteractionExtract`` (Fumagalli et al. 2026,
+        Algorithm 1 / "Controlling Higher-Order Terms"): following ProxySPEX, the fitted
+        GBT is converted to its exact Fourier (Walsh) spectrum and the odd-cardinality
+        frequencies with the largest coefficient magnitudes are kept. The Fourier
+        extraction is reused directly from ProxySPEX (``_sklearn_to_fourier``) rather than
+        re-implemented, so the support is selected in the very Fourier basis the odd
+        regression is solved in.
+        """
         if surrogate_model is None or n_candidate_interactions <= 0:
             return []
 
-        # ProxySHAP-style tree interaction computation
-        explainer = InterventionalTreeExplainer(
-            surrogate_model,
-            data=np.zeros((1, self.n)),
-            class_index=None,
-            index="SII",
-            max_order=self.proxy_max_order,
-            bool_tree=True,
+        tree_models = convert_tree_model(surrogate_model)
+        # Reuse ProxySPEX's exact GBT->Fourier extraction as-is (no upstream changes).
+        # The instance is only a host for the extractor; it is never sampled or fit.
+        fourier_extractor = ProxySPEX(
+            n=self.n, proxy_model=surrogate_model, random_state=self._random_state
         )
-
-        proxy_values = explainer.explain_function(np.ones((1, self.n)))
-        proxy_interactions = proxy_values.interactions
+        fourier_coefficients = fourier_extractor._sklearn_to_fourier(tree_models)  # noqa: SLF001
 
         higher_order_odd: dict[tuple[int, ...], float] = {}
-
-        for interaction, value in proxy_interactions.items():
+        for interaction, coefficient in fourier_coefficients.items():
             normalized_interaction = tuple(sorted(interaction))
-
             if len(normalized_interaction) >= 3 and len(normalized_interaction) % 2 == 1:
-                higher_order_odd[normalized_interaction] = float(value)
+                higher_order_odd[normalized_interaction] = float(coefficient)
 
         selected = sorted(
             higher_order_odd.items(),
