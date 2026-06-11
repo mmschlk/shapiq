@@ -34,9 +34,9 @@ class ImageExplainer(Explainer):
         super().__init__(model=model_architecture.model, data=None, index=index, max_order=max_order)
 
         if isinstance(imputer, ImageImputer):
-            self._imputer = imputer
+            self._imputer: ImageImputer = imputer
         else:
-            self._imputer = ImageImputer(
+            self._imputer: ImageImputer = ImageImputer(
                 model_architecture=model_architecture,
                 image=data,
                 batch_size=batch_size,
@@ -54,9 +54,12 @@ class ImageExplainer(Explainer):
 
     def explain_function(
         self, x: ImageLike| None, *, budget: int = 64
-    ) -> InteractionValues:      
+    ) -> InteractionValues:  
+        if x is not None:
+            self._imputer.fit(x)
         interaction_values = self._approximator.approximate(budget=budget, game=self._imputer)
         interaction_values.baseline_value = self.baseline_value
+        
         if is_empty_value_the_baseline(interaction_values.index):
             interaction_values[()] = interaction_values.baseline_value
         return interaction_values
