@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.5.2 (unknown)
+## v1.5.2 (2026-06-12)
 
 ### Highlights of new Features
 

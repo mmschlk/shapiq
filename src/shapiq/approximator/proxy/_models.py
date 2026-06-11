@@ -416,6 +416,8 @@ def _select_base_proxy_via_string(proxy_str: ProxyLiteral, random_state: int | N
         return LinearRegression()
     else:
         reasons.append(f"Proxy model '{proxy_str}' is not recognized.")
-
+    reasons.append(
+        "Currently available proxy models are 'xgboost', 'lightgbm', 'tree', and 'linear'."
+    )
     warn(f"{' '.join(reasons)} Falling back to DecisionTreeRegressor.", stacklevel=2)
     return DecisionTreeRegressor(random_state=random_state)
