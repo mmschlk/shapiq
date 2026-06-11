@@ -21,6 +21,11 @@ from .regression import (
     kADDSHAP,
 )
 
+# ShaplEIG needs no import guard: its optional dependencies (the `shapleig`
+# extra) are imported in its constructor, which raises an informative
+# ImportError when they are missing.
+from .shapleig import ShaplEIG
+
 try:
     from .sparse import SPEX
 except ImportError as _e:
@@ -48,6 +53,7 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     SPEX,
     RegressionMSR,
     ProxySPEX,
+    ShaplEIG,
 ]
 
 # contains all SI approximators
@@ -119,6 +125,7 @@ __all__ = [
     "ProxySPEX",
     "ProxySHAP",
     "RegressionMSR",
+    "ShaplEIG",
     "SHAPIQ",
     "SVARM",
     "SVARMIQ",

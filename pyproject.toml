@@ -73,6 +73,15 @@ proxy = [
     "catboost",
     "smac", # SMAC HPO for proxy models
 ]
+shapleig = [
+    # required by shapiq.approximator.shapleig (ShaplEIG)
+    # NOTE: pinned to the exact versions the reference implementation was
+    # developed and validated against; loose ranges can be discussed.
+    "torch==2.9.1",
+    "gpytorch==1.14",
+    "botorch==0.14.0",
+    "linear_operator==0.6",
+]
 
 [tool.coverage.report]
 exclude_also = [
@@ -159,6 +168,19 @@ exclude = [
 # Exclude a variety of commonly ignored directories.
 # Note to developers: If you add a new ignore at least put a comment next to it why it is ignored
 [tool.ruff.lint.per-file-ignores]
+"src/shapiq/approximator/shapleig/_shapley_math.py" = [
+    # controlled verbatim copy of the validated reference implementation in
+    # the ShaplEIG research repository; kept in sync, not restyled
+    "ANN001", "ANN202",  # reference code is fully typed via annotations where it matters
+    "FBT001", "FBT002",  # boolean positional args of internal helpers
+    "N815",              # tensor names follow the paper notation (train_X, ...)
+    "PERF401",           # explicit loops mirror the published algorithm
+    "RUF002", "RUF003",  # mathematical notation in docstrings/comments
+    "S101",              # shape/consistency asserts of the math core
+]
+"src/shapiq/approximator/shapleig/_kernels.py" = [
+    "FBT001", "FBT002",  # signature dictated by gpytorch's Kernel.forward
+]
 "src/shapiq/typing.py" = [
     "A005",  # we want to be similar to other libraries that also shadow typing
     "D102",  # we don't need docstrings for protocol stubs
