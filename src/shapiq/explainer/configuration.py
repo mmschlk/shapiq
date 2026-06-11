@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Literal
 
 from shapiq import (
@@ -99,6 +100,15 @@ APPROXIMATOR_CONFIGURATIONS: dict[
 }
 
 
+def _spex_available() -> bool:
+    """Return whether the real ``SPEX`` is importable (i.e. the ``sparse`` extra is installed).
+
+    When ``shapiq[sparse]`` is missing, ``SPEX`` is bound to a placeholder class that raises an
+    ``ImportError`` on instantiation; the placeholder is tagged with ``_import_error``.
+    """
+    return not hasattr(SPEX, "_import_error")
+
+
 def choose_spex(max_order: int, n_players: int) -> bool:
     """Decide whether to use SPEX based on the number of players and max order.
 
@@ -136,11 +146,20 @@ def setup_approximator_automatically(
         The selected approximator.
     """
     if choose_spex(max_order=max_order, n_players=n_players) and index in SPEX.valid_indices:
-        return SPEX(
-            n=n_players,
-            max_order=max_order,
-            index=index,
-            random_state=random_state,
+        if _spex_available():
+            return SPEX(
+                n=n_players,
+                max_order=max_order,
+                index=index,
+                random_state=random_state,
+            )
+        # SPEX is the placeholder (optional ``sparse`` extra not installed). Warn and fall
+        # through to the dense approximators so ``"auto"`` still returns a working approximator.
+        warnings.warn(
+            "SPEX would be selected for this large problem, but the optional 'sparse' extra is "
+            "not installed (pip install shapiq[sparse]). Falling back to a dense approximator, "
+            "which may be slow for this number of players.",
+            stacklevel=2,
         )
     if index == "SV" or (max_order == 1 and (index == "SV" or index_generalizes_sv(index))):
         return KernelSHAP(n=n_players, random_state=random_state)

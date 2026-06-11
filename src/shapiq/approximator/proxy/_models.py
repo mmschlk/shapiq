@@ -24,11 +24,48 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import GridSearchCV, KFold, RandomizedSearchCV, cross_val_score
 from sklearn.tree import DecisionTreeRegressor
 
+from shapiq.utils.modules import safe_isinstance
+
 if TYPE_CHECKING:
     from ConfigSpace import Configuration, ConfigurationSpace
 
 
 ProxyLiteral = Literal["xgboost", "lightgbm", "tree", "linear"]
+
+# Hyperparameter grids for the HPO-informed default boosting proxies (Butler et al., 2025). The two
+# grids are deliberately the same size so the gradient-boosting backends tune comparable budgets.
+_LIGHTGBM_DECODER_GRID = {
+    "max_depth": [3, 5],
+    "max_iter": [500, 1000],  # LightGBM accepts ``max_iter`` as an alias for ``n_estimators``
+    "learning_rate": [0.01, 0.1],
+}
+_XGBOOST_DECODER_GRID = {
+    "max_depth": [3, 5],
+    "n_estimators": [500, 1000],
+    "learning_rate": [0.01, 0.1],
+}
+# Resolved-model qualified name -> its default grid. Keyed on the *resolved* estimator (not the
+# requested tag) so a backend-missing fallback to DecisionTree is left unwrapped.
+_DEFAULT_HPO_GRIDS = {
+    "lightgbm.LGBMRegressor": _LIGHTGBM_DECODER_GRID,
+    "xgboost.sklearn.XGBRegressor": _XGBOOST_DECODER_GRID,
+}
+
+
+def _wrap_in_default_hpo(model: ProxyModel) -> ProxyModel | ProxyModelWithHPO:
+    """Wrap a resolved boosting proxy in its default :class:`~sklearn.model_selection.GridSearchCV`.
+
+    Used by the proxy approximators when ``hpo=True`` to turn a bare boosting regressor into the
+    HPO-informed proxy of :cite:t:`Butler.2025`. A model that is not one of the gradient-boosting
+    backends -- e.g. the :class:`~sklearn.tree.DecisionTreeRegressor` backend-missing fallback or a
+    :class:`~sklearn.linear_model.LinearRegression` -- is returned unchanged.
+    """
+    for qualified_name, grid in _DEFAULT_HPO_GRIDS.items():
+        if safe_isinstance(model, qualified_name):
+            return GridSearchCV(
+                estimator=model, param_grid=grid, scoring="r2", cv=5, verbose=0, n_jobs=1
+            )
+    return model
 
 
 def get_smac_config(proxy_name: str) -> ConfigurationSpace:
@@ -137,8 +174,8 @@ class ProxyModelWithHPO(ProxyModel, Protocol):
     The wrapper exposes two estimators with distinct roles:
 
     * ``estimator`` -- the *unfitted* base model. Its type selects the proxy route (linear vs.
-      tree, see :func:`shapiq.approximator.proxy.proxyshap.proxy_approximate`) and is available
-      before fitting.
+      tree, see :func:`shapiq.approximator.proxy.proxyshap._extract_proxy_interactions`) and is
+      available before fitting.
     * ``best_estimator_`` -- the *fitted* model chosen by the search, used for interaction
       extraction and residual adjustment. Only available after :meth:`fit`.
     """
@@ -328,53 +365,57 @@ class SMACProxyModel(ProxyModelWithHPO):
         return self.best_estimator_.predict(X)
 
 
-def _select_base_proxy_via_string(proxy_str: str, random_state: int | None) -> ProxyModel:
+def _select_base_proxy_via_string(proxy_str: ProxyLiteral, random_state: int | None) -> ProxyModel:
     """Select a proxy model based on a string identifier.
 
-    Recognized identifiers are the members of :data:`ProxyLiteral`; any other string falls
-    back to a :class:`~sklearn.tree.DecisionTreeRegressor` with a warning.
+    Recognized identifiers are the members of :data:`ProxyLiteral`. The gradient-boosting tags
+    (``"xgboost"``, ``"lightgbm"``) try the requested backend, then the other boosting backend,
+    and finally fall back to a :class:`~sklearn.tree.DecisionTreeRegressor` when neither is
+    installed. Whenever a fallback happens, the accumulated reasons are reported in a single
+    warning rather than one warning per step.
     """
-    # XGBoost route: We try XGBoost, then LightGBM and fall back to a Decision Tree if both are unavailable.
+    # Reasons are accumulated so that any fallback path emits exactly one combined warning.
+    reasons: list[str] = []
+    # XGBoost route: try XGBoost, then LightGBM, then fall back to a Decision Tree.
     if proxy_str == "xgboost":
         try:
             from xgboost import XGBRegressor
 
             return XGBRegressor(random_state=random_state)
         except ImportError:
-            msg = "XGBoost is not installed. Install it with: pip install 'shapiq[proxy]' or choose a different proxy_model."
-            warn(msg, stacklevel=2)
-        if proxy_str == "lightgbm":
-            try:
-                from lightgbm import LGBMRegressor
+            reasons.append("XGBoost is not installed.")
+        try:
+            from lightgbm import LGBMRegressor
 
-                return LGBMRegressor(random_state=random_state)
-            except ImportError:
-                msg = "LightGBM is not installed. Install it with: pip install 'shapiq[proxy]' or choose a different proxy_model."
-                warn(msg, stacklevel=2)
-
-    # LightGBM route: We try LightGBM and fall back to a Decision Tree if it's unavailable.
-    if proxy_str == "lightgbm":
+            warn(f"{' '.join(reasons)} Falling back to LightGBM.", stacklevel=2)
+            return LGBMRegressor(random_state=random_state)
+        except ImportError:
+            reasons.append(
+                "LightGBM is also not installed. Install a backend with: pip install 'shapiq[proxy]'."
+            )
+    # LightGBM route: try LightGBM, then XGBoost, then fall back to a Decision Tree.
+    elif proxy_str == "lightgbm":
         try:
             from lightgbm import LGBMRegressor
 
             return LGBMRegressor(random_state=random_state)
         except ImportError:
-            msg = "LightGBM is not installed. Install it with: pip install 'shapiq[proxy]' or choose a different proxy_model."
-            warn(msg, stacklevel=2)
+            reasons.append("LightGBM is not installed.")
+        try:
+            from xgboost import XGBRegressor
 
-        if proxy_str == "xgboost":
-            try:
-                from xgboost import XGBRegressor
-
-                return XGBRegressor(random_state=random_state)
-            except ImportError:
-                msg = "XGBoost is not installed. Install it with: pip install 'shapiq[proxy]' or choose a different proxy_model."
-                warn(msg, stacklevel=2)
-
-    # Tree route: We try a Decision Tree regressor, which is the fallback if no other tree model is available.
-    if proxy_str != "linear":
-        msg = f"Proxy model '{proxy_str}' is not available. Falling back to DecisionTreeRegressor."
-        warn(msg, stacklevel=2)
+            warn(f"{' '.join(reasons)} Falling back to XGBoost.", stacklevel=2)
+            return XGBRegressor(random_state=random_state)
+        except ImportError:
+            reasons.append(
+                "XGBoost is also not installed. Install a backend with: pip install 'shapiq[proxy]'."
+            )
+    elif proxy_str == "tree":
         return DecisionTreeRegressor(random_state=random_state)
-    # Linear route: We use a simple linear regression model, which is the only option for a linear proxy.
-    return LinearRegression()
+    elif proxy_str == "linear":
+        return LinearRegression()
+    else:
+        reasons.append(f"Proxy model '{proxy_str}' is not recognized.")
+
+    warn(f"{' '.join(reasons)} Falling back to DecisionTreeRegressor.", stacklevel=2)
+    return DecisionTreeRegressor(random_state=random_state)

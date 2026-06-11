@@ -9,7 +9,7 @@ import pytest
 
 from shapiq.approximator.proxy.proxyspex import ProxySPEX
 from shapiq.interaction_values import InteractionValues
-from tests.shapiq.markers import skip_if_no_lightgbm
+from tests.shapiq.markers import skip_if_no_lightgbm, skip_if_no_xgboost
 
 
 @skip_if_no_lightgbm
@@ -88,21 +88,59 @@ def test_approximate(n, interactions, budget):
         assert estimates[interaction] == pytest.approx(1.0, abs=0.5)
 
 
-def test_proxyspex_falls_back_to_decision_tree_without_lightgbm(monkeypatch):
-    """Without lightgbm, ProxySPEX falls back to a bare DecisionTreeRegressor instead of raising.
+def test_proxyspex_falls_back_to_decision_tree_without_any_boosting_backend(monkeypatch):
+    """Without both lightgbm and xgboost, ProxySPEX falls back to a bare DecisionTreeRegressor.
 
-    ProxySPEX no longer requires lightgbm: the default ``"lightgbm"`` tag warns and falls back
-    to a scikit-learn ``DecisionTreeRegressor`` (so it is *not* wrapped in the LightGBM grid
-    search), keeping ProxySPEX usable without the optional gradient-boosting backends.
+    ProxySPEX no longer requires a gradient-boosting backend: the default ``"lightgbm"`` tag
+    warns and -- when neither lightgbm nor xgboost is installed -- falls back to a scikit-learn
+    ``DecisionTreeRegressor`` (so it is *not* wrapped in the LightGBM grid search), keeping
+    ProxySPEX usable without the optional backends.
     """
     from sklearn.tree import DecisionTreeRegressor
 
-    # Temporarily pretend lightgbm is not installed
+    # Temporarily pretend neither boosting backend is installed.
     monkeypatch.setitem(sys.modules, "lightgbm", None)
+    monkeypatch.setitem(sys.modules, "xgboost", None)
 
     with pytest.warns(UserWarning):
         approximator = ProxySPEX(n=10, max_order=2)
     assert isinstance(approximator.proxy_model, DecisionTreeRegressor)
+
+
+@skip_if_no_xgboost
+def test_proxyspex_falls_back_to_xgboost_without_lightgbm(monkeypatch):
+    """With lightgbm missing but xgboost present, ProxySPEX cross-falls-back to XGBoost.
+
+    Guards the fix to the previously-unreachable cross-backend fallback: requesting the default
+    ``"lightgbm"`` proxy when only xgboost is available must select an ``XGBRegressor`` rather
+    than dropping straight to a ``DecisionTreeRegressor``. ``hpo=False`` keeps the resolved
+    estimator bare so the test asserts the fallback resolution itself, independent of HPO wrapping.
+    """
+    from xgboost import XGBRegressor
+
+    # Temporarily pretend only lightgbm is missing.
+    monkeypatch.setitem(sys.modules, "lightgbm", None)
+
+    with pytest.warns(UserWarning, match="LightGBM is not installed"):
+        approximator = ProxySPEX(n=10, max_order=2, hpo=False)
+    assert isinstance(approximator.proxy_model, XGBRegressor)
+
+
+@skip_if_no_lightgbm
+def test_proxyspex_hpo_flag_controls_lightgbm_wrapping():
+    """ProxySPEX defaults to ``hpo=True`` (HPO-informed LightGBM); ``hpo=False`` keeps it bare."""
+    from lightgbm import LGBMRegressor
+    from sklearn.model_selection import GridSearchCV
+
+    from shapiq.approximator.proxy._models import _LIGHTGBM_DECODER_GRID
+
+    tuned = ProxySPEX(n=10, max_order=2)  # default hpo=True
+    assert isinstance(tuned.proxy_model, GridSearchCV)
+    assert isinstance(tuned.proxy_model.estimator, LGBMRegressor)
+    assert tuned.proxy_model.param_grid == _LIGHTGBM_DECODER_GRID
+
+    bare = ProxySPEX(n=10, max_order=2, hpo=False)
+    assert isinstance(bare.proxy_model, LGBMRegressor)
 
 
 @skip_if_no_lightgbm

@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sklearn.linear_model import RidgeCV
-from sklearn.model_selection import GridSearchCV
 
 from shapiq.approximator.base import Approximator
 from shapiq.approximator.proxy._models import (
@@ -16,11 +15,11 @@ from shapiq.approximator.proxy._models import (
     ProxyModel,
     ProxyModelWithHPO,
     _select_base_proxy_via_string,
+    _wrap_in_default_hpo,
 )
 from shapiq.game_theory.moebius_converter import MoebiusConverter, ValidMoebiusConverterIndices
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.conversion import convert_tree_model
-from shapiq.utils.modules import safe_isinstance
 from shapiq.utils.sets import powerset
 
 if TYPE_CHECKING:
@@ -32,13 +31,6 @@ if TYPE_CHECKING:
 
 
 ValidProxySPEXIndices = ValidMoebiusConverterIndices
-
-# Hyperparameter grid for ProxySPEX's reference HPO-informed LightGBM proxy (Butler et al., 2025).
-_LIGHTGBM_DECODER_GRID = {
-    "max_depth": [3, 5],
-    "max_iter": [500, 1000],
-    "learning_rate": [0.01, 0.1],
-}
 
 
 class ProxySPEX(Approximator[ValidProxySPEXIndices]):
@@ -55,6 +47,7 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
         max_order: int = 2,
         index: ValidProxySPEXIndices = "k-SII",
         proxy_model: Model | ProxyLiteral | ProxyModelWithHPO = "lightgbm",
+        hpo: bool = True,
         sampling_weights: np.ndarray | None = None,
         pairing_trick: bool = False,
         top_order: bool = False,
@@ -87,17 +80,21 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
 
                 * a string identifier (``"lightgbm"`` (default), ``"xgboost"``, ``"tree"``)
                   selecting a tree estimator; ``"linear"`` is rejected since ProxySPEX is
-                  tree-only. The ``"lightgbm"`` tag yields the reference HPO-informed LightGBM
-                  proxy -- the selected ``LGBMRegressor`` wrapped in a grid search over
-                  :data:`_LIGHTGBM_DECODER_GRID`, as described in :cite:t:`Butler.2025`. The
-                  other tags select a bare estimator. ProxySPEX does not require the optional
+                  tree-only. When ``hpo`` is set, a resolved gradient-boosting backend is wrapped
+                  in its default grid search (the reference HPO-informed proxy of
+                  :cite:t:`Butler.2025`); ``"tree"`` and any backend-missing fallback to a
+                  ``DecisionTreeRegressor`` stay bare. ProxySPEX does not require the optional
                   gradient-boosting backends: if the requested package is unavailable the tag
-                  warns and falls back to a bare scikit-learn ``DecisionTreeRegressor`` (which
-                  is therefore *not* wrapped in the LightGBM grid search).
+                  warns and falls back to a bare scikit-learn ``DecisionTreeRegressor``.
                 * a fitted-on-call estimator implementing the scikit-learn regressor interface,
                   or a hyperparameter-search wrapper exposing ``best_estimator_`` (e.g.
                   :class:`~sklearn.model_selection.GridSearchCV` or the
                   :class:`~shapiq.approximator.proxy._models.ProxyModelWithHPO` wrappers).
+
+            hpo: If ``True`` (default), wrap a string-resolved gradient-boosting proxy in its
+                default grid search (the HPO-informed proxy of :cite:t:`Butler.2025`). If
+                ``False``, use the bare resolved estimator. Has no effect when ``proxy_model`` is
+                a passed-in estimator/wrapper.
 
             random_state: Seed for random number generator. Defaults to ``None``.
 
@@ -105,24 +102,16 @@ class ProxySPEX(Approximator[ValidProxySPEXIndices]):
         """
         if sampling_weights is None:
             sampling_weights = np.array([math.comb(n, i) for i in range(n + 1)], dtype=float)
-        if isinstance(proxy_model, str):
+        if isinstance(proxy_model, ProxyModel):
+            self.proxy_model: ProxyModel | ProxyModelWithHPO = proxy_model
+        else:
             if proxy_model == "linear":
                 msg = "ProxySPEX only supports tree-based proxy models; 'linear' is not available."
                 raise ValueError(msg)
-            self.proxy_model = _select_base_proxy_via_string(proxy_model, random_state)
-            if proxy_model == "lightgbm" and safe_isinstance(
-                self.proxy_model, "lightgbm.LGBMRegressor"
-            ):
-                self.proxy_model: ProxyModel | ProxyModelWithHPO = GridSearchCV(
-                    estimator=self.proxy_model,
-                    param_grid=_LIGHTGBM_DECODER_GRID,
-                    scoring="r2",
-                    cv=5,
-                    verbose=0,
-                    n_jobs=1,
-                )
-        else:
-            self.proxy_model: ProxyModel | ProxyModelWithHPO = proxy_model
+            resolved = _select_base_proxy_via_string(proxy_model, random_state)
+            # ``hpo`` wraps a resolved boosting backend in its default grid search (the reference
+            # HPO-informed proxy); a DecisionTree fallback is left unwrapped by the helper.
+            self.proxy_model = _wrap_in_default_hpo(resolved) if hpo else resolved
         super().__init__(
             n=n,
             max_order=max_order,

@@ -1,6 +1,6 @@
 """Tests for ProxySHAP's type-based route dispatch.
 
-These tests pin down the *typing* behavior of :func:`proxy_approximate`: which extraction
+These tests pin down the *typing* behavior of :func:`_extract_proxy_interactions`: which extraction
 route a given proxy model resolves to is decided purely from the type of its (HPO-unwrapped)
 base estimator. They cover
 
@@ -26,19 +26,24 @@ from shapiq.approximator.proxy._models import (
     WrapperGridSearchCV,
     WrapperRandomizedSearchCV,
 )
-from shapiq.approximator.proxy.proxyshap import (
-    _approximate_linear,
-    _approximate_tree,
-    _dispatch_on_base_estimator,
-    proxy_approximate,
+from shapiq.approximator.proxy._routes import (
+    _base_estimator,
+    _extract_linear,
+    _extract_proxy_interactions,
+    _extract_tree,
 )
 from tests.shapiq.markers import skip_if_no_catboost, skip_if_no_lightgbm, skip_if_no_xgboost
 
 
 def _resolve_route(proxy_model: object) -> object:
-    """Resolve the route exactly as :meth:`lazydispatch.__call__` does for ``proxy_model``."""
-    dispatch_key = _dispatch_on_base_estimator(proxy_model)
-    return proxy_approximate.dispatch(type(dispatch_key))
+    """Resolve the extraction route ``proxy_model`` would hit once fit and unwrapped.
+
+    ``fit_proxy`` fits the (possibly HPO-wrapping) model and returns its base estimator, on whose
+    type ``_extract_proxy_interactions`` then dispatches. The fitted base shares its type with the
+    unfitted base, so unwrapping via :func:`_base_estimator` resolves the same route.
+    """
+    base = _base_estimator(proxy_model)
+    return _extract_proxy_interactions.dispatch(type(base))
 
 
 def _game(coalitions: np.ndarray) -> np.ndarray:
@@ -54,13 +59,13 @@ def _game(coalitions: np.ndarray) -> np.ndarray:
 @pytest.mark.parametrize("model", [LinearRegression(), Ridge(), Lasso(), ElasticNet()])
 def test_linear_models_route_to_linear(model):
     """All ``sklearn`` linear models resolve to the linear route via the ``LinearModel`` MRO."""
-    assert _resolve_route(model) is _approximate_linear
+    assert _resolve_route(model) is _extract_linear
 
 
 @pytest.mark.parametrize("model", [DecisionTreeRegressor(), RandomForestRegressor()])
 def test_sklearn_trees_route_to_tree(model):
     """Scikit-learn decision trees and forests resolve to the tree route."""
-    assert _resolve_route(model) is _approximate_tree
+    assert _resolve_route(model) is _extract_tree
 
 
 @skip_if_no_xgboost
@@ -68,7 +73,7 @@ def test_xgboost_routes_to_tree():
     """An ``XGBRegressor`` resolves to the tree route (registered by qualified name)."""
     from xgboost import XGBRegressor
 
-    assert _resolve_route(XGBRegressor()) is _approximate_tree
+    assert _resolve_route(XGBRegressor()) is _extract_tree
 
 
 @skip_if_no_lightgbm
@@ -76,7 +81,7 @@ def test_lightgbm_routes_to_tree():
     """An ``LGBMRegressor`` resolves to the tree route (registered by qualified name)."""
     from lightgbm import LGBMRegressor
 
-    assert _resolve_route(LGBMRegressor()) is _approximate_tree
+    assert _resolve_route(LGBMRegressor()) is _extract_tree
 
 
 @skip_if_no_catboost
@@ -84,14 +89,14 @@ def test_catboost_routes_to_tree():
     """A ``CatBoostRegressor`` resolves to the tree route (registered by qualified name)."""
     from catboost import CatBoostRegressor
 
-    assert _resolve_route(CatBoostRegressor(verbose=False)) is _approximate_tree
+    assert _resolve_route(CatBoostRegressor(verbose=False)) is _extract_tree
 
 
 def test_unsupported_model_resolves_to_neither_route():
     """A model that is neither linear nor a registered tree falls through to the default."""
     route = _resolve_route(KNeighborsRegressor())
-    assert route is not _approximate_linear
-    assert route is not _approximate_tree
+    assert route is not _extract_linear
+    assert route is not _extract_tree
 
 
 # ---------------------------------------------------------------------------------------------
@@ -102,20 +107,20 @@ def test_unsupported_model_resolves_to_neither_route():
 @pytest.mark.parametrize(
     ("wrapper", "expected_route"),
     [
-        (WrapperGridSearchCV(Ridge(), {"alpha": [0.1, 1.0]}, cv=2), _approximate_linear),
+        (WrapperGridSearchCV(Ridge(), {"alpha": [0.1, 1.0]}, cv=2), _extract_linear),
         (
             WrapperGridSearchCV(DecisionTreeRegressor(), {"max_depth": [2, 3]}, cv=2),
-            _approximate_tree,
+            _extract_tree,
         ),
         (
             WrapperRandomizedSearchCV(Ridge(), {"alpha": [0.1, 1.0]}, n_iter=2, cv=2),
-            _approximate_linear,
+            _extract_linear,
         ),
         (
             WrapperRandomizedSearchCV(
                 DecisionTreeRegressor(), {"max_depth": [2, 3]}, n_iter=2, cv=2
             ),
-            _approximate_tree,
+            _extract_tree,
         ),
     ],
 )
@@ -124,17 +129,17 @@ def test_hpo_wrapper_dispatches_on_base_estimator(wrapper, expected_route):
     assert _resolve_route(wrapper) is expected_route
 
 
-def test_dispatch_key_unwraps_wrapper_to_base_instance():
-    """``_dispatch_on_base_estimator`` returns the wrapper's unfitted base estimator instance."""
+def test_base_estimator_unwraps_wrapper_to_base_instance():
+    """``_base_estimator`` returns the wrapper's unfitted base estimator instance."""
     base = Ridge()
     wrapper = WrapperGridSearchCV(base, {"alpha": [0.1]}, cv=2)
-    assert _dispatch_on_base_estimator(wrapper) is base
+    assert _base_estimator(wrapper) is base
 
 
-def test_dispatch_key_passes_raw_model_through():
-    """For a raw proxy model (no ``.estimator``) the dispatch key is the model itself."""
+def test_base_estimator_passes_raw_model_through():
+    """For a raw proxy model (no ``.estimator``) the base estimator is the model itself."""
     model = DecisionTreeRegressor()
-    assert _dispatch_on_base_estimator(model) is model
+    assert _base_estimator(model) is model
 
 
 # ---------------------------------------------------------------------------------------------
