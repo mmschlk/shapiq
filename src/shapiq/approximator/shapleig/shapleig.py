@@ -250,7 +250,7 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
             estimation_budget=budget,
             baseline_value=float(baseline_value),
             target_index=self.index,
-        ), np.zeros(self.n)  # TODO(david): return the correct variances once supported  # noqa: TD003
+        ), sv_variances.numpy()
 
     # ------------------------------------------------------------------
     # building blocks
