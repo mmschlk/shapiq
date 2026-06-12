@@ -5,21 +5,28 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+from tqdm import tqdm
 
 from shapiq.approximator.base import Approximator
 from shapiq.approximator.sampling import CoalitionSampler
 from shapiq.interaction_values import InteractionValues
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
+try:
     import torch
-
-    from shapiq.game import Game
-    from shapiq.typing import CoalitionMatrix, GameValues
 
     from . import _shapley_math as sm
     from ._surrogate import HammingGP
+
+except ImportError as err:
+    from ._error import _shapleig_import_error
+
+    raise _shapleig_import_error from err
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from shapiq.game import Game
+    from shapiq.typing import CoalitionMatrix, GameValues
 
 ValidShaplEIGIndices = Literal["SV"]
 
@@ -98,20 +105,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         # Optional dependencies of the `shapleig` extra: import in the
         # constructor (never at package import time) so that a missing extra
         # fails immediately with an actionable message.
-        try:
-            import torch  # noqa: F401
-
-            from . import (
-                _shapley_math,  # noqa: F401  (torch, linear-operator)
-                _surrogate,  # noqa: F401  (botorch, gpytorch)
-            )
-        except ImportError as err:
-            msg = (
-                "ShaplEIG requires the optional dependencies torch, gpytorch, "
-                "botorch, and linear-operator but they are not installed. "
-                "Install them with: pip install 'shapiq[shapleig]'"
-            )
-            raise ImportError(msg) from err
 
         # ShaplEIG selects coalitions adaptively (EIG argmax), so the base
         # class's sampling configuration must not suggest otherwise. Sampling
@@ -159,8 +152,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
             )
             raise ValueError(msg)
 
-        import torch
-
         # The ESP math and the GP fitting require double precision throughout
         # (float32 intermediates change fitted hyperparameters and thereby
         # selections). Enforce float64 locally and restore the user's default.
@@ -178,10 +169,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         game: Game | Callable[[CoalitionMatrix], GameValues],
     ) -> InteractionValues:
         """BED loop body (runs under enforced float64, see `approximate`)."""
-        import torch
-
-        from . import _shapley_math as sm
-
         iterations = budget - self.initial_design_size
 
         # Seed the GP hyperparameter fitting; the coalition sampling is seeded
@@ -199,8 +186,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
 
         iterator = range(iterations)
         if self.show_progress:
-            from tqdm import tqdm
-
             iterator = tqdm(iterator, desc="ShaplEIG", unit="it")
 
         best_idx: int | None = None
@@ -288,8 +273,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         - the candidate sampler draws the combined budget, keeping the first
           ``candidate_size`` coalitions not already in the initial design.
         """
-        import torch
-
         init_size = self.initial_design_size
         if self.max_candidates is None:
             if self.n > 16:
@@ -348,8 +331,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         Uses the validated reference settings throughout (standardized fixed
         noise ``1e-6``, minimum lengthscale ``1e-6``, 5 fitting attempts).
         """
-        from ._surrogate import HammingGP
-
         return HammingGP(train_X, train_Y)
 
     def _refit_scheduled(self, iteration_idx: int) -> bool:
@@ -383,8 +364,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         appended to A·K(Z,X), and the selected candidate's column is dropped
         from A·K(Z,W).
         """
-        from . import _shapley_math as sm
-
         gp_tensors = gp.tensors()
         K_chol = sm.psd_chol(sm.noisy_train_kernel(gp_tensors))
 
@@ -426,8 +405,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         coalitions: torch.Tensor,
     ) -> torch.Tensor:
         """Query the game on binary coalitions; values as a ``(m, 1)`` tensor."""
-        import torch
-
         values = game(coalitions.numpy().astype(bool))
         return torch.as_tensor(values, dtype=torch.float64).reshape(-1, 1)
 
@@ -443,8 +420,6 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         in the initial design, so its value is read from the archive; querying
         the game directly is a safety net only.
         """
-        import torch
-
         empty_rows = (archive_X.sum(dim=1) == 0).nonzero()
         if len(empty_rows) > 0:
             return float(archive_Y[int(empty_rows[0]), 0])

@@ -17,18 +17,24 @@ from __future__ import annotations
 import logging
 import math
 
-import torch
-from botorch.fit import fit_gpytorch_mll
-from botorch.models.gp_regression_mixed import SingleTaskGP
-from botorch.models.kernels.categorical import CategoricalKernel
-from botorch.models.transforms import Standardize
-from gpytorch.constraints.constraints import GreaterThan
-from gpytorch.kernels import ScaleKernel
-from gpytorch.likelihoods.gaussian_likelihood import GaussianLikelihood
-from gpytorch.mlls import ExactMarginalLogLikelihood
-from gpytorch.priors.torch_priors import LogNormalPrior
+try:
+    import torch
+    from botorch.fit import fit_gpytorch_mll
+    from botorch.models.gp_regression_mixed import SingleTaskGP
+    from botorch.models.kernels.categorical import CategoricalKernel
+    from botorch.models.transforms import Standardize
+    from gpytorch.constraints.constraints import GreaterThan
+    from gpytorch.kernels import ScaleKernel
+    from gpytorch.likelihoods.gaussian_likelihood import GaussianLikelihood
+    from gpytorch.mlls import ExactMarginalLogLikelihood
+    from gpytorch.priors.torch_priors import LogNormalPrior
 
-from ._shapley_math import GPTensors
+    from ._shapley_math import GPTensors
+except ImportError as err:
+    from ._error import _shapleig_import_error
+
+    raise _shapleig_import_error from err
+
 
 log = logging.getLogger(__name__)
 

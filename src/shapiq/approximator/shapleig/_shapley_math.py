@@ -27,8 +27,13 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-import torch
-from linear_operator.utils.cholesky import psd_safe_cholesky
+try:
+    import torch
+    from linear_operator.utils.cholesky import psd_safe_cholesky
+except ImportError as err:
+    from ._error import _shapleig_import_error
+
+    raise _shapleig_import_error from err
 
 DTYPE = torch.float64
 
