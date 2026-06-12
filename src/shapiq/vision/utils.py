@@ -202,9 +202,13 @@ def _try_convert_pil_image(image: object) -> np.ndarray | None:
 def _try_convert_torch_tensor(image: object) -> np.ndarray | None:
     """Attempt to convert a PyTorch tensor to a ``(H, W, C)`` numpy array.
 
-    Handles tensors with shapes ``(H, W)``, ``(C, H, W)``, ``(H, W, C)``,
-    and ``(1, C, H, W)``. When both the first and last dimension are in
-    ``{1, 3, 4}``, ``(C, H, W)`` layout is assumed.
+    Handles tensors with shapes ``(H, W)``, ``(C, H, W)``, and ``(H, W, C)``.
+
+    Layout detection uses channel-like sizes ``{1, 3, 4}``. Unambiguous
+    cases are resolved from a single channel-like axis. When both the first
+    and last axes look like channel counts (e.g. ``(3, 4, 4)`` vs
+    ``(4, 4, 3)``), PyTorch ``(C, H, W)`` is preferred unless the shape is
+    the common HWC pattern ``(H, W, 3)`` with ``H`` in ``{1, 3, 4}``.
 
     Args:
         image: Candidate object to convert.
@@ -234,10 +238,21 @@ def _try_convert_torch_tensor(image: object) -> np.ndarray | None:
     if tensor.ndim == 2:
         return tensor.numpy()[..., np.newaxis]
     if tensor.ndim == 3:
-        if tensor.shape[-1] in (1, 3, 4) and tensor.shape[0] not in (1, 3, 4):
-            pass  # already (H, W, C)
-        elif tensor.shape[0] in (1, 3, 4):
+        channel_like = (1, 3, 4)
+        height, width, channels = tensor.shape
+
+        if channels in channel_like and height not in channel_like:
+            pass  # (H, W, C)
+        elif height in channel_like and channels not in channel_like:
             tensor = tensor.permute(1, 2, 0)  # (C, H, W) → (H, W, C)
+        elif height in channel_like and channels in channel_like:
+            # Ambiguous small tensors, e.g. (3, 4, 4) CHW vs (4, 4, 3) HWC.
+            if height in (1, 3) and width >= height and channels >= height:
+                tensor = tensor.permute(1, 2, 0)
+            elif height == 4 and channels == 3:
+                pass  # square-ish RGB patch in HWC layout
+            else:
+                tensor = tensor.permute(1, 2, 0)
         return tensor.numpy()
 
     raise ValueError(

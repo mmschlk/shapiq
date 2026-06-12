@@ -101,8 +101,7 @@ class CustomPlayerStrategy(CNNPlayerStrategy):
                 f"masks must be a 3-D array of shape (n_players, H, W), "
                 f"got shape {masks.shape}."
             )
-        self._masks = masks
-       
+        self._masks = masks.astype(bool)
         self._verify(self._masks)
 
     @staticmethod

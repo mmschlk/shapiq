@@ -100,6 +100,9 @@ testpaths = [
 ]
 pythonpath = ["src"]
 minversion = "8.0"
+markers = [
+  "integration: tests that load real ML models (slower; optional extras)",
+]
 
 [tool.ruff]
 line-length = 100

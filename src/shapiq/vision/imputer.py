@@ -63,6 +63,8 @@ class ImageImputer(Imputer):
         self.empty_prediction = self.calc_empty_prediction()
         if self._normalize:
             self.normalization_value = self.empty_prediction
+            
+        return self
         
 
     def value_function(self, coalitions: np.ndarray) -> np.ndarray:
