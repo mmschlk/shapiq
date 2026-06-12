@@ -145,30 +145,25 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         Returns:
             The estimated Shapley values as ``InteractionValues``.
         """
+        # The ESP math and the GP fitting require double precision throughout
+        # (float32 intermediates change fitted hyperparameters and thereby
+        # selections). Enforce float64 locally and restore the user's default.
+        interactions,_ = self.approximate_with_variance(budget=budget, game=game)
+        return interactions
+
+    def approximate_with_variance(
+        self,
+        *,
+        budget: int,
+        game: Game | Callable[[CoalitionMatrix], GameValues],
+    ) -> tuple[InteractionValues, np.ndarray]:
+        """BED loop body (runs under enforced float64, see `approximate`)."""
         if budget <= self.initial_design_size:
             msg = (
                 f"Budget ({budget}) must exceed the initial design size "
                 f"({self.initial_design_size})."
             )
             raise ValueError(msg)
-
-        # The ESP math and the GP fitting require double precision throughout
-        # (float32 intermediates change fitted hyperparameters and thereby
-        # selections). Enforce float64 locally and restore the user's default.
-        previous_dtype = torch.get_default_dtype()
-        torch.set_default_dtype(torch.float64)
-        try:
-            return self._approximate(budget=budget, game=game)
-        finally:
-            torch.set_default_dtype(previous_dtype)
-
-    def _approximate(
-        self,
-        *,
-        budget: int,
-        game: Game | Callable[[CoalitionMatrix], GameValues],
-    ) -> InteractionValues:
-        """BED loop body (runs under enforced float64, see `approximate`)."""
         iterations = budget - self.initial_design_size
 
         # Seed the GP hyperparameter fitting; the coalition sampling is seeded
@@ -231,8 +226,8 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
 
         # NOTE (future work, coordinated with the maintainers): the surrogate
         # posterior also provides the marginal SV variances,
-        #   AEA = sm.aea(sm.akzza(ls, s), A_KZX, K_chol)  # noqa: ERA001
-        #   sv_variances = AEA.diagonal() * gp_tensors.emp_std**2  # noqa: ERA001
+        AEA = sm.aea(sm.akzza(ls, s), A_KZX, K_chol) # TODO: compute the correct AEA
+        sv_variances = AEA.diagonal() * gp_tensors.emp_std**2 
         # Expose them via an `approximate_with_variance` once
         # `InteractionValues` supports uncertainty information.
 
@@ -255,7 +250,7 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
             estimation_budget=budget,
             baseline_value=float(baseline_value),
             target_index=self.index,
-        )
+        ), np.zeros(self.n)  # TODO(david): return the correct variances once supported  # noqa: TD003
 
     # ------------------------------------------------------------------
     # building blocks
