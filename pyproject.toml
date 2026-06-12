@@ -70,6 +70,8 @@ proxy = [
     # required by shapiq.approximator.proxy (ProxySHAP, ProxySPEX, RegressionMSR)
     "xgboost",   # default proxy model in ProxySHAP
     "lightgbm",  # required by ProxySPEX
+    "catboost",
+    "smac", # SMAC HPO for proxy models
 ]
 
 [tool.coverage.report]

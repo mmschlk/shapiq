@@ -8,6 +8,7 @@ from .sets import (
     generate_interaction_lookup,
     generate_interaction_lookup_from_coalitions,
     get_explicit_subsets,
+    log_binom,
     pair_subset_sizes,
     powerset,
     split_subsets_budget,
@@ -18,6 +19,7 @@ from .sets import (
 __all__ = [
     # sets
     "powerset",
+    "log_binom",
     "pair_subset_sizes",
     "split_subsets_budget",
     "get_explicit_subsets",
