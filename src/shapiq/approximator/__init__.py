@@ -11,6 +11,7 @@ from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
+from .proxy import ProxySHAP, ProxySPEX, RegressionMSR
 from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
@@ -32,41 +33,6 @@ except ImportError as _e:
         def __init__(self, *_args: object, **_kwargs: object) -> None:
             """Raise an informative ImportError pointing to the missing extra."""
             msg = "SPEX requires the 'sparse' extra: pip install shapiq[sparse]"
-            raise ImportError(msg) from self._import_error
-
-
-try:
-    from .proxy import ProxySHAP, ProxySPEX, RegressionMSR
-except ImportError as _e:
-
-    class ProxySHAP(Approximator):
-        """Placeholder raised when the optional ``proxy`` extra is not installed."""
-
-        _import_error = _e
-
-        def __init__(self, *_args: object, **_kwargs: object) -> None:
-            """Raise an informative ImportError pointing to the missing extra."""
-            msg = "ProxySHAP requires the 'proxy' extra: pip install shapiq[proxy]"
-            raise ImportError(msg) from self._import_error
-
-    class ProxySPEX(Approximator):
-        """Placeholder raised when the optional ``proxy`` extra is not installed."""
-
-        _import_error = _e
-
-        def __init__(self, *_args: object, **_kwargs: object) -> None:
-            """Raise an informative ImportError pointing to the missing extra."""
-            msg = "ProxySPEX requires the 'proxy' extra: pip install shapiq[proxy]"
-            raise ImportError(msg) from self._import_error
-
-    class RegressionMSR(Approximator):
-        """Placeholder raised when the optional ``proxy`` extra is not installed."""
-
-        _import_error = _e
-
-        def __init__(self, *_args: object, **_kwargs: object) -> None:
-            """Raise an informative ImportError pointing to the missing extra."""
-            msg = "RegressionMSR requires the 'proxy' extra: pip install shapiq[proxy]"
             raise ImportError(msg) from self._import_error
 
 
