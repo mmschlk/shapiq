@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, get_args, runtime_checkable
 from warnings import warn
 
 import numpy as np
@@ -416,8 +416,6 @@ def _select_base_proxy_via_string(proxy_str: ProxyLiteral, random_state: int | N
         return LinearRegression()
     else:
         reasons.append(f"Proxy model '{proxy_str}' is not recognized.")
-    reasons.append(
-        "Currently available proxy models are 'xgboost', 'lightgbm', 'tree', and 'linear'."
-    )
+    reasons.append(f"Currently available proxy models are {', '.join(get_args(ProxyLiteral))}.")
     warn(f"{' '.join(reasons)} Falling back to DecisionTreeRegressor.", stacklevel=2)
     return DecisionTreeRegressor(random_state=random_state)

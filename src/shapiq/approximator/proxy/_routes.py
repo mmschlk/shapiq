@@ -14,7 +14,7 @@ kept separate from the approximator class itself:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from sklearn.preprocessing import PolynomialFeatures
@@ -34,13 +34,13 @@ if TYPE_CHECKING:
 ValidProxySHAPIndices = Literal["k-SII", "FSII", "FBII", "SII", "SV", "BV"]
 
 
-def _base_estimator(proxy_model: object) -> ProxyModel:
+def _base_estimator(proxy_model: ProxyModel | ProxyModelWithHPO) -> ProxyModel:
     """Return a proxy's *base* estimator: an HPO wrapper's ``.estimator``, else the model itself.
 
     Used by :func:`fit_proxy` to pick the feature transform from the base estimator's type before
     the (possibly wrapping) model is fit.
     """
-    return cast("ProxyModel", getattr(proxy_model, "estimator", proxy_model))
+    return getattr(proxy_model, "estimator", proxy_model)
 
 
 def _polynomial_features(max_order: int) -> PolynomialFeatures:
