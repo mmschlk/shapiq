@@ -59,7 +59,7 @@ class TestCNNArchitecture:
         arch = CNNArchitecture(
             model=ChannelSumModel(), player_strategy=FixedMasksStrategy(two_player_masks)
         )
-        assert arch._player_masks is None
+        assert not hasattr(arch, "_player_masks")
         arch.prepare(tiny_image)
         assert arch._player_masks is not None
         np.testing.assert_array_equal(_to_numpy(arch.player_masks), two_player_masks)
@@ -119,7 +119,9 @@ class TestCNNArchitecture:
         assert arch._player_masks is not None
         assert arch._player_masks.shape[0] == arch._player_strategy.n_players
         assert (arch._player_masks.cpu().numpy().sum(axis=0) == 1).all()
-        out = _to_numpy(arch.value_function(torch.tensor([[True] * arch._player_strategy.n_players])))
+        out = _to_numpy(
+            arch.value_function(torch.tensor([[True] * arch._player_strategy.n_players]))
+        )
         assert np.isfinite(out).all()
 
 

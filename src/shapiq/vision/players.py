@@ -1,43 +1,44 @@
-"""Player strategies for vision models, that define how to create players from images. 
-Players are defined in pixel space for CNNs and token space for ViTs. 
-Each strategy returns boolean masks that map each player to its corresponding pixels or tokens.
+"""Player strategies for vision models.
 
-Requires scikit-image for superpixel segmentation, otherwise numpy only."""
+Defines how to create players from images. Players are defined in pixel
+space for CNNs and token space for ViTs. Requires scikit-image for
+superpixel segmentation, otherwise numpy only.
+"""
 
 from __future__ import annotations
 
 import math
-import numpy as np
-from typing import Literal
 from abc import ABC, abstractmethod
+from typing import Literal
+
+import numpy as np
+
 
 def labels_to_masks(labels: np.ndarray) -> np.ndarray:
     """Converts a 2D integer label array to a 3D boolean mask array.
-    
+
     Args:
         labels: (H, W) integer array where each unique value corresponds to a player
-    
+
     Returns:
         masks: (n_players, H, W) boolean array.
     """
     n_players = np.unique(labels)
-    return (labels == n_players.reshape(-1, 1, 1))
+    return labels == n_players.reshape(-1, 1, 1)
 
 
 class PlayerStrategy(ABC):
     """Abstract base class for all player strategies.
+
     A player strategy encapsulates the rule by which an image is divided into
     ``n_players`` disjoint regions.
     """
 
     @property
     @abstractmethod
-    def n_players(self) -> int: ...
-    """Number of players (image regions) produced by this strategy.
-
-        Returns:
-            int: The number of players.
-    """
+    def n_players(self) -> int:
+        """Number of players (image regions) produced by this strategy."""
+        ...
 
 
 class CNNPlayerStrategy(PlayerStrategy, ABC):
@@ -69,9 +70,9 @@ class CustomPlayerStrategy(CNNPlayerStrategy):
 
     Args:
         masks: either: Array of shape ``(n_players, H, W)``. Any dtype is accepted and
-            will be cast to ``bool``. Should be evaluated to ``True`` for pixels 
+            will be cast to ``bool``. Should be evaluated to ``True`` for pixels
             belonging to the player and ``False`` otherwise.
-            or: a 2-D integer segmentation label map of shape ``(H, W)`` where each 
+            or: a 2-D integer segmentation label map of shape ``(H, W)`` where each
             unique integer corresponds to a player, with at least 2 distinct labels
 
     Raises:
@@ -85,22 +86,22 @@ class CustomPlayerStrategy(CNNPlayerStrategy):
     """
 
     def __init__(self, masks: np.ndarray) -> None:
+        """Initialize the strategy with pre-computed masks."""
         masks = np.asarray(masks)
-        
+
         if masks.ndim == 2 and np.issubdtype(masks.dtype, np.integer):
             n_unique = len(np.unique(masks))
             if n_unique < 2:
-                raise ValueError(
+                msg = (
                     f"Expected a segmentation label map with at least 2 distinct labels, "
                     f"but found only {n_unique} unique value(s). "
                 )
+                raise ValueError(msg)
             masks = labels_to_masks(masks)
-        
+
         if masks.ndim != 3:
-            raise ValueError(
-                f"masks must be a 3-D array of shape (n_players, H, W), "
-                f"got shape {masks.shape}."
-            )
+            msg = f"masks must be a 3-D array of shape (n_players, H, W), got shape {masks.shape}."
+            raise ValueError(msg)
         self._masks = masks.astype(bool)
         self._verify(self._masks)
 
@@ -117,11 +118,12 @@ class CustomPlayerStrategy(CNNPlayerStrategy):
         import warnings
 
         if not masks.any(axis=(1, 2)).all():
-            empty = (~masks.any(axis=(1, 2))).nonzero()[0].tolist()
-            raise ValueError(
+            empty = np.flatnonzero(~masks.any(axis=(1, 2))).tolist()
+            msg = (
                 f"Player mask(s) at index {empty} are entirely empty (all False). "
                 "Each player must cover at least one pixel."
             )
+            raise ValueError(msg)
         uncovered = (~masks.any(axis=0)).sum()
         if uncovered > 0:
             warnings.warn(
@@ -129,7 +131,7 @@ class CustomPlayerStrategy(CNNPlayerStrategy):
                 "These pixels will stay visible in every coalition and cannot be attributed.",
                 UserWarning,
                 stacklevel=3,
-            )  
+            )
 
     def get_masks(self, image: np.ndarray) -> np.ndarray:
         """Return the pre-computed masks, validating against the image dimensions.
@@ -145,22 +147,23 @@ class CustomPlayerStrategy(CNNPlayerStrategy):
             ValueError: If the mask spatial dimensions do not match the image.
         """
         if self._masks.shape[1:] != image.shape[:2]:
-            raise ValueError(
+            msg = (
                 f"Mask spatial dimensions {self._masks.shape[1:]} do not match "
                 f"image dimensions {image.shape[:2]}."
             )
+            raise ValueError(msg)
         return self._masks
 
     @property
     def n_players(self) -> int:
-        """Number of player masks."""
+        """Number of players (image regions) produced by this strategy."""
         return self._masks.shape[0]
 
 
 class GridStrategy(CNNPlayerStrategy):
     """Splits the image into a regular rectangular grid of players.
 
-    The strategy must be initialized implicitly via :meth:`get_masks` 
+    The strategy must be initialized implicitly via :meth:`get_masks`
     before :attr:`n_players` can be accessed.
 
     Exactly one of ``patch_size`` or ``grid_shape`` must be provided:
@@ -171,7 +174,7 @@ class GridStrategy(CNNPlayerStrategy):
     absorbed into the last row and/or column, making the edge patches
     potentially larger than the interior patches.
     - ``patch_size``: fixes the pixel size of each patch; the grid dimensions
-    are inferred from the image shape at fit time. Some patches may be 
+    are inferred from the image shape at fit time. Some patches may be
     smaller than ``patch_size`` if the image dimensions are not exact multiples.
 
     Args:
@@ -186,11 +189,11 @@ class GridStrategy(CNNPlayerStrategy):
 
     Example::
 
-        # Fixed grid of 4×4 tiles — edge patches absorb remainder pixels
+        # Fixed grid of 4x4 tiles — edge patches absorb remainder pixels
         strategy = GridStrategy(grid_shape=4)
         masks = strategy.get_masks(image)  # (16, H, W)
 
-        # Fixed 32×32 patches — last row/column may be smaller if H or W
+        # Fixed 32x32 patches — last row/column may be smaller if H or W
         # is not a multiple of 32
         strategy = GridStrategy(patch_size=32)
         masks = strategy.get_masks(image)  # (n_players, H, W)
@@ -201,18 +204,23 @@ class GridStrategy(CNNPlayerStrategy):
         patch_size: int | tuple[int, int] | None = None,
         grid_shape: int | tuple[int, int] | None = None,
     ) -> None:
+        """Initialize the strategy with either a patch size or grid shape."""
         if (patch_size is None) == (grid_shape is None):
-            raise ValueError("Must provide exactly one of 'patch_size' or 'grid_shape'.")
+            msg = "Must provide exactly one of 'patch_size' or 'grid_shape'."
+            raise ValueError(msg)
 
-        self._input_patch_size = patch_size
-        self._input_grid_shape = grid_shape
         self._mode = "patch" if patch_size is not None else "grid"
 
+        if patch_size is not None:
+            self._input_patch_size: int | tuple[int, int] = patch_size
+        if grid_shape is not None:
+            self._input_grid_shape: int | tuple[int, int] = grid_shape
+
         self._is_initialized = False
-        self.h: int | None = None
-        self.w: int | None = None
-        self.grid_y: int | None = None
-        self.grid_x: int | None = None
+        self.h: int
+        self.w: int
+        self.grid_y: int
+        self.grid_x: int
 
     def _resolve_grid_shape(self, h: int, w: int) -> tuple[int, int]:
         """Resolve ``grid_shape`` or ``patch_size`` into ``(grid_y, grid_x)``.
@@ -235,31 +243,33 @@ class GridStrategy(CNNPlayerStrategy):
                 else self._input_grid_shape
             )
             if gy < 1 or gx < 1:
-                raise ValueError("Grid dimensions must be positive integers.")
+                msg = "Grid dimensions must be positive integers."
+                raise ValueError(msg)
             if gy > h or gx > w:
-                raise ValueError(
+                msg = (
                     f"Grid shape {(gy, gx)} exceeds image shape {(h, w)}. "
                     "This would result in empty players."
                 )
+                raise ValueError(msg)
             return gy, gx
 
-        else:  # patch mode
-            ph, pw = (
-                (self._input_patch_size, self._input_patch_size)
-                if isinstance(self._input_patch_size, int)
-                else self._input_patch_size
-            )
-            if ph < 1 or pw < 1:
-                raise ValueError("Patch dimensions must be positive integers.")
-            if ph > h or pw > w:
-                raise ValueError(
-                    f"Patch size {(ph, pw)} exceeds image shape {(h, w)}."
-                )
-            return math.ceil(h / ph), math.ceil(w / pw)
+        # patch mode
+        ph, pw = (
+            (self._input_patch_size, self._input_patch_size)
+            if isinstance(self._input_patch_size, int)
+            else self._input_patch_size
+        )
+        if ph < 1 or pw < 1:
+            msg = "Patch dimensions must be positive integers."
+            raise ValueError(msg)
+        if ph > h or pw > w:
+            msg = f"Patch size {(ph, pw)} exceeds image shape {(h, w)}."
+            raise ValueError(msg)
+        return math.ceil(h / ph), math.ceil(w / pw)
 
     @staticmethod
     def _build_player_grid(h: int, w: int, gy: int, gx: int) -> np.ndarray:
-        """Build a ``(H, W)`` integer label map for a ``gy × gx`` grid.
+        """Build a ``(H, W)`` integer label map for a ``gy x gx`` grid.
 
         Uses integer floor division so every pixel is assigned exactly one
         player. Edge patches absorb any remainder pixels.
@@ -308,17 +318,16 @@ class GridStrategy(CNNPlayerStrategy):
 
     @property
     def n_players(self) -> int:
-        """Number of grid tiles.
+        """Number of players (image regions) produced by this strategy.
 
         Raises:
             RuntimeError: If called before :meth:`get_masks`.
         """
         if not self._is_initialized:
-            raise RuntimeError(
-                "Call `get_masks(image)` first to compute the number of players."
-            )
+            msg = "Call `get_masks(image)` first to compute the number of players."
+            raise RuntimeError(msg)
         return self.grid_y * self.grid_x
-    
+
 
 class SuperpixelStrategy(CNNPlayerStrategy):
     """Splits the image into superpixels using SLIC.
@@ -352,34 +361,31 @@ class SuperpixelStrategy(CNNPlayerStrategy):
         16
     """
 
-    def __init__(
-        self,
-        n_segments: int,
-        algorithm: Literal["slic", "slico"] = "slico"
-    ):
+    def __init__(self, n_segments: int, algorithm: Literal["slic", "slico"] = "slico") -> None:
+        """Initialize the strategy with the desired number of superpixels and algorithm."""
         if n_segments < 1:
-            raise ValueError("n_segments must be a positive integer.")
-        
+            msg = "n_segments must be a positive integer."
+            raise ValueError(msg)
+
         self.n_segments = n_segments
         self._algorithm = algorithm
         self._n_players: int = n_segments
-        
-       
+
     def get_masks(self, image: np.ndarray) -> np.ndarray:
         """Run SLIC and return the superpixel mask.
-        
-        The algorithm may not return exactly `n_segments` superpixels. 
-        The result will not be clipped afterwards, but it is ensured that at 
-        least `n_segments` superpixels are returned if possible within a 
+
+        The algorithm may not return exactly `n_segments` superpixels.
+        The result will not be clipped afterwards, but it is ensured that at
+        least `n_segments` superpixels are returned if possible within a
         reasonable number of iterations.
 
         Returns:
             A boolean mask array with shape (n_players, H, W) where
             masks[i, y, x] == True iff pixel (y,x) belongs to superpixel i.
 
-        """      
+        """
         from skimage.segmentation import slic
-        
+
         slic_zero = self._algorithm == "slico"
         superpixels = slic(image, n_segments=self.n_segments, start_label=1, slic_zero=slic_zero)
         n_superpixels = len(np.unique(superpixels))
@@ -388,7 +394,9 @@ class SuperpixelStrategy(CNNPlayerStrategy):
             iteration, n_segments_iter = 0, self.n_segments
             while iteration < 20 and n_superpixels < self.n_segments:
                 n_segments_iter += 1
-                superpixels = slic(image, n_segments=n_segments_iter, start_label=1, slic_zero=slic_zero)
+                superpixels = slic(
+                    image, n_segments=n_segments_iter, start_label=1, slic_zero=slic_zero
+                )
                 n_superpixels = len(np.unique(superpixels))
                 iteration += 1
 
@@ -396,10 +404,10 @@ class SuperpixelStrategy(CNNPlayerStrategy):
         self._n_players = n_superpixels
 
         return labels_to_masks(superpixels)
-    
-    
+
     @property
     def n_players(self) -> int:
+        """Number of players (image regions) produced by this strategy."""
         return self._n_players
 
 
@@ -415,21 +423,36 @@ class TransformerPlayerStrategy(PlayerStrategy, ABC):
         """
         ...
 
+    @abstractmethod
+    def get_pixel_masks(self, image: np.ndarray) -> np.ndarray:
+        """Return pixel-space boolean masks for visualization.
+
+        Args:
+            image: Input image as a ``(H, W, C)`` numpy array.
+
+        Returns:
+            Boolean numpy array of shape ``(n_players, H, W)``.
+        """
+        ...
+
 
 class PatchStrategy(TransformerPlayerStrategy):
     """Splits the image into patches for ViT models.
-    
+
     Each player corresponds to a group of tokens in the latent space.
     Token indices are precomputed in the constructor and can be used
     by masking strategies to build bool_masked_pos tensors.
     """
 
-    def __init__(self, grid_size: int, n_players: int):
+    def __init__(self, grid_size: int, n_players: int) -> None:
+        """Initialize the strategy with the grid size and number of players."""
         side = int(math.sqrt(n_players))
         if side * side != n_players:
-            raise ValueError("n_players must be a perfect square.")
+            msg = "n_players must be a perfect square."
+            raise ValueError(msg)
         if grid_size % side != 0:
-            raise ValueError("grid_size must be divisible by sqrt(n_players).")
+            msg = "grid_size must be divisible by sqrt(n_players)."
+            raise ValueError(msg)
         self.grid_size = grid_size
         self.patch_size = grid_size // side
         self.side = side
@@ -438,14 +461,14 @@ class PatchStrategy(TransformerPlayerStrategy):
 
     def _compute_token_masks(self) -> np.ndarray:
         """Precompute token masks for each player consisting of the token indices corresponding to that player's patch.
-        
+
         Returns:
             (n_players, tokens_per_player) integer array where
             token_masks[i] contains the flat token indices belonging to player i.
         """
         tokens_per_player = self.patch_size * self.patch_size
         indices = np.zeros((self._n_players, tokens_per_player), dtype=int)
-        
+
         for player in range(self._n_players):
             y_start = (player // self.side) * self.patch_size
             x_start = (player % self.side) * self.patch_size
@@ -454,17 +477,17 @@ class PatchStrategy(TransformerPlayerStrategy):
                 for x in range(x_start, x_start + self.patch_size):
                     indices[player, token_idx] = y * self.grid_size + x
                     token_idx += 1
-        
+
         return indices
 
     def get_token_masks(self) -> np.ndarray:
         """Returns token indices per player.
-        
+
         Returns:
             (n_players, tokens_per_player) integer array.
         """
         return self._token_masks
-    
+
     def get_pixel_masks(self, image: np.ndarray) -> np.ndarray:
         """Build rectangular pixel-space masks for visualization.
 
@@ -487,6 +510,5 @@ class PatchStrategy(TransformerPlayerStrategy):
 
     @property
     def n_players(self) -> int:
+        """Number of players (image regions) produced by this strategy."""
         return self._n_players
-
-

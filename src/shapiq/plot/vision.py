@@ -48,7 +48,7 @@ def image_attribution_plot(
         Otherwise returns ``(figure, (ax_heatmap, ax_bar))``.
 
     """
-    import matplotlib.cm as cm
+    from matplotlib import cm
 
     if cmap is None:
         from shapiq.plot._config import BLUE, NEUTRAL, RED

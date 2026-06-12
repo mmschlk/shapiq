@@ -77,9 +77,7 @@ class TestImageExplainer:
         assert explainer._imputer is imputer
         assert explainer._imputer._batch_size == 8
 
-    def test_explainer_sets_empty_interaction_for_k_sii(
-        self, tiny_image, two_player_masks
-    ) -> None:
+    def test_explainer_sets_empty_interaction_for_k_sii(self, tiny_image, two_player_masks) -> None:
         explainer = ImageExplainer(
             model_architecture=_build_arch(two_player_masks),
             data=tiny_image,
@@ -89,9 +87,7 @@ class TestImageExplainer:
         result = explainer.explain_function(tiny_image, budget=16)
         assert result[()] == pytest.approx(explainer.baseline_value)
 
-    def test_explain_function_uses_argument_x(
-        self, two_player_masks
-    ) -> None:
+    def test_explain_function_uses_argument_x(self, two_player_masks) -> None:
         image_a = np.full((4, 4, 3), 200.0)
         image_b = np.zeros((4, 4, 3))
 

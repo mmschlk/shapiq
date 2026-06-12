@@ -161,7 +161,7 @@ class TestImageImputerInputFormats:
         )
         values = imputer.value_function(np.array([[True, True, True]]))
         assert values[0] == pytest.approx(image.sum())
-        
+
 
 class TestImageImputerFit:
     def test_fit_returns_self(self, tiny_image, two_player_masks) -> None:
@@ -192,7 +192,9 @@ class TestImageImputerFit:
 
 
 class TestImageImputerTransformer:
-    def test_transformer_architecture_value_function(self, transformer_architecture, image_24x24) -> None:
+    def test_transformer_architecture_value_function(
+        self, transformer_architecture, image_24x24
+    ) -> None:
         imputer = ImageImputer(
             model_architecture=transformer_architecture,
             image=image_24x24,

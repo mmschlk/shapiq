@@ -1,45 +1,89 @@
+"""Architecture strategies for vision model inference.
+
+Each strategy encapsulates a model type (CNN or Vision Transformer), its
+default player and masking strategies and batched coalition evaluation.
+"""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
-import numpy as np
 
-from .masking import TransformerMaskingStrategy, MaskTokenStrategy, MeanColorMasking, CNNMaskingStrategy
-from .players import TransformerPlayerStrategy, PatchStrategy, CNNPlayerStrategy, PlayerStrategy, SuperpixelStrategy
+from .masking import MaskTokenStrategy, MeanColorMasking
+from .players import PatchStrategy, SuperpixelStrategy
 
 if TYPE_CHECKING:
+    import numpy as np
     import torch
+
+    from shapiq.typing import Model
+
+    from .masking import (
+        CNNMaskingStrategy,
+        TransformerMaskingStrategy,
+    )
+    from .players import (
+        CNNPlayerStrategy,
+        PlayerStrategy,
+        TransformerPlayerStrategy,
+    )
 
 
 class ModelArchitectureStrategy(ABC):
-    """Encapsulates model-specific inference logic, decoupling it from
-    :class:`~shapiq.vision.imputer.ImageImputer`.
+    """Encapsulates model-specific inference logic.
 
     Subclasses bind a player strategy and a masking strategy to a concrete
     model type and implement batched coalition evaluation via
-    :meth:`value_function`.
-    Input images are converted to tensors after player masks are generated.
+    :meth:`value_function`. Input images are converted to tensors after player masks are generated.
     """
 
     @abstractmethod
-    def default_player_strategy(self) -> PlayerStrategy: ...
+    def default_player_strategy(self) -> PlayerStrategy:
+        """Return the default player strategy for this architecture."""
+        ...
 
     @abstractmethod
-    def default_masking_strategy(self): ...
+    def default_masking_strategy(self) -> CNNMaskingStrategy | TransformerMaskingStrategy:
+        """Return the default masking strategy for this architecture."""
+        ...
 
     @abstractmethod
     def prepare(self, image: np.ndarray) -> None:
-        """Cache image-dependent state. Called once by ImageImputer before value_function."""
+        """Cache image-dependent state. Called before value_function.
+
+        Args:
+            image: Input image as a ``(H, W, C)`` numpy array.
+        """
         ...
 
     @abstractmethod
-    def value_function(self, coalitions: torch.BoolTensor) -> torch.Tensor:
-        """Return model predictions for each coalition. Returns (n_coalitions,)."""
+    def value_function(self, coalitions: torch.Tensor) -> torch.Tensor:
+        """Return model predictions for each coalition.
+
+        Args:
+            coalitions: Boolean tensor of shape ``(n_coalitions, n_players)``.
+
+        Returns:
+            Float tensor of shape ``(n_coalitions,)``.
+        """
         ...
-        
+
     @property
+    @abstractmethod
     def player_masks(self) -> torch.Tensor:
-        """(n_players, H, W) boolean array of pixel masks for visualization."""
+        """Boolean pixel masks of shape ``(n_players, H, W)`` for visualization."""
+        ...
+
+    @property
+    @abstractmethod
+    def n_players(self) -> int:
+        """Number of players defined by the player strategy."""
+        ...
+
+    @property
+    @abstractmethod
+    def model(self) -> Model:
+        """Return the underlying model."""
         ...
 
 
@@ -59,21 +103,29 @@ class CNNArchitecture(ModelArchitectureStrategy):
             segments.
     """
 
-    def __init__(self, model, masking_strategy: CNNMaskingStrategy | None = None, player_strategy: CNNPlayerStrategy | None = None):
-        self.model = model
+    def __init__(
+        self,
+        model: Model,
+        masking_strategy: CNNMaskingStrategy | None = None,
+        player_strategy: CNNPlayerStrategy | None = None,
+    ) -> None:
+        """Initialise the CNN architecture strategy."""
+        self._model = model
         self._masking_strategy = masking_strategy or self.default_masking_strategy()
         self._player_strategy = player_strategy or self.default_player_strategy()
-        self._player_masks: torch.Tensor | None = None
-        self._image_tensor: torch.Tensor | None = None
-        self._class_id: int | None = None
+        self._player_masks: torch.Tensor
+        self._image_tensor: torch.Tensor
+        self._class_id: int
 
     def default_player_strategy(self) -> SuperpixelStrategy:
+        """Return a superpixel player strategy."""
         return SuperpixelStrategy(n_segments=10)
 
     def default_masking_strategy(self) -> MeanColorMasking:
+        """Return a mean-color masking strategy."""
         return MeanColorMasking()
 
-    def prepare(self, image: np.array) -> None:
+    def prepare(self, image: np.ndarray) -> None:
         """Cache the image tensor, player masks, and predicted class index.
 
         Runs one forward pass on the unmasked image to determine the class
@@ -83,17 +135,18 @@ class CNNArchitecture(ModelArchitectureStrategy):
             image: Input image as a ``(H, W, C)`` numpy array.
         """
         import torch
+
         from .utils import get_torch_device, to_tensor_chw
-       
-        device = get_torch_device(self.model)
+
+        device = get_torch_device(self._model)
         self._image_tensor = to_tensor_chw(image, device=device)
         self._player_masks = torch.from_numpy(self._player_strategy.get_masks(image)).to(device)
-    
+
         with torch.no_grad():
-            logits = self.model(self._image_tensor.unsqueeze(0))
+            logits = self._model(self._image_tensor.unsqueeze(0))
             self._class_id = int(logits.argmax(dim=1).item())
 
-    def value_function(self, coalitions: torch.BoolTensor) -> torch.Tensor:
+    def value_function(self, coalitions: torch.Tensor) -> torch.Tensor:
         """Evaluate the CNN for a batch of coalitions.
 
         Creates masked image tensors via the masking strategy in a single
@@ -107,15 +160,28 @@ class CNNArchitecture(ModelArchitectureStrategy):
             predicted class for each coalition.
         """
         import torch
-        
+
         with torch.no_grad():
-            masked_batch = self._masking_strategy.apply(self._image_tensor, self._player_masks, coalitions)
-            logits = self.model(masked_batch)
+            masked_batch = self._masking_strategy.apply(
+                self._image_tensor, self._player_masks, coalitions
+            )
+            logits = self._model(masked_batch)
         return logits[:, self._class_id]
-    
+
     @property
     def player_masks(self) -> torch.Tensor:
+        """Boolean pixel masks of shape ``(n_players, H, W)``."""
         return self._player_masks
+
+    @property
+    def n_players(self) -> int:
+        """Number of players defined by the player strategy."""
+        return self._player_strategy.n_players
+
+    @property
+    def model(self) -> Model:
+        """Return the underlying model."""
+        return self._model
 
 
 class TransformerArchitecture(ModelArchitectureStrategy):
@@ -123,7 +189,7 @@ class TransformerArchitecture(ModelArchitectureStrategy):
 
     Players correspond to groups of patch tokens. Absent players are masked
     in token space via ``bool_masked_pos`` before the forward pass.
-    
+
     Args:
         model: A vision transformer model.
         vit_processor: The matching processor used to preprocess
@@ -135,24 +201,36 @@ class TransformerArchitecture(ModelArchitectureStrategy):
             derived from the model's patch grid.
     """
 
-
-    def __init__(self, model, vit_processor, masking_strategy: TransformerMaskingStrategy | None = None, player_strategy: TransformerPlayerStrategy | None = None):
-        self.model = model
+    def __init__(
+        self,
+        model: Model,
+        vit_processor: Model,
+        masking_strategy: TransformerMaskingStrategy | None = None,
+        player_strategy: TransformerPlayerStrategy | None = None,
+    ) -> None:
+        """Initialise the Transformer architecture strategy."""
+        self._model = model
         self.processor = vit_processor
         self._masking_strategy = masking_strategy or self.default_masking_strategy()
         self._player_strategy = player_strategy or self.default_player_strategy()
-        self._pixel_values: torch.Tensor | None = None
-        self._player_masks: torch.Tensor | None = None
-        self._token_masks: torch.Tensor | None = None
-        self._class_id: int | None = None
+        self._pixel_values: torch.Tensor
+        self._player_masks: torch.Tensor
+        self._token_masks: torch.Tensor
+        self._class_id: int
 
     def default_player_strategy(self) -> PatchStrategy:
-        grid_size = self.model.config.image_size // self.model.config.patch_size
+        """Return a patch player strategy with a 3x3 grid."""
+        grid_size = self._model.config.image_size // self._model.config.patch_size
         return PatchStrategy(grid_size=grid_size, n_players=9)
 
     def default_masking_strategy(self) -> MaskTokenStrategy:
-        # ViTForImageClassification has mask_token=None by default; MaskTokenStrategy initialises it
-        return MaskTokenStrategy(self.model)
+        """Return a token-masking strategy.
+
+        Note:
+            ``ViTForImageClassification`` has ``mask_token=None`` by default;
+            :class:`~shapiq.vision.masking.MaskTokenStrategy` initialises it.
+        """
+        return MaskTokenStrategy(self._model)
 
     def prepare(self, image: np.ndarray) -> None:
         """Cache pixel values, token masks, pixel masks, and predicted class index.
@@ -166,20 +244,23 @@ class TransformerArchitecture(ModelArchitectureStrategy):
             image: Input image as a ``(H, W, C)`` numpy array.
         """
         import torch
+
         from .utils import get_torch_device
-        
-        device = get_torch_device(self.model)
+
+        device = get_torch_device(self._model)
         inputs = self.processor(images=image, return_tensors="pt")
         self._pixel_values = inputs["pixel_values"].to(device)
-        
+
         with torch.no_grad():
-            logits = self.model(pixel_values=self._pixel_values).logits
+            logits = self._model(pixel_values=self._pixel_values).logits
         self._class_id = int(logits.argmax(-1).item())
-        
-        self._player_masks = torch.from_numpy(self._player_strategy.get_pixel_masks(image)).to(device)
+
+        self._player_masks = torch.from_numpy(self._player_strategy.get_pixel_masks(image)).to(
+            device
+        )
         self._token_masks = torch.from_numpy(self._player_strategy.get_token_masks()).to(device)
 
-    def value_function(self, coalitions: torch.BoolTensor) -> torch.Tensor:
+    def value_function(self, coalitions: torch.Tensor) -> torch.Tensor:
         """Evaluate the ViT for a batch of coalitions.
 
         Converts coalition membership to a ``bool_masked_pos`` tensor and
@@ -193,15 +274,26 @@ class TransformerArchitecture(ModelArchitectureStrategy):
             probability for the predicted class for each coalition.
         """
         import torch
-        
+
         with torch.no_grad():
             token_mask = self._masking_strategy.apply(coalitions, self._token_masks)
             batch = self._pixel_values.repeat(token_mask.shape[0], 1, 1, 1)
-            logits = self.model(pixel_values=batch, bool_masked_pos=token_mask).logits
+            logits = self._model(pixel_values=batch, bool_masked_pos=token_mask).logits
             probs = torch.softmax(logits, dim=-1)
-            
+
         return probs[:, self._class_id]
-    
+
     @property
     def player_masks(self) -> torch.Tensor:
+        """Boolean pixel masks of shape ``(n_players, H, W)``."""
         return self._player_masks
+
+    @property
+    def n_players(self) -> int:
+        """Number of players defined by the player strategy."""
+        return self._player_strategy.n_players
+
+    @property
+    def model(self) -> Model:
+        """Return the underlying model."""
+        return self._model

@@ -1,21 +1,21 @@
 """Vision-based explanation methods for image models."""
 
-from .architecture import ModelArchitectureStrategy, CNNArchitecture, TransformerArchitecture
+from .architecture import CNNArchitecture, ModelArchitectureStrategy, TransformerArchitecture
 from .imputer import ImageImputer
 from .masking import (
     BoolMaskedPosStrategy,
-    TransformerMaskingStrategy,
+    CNNMaskingStrategy,
     MaskTokenStrategy,
     MeanColorMasking,
-    CNNMaskingStrategy,
+    TransformerMaskingStrategy,
     ZeroMasking,
 )
 from .players import (
-    TransformerPlayerStrategy,
-    PatchStrategy,
     CNNPlayerStrategy,
+    PatchStrategy,
     PlayerStrategy,
     SuperpixelStrategy,
+    TransformerPlayerStrategy,
 )
 
 __all__ = [
