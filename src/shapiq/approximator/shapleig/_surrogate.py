@@ -75,6 +75,27 @@ class HammingGP:
         }
         self.amount_restarts = amount_restarts
 
+        # The model must be CONSTRUCTED under a float64 default dtype: torch
+        # creates parameters, prior/constraint buffers, and the constraints'
+        # initial values in the default dtype before botorch casts the model
+        # to the (float64) data. Under a float32 default these starting
+        # values are truncated and L-BFGS converges to (slightly) different
+        # hyperparameters, changing the coalition selections. The default is
+        # restored right after construction; all downstream computations are
+        # float64 because the data and parameters are.
+        previous_dtype = torch.get_default_dtype()
+        torch.set_default_dtype(torch.float64)
+        try:
+            self._build(train_X, train_Y)
+        finally:
+            torch.set_default_dtype(previous_dtype)
+
+    def _build(self, train_X: torch.Tensor, train_Y: torch.Tensor) -> None:
+        """Construct the botorch model (called under float64 default dtype)."""
+        fixed_noise_level = self._init_kwargs["fixed_noise_level"]
+        min_lengthscale = self._init_kwargs["min_lengthscale"]
+        min_inferred_noise_level = self._init_kwargs["min_inferred_noise_level"]
+
         d = train_X.shape[-1]
         lengthscale_prior = LogNormalPrior(loc=math.sqrt(2) + math.log(d) * 0.5, scale=math.sqrt(3))
         # Over binary inputs, botorch's CategoricalKernel is exactly the

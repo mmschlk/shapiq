@@ -92,20 +92,41 @@ def test_budget_must_exceed_initial_design():
         approximator.approximate(budget=N_PLAYERS + 1, game=dummy_game)
 
 
-def test_exhaustive_candidates_require_small_n():
-    """`max_candidates=None` (exhaustive candidates) is limited to n <= 16."""
-    approximator = ShaplEIG(n=17, max_candidates=None, show_progress=False)
-    with pytest.raises(ValueError, match="max_candidates"):
-        approximator.approximate(budget=20, game=dummy_game)
+def test_exhaustive_candidates_warn_for_large_n():
+    """`max_candidates=None` warns for n > 16 (exhaustive candidates are costly)."""
+    approximator = ShaplEIG(n=17, max_candidates=None, random_state=0, show_progress=False)
+    # only the design generation: the exhaustive EIG itself is (as the warning
+    # says) too costly to run in a unit test.
+    with pytest.warns(UserWarning, match="very costly"):
+        initial_design, candidates = approximator._generate_design()
+    assert initial_design.shape == (18, 17)
+    assert candidates.shape == (2**17 - 18, 17)
 
 
-def test_max_candidates_is_clamped_to_exhaustive():
-    """`max_candidates` is an upper bound: small games fall back to exhaustive."""
-    approximator = ShaplEIG(n=N_PLAYERS, max_candidates=1024, show_progress=False)
-    # 2^7 - 8 = 120 candidates exist; a budget needing 121 iterations must
-    # report the clamped (exhaustive) candidate count, not 1024.
-    with pytest.raises(ValueError, match="only 120 candidate"):
-        approximator.approximate(budget=129, game=dummy_game)
+def test_iterations_capped_at_candidate_set_size():
+    """Too-small candidate sets cap the iterations with a warning, not an error."""
+    approximator = ShaplEIG(n=N_PLAYERS, max_candidates=10, random_state=0, show_progress=False)
+    # budget 20 requires 12 iterations, but only 10 candidates exist.
+    with pytest.warns(UserWarning, match="capping"):
+        estimates = approximator.approximate(budget=20, game=dummy_game)
+    assert isinstance(estimates, InteractionValues)
+    # the reported budget is the one actually spent: 8 (initial) + 10 (capped)
+    assert estimates.estimation_budget == 18
+
+
+def test_approximate_with_variance():
+    """`approximate_with_variance` returns SVs plus marginal posterior variances."""
+    approximator = ShaplEIG(n=N_PLAYERS, random_state=0, show_progress=False)
+    estimates, variances = approximator.approximate_with_variance(budget=20, game=dummy_game)
+    assert isinstance(estimates, InteractionValues)
+    assert variances.shape == (N_PLAYERS,)
+    assert np.all(variances >= 0.0)
+    # `approximate` returns the same point estimates (it delegates internally)
+    same = ShaplEIG(n=N_PLAYERS, random_state=0, show_progress=False).approximate(
+        budget=20, game=dummy_game
+    )
+    for i in range(N_PLAYERS):
+        assert estimates[(i,)] == same[(i,)]
 
 
 def test_sampled_candidate_subset():

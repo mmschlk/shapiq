@@ -21,9 +21,6 @@ from .regression import (
     kADDSHAP,
 )
 
-# ShaplEIG needs no import guard: its optional dependencies (the `shapleig`
-# extra) are imported in its constructor, which raises an informative
-# ImportError when they are missing.
 try:
     from .shapleig import ShaplEIG
 except ImportError as _e:

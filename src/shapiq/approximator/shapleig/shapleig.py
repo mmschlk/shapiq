@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -45,6 +46,8 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
 
     The returned :class:`~shapiq.interaction_values.InteractionValues` contain
     the posterior-mean Shapley value estimates (order 1, index ``"SV"``).
+    :meth:`approximate_with_variance` additionally returns the marginal
+    posterior variances of the Shapley values.
 
     Requires the optional ``shapleig`` extra
     (``pip install shapiq[shapleig]``) for torch / gpytorch / botorch.
@@ -87,13 +90,21 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
                 is optimized over; games with fewer coalitions outside the
                 initial design fall back to the exhaustive candidate set (all
                 not-yet-evaluated coalitions). ``None`` forces the exhaustive
-                candidate set, which is feasible only for ``n <= 16``.
-                Defaults to ``1024``, as in the reference paper.
+                candidate set (very costly for more than ~16 players).
+                Defaults to ``1024``, as in the reference paper. Choose this
+                clearly larger than the budget of the ``approximate`` call:
+                one candidate is consumed per iteration, so with
+                ``max_candidates`` close to the budget (almost) every
+                candidate is evaluated eventually and the adaptive selection
+                degenerates to the candidate sampling distribution.
             refit: When to refit the GP hyperparameters: ``"every_iteration"``
                 (default) or the staged schedule ``"init_64_factor_4"`` (every
                 iteration for the first 64, then every 8th for 128, every
                 16th for 256, every 32nd afterwards) for large budgets. The
-                final surrogate is always refit.
+                final surrogate is always refit. Note that for many players
+                and large training sets the hyperparameter refit is the
+                dominant per-iteration cost, so the staged schedule
+                substantially reduces wall-clock time at large budgets.
             warmstart: If ``True``, hyperparameter refits start from the
                 previous iteration's fitted hyperparameters instead of fresh
                 initial values.
@@ -102,22 +113,19 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
             random_state: Random state seeding both the coalition sampling
                 and the GP hyperparameter fitting. Defaults to ``None``.
         """
-        # Optional dependencies of the `shapleig` extra: import in the
-        # constructor (never at package import time) so that a missing extra
-        # fails immediately with an actionable message.
-
-        # ShaplEIG selects coalitions adaptively (EIG argmax), so the base
-        # class's sampling configuration must not suggest otherwise. Sampling
-        # enters only through the initial design and the candidate set, whose
-        # internal samplers follow the protocol of the reference paper
-        # (uniform coalition-size weights + pairing trick, `_coalition_sampler`).
+        # ShaplEIG selects coalitions adaptively (EIG argmax); the base
+        # class's sampler is used only for the initial design and the
+        # candidate set, with the sampling protocol of the reference paper
+        # (uniform coalition-size weights + pairing trick). The candidate
+        # draw replaces `self._sampler` with a freshly seeded equivalent
+        # (`_reset_sampler`) so it is independent of the initial-design draw.
         super().__init__(
             n=n,
             max_order=1,
             index="SV",
             min_order=0,
-            sampling_weights=None,
-            pairing_trick=False,
+            sampling_weights=np.ones(n + 1),
+            pairing_trick=True,
             random_state=random_state,
         )
         self.initial_design_size = (
@@ -145,10 +153,7 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         Returns:
             The estimated Shapley values as ``InteractionValues``.
         """
-        # The ESP math and the GP fitting require double precision throughout
-        # (float32 intermediates change fitted hyperparameters and thereby
-        # selections). Enforce float64 locally and restore the user's default.
-        interactions,_ = self.approximate_with_variance(budget=budget, game=game)
+        interactions, _sv_variances = self.approximate_with_variance(budget=budget, game=game)
         return interactions
 
     def approximate_with_variance(
@@ -157,7 +162,21 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         budget: int,
         game: Game | Callable[[CoalitionMatrix], GameValues],
     ) -> tuple[InteractionValues, np.ndarray]:
-        """BED loop body (runs under enforced float64, see `approximate`)."""
+        """Run the BED loop and return SV estimates with posterior variances.
+
+        Args:
+            budget: Total number of game evaluations (initial design plus one
+                evaluation per BED iteration).
+            game: The game to approximate, as a callable mapping a binary
+                coalition matrix of shape ``(m, n)`` to ``m`` values.
+
+        Returns:
+            A tuple of the estimated Shapley values as ``InteractionValues``
+            (the posterior means) and an array of shape ``(n,)`` with the
+            marginal posterior variances of the ``n`` players' Shapley values
+            (the diagonal of the SV posterior covariance, on the scale of the
+            game values).
+        """
         if budget <= self.initial_design_size:
             msg = (
                 f"Budget ({budget}) must exceed the initial design size "
@@ -172,7 +191,18 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         if self._random_state is not None:
             torch.manual_seed(self._random_state)
 
-        archive_X, candidate_set = self._generate_design(iterations)
+        archive_X, candidate_set = self._generate_design()
+        if candidate_set.shape[0] < iterations:
+            msg = (
+                f"The budget ({budget}) requires {iterations} BED iterations but "
+                f"only {candidate_set.shape[0]} candidate coalitions are "
+                f"available; capping at {candidate_set.shape[0]} iterations (the "
+                "remaining budget is not spent). Increase `max_candidates` to "
+                "use the full budget."
+            )
+            warnings.warn(msg, stacklevel=2)
+            iterations = candidate_set.shape[0]
+
         archive_Y = self._evaluate(game, archive_X)
         baseline_value = self._baseline_value(game, archive_X, archive_Y)
 
@@ -224,12 +254,11 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         A_KZX = sm.a_kzw(gp_tensors.train_X, gp_tensors.lengthscales, gp_tensors.outputscale)
         shapley_values = sm.affine_posterior_mean(A_KZX, gp_tensors, K_chol)
 
-        # NOTE (future work, coordinated with the maintainers): the surrogate
-        # posterior also provides the marginal SV variances,
-        AEA = sm.aea(sm.akzza(ls, s), A_KZX, K_chol) # TODO: compute the correct AEA
-        sv_variances = AEA.diagonal() * gp_tensors.emp_std**2 
-        # Expose them via an `approximate_with_variance` once
-        # `InteractionValues` supports uncertainty information.
+        # Marginal SV variances: the diagonal of the SV posterior covariance
+        # A * Sigma * A^T, rescaled from the GP's standardized output space
+        # back to the original scale of the game values.
+        AEA = sm.aea(sm.akzza(gp_tensors.lengthscales, gp_tensors.outputscale), A_KZX, K_chol)
+        sv_variances = AEA.diagonal() * gp_tensors.emp_std**2
 
         values = np.zeros(self.n + 1)
         values[0] = baseline_value
@@ -245,9 +274,11 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
             interaction_lookup=interaction_lookup,
             # Always flagged as estimated: even when the budget covers all
             # 2^n coalitions, the GP posterior mean is subject to numerical
-            # inaccuracies (the estimator is consistent, not exact).
+            # inaccuracies.
             estimated=True,
-            estimation_budget=budget,
+            # The budget actually spent (smaller than the requested budget
+            # only when the iterations were capped by the candidate-set size).
+            estimation_budget=self.initial_design_size + iterations,
             baseline_value=float(baseline_value),
             target_index=self.index,
         ), sv_variances.numpy()
@@ -256,49 +287,43 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
     # building blocks
     # ------------------------------------------------------------------
 
-    def _generate_design(self, iterations: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def _generate_design(self) -> tuple[torch.Tensor, torch.Tensor]:
         """Draw the initial design and the candidate set (binary, float64).
 
-        Both draws come from fresh, identically seeded coalition samplers
-        (:meth:`_coalition_sampler`):
+        Both draws come from ``self._sampler``:
 
-        - the initial design sampler draws exactly ``initial_design_size``
+        - the initial design draw uses exactly ``initial_design_size``
           coalitions — its composition therefore does not depend on the
           candidate budget;
-        - the candidate sampler draws the combined budget, keeping the first
-          ``candidate_size`` coalitions not already in the initial design.
+        - the candidate draw first replaces the sampler with a freshly seeded
+          equivalent (:meth:`_reset_sampler`), so it restarts from the same
+          seed independently of the initial-design draw; it uses the combined
+          budget, keeping the first ``candidate_size`` coalitions not already
+          in the initial design.
         """
         init_size = self.initial_design_size
         if self.max_candidates is None:
             if self.n > 16:
                 msg = (
-                    "An exhaustive candidate set is infeasible for more than 16 "
-                    f"players (n={self.n}); set `max_candidates` to optimize the "
-                    "EIG over a sampled candidate subset instead."
+                    f"Optimizing the EIG over the exhaustive candidate set (all "
+                    f"2^{self.n} - {init_size} not-yet-evaluated coalitions) is "
+                    f"very costly for n={self.n} players; consider setting "
+                    "`max_candidates` to a sampled candidate subset instead."
                 )
-                raise ValueError(msg)
+                warnings.warn(msg, stacklevel=2)
             candidate_size = 2**self.n - init_size
         else:
             # `max_candidates` is an upper bound: small games fall back to the
             # exhaustive candidate set (all coalitions outside the initial
             # design).
             candidate_size = min(self.max_candidates, 2**self.n - init_size)
-        if candidate_size < iterations:
-            msg = (
-                f"Budget requires {iterations} BED iterations but only "
-                f"{candidate_size} candidate coalitions are available; reduce "
-                "the budget (or increase `max_candidates` if the candidate set "
-                "is not already exhaustive)."
-            )
-            raise ValueError(msg)
 
-        initial_sampler = self._coalition_sampler()
-        initial_sampler.sample(init_size)
-        initial_design = torch.tensor(initial_sampler.coalitions_matrix)
+        self._sampler.sample(init_size)
+        initial_design = torch.tensor(self._sampler.coalitions_matrix)
 
-        candidate_sampler = self._coalition_sampler()
-        candidate_sampler.sample(init_size + candidate_size)
-        candidates = torch.tensor(candidate_sampler.coalitions_matrix)
+        self._reset_sampler()
+        self._sampler.sample(init_size + candidate_size)
+        candidates = torch.tensor(self._sampler.coalitions_matrix)
         in_initial_design = (
             (candidates[:, None, :] == initial_design[None, :, :]).all(dim=2).any(dim=1)
         )
@@ -306,14 +331,14 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
 
         return initial_design.to(torch.float64), candidates.to(torch.float64)
 
-    def _coalition_sampler(self) -> CoalitionSampler:
-        """Fresh seeded sampler with the reference design protocol.
+    def _reset_sampler(self) -> None:
+        """Replace ``self._sampler`` with a freshly seeded equivalent.
 
-        Uniform coalition-size weights and the pairing trick, as in the
-        reference paper. A fresh sampler per draw keeps repeated
-        ``approximate`` calls on the same instance deterministic.
+        The new sampler is constructed with the same arguments as the one
+        built by the base class, so the next ``sample()`` call restarts from
+        the seed, independent of any previous draws.
         """
-        return CoalitionSampler(
+        self._sampler = CoalitionSampler(
             n_players=self.n,
             sampling_weights=np.ones(self.n + 1),
             pairing_trick=True,

@@ -75,12 +75,12 @@ proxy = [
 ]
 shapleig = [
     # required by shapiq.approximator.shapleig (ShaplEIG)
-    # NOTE: pinned to the exact versions the reference implementation was
-    # developed and validated against; loose ranges can be discussed.
-    "torch==2.9.1",
-    "gpytorch==1.14",
-    "botorch==0.14.0",
-    "linear_operator==0.6",
+    # NOTE: lower bounds are the versions the reference implementation was
+    # developed and validated against.
+    "torch>=2.9.1",
+    "gpytorch>=1.14",
+    "botorch>=0.14.0",
+    "linear_operator>=0.6",  # also a transitive gpytorch dependency, but imported directly
 ]
 
 [tool.coverage.report]

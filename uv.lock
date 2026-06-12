@@ -3762,14 +3762,14 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "botorch", marker = "extra == 'shapleig'", specifier = "==0.14.0" },
+    { name = "botorch", marker = "extra == 'shapleig'", specifier = ">=0.14.0" },
     { name = "catboost", marker = "extra == 'proxy'" },
     { name = "colour" },
     { name = "galois", marker = "extra == 'sparse'" },
-    { name = "gpytorch", marker = "extra == 'shapleig'", specifier = "==1.14" },
+    { name = "gpytorch", marker = "extra == 'shapleig'", specifier = ">=1.14" },
     { name = "joblib" },
     { name = "lightgbm", marker = "extra == 'proxy'" },
-    { name = "linear-operator", marker = "extra == 'shapleig'", specifier = "==0.6" },
+    { name = "linear-operator", marker = "extra == 'shapleig'", specifier = ">=0.6" },
     { name = "matplotlib" },
     { name = "networkx" },
     { name = "numpy" },
@@ -3780,7 +3780,7 @@ requires-dist = [
     { name = "scipy" },
     { name = "smac", marker = "extra == 'proxy'" },
     { name = "sparse-transform", marker = "extra == 'sparse'" },
-    { name = "torch", marker = "extra == 'shapleig'", specifier = "==2.9.1" },
+    { name = "torch", marker = "extra == 'shapleig'", specifier = ">=2.9.1" },
     { name = "tqdm" },
     { name = "xgboost", marker = "extra == 'proxy'" },
 ]
