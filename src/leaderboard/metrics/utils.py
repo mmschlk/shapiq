@@ -24,13 +24,13 @@ def remove_empty_value_if_needed(
         return value
 
     try:
-        new_value = copy.deepcopy(value)
-        empty_index = new_value.interaction_lookup[()]
-        new_value.values[empty_index] = 0
+        value.interaction_lookup[()]
     except KeyError:
         return value
-    else:
-        return new_value
+
+    new_value = copy.deepcopy(value)
+    new_value.interactions[()] = 0.0
+    return new_value
 
 
 def prepare_metric_inputs(ground_truth: object, estimated: object) -> tuple[np.ndarray, np.ndarray]:
