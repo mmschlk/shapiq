@@ -8,12 +8,14 @@ from leaderboard.metrics import METRIC_KEYS, METRICS, Scorer
 from leaderboard.metrics.evaluator import compute_all_metrics
 from leaderboard.metrics.utils import prepare_metric_inputs
 from leaderboard.runner.aggregator import aggregate_metric_values, aggregate_run_records
+from leaderboard.runner.record_builder import create_run_record
 from shapiq import InteractionValues
 
 EXPECTED_METRIC_KEYS = (
     "mse",
     "mae",
     "mse_normalized",
+    "r2",
     "spearman",
     "kendall_tau",
     "precision_at_k",
@@ -37,14 +39,26 @@ def interaction_values(
     )
 
 
+class DummyGame:
+    game_id = "dummy-game-id"
+    n_players = 3
+
+
+class DummyApproximator:
+    pass
+
+
 class MetricsTestCase(unittest.TestCase):
     def test_public_api_exports_required_metrics(self):
         self.assertEqual(METRIC_KEYS, EXPECTED_METRIC_KEYS)
         self.assertEqual(
             tuple(compute_all_metrics(np.array([1.0]), np.array([1.0])).keys()), METRIC_KEYS
         )
+        self.assertEqual(
+            compute_all_metrics(np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0]))["r2"],
+            1.0,
+        )
         self.assertIs(METRICS["normalized_mse"], METRICS["mse_normalized"])
-        self.assertNotIn("r2", METRICS)
 
     def test_mse_is_zero_for_equal_values(self):
         ground_truth = np.array([1.0, 2.0, 3.0])
@@ -75,6 +89,44 @@ class MetricsTestCase(unittest.TestCase):
         self.assertEqual(result.value, 0.0)
         self.assertEqual(result.metric_name, "mse_normalized")
         self.assertFalse(result.higher_is_better)
+
+    def test_r2_is_one_for_perfect_prediction(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([1.0, 2.0, 3.0])
+
+        result = METRICS["r2"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, 1.0)
+        self.assertEqual(result.metric_name, "r2")
+        self.assertTrue(result.higher_is_better)
+
+    def test_r2_is_zero_for_mean_baseline_prediction(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([2.0, 2.0, 2.0])
+
+        result = METRICS["r2"].compute(ground_truth, estimated)
+
+        self.assertAlmostEqual(result.value, 0.0)
+
+    def test_r2_can_be_negative_for_bad_prediction(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([3.0, 2.0, 1.0])
+
+        result = METRICS["r2"].compute(ground_truth, estimated)
+
+        self.assertLess(result.value, 0.0)
+
+    def test_r2_returns_nan_for_constant_ground_truth(self):
+        ground_truth = np.array([2.0, 2.0, 2.0])
+        estimated = np.array([2.0, 2.0, 2.0])
+
+        result = METRICS["r2"].compute(ground_truth, estimated)
+
+        self.assertTrue(np.isnan(result.value))
+
+    def test_r2_shape_mismatch_raises_clear_error(self):
+        with self.assertRaisesRegex(ValueError, "same shape"):
+            METRICS["r2"].compute(np.array([1.0]), np.array([1.0, 2.0]))
 
     def test_kendall_tau_handles_nan_as_zero(self):
         ground_truth = np.array([1.0, 1.0, 1.0])
@@ -215,14 +267,14 @@ class ScorerTestCase(unittest.TestCase):
                 estimated=np.array([1.0, 2.0]),
             )
 
-    def test_unknown_r2_metric_raises_key_error(self):
+    def test_unknown_metric_raises_key_error(self):
         with self.assertRaises(KeyError):
-            Scorer(metric_names=["r2"])
+            Scorer(metric_names=["unknown_metric"])
 
 
 class ScorerAggregatorIntegrationTestCase(unittest.TestCase):
     def test_scored_run_records_can_be_aggregated(self):
-        scorer = Scorer(metric_names=["mse", "mae"])
+        scorer = Scorer(metric_names=["mse", "mae", "r2"])
         first_metrics = scorer.score(
             ground_truth=np.array([1.0, 2.0, 3.0]),
             estimated=np.array([1.0, 2.0, 3.0]),
@@ -243,8 +295,29 @@ class ScorerAggregatorIntegrationTestCase(unittest.TestCase):
         self.assertIn("mse", aggregated_metrics)
         self.assertIn("mae", aggregated_metrics)
         self.assertAlmostEqual(aggregated_metrics["mse"], 1 / 6)
+        self.assertAlmostEqual(aggregated_metrics["r2"], 0.75)
         self.assertAlmostEqual(aggregated_record["metrics"]["mae"], 1 / 6)
         self.assertEqual(aggregated_record["runtime_seconds"], 2.0)
+
+    def test_default_run_record_metrics_include_r2(self):
+        run_record = create_run_record(
+            game=DummyGame(),
+            game_name="DummyGame",
+            game_params={"n_players": 3},
+            approximator_class=DummyApproximator,
+            approximator_params={},
+            index="SV",
+            max_order=1,
+            budget=8,
+            approx_seed=1,
+            metrics=None,
+            runtime_seconds=None,
+            run_failed=True,
+            error_message="failed",
+        )
+
+        self.assertEqual(tuple(run_record["metrics"].keys()), METRIC_KEYS)
+        self.assertIsNone(run_record["metrics"]["r2"])
 
     @staticmethod
     def _run_record(metrics, runtime_seconds):
