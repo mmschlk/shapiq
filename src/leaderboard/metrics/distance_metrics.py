@@ -83,7 +83,7 @@ following the faithfulness metric in ProxySPEX, Section 3.1, Equation (2).
 class R2Metric(Metric):
     """R² faithfulness score measuring reconstruction quality."""
 
-    def score(self, estimated: T | list[T], ground_truth: T | list[T]) -> MetricResult:
+    def compute(self, estimated: T | list[T], ground_truth: T | list[T]) -> MetricResult:
         """Compute the R² faithfulness score for estimated and ground-truth values."""
         estimated_array = np.array(estimated)
         ground_truth_array = np.array(ground_truth)
