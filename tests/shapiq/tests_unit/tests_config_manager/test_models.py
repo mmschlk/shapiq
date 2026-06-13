@@ -24,6 +24,7 @@ def base_mvp_config() -> MVPRunConfig:
         ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
     )
 
+
 def test_budget_validation_accepts_range_for_n_14(base_mvp_config: MVPRunConfig):
     """Test that the configuration properly accepts valid budgets within range."""
     assert base_mvp_config.n_players == 14
@@ -103,6 +104,7 @@ def test_game_params_rejects_invalid_imputer():
             ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
         )
 
+
 def test_order_validation_rejects_invalid_sv_order():
     """SV max_order must be 1"""
     with pytest.raises(ValidationError, match="When computing SV, max_order must be 1"):
@@ -116,6 +118,7 @@ def test_order_validation_rejects_invalid_sv_order():
             seeds=[0],
         )
 
+
 @pytest.mark.parametrize("interaction_index", ["SII", "STII", "FSII"])
 def test_order_validation_rejects_low_order_for_interactions(interaction_index):
     """interaction_index max_order must be >= 2"""
@@ -128,9 +131,7 @@ def test_order_validation_rejects_low_order_for_interactions(interaction_index):
             approximators=["SHAPIQ"],
             budgets=[100],
             seeds=[0],
-
-
- )
+        )
 
 
 def test_negative_or_zero_budget_raises_invalid_budget_error():
@@ -144,6 +145,7 @@ def test_negative_or_zero_budget_raises_invalid_budget_error():
             seeds=[0],
         )
 
+
 def test_budget_policy_rejects_invalid_strategy():
     """Test invalid strategy string"""
     with pytest.raises(ValidationError, match=re.escape("budget_policy.strategy must be 'range'")):
@@ -156,6 +158,7 @@ def test_budget_policy_rejects_invalid_strategy():
             budget_policy={"strategy": "invalid_strat"},
             seeds=[0],
         )
+
 
 def test_budget_policy_rejects_string_steps():
     """Test steps that cannot be converted to an integer"""
@@ -184,9 +187,7 @@ def test_sii_interaction_index_validation_from_default():
             "imputer": "marginal",
             "x": 0,
         },
-        ground_truth=GroundTruthConfig(
-            strategy="compute", method="ExactComputer"
-        ),
+        ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
         approximators=["SHAPIQ", "KernelSHAPIQ"],
         budgets=[200, 1000],
         seeds=[42],
@@ -214,9 +215,7 @@ def test_budget_policy_range_validation_from_default():
             "end": "2^n-1",
             "steps": 20,
         },
-        ground_truth=GroundTruthConfig(
-            strategy="compute", method="ExactComputer"
-        ),
+        ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
         approximators=["PermutationSamplingSV"],
         budgets=[500],
         seeds=[0],
@@ -226,9 +225,7 @@ def test_budget_policy_range_validation_from_default():
 
 def test_game_family_validation_rejects_mismatched_family_mushroom():
     """Test Case 3: Verify that Mushroom does not support global_xai and is explicitly intercepted."""
-    with pytest.raises(
-        ValidationError, match="not available as a global_xai game"
-    ):
+    with pytest.raises(ValidationError, match="not available as a global_xai game"):
         MVPRunConfig(
             game="Mushroom",
             game_family="global_xai",
@@ -236,9 +233,7 @@ def test_game_family_validation_rejects_mismatched_family_mushroom():
             max_order=1,
             n_players=14,
             game_params={"model_name": "decision_tree", "imputer": "marginal"},
-            ground_truth=GroundTruthConfig(
-                strategy="compute", method="ExactComputer"
-            ),
+            ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
             approximators=["PermutationSamplingSV"],
             budgets=[100],
             seeds=[0],
@@ -260,9 +255,7 @@ def test_budget_validation_rejects_out_of_range_bounds(bad_budget: int):
                 "imputer": "marginal",
                 "x": 0,
             },
-            ground_truth=GroundTruthConfig(
-                strategy="compute", method="ExactComputer"
-            ),
+            ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
             approximators=["PermutationSamplingSV"],
             budgets=[bad_budget],
             seeds=[0],
@@ -271,9 +264,7 @@ def test_budget_validation_rejects_out_of_range_bounds(bad_budget: int):
 
 def test_budget_policy_steps_zero_raises_error():
     """Test Case 5 (Continued): Explicitly verify interception when budget_policy steps are negative or zero."""
-    with pytest.raises(
-        ValidationError, match=r"budget_policy\.steps must be greater than 0"
-    ):
+    with pytest.raises(ValidationError, match=r"budget_policy\.steps must be greater than 0"):
         MVPRunConfig(
             game="CaliforniaHousing",
             game_family="local_xai",
@@ -286,9 +277,7 @@ def test_budget_policy_steps_zero_raises_error():
                 "x": 0,
             },
             budget_policy={"strategy": "range", "steps": 0},
-            ground_truth=GroundTruthConfig(
-                strategy="compute", method="ExactComputer"
-            ),
+            ground_truth=GroundTruthConfig(strategy="compute", method="ExactComputer"),
             approximators=["PermutationSamplingSV"],
             budgets=[100],
             seeds=[0],

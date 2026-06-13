@@ -7,6 +7,7 @@ from shapiq_games.synthetic.dummy import DummyGame
 
 logger = logging.getLogger(__name__)
 
+
 def try_run(ApproxClass, name):
     logger.info("--- %s ---", name)
     try:
@@ -24,6 +25,7 @@ def try_run(ApproxClass, name):
         logger.exception("TypeError constructing or calling %s", name)
     except Exception as e:
         logger.exception("Runtime error in %s: %s: %s", name, type(e).__name__, e)
+
 
 if __name__ == "__main__":
     # Only run a small curated set known to be SV-compatible / commonly used

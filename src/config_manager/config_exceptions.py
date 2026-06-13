@@ -91,6 +91,7 @@ class InvalidConfigMissingBudgetsError(InvalidConfigMissingFieldsError):
         """Initialize with a message about the missing 'budget(s)' field."""
         super().__init__("Benchmark configuration must include 'budget' or 'budgets' field.")
 
+
 class UnsupportedGameError(ValueError):
     """Exception raised when a game is not supported."""
 
@@ -100,6 +101,7 @@ class UnsupportedGameError(ValueError):
         message = f"Unsupported game '{game}'. Available games: {formatted_games}"
         super().__init__(message)
 
+
 class InvalidGameFamilyError(ValueError):
     """Exception raised when a game is incompatible with its declared family."""
 
@@ -107,12 +109,12 @@ class InvalidGameFamilyError(ValueError):
         """Initialize the InvalidGameFamilyError with the conflicting game and family."""
         message = f"Game '{game}' is not available as a {game_family} game."
         super().__init__(message)
+
+
 class BudgetRangeError(ValueError):
     """Exception raised when a budget value falls outside the allowed range."""
 
-    def __init__(
-        self, budget: int, n_players: int, min_allowed: int, max_exclusive: int
-    ) -> None:
+    def __init__(self, budget: int, n_players: int, min_allowed: int, max_exclusive: int) -> None:
         """Initialize the BudgetRangeError with detailed constraint bounds."""
         message = (
             f"Invalid budget value {budget}. For this project, n_players={n_players} "
@@ -121,6 +123,8 @@ class BudgetRangeError(ValueError):
             f"or change `n_players` if your game has a different size."
         )
         super().__init__(message)
+
+
 class UnsupportedImputerError(ValueError):
     """Exception raised when an imputer method is not supported."""
 
@@ -129,20 +133,21 @@ class UnsupportedImputerError(ValueError):
         formatted_imputers = ", ".join(sorted(supported_imputers))
         message = f"Unsupported imputer '{imputer}'. Available imputers: {formatted_imputers}"
         super().__init__(message)
+
+
 class InvalidBudgetStrategyError(ValueError):
     """Exception raised when an invalid budget policy strategy is provided."""
 
     def __init__(self, strategy: str) -> None:
         """Initialize the InvalidBudgetStrategyError with the invalid strategy value."""
-        message = (
-            f"budget_policy.strategy must be 'range' when provided, "
-            f"but got '{strategy}'."
-        )
+        message = f"budget_policy.strategy must be 'range' when provided, but got '{strategy}'."
         super().__init__(message)
+
+
 class InvalidBudgetStepsError(ValueError):
     """Exception raised when budget_policy.steps is invalid."""
 
-    def __init__(self, steps_input: object,*, is_negative: bool = False) -> None:
+    def __init__(self, steps_input: object, *, is_negative: bool = False) -> None:
         """Initialize the InvalidBudgetStepsError based on the type of validation failure."""
         if is_negative:
             message = f"budget_policy.steps must be greater than 0, but got {steps_input}."

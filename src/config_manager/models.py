@@ -83,7 +83,9 @@ class MVPRunConfig(BaseModel):
             raise UnsupportedGameError(self.game, SUPPORTED_GAMES) from None
 
         # verify membership according to declared family
-        if (self.game_family == "local_xai" and self.game not in LOCAL_GAMES) or (self.game_family == "global_xai" and self.game not in GLOBAL_GAMES):
+        if (self.game_family == "local_xai" and self.game not in LOCAL_GAMES) or (
+            self.game_family == "global_xai" and self.game not in GLOBAL_GAMES
+        ):
             raise InvalidGameFamilyError(self.game, self.game_family) from None
         return self
 

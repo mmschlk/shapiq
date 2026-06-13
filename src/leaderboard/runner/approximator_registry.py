@@ -1,4 +1,5 @@
 """Approximator registry for the leaderboard runner.
+
 This registry maps approximator names from config_manager to their corresponding
 classes in shapiq.approximator. All 19 supported approximators are registered here.
 """
