@@ -92,10 +92,8 @@ class R2Metric(Metric):
 
         numerator = float(np.sum((estimated_array - ground_truth_array) ** 2))
         denominator = float(np.sum((ground_truth_array - np.mean(ground_truth_array)) ** 2))
-        if np.isclose(denominator, 0.0):
-            value = np.nan
-        else:
-            value = 1.0 - numerator/denominator
+        value = np.nan if np.isclose(denominator, 0.0) else 1.0 - numerator / denominator
+
 
         return MetricResult(
             metric_name=self.name,
