@@ -10,7 +10,8 @@ import nltk
 from nltk.corpus import wordnet as wn
 from nltk.tree import Tree
 
-from transformers import AutoModelForMaskedLM,AutoTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer
+from shapiq.imputer.text_imputer_attention import attention_mask_value_function
 
 nltk.download("punkt")
 nltk.download("wordnet")
@@ -66,6 +67,7 @@ class BasePlayerStrategy(ABC):
 # SUBWORD-LEVEL PLAYER STRATEGY
 # =============================================================================
 
+
 class SubwordPlayerStrategy(BasePlayerStrategy):
     """Tokenizer/subword-level player strategy.
 
@@ -99,15 +101,12 @@ class SubwordPlayerStrategy(BasePlayerStrategy):
     ) -> str:
         """Convert coalition into perturbed subword text."""
         if len(coalition) != self.n_players:
-            msg = (
-                f"Coalition length {len(coalition)} "
-                f"does not match n_players={self.n_players}"
-            )
+            msg = f"Coalition length {len(coalition)} does not match n_players={self.n_players}"
             raise ValueError(msg)
 
         output_tokens: list[str] = []
 
-        for idx, (keep, token) in enumerate(zip(coalition, self.subwords, strict=False) ):
+        for idx, (keep, token) in enumerate(zip(coalition, self.subwords, strict=False)):
             if keep:
                 output_tokens.append(token)
 
@@ -126,9 +125,11 @@ class SubwordPlayerStrategy(BasePlayerStrategy):
 
         return self.tokenizer.convert_tokens_to_string(output_tokens)
 
+
 # =============================================================================
 # WORD-LEVEL PLAYER STRATEGY
 # =============================================================================
+
 
 class WordPlayerStrategy(BasePlayerStrategy):
     """Word-level player strategy."""
@@ -157,15 +158,12 @@ class WordPlayerStrategy(BasePlayerStrategy):
     ) -> str:
         """Convert coalition into perturbed text."""
         if len(coalition) != self.n_players:
-            msg = (
-                f"Coalition length {len(coalition)} "
-                f"does not match n_players={self.n_players}"
-            )
+            msg = f"Coalition length {len(coalition)} does not match n_players={self.n_players}"
             raise ValueError(msg)
 
         output_words = []
 
-        for idx, (keep, word) in enumerate(zip(coalition, self.words, strict=False) ):
+        for idx, (keep, word) in enumerate(zip(coalition, self.words, strict=False)):
             if keep:
                 output_words.append(word)
 
@@ -184,9 +182,11 @@ class WordPlayerStrategy(BasePlayerStrategy):
 
         return " ".join(output_words)
 
+
 # =============================================================================
 # NAMED-ENTITY PLAYER STRATEGY
 # =============================================================================
+
 
 class NamedEntityPlayerStrategy(BasePlayerStrategy):
     """Named-entity-level player strategy using NLTK NER."""
@@ -206,10 +206,7 @@ class NamedEntityPlayerStrategy(BasePlayerStrategy):
 
         for node in ner_tree:
             if isinstance(node, Tree):
-                entity = " ".join(
-                    word
-                    for word, _tag in node.leaves()
-                )
+                entity = " ".join(word for word, _tag in node.leaves())
 
                 self.players.append(entity)
 
@@ -233,10 +230,7 @@ class NamedEntityPlayerStrategy(BasePlayerStrategy):
     ) -> str:
         """Convert coalition into perturbed text."""
         if len(coalition) != self.n_players:
-            msg = (
-                f"Coalition length {len(coalition)} "
-                f"does not match n_players={self.n_players}"
-            )
+            msg = f"Coalition length {len(coalition)} does not match n_players={self.n_players}"
             raise ValueError(msg)
 
         output_players: list[str] = []
@@ -260,9 +254,11 @@ class NamedEntityPlayerStrategy(BasePlayerStrategy):
 
         return " ".join(output_players)
 
+
 # =============================================================================
 # CHUNK-LEVEL PLAYER STRATEGY
 # =============================================================================
+
 
 class ChunkPlayerStrategy(BasePlayerStrategy):
     """Chunk-level player strategy using POS-based phrase chunking."""
@@ -289,10 +285,7 @@ class ChunkPlayerStrategy(BasePlayerStrategy):
 
         for node in tree:
             if isinstance(node, Tree):
-                phrase = " ".join(
-                    word
-                    for word, _tag in node.leaves()
-                )
+                phrase = " ".join(word for word, _tag in node.leaves())
                 self.chunks.append(phrase)
 
             else:
@@ -315,10 +308,7 @@ class ChunkPlayerStrategy(BasePlayerStrategy):
     ) -> str:
         """Convert coalition into perturbed chunk text."""
         if len(coalition) != self.n_players:
-            msg = (
-                f"Coalition length {len(coalition)} "
-                f"does not match n_players={self.n_players}"
-            )
+            msg = f"Coalition length {len(coalition)} does not match n_players={self.n_players}"
             raise ValueError(msg)
 
         output_chunks: list[str] = []
@@ -342,12 +332,15 @@ class ChunkPlayerStrategy(BasePlayerStrategy):
 
         return " ".join(output_chunks)
 
+
 # =============================================================================
 # SENTENCE-LEVEL PLAYER STRATEGY
 # =============================================================================
 
+
 class SentencePlayerStrategy(BasePlayerStrategy):
     """Sentence-level player strategy using NLTK sentence splitting."""
+
     def __init__(
         self,
         text: str,
@@ -372,15 +365,12 @@ class SentencePlayerStrategy(BasePlayerStrategy):
     ) -> str:
         """Convert coalition into perturbed sentence-level text."""
         if len(coalition) != self.n_players:
-            msg = (
-                f"Coalition length {len(coalition)} "
-                f"does not match n_players={self.n_players}"
-            )
+            msg = f"Coalition length {len(coalition)} does not match n_players={self.n_players}"
             raise ValueError(msg)
 
         perturbed_sentences = []
 
-        for keep, sentence in zip(coalition,self.sentences, strict=False):
+        for keep, sentence in zip(coalition, self.sentences, strict=False):
             if keep:
                 perturbed_sentences.append(sentence)
 
@@ -391,6 +381,7 @@ class SentencePlayerStrategy(BasePlayerStrategy):
                     perturbed_sentences.append(replacement)
 
         return " ".join(perturbed_sentences)
+
 
 # =============================================================================
 # PLAYER DICTIONARY AND FACTORY
@@ -404,17 +395,15 @@ PLAYER_STRATEGIES = {
     "sentence": SentencePlayerStrategy,
 }
 
+
 def create_player_strategy(
     level: str,
     text: str,
     tokenizer: PreTrainedTokenizerBase,
-    ) -> BasePlayerStrategy:
+) -> BasePlayerStrategy:
     """Create a player strategy from a string identifier."""
     if level not in PLAYER_STRATEGIES:
-        msg = (
-            f"Unknown player level: {level}. "
-            f"Available levels: {list(PLAYER_STRATEGIES)}"
-        )
+        msg = f"Unknown player level: {level}. Available levels: {list(PLAYER_STRATEGIES)}"
         raise ValueError(msg)
 
     strategy_cls = PLAYER_STRATEGIES[level]
@@ -427,21 +416,41 @@ def create_player_strategy(
 
     return strategy_cls(text=text)
 
+
 # =============================================================================
 # PERTURBATION STRATEGIES
 # =============================================================================
+class BasePerturbationStrategy:
+    """Base class for all perturbation strategies."""
 
-class BasePerturbationStrategy(ABC):
+
+class BaseStringPerturbationStrategy(BasePerturbationStrategy, ABC):
     """Abstract perturbation strategy."""
 
     @abstractmethod
     def perturb(
         self,
         player: str,
-         *,
+        *,
         context: dict | None = None,
     ) -> str:
         """Perturb a player representation."""
+
+
+class BaseAttentionMaskPerturbationStrategy(BasePerturbationStrategy, ABC):
+    """Tensor-level perturbation strategy using attention masks.
+
+    These strategies do not return perturbed text. Instead, they evaluate
+    coalitions by modifying the attention mask.
+    """
+
+    @abstractmethod
+    def evaluate(
+        self,
+        players: list[str],
+        coalitions: np.ndarray,
+    ) -> np.ndarray:
+        """Evaluate coalition values."""
 
 
 # =============================================================================
@@ -453,6 +462,7 @@ class BasePerturbationStrategy(ABC):
 # - neutral perturbation
 # - WordNet Neutral Perturbation
 # - MLM infilling
+# - Attention perturbation
 
 # Future:
 # - Attention Masking
@@ -462,7 +472,8 @@ class BasePerturbationStrategy(ABC):
 # [MASK] replacement
 # =============================================================================
 
-class MaskTokenPerturbation(BasePerturbationStrategy):
+
+class MaskTokenPerturbation(BaseStringPerturbationStrategy):
     """Replace missing words with [MASK]."""
 
     def __init__(
@@ -488,11 +499,13 @@ class MaskTokenPerturbation(BasePerturbationStrategy):
         """Replace missing words with [MASK]."""
         return self.mask_token
 
+
 # =============================================================================
 # [PAD] replacement
 # =============================================================================
 
-class PadTokenPerturbation(BasePerturbationStrategy):
+
+class PadTokenPerturbation(BaseStringPerturbationStrategy):
     """Replace missing players with the tokenizer's PAD token."""
 
     def __init__(
@@ -515,11 +528,13 @@ class PadTokenPerturbation(BasePerturbationStrategy):
         """Return the PAD token."""
         return self.pad_token
 
+
 # =============================================================================
 # REMOVAL PERTURBATION
 # =============================================================================
 
-class RemovalPerturbation(BasePerturbationStrategy):
+
+class RemovalPerturbation(BaseStringPerturbationStrategy):
     """Remove a player by replacing it with an empty string."""
 
     def perturb(
@@ -531,11 +546,13 @@ class RemovalPerturbation(BasePerturbationStrategy):
         """Return empty string."""
         return ""
 
+
 # =============================================================================
 # NEUTRAL PERTURBATION
 # =============================================================================
 
-class NeutralPerturbation(BasePerturbationStrategy):
+
+class NeutralPerturbation(BaseStringPerturbationStrategy):
     """Replace missing players with neutral placeholder text."""
 
     def __init__(
@@ -554,12 +571,13 @@ class NeutralPerturbation(BasePerturbationStrategy):
         """Return neutral replacement text."""
         return self.neutral_text
 
+
 # =============================================================================
 # WORDNET NEUTRAL PERTURBATION
 # =============================================================================
 
-def _penn_to_wn(tag: str) -> str | None:
 
+def _penn_to_wn(tag: str) -> str | None:
     if tag.startswith("N"):
         return wn.NOUN
 
@@ -574,7 +592,8 @@ def _penn_to_wn(tag: str) -> str | None:
 
     return None
 
-def _get_neutral_replacement( word: str, pos_tag: str) -> str:
+
+def _get_neutral_replacement(word: str, pos_tag: str) -> str:
     """Generate a semantic neutral replacement using WordNet hypernyms."""
     wn_pos = _penn_to_wn(pos_tag)
 
@@ -595,8 +614,10 @@ def _get_neutral_replacement( word: str, pos_tag: str) -> str:
 
     return replacement.replace("_", " ").split()[0]
 
-class WordNetNeutralPerturbation(BasePerturbationStrategy):
+
+class WordNetNeutralPerturbation(BaseStringPerturbationStrategy):
     """WordNet-based semantic neutral replacement."""
+
     def perturb(
         self,
         _player: str,
@@ -608,6 +629,7 @@ class WordNetNeutralPerturbation(BasePerturbationStrategy):
 
         return _get_neutral_replacement(_player, tag)
 
+
 # =============================================================================
 # MLM Infilling Perturbation
 # support:
@@ -616,7 +638,8 @@ class WordNetNeutralPerturbation(BasePerturbationStrategy):
 # - chunk-level players
 # =============================================================================
 
-class MLMInfillingPerturbation(BasePerturbationStrategy):
+
+class MLMInfillingPerturbation(BaseStringPerturbationStrategy):
     """Fill missing players using a masked language model."""
 
     def __init__(
@@ -636,7 +659,7 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
         self.mask_token = self.tokenizer.mask_token
 
         if self.mask_token is None:
-            msg = (f"{model_name} does not define a mask token.")
+            msg = f"{model_name} does not define a mask token."
             raise ValueError(msg)
 
         self._cache: dict[tuple, dict[int, str]] = {}
@@ -646,7 +669,6 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
         players: list[str],
         coalition: np.ndarray,
     ) -> tuple:
-
         return (tuple(players), tuple(coalition.tolist()))
 
     def _predict_masks(
@@ -667,29 +689,23 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
 
         encoded = self.tokenizer(text, return_tensors="pt")
 
-        encoded = {
-            k: v.to(self.device)
-            for k, v in encoded.items()
-        }
+        encoded = {k: v.to(self.device) for k, v in encoded.items()}
 
         with torch.no_grad():
             outputs = self.model(**encoded)
 
         logits = outputs.logits
 
-        mask_positions = (encoded["input_ids"][0] == self.tokenizer.mask_token_id).nonzero(as_tuple=True)[0]
+        mask_positions = (encoded["input_ids"][0] == self.tokenizer.mask_token_id).nonzero(
+            as_tuple=True
+        )[0]
 
         replacements = {}
 
-        for player_idx, token_pos in zip(np.where(coalition == 0)[0], mask_positions,strict=False):
+        for player_idx, token_pos in zip(np.where(coalition == 0)[0], mask_positions, strict=False):
             top_k = 10
 
-            candidate_ids = (
-                logits[0, token_pos]
-                .topk(top_k)
-                .indices
-                .tolist()
-            )
+            candidate_ids = logits[0, token_pos].topk(top_k).indices.tolist()
             replacement = "something"
 
             for candidate_id in candidate_ids:
@@ -721,7 +737,7 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
     ) -> str:
         """Generate an MLM-based replacement for a missing player."""
         if context is None:
-            msg = ("MLMInfillingPerturbation requires context.")
+            msg = "MLMInfillingPerturbation requires context."
             raise ValueError(msg)
 
         players = context["players"]
@@ -731,11 +747,59 @@ class MLMInfillingPerturbation(BasePerturbationStrategy):
         cache_key = self._build_cache_key(players, coalition)
 
         if cache_key not in self._cache:
-            self._cache[cache_key] = (self._predict_masks(players, coalition))
+            self._cache[cache_key] = self._predict_masks(players, coalition)
 
         replacements = self._cache[cache_key]
 
         return replacements.get(mask_index, player)
+
+
+# =============================================================================
+# ATTENTION PERTURBATION
+# =============================================================================
+class AttentionMaskPerturbation(BaseAttentionMaskPerturbationStrategy):
+    """Evaluate missing players by masking their attention.
+
+    This perturbation does not create perturbed strings. Instead, it maps
+    players to token spans and sets the corresponding attention mask entries
+    of missing players to 0.
+    """
+
+    def __init__(
+        self,
+        model: PreTrainedModel,
+        tokenizer: PreTrainedTokenizerBase,
+        device: str,
+        *,
+        prompt_suffix: str = "",
+        target_text: str,
+        player_separator: str = " ",
+    ) -> None:
+        """Initialize attention-mask perturbation."""
+        self.model = model
+        self.tokenizer = tokenizer
+        self.device = device
+        self.prompt_suffix = prompt_suffix
+        self.target_text = target_text
+        self.player_separator = player_separator
+
+    def evaluate(
+        self,
+        players: list[str],
+        coalitions: np.ndarray,
+    ) -> np.ndarray:
+        """Evaluate coalition values using attention masking."""
+        return attention_mask_value_function(
+            model=self.model,
+            tokenizer=self.tokenizer,
+            players=players,
+            coalitions=coalitions,
+            device=self.device,
+            prompt_suffix=self.prompt_suffix,
+            target_text=self.target_text,
+            player_separator=self.player_separator,
+        )
+
 
 # =============================================================================
 # PERTURBATION DICTIONARY AND FACTORY
@@ -748,11 +812,19 @@ PERTURBATION_STRATEGIES = {
     "neutral": NeutralPerturbation,
     "wordnet_neutral": WordNetNeutralPerturbation,
     "mlm_infilling": MLMInfillingPerturbation,
+    "attention_mask": AttentionMaskPerturbation,
 }
+
 
 def create_perturbation_strategy(
     strategy: str,
     tokenizer: PreTrainedTokenizerBase,
+    *,
+    model: PreTrainedModel | None = None,
+    device: str = "cpu",
+    attention_prompt_suffix: str = "",
+    attention_target_text: str | None = None,
+    player_separator: str = " ",
 ) -> BasePerturbationStrategy:
     """Create a perturbation strategy from a string identifier."""
     if strategy not in PERTURBATION_STRATEGIES:
@@ -765,20 +837,37 @@ def create_perturbation_strategy(
 
     strategy_cls = PERTURBATION_STRATEGIES[strategy]
 
-    if strategy == "mask":
-        return strategy_cls(tokenizer)
-
-    if strategy == "pad":
+    if strategy in {"mask", "pad"}:
         return strategy_cls(tokenizer)
 
     if strategy == "mlm_infilling":
         return strategy_cls()
 
+    if strategy == "attention_mask":
+        if model is None:
+            msg = "model must be provided for attention_mask perturbation."
+            raise ValueError(msg)
+
+        if attention_target_text is None:
+            msg = "attention_target_text must be provided for attention_mask perturbation."
+            raise ValueError(msg)
+
+        return strategy_cls(
+            model=model,
+            tokenizer=tokenizer,
+            device=device,
+            prompt_suffix=attention_prompt_suffix,
+            target_text=attention_target_text,
+            player_separator=player_separator,
+        )
+
     return strategy_cls()
+
 
 # =============================================================================
 # TARGET CALLABLES
 # =============================================================================
+
 
 class BaseTargetCallable(ABC):
     """Abstract interface for model-specific scoring."""
@@ -801,9 +890,11 @@ class BaseTargetCallable(ABC):
     ) -> np.ndarray:
         """Return scalar scores."""
 
+
 # =============================================================================
 # Encoder only support
 # =============================================================================
+
 
 class EncoderClassifierCallable(BaseTargetCallable):
     """Encoder classifier scoring."""
@@ -833,44 +924,37 @@ class EncoderClassifierCallable(BaseTargetCallable):
         """Run encoder classifier inference."""
         encoded = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
 
-        encoded = {
-            key: value.to(self.device)
-            for key, value in encoded.items()
-        }
+        encoded = {key: value.to(self.device) for key, value in encoded.items()}
 
         with torch.no_grad():
-
             outputs = self.model(**encoded)
             logits = outputs.logits
 
         if self.output_type == "logit":
-
             scores = logits[:, self.class_idx]
 
         else:
-
             probs = torch.softmax(logits, dim=-1)
             scores = probs[:, self.class_idx]
 
         return scores.detach().cpu().numpy()
 
+
 # =============================================================================
 # Causal LM support
 # =============================================================================
 
+
 class CausalLMCallable(BaseTargetCallable):
     """Causal language model scoring."""
+
     def __init__(
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
         device: str,
         target_label: str = "good",
-
-        prompt_template: str = (
-            "Review: {text}\n\n"
-            "Sentiment:"
-            ),
+        prompt_template: str = ("Review: {text}\n\nSentiment:"),
     ) -> None:
         """Causal language model scoring."""
         super().__init__(model, tokenizer, device)
@@ -878,12 +962,12 @@ class CausalLMCallable(BaseTargetCallable):
         self.target_token_ids = tokenizer.encode(target_label, add_special_tokens=False)
 
         if len(self.target_token_ids) == 0:
-            msg = (f"Target label '{target_label}' produced no tokens.")
+            msg = f"Target label '{target_label}' produced no tokens."
             raise ValueError(msg)
 
         if tokenizer.pad_token_id is None:
             if tokenizer.eos_token_id is None:
-                msg = ("Tokenizer must define either a pad token or eos token.")
+                msg = "Tokenizer must define either a pad token or eos token."
                 raise ValueError(msg)
 
             tokenizer.pad_token = tokenizer.eos_token
@@ -907,7 +991,6 @@ class CausalLMCallable(BaseTargetCallable):
         total_log_prob = 0.0
 
         for i in range(len(target_ids)):
-
             prefix_ids = target_ids[:i]
             input_ids = prompt_ids + prefix_ids
             encoded = {"input_ids": torch.tensor([input_ids], device=self.device)}
@@ -917,9 +1000,9 @@ class CausalLMCallable(BaseTargetCallable):
 
             logits = outputs.logits
             next_token_logits = logits[:, -1, :]
-            log_probs = torch.log_softmax( next_token_logits, dim=-1)
+            log_probs = torch.log_softmax(next_token_logits, dim=-1)
 
-            total_log_prob += (log_probs[0, target_ids[i]].item())
+            total_log_prob += log_probs[0, target_ids[i]].item()
 
         return total_log_prob
 
@@ -934,12 +1017,14 @@ class CausalLMCallable(BaseTargetCallable):
             score = self._score_target_sequence(prompt)
             scores.append(score)
 
-        return np.asarray(scores,dtype=np.float32)
+        return np.asarray(scores, dtype=np.float32)
+
 
 # =============================================================================
 # TO DO:
 # seq2seq support
 # =============================================================================
+
 
 class Seq2SeqCallable(BaseTargetCallable):
     """Placeholder for future seq2seq support."""
@@ -952,9 +1037,11 @@ class Seq2SeqCallable(BaseTargetCallable):
         msg = "Seq2SeqCallable is not implemented yet."
         raise NotImplementedError(msg)
 
+
 # =============================================================================
 # TEXT IMPUTER
 # =============================================================================
+
 
 class TextImputer:
     """Generalized text imputer."""
@@ -966,31 +1053,29 @@ class TextImputer:
         text: str,
         batch_size: int = 16,
         device: str | None = None,
-
         # ---------------------------------------------------------------------
         # encoder classifier settings
         # ---------------------------------------------------------------------
         class_idx: int = 1,
         output_type: str = "logit",
-
         # ---------------------------------------------------------------------
         # causal LM settings
         # ---------------------------------------------------------------------
         target_label: str = "good",
-        prompt_template: str = (
-            "Review: {text}\n\n"
-            "Sentiment:"
-        ),
-
+        prompt_template: str = ("Review: {text}\n\nSentiment:"),
+        # ---------------------------------------------------------------------
+        # attention mask settings
+        # ---------------------------------------------------------------------
+        attention_prompt_suffix: str = "",
+        attention_target_text: str | None = None,
+        player_separator: str = " ",
         # ---------------------------------------------------------------------
         # architecture selection
         # ---------------------------------------------------------------------
         player_level: str = "word",
         perturbation_type: str = "mask",
-
         player_strategy: BasePlayerStrategy | None = None,
         perturbation_strategy: BasePerturbationStrategy | None = None,
-
         # ---------------------------------------------------------------------
         # Generalize target callable support.
         # ---------------------------------------------------------------------
@@ -1023,7 +1108,9 @@ class TextImputer:
         # =============================================================================
 
         if player_strategy is None:
-            player_strategy = create_player_strategy(level=player_level, text=text, tokenizer=tokenizer)
+            player_strategy = create_player_strategy(
+                level=player_level, text=text, tokenizer=tokenizer
+            )
 
         self.player_level = player_level
         self.player_strategy = player_strategy
@@ -1034,24 +1121,29 @@ class TextImputer:
         # =============================================================================
 
         if perturbation_strategy is None:
-            perturbation_strategy = (create_perturbation_strategy(strategy=perturbation_type, tokenizer=tokenizer))
+            perturbation_strategy = create_perturbation_strategy(
+                strategy=perturbation_type,
+                tokenizer=tokenizer,
+                model=self.model,
+                device=self.device,
+                attention_prompt_suffix=attention_prompt_suffix,
+                attention_target_text=attention_target_text,
+                player_separator=player_separator,
+            )
 
         self.perturbation_type = perturbation_type
         self.perturbation_strategy = perturbation_strategy
 
         # MLM infilling currently supports only word, named-entity, and chunk players.
 
-        if (
-            isinstance(
-                self.perturbation_strategy,
-                MLMInfillingPerturbation,
-            )
-            and self.player_level in {
-                "sentence",
-                "subword",
-            }
-        ):
-            msg = ("MLMInfillingPerturbation currently supports only word, named-entity, and chunk players.")
+        if isinstance(
+            self.perturbation_strategy,
+            MLMInfillingPerturbation,
+        ) and self.player_level in {
+            "sentence",
+            "subword",
+        }:
+            msg = "MLMInfillingPerturbation currently supports only word, named-entity, and chunk players."
             raise ValueError(msg)
 
         # =============================================================================
@@ -1059,7 +1151,6 @@ class TextImputer:
         # =============================================================================
 
         if model_type == "encoder_classifier":
-
             self.target_callable = EncoderClassifierCallable(
                 model=model,
                 tokenizer=tokenizer,
@@ -1069,7 +1160,6 @@ class TextImputer:
             )
 
         elif model_type == "causal_lm":
-
             self.target_callable = CausalLMCallable(
                 model=model,
                 tokenizer=tokenizer,
@@ -1079,7 +1169,6 @@ class TextImputer:
             )
 
         elif model_type == "seq2seq":
-
             self.target_callable = Seq2SeqCallable(
                 model=model,
                 tokenizer=tokenizer,
@@ -1087,12 +1176,7 @@ class TextImputer:
             )
 
         else:
-            msg = (
-                "model_type must be one of:\n"
-                "- 'encoder_classifier'\n"
-                "- 'causal_lm'\n"
-                "- 'seq2seq'"
-            )
+            msg = "model_type must be one of:\n- 'encoder_classifier'\n- 'causal_lm'\n- 'seq2seq'"
             raise ValueError(msg)
 
     @property
@@ -1105,17 +1189,31 @@ class TextImputer:
         coalition: np.ndarray,
     ) -> str:
         """Convert coalition into perturbed text."""
-        return self.player_strategy.coalition_to_text(coalition, self.perturbation_strategy)
+        if not isinstance(self.perturbation_strategy, BaseStringPerturbationStrategy):
+            msg = (
+                f"{self.perturbation_type!r} does not produce perturbed text. "
+                "Use value_function() to evaluate coalitions."
+            )
+            raise TypeError(msg)
+
+        return self.player_strategy.coalition_to_text(
+            coalition,
+            self.perturbation_strategy,
+        )
 
     def _coalitions_to_texts(
         self,
         coalitions: np.ndarray,
     ) -> list[str]:
         """Convert coalition matrix into perturbed texts."""
-        return [
-            self.coalition_to_text(coalition)
-            for coalition in coalitions
-        ]
+        if not isinstance(self.perturbation_strategy, BaseStringPerturbationStrategy):
+            msg = (
+                f"{self.perturbation_type!r} does not produce perturbed text. "
+                "Use value_function() to evaluate coalitions."
+            )
+            raise TypeError(msg)
+
+        return [self.coalition_to_text(coalition) for coalition in coalitions]
 
     def _predict_batch(
         self,
@@ -1149,14 +1247,29 @@ class TextImputer:
             coalitions = coalitions.reshape(1, -1)
 
         if coalitions.shape[1] != self.n_players:
-            msg = (
-                f"Expected coalition width {self.n_players}, "
-                f"got {coalitions.shape[1]}"
-            )
+            msg = f"Expected coalition width {self.n_players}, got {coalitions.shape[1]}"
             raise ValueError(msg)
 
-        texts = self._coalitions_to_texts(coalitions)
-        return self._batched_predict(texts)
+        if isinstance(
+            self.perturbation_strategy,
+            BaseAttentionMaskPerturbationStrategy,
+        ):
+            players = self.player_strategy.get_players()
+
+            return self.perturbation_strategy.evaluate(
+                players=players,
+                coalitions=coalitions,
+            )
+
+        if isinstance(
+            self.perturbation_strategy,
+            BaseStringPerturbationStrategy,
+        ):
+            texts = self._coalitions_to_texts(coalitions)
+            return self._batched_predict(texts)
+
+        msg = f"Unsupported perturbation strategy type: {type(self.perturbation_strategy).__name__}"
+        raise TypeError(msg)
 
     def __call__(
         self,
@@ -1167,5 +1280,13 @@ class TextImputer:
 
     def full_prediction(self) -> float:
         """Score of original unperturbed text."""
+        if isinstance(
+            self.perturbation_strategy,
+            BaseAttentionMaskPerturbationStrategy,
+        ):
+            full_coalition = np.ones((1, self.n_players), dtype=bool)
+            score = self.value_function(full_coalition)[0]
+            return float(score)
+
         score = self._predict_batch([self.text])[0]
         return float(score)
