@@ -22,12 +22,19 @@ from .config_exceptions import (
     InvalidYAMLTypeError,
     UnsupportedApproximatorError,
 )
-from .constants import ALL_SUPPORTED_APPROXIMATORS, VALID_INDICES
+from .constants import (
+    ALL_SUPPORTED_APPROXIMATORS,
+    SUPPORTED_GAMES,
+    SUPPORTED_IMPUTERS,
+    VALID_INDICES,
+)
 from .loader import load_and_validate_config
 from .models import GroundTruthConfig, MVPRunConfig
 
 __all__ = [
     "ALL_SUPPORTED_APPROXIMATORS",
+    "SUPPORTED_GAMES",
+    "SUPPORTED_IMPUTERS",
     "GroundTruthConfig",
     "load_and_validate_config",
     "MVPRunConfig",
