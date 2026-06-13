@@ -6,8 +6,7 @@ import json
 import logging
 
 from leaderboard.runner.benchmark_runner import run_benchmark
-from leaderboard.runner.runner_storage_adapter import save_raw_results
-from leaderboard.storage.connection.client import MongoDBClient
+from leaderboard.storage.connection.client_factory import DatabaseClientFactory
 from shapiq.approximator import ProxySHAP
 from shapiq_games.synthetic import SOUM
 
@@ -40,12 +39,8 @@ def main() -> None:
         approximator_class=ProxySHAP,
     )
 
-    db = MongoDBClient.from_env()
-
-    save_raw_results(
-        db=db,
-        raw_results=benchmark_result["raw_results"],
-    )
+    db = DatabaseClientFactory.create_client("mongodb", args={})
+    db.insert_many(benchmark_result["raw_results"])
 
     logging.info(json.dumps(benchmark_result["raw_results"][0], indent=2, default=str))
 

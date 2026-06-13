@@ -18,10 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
-          - os: macos-13
-            macos_target: "13.0"
           - os: macos-latest
             macos_target: "15.0"
     steps:

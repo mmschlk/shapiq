@@ -71,3 +71,37 @@ class NormalizedMSEMetric(Metric):
             value=value,
             higher_is_better=self.higher_is_better,
         )
+
+
+"""R² faithfulness score measuring reconstruction quality.
+
+Defined as 1 - ||estimated - ground_truth||² / ||ground_truth - mean(ground_truth)||²,
+following the faithfulness metric in ProxySPEX, Section 3.1, Equation (2).
+"""
+
+
+class R2Metric(Metric):
+    """R² faithfulness score measuring reconstruction quality."""
+
+    def __init__(self) -> None:
+        """Initialize the R² metric with its name and sort direction."""
+        self.name = "r2"
+        self.higher_is_better = True
+
+    def compute(self, ground_truth: T | list[T], estimated: T | list[T]) -> MetricResult:
+        """Compute the R² faithfulness score for estimated and ground-truth values."""
+        ground_truth_array = np.array(ground_truth)
+        estimated_array = np.array(estimated)
+        if ground_truth_array.shape != estimated_array.shape:
+            msg = "ground_truth and estimated must have the same shape"
+            raise ValueError(msg)
+
+        numerator = float(np.sum((estimated_array - ground_truth_array) ** 2))
+        denominator = float(np.sum((ground_truth_array - np.mean(ground_truth_array)) ** 2))
+        value = np.nan if np.isclose(denominator, 0.0) else 1.0 - numerator / denominator
+
+        return MetricResult(
+            metric_name=self.name,
+            value=float(value),
+            higher_is_better=self.higher_is_better,
+        )

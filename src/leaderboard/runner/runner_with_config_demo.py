@@ -14,8 +14,7 @@ from leaderboard.runner.approximator_registry import get_approximator_class
 from leaderboard.runner.benchmark_runner import run_benchmark
 from leaderboard.runner.custom_types import InteractionIndex
 from leaderboard.runner.game_factory import create_game_from_config
-from leaderboard.runner.runner_storage_adapter import save_raw_results, save_raw_results_jsonl
-from leaderboard.storage.connection import MongoDBClient
+from leaderboard.storage.connection import DatabaseClientFactory
 
 logging.basicConfig(level=logging.INFO)
 
@@ -102,10 +101,16 @@ def main() -> None:
     base_config = config_obj.model_dump(exclude_none=True)
 
     # Connect to MongoDB
-    db = MongoDBClient.from_env()
+    mongo_db = DatabaseClientFactory.create_client("mongodb", args={})
+
+    # Create a local database client
+    output_path = project_root / "data" / "results_raw.jsonl"
+    local_db = DatabaseClientFactory.create_client(
+        "local", args={"LOCAL_DB_PATH": str(output_path)}
+    )
 
     # Test connection
-    if not db.test_connection():
+    if not mongo_db.test_connection():
         raise ConnectionError from None
     logging.info("MongoDB connection successful.")
 
@@ -132,17 +137,11 @@ def main() -> None:
             approximator_class=approximator_class,
         )
 
-        output_path = project_root / "data" / "results_raw.jsonl"
+        # Insert in local JSONL file
+        local_db.insert_many(benchmark_result["raw_results"])
 
-        save_raw_results_jsonl(
-            raw_results=benchmark_result["raw_results"],
-            output_path=output_path,
-        )
-
-        save_raw_results(
-            db=db,
-            raw_results=benchmark_result["raw_results"],
-        )
+        # Insert in MongoDB
+        mongo_db.insert_many(benchmark_result["raw_results"])
 
         logging.info("Stored raw results:")
         logging.info(len(benchmark_result["raw_results"]))
