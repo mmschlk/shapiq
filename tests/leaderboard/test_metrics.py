@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 import numpy as np
+import pytest
 
 from leaderboard.metrics import METRIC_KEYS, METRIC_SPECS, METRICS, Scorer
 from leaderboard.metrics.evaluator import compute_all_metrics
+from leaderboard.metrics.registry import MetricSpec
 from leaderboard.metrics.utils import prepare_metric_inputs, remove_empty_value_if_needed
 from leaderboard.runner.aggregator import aggregate_metric_values, aggregate_run_records
 from leaderboard.runner.record_builder import create_run_record
@@ -46,6 +49,84 @@ class DummyGame:
 
 class DummyApproximator:
     pass
+
+
+class ExplodingMetric:
+    name = "mse"
+    higher_is_better = False
+
+    def compute(self, ground_truth, estimated):
+        msg = "boom"
+        raise RuntimeError(msg)
+
+
+@pytest.mark.parametrize(
+    ("metric_name", "ground_truth", "estimated", "expected"),
+    [
+        ("mse", np.array([1.0, 2.0, 3.0]), np.array([1.0, 4.0, 6.0]), 13 / 3),
+        ("mae", np.array([1.0, -2.0, 3.0]), np.array([2.0, 2.0, -1.0]), 3.0),
+        ("mse_normalized", np.array([1.0, 2.0, 3.0]), np.array([1.0, 4.0, 6.0]), 6.5),
+        ("mse_normalized", np.array([2.0, 2.0, 2.0]), np.array([1.0, 2.0, 4.0]), 5 / 3),
+    ],
+)
+def test_distance_metrics_parametrized_edge_values(
+    metric_name,
+    ground_truth,
+    estimated,
+    expected,
+):
+    result = METRICS[metric_name].compute(ground_truth, estimated)
+
+    assert result.value == pytest.approx(expected)
+    assert result.metric_name == METRICS[metric_name].name
+
+
+@pytest.mark.parametrize(
+    ("metric_name", "ground_truth", "estimated", "expected"),
+    [
+        ("spearman", np.array([1.0, 2.0, 3.0]), np.array([3.0, 2.0, 1.0]), -1.0),
+        ("spearman", np.array([1.0, 1.0, 1.0]), np.array([3.0, 2.0, 1.0]), 0.0),
+        ("kendall_tau", np.array([1.0, 2.0, 3.0]), np.array([3.0, 2.0, 1.0]), -1.0),
+        ("kendall_tau", np.array([1.0, 1.0, 1.0]), np.array([3.0, 2.0, 1.0]), 0.0),
+    ],
+)
+def test_ranking_metrics_parametrized_ordering_and_constant_inputs(
+    metric_name,
+    ground_truth,
+    estimated,
+    expected,
+):
+    result = METRICS[metric_name].compute(ground_truth, estimated)
+
+    assert result.value == pytest.approx(expected)
+    assert result.higher_is_better is True
+
+
+def test_r2_returns_nan_for_empty_arrays():
+    result = METRICS["r2"].compute(np.array([]), np.array([]))
+
+    assert np.isnan(result.value)
+
+
+def test_precision_at_k_invalid_k_is_checked_before_shape_mismatch():
+    with pytest.raises(ValueError, match="k must be greater than 0"):
+        METRICS["precision_at_k"].compute(np.array([1.0]), np.array([1.0, 2.0]), k=0)
+
+
+def test_scorer_isolates_mocked_metric_failure():
+    mocked_specs = dict(METRIC_SPECS)
+    mocked_specs["mse"] = MetricSpec(
+        name="mse",
+        function=ExplodingMetric(),
+        higher_is_better=False,
+        category="mock",
+        description="mocked metric",
+    )
+
+    with patch("leaderboard.metrics.scorer.METRIC_SPECS", mocked_specs):
+        scores = Scorer(metric_names=["mse"]).score(np.array([1.0]), np.array([1.0]))
+
+    assert scores["mse"] is None
 
 
 class MetricsTestCase(unittest.TestCase):
