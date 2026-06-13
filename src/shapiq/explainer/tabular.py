@@ -20,7 +20,9 @@ if TYPE_CHECKING:
     from shapiq.typing import Model
 
 
-TabularExplainerApproximators = Literal["spex", "montecarlo", "svarm", "permutation", "regression"]
+TabularExplainerApproximators = Literal[
+    "spex", "montecarlo", "svarm", "permutation", "regression", "proxyshap", "proxyspex"
+]
 TabularExplainerImputers = Literal["marginal", "baseline", "conditional"]
 TabularExplainerIndices = ExplainerIndices
 
@@ -78,7 +80,7 @@ class TabularExplainer(Explainer):
 
             approximator: An :class:`~shapiq.approximator.Approximator` object to use for the
                 explainer or a literal string from
-                ``["auto", "spex", "montecarlo", "svarm", "permutation"]``. Defaults to ``"auto"``
+                ``["auto", "spex", "montecarlo", "svarm", "permutation", "proxyshap", "proxyspex"]``. Defaults to ``"auto"``
                 which automatically selects: :class:`~shapiq.approximator.KernelSHAP` for ``"SV"``,
                 :class:`~shapiq.approximator.KernelSHAPIQ` for ``"SII"``/``"k-SII"``,
                 :class:`~shapiq.approximator.RegressionFSII` for ``"FSII"``,

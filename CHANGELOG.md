@@ -5,6 +5,23 @@
 ### Added
 
 - Adds the `OddSHAP` approximator for first-order Shapley values (Fumagalli et al., 2026, arXiv:2602.01399): paired sampling, sparse odd-interaction screening via the ProxySPEX tree-to-Fourier extraction, and a constrained odd Fourier regression that enforces the efficiency axiom exactly. [#522](https://github.com/mmschlk/shapiq/pull/522)
+## v1.5.2 (2026-06-12)
+
+### Highlights of new Features
+
+- Added `'baseline'` imputer support (`BaselineImputer`) to the `shapiq_games` `LocalExplanation` benchmark games.
+- Added `ProxySHAP` and `ProxySPEX` as approximator options for the `TabularExplainer`, `TabPFNExplainer`, and `AgnosticExplainer` in `shapiq.explainer`. All three resolve approximators through the shared `setup_approximator` configuration, so `proxyshap` and `proxyspex` are selectable wherever that configuration is used.
+- Added support for linear surrogate models and HPO-informed proxies in `ProxySHAP` and `RegressionMSR`. The extraction route (linear coefficient read-out vs. exact tree read-out) is selected automatically from the proxy's base estimator type, and hyperparameter-search wrappers (scikit-learn's `GridSearchCV`, `RandomizedSearchCV`, `HalvingGridSearchCV`, or SMAC) are fitted and their `best_estimator_` read out, for both linear and tree proxies.
+- Made `ProxySPEX`'s `proxy_model` configurable: it now also accepts the string tags `"lightgbm"` (default), `"xgboost"`, and `"tree"`, as well as custom tree estimators and HPO wrappers. The default remains the HPO-informed LightGBM proxy.
+- `ProxySHAP`, `ProxySPEX`, and `RegressionMSR` no longer require LightGBM, XGBoost, or SMAC to be installed. When an optional backend is unavailable they warn and fall back to a scikit-learn `DecisionTreeRegressor`, so the proxy approximators always import and run.
+- Added log-space weight computation for the regression-based (`KernelSHAP`, `KernelSHAPIQ`, `RegressionFSII`, `RegressionFBII`, `kADDSHAP`) and Monte Carlo (`SHAPIQ`, `SVARMIQ`) approximators, supporting Shapley approximation for feature counts beyond 1000.
+
+
+### Bugfix
+
+- Fixes `InterventionalTreeExplainer` routing the explain point at float64 precision while tree thresholds and the reference data are float32. The explain point is now cast to float32 to match the model's evaluation.
+- Fixes `ProxySHAP` and `RegressionMSR` alignment of sampled coalitions between the approximator and its adjustment method (`random_state` now defaults to a fixed seed so both samplers reproduce identical coalitions).
+- Fixes `ProxySPEX` passing `initialize_dict=True` to its sampler, which was unnecessary since `ProxySPEX` does not return all possible interactions (now `False`).
 
 ## v1.5.1 (2026-05-30)
 
