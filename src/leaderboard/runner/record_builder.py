@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from importlib.metadata import version
 from typing import TYPE_CHECKING, Any
 
+from leaderboard.metrics import METRIC_KEYS
 from leaderboard.runner.environment_info import get_hardware_info
 
 if TYPE_CHECKING:
@@ -71,16 +72,7 @@ def create_run_record(
         "ground_truth_method": "ExactComputer",  # TO DO: this needs to be determined during the process
         "run_failed": run_failed,
         "error_message": error_message,
-        "metrics": metrics
-        if metrics is not None
-        else {
-            "mse": None,
-            "mae": None,
-            "mse_normalized": None,
-            "spearman": None,
-            "kendall_tau": None,
-            "precision_at_k": None,
-        },
+        "metrics": metrics if metrics is not None else dict.fromkeys(METRIC_KEYS),
         "runtime_seconds": runtime_seconds,
         "timestamp": datetime.now(UTC).isoformat(),
         "hardware": get_hardware_info(),

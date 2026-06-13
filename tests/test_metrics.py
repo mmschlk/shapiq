@@ -4,9 +4,9 @@ import unittest
 
 import numpy as np
 
-from leaderboard.metrics import METRIC_KEYS, METRICS, Scorer
+from leaderboard.metrics import METRIC_KEYS, METRIC_SPECS, METRICS, Scorer
 from leaderboard.metrics.evaluator import compute_all_metrics
-from leaderboard.metrics.utils import prepare_metric_inputs
+from leaderboard.metrics.utils import prepare_metric_inputs, remove_empty_value_if_needed
 from leaderboard.runner.aggregator import aggregate_metric_values, aggregate_run_records
 from leaderboard.runner.record_builder import create_run_record
 from shapiq import InteractionValues
@@ -59,6 +59,18 @@ class MetricsTestCase(unittest.TestCase):
             1.0,
         )
         self.assertIs(METRICS["normalized_mse"], METRICS["mse_normalized"])
+
+    def test_registry_specs_match_public_metric_instances(self):
+        for metric_name in METRIC_KEYS:
+            with self.subTest(metric_name=metric_name):
+                spec = METRIC_SPECS[metric_name]
+
+                self.assertIs(METRICS[metric_name], spec.function)
+                self.assertEqual(spec.name, metric_name)
+                self.assertEqual(spec.function.name, metric_name)
+                self.assertEqual(spec.function.higher_is_better, spec.higher_is_better)
+                self.assertTrue(spec.category)
+                self.assertTrue(spec.description)
 
     def test_mse_is_zero_for_equal_values(self):
         ground_truth = np.array([1.0, 2.0, 3.0])
@@ -128,6 +140,34 @@ class MetricsTestCase(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "same shape"):
             METRICS["r2"].compute(np.array([1.0]), np.array([1.0, 2.0]))
 
+    def test_spearman_detects_inverse_rank_order(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([3.0, 2.0, 1.0])
+
+        result = METRICS["spearman"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, -1.0)
+        self.assertEqual(result.metric_name, "spearman")
+        self.assertTrue(result.higher_is_better)
+
+    def test_spearman_handles_nan_as_zero(self):
+        ground_truth = np.array([1.0, 1.0, 1.0])
+        estimated = np.array([2.0, 2.0, 2.0])
+
+        result = METRICS["spearman"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, 0.0)
+
+    def test_kendall_tau_detects_inverse_rank_order(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([3.0, 2.0, 1.0])
+
+        result = METRICS["kendall_tau"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, -1.0)
+        self.assertEqual(result.metric_name, "kendall_tau")
+        self.assertTrue(result.higher_is_better)
+
     def test_kendall_tau_handles_nan_as_zero(self):
         ground_truth = np.array([1.0, 1.0, 1.0])
         estimated = np.array([2.0, 2.0, 2.0])
@@ -148,8 +188,54 @@ class MetricsTestCase(unittest.TestCase):
         self.assertEqual(result.metric_name, "precision_at_k")
         self.assertTrue(result.higher_is_better)
 
+    def test_precision_at_k_caps_k_at_array_size(self):
+        ground_truth = np.array([10.0, 1.0])
+        estimated = np.array([1.0, 10.0])
+
+        result = METRICS["precision_at_k"].compute(ground_truth, estimated, k=10)
+
+        self.assertEqual(result.value, 1.0)
+
+    def test_precision_at_k_returns_zero_for_empty_arrays(self):
+        result = METRICS["precision_at_k"].compute(np.array([]), np.array([]), k=10)
+
+        self.assertEqual(result.value, 0.0)
+
+    def test_precision_at_k_rejects_non_positive_k(self):
+        with self.assertRaisesRegex(ValueError, "k must be greater than 0"):
+            METRICS["precision_at_k"].compute(np.array([1.0]), np.array([1.0]), k=0)
+
+    def test_precision_at_k_shape_mismatch_raises_clear_error(self):
+        with self.assertRaisesRegex(ValueError, "same shape"):
+            METRICS["precision_at_k"].compute(np.array([1.0]), np.array([1.0, 2.0]))
+
 
 class PrepareMetricInputsTestCase(unittest.TestCase):
+    def test_remove_empty_value_leaves_numpy_arrays_unchanged(self):
+        values = np.array([1.0, 2.0])
+
+        prepared_values = remove_empty_value_if_needed(values)
+
+        self.assertIs(prepared_values, values)
+
+    def test_remove_empty_value_zeroes_empty_interaction_on_copy(self):
+        values = interaction_values({(): 0.0, (0,): 1.0})
+        values.interactions[()] = 100.0
+
+        prepared_values = remove_empty_value_if_needed(values)
+
+        self.assertIsNot(prepared_values, values)
+        self.assertEqual(values.values[values.interaction_lookup[()]], 100.0)
+        self.assertEqual(prepared_values.values[prepared_values.interaction_lookup[()]], 0.0)
+
+    def test_remove_empty_value_returns_original_without_empty_interaction(self):
+        values = interaction_values({(0,): 1.0})
+        del values.interactions[()]
+
+        prepared_values = remove_empty_value_if_needed(values)
+
+        self.assertIs(prepared_values, values)
+
     def test_numpy_arrays_keep_existing_shape_behavior(self):
         ground_truth = np.array([[1.0, 2.0]])
         estimated = np.array([[1.5, 2.5]])
@@ -202,6 +288,23 @@ class PrepareMetricInputsTestCase(unittest.TestCase):
 
         self.assertEqual(scores["precision_at_k"], 0.5)
 
+    def test_precision_at_k_returns_zero_for_only_empty_interaction_values(self):
+        ground_truth = interaction_values({(): 5.0})
+        estimated = interaction_values({(): 10.0})
+
+        scores = Scorer(metric_names=["precision_at_k"]).score(ground_truth, estimated)
+
+        self.assertEqual(scores["precision_at_k"], 0.0)
+
+    def test_interaction_values_alignment_is_independent_of_lookup_order(self):
+        ground_truth = interaction_values({(1,): 2.0, (0,): 1.0})
+        estimated = interaction_values({(0,): 1.0, (1,): 2.0})
+
+        prepared_ground_truth, prepared_estimated = prepare_metric_inputs(ground_truth, estimated)
+
+        np.testing.assert_array_equal(prepared_ground_truth, np.array([1.0, 2.0]))
+        np.testing.assert_array_equal(prepared_estimated, np.array([1.0, 2.0]))
+
 
 class ScorerTestCase(unittest.TestCase):
     def test_computes_selected_metrics_and_preserves_keys(self):
@@ -231,6 +334,24 @@ class ScorerTestCase(unittest.TestCase):
         )
 
         self.assertEqual(scores["precision_at_k"], 0.5)
+
+    def test_metric_params_accept_alias_names(self):
+        scorer = Scorer(
+            metric_names=["normalized_mse"],
+            metric_params={"normalized_mse": {}},
+        )
+
+        scores = scorer.score(
+            ground_truth=np.array([1.0, 2.0, 3.0]),
+            estimated=np.array([1.0, 2.0, 3.0]),
+        )
+
+        self.assertEqual(scores["mse_normalized"], 0.0)
+
+    def test_duplicate_metric_names_are_computed_once(self):
+        scorer = Scorer(metric_names=["mse", "mse", "normalized_mse", "mse_normalized"])
+
+        self.assertEqual(scorer.metric_names, ("mse", "mse_normalized"))
 
     def test_handles_metric_failure_without_crashing_by_default(self):
         scorer = Scorer(
@@ -270,6 +391,10 @@ class ScorerTestCase(unittest.TestCase):
     def test_unknown_metric_raises_key_error(self):
         with self.assertRaises(KeyError):
             Scorer(metric_names=["unknown_metric"])
+
+    def test_unknown_metric_param_raises_key_error(self):
+        with self.assertRaises(KeyError):
+            Scorer(metric_params={"unknown_metric": {}})
 
 
 class ScorerAggregatorIntegrationTestCase(unittest.TestCase):
