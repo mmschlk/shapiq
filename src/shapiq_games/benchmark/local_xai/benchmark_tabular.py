@@ -114,7 +114,7 @@ class AdultCensus(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to 'marginal'. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -171,7 +171,7 @@ class BikeSharing(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to 'marginal'. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -223,7 +223,7 @@ class CaliforniaHousing(LocalExplanation):
                 ``'neural_network'``.
 
             imputer: The imputer to use. Defaults to 'marginal'. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -278,7 +278,7 @@ class Mushroom(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to 'marginal'. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -334,7 +334,7 @@ class Soybean(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to 'marginal'. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -390,7 +390,7 @@ class Thyroid(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to 'marginal'. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -446,7 +446,7 @@ class Annealing(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -502,7 +502,7 @@ class Arrhythmia(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -558,7 +558,7 @@ class BreastCancer(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -614,7 +614,7 @@ class Hepatitis(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -670,7 +670,7 @@ class Ionosphere(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -726,7 +726,7 @@ class Nursery(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -782,7 +782,7 @@ class Zoo(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -834,7 +834,7 @@ class ForestFires(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
@@ -885,7 +885,7 @@ class Independent(LocalExplanation):
                 models are ``'decision_tree'``, ``'random_forest'``, and ``'gradient_boosting'``.
 
             imputer: The imputer to use. Defaults to ``'marginal'``. Available imputers are
-                ``'marginal'`` and ``'conditional'``.
+                ``'marginal'``, ``'conditional'`` and ``'baseline'``.
 
             normalize: A flag to normalize the game values. If ``True``, then the game values are
                 normalized and centered to be zero for the empty set of features. Defaults to
