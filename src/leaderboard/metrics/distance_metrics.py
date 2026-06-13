@@ -8,7 +8,6 @@ import numpy as np
 
 from .base import Metric
 from .result import MetricResult
-from .utils import prepare_metric_inputs
 
 T = TypeVar("T")
 
@@ -70,7 +69,7 @@ class NormalizedMSEMetric(Metric):
         return MetricResult(
             metric_name=self.name,
             value=value,
-                       higher_is_better=self.higher_is_better,
+            higher_is_better=self.higher_is_better,
         )
 
 
@@ -84,7 +83,8 @@ following the faithfulness metric in ProxySPEX, Section 3.1, Equation (2).
 class R2Metric(Metric):
     """R² faithfulness score measuring reconstruction quality."""
 
-    def score(self, estimated: Any, ground_truth: Any) -> MetricResult:
+    def score(self, estimated: T | list[T], ground_truth: T | list[T]) -> MetricResult:
+        """Compute the R² faithfulness score for estimated and ground-truth values."""
         estimated_array = np.array(estimated)
         ground_truth_array = np.array(ground_truth)
 
