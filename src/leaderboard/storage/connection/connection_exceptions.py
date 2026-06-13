@@ -19,6 +19,14 @@ class MissingMongoURIError(DBClientError):
         super().__init__("MONGODB_URI is not set in the environment.")
 
 
+class MissingHuggingFaceInfoError(DBClientError):
+    """Raised when necessary HuggingFace dataset information is missing."""
+
+    def __init__(self, missing_info: str) -> None:
+        """Initialize with a message indicating which HuggingFace information is missing."""
+        super().__init__(f"{missing_info} is not set in the environment.")
+
+
 class UnsupportedDatabaseBackendError(DBClientError):
     """Raised when an unsupported database backend is specified."""
 

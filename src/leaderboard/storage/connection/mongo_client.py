@@ -18,6 +18,7 @@ from leaderboard.storage.data_classes import RunConfig
 
 from .client import DatabaseClient
 from .connection_exceptions import MissingMongoURIError
+from .utilities import _matches_config_with_seed
 
 if TYPE_CHECKING:
     from pymongo.collection import Collection
@@ -96,12 +97,62 @@ class MongoDBClient(DatabaseClient):
         """Insert a single run document."""
         self.collection.insert_one(document)
 
+    def safe_insert_one(self, document: dict[str, Any], mode: str = "merge") -> bool:
+        """Insert a document if no existing document matches its config and seed. If a matching config but different seed exists, either merge or replace based on *mode*.
+
+        Args:
+            document:
+                The run document to insert.
+            mode:
+                The mode for handling duplicates ("merge", "replace", or "skip").
+
+        Returns:
+            bool: True if the document was inserted, False otherwise.
+        """
+        # Extract config from the new document
+        new_doc_config = RunConfig.from_dict(document)
+
+        # Load documents by config
+        existing_docs = self.get_by_config(new_doc_config)
+
+        if not existing_docs:
+            # No existing document matches the config, safe to insert
+            self.insert_one(document)
+            return True
+
+        # Check for matching seed
+        for existing_doc in existing_docs:
+            if _matches_config_with_seed(document, existing_doc):
+                if mode == "merge":
+                    # Merge metrics and update timestamp
+                    merged_doc = existing_doc.copy()
+                    merged_doc.update(document)  # New document's fields override existing ones
+
+                    # delete only if duplicate
+                    self.delete_by_id(
+                        existing_doc.get("run_id")
+                    )  # Remove old document(s) by unique identifier
+
+                    self.insert_one(merged_doc)  # Insert merged document
+                elif mode == "replace":
+                    self.delete_by_config(new_doc_config)  # Remove old document(s)
+                    self.insert_one(document)  # Insert new document
+                elif mode == "skip":
+                    return False  # Do not insert, as a matching document already exists
+
+        return True
+
     def insert_many(self, documents: list[dict[str, Any]]) -> None:
         """Bulk-insert run documents (no-op for an empty list)."""
         if documents:
             self.collection.insert_many(documents)
 
     # Delete
+
+    def delete_by_id(self, doc_id: str) -> int:
+        """Delete a document by its unique identifier. Returns 1 if deleted, 0 if not found."""
+        result = self.collection.delete_one({"run_id": doc_id})
+        return result.deleted_count
 
     def delete_all(self) -> int:
         """Delete every document in the collection. Returns deleted count."""

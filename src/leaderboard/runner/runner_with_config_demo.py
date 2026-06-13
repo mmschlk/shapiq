@@ -99,12 +99,12 @@ def main() -> None:
     base_config = load_raw_config(config_path)
 
     # Connect to MongoDB
-    mongo_db = DatabaseClientFactory.create_client("mongodb", args={})
+    mongo_db = DatabaseClientFactory.create_client("mongodb", db_args={})
 
     # Create a local database client
     output_path = project_root / "data" / "results_raw.jsonl"
     local_db = DatabaseClientFactory.create_client(
-        "local", args={"LOCAL_DB_PATH": str(output_path)}
+        "local", db_args={"LOCAL_DB_PATH": str(output_path)}
     )
 
     # Test connection

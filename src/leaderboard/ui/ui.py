@@ -26,7 +26,7 @@ RESULTS_PATH = PROJECT_ROOT / "data" / "results_raw.jsonl"
 
 ZERO_THRESHOLD = 1e-7
 DASH_STYLES = ["solid", "dash", "dot", "dashdot", "longdash"]
-LOADING_METHOD = "mongodb"  # "local" or "mongodb"
+LOADING_METHOD = "mongodb"  # "local" or "mongodb" or "huggingface"
 
 
 # Temporary seed determination
