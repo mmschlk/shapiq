@@ -6,8 +6,9 @@ import json
 import logging
 import sys
 from pathlib import Path
-import yaml
 from typing import Any, TypedDict, cast
+
+import yaml
 
 from config_manager import MVPRunConfig, load_and_validate_config
 from leaderboard.runner.approximator_registry import get_approximator_class
@@ -94,20 +95,17 @@ def main() -> None:
     # Expand validated config to concrete run configurations
     run_configs = expand_validated_config(config_obj)
 
-    # Load raw config for optional fields like game_params
-    # base_config = load_raw_config(config_path)
+    # Load raw config for optional fields like game_params base_config = load_raw_config(config_path)
 
     # Reuse validated config object so optional fields (e.g., game_params) stay typed.
     base_config = config_obj.model_dump(exclude_none=True)
 
     # Connect to MongoDB
-    mongo_db = DatabaseClientFactory.create_client("mongodb", args={})
+    mongo_db = DatabaseClientFactory.create_client("mongodb", {})
 
     # Create a local database client
     output_path = project_root / "data" / "results_raw.jsonl"
-    local_db = DatabaseClientFactory.create_client(
-        "local", args={"LOCAL_DB_PATH": str(output_path)}
-    )
+    local_db = DatabaseClientFactory.create_client("local", {"LOCAL_DB_PATH": str(output_path)})
 
     # Test connection
     if not mongo_db.test_connection():
