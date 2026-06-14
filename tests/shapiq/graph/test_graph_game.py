@@ -34,10 +34,28 @@ class TestGraphGame:
         assert gat_graph_game.x_graph is not None
         assert gat_graph_game.task == "regression"
 
-    def test_init_invalid_task(self, gcn_model, simple_graph):
-        """Test that ValueError is raised for invalid task."""
+    def test_init_strategies(self, gcn_model, simple_graph):
+        game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="min")
+        assert np.allclose(game.baseline, torch.amin(game.x_graph.x, dim=0)) #type: ignore
+        game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="max")
+        assert np.allclose(game.baseline, torch.amax(game.x_graph.x, dim=0)) #type: ignore
+        with pytest.raises(NotImplementedError, match="is not supported."):
+            game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy="invalid")
+        with pytest.raises(ValueError, match="Baseline tensor must have shape"):
+            game = GraphGame(model=gcn_model, x_graph=simple_graph, baseline_strategy=torch.zeros(2,3)) #type: ignore
+
+    def test_init_sanity_checks(self, gcn_model, simple_graph, empty_graph):
         with pytest.raises(ValueError, match="task must be 'classification' or 'regression'"):
-            GraphGame(model=gcn_model, x_graph=simple_graph, task="invalid")
+            GraphGame(model=gcn_model, x_graph=simple_graph, task="invalid") #type: ignore
+        with pytest.raises(ValueError, match="class_index cannot be set for regression tasks."):
+            GraphGame(model=gcn_model, x_graph=simple_graph, task="regression", class_index = 42)
+        with pytest.raises(ValueError, match="x_graph must have node features"):
+            GraphGame(model=gcn_model, x_graph=empty_graph)
+        with pytest.raises(AttributeError, match="The GNN needs a num_layers attribute"):  
+            delattr(gcn_model,"num_layers")
+            GraphGame(model=gcn_model, x_graph=simple_graph)
+
+
 
     def test_init_normalize_true(self, gcn_model, simple_graph):
         """Test that normalization_value is set correctly when normalize=True."""

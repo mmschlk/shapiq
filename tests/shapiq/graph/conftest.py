@@ -103,6 +103,10 @@ def small_graph():
 
 
 @pytest.fixture
+def empty_graph():
+    return Data(x=None, edge_index=None)
+
+@pytest.fixture
 def disconnected_graph():
     x = torch.randn(5, 3)
     edge_index = torch.tensor([[0, 1, 2, 3, 3, 4], [1, 0, 3, 2, 4, 3]], dtype=torch.long)

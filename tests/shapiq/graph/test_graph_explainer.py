@@ -15,7 +15,7 @@ from shapiq.interaction_values import InteractionValues
 class TestGraphExplainer:
     """Tests for the GraphExplainer class."""
 
-    def test_init_sets_attributes(self, gcn_model):
+    def test_init_sets_attributes(self, gcn_model, gin_model, gat_model):
         expl = GraphExplainer(model=gcn_model, class_index=None, baseline_strategy="average", normalize=True)
         assert expl._model is not None
         assert expl._class_index is None
@@ -51,6 +51,10 @@ class TestGraphExplainer:
         result = expl.explain_X([simple_graph, simple_graph], n_jobs=None)
         assert isinstance(result, list)
         assert all(isinstance(r, InteractionValues) for r in result)
+        result = expl.explain_X([simple_graph, simple_graph], n_jobs=4)
+        assert isinstance(result, list)
+        assert all(isinstance(r, InteractionValues) for r in result)
+
 
     def test__check_total_budget_raises_when_exceeds(self, gcn_model, simple_graph):
         # Set zero budget so the check in explain_function will raise
