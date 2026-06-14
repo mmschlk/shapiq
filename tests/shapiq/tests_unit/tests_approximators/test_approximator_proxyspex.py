@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import sys
 
+import numpy as np
 import pytest
 
-from shapiq.approximator.sparse.proxyspex import ProxySPEX
+from shapiq.approximator.proxy.proxyspex import ProxySPEX
 from shapiq.interaction_values import InteractionValues
 from tests.shapiq.markers import skip_if_no_lightgbm
 
@@ -15,15 +16,13 @@ from tests.shapiq.markers import skip_if_no_lightgbm
 def test_initialization_defaults():
     """Test that ProxySPEX initializes with correct defaults."""
     n = 10
-    proxyspex = ProxySPEX(n=n)
+    proxyspex = ProxySPEX(n=n, max_order=2)
 
     # Check ProxySPEX default values
     assert proxyspex.n == n
-    assert proxyspex.max_order == n  # Default is None, which becomes n
-    assert proxyspex.index == "FBII"
+    assert proxyspex.max_order == 2  # Default is 2
+    assert proxyspex.index == "k-SII"
     assert proxyspex.top_order is False
-    assert proxyspex.transform_type == "fourier"
-    assert proxyspex.decoder_type == "proxyspex"  # For proxyspex
 
 
 @pytest.mark.parametrize(
@@ -31,7 +30,7 @@ def test_initialization_defaults():
     [
         (7, "STII", 2, False),
         (7, "FBII", 3, True),
-        (20, "FSII", None, False),
+        (20, "FSII", 5, False),
     ],
 )
 @skip_if_no_lightgbm
@@ -45,10 +44,9 @@ def test_initialization_custom(n, index, max_order, top_order):
     )
 
     assert proxyspex.n == n
-    assert proxyspex.max_order == (n if max_order is None else max_order)
+    assert proxyspex.max_order == max_order
     assert proxyspex.index == index
     assert proxyspex.top_order is top_order
-    assert proxyspex.transform_type == "fourier"
 
 
 @pytest.mark.parametrize(
@@ -66,7 +64,7 @@ def test_approximate(n, interactions, budget):
         return [sum(1 for interaction in interactions if all(x[i] for i in interaction)) for x in X]
 
     # Initialize SPEX approximator
-    proxyspex = ProxySPEX(n=n, random_state=42)
+    proxyspex = ProxySPEX(n=n, max_order=n, random_state=42)
 
     # Perform approximation
     estimates = proxyspex.approximate(budget, dummy_game)
@@ -75,7 +73,7 @@ def test_approximate(n, interactions, budget):
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == n
     assert estimates.min_order == 0  # Default top_order is False
-    assert estimates.index == "FBII"
+    assert estimates.index == "k-SII"
     assert estimates.estimated
     assert estimates.estimation_budget > 0
 
@@ -97,4 +95,40 @@ def test_proxyspex_import_error_if_missing(monkeypatch):
 
     # Use pytest.raises to assert that an ImportError is thrown
     with pytest.raises(ImportError, match="The 'lightgbm' package is required"):
-        ProxySPEX(n=10)
+        ProxySPEX(n=10, max_order=2)
+
+
+@skip_if_no_lightgbm
+def test_refine_zero_total_energy():
+    """Tests that ``_refine`` handles the case when total Fourier energy is zero.
+
+    When all non-baseline Fourier coefficients are zero the method must return the input
+    dictionary unchanged instead of attempting to divide by zero.
+    """
+    n = 5
+    approximator = ProxySPEX(n=n, index="FBII", max_order=2, random_state=42)
+
+    four_dict = {
+        (): 1.0,  # baseline coefficient
+        (0,): 0.0,
+        (1,): 0.0,
+        (0, 1): 0.0,
+        (2,): 0.0,
+        (1, 2): 0.0,
+    }
+    train_X = np.array(
+        [
+            [0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [1, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0],
+            [1, 0, 1, 0, 0],
+        ]
+    )
+    train_y = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+
+    result = approximator._refine(four_dict, train_X, train_y)
+
+    assert result == four_dict
+    assert len(result) == len(four_dict)

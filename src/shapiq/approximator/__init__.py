@@ -11,7 +11,6 @@ from .montecarlo import SHAPIQ, SVARM, SVARMIQ, UnbiasedKernelSHAP
 from .permutation.sii import PermutationSamplingSII
 from .permutation.stii import PermutationSamplingSTII
 from .permutation.sv import PermutationSamplingSV
-from .proxy import MSRBiased, ProxySHAP
 from .regression import (
     InconsistentKernelSHAPIQ,
     KernelSHAP,
@@ -20,7 +19,56 @@ from .regression import (
     RegressionFSII,
     kADDSHAP,
 )
-from .sparse import SPEX, ProxySPEX
+
+try:
+    from .sparse import SPEX
+except ImportError as _e:
+
+    class SPEX(Approximator):
+        """Placeholder raised when the optional ``sparse`` extra is not installed."""
+
+        _import_error = _e
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            """Raise an informative ImportError pointing to the missing extra."""
+            msg = "SPEX requires the 'sparse' extra: pip install shapiq[sparse]"
+            raise ImportError(msg) from self._import_error
+
+
+try:
+    from .proxy import ProxySHAP, ProxySPEX, RegressionMSR
+except ImportError as _e:
+
+    class ProxySHAP(Approximator):
+        """Placeholder raised when the optional ``proxy`` extra is not installed."""
+
+        _import_error = _e
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            """Raise an informative ImportError pointing to the missing extra."""
+            msg = "ProxySHAP requires the 'proxy' extra: pip install shapiq[proxy]"
+            raise ImportError(msg) from self._import_error
+
+    class ProxySPEX(Approximator):
+        """Placeholder raised when the optional ``proxy`` extra is not installed."""
+
+        _import_error = _e
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            """Raise an informative ImportError pointing to the missing extra."""
+            msg = "ProxySPEX requires the 'proxy' extra: pip install shapiq[proxy]"
+            raise ImportError(msg) from self._import_error
+
+    class RegressionMSR(Approximator):
+        """Placeholder raised when the optional ``proxy`` extra is not installed."""
+
+        _import_error = _e
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            """Raise an informative ImportError pointing to the missing extra."""
+            msg = "RegressionMSR requires the 'proxy' extra: pip install shapiq[proxy]"
+            raise ImportError(msg) from self._import_error
+
 
 # contains all SV approximators
 SV_APPROXIMATORS: list[Approximator.__class__] = [
@@ -32,9 +80,8 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     KernelSHAP,
     kADDSHAP,
     SPEX,
+    RegressionMSR,
     ProxySPEX,
-    ProxySHAP,
-    MSRBiased,
 ]
 
 # contains all SI approximators
@@ -46,8 +93,9 @@ SI_APPROXIMATORS: list[Approximator.__class__] = [
     InconsistentKernelSHAPIQ,
     KernelSHAPIQ,
     RegressionFSII,
+    SPEX,
+    ProxySPEX,
     ProxySHAP,
-    MSRBiased,
 ]
 
 # contains all approximators that can be used for SII
@@ -60,8 +108,8 @@ SII_APPROXIMATORS: list[Approximator.__class__] = [
     SPEX,
     ProxySPEX,
     ProxySHAP,
-    MSRBiased,
 ]
+
 
 # contains all approximators that can be used for STII
 STII_APPROXIMATORS: list[Approximator.__class__] = [
@@ -72,8 +120,6 @@ STII_APPROXIMATORS: list[Approximator.__class__] = [
     SHAPIQ,
     SPEX,
     ProxySPEX,
-    ProxySHAP,
-    MSRBiased,
 ]
 
 # contains all approximators that can be used for FSII
@@ -86,17 +132,11 @@ FSII_APPROXIMATORS: list[Approximator.__class__] = [
     SPEX,
     ProxySPEX,
     ProxySHAP,
-    MSRBiased,
 ]
 
 # contains all approximators that can be used for FBII
-FBII_APPROXIMATORS: list[Approximator.__class__] = [
-    RegressionFBII,
-    SPEX,
-    ProxySPEX,
-    ProxySHAP,
-    MSRBiased,
-]
+FBII_APPROXIMATORS: list[Approximator.__class__] = [RegressionFBII, SPEX, ProxySPEX, ProxySHAP]
+
 
 __all__ = [
     "Approximator",
@@ -112,7 +152,7 @@ __all__ = [
     "InconsistentKernelSHAPIQ",
     "ProxySPEX",
     "ProxySHAP",
-    "MSRBiased",
+    "RegressionMSR",
     "SHAPIQ",
     "SVARM",
     "SVARMIQ",

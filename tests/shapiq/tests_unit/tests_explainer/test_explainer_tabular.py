@@ -27,10 +27,10 @@ def test_auto_params(dt_reg_model, background_reg_data):
         model=model_function,
         data=background_reg_data,
     )
-    assert explainer.index == "k-SII"
-    assert explainer.approximator.index == "k-SII"
-    assert explainer.max_order == 2
-    assert explainer.approximator.__class__.__name__ == "KernelSHAPIQ"
+    assert explainer.index == "SV"
+    assert explainer.approximator.index == "SV"
+    assert explainer.max_order == 1
+    assert explainer.approximator.__class__.__name__ == "KernelSHAP"
 
 
 def test_init_params_error_and_warning(dt_reg_model, background_reg_data):
@@ -86,6 +86,7 @@ def test_init_params_approx(dt_reg_model, background_reg_data):
     explainer = TabularExplainer(
         approximator="regression",
         index="FSII",
+        max_order=2,
         model=model_function,
         data=data,
     )

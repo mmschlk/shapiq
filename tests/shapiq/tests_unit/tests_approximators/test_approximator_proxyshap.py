@@ -19,7 +19,7 @@ def test_initialization_defaults():
     # Check ProxySHAP default values
     assert proxyshap.n == n
     assert proxyshap.max_order == 2
-    assert proxyshap.index == "SII"
+    assert proxyshap.index == "k-SII"
     assert isinstance(proxyshap.proxy_model, XGBRegressor)
 
 
@@ -60,10 +60,10 @@ def test_approximate(n, interactions, budget):
         )
 
     # Initialize ProxySHAP approximator
-    proxyshap = ProxySHAP(n=n, random_state=42, index="SII", max_order=2)
+    proxyshap = ProxySHAP(n=n, random_state=42, index="k-SII", max_order=2)
 
     exact_computer = ExactComputer(game=dummy_game, n_players=n)
-    gt_values = exact_computer(index="SII", order=2)
+    gt_values = exact_computer(index="k-SII", order=2)
     # Perform approximation
     estimates = proxyshap.approximate(budget, dummy_game)
 
@@ -71,7 +71,7 @@ def test_approximate(n, interactions, budget):
     assert isinstance(estimates, InteractionValues)
     assert estimates.max_order == 2
     assert estimates.min_order == 0  # Default top_order is False
-    assert estimates.index == "SII"
+    assert estimates.index == "k-SII"
     assert estimates.estimated
     assert estimates.estimation_budget > 0
 

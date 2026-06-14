@@ -55,7 +55,7 @@ public:
     BitSet() : size(0), num_features(0), small_data(0ULL),  storage_type(StorageType::NUM) {}
 
     explicit BitSet(int64_t num_features)
-        : num_features(num_features), size(0)
+        : size(0), num_features(num_features)
     {
         if (num_features <= 64) {
             storage_type = StorageType::NUM;
@@ -213,6 +213,10 @@ public:
 
     std::size_t hash() const
     {
+        // Fast path for small bitsets (NUM storage): single multiply-add hash.
+        if (storage_type == StorageType::NUM)
+            return 0x9e3779b97f4a7c15ULL ^ (small_data * 6364136223846793005ULL + 1442695040888963407ULL);
+
         // We compute a hash value for the BitSet by combining the number of features, the size (number of set bits), and the indices of the set bits. This allows us to use BitSet as a key in hash-based data structures like unordered_map.
         std::size_t seed = 1469598103934665603ULL;
         auto hash_combine = [&](std::size_t value)
