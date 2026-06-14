@@ -480,19 +480,18 @@ def test_select_odd_interactions_returns_full_support_for_large_k():
 def test_build_support_always_includes_empty_and_singletons():
     n = 6
     approx = OddSHAP(n=n, random_state=0)
-    approx._build_support([(0, 1, 2), (2, 4)])  # even-size (2,4) should be dropped
+    approx._build_support([(0, 1, 2)])
     assert () in approx.odd_interaction_lookup
     for i in range(n):
         assert (i,) in approx.odd_interaction_lookup
     assert (0, 1, 2) in approx.odd_interaction_lookup
-    assert (2, 4) not in approx.odd_interaction_lookup
 
 
-def test_build_support_drops_even_and_singleton_inputs():
-    """_build_support pre-filters to len>=2 odd inputs."""
+def test_build_support_drops_singleton_inputs():
+    """_build_support skips singleton inputs because singletons are always included."""
     n = 6
     approx = OddSHAP(n=n, random_state=0)
-    approx._build_support([(0,), (1, 2), (0, 1, 2, 3, 4)])  # only the last is kept
+    approx._build_support([(0,), (0, 1, 2, 3, 4)])
     higher_order = {t for t in approx.odd_interaction_lookup if len(t) >= 2}
     assert higher_order == {(0, 1, 2, 3, 4)}
 

@@ -34,13 +34,14 @@ def _resolve_surrogate_model(
     a DecisionTreeRegressor with a warning — following the same resolution
     pattern as ProxySHAP/ProxySPEX (``_models._select_base_proxy_via_string``).
     """
-    params = {
+    params: dict[str, Any] = {
         "verbose": -1,
         "n_jobs": 1,
         "random_state": random_state,
         "max_depth": 10,
-        **(tree_params or {}),
     }
+    params.update(tree_params or {})
+
     try:
         from lightgbm import LGBMRegressor
 
@@ -220,9 +221,7 @@ class OddSHAP(Approximator):
         if budget >= 2**self.n:
             n_candidate_interactions = 2**self.n
         else:
-            n_candidate_interactions = max(
-                0, math.ceil(budget / self.interaction_factor) - self.n
-            )
+            n_candidate_interactions = max(0, math.ceil(budget / self.interaction_factor) - self.n)
 
         return self._approximate_via_odd_regression(
             budget=budget,
@@ -328,10 +327,6 @@ class OddSHAP(Approximator):
 
                 # skip empty or singleton terms because OddSHAP always includes them
                 if len(normalized) <= 1:
-                    continue
-
-                # keep only odd-sized higher-order interactions
-                if len(normalized) % 2 == 0:
                     continue
 
                 normalized_set.add(normalized)
