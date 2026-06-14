@@ -95,8 +95,10 @@ def main() -> None:
     # Expand validated config to concrete run configurations
     run_configs = expand_validated_config(config_obj)
 
-    # Load raw config for optional fields like game_params
-    base_config = load_raw_config(config_path)
+    # Load raw config for optional fields like game_params base_config = load_raw_config(config_path)
+
+    # Reuse validated config object so optional fields (e.g., game_params) stay typed.
+    base_config = config_obj.model_dump(exclude_none=True)
 
     # Connect to MongoDB
     mongo_db = DatabaseClientFactory.create_client("mongodb", db_args={})

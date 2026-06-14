@@ -90,3 +90,70 @@ class InvalidConfigMissingBudgetsError(InvalidConfigMissingFieldsError):
     def __init__(self) -> None:
         """Initialize with a message about the missing 'budget(s)' field."""
         super().__init__("Benchmark configuration must include 'budget' or 'budgets' field.")
+
+
+class UnsupportedGameError(ValueError):
+    """Exception raised when a game is not supported."""
+
+    def __init__(self, game: str, supported_games: set[str] | list[str]) -> None:
+        """Initialize the UnsupportedGameError with the invalid game and allowed options."""
+        formatted_games = ", ".join(sorted(supported_games))
+        message = f"Unsupported game '{game}'. Available games: {formatted_games}"
+        super().__init__(message)
+
+
+class InvalidGameFamilyError(ValueError):
+    """Exception raised when a game is incompatible with its declared family."""
+
+    def __init__(self, game: str, game_family: str) -> None:
+        """Initialize the InvalidGameFamilyError with the conflicting game and family."""
+        message = f"Game '{game}' is not available as a {game_family} game."
+        super().__init__(message)
+
+
+class BudgetRangeError(ValueError):
+    """Exception raised when a budget value falls outside the allowed range."""
+
+    def __init__(self, budget: int, n_players: int, min_allowed: int, max_exclusive: int) -> None:
+        """Initialize the BudgetRangeError with detailed constraint bounds."""
+        message = (
+            f"Invalid budget value {budget}. For this project, n_players={n_players} "
+            f"so budgets must satisfy {min_allowed} <= budget < {max_exclusive} "
+            f"(for n=14, this is 15 <= budget < 16384). Please remove this value "
+            f"or change `n_players` if your game has a different size."
+        )
+        super().__init__(message)
+
+
+class UnsupportedImputerError(ValueError):
+    """Exception raised when an imputer method is not supported."""
+
+    def __init__(self, imputer: str, supported_imputers: set[str] | list[str]) -> None:
+        """Initialize the UnsupportedImputerError with the invalid imputer and allowed options."""
+        formatted_imputers = ", ".join(sorted(supported_imputers))
+        message = f"Unsupported imputer '{imputer}'. Available imputers: {formatted_imputers}"
+        super().__init__(message)
+
+
+class InvalidBudgetStrategyError(ValueError):
+    """Exception raised when an invalid budget policy strategy is provided."""
+
+    def __init__(self, strategy: str) -> None:
+        """Initialize the InvalidBudgetStrategyError with the invalid strategy value."""
+        message = f"budget_policy.strategy must be 'range' when provided, but got '{strategy}'."
+        super().__init__(message)
+
+
+class InvalidBudgetStepsError(ValueError):
+    """Exception raised when budget_policy.steps is invalid."""
+
+    def __init__(self, steps_input: object, *, is_negative: bool = False) -> None:
+        """Initialize the InvalidBudgetStepsError based on the type of validation failure."""
+        if is_negative:
+            message = f"budget_policy.steps must be greater than 0, but got {steps_input}."
+        else:
+            message = (
+                f"budget_policy.steps must be an integer greater than 0, "
+                f"but got unacceptable value '{steps_input}'."
+            )
+        super().__init__(message)

@@ -243,9 +243,12 @@ class TestDatabaseClientConnection:
 
     def test_context_manager_calls_close_on_exception(self, empty_client: DatabaseClient) -> None:
         test_exc_message = "test exception"
-        with patch.object(empty_client, "close") as mock_close, pytest.raises(ValueError):
-            with empty_client:
-                raise ValueError(test_exc_message) from None
+        with (
+            patch.object(empty_client, "close") as mock_close,
+            pytest.raises(ValueError),
+            empty_client,
+        ):
+            raise ValueError(test_exc_message) from None
         mock_close.assert_called_once()
 
 

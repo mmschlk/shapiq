@@ -34,27 +34,32 @@ class HuggingFaceClient(LocalClient):
     Upon closing the client, the temporary local directory is deleted.
     """
 
-
-    def __init__(self, dataset_name: str, local_dir: str, filename: str):
+    def __init__(self, dataset_name: str, local_dir: str, filename: str) -> None:
+        """Initialize the HuggingFaceClient with the specified dataset and local file path."""
         self.dataset_name = dataset_name
         self._local_dir = local_dir
         super().__init__(path=filename)
 
     @classmethod
     def from_env(cls, args: dict) -> Self:
+        """Create a HuggingFaceClient instance using connection parameters from environment variables."""
         load_dotenv()
 
-        dataset_name = args.get("HF_DATASET") or os.getenv("HF_DATASET")
-        if not dataset_name:
-            raise MissingHuggingFaceInfoError("HF_DATASET")
+        HF_DATASET = "HF_DATASET"
+        ENV_HF_TOKEN = "HF_TOKEN"  # noqa: S105 -- env var *name*, not a secret value
+        HF_FILE = "HF_FILE"
 
-        token = args.get("HF_TOKEN") or os.getenv("HF_TOKEN")
+        dataset_name = args.get(HF_DATASET) or os.getenv(HF_DATASET)
+        if not dataset_name:
+            raise MissingHuggingFaceInfoError(HF_DATASET)
+
+        token = args.get(ENV_HF_TOKEN) or os.getenv(ENV_HF_TOKEN)
         if not token:
-            raise MissingHuggingFaceInfoError("HF_TOKEN")
-        
-        filename = args.get("HF_FILE") or os.getenv("HF_FILE")        
+            raise MissingHuggingFaceInfoError(ENV_HF_TOKEN)
+
+        filename = args.get(HF_FILE) or os.getenv(HF_FILE)
         if not filename:
-            raise MissingHuggingFaceInfoError("HF_FILE")
+            raise MissingHuggingFaceInfoError(HF_FILE)
 
         local_dir = tempfile.mkdtemp(prefix="hf_dataset_")
 

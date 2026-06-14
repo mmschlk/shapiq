@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .distance_metrics import MAEMetric, MSEMetric, NormalizedMSEMetric
+from .distance_metrics import MAEMetric, MSEMetric, NormalizedMSEMetric, R2Metric
 from .ranking_metrics import KendallTauMetric, PrecisionAtKMetric, SpearmanMetric
 
 if TYPE_CHECKING:
@@ -27,6 +27,7 @@ METRIC_KEYS = (
     "mse",
     "mae",
     "mse_normalized",
+    "r2",
     "spearman",
     "kendall_tau",
     "precision_at_k",
@@ -55,6 +56,13 @@ METRIC_SPECS = {
         higher_is_better=False,
         category="error",
         description="Mean squared error normalized by reference variance.",
+    ),
+    "r2": MetricSpec(
+        name="r2",
+        function=R2Metric(),
+        higher_is_better=True,
+        category="faithfulness",
+        description="R² faithfulness score measuring reconstruction quality.",
     ),
     "spearman": MetricSpec(
         name="spearman",

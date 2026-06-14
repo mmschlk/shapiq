@@ -38,7 +38,7 @@ def _process(raw_runs: list[dict]) -> pd.DataFrame:
     metrics_df = pd.json_normalize(runs_df["metrics"])
     runs_df = pd.concat([runs_df.drop(columns=["metrics"]), metrics_df], axis=1)
 
-    # Normalise seed column name
+    # Normalize seed column name
     if "seed" in runs_df.columns and "approx_seed" not in runs_df.columns:
         runs_df = runs_df.rename(columns={"seed": "approx_seed"})
     if "seed" in runs_df.columns and "approx_seed" in runs_df.columns:

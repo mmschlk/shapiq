@@ -12,7 +12,7 @@ import yaml
 
 from .models import MVPRunConfig
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def load_and_validate_config(yaml_path: str | Path) -> MVPRunConfig | None:
@@ -37,10 +37,10 @@ def load_and_validate_config(yaml_path: str | Path) -> MVPRunConfig | None:
             data = yaml.safe_load(file)
         config = MVPRunConfig(**data)
     except (OSError, yaml.YAMLError, TypeError, ValueError):
-        logging.exception("Configuration Validation Error")
+        logger.exception("Configuration Validation Error")
         raise
     else:
-        logging.info(
+        logger.info(
             "Configuration '%s' loaded successfully.",
             yaml_path,
         )

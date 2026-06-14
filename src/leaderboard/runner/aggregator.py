@@ -16,16 +16,9 @@ from typing import Any
 
 import numpy as np
 
-from .runner_exceptions import MissingMetricsKeyError, NoSuccessfulRunsError, NullMetricsError
+from leaderboard.metrics import METRIC_KEYS
 
-METRIC_KEYS = [
-    "mse",
-    "mae",
-    "mse_normalized",
-    "spearman",
-    "kendall_tau",
-    "precision_at_k",
-]
+from .runner_exceptions import MissingMetricsKeyError, NoSuccessfulRunsError, NullMetricsError
 
 
 def aggregate_metric_values(successful_runs: list[dict[str, Any]]) -> dict[str, float | None]:

@@ -1,0 +1,555 @@
+from __future__ import annotations
+
+import unittest
+from unittest.mock import patch
+
+import numpy as np
+import pytest
+
+from leaderboard.metrics import METRIC_KEYS, METRIC_SPECS, METRICS, Scorer
+from leaderboard.metrics.evaluator import compute_all_metrics
+from leaderboard.metrics.registry import MetricSpec
+from leaderboard.metrics.utils import prepare_metric_inputs, remove_empty_value_if_needed
+from leaderboard.runner.aggregator import aggregate_metric_values, aggregate_run_records
+from leaderboard.runner.record_builder import create_run_record
+from shapiq import InteractionValues
+
+EXPECTED_METRIC_KEYS = (
+    "mse",
+    "mae",
+    "mse_normalized",
+    "r2",
+    "spearman",
+    "kendall_tau",
+    "precision_at_k",
+)
+
+
+def interaction_values(
+    values_by_interaction: dict[tuple[int, ...], float],
+    n_players: int = 20,
+) -> InteractionValues:
+    interactions = list(values_by_interaction)
+    return InteractionValues(
+        values=np.array(
+            [values_by_interaction[interaction] for interaction in interactions], dtype=float
+        ),
+        index="SV",
+        max_order=max((len(interaction) for interaction in interactions), default=0),
+        n_players=n_players,
+        min_order=0,
+        interaction_lookup={interaction: index for index, interaction in enumerate(interactions)},
+    )
+
+
+class DummyGame:
+    game_id = "dummy-game-id"
+    n_players = 3
+
+
+class DummyApproximator:
+    pass
+
+
+class ExplodingMetric:
+    name = "mse"
+    higher_is_better = False
+
+    def compute(self, ground_truth, estimated):
+        msg = "boom"
+        raise RuntimeError(msg)
+
+
+@pytest.mark.parametrize(
+    ("metric_name", "ground_truth", "estimated", "expected"),
+    [
+        ("mse", np.array([1.0, 2.0, 3.0]), np.array([1.0, 4.0, 6.0]), 13 / 3),
+        ("mae", np.array([1.0, -2.0, 3.0]), np.array([2.0, 2.0, -1.0]), 3.0),
+        ("mse_normalized", np.array([1.0, 2.0, 3.0]), np.array([1.0, 4.0, 6.0]), 6.5),
+        ("mse_normalized", np.array([2.0, 2.0, 2.0]), np.array([1.0, 2.0, 4.0]), 5 / 3),
+    ],
+)
+def test_distance_metrics_parametrized_edge_values(
+    metric_name,
+    ground_truth,
+    estimated,
+    expected,
+):
+    result = METRICS[metric_name].compute(ground_truth, estimated)
+
+    assert result.value == pytest.approx(expected)
+    assert result.metric_name == METRICS[metric_name].name
+
+
+@pytest.mark.parametrize(
+    ("metric_name", "ground_truth", "estimated", "expected"),
+    [
+        ("spearman", np.array([1.0, 2.0, 3.0]), np.array([3.0, 2.0, 1.0]), -1.0),
+        ("spearman", np.array([1.0, 1.0, 1.0]), np.array([3.0, 2.0, 1.0]), 0.0),
+        ("kendall_tau", np.array([1.0, 2.0, 3.0]), np.array([3.0, 2.0, 1.0]), -1.0),
+        ("kendall_tau", np.array([1.0, 1.0, 1.0]), np.array([3.0, 2.0, 1.0]), 0.0),
+    ],
+)
+def test_ranking_metrics_parametrized_ordering_and_constant_inputs(
+    metric_name,
+    ground_truth,
+    estimated,
+    expected,
+):
+    result = METRICS[metric_name].compute(ground_truth, estimated)
+
+    assert result.value == pytest.approx(expected)
+    assert result.higher_is_better is True
+
+
+def test_r2_returns_nan_for_empty_arrays():
+    result = METRICS["r2"].compute(np.array([]), np.array([]))
+
+    assert np.isnan(result.value)
+
+
+def test_precision_at_k_invalid_k_is_checked_before_shape_mismatch():
+    with pytest.raises(ValueError, match="k must be greater than 0"):
+        METRICS["precision_at_k"].compute(np.array([1.0]), np.array([1.0, 2.0]), k=0)
+
+
+def test_scorer_isolates_mocked_metric_failure():
+    mocked_specs = dict(METRIC_SPECS)
+    mocked_specs["mse"] = MetricSpec(
+        name="mse",
+        function=ExplodingMetric(),
+        higher_is_better=False,
+        category="mock",
+        description="mocked metric",
+    )
+
+    with patch("leaderboard.metrics.scorer.METRIC_SPECS", mocked_specs):
+        scores = Scorer(metric_names=["mse"]).score(np.array([1.0]), np.array([1.0]))
+
+    assert scores["mse"] is None
+
+
+class MetricsTestCase(unittest.TestCase):
+    def test_public_api_exports_required_metrics(self):
+        self.assertEqual(METRIC_KEYS, EXPECTED_METRIC_KEYS)
+        self.assertEqual(
+            tuple(compute_all_metrics(np.array([1.0]), np.array([1.0])).keys()), METRIC_KEYS
+        )
+        self.assertEqual(
+            compute_all_metrics(np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0]))["r2"],
+            1.0,
+        )
+        self.assertIs(METRICS["normalized_mse"], METRICS["mse_normalized"])
+
+    def test_registry_specs_match_public_metric_instances(self):
+        for metric_name in METRIC_KEYS:
+            with self.subTest(metric_name=metric_name):
+                spec = METRIC_SPECS[metric_name]
+
+                self.assertIs(METRICS[metric_name], spec.function)
+                self.assertEqual(spec.name, metric_name)
+                self.assertEqual(spec.function.name, metric_name)
+                self.assertEqual(spec.function.higher_is_better, spec.higher_is_better)
+                self.assertTrue(spec.category)
+                self.assertTrue(spec.description)
+
+    def test_mse_is_zero_for_equal_values(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([1.0, 2.0, 3.0])
+
+        result = METRICS["mse"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, 0.0)
+        self.assertEqual(result.metric_name, "mse")
+        self.assertFalse(result.higher_is_better)
+
+    def test_mae_uses_absolute_error(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([2.0, 0.0, 6.0])
+
+        result = METRICS["mae"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, 2.0)
+        self.assertEqual(result.metric_name, "mae")
+        self.assertFalse(result.higher_is_better)
+
+    def test_normalized_mse_uses_run_record_name(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([1.0, 2.0, 3.0])
+
+        result = METRICS["mse_normalized"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, 0.0)
+        self.assertEqual(result.metric_name, "mse_normalized")
+        self.assertFalse(result.higher_is_better)
+
+    def test_r2_is_one_for_perfect_prediction(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([1.0, 2.0, 3.0])
+
+        result = METRICS["r2"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, 1.0)
+        self.assertEqual(result.metric_name, "r2")
+        self.assertTrue(result.higher_is_better)
+
+    def test_r2_is_zero_for_mean_baseline_prediction(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([2.0, 2.0, 2.0])
+
+        result = METRICS["r2"].compute(ground_truth, estimated)
+
+        self.assertAlmostEqual(result.value, 0.0)
+
+    def test_r2_can_be_negative_for_bad_prediction(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([3.0, 2.0, 1.0])
+
+        result = METRICS["r2"].compute(ground_truth, estimated)
+
+        self.assertLess(result.value, 0.0)
+
+    def test_r2_returns_nan_for_constant_ground_truth(self):
+        ground_truth = np.array([2.0, 2.0, 2.0])
+        estimated = np.array([2.0, 2.0, 2.0])
+
+        result = METRICS["r2"].compute(ground_truth, estimated)
+
+        self.assertTrue(np.isnan(result.value))
+
+    def test_r2_shape_mismatch_raises_clear_error(self):
+        with self.assertRaisesRegex(ValueError, "same shape"):
+            METRICS["r2"].compute(np.array([1.0]), np.array([1.0, 2.0]))
+
+    def test_spearman_detects_inverse_rank_order(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([3.0, 2.0, 1.0])
+
+        result = METRICS["spearman"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, -1.0)
+        self.assertEqual(result.metric_name, "spearman")
+        self.assertTrue(result.higher_is_better)
+
+    def test_spearman_handles_nan_as_zero(self):
+        ground_truth = np.array([1.0, 1.0, 1.0])
+        estimated = np.array([2.0, 2.0, 2.0])
+
+        result = METRICS["spearman"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, 0.0)
+
+    def test_kendall_tau_detects_inverse_rank_order(self):
+        ground_truth = np.array([1.0, 2.0, 3.0])
+        estimated = np.array([3.0, 2.0, 1.0])
+
+        result = METRICS["kendall_tau"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, -1.0)
+        self.assertEqual(result.metric_name, "kendall_tau")
+        self.assertTrue(result.higher_is_better)
+
+    def test_kendall_tau_handles_nan_as_zero(self):
+        ground_truth = np.array([1.0, 1.0, 1.0])
+        estimated = np.array([2.0, 2.0, 2.0])
+
+        result = METRICS["kendall_tau"].compute(ground_truth, estimated)
+
+        self.assertEqual(result.value, 0.0)
+        self.assertEqual(result.metric_name, "kendall_tau")
+        self.assertTrue(result.higher_is_better)
+
+    def test_precision_at_k_uses_absolute_top_k_overlap(self):
+        ground_truth = np.array([10.0, -9.0, 1.0])
+        estimated = np.array([1.0, -9.0, 10.0])
+
+        result = METRICS["precision_at_k"].compute(ground_truth, estimated, k=2)
+
+        self.assertEqual(result.value, 0.5)
+        self.assertEqual(result.metric_name, "precision_at_k")
+        self.assertTrue(result.higher_is_better)
+
+    def test_precision_at_k_caps_k_at_array_size(self):
+        ground_truth = np.array([10.0, 1.0])
+        estimated = np.array([1.0, 10.0])
+
+        result = METRICS["precision_at_k"].compute(ground_truth, estimated, k=10)
+
+        self.assertEqual(result.value, 1.0)
+
+    def test_precision_at_k_returns_zero_for_empty_arrays(self):
+        result = METRICS["precision_at_k"].compute(np.array([]), np.array([]), k=10)
+
+        self.assertEqual(result.value, 0.0)
+
+    def test_precision_at_k_rejects_non_positive_k(self):
+        with self.assertRaisesRegex(ValueError, "k must be greater than 0"):
+            METRICS["precision_at_k"].compute(np.array([1.0]), np.array([1.0]), k=0)
+
+    def test_precision_at_k_shape_mismatch_raises_clear_error(self):
+        with self.assertRaisesRegex(ValueError, "same shape"):
+            METRICS["precision_at_k"].compute(np.array([1.0]), np.array([1.0, 2.0]))
+
+
+class PrepareMetricInputsTestCase(unittest.TestCase):
+    def test_remove_empty_value_leaves_numpy_arrays_unchanged(self):
+        values = np.array([1.0, 2.0])
+
+        prepared_values = remove_empty_value_if_needed(values)
+
+        self.assertIs(prepared_values, values)
+
+    def test_remove_empty_value_zeroes_empty_interaction_on_copy(self):
+        values = interaction_values({(): 0.0, (0,): 1.0})
+        values.interactions[()] = 100.0
+
+        prepared_values = remove_empty_value_if_needed(values)
+
+        self.assertIsNot(prepared_values, values)
+        self.assertEqual(values.values[values.interaction_lookup[()]], 100.0)
+        self.assertEqual(prepared_values.values[prepared_values.interaction_lookup[()]], 0.0)
+
+    def test_remove_empty_value_returns_original_without_empty_interaction(self):
+        values = interaction_values({(0,): 1.0})
+        del values.interactions[()]
+
+        prepared_values = remove_empty_value_if_needed(values)
+
+        self.assertIs(prepared_values, values)
+
+    def test_numpy_arrays_keep_existing_shape_behavior(self):
+        ground_truth = np.array([[1.0, 2.0]])
+        estimated = np.array([[1.5, 2.5]])
+
+        prepared_ground_truth, prepared_estimated = prepare_metric_inputs(ground_truth, estimated)
+
+        np.testing.assert_array_equal(prepared_ground_truth, ground_truth)
+        np.testing.assert_array_equal(prepared_estimated, estimated)
+
+    def test_interaction_values_ignore_empty_key_and_align_union(self):
+        ground_truth = interaction_values({(): 100.0, (0,): 1.0, (1,): 2.0})
+        estimated = interaction_values({(): -100.0, (1,): 3.0, (2,): 4.0})
+
+        prepared_ground_truth, prepared_estimated = prepare_metric_inputs(ground_truth, estimated)
+
+        np.testing.assert_array_equal(prepared_ground_truth, np.array([1.0, 2.0, 0.0]))
+        np.testing.assert_array_equal(prepared_estimated, np.array([0.0, 3.0, 4.0]))
+
+    def test_spearman_uses_existing_interaction_keys_without_powerset(self):
+        ground_truth = interaction_values({(): 999.0, (0,): 1.0, (19,): 2.0}, n_players=20)
+        estimated = interaction_values({(): -999.0, (0,): 1.0, (19,): 3.0}, n_players=20)
+
+        scores = Scorer(metric_names=["spearman"]).score(ground_truth, estimated)
+
+        self.assertEqual(scores["spearman"], 0.9999999999999999)
+
+    def test_precision_at_k_ignores_empty_interaction_values_key(self):
+        ground_truth = interaction_values({(): 1000.0, (0,): 5.0, (1,): 4.0})
+        estimated = interaction_values({(): 1000.0, (0,): 5.0, (2,): 4.0})
+
+        scores = Scorer(
+            metric_names=["precision_at_k"], metric_params={"precision_at_k": {"k": 2}}
+        ).score(
+            ground_truth,
+            estimated,
+        )
+
+        self.assertEqual(scores["precision_at_k"], 0.5)
+
+    def test_precision_at_k_compares_interaction_keys_not_values(self):
+        ground_truth = interaction_values({(0,): 5.0, (1,): 4.0})
+        estimated = interaction_values({(0,): 50.0, (2,): 4.0})
+
+        scores = Scorer(
+            metric_names=["precision_at_k"], metric_params={"precision_at_k": {"k": 2}}
+        ).score(
+            ground_truth,
+            estimated,
+        )
+
+        self.assertEqual(scores["precision_at_k"], 0.5)
+
+    def test_precision_at_k_returns_zero_for_only_empty_interaction_values(self):
+        ground_truth = interaction_values({(): 5.0})
+        estimated = interaction_values({(): 10.0})
+
+        scores = Scorer(metric_names=["precision_at_k"]).score(ground_truth, estimated)
+
+        self.assertEqual(scores["precision_at_k"], 0.0)
+
+    def test_interaction_values_alignment_is_independent_of_lookup_order(self):
+        ground_truth = interaction_values({(1,): 2.0, (0,): 1.0})
+        estimated = interaction_values({(0,): 1.0, (1,): 2.0})
+
+        prepared_ground_truth, prepared_estimated = prepare_metric_inputs(ground_truth, estimated)
+
+        np.testing.assert_array_equal(prepared_ground_truth, np.array([1.0, 2.0]))
+        np.testing.assert_array_equal(prepared_estimated, np.array([1.0, 2.0]))
+
+
+class ScorerTestCase(unittest.TestCase):
+    def test_computes_selected_metrics_and_preserves_keys(self):
+        scorer = Scorer(metric_names=["mse", "normalized_mse", "mae"])
+
+        scores = scorer.score(
+            ground_truth=np.array([1.0, 2.0, 3.0]),
+            estimated=np.array([1.0, 2.0, 3.0]),
+        )
+
+        self.assertEqual(tuple(scores.keys()), METRIC_KEYS)
+        self.assertEqual(scores["mse"], 0.0)
+        self.assertEqual(scores["mse_normalized"], 0.0)
+        self.assertEqual(scores["mae"], 0.0)
+        self.assertNotIn("normalized_mse", scores)
+        self.assertIsNone(scores["spearman"])
+
+    def test_supports_metric_params_for_precision_at_k(self):
+        scorer = Scorer(
+            metric_names=["precision_at_k"],
+            metric_params={"precision_at_k": {"k": 2}},
+        )
+
+        scores = scorer.score(
+            ground_truth=np.array([10.0, 9.0, 1.0]),
+            estimated=np.array([1.0, 9.0, 10.0]),
+        )
+
+        self.assertEqual(scores["precision_at_k"], 0.5)
+
+    def test_metric_params_accept_alias_names(self):
+        scorer = Scorer(
+            metric_names=["normalized_mse"],
+            metric_params={"normalized_mse": {}},
+        )
+
+        scores = scorer.score(
+            ground_truth=np.array([1.0, 2.0, 3.0]),
+            estimated=np.array([1.0, 2.0, 3.0]),
+        )
+
+        self.assertEqual(scores["mse_normalized"], 0.0)
+
+    def test_duplicate_metric_names_are_computed_once(self):
+        scorer = Scorer(metric_names=["mse", "mse", "normalized_mse", "mse_normalized"])
+
+        self.assertEqual(scorer.metric_names, ("mse", "mse_normalized"))
+
+    def test_handles_metric_failure_without_crashing_by_default(self):
+        scorer = Scorer(
+            metric_names=["precision_at_k"],
+            metric_params={"precision_at_k": {"k": 0}},
+        )
+
+        scores = scorer.score(
+            ground_truth=np.array([1.0, 2.0, 3.0]),
+            estimated=np.array([1.0, 2.0, 3.0]),
+        )
+
+        self.assertIsNone(scores["precision_at_k"])
+
+    def test_raises_metric_failure_when_fail_fast_is_true(self):
+        scorer = Scorer(
+            metric_names=["precision_at_k"],
+            metric_params={"precision_at_k": {"k": 0}},
+            fail_fast=True,
+        )
+
+        with self.assertRaises(ValueError):
+            scorer.score(
+                ground_truth=np.array([1.0, 2.0, 3.0]),
+                estimated=np.array([1.0, 2.0, 3.0]),
+            )
+
+    def test_shape_mismatch_raises_clear_error(self):
+        scorer = Scorer(metric_names=["mse"])
+
+        with self.assertRaisesRegex(ValueError, "same shape"):
+            scorer.score(
+                ground_truth=np.array([1.0, 2.0, 3.0]),
+                estimated=np.array([1.0, 2.0]),
+            )
+
+    def test_unknown_metric_raises_key_error(self):
+        with self.assertRaises(KeyError):
+            Scorer(metric_names=["unknown_metric"])
+
+    def test_unknown_metric_param_raises_key_error(self):
+        with self.assertRaises(KeyError):
+            Scorer(metric_params={"unknown_metric": {}})
+
+
+class ScorerAggregatorIntegrationTestCase(unittest.TestCase):
+    def test_scored_run_records_can_be_aggregated(self):
+        scorer = Scorer(metric_names=["mse", "mae", "r2"])
+        first_metrics = scorer.score(
+            ground_truth=np.array([1.0, 2.0, 3.0]),
+            estimated=np.array([1.0, 2.0, 3.0]),
+        )
+        second_metrics = scorer.score(
+            ground_truth=np.array([1.0, 2.0, 3.0]),
+            estimated=np.array([1.0, 2.0, 4.0]),
+        )
+
+        records = [
+            self._run_record(first_metrics, runtime_seconds=1.0),
+            self._run_record(second_metrics, runtime_seconds=3.0),
+        ]
+
+        aggregated_metrics = aggregate_metric_values(records)
+        aggregated_record = aggregate_run_records(records)
+
+        self.assertIn("mse", aggregated_metrics)
+        self.assertIn("mae", aggregated_metrics)
+        self.assertAlmostEqual(aggregated_metrics["mse"], 1 / 6)
+        self.assertAlmostEqual(aggregated_metrics["r2"], 0.75)
+        self.assertAlmostEqual(aggregated_record["metrics"]["mae"], 1 / 6)
+        self.assertEqual(aggregated_record["runtime_seconds"], 2.0)
+
+    def test_default_run_record_metrics_include_r2(self):
+        run_record = create_run_record(
+            game=DummyGame(),
+            game_name="DummyGame",
+            game_params={"n_players": 3},
+            approximator_class=DummyApproximator,
+            approximator_params={},
+            index="SV",
+            max_order=1,
+            budget=8,
+            approx_seed=1,
+            metrics=None,
+            runtime_seconds=None,
+            run_failed=True,
+            error_message="failed",
+        )
+
+        self.assertEqual(tuple(run_record["metrics"].keys()), METRIC_KEYS)
+        self.assertIsNone(run_record["metrics"]["r2"])
+
+    @staticmethod
+    def _run_record(metrics, runtime_seconds):
+        return {
+            "run_id": "run-id",
+            "game_name": "DummyGame",
+            "game_id": "dummy-game-id",
+            "game_params": {"n_players": 3},
+            "n_players": 3,
+            "approximator_name": "DummyApproximator",
+            "approximator_params": {},
+            "shapiq_version": "0.0.0",
+            "index": "SV",
+            "max_order": 1,
+            "budget": 8,
+            "approx_seed": 1,
+            "ground_truth_method": "ExactComputer",
+            "run_failed": False,
+            "error_message": None,
+            "metrics": metrics,
+            "runtime_seconds": runtime_seconds,
+            "timestamp": "2026-01-01T00:00:00+00:00",
+            "hardware": {},
+            "notes": "",
+        }
+
+
+if __name__ == "__main__":
+    unittest.main()
