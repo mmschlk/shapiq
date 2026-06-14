@@ -153,6 +153,14 @@ ext_modules = [
         # No OpenMP: this extension contains no #pragma omp / omp_* usage.
         **get_base_flags(),
     ),
+    Extension(
+        "shapiq.graph.cext",
+        sources=[
+            "src/shapiq/graph/cext/cext.cc",
+        ],
+        language="c++",
+        **get_openmp_flags(),
+    ),
 ]
 
 setup(
