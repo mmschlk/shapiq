@@ -11,7 +11,7 @@ from shapiq.game_theory.exact import ExactComputer
 from shapiq.interaction_values import InteractionValues
 from shapiq_games.synthetic import DummyGame
 
-# Random but pre-defined seeds to ensure reproducibility but prevent ovefitting to a single seed choice
+# Random but pre-defined seeds to ensure reproducibility but prevent overfitting to a single seed choice
 DIVERSE_SEEDS = [
     0,
     42,
