@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 import warnings
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -14,7 +15,6 @@ from scipy.special import binom
 from sklearn.tree import DecisionTreeRegressor
 
 from shapiq.approximator.base import Approximator
-from shapiq.approximator.proxy.proxyspex import ProxySPEX
 from shapiq.interaction_values import InteractionValues
 from shapiq.tree.conversion import convert_tree_model
 
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from shapiq.game import Game
+    from shapiq.tree.base import TreeModel
 
 
 def _resolve_surrogate_model(
@@ -63,6 +64,48 @@ def _resolve_surrogate_model(
         )
     warnings.warn(msg, stacklevel=2)
     return DecisionTreeRegressor(**dt_params)
+
+
+_FourierDict = dict[tuple[int, ...], float]
+
+
+def _tree_to_fourier(tree_model: TreeModel) -> _FourierDict:
+    """Extract exact Fourier (Walsh) coefficients from a single tree by DFS.
+
+    Equivalent to ``ProxySPEX._sklearn_tree_to_fourier`` but standalone — no
+    Approximator instantiation required.
+    """
+
+    def _combine(
+        left: _FourierDict, right: _FourierDict, feature: int
+    ) -> _FourierDict:
+        combined: _FourierDict = {}
+        for interaction in set(left) | set(right):
+            left_val = left.get(interaction, 0.0)
+            right_val = right.get(interaction, 0.0)
+            combined[interaction] = (left_val + right_val) / 2
+            combined[tuple(sorted(set(interaction) | {feature}))] = (left_val - right_val) / 2
+        return combined
+
+    def _dfs(node: int) -> _FourierDict:
+        if tree_model.children_left[node] == -1:
+            return {(): tree_model.values[node]}
+        return _combine(
+            _dfs(tree_model.children_left[node]),
+            _dfs(tree_model.children_right[node]),
+            tree_model.features[node],
+        )
+
+    return _dfs(0)
+
+
+def _ensemble_to_fourier(tree_models: list[TreeModel]) -> dict[tuple[int, ...], float]:
+    """Aggregate Fourier coefficients across an ensemble of trees."""
+    aggregated: dict[tuple[int, ...], float] = defaultdict(float)
+    for tree_model in tree_models:
+        for interaction, value in _tree_to_fourier(tree_model).items():
+            aggregated[interaction] += value
+    return {k: v for k, v in aggregated.items() if v != 0.0}
 
 
 class OddSHAP(Approximator):
@@ -359,12 +402,9 @@ class OddSHAP(Approximator):
         """Screen higher-order odd interactions from the surrogate's Fourier spectrum.
 
         Implements the paper's ``OddInteractionExtract`` (Fumagalli et al. 2026,
-        Algorithm 1 / "Controlling Higher-Order Terms"): following ProxySPEX, the fitted
-        GBT is converted to its exact Fourier (Walsh) spectrum and the odd-cardinality
-        frequencies with the largest coefficient magnitudes are kept. The Fourier
-        extraction is reused directly from ProxySPEX (``_sklearn_to_fourier``) rather than
-        re-implemented, so the support is selected in the very Fourier basis the odd
-        regression is solved in.
+        Algorithm 1 / "Controlling Higher-Order Terms"): the fitted GBT is
+        converted to its exact Fourier (Walsh) spectrum and the odd-cardinality
+        frequencies with the largest coefficient magnitudes are kept.
         """
         if surrogate_model is None or n_candidate_interactions <= 0:
             return []
@@ -372,14 +412,7 @@ class OddSHAP(Approximator):
         tree_models = convert_tree_model(surrogate_model)
         if not isinstance(tree_models, list):
             tree_models = [tree_models]
-        # The ProxySPEX instance is only a host for its exact GBT->Fourier extractor;
-        # it is never sampled or fit.
-        # max_order=1 keeps the base class from building an order-2 interaction
-        # lookup that the extractor never uses.
-        fourier_extractor = ProxySPEX(
-            n=self.n, max_order=1, proxy_model=surrogate_model, random_state=self._random_state
-        )
-        fourier_coefficients = fourier_extractor._sklearn_to_fourier(tree_models)  # noqa: SLF001
+        fourier_coefficients = _ensemble_to_fourier(tree_models)
 
         higher_order_odd: dict[tuple[int, ...], float] = {}
         for interaction, coefficient in fourier_coefficients.items():
