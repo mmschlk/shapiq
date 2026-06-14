@@ -358,7 +358,7 @@ class GraphSHAPIQ:
         *,
         efficiency_routine: bool = True,
         index: ValidMoebiusConverterIndices = "k-SII",
-        use_cpp: bool = False,
+        use_cpp: bool = True,
     ) -> tuple[InteractionValues, InteractionValues]:
         """Compute Shapley interactions for the graph.
 
