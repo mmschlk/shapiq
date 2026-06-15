@@ -429,9 +429,24 @@ def compute_elo_for_bucket(df_raw_records: list[dict], budget: int) -> tuple[pd.
     result = scorer.score(df_raw_records)
 
     if not result.rows:
-        empty_df = pd.DataFrame(columns=["Rank", "Approximator", "ELO Score", "Matches", "Wins", "Losses", "Ties"])
+        empty_df = pd.DataFrame(
+            [{"Rank": "–", "Approximator": f"No data available for budget {budget}", "ELO Score": "–", "Matches": "–", "Wins": "–", "Losses": "–", "Ties": "–"}]
+        )
         fig = go.Figure()
-        fig.update_layout(title=f"No data for budget {budget}")
+        fig.update_layout(
+            title=f"No data for budget {budget}",
+            xaxis={"visible": False},
+            yaxis={"visible": False},
+            annotations=[{
+                "text": f"No approximators found for budget {budget}",
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.5,
+                "y": 0.5,
+                "showarrow": False,
+                "font": {"size": 16, "color": "gray"},
+            }],
+        )
         return empty_df, fig
 
     rows_data = [
@@ -498,6 +513,117 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
 
     with gr.Row():
         reload_btn = gr.Button("Reload Data", variant="secondary", scale=0)
+
+    with gr.Tab("ELO Leaderboard"):
+        gr.Markdown("""
+        ## ELO Leaderboard by Budget Bucket
+
+        Approximators are ranked using pairwise ELO comparisons within each budget tier.
+        A higher ELO score means the approximator consistently outperforms others at this budget.
+        """)
+
+        # State: current bucket index (0–4), start with Medium (1000) = index 2
+        elo_bucket_idx_state = gr.State(value=2)
+
+        with gr.Row(equal_height=True):
+            elo_prev_btn = gr.Button("◀ Lower Budget", scale=0, variant="secondary")
+            elo_bucket_label = gr.Markdown(
+                value=f"### {BUDGET_BUCKETS[2]['label']}",
+                elem_id="elo-bucket-label",
+            )
+            elo_next_btn = gr.Button("Higher Budget ▶", scale=0, variant="secondary")
+
+        # Pre-compute initial ELO display for Medium (1000) bucket
+        _elo_init_records = []
+        for _, _row in df_agg.iterrows():
+            _elo_init_records.append({
+                "run_id": f"{_row['game_name']}-{_row['approximator_name']}-{_row.get('budget', 0)}",
+                "game_id": _row["game_name"],
+                "game_name": _row["game_name"],
+                "index": _row.get("index", "SV"),
+                "max_order": _row.get("max_order", 1),
+                "budget": int(_row["budget"]) if not pd.isna(_row["budget"]) else 0,
+                "ground_truth_method": _row.get("ground_truth_method", ""),
+                "approximator_name": _row["approximator_name"],
+                "run_failed": False,
+                "metrics": {
+                    m: _row.get(f"{m}_mean")
+                    for m in available_metrics
+                    if f"{m}_mean" in df_agg.columns and not pd.isna(_row.get(f"{m}_mean"))
+                },
+            })
+        _elo_init_table, _elo_init_fig = compute_elo_for_bucket(_elo_init_records, int(BUDGET_BUCKETS[2]["budget"]))
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                elo_table = gr.Dataframe(
+                    value=_elo_init_table,
+                    interactive=False,
+                    label="Rankings",
+                )
+            with gr.Column(scale=2):
+                elo_plot = gr.Plot(value=_elo_init_fig, label="ELO Scores")
+
+        def update_elo_tab(bucket_idx: int, df: pd.DataFrame) -> tuple[Any, ...]:
+            """Compute ELO leaderboard and plot for the given bucket index."""
+            bucket = BUDGET_BUCKETS[bucket_idx]
+            # Convert aggregated df back to raw-record-like dicts for the ELO scorer.
+            # The ELO scorer expects raw records with nested "metrics" dict.
+            # We reconstruct minimal records from the aggregated data.
+            raw_records = []
+            for _, row in df.iterrows():
+                for metric in available_metrics:
+                    mean_col = f"{metric}_mean"
+                    if mean_col not in df.columns:
+                        continue
+                    mean_val = row.get(mean_col)
+                    if pd.isna(mean_val):
+                        continue
+                record = {
+                    "run_id": f"{row['game_name']}-{row['approximator_name']}-{row.get('budget', 0)}-{row.get('seed', 0)}",
+                    "game_id": row["game_name"],
+                    "game_name": row["game_name"],
+                    "index": row.get("index", "SV"),
+                    "max_order": row.get("max_order", 1),
+                    "budget": int(row["budget"]) if not pd.isna(row["budget"]) else 0,
+                    "ground_truth_method": row.get("ground_truth_method", ""),
+                    "approximator_name": row["approximator_name"],
+                    "run_failed": False,
+                    "metrics": {
+                        metric: row.get(f"{metric}_mean")
+                        for metric in available_metrics
+                        if f"{metric}_mean" in df.columns and not pd.isna(row.get(f"{metric}_mean"))
+                    },
+                }
+                raw_records.append(record)
+
+            table_df, fig = compute_elo_for_bucket(raw_records, int(bucket["budget"]))
+            label_md = f"### {bucket['label']}"
+            return label_md, table_df, fig
+
+        def elo_navigate(current_idx: int, delta: int, df: pd.DataFrame) -> Iterator[Any]:
+            """Navigate between budget buckets, hiding the table first to force a size reset."""
+            new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
+            yield new_idx, gr.update(), gr.update(visible=False), gr.update()
+            label_md, table_df, fig = update_elo_tab(new_idx, df)
+            yield new_idx, label_md, gr.update(value=table_df, visible=True), fig
+
+        def elo_prev(idx: int, df: pd.DataFrame) -> Iterator[Any]:
+            yield from elo_navigate(idx, -1, df)
+
+        def elo_next(idx: int, df: pd.DataFrame) -> Iterator[Any]:
+            yield from elo_navigate(idx, +1, df)
+
+        elo_prev_btn.click(
+            fn=elo_prev,
+            inputs=[elo_bucket_idx_state, df_state],
+            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
+        )
+        elo_next_btn.click(
+            fn=elo_next,
+            inputs=[elo_bucket_idx_state, df_state],
+            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
+        )
 
     with gr.Tab("Leaderboard"):
         gr.Markdown("## Global Leaderboard (all games)")
@@ -731,109 +857,6 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
                 fn=update_compare_plots, inputs=[*all_inputs, n_cols_state], outputs=plot_outputs
             )
 
-    with gr.Tab("ELO Leaderboard"):
-        gr.Markdown("""
-        ## ELO Leaderboard by Budget Bucket
-
-        Approximators are ranked using pairwise ELO comparisons within each budget tier.
-        A higher ELO score means the approximator consistently outperforms others at this budget.
-        """)
-
-        # State: current bucket index (0–4), start with Medium (1000) = index 2
-        elo_bucket_idx_state = gr.State(value=2)
-
-        with gr.Row(equal_height=True):
-            elo_prev_btn = gr.Button("◀ Lower Budget", scale=0, variant="secondary")
-            elo_bucket_label = gr.Markdown(
-                value=f"### {BUDGET_BUCKETS[2]['label']}",
-                elem_id="elo-bucket-label",
-            )
-            elo_next_btn = gr.Button("Higher Budget ▶", scale=0, variant="secondary")
-
-        # Pre-compute initial ELO display for Medium (1000) bucket
-        _elo_init_records = []
-        for _, _row in df_agg.iterrows():
-            _elo_init_records.append({
-                "run_id": f"{_row['game_name']}-{_row['approximator_name']}-{_row.get('budget', 0)}",
-                "game_id": _row["game_name"],
-                "game_name": _row["game_name"],
-                "index": _row.get("index", "SV"),
-                "max_order": _row.get("max_order", 1),
-                "budget": int(_row["budget"]) if not pd.isna(_row["budget"]) else 0,
-                "ground_truth_method": _row.get("ground_truth_method", ""),
-                "approximator_name": _row["approximator_name"],
-                "run_failed": False,
-                "metrics": {
-                    m: _row.get(f"{m}_mean")
-                    for m in available_metrics
-                    if f"{m}_mean" in df_agg.columns and not pd.isna(_row.get(f"{m}_mean"))
-                },
-            })
-        _elo_init_table, _elo_init_fig = compute_elo_for_bucket(_elo_init_records, int(BUDGET_BUCKETS[2]["budget"]))
-
-        with gr.Row():
-            with gr.Column(scale=1):
-                elo_table = gr.Dataframe(
-                    value=_elo_init_table,
-                    interactive=False,
-                    label="Rankings",
-                )
-            with gr.Column(scale=2):
-                elo_plot = gr.Plot(value=_elo_init_fig, label="ELO Scores")
-
-        def update_elo_tab(bucket_idx: int, df: pd.DataFrame) -> tuple[Any, ...]:
-            """Compute ELO leaderboard and plot for the given bucket index."""
-            bucket = BUDGET_BUCKETS[bucket_idx]
-            # Convert aggregated df back to raw-record-like dicts for the ELO scorer.
-            # The ELO scorer expects raw records with nested "metrics" dict.
-            # We reconstruct minimal records from the aggregated data.
-            raw_records = []
-            for _, row in df.iterrows():
-                for metric in available_metrics:
-                    mean_col = f"{metric}_mean"
-                    if mean_col not in df.columns:
-                        continue
-                    mean_val = row.get(mean_col)
-                    if pd.isna(mean_val):
-                        continue
-                record = {
-                    "run_id": f"{row['game_name']}-{row['approximator_name']}-{row.get('budget', 0)}-{row.get('seed', 0)}",
-                    "game_id": row["game_name"],
-                    "game_name": row["game_name"],
-                    "index": row.get("index", "SV"),
-                    "max_order": row.get("max_order", 1),
-                    "budget": int(row["budget"]) if not pd.isna(row["budget"]) else 0,
-                    "ground_truth_method": row.get("ground_truth_method", ""),
-                    "approximator_name": row["approximator_name"],
-                    "run_failed": False,
-                    "metrics": {
-                        metric: row.get(f"{metric}_mean")
-                        for metric in available_metrics
-                        if f"{metric}_mean" in df.columns and not pd.isna(row.get(f"{metric}_mean"))
-                    },
-                }
-                raw_records.append(record)
-
-            table_df, fig = compute_elo_for_bucket(raw_records, int(bucket["budget"]))
-            label_md = f"### {bucket['label']}"
-            return label_md, table_df, fig
-
-        def elo_navigate(current_idx: int, delta: int, df: pd.DataFrame) -> tuple[Any, ...]:
-            """Navigate between budget buckets."""
-            new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
-            label_md, table_df, fig = update_elo_tab(new_idx, df)
-            return new_idx, label_md, table_df, fig
-
-        elo_prev_btn.click(
-            fn=lambda idx, df: elo_navigate(idx, -1, df),
-            inputs=[elo_bucket_idx_state, df_state],
-            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
-        )
-        elo_next_btn.click(
-            fn=lambda idx, df: elo_navigate(idx, +1, df),
-            inputs=[elo_bucket_idx_state, df_state],
-            outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
-        )
 
     def on_reload() -> tuple[Any, ...]:
         """Reloads the raw dataset and refreshes all UI components.
