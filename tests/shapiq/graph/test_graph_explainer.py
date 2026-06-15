@@ -15,7 +15,7 @@ from shapiq.interaction_values import InteractionValues
 class TestGraphExplainer:
     """Tests for the GraphExplainer class."""
 
-    def test_init_sets_attributes(self, gcn_model, gin_model, gat_model):
+    def test_init_sets_attributes(self, gcn_model):
         expl = GraphExplainer(model=gcn_model, class_index=None, baseline_strategy="average", normalize=True)
         assert expl._model is not None
         assert expl._class_index is None

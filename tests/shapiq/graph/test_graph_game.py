@@ -108,7 +108,7 @@ class TestGraphGame:
         """Test value function for classification task."""
         coalition = np.array([True, False, True, False] + [False] * (gcn_graph_game.n_players - 4))
         v = gcn_graph_game.value_function(coalition)
-        assert isinstance(v, float)
+        assert isinstance(v[0], float)
 
     # Normalization value tests
     def test_normalization_value(self,gcn_graph_game):
