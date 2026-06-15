@@ -533,6 +533,13 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             )
             elo_next_btn = gr.Button("Higher Budget ▶", scale=0, variant="secondary")
 
+        with gr.Row():
+            elo_approx_filter = gr.CheckboxGroup(
+                choices=df_agg["approximator_name"].unique().tolist(),
+                value=df_agg["approximator_name"].unique().tolist(),
+                label="Approximators",
+            )
+
         # Pre-compute initial ELO display for Medium (1000) bucket
         _elo_init_records = []
         for _, _row in df_agg.iterrows():
@@ -555,7 +562,7 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
         _elo_init_table, _elo_init_fig = compute_elo_for_bucket(_elo_init_records, int(BUDGET_BUCKETS[2]["budget"]))
 
         with gr.Row():
-            with gr.Column(scale=1):
+            with gr.Column(scale=3):
                 elo_table = gr.Dataframe(
                     value=_elo_init_table,
                     interactive=False,
@@ -564,21 +571,15 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             with gr.Column(scale=2):
                 elo_plot = gr.Plot(value=_elo_init_fig, label="ELO Scores")
 
-        def update_elo_tab(bucket_idx: int, df: pd.DataFrame) -> tuple[Any, ...]:
+        def update_elo_tab(bucket_idx: int, df: pd.DataFrame, selected_approxs: list[str]) -> tuple[Any, ...]:
             """Compute ELO leaderboard and plot for the given bucket index."""
             bucket = BUDGET_BUCKETS[bucket_idx]
+            df = df[df["approximator_name"].isin(selected_approxs)]
             # Convert aggregated df back to raw-record-like dicts for the ELO scorer.
             # The ELO scorer expects raw records with nested "metrics" dict.
             # We reconstruct minimal records from the aggregated data.
             raw_records = []
             for _, row in df.iterrows():
-                for metric in available_metrics:
-                    mean_col = f"{metric}_mean"
-                    if mean_col not in df.columns:
-                        continue
-                    mean_val = row.get(mean_col)
-                    if pd.isna(mean_val):
-                        continue
                 record = {
                     "run_id": f"{row['game_name']}-{row['approximator_name']}-{row.get('budget', 0)}-{row.get('seed', 0)}",
                     "game_id": row["game_name"],
@@ -601,28 +602,39 @@ with gr.Blocks(title="shapiq Leaderboard") as demo:
             label_md = f"### {bucket['label']}"
             return label_md, table_df, fig
 
-        def elo_navigate(current_idx: int, delta: int, df: pd.DataFrame) -> Iterator[Any]:
+        def elo_navigate(current_idx: int, delta: int, df: pd.DataFrame, selected_approxs: list[str]) -> Iterator[Any]:
             """Navigate between budget buckets, hiding the table first to force a size reset."""
             new_idx = max(0, min(len(BUDGET_BUCKETS) - 1, current_idx + delta))
             yield new_idx, gr.update(), gr.update(visible=False), gr.update()
-            label_md, table_df, fig = update_elo_tab(new_idx, df)
+            label_md, table_df, fig = update_elo_tab(new_idx, df, selected_approxs)
             yield new_idx, label_md, gr.update(value=table_df, visible=True), fig
 
-        def elo_prev(idx: int, df: pd.DataFrame) -> Iterator[Any]:
-            yield from elo_navigate(idx, -1, df)
+        def elo_prev(idx: int, df: pd.DataFrame, selected_approxs: list[str]) -> Iterator[Any]:
+            yield from elo_navigate(idx, -1, df, selected_approxs)
 
-        def elo_next(idx: int, df: pd.DataFrame) -> Iterator[Any]:
-            yield from elo_navigate(idx, +1, df)
+        def elo_next(idx: int, df: pd.DataFrame, selected_approxs: list[str]) -> Iterator[Any]:
+            yield from elo_navigate(idx, +1, df, selected_approxs)
 
         elo_prev_btn.click(
             fn=elo_prev,
-            inputs=[elo_bucket_idx_state, df_state],
+            inputs=[elo_bucket_idx_state, df_state, elo_approx_filter],  # <-- elo_approx_filter neu
             outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
         )
         elo_next_btn.click(
             fn=elo_next,
-            inputs=[elo_bucket_idx_state, df_state],
+            inputs=[elo_bucket_idx_state, df_state, elo_approx_filter],  # <-- elo_approx_filter neu
             outputs=[elo_bucket_idx_state, elo_bucket_label, elo_table, elo_plot],
+        )
+
+        def elo_filter_update(idx: int, df: pd.DataFrame, selected_approxs: list[str]) -> Iterator[Any]:
+            yield gr.update(), gr.update(visible=False), gr.update()
+            label_md, table_df, fig = update_elo_tab(idx, df, selected_approxs)
+            yield label_md, gr.update(value=table_df, visible=True), fig
+
+        elo_approx_filter.change(
+            fn=elo_filter_update,
+            inputs=[elo_bucket_idx_state, df_state, elo_approx_filter],
+            outputs=[elo_bucket_label, elo_table, elo_plot],
         )
 
     with gr.Tab("Leaderboard"):
