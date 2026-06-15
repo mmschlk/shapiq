@@ -22,6 +22,20 @@ from .regression import (
 )
 
 try:
+    from .shapleig import ShaplEIG
+except ImportError as _e:
+
+    class ShaplEIG(Approximator):
+        """Placeholder raised when the optional ``shapleig`` extra is not installed."""
+
+        _import_error = _e
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            """Raise an informative ImportError pointing to the missing extra."""
+            raise self._import_error
+
+
+try:
     from .sparse import SPEX
 except ImportError as _e:
 
@@ -32,8 +46,7 @@ except ImportError as _e:
 
         def __init__(self, *_args: object, **_kwargs: object) -> None:
             """Raise an informative ImportError pointing to the missing extra."""
-            msg = "SPEX requires the 'sparse' extra: pip install shapiq[sparse]"
-            raise ImportError(msg) from self._import_error
+            raise self._import_error
 
 
 # contains all SV approximators
@@ -48,6 +61,7 @@ SV_APPROXIMATORS: list[Approximator.__class__] = [
     SPEX,
     RegressionMSR,
     ProxySPEX,
+    ShaplEIG,
 ]
 
 # contains all SI approximators
@@ -119,6 +133,7 @@ __all__ = [
     "ProxySPEX",
     "ProxySHAP",
     "RegressionMSR",
+    "ShaplEIG",
     "SHAPIQ",
     "SVARM",
     "SVARMIQ",

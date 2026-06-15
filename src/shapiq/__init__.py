@@ -29,6 +29,7 @@ from .approximator import (
     RegressionFBII,
     RegressionFSII,
     RegressionMSR,
+    ShaplEIG,
     StratifiedSamplingSV,
     UnbiasedKernelSHAP,
     kADDSHAP,
@@ -112,6 +113,7 @@ __all__ = [
     "UnbiasedKernelSHAP",
     "SPEX",
     "ProxySHAP",
+    "ShaplEIG",
     "ProxySPEX",
     "RegressionMSR",
     # explainers
