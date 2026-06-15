@@ -95,7 +95,7 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
                 candidate is evaluated eventually and the adaptive selection
                 degenerates to the candidate sampling distribution.
             refit: When to refit the GP hyperparameters: ``"every_iteration"``
-                (default) or the staged schedule ``"init_64_factor_4"`` (every
+                (default) or the staged schedule ``"decaying"`` (every
                 iteration for the first 64, then every 8th for 128, every
                 16th for 256, every 32nd afterwards) for large budgets. The
                 final surrogate is always refit. Note that for many players
@@ -354,7 +354,7 @@ class ShaplEIG(Approximator[ValidShaplEIGIndices]):
         """Whether the GP hyperparameters are refit at this iteration."""
         if self.refit == "every_iteration":
             return True
-        if self.refit == "init_64_factor_4":
+        if self.refit == "decaying":
             if iteration_idx < 64:
                 return True
             if iteration_idx < 64 + 128:
