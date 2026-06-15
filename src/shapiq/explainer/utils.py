@@ -153,6 +153,15 @@ def get_predict_function_and_model_type(
     ]:
         _model_type = "tree"
 
+    # catboost
+    if model_class in [
+        "catboost.core.CatBoost",
+        "catboost.core.CatBoostRegressor",
+        "catboost.core.CatBoostClassifier",
+    ]:
+        _predict_function = predict_catboost
+        _model_type = "tree"
+
     # pytorch
     if model_class in [
         "torch.nn.modules.container.Sequential",
@@ -270,6 +279,11 @@ def predict_xgboost(model: Model, data: np.ndarray) -> np.ndarray:
     from xgboost import DMatrix
 
     return model.predict(DMatrix(data))
+
+
+def predict_catboost(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes raw-margin predictions with a CatBoost model."""
+    return model.predict(data, prediction_type="RawFormulaVal")
 
 
 def predict_tensorflow(model: Model, data: np.ndarray) -> np.ndarray:
